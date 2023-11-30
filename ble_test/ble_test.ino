@@ -62,10 +62,26 @@ byte packet[packetSize];
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
 
-  for (size_t i = 0; i < length; ++i)
-  {
-    Serial.printf("%02X ", pData[i]);
-  }
+  //Serial.write(pData, length);
+
+const int additionalBytes = 9; 
+uint8_t modifiedData[length + additionalBytes];
+for (int i = 0; i < 8; ++i) {
+    modifiedData[i] = 0xaa;
+}
+  modifiedData[8] = length;
+for (int i = 0; i < length; ++i) {
+    modifiedData[9 + i] = pData[i];
+}
+
+Serial.write(modifiedData, length + additionalBytes);
+
+
+  // for (size_t i = 0; i < length; ++i)
+  // {
+  //   //Serial.printf("%02X ", pData[i]);
+    
+  // }
 
   // // Serial.print("特征通知回调：");
   // // Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
