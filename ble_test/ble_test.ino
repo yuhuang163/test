@@ -9,7 +9,7 @@
 // AT+MAC=F4:12:FA:C4:4C:66
 #include "BLEDevice.h"
 #include "Arduino.h"
-#define CONFIG_BLUEDROID_ENABLED
+#define CONFIG_BLUEDROID_ENABLED//配置使能
 #define log 1
 // 要连接的设备的MAC地址c0:4e:30:37:16:96
 char targetDeviceAddress[18] = "ea:cb:3e:cf:00:13"; // 历程的地
@@ -33,6 +33,9 @@ BLEClientCallbacks *connect_callback = nullptr;
 static boolean doConnect = false; // 是否可以开始连接
 static boolean connected = false; // 是否是连接的状态
 static boolean doScan = false;    // 是否scan完成
+
+static boolean isReceiveOver  = false;    // 是否获取完成
+
 
 static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
@@ -61,9 +64,6 @@ byte packet[packetSize];
 // 消息提醒函数
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
-
-  //Serial.write(pData, length);
-
 const int additionalBytes = 9; 
 uint8_t modifiedData[length + additionalBytes];
 for (int i = 0; i < 8; ++i) {
@@ -73,28 +73,8 @@ for (int i = 0; i < 8; ++i) {
 for (int i = 0; i < length; ++i) {
     modifiedData[9 + i] = pData[i];
 }
-
 Serial.write(modifiedData, length + additionalBytes);
 
-
-  // for (size_t i = 0; i < length; ++i)
-  // {
-  //   //Serial.printf("%02X ", pData[i]);
-    
-  // }
-
-  // // Serial.print("特征通知回调：");
-  // // Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-  // Serial.print("AT+LENGTH=");
-  // Serial.print(length);
-  // Serial.print("DATA=");
-  // for (size_t i = 0; i < length; ++i)
-  // {
-  //   Serial.printf("%02X ", pData[i]);
-  // }
-
-  // //  Serial.write((char*)pData, length);  // 使用Serial.write逐字节打印
-  // Serial.println(); // 添加换行符
 }
 
 // 连接状态函数
@@ -125,7 +105,7 @@ bool connectToServer()
   Serial.println("创建客户端...");
 #endif
 
-  connect_callback = new MyClientCallback(); // 释放错了会导致死机
+ 
   // 设置客户端回调函数
   pClient->setClientCallbacks(connect_callback);
 
@@ -239,7 +219,6 @@ bool connectToServer()
     Serial.println("MAC地址连接失败");
 #endif
   }
-
   // 连接失败
   return false;
 }
@@ -344,15 +323,6 @@ void processATCommand(byte *get_cmd, int length)
         if (pClient != nullptr)
         {
           pClient->disconnect(); // 必须先断开连接触发回调函数再初始化回调函数
-#if log == 1
-          Serial.println("已经进行断连接");
-#endif
-        }
-
-        if (connect_callback != nullptr)
-        {
-          delete connect_callback;
-          connect_callback = nullptr;
         }
         if (myDevice != nullptr)
         {
@@ -391,19 +361,26 @@ void processATChar(byte currentChar)
 
   static ReceiveState currentState = IDLE_STATE;
   static int over = 0;
+   static int count = 0;
   // 根据当前字符进行状态处理
   switch (currentState)
   {
+    Serial.print(currentState);
   case IDLE_STATE:
+
     if (currentChar == 'A')
     {
+      Serial.print("进入空闲状态");
+      Serial.print(count++);
       currentState = RECEIVED_A;
+      cmd_length=0;
+       isReceiveOver =false;
     }
     break;
 
   case RECEIVED_A:
     if (currentChar == 'T')
-    {
+    {Serial.print("收到A");
       currentState = RECEIVED_AT;
     }
     else
@@ -415,7 +392,7 @@ void processATChar(byte currentChar)
 
   case RECEIVED_AT:
     if (currentChar == '+')
-    {
+    {Serial.print("收到+");
       currentState = RECEIVED_ATPLUS;
     }
     else
@@ -428,16 +405,20 @@ void processATChar(byte currentChar)
   case RECEIVED_ATPLUS:
 
     if (currentChar == '\r' || over)
-    {
+    {Serial.print("收到r");
       over = 1;
       if (currentChar == '\n')
-      {
+      {Serial.print("收到n");
+        isReceiveOver =true;
         currentState = IDLE_STATE;
         over = 0;
+
       }
     }
     else
     {
+      if(cmd_length>1023) 
+      currentState = IDLE_STATE;
       cmd[cmd_length++] = currentChar; // 将当前字符添加到正在接收的AT指令中
     }
     break;
@@ -463,15 +444,9 @@ void serialEvent()
 #endif
 
     // 透传部分
-    if (connected)
-    {
-      WriteCharacteristic->writeValue(packet, bytesRead);
-    }
+    if (connected){ WriteCharacteristic->writeValue(packet, bytesRead);}
     // AT指令部分
-    for (int i = 0; i < packetSize; i++)
-    {
-      processATChar(packet[i]);
-    }
+    for (int i = 0; i < bytesRead; i++){processATChar(packet[i]);}
   }
 }
 
@@ -485,12 +460,13 @@ void setup()
   BLEDevice::init("");
   pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
   // 指定我们要进行主动扫描，并启动扫描运行5秒。获取扫描器并设置我们想要使用的回调，以便在检测到新设备时通知我们。
+  connect_callback = new MyClientCallback(); // 释放错了会导致死机
   BLEScan *pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks()); // 只会运行一次
-  pBLEScan->setInterval(1349);
-  pBLEScan->setWindow(449);
+  pBLEScan->setInterval(1500);
+  pBLEScan->setWindow(500);
   pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
+  pBLEScan->start(0, false);
 } // 设置结束。
 
 // 这是Arduino的主循环函数。
@@ -516,14 +492,17 @@ void loop()
   }
   else if (doScan)
   { // 没有连接且扫描被关闭了
-    Serial.println("AT+DISCONNECT");
     BLEDevice::getScan()->start(0); // 这只是一个示例，在断开连接后重新启动扫描，可能有更好的方法在Arduino中实现。
   }
 
-  if (cmd_length) // 命令缓存区有数据
+  if (isReceiveOver ) // 命令缓存区有数据
   {
     processATCommand(cmd, cmd_length);
-    cmd_length = 0;
+    for(int i=0;i<cmd_length;i++)
+      cmd[i]=0;
+    
+    isReceiveOver =0;
+  
   }
-  delay(100); // 循环之间延迟一秒。
+  delay(10); // 循环之间延迟一秒。
 } // 循环结束
