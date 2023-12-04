@@ -7,8 +7,12 @@
 
 // AT+MAC=ea:cb:3e:cf:00:13
 // AT+MAC=F4:12:FA:C4:4C:66
+// AT+MAC=F4:12:FA:C5:4C:62
+// AT+MAC=F4:12:FA:C5:B6:36
+
 #include "BLEDevice.h"
 #include "Arduino.h"
+
 #define CONFIG_BLUEDROID_ENABLED//配置使能
 #define log 1
 // 要连接的设备的MAC地址c0:4e:30:37:16:96
@@ -35,7 +39,7 @@ static boolean connected = false; // 是否是连接的状态
 static boolean doScan = false;    // 是否scan完成
 
 static boolean isReceiveOver  = false;    // 是否获取完成
-
+BLEScan *pBLEScan;
 
 static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
@@ -82,8 +86,10 @@ class MyClientCallback : public BLEClientCallbacks
 {
   void onConnect(BLEClient *ppclient)
   {
-    Serial.println("AT+CONNECT_SUCCESS");
     pClient->setMTU(247);
+    connected = true;
+    Serial.println("AT+CONNECT_SUCCESS");
+  
   }
   void onDisconnect(BLEClient *ppclient)
   {
@@ -192,7 +198,7 @@ bool connectToServer()
 #endif
         }
         // 连接成功
-        connected = true;
+       
         return true;
       }
       else
@@ -342,12 +348,8 @@ void processATCommand(byte *get_cmd, int length)
       Serial.print("已设置新的目标设备 MAC 地址：");
       Serial.println(targetDeviceAddress);
 #endif
+  pBLEScan->start(5,false);//扫描10s如果没扫到，可以通过串口打断
 
-      BLEDevice::getScan()->start(0);
-
-#if log == 1
-      Serial.println("没有运行到这");
-#endif
     }
     break;
 
@@ -458,15 +460,15 @@ void setup()
 #endif
 
   BLEDevice::init("");
-  pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
+  //pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
   // 指定我们要进行主动扫描，并启动扫描运行5秒。获取扫描器并设置我们想要使用的回调，以便在检测到新设备时通知我们。
   connect_callback = new MyClientCallback(); // 释放错了会导致死机
-  BLEScan *pBLEScan = BLEDevice::getScan();
+  pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks()); // 只会运行一次
-  pBLEScan->setInterval(1500);
-  pBLEScan->setWindow(500);
+  pBLEScan->setInterval(1500);//设置扫描间隔为1500*0.625ms = 937.5ms。扫描间隔是指相邻的两次扫描之间的时间间隔。
+  pBLEScan->setWindow(500);//设置扫描窗口为500*0.625ms = 312.5ms。扫描窗口是指在一个扫描间隔内，设备实际进行扫描的时间。//每937.5ms内，花312.5ms时间进行BLE扫描，剩余625ms处于空闲状态。这种设置可以减少扫描过程中花费的功耗
   pBLEScan->setActiveScan(true);
-  pBLEScan->start(0, false);
+  pBLEScan->start(5,false);//非阻塞
 } // 设置结束。
 
 // 这是Arduino的主循环函数。
@@ -474,27 +476,6 @@ void loop()
 {
   // 如果标志“doConnect”为true，则表示我们已经扫描并找到了所需连接的BLE服务器。
   // 现在我们连接到它。一旦连接，我们将设置连接标志为true。
-
-  if (doConnect == true)
-  {
-    connectToServer(); // 连接必须在loop里面，不能在回调里面
-    doConnect = false;
-  }
-
-  // 这里是为了处理连接被断开的问题
-  if (connected)
-  {
-    int rssi = pClient->getRssi();
-#if log == 1
-    // Serial.print("AT+RSSI=");
-    // Serial.println(rssi);
-#endif
-  }
-  else if (doScan)
-  { // 没有连接且扫描被关闭了
-    BLEDevice::getScan()->start(0); // 这只是一个示例，在断开连接后重新启动扫描，可能有更好的方法在Arduino中实现。
-  }
-
   if (isReceiveOver ) // 命令缓存区有数据
   {
     processATCommand(cmd, cmd_length);
@@ -504,5 +485,28 @@ void loop()
     isReceiveOver =0;
   
   }
-  delay(10); // 循环之间延迟一秒。
+  if (doConnect == true)
+  {
+    connectToServer(); // 连接必须在loop里面，不能在回调里面
+    doConnect = false;
+  }
+
+  // 这里是为了处理连接被断开的问题
+  if (connected)
+  {
+    
+#if log == 1
+    //int rssi = pClient->getRssi();
+    // Serial.print("AT+RSSI=");
+    // Serial.println(rssi);
+#endif
+  }
+  else if (doScan)//没有连接且扫描被关闭了
+  { 
+   Serial.println("断开扫描");
+    pBLEScan->start(5,false);//扫描10s如果没扫到，可以通过串口打断
+  }
+
+
+  delay(100); // 循环之间延迟一秒。
 } // 循环结束
