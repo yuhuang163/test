@@ -9,12 +9,14 @@
 // AT+MAC=F4:12:FA:C4:4C:66
 // AT+MAC=F4:12:FA:C5:4C:62
 // AT+MAC=F4:12:FA:C5:B6:36
+// AT+MAC=f4:12:fa:c5:51:c6
+
 
 #include "BLEDevice.h"
 #include "Arduino.h"
 
 #define CONFIG_BLUEDROID_ENABLED//配置使能
-#define log 1
+#define log 0
 // 要连接的设备的MAC地址c0:4e:30:37:16:96
 char targetDeviceAddress[18] = "ea:cb:3e:cf:00:13"; // 历程的地
 // static   char* targetDeviceAddress = "ea:cb:3e:cf:00:13";//历程的地址
@@ -363,7 +365,6 @@ void processATChar(byte currentChar)
 
   static ReceiveState currentState = IDLE_STATE;
   static int over = 0;
-   static int count = 0;
   // 根据当前字符进行状态处理
   switch (currentState)
   {
@@ -372,8 +373,7 @@ void processATChar(byte currentChar)
 
     if (currentChar == 'A')
     {
-      Serial.print("进入空闲状态");
-      Serial.print(count++);
+     
       currentState = RECEIVED_A;
       cmd_length=0;
        isReceiveOver =false;
@@ -382,7 +382,7 @@ void processATChar(byte currentChar)
 
   case RECEIVED_A:
     if (currentChar == 'T')
-    {Serial.print("收到A");
+    {
       currentState = RECEIVED_AT;
     }
     else
@@ -394,7 +394,7 @@ void processATChar(byte currentChar)
 
   case RECEIVED_AT:
     if (currentChar == '+')
-    {Serial.print("收到+");
+    {
       currentState = RECEIVED_ATPLUS;
     }
     else
@@ -407,10 +407,10 @@ void processATChar(byte currentChar)
   case RECEIVED_ATPLUS:
 
     if (currentChar == '\r' || over)
-    {Serial.print("收到r");
+    {
       over = 1;
       if (currentChar == '\n')
-      {Serial.print("收到n");
+      {
         isReceiveOver =true;
         currentState = IDLE_STATE;
         over = 0;
@@ -454,7 +454,7 @@ void serialEvent()
 
 void setup()
 {
-  Serial.begin(2000000);
+  Serial.begin(115200);
 #if log == 1
   Serial.println("开始Arduino BLE客户端应用程序...");
 #endif
@@ -508,5 +508,5 @@ void loop()
   }
 
 
-  delay(100); // 循环之间延迟一秒。
+  delay(10); // 循环之间延迟一秒。
 } // 循环结束
