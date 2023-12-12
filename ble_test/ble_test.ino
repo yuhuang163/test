@@ -11,43 +11,61 @@
 // AT+MAC=F4:12:FA:C5:B6:36
 // AT+MAC=f4:12:fa:c5:51:c6
 
-
 #include "BLEDevice.h"
 #include "Arduino.h"
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiAP.h>
+#include <vector>
+#include <esp_wifi.h>
+#define CONFIG_BLUEDROID_ENABLED // 配置使能
+#define log 1
+#define D2_PIN 2
+#define packetSize 1024
+#define LED_BUILTIN 2 // Set the GPIO pin where you connected your test LED or comment this line out if your dev board has a built-in LED
+#define maxData 1024
+#define Port 1024
+#define minimum(a, b) (((a) < (b)) ? (a) : (b))
 
-#define CONFIG_BLUEDROID_ENABLED//配置使能
-#define log 0
-// 要连接的设备的MAC地址c0:4e:30:37:16:96
-char targetDeviceAddress[18] = "ea:cb:3e:cf:00:13"; // 历程的地
-// static   char* targetDeviceAddress = "ea:cb:3e:cf:00:13";//历程的地址
-// static  const char* targetDeviceAddress = "48:27:E2:D2:FD:4E";//牙刷的地址
-// static  const char* targetDeviceAddress = "C2:4F:02:38:68:F5";//牙刷的地址
+int cmd_length = 0;
+int data_n = 0;
+int data_read_n = 0;
+uint8_t *u_data;
+uint8_t *imagedata;
+int image_len = 0;
+int image_get_n = 0;
+int image_get_time = 0;
+int cmdtime = 0;
 
+byte cmd[packetSize];    // AT指令的命令内容
+byte packet[packetSize]; // 定义用于存储数据包的数组
+
+const char *ssid = "usmile_test";
+const char *password = "usmile123";
+char targetDeviceAddress[18] = "ea:cb:3e:cf:00:13"; // 历程的地址
 // 我们希望连接的远程服务。
 static BLEUUID serviceUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b");
 // 我们写入的远程服务的特征。
 static BLEUUID WriteUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b");
 // 我们读取的远程服务的特征。
 static BLEUUID NotifyUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b");
-// 我们流控的远程服务的特征。
-// static BLEUUID FLOWUUID("a6ed0204-d344-460a-8075-b9e8ec90d71b");
-#define D2_PIN 2
-#define packetSize 1024
+
 BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
 
 static boolean doConnect = false; // 是否可以开始连接
 static boolean connected = false; // 是否是连接的状态
 static boolean doScan = false;    // 是否scan完成
+static boolean send_img_flag = false;
+static boolean send_video_flag = false;
+static boolean isReceiveOver = false; // 是否获取完成
 
-static boolean isReceiveOver  = false;    // 是否获取完成
 BLEScan *pBLEScan;
-
 static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
-
-unsigned long retryTimeout = 30000;             // 重试超时时间（30秒）
 static BLEAdvertisedDevice *myDevice = nullptr; // 这个设备要反初始化
+WiFiUDP Udp;
+WiFiServer server(80);
 
 enum ReceiveState
 {
@@ -59,28 +77,31 @@ enum ReceiveState
 enum CommandType
 {
   MAC,
+  WIFI,
   // Add other command types as needed
 };
-byte cmd[packetSize]; // AT指令的命令内容
-int cmd_length = 0;
 
-// 定义用于存储数据包的数组
-byte packet[packetSize];
+void getImage();
+void cmd_len();
+void cmd_data();
+void (*ondonefunc)();
+void (*timeoutfunc)();
 
 // 消息提醒函数
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
-const int additionalBytes = 9; 
-uint8_t modifiedData[length + additionalBytes];
-for (int i = 0; i < 8; ++i) {
+  const int additionalBytes = 9;
+  uint8_t modifiedData[length + additionalBytes];
+  for (int i = 0; i < 8; ++i)
+  {
     modifiedData[i] = 0xaa;
-}
+  }
   modifiedData[8] = length;
-for (int i = 0; i < length; ++i) {
+  for (int i = 0; i < length; ++i)
+  {
     modifiedData[9 + i] = pData[i];
-}
-Serial.write(modifiedData, length + additionalBytes);
-
+  }
+  Serial.write(modifiedData, length + additionalBytes);
 }
 
 // 连接状态函数
@@ -91,7 +112,6 @@ class MyClientCallback : public BLEClientCallbacks
     pClient->setMTU(247);
     connected = true;
     Serial.println("AT+CONNECT_SUCCESS");
-  
   }
   void onDisconnect(BLEClient *ppclient)
   {
@@ -113,7 +133,6 @@ bool connectToServer()
   Serial.println("创建客户端...");
 #endif
 
- 
   // 设置客户端回调函数
   pClient->setClientCallbacks(connect_callback);
 
@@ -200,7 +219,7 @@ bool connectToServer()
 #endif
         }
         // 连接成功
-       
+
         return true;
       }
       else
@@ -319,6 +338,15 @@ void processATCommand(byte *get_cmd, int length)
     for (int i = 0; i < length; i++)
       get_cmd[i] = get_cmd[i + 4];
   }
+  // 检查命令是否以 "WIFI=" 开头
+  if (strncmp(reinterpret_cast<char *>(get_cmd), "WIFI=", 5) == 0)
+  {
+    Serial.printf("receive wifi-command");
+    commandType = WIFI; // 假设 MAC 命令
+    length = length - 5;
+    for (int i = 0; i < length; i++)
+      get_cmd[i] = get_cmd[i + 5];
+  }
 
   switch (commandType)
   {
@@ -350,11 +378,24 @@ void processATCommand(byte *get_cmd, int length)
       Serial.print("已设置新的目标设备 MAC 地址：");
       Serial.println(targetDeviceAddress);
 #endif
-  pBLEScan->start(5,false);//扫描10s如果没扫到，可以通过串口打断
-
+      pBLEScan->start(5, false); // 扫描10s如果没扫到，可以通过串口打断
     }
     break;
 
+  case WIFI:
+    // Serial.printf(String(get_cmd[0]));
+    if (get_cmd[0] == '1')
+    {
+      send_img_flag = 1;
+      send_video_flag = 0;
+      Serial.println("prepare to send message info");
+    }
+    else if (get_cmd[0] == '0')
+    {
+      send_img_flag = 0;
+      send_video_flag = 1;
+    }
+    break;
   default:
     break;
   }
@@ -373,10 +414,10 @@ void processATChar(byte currentChar)
 
     if (currentChar == 'A')
     {
-     
+
       currentState = RECEIVED_A;
-      cmd_length=0;
-       isReceiveOver =false;
+      cmd_length = 0;
+      isReceiveOver = false;
     }
     break;
 
@@ -411,16 +452,15 @@ void processATChar(byte currentChar)
       over = 1;
       if (currentChar == '\n')
       {
-        isReceiveOver =true;
+        isReceiveOver = true;
         currentState = IDLE_STATE;
         over = 0;
-
       }
     }
     else
     {
-      if(cmd_length>1023) 
-      currentState = IDLE_STATE;
+      if (cmd_length > 1023)
+        currentState = IDLE_STATE;
       cmd[cmd_length++] = currentChar; // 将当前字符添加到正在接收的AT指令中
     }
     break;
@@ -429,6 +469,7 @@ void processATChar(byte currentChar)
 
 void serialEvent()
 {
+  Serial.setTimeout(1);
   if (Serial.available() > 0)
   {
     int bytesRead = Serial.readBytes(packet, packetSize);
@@ -437,38 +478,202 @@ void serialEvent()
     Serial.print("接收到数据数量：");
     Serial.println(bytesRead);
 
-    Serial.print("接收到的内容：");
+    Serial.print("接收到的内容（十六进制）：");
     for (int i = 0; i < bytesRead; i++)
     {
-      Serial.print((char)packet[i]); // 打印字节对应的字符
+      Serial.print("0x");
+      if (packet[i] < 0x10)
+      {
+        Serial.print("0"); // 如果字节小于0x10，补0
+      }
+      Serial.print(packet[i], HEX); // 打印字节的十六进制表示
+      Serial.print(" ");
     }
     Serial.println(); // 换行
 #endif
 
     // 透传部分
-    if (connected){ WriteCharacteristic->writeValue(packet, bytesRead);}
+    if (connected)
+    { // 0x00 0x08 0x05 0x3A 0x0A 0x0A 0x08 0x08 0x02 0x22 0x04 0x35 0x34 0x34 0x35 0x67 //0x00 0x08 0x06 0x32 0x06 0x0A 0x04 0x08 0x02
+      WriteCharacteristic->writeValue(packet, bytesRead);
+    }
     // AT指令部分
-    for (int i = 0; i < bytesRead; i++){processATChar(packet[i]);}
+    for (int i = 0; i < bytesRead; i++)
+    {
+      processATChar(packet[i]);
+    }
   }
+}
+
+void construct_and_send_packet_with_CRC16(uint8_t *pData, size_t length)
+{
+  const int additionalBytes = 9;
+  uint8_t modifiedData[length + additionalBytes];
+  for (int i = 0; i < 8; ++i)
+  {
+    modifiedData[i] = 0xaa;
+  }
+  modifiedData[8] = length;
+  for (int i = 0; i < length; ++i)
+  {
+    modifiedData[9 + i] = pData[i];
+  }
+
+  Serial.write(modifiedData, length + additionalBytes);
+}
+
+void receive_data(int n, void (*donef)(), void (*timeoutf)())
+{
+  // 接收指定长度数据
+  ondonefunc = donef;
+  timeoutfunc = timeoutf;
+  cmdtime = millis();
+  data_n = n;
+  data_read_n = 0;
+  if (u_data != nullptr)
+    delete[] u_data;
+  u_data = new uint8_t[n];
+}
+
+void getImage()
+{
+  // Serial.println("getImage is running!");
+  Udp.begin(Port);
+  image_get_time = millis();
+  // Serial.print(WiFi.softAPIP());
+  // Serial.println(Udp.remoteIP());
+  // Serial.println(Udp.remotePort());
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.print("getCam");
+  Udp.endPacket();
+  receive_data(3, cmd_len, getImage);
+}
+
+void cmd_len()
+{
+  // 收到数据 [0x00, 0xXX, 0xXX]
+  //          命令  数据1  数据2
+  // Serial.println("cmd_len is running!");
+  if (u_data[0] != 0x00 || (u_data[1] == 0 && u_data[2] == 0))
+  {
+    image_get_n = 0;
+
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    Udp.print("getCam");
+    Udp.endPacket();
+    Serial.println("fail to receive length!");
+    receive_data(3, cmd_len, getImage);
+    return;
+  }
+  image_len = (uint16_t)u_data[1] * 256 + u_data[2];
+  // Serial.println("image_len:" + String(image_len));
+  image_get_n = 0;
+  if (imagedata != nullptr)
+    delete[] imagedata;
+  imagedata = new uint8_t[image_len];
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.print("getCam ");
+  Udp.print(image_get_n);
+  Udp.endPacket();
+  receive_data(2 + minimum(image_len - image_get_n * maxData, maxData), cmd_data, getImage);
+}
+
+void cmd_data()
+{
+  // 收到数据 [0x01, 0xXX, 0xXX, 0xXX, ...... 0xXX]
+  //          命令   编号  数据
+  // Serial.println("cmd_data is running!");
+  if (u_data[1] != image_get_n)
+  {
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    Udp.print("getCam ");
+    Udp.print(image_get_n);
+    Udp.endPacket();
+    Serial.println("fail to receive image!");
+    receive_data(2 + minimum(image_len - image_get_n * maxData, maxData), cmd_data, getImage);
+    return;
+  }
+  for (int i = 0; i < data_n - 2; i++)
+  {
+    imagedata[image_get_n * maxData + i] = u_data[2 + i]; // 将收到的数据读取到imagedata
+  }
+
+  image_get_n++;
+  if (image_get_n * maxData >= image_len)
+  {
+    // 数据读取完成
+    // uint8_t u_data1[3] = { 1, 2, 3 };
+    if (send_img_flag == true)
+    {
+      construct_and_send_packet_with_CRC16(imagedata, sizeof(imagedata));
+      send_img_flag = 0;
+    }
+    else if (send_video_flag == true)
+    {
+      construct_and_send_packet_with_CRC16(imagedata, sizeof(imagedata));
+    }
+#if log == 1
+    Serial.print("读取完成 耗时");
+    Serial.print(millis() - image_get_time);
+    Serial.print("ms ( ");
+    Serial.print((float)1000 / (float)(millis() - image_get_time));
+    Serial.println(" fps)");
+#endif
+    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+    Udp.print("finished");
+    Udp.endPacket();
+    getImage(); // 继续读取图片
+    return;
+  }
+  Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+  Udp.print("getCam ");
+  Udp.print(image_get_n);
+  Udp.endPacket();
+  receive_data(2 + minimum(image_len - image_get_n * maxData, maxData), cmd_data, getImage);
+}
+
+void wifi_init()
+{
+  if (!WiFi.softAP(ssid, password))
+  {
+    log_e("Soft AP creation failed.");
+    while (1)
+      ;
+  }
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+  server.begin();
+
+  Serial.println("Server started");
+  if (Udp.begin(Port))
+  {
+    Serial.println("UDP启动成功");
+    Serial.print(WiFi.softAPIP());
+    Serial.print(":");
+    Serial.println(Port);
+  }
+  getImage();
 }
 
 void setup()
 {
   Serial.begin(115200);
+  wifi_init();
 #if log == 1
   Serial.println("开始Arduino BLE客户端应用程序...");
 #endif
 
   BLEDevice::init("");
-  //pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
-  // 指定我们要进行主动扫描，并启动扫描运行5秒。获取扫描器并设置我们想要使用的回调，以便在检测到新设备时通知我们。
+  // pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
+  //  指定我们要进行主动扫描，并启动扫描运行5秒。获取扫描器并设置我们想要使用的回调，以便在检测到新设备时通知我们。
   connect_callback = new MyClientCallback(); // 释放错了会导致死机
   pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks()); // 只会运行一次
-  pBLEScan->setInterval(1500);//设置扫描间隔为1500*0.625ms = 937.5ms。扫描间隔是指相邻的两次扫描之间的时间间隔。
-  pBLEScan->setWindow(500);//设置扫描窗口为500*0.625ms = 312.5ms。扫描窗口是指在一个扫描间隔内，设备实际进行扫描的时间。//每937.5ms内，花312.5ms时间进行BLE扫描，剩余625ms处于空闲状态。这种设置可以减少扫描过程中花费的功耗
+  pBLEScan->setInterval(1500);                                               // 设置扫描间隔为1500*0.625ms = 937.5ms。扫描间隔是指相邻的两次扫描之间的时间间隔。
+  pBLEScan->setWindow(500);                                                  // 设置扫描窗口为500*0.625ms = 312.5ms。扫描窗口是指在一个扫描间隔内，设备实际进行扫描的时间。//每937.5ms内，花312.5ms时间进行BLE扫描，剩余625ms处于空闲状态。这种设置可以减少扫描过程中花费的功耗
   pBLEScan->setActiveScan(true);
-  pBLEScan->start(5,false);//非阻塞
+  pBLEScan->start(5, false); // 非阻塞
 } // 设置结束。
 
 // 这是Arduino的主循环函数。
@@ -476,14 +681,12 @@ void loop()
 {
   // 如果标志“doConnect”为true，则表示我们已经扫描并找到了所需连接的BLE服务器。
   // 现在我们连接到它。一旦连接，我们将设置连接标志为true。
-  if (isReceiveOver ) // 命令缓存区有数据
+  if (isReceiveOver) // 命令缓存区有数据
   {
     processATCommand(cmd, cmd_length);
-    for(int i=0;i<cmd_length;i++)
-      cmd[i]=0;
-    
-    isReceiveOver =0;
-  
+    for (int i = 0; i < cmd_length; i++)
+    cmd[i] = 0;
+    isReceiveOver = 0;
   }
   if (doConnect == true)
   {
@@ -491,22 +694,89 @@ void loop()
     doConnect = false;
   }
 
+
+
+
+
+
+
+
+
+
+  int numClients = WiFi.softAPgetStationNum();
+  if (numClients)
+  {
+    for (int i = 0; i < numClients; i++)
+    {
+      wifi_sta_list_t stationList;
+      esp_wifi_ap_get_sta_list(&stationList);
+      int WIFI_rssi = stationList.sta[i].rssi;
+      Serial.print("AT+WIFIRSSI=");
+      Serial.println(WIFI_rssi);
+
+#if log == 1
+
+      uint8_t mac[6];
+      memcpy(mac, stationList.sta[i].mac, 6);
+      Serial.print("连接数");
+      Serial.print(i + 1);
+      Serial.print(" MAC: ");
+      for (int i = 0; i < 6; i++)
+      {
+        Serial.print(mac[i], HEX);
+        if (i < 5)
+          Serial.print(":");
+      }
+       Serial.println();
+#endif
+    }
+
+ 
+
+  }
+
+
+
+
+
+
+
   // 这里是为了处理连接被断开的问题
   if (connected)
   {
-    
-#if log == 1
-    //int rssi = pClient->getRssi();
-    // Serial.print("AT+RSSI=");
-    // Serial.println(rssi);
-#endif
+    int ble_rssi = pClient->getRssi();
+    Serial.print("AT+BLERSSI=");
+    Serial.println(ble_rssi);
   }
-  else if (doScan)//没有连接且扫描被关闭了
-  { 
-   Serial.println("断开扫描");
-    pBLEScan->start(5,false);//扫描10s如果没扫到，可以通过串口打断
+  else if (doScan) // 没有连接且扫描被关闭了
+  {
+    Serial.println("开启扫描5s");
+    pBLEScan->start(5, false); // 扫描10s如果没扫到，可以通过串口打断
   }
 
+  int len = Udp.parsePacket();
+  // Serial.print("len:"+String(len));
+  if (len)
+  {
+    int readlen = minimum(data_n - data_read_n, len);
+    // Serial.println("readlen = " + String(readlen));
+    Udp.read(u_data + data_read_n, readlen);
+    // Serial.println("receiving data:" + String(*(u_data + 1)));
+    // Serial.println(data_n);
+    // Serial.println(data_read_n);
+    data_read_n += readlen;
+    if (data_read_n >= data_n && ondonefunc != nullptr)
+    {
+      // Serial.println("executing ondonefunc");
+      ondonefunc();
+    }
+  }
 
-  delay(10); // 循环之间延迟一秒。
+  if (millis() > cmdtime + 1000)
+  {
+    //  Serial.println("Time out");
+    timeoutfunc();
+  }
+
+  delay(100); // 循环之间延迟一秒。
 } // 循环结束
