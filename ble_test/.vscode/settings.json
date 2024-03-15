@@ -2,6 +2,13 @@
     "files.associations": {
         "string_view": "cpp",
         "array": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "new": "cpp",
+        "*.tcc": "cpp",
+        "unordered_map": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp"
     }
 }
