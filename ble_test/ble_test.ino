@@ -29,8 +29,8 @@
 int cmd_length = 0;
 
 #define log     1   // 扫描日志也在这里面
-#define wifiuse 0
-int blelogs = 1;   // 蓝牙信号日志1表示默认开
+#define wifiuse 1
+int blelogs = 0;   // 蓝牙信号日志1表示默认开
 
 String version = "dongle固件版本1.1.0";   // 默认的版本号
 
@@ -518,10 +518,10 @@ void processATChar(byte currentChar)
 {
     static ReceiveState currentState = IDLE_STATE;
     static int over = 0;
-// 根据当前字符进行状态处理
-#if log == 1
-    Serial.print(currentState);
-#endif
+    // 根据当前字符进行状态处理
+    // #if log == 1
+    //     Serial.print(currentState);
+    // #endif
     switch (currentState)
     {
     case IDLE_STATE:
@@ -592,29 +592,34 @@ void serialEvent()
     {
         int bytesRead = Serial.readBytes(packet, packetSize);
 
-#if log == 1
+        // #if log == 1
         Serial.print("接收到数据数量：");
         Serial.println(bytesRead);
 
-        Serial.print("接收到的内容（十六进制）：");
-        for (int i = 0; i < bytesRead; i++)
-        {
-            Serial.print("0x");
-            if (packet[i] < 0x10)
-            {
-                Serial.print("0");   // 如果字节小于0x10，补0
-            }
-            Serial.print(packet[i], HEX);   // 打印字节的十六进制表示
-            Serial.print(" ");
-        }
-        Serial.println();   // 换行
-#endif
+        //         Serial.print("接收到的内容（十六进制）：");
+        //         for (int i = 0; i < bytesRead; i++)
+        //         {
+        //             Serial.print("0x");
+        //             if (packet[i] < 0x10)
+        //             {
+        //                 Serial.print("0");   // 如果字节小于0x10，补0
+        //             }
+        //             Serial.print(packet[i], HEX);   // 打印字节的十六进制表示
+        //             Serial.print(" ");
+        //         }
+        //         Serial.println();   // 换行
+        // #endif
 
         // 透传部分
         if (connected)
         {
             WriteCharacteristic->writeValue(packet, bytesRead);
+            // unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
+            // String timestamp = String(currentMillis);   // 将时间戳转换为字符串
+            // Serial.print("send over ");// 打印带有时间戳的消息
+            // Serial.println(timestamp);
         }
+
         // AT指令部分
         for (int i = 0; i < bytesRead; i++)
         {
@@ -633,9 +638,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
      */
     void onResult(BLEAdvertisedDevice advertisedDevice)
     {
-        
-       
-        digitalWrite(D2_PIN, HIGH);          // 将 D2_PIN 设置为高电平
+        digitalWrite(D2_PIN, HIGH);   // 将 D2_PIN 设置为高电平
         std::string deviceName = advertisedDevice.getName();
         std::string deviceAddress = advertisedDevice.getAddress().toString();
         int rssi = advertisedDevice.getRSSI();
@@ -650,9 +653,9 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 #endif
 
         if (advertisedDevice.getAddress().equals(BLEAddress(targetDeviceAddress)))
-        {                                            // mac地址可以，那么准备开始连接
-            digitalWrite(D2_PIN, LOW);               // 将 D2_PIN 设置为高电
-           
+        {                                // mac地址可以，那么准备开始连接
+            digitalWrite(D2_PIN, LOW);   // 将 D2_PIN 设置为高电
+
             // colorWipe(strip.Color(255, 0, 0));  // 红色
             // colorWipe(strip.Color(0, 255, 0));  // 绿色
             // colorWipe(strip.Color(0, 0, 255));  // 蓝色
@@ -667,7 +670,8 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 void setup()
 {
     Serial.begin(115200);
-    Serial.setTimeout(1);   // 设置超时
+    Serial.setTimeout(5);   // 设置超时
+
 #if wifiuse == 1
     wifi_init();
 #endif
@@ -676,25 +680,25 @@ void setup()
     strip.setBrightness(10);   // 设置亮度为50% （取值范围为0-255）
     if (wifiuse == 0 && log == 0 && blelogs == 0)
         version =
-            "dongle固件版本1.1.0(日志全关,没有wif,没有5s延迟重连,蓝牙信号日志默认关)(无wifi正式版)";
+            "dongle固件版本1.1.1(日志全关,没有wif,没有5s延迟重连,蓝牙信号日志默认关)(无wifi正式版)";
 
     if (wifiuse == 0 && log == 1 && blelogs == 1)
         version =
-            "dongle固件版本1.1.0(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(无wifi调试版)";
+            "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(无wifi调试版)";
 
     if (wifiuse == 1 && log == 1 && blelogs == 1)
         version =
-            "dongle固件版本1.1.0(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi调试版)";
+            "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi调试版)";
 
     if (wifiuse == 1 && log == 0 && blelogs == 0)
         version =
-            "dongle固件版本1.1.0(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi正式版)";
+            "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi正式版)";
 
     Serial.println(version);
 
     BLEDevice::init("");
-    pinMode(D2_PIN, OUTPUT);                 // 将 D2 管脚设置为输出模式
-    pinMode(RST_PIN, OUTPUT);                // 将 D2 管脚设置为输出模式
+    pinMode(D2_PIN, OUTPUT);             // 将 D2 管脚设置为输出模式
+    pinMode(RST_PIN, OUTPUT);            // 将 D2 管脚设置为输出模式
     colorWipe(strip.Color(0, 0, 255));   // 蓝色
 
     connect_callback = new MyClientCallback();
@@ -776,8 +780,8 @@ void loop()
         Serial.println("开启扫描5s");
 #endif
 
-        pBLEScan->start(1, false);   // 扫描10s如果没扫到，可以通过串口打断
-         colorWipe(strip.Color(255, 0, 0));   // 红色
+        pBLEScan->start(1, false);           // 扫描10s如果没扫到，可以通过串口打断
+        colorWipe(strip.Color(255, 0, 0));   // 红色
     }
 
     // int len = Udp.parsePacket();
@@ -801,5 +805,5 @@ void loop()
     //   timeoutfunc();
     // }
 
-    delay(300);   // 循环之间延迟一秒。
+    // delay(300);   // 循环之间延迟一秒。
 }
