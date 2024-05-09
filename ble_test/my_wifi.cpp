@@ -27,7 +27,7 @@ void wifi_init()
     String ssid = "WIFI_TEST_" + String(macStr);
     char *password = "usmile123";
     Serial.println("wifi名字为" + ssid);
-    if (!WiFi.softAP(ssid, password, 1, 0, 6))
+    if (!WiFi.softAP(ssid, password, 1, 0, 10))
     {
         Serial.println("ap设置失败");
         while (1)
