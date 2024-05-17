@@ -25,7 +25,7 @@ void wifi_init()
 
     // 设置热点名称
     String ssid = "WIFI_TEST_" + String(macStr);
-    char *password = "usmile123";
+    const char *password = "usmile123";
     Serial.println("wifi名字为" + ssid);
     if (!WiFi.softAP(ssid, password, 1, 0, 10))
     {

@@ -1,5 +1,4 @@
 /**
- * 一个功能丰富的BLE客户端。
  * 串口接收mac连接蓝牙，接收命令转发出去，扫描会亮蓝灯，连接成功灭灯
  * 作者：何宇杰，梁建树
  * 更新时间2023/11/10/22：12
@@ -17,8 +16,10 @@
 // AT+MAC=f5:3d:34:07:5d:e2
 // AT+MAC=E1:74:07:34:52:F7
 // AT+MAC=DA:46:13:38:0A:F5
-// AT+MAC=e2:66:07:34:2d:f7
+// AT+MAC=C0:C5:31:98:39:B3
 // AT+MAC=3C:84:27:07:A8:D2
+// AT+MAC=6E:FD:6B:90:36:41
+// AT+MAC=00:00:00:00:00:00
 // AT+BLELOG=1
 // AT+GMAC
 // AT+BLEDEVICELOG=1
@@ -34,7 +35,7 @@ int blelogs = 0;         // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;  // 蓝牙扫描日志1表示默认开
 
 
-String version = "dongle固件版本1.1.2";  // 默认的版本号
+String version = "1.1.4";  // 默认的版本号
 
 #define packetSize 1024
 #define D2_PIN 2
@@ -460,14 +461,17 @@ void processATCommand(byte *get_cmd, int length) {
 
 
     case GMAC:
-
       {
 #if log == 1
         Serial.println("收到mac请求");
 #endif
-        digitalWrite(RST_PIN, LOW);  // 将 RST_PIN 设置为高电
-        delay(100);
-        digitalWrite(RST_PIN, HIGH);  // 将 RST_PIN 设置为高电平
+      pinMode(RST_PIN, OUTPUT);           // 将 D2 管脚设置为输出模式
+      digitalWrite(RST_PIN, HIGH);        // 将 RST_PIN 设置为高电平
+      delay(100);
+      digitalWrite(RST_PIN, LOW);  // 将 RST_PIN 设置为高电平
+      delay(100);
+      digitalWrite(RST_PIN, HIGH);  // 将 RST_PIN 设置为高电平
+      pinMode(RST_PIN, INPUT);
       }
       break;
 
@@ -619,28 +623,32 @@ void setup() {
   strip.begin();            // 初始化WS2812B
   strip.show();             // 显示初始化状态（全部关灯）
   strip.setBrightness(10);  // 设置亮度为50% （取值范围为0-255）
-  if (wifiuse == 0 && log == 0 && blelogs == 0)
-    version =
-      "dongle固件版本1.1.1(日志全关,没有wif,没有5s延迟重连,蓝牙信号日志默认关)(无wifi正式版)";
+  // if (wifiuse == 0 && log == 0 && blelogs == 0)
+  //   version =
+  //     "dongle固件版本1.1.1(日志全关,没有wif,没有5s延迟重连,蓝牙信号日志默认关)(无wifi正式版)";
 
-  if (wifiuse == 0 && log == 1 && blelogs == 1)
-    version =
-      "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(无wifi调试版)";
+  // if (wifiuse == 0 && log == 1 && blelogs == 1)
+  //   version =
+  //     "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(无wifi调试版)";
 
-  if (wifiuse == 1 && log == 1 && blelogs == 1)
-    version =
-      "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi调试版)";
+  // if (wifiuse == 1 && log == 1 && blelogs == 1)
+  //   version =
+  //     "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi调试版)";
 
-  if (wifiuse == 1 && log == 0 && blelogs == 0)
-    version =
-      "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi正式版)";
+  // if (wifiuse == 1 && log == 0 && blelogs == 0)
+  //   version =
+  //     "dongle固件版本1.1.1(日志全开,没有wif,没有5s延迟重连,蓝牙信号日志默认开)(有wifi正式版)";
+Serial.print("dongle固件版本");
+Serial.println(version);
+  
+Serial.print("AT+DONGLEVER=");
+Serial.println(version);
 
-  Serial.println(version);
 
   BLEDevice::init("");
   pinMode(D2_PIN, OUTPUT);            // 将 D2 管脚设置为输出模式
-  pinMode(RST_PIN, OUTPUT);           // 将 D2 管脚设置为输出模式
-  digitalWrite(RST_PIN, HIGH);        // 将 RST_PIN 设置为高电平
+   pinMode(RST_PIN, INPUT); // 将引脚设置为输入模式，即高阻态
+
   colorWipe(strip.Color(0, 0, 255));  // 蓝色
 
   connect_callback = new MyClientCallback();
@@ -649,10 +657,11 @@ void setup() {
   // pBLEScan->setInterval(1500);
   // pBLEScan->setWindow(500);
   pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
+  pBLEScan->start(2, false);
 }
 
 void loop() {
+ 
   // 如果标志“doConnect”为true，则表示我们已经扫描并找到了所需连接的BLE服务器。
   // 现在我们连接到它。一旦连接，我们将设置连接标志为true。
   if (isReceiveOver)  // 命令缓存区有数据
@@ -711,7 +720,8 @@ void loop() {
 #if log == 1
     Serial.println("开启扫描5s");
 #endif
-
+ 
+  pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory，释放扫描缓存消耗
     pBLEScan->start(1, false);          // 扫描10s如果没扫到，可以通过串口打断
     colorWipe(strip.Color(255, 0, 0));  // 红色
   }
