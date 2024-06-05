@@ -35,7 +35,7 @@ int blelogs = 0;         // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;  // 蓝牙扫描日志1表示默认开
 
 
-String version = "1.1.4";  // 默认的版本号
+String version = "1.1.6";  // 默认的版本号
 
 #define packetSize 1024
 #define D2_PIN 2
@@ -722,7 +722,7 @@ void loop() {
 #endif
  
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory，释放扫描缓存消耗
-    pBLEScan->start(1, false);          // 扫描10s如果没扫到，可以通过串口打断
+    pBLEScan->start(5, false);          // 扫描10s如果没扫到，可以通过串口打断
     colorWipe(strip.Color(255, 0, 0));  // 红色
   }
 
@@ -747,5 +747,5 @@ void loop() {
   //   timeoutfunc();
   // }
 
-  // delay(300);   // 循环之间延迟一秒。
+   delay(10);   // 循环之间延迟一秒。
 }
