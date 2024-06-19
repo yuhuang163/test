@@ -1,0 +1,1442 @@
+﻿#include "imucali.h"
+#include "qdebug.h"
+#include "qserialportinfo.h"
+#include "ui_imucali.h"
+#if _MSC_VER >= 1600
+    #pragma execution_character_set("utf-8")
+#endif
+
+imucali::imucali(int index, QWidget *parent)
+    : ui(new Ui::imucali), m_index(index), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate)
+{
+    ui->setupUi(this);
+    update_main_style("Ubuntu.qss");
+
+    scanSerialPorts();   // 要搜索一下一开始
+
+#ifdef NEW_IMU_CALI
+    connect(nqimuc, SIGNAL(send_imu_cali_position(int)), this,
+            SLOT(refresh_imu_cali_position(int)));
+    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
+
+#else
+    connect(nqimuc, SIGNAL(send_imu_cali_position(int)), this,
+            SLOT(refresh_imu_cali_position(int)));
+    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
+
+    connect(qimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
+    connect(qimuc, SIGNAL(send_imu_cali_reslt_msg(QString)), this,
+            SLOT(refresh_imu_cali_reslt_msg(QString)));
+    connect(qimuc, SIGNAL(send_imu_data_to_csv(QString, QString)), this,
+            SLOT(refresh_imu_data_to_csv(QString, QString)));
+
+#endif
+
+    labelList.append(ui->p1);
+    labelList.append(ui->p2);
+    labelList.append(ui->p3);
+    labelList.append(ui->p4);
+    labelList.append(ui->p5);
+    labelList.append(ui->p6);
+    labelList.append(ui->p7);
+    labelList.append(ui->p8);
+    labelList.append(ui->p9);
+    labelList.append(ui->p10);
+    labelList.append(ui->p11);
+    labelList.append(ui->p12);
+
+#ifdef NEW_IMU_CALI
+    ui->tabWidget->setTabText(0, "三轴校准");
+#else
+    ui->tabWidget->setTabText(0, "六轴校准");
+#endif
+    for (int la = 0; la < 12; la++)
+    {
+        QLabel *label = labelList.at(la);
+        label->setStyleSheet(
+            " background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+    }
+    ui->mechine_number->setText(QString::number(getIndex()) + "号机");
+    ui->mechine_number->setStyleSheet(
+        "font-size: 33px; background-color: yellow; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet(
+        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet(
+        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+
+    connect(waittime, &QTimer::timeout,
+            [=]()
+            {
+                isovertime = 1;
+                waittime->stop();
+            });
+
+    connect(comparewaittime, &QTimer::timeout,
+            [=]()
+            {
+                iscompareovertime = 1;
+                comparewaittime->stop();
+            });
+
+    connect(caliwaittime, &QTimer::timeout,
+            [=]()
+            {
+                ui->msgEdit->appendPlainText("六轴校准小位置超时当前超时时间为" +
+                                             QString::number(imu_cali_wait_time));
+                ui->msgEdit->appendPlainText("正在跳过这个小位置");
+
+                refresh_imu_cali_position(-1);
+                caliwaittime->stop();
+            });
+
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setValue("Window/Size", this->size());
+
+   
+    imu_wait_time = settings.value("IMU/IMU_Wait_Time", "15000").toInt();
+    imu_compare_wait_time = settings.value("IMU/IMU_Compare_Wait_Time", "15000").toInt();
+    ImuCompareData = settings.value("IMU/ImuCompareData", "-8000").toInt();
+    imu_cali_wait_time = settings.value("IMU/imu_cali_wait_time", "15000").toInt();
+
+    ui->msgEdit->appendPlainText("model=" + pack.model);
+    ui->msgEdit->appendPlainText("action=" + pack.test_station);
+    ui->msgEdit->appendPlainText("action=" + pack.action);
+    ui->msgEdit->appendPlainText("line=" + pack.line);
+
+    ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
+    ui->msgEdit->appendPlainText("IMU_Wait_Time=" + QString::number(imu_wait_time));
+    ui->msgEdit->appendPlainText("IMU_Compare_Wait_Time=" + QString::number(imu_compare_wait_time));
+    ui->msgEdit->appendPlainText("ImuCompareData=" + QString::number(ImuCompareData));
+
+    QFont font("Arial", 10);
+    ui->gyro_x->setFont(font);
+    ui->gyro_y->setFont(font);
+    ui->gyro_z->setFont(font);
+    ui->acc_x->setFont(font);
+    ui->acc_y->setFont(font);
+    ui->acc_z->setFont(font);
+}
+void imucali::update_IMU_CALIB_result(FacImuCalibResult x)
+{
+    ui->msgEdit->appendPlainText("以下为收到牙刷的imu校准数据");
+    ui->msgEdit->appendPlainText(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
+    ui->msgEdit->appendPlainText(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
+    ui->msgEdit->appendPlainText(QString("gyro_z: %1").arg(qint32(x.gyro_z)));
+    ui->msgEdit->appendPlainText(QString("bx: %1").arg(x.new_cali.bx));
+    ui->msgEdit->appendPlainText(QString("by: %1").arg(x.new_cali.by));
+    ui->msgEdit->appendPlainText(QString("bz: %1").arg(x.new_cali.bz));
+    ui->msgEdit->appendPlainText(QString("kx: %1").arg(x.new_cali.kx));
+    ui->msgEdit->appendPlainText(QString("ky: %1").arg(x.new_cali.ky));
+    ui->msgEdit->appendPlainText(QString("kz: %1").arg(x.new_cali.kz));
+    ui->msgEdit->appendPlainText(QString("syx: %1").arg(x.new_cali.syx));
+    ui->msgEdit->appendPlainText(QString("szx: %1").arg(x.new_cali.szx));
+    ui->msgEdit->appendPlainText(QString("szy: %1").arg(x.new_cali.szy));
+
+    if (QString(product_name).compare("P20P") == 0 || QString(product_name).compare("Q20") == 0)
+    {
+        if (nqimuc->calData.kx == x.new_cali.kx && nqimuc->calData.ky == x.new_cali.ky &&
+            nqimuc->calData.kz == x.new_cali.kz && nqimuc->calData.syx == x.new_cali.syx &&
+            nqimuc->calData.szx == x.new_cali.szx && nqimuc->calData.szy == x.new_cali.szy &&
+            nqimuc->calData.bx == x.new_cali.bx && nqimuc->calData.by == x.new_cali.by &&
+            nqimuc->calData.bz == x.new_cali.bz)
+        {
+            imudata_check = 1;
+        }
+        else
+        {
+            imudata_check = 2;
+            // 打印条件不满足的部分
+            if (nqimuc->calData.gyro_offset[0] != x.gyro_x)
+                qDebug() << getIndex() << "gyro_offset[0] 不匹配："
+                         << nqimuc->calData.gyro_offset[0] << " != " << x.gyro_x;
+
+            if (nqimuc->calData.gyro_offset[1] != x.gyro_y)
+                qDebug() << getIndex() << "gyro_offset[1] 不匹配："
+                         << nqimuc->calData.gyro_offset[1] << " != " << x.gyro_y;
+
+            if (nqimuc->calData.gyro_offset[2] != x.gyro_z)
+                qDebug() << getIndex() << "gyro_offset[2] 不匹配："
+                         << nqimuc->calData.gyro_offset[2] << " != " << x.gyro_z;
+
+            if (nqimuc->calData.kx != x.new_cali.kx)
+                qDebug() << getIndex() << "kx 不匹配：" << nqimuc->calData.kx
+                         << " != " << x.new_cali.kx;
+
+            if (nqimuc->calData.ky != x.new_cali.ky)
+                qDebug() << getIndex() << "ky 不匹配：" << nqimuc->calData.ky
+                         << " != " << x.new_cali.ky;
+
+            if (nqimuc->calData.kz != x.new_cali.kz)
+                qDebug() << getIndex() << "kz 不匹配：" << nqimuc->calData.kz
+                         << " != " << x.new_cali.kz;
+
+            if (nqimuc->calData.syx != x.new_cali.syx)
+                qDebug() << getIndex() << "syx 不匹配：" << nqimuc->calData.syx
+                         << " != " << x.new_cali.syx;
+
+            if (nqimuc->calData.szx != x.new_cali.szx)
+                qDebug() << getIndex() << "szx 不匹配：" << nqimuc->calData.szx
+                         << " != " << x.new_cali.szx;
+
+            if (nqimuc->calData.szy != x.new_cali.szy)
+                qDebug() << getIndex() << "szy 不匹配：" << nqimuc->calData.szy
+                         << " != " << x.new_cali.szy;
+
+            if (nqimuc->calData.bx != x.new_cali.bx)
+                qDebug() << getIndex() << "bx 不匹配：" << nqimuc->calData.bx
+                         << " != " << x.new_cali.bx;
+
+            if (nqimuc->calData.by != x.new_cali.by)
+                qDebug() << getIndex() << "by 不匹配：" << nqimuc->calData.by
+                         << " != " << x.new_cali.by;
+
+            if (nqimuc->calData.bz != x.new_cali.bz)
+                qDebug() << getIndex() << "bz 不匹配：" << nqimuc->calData.bz
+                         << " != " << x.new_cali.bz;
+        }
+    }
+
+    else
+    {
+        if (nqimuc->calData.gyro_offset[0] == x.gyro_x &&
+            nqimuc->calData.gyro_offset[1] == x.gyro_y &&
+            nqimuc->calData.gyro_offset[2] == x.gyro_z && nqimuc->calData.kx == x.new_cali.kx &&
+            nqimuc->calData.ky == x.new_cali.ky && nqimuc->calData.kz == x.new_cali.kz &&
+            nqimuc->calData.syx == x.new_cali.syx && nqimuc->calData.szx == x.new_cali.szx &&
+            nqimuc->calData.szy == x.new_cali.szy && nqimuc->calData.bx == x.new_cali.bx &&
+            nqimuc->calData.by == x.new_cali.by && nqimuc->calData.bz == x.new_cali.bz)
+        {
+            imudata_check = 1;
+        }
+        else
+        {
+            imudata_check = 2;
+            // 打印条件不满足的部分
+            if (nqimuc->calData.gyro_offset[0] != x.gyro_x)
+                qDebug() << getIndex() << "gyro_offset[0] 不匹配："
+                         << nqimuc->calData.gyro_offset[0] << " != " << x.gyro_x;
+
+            if (nqimuc->calData.gyro_offset[1] != x.gyro_y)
+                qDebug() << getIndex() << "gyro_offset[1] 不匹配："
+                         << nqimuc->calData.gyro_offset[1] << " != " << x.gyro_y;
+
+            if (nqimuc->calData.gyro_offset[2] != x.gyro_z)
+                qDebug() << getIndex() << "gyro_offset[2] 不匹配："
+                         << nqimuc->calData.gyro_offset[2] << " != " << x.gyro_z;
+
+            if (nqimuc->calData.kx != x.new_cali.kx)
+                qDebug() << getIndex() << "kx 不匹配：" << nqimuc->calData.kx
+                         << " != " << x.new_cali.kx;
+
+            if (nqimuc->calData.ky != x.new_cali.ky)
+                qDebug() << getIndex() << "ky 不匹配：" << nqimuc->calData.ky
+                         << " != " << x.new_cali.ky;
+
+            if (nqimuc->calData.kz != x.new_cali.kz)
+                qDebug() << getIndex() << "kz 不匹配：" << nqimuc->calData.kz
+                         << " != " << x.new_cali.kz;
+
+            if (nqimuc->calData.syx != x.new_cali.syx)
+                qDebug() << getIndex() << "syx 不匹配：" << nqimuc->calData.syx
+                         << " != " << x.new_cali.syx;
+
+            if (nqimuc->calData.szx != x.new_cali.szx)
+                qDebug() << getIndex() << "szx 不匹配：" << nqimuc->calData.szx
+                         << " != " << x.new_cali.szx;
+
+            if (nqimuc->calData.szy != x.new_cali.szy)
+                qDebug() << getIndex() << "szy 不匹配：" << nqimuc->calData.szy
+                         << " != " << x.new_cali.szy;
+
+            if (nqimuc->calData.bx != x.new_cali.bx)
+                qDebug() << getIndex() << "bx 不匹配：" << nqimuc->calData.bx
+                         << " != " << x.new_cali.bx;
+
+            if (nqimuc->calData.by != x.new_cali.by)
+                qDebug() << getIndex() << "by 不匹配：" << nqimuc->calData.by
+                         << " != " << x.new_cali.by;
+
+            if (nqimuc->calData.bz != x.new_cali.bz)
+                qDebug() << getIndex() << "bz 不匹配：" << nqimuc->calData.bz
+                         << " != " << x.new_cali.bz;
+        }
+    }
+}
+void imucali::showlog(QString msg)
+{
+    ui->msgEdit->appendPlainText(msg);
+    qDebug() << getIndex() << msg;
+}
+
+void imucali::refreshMesState(int state)
+{
+    if (state)
+        ui->msgEdit->appendPlainText("mes登录成功");
+    else
+        ui->msgEdit->appendPlainText("mes登录失败");
+}
+void imucali::getTestValue(const int mechines, const QString value)
+{
+    // ui->msgEdit->appendPlainText(value);
+    QString mesmacAddress;
+    if (pack.factory == "hq")
+    {
+        // 定义正则表达式，匹配MAC地址的模式
+        QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+
+        // 在数据中查找匹配的内容
+        QRegularExpressionMatch match = regex.match(value);
+
+        // 检查是否有匹配项
+        if (match.hasMatch())
+        {
+            // 提取MAC地址
+            mesmacAddress = match.captured(1);
+            qDebug() << getIndex() << "MAC地址：" << mesmacAddress;
+            if (mechines == getIndex())
+            {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        }
+        else
+        {
+            ui->msgEdit->appendPlainText("mes未找到匹配的MAC地址");
+            ui->msgEdit->appendPlainText(value);
+        }
+    }
+    // ui->msgEdit->appendPlainText(value);
+    else if (pack.factory == "lx")
+    {
+        mesmacAddress = value;
+
+        // 在2、4、6、8、10的位置插入冒号
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+
+        // 将小写字母转换成大写字母
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex())
+        {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    }
+    else
+    {
+        if (mechines == getIndex())
+        {
+            mesmacAddress = value;
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    }
+
+    // banding_mac_sn(mesmacAddress, ui->get_mac->text());//获取测试数据不要绑定测试mac——sn
+}
+imucali::~imucali()
+{
+    delete ui;
+}
+
+void imucali::on_disconnectButton_clicked()
+{
+    closeDongleSerialPort();
+    ui->comNameCombo->setEnabled(true);
+    ui->connectButton->setEnabled(true);
+    ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
+    ui->msgEdit->appendPlainText("蓝牙连接断开");
+}
+void imucali::refresh_ble_state(int state)
+{
+    if (state)
+    {
+        ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
+        ui->msgEdit->appendPlainText("蓝牙连接成功");
+        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        ui->msgEdit->appendPlainText("已发送禁止休眠");
+    }
+    else
+    {
+        ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
+        ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // if (isimuCaliContinue == true)
+        //     on_macInput_returnPressed();
+    }
+}
+void imucali::refresh_dongle_uart_state(int state)
+{
+    if (state)
+        ui->msgEdit->appendPlainText("dongle串口连接成功");
+    else
+    {
+        ui->comNameCombo->setEnabled(true);
+        ui->connectButton->setEnabled(true);
+        ui->msgEdit->appendPlainText("dongle串口连接断开");
+    }
+}
+
+void imucali::on_connectButton_clicked()
+{
+    ui->comNameCombo->setEnabled(false);
+    ui->connectButton->setEnabled(false);
+    openDongleSerialPort();
+}
+
+void imucali::on_macInput_returnPressed()
+{
+    if (!dongleSerialPort->isOpen())
+    {
+        on_connectButton_clicked();
+    }
+    waitWork(WAITTIME);
+    // 检查是否是mac格式
+    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(ui->macInput->text()).hasMatch())
+    {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    }
+    else
+    {
+        macAddress = ui->macInput->text();
+        at->sendMac(ui->macInput->text());   // 开始连接
+        ui->msgEdit->appendPlainText("已经发送mac地址");
+        stringsn = "";
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
+        ui->gyro_x->setText("gyro_x=");
+        ui->gyro_y->setText("gyro_y=");
+        ui->gyro_z->setText("gyro_z=");
+        ui->acc_x->setText("acc_x=");
+        ui->acc_y->setText("acc_y=");
+        ui->acc_z->setText("acc_z=");
+        ui->test_result->setText("WAIT");
+        ui->test_result->setStyleSheet(
+            "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+
+        // 主状态机流程
+        isimuCaliContinue = true;
+        state = STATE_IDLE;
+        emit goNextFocus();
+    }
+}
+
+void imucali::solveMesSucess(const int mechines)
+{
+    if (mechines == getIndex())
+    {
+        ui->msgEdit->appendPlainText("mes操作成功");
+        ui->mes_state->setText("MES");
+        ui->mes_state->setStyleSheet(
+            "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+
+        mes_set_ok = 1;
+    }
+}
+void imucali::solveMesData(const int mechines, QString msg)
+{
+    if (mechines == getIndex())
+    {
+        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        ui->macInput->setDisabled(0);
+        ui->get_mac->setDisabled(0);
+        isimuCaliContinue = false;   // 结束
+        ui->msgEdit->appendPlainText("停止运行");
+        ui->mes_state->setStyleSheet(
+            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+        emit endTest(getIndex());
+
+        ui->get_mac->clear();
+        ui->get_mac->setFocus();
+    }
+}
+
+void imucali::closeEvent(QCloseEvent *)
+{
+    qDebug() << getIndex() << "开始关闭";
+    isAgeContinue = false;
+}
+void imucali::refresh_sn(FacDevInfo data)
+{
+    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+    qDebug() << getIndex() << "stringsn" << stringsn;
+    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+}
+
+void imucali::set_fix_result(int state)
+{
+    if (state)
+        is_fix_set_ok = 1;
+    else
+    {
+        ui->msgEdit->appendPlainText("治具角度错误");
+        is_fix_set_ok = 0;
+    }
+}
+
+void imucali::print_fixture_log(QString data)
+{
+    ui->msgEdit->appendPlainText(data);
+}
+
+void imucali::refresh_imu_cali_reslt_msg(QString msg)
+{
+    ui->msgEdit->appendPlainText(msg);
+}
+void imucali::refresh_imu_cali_msg(QString msg)
+{
+    ui->msgEdit->appendPlainText(msg);
+    // qDebug() << getIndex()<< "收到数据: " << getIndex();
+
+    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
+    QString folderPath = "D:/测试结果";
+
+    // 如果 "测试结果" 文件夹不存在，则创建它
+    if (!QDir(folderPath).exists())
+    {
+        QDir().mkpath(folderPath);
+    }
+
+    // 获取当前日期
+    QDate currentDate = QDate::currentDate();
+
+    // 构建年、月、日的文件夹结构
+    QString yearFolder = QString::number(currentDate.year());
+    QString monthFolder = currentDate.toString("MM");
+    QString dayFolder = currentDate.toString("dd");
+
+    // 构建完整的文件路径，加上日期
+    QString fileName = currentDate.toString("yyyy-MM-dd") + "_六轴测试log.csv";
+    QString filePath = QDir(folderPath).filePath(fileName);
+
+    QFile file(filePath);
+
+    if (!file.exists())
+    {
+        // 文件不存在，打开文件并写入表头
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QTextStream stream(&file);
+            // 获取当前时间戳
+            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+            // 写入表头
+            QStringList headers;
+            headers << "sn" << "上位机版本" << "mac地址" << "时间戳" << "测试日志";
+            stream << headers.join(",") << "\n";
+            file.close();
+        }
+        else
+        {
+            qDebug() << getIndex() << "Error creating file";
+            return;
+        }
+    }
+
+    // 文件已存在，以追加模式打开文件并写入数据
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+    {
+        QTextStream stream(&file);
+        // 获取当前时间戳
+        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+
+        // 写入数据
+        QStringList rowData;
+        rowData << stringsn << IMU_VER << macAddress << timestamp << msg;
+        stream << rowData.join(",") << "\n";
+
+        file.close();
+        // qDebug() << getIndex()<< "Data appended to" << filePath;
+    }
+    else
+    {
+        qDebug() << getIndex() << "Error appending to file";
+    }
+}
+
+void imucali::refresh_imu_cali_position(int position)
+{
+    if (position != -1)
+    {
+        ui->msgEdit->appendPlainText("位置：" + QString::number(position + 1) + "已经标定好了");
+    }
+
+    int index = position + 1;
+    if (index >= 0 && index <= 12)
+    {
+        caliwaittime->stop();
+        caliwaittime->start(imu_cali_wait_time);
+        if (index != 0)
+        {
+            QLabel *label = labelList.at(index - 1);
+            label->setStyleSheet(   // border: 2px solid #00FF00;
+                " background-color: #00FF00; color: black;  border-radius: 10px; padding: 10px; text-align: center;");
+        }
+
+        if (index == 0)
+        {
+            if (count123 != 0)
+                index = count123 + 1;
+            if (count4567 != 0)
+                index = count4567 + 1;
+            if (count89 != 0)
+                index = count89 + 1;
+        }
+        if (index == 1 || index == 2 || index == 3)
+        {
+            count123++;
+            if (index == 1)
+                emit fixture_left(getIndex());
+            if (index == 2)
+                emit fixture_down(getIndex());
+            if (index == 3)
+                emit fixture_up(getIndex());
+
+            if (count123 >= 3)
+            {
+                qDebug() << getIndex() << "发射stage1_ok";
+                ui->msgEdit->appendPlainText("六轴校准水平阶段完成");
+                emit stage1_ok(getIndex());
+                count123 = 0;
+            }
+        }
+        else if (index == 4 || index == 5 || index == 6 || index == 7)
+        {
+            if (index == 4)
+                emit fixture_left(getIndex());
+            if (index == 5)
+                emit fixture_down(getIndex());
+            if (index == 6)
+                emit fixture_right(getIndex());
+            // if (index == 7)
+            //     emit fixture_up(getIndex());
+
+            count4567++;
+
+            if (count4567 >= 4)
+            {
+                qDebug() << getIndex() << "发射stage2_ok";
+                ui->msgEdit->appendPlainText("六轴校准40度阶段完成");
+                emit stage2_ok(getIndex());
+                count4567 = 0;
+            }
+        }
+        else if (index == 8 || index == 9 || index == 10 || index == 11)
+        {
+            if (index == 8)
+                emit fixture_down(getIndex());
+            if (index == 9)
+                emit fixture_left(getIndex());
+            if (index == 10)
+                emit fixture_up(getIndex());
+
+            // if (index == 11)
+            //     emit fixture_right(getIndex());
+
+            count89++;
+            ui->msgEdit->appendPlainText("我需要的数值" +
+                                         QString::number(nqimuc->calib_datasets->size) +
+                                         QString::number(FACTORY_POSE_NUM));
+            if (count89 >= 2 && nqimuc->calib_datasets->size >= FACTORY_POSE_NUM)
+            {
+                qDebug() << getIndex() << "发射stage3_ok";
+                ui->msgEdit->appendPlainText("六轴校准反着40度阶段完成");
+                emit stage3_ok(getIndex());
+                count89 = 0;
+            }
+        }
+    }
+}
+
+void imucali::refresh_imu_data_to_csv(QString imutime, QString msg)
+{
+    // ui->msgEdit->appendPlainText(msg);
+    // qDebug() << getIndex()<< "收到数据: " << getIndex();
+    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
+    QString folderPath = "D:/测试结果/六轴数据";
+
+    // 如果 "测试结果" 文件夹不存在，则创建它
+    if (!QDir(folderPath).exists())
+    {
+        QDir().mkpath(folderPath);
+    }
+
+    // 获取当前日期
+    QDate currentDate = QDate::currentDate();
+
+    // 构建年、月、日的文件夹结构
+    QString yearFolder = QString::number(currentDate.year());
+    QString monthFolder = currentDate.toString("MM");
+    QString dayFolder = currentDate.toString("dd");
+
+    // 构建完整的文件路径，加上日期
+    QString fileName = QString::number(getIndex()) + ui->get_mac->text() + ".csv";
+    QString filePath = QDir(folderPath).filePath(fileName);
+
+    QFile file(filePath);
+
+    if (!file.exists())
+    {
+        // 文件不存在，打开文件并写入表头
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QTextStream stream(&file);
+            // 获取当前时间戳
+            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+            // 写入表头
+            QStringList headers;
+
+            headers << "mac地址" << "时间戳" << "gyro[0]" << "gyro[1]" << "gyro[2]" << "acc[0]"
+                    << "acc[1]" << "acc[2]"
+
+                    << "normol" << "acc_dif[0]" << "acc_dif[1]" << "acc_dif[2]" << "gyro_dif[0]"
+                    << "gyro_dif[1]" << "gyro_dif[2]" << "acc_var[0]" << "acc_var[1]"
+                    << "acc_var[2]" << "gyro_var[0]" << "gyro_var[1]" << "gyro_var[2]"
+                    << "gyrobias1" << "gyrobias2" << "gyrobias3";
+            stream << headers.join(",") << "\n";
+            file.close();
+        }
+        else
+        {
+            qDebug() << getIndex() << "Error creating file";
+            return;
+        }
+    }
+
+    // 文件已存在，以追加模式打开文件并写入数据
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+    {
+        QTextStream stream(&file);
+        // 获取当前时间戳
+        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+
+        // 写入数据
+        QStringList rowData;
+        rowData << macAddress << imutime << msg;
+        stream << rowData.join(",") << "\n";
+
+        file.close();
+        // qDebug() << getIndex()<< "Data appended to" << filePath;
+    }
+    else
+    {
+        qDebug() << getIndex() << "Error appending to file";
+    }
+}
+
+void imucali::getimuData(FacUploadNineAlex x)
+{
+    int ret = 0;
+    int old_ret = 0;
+    int32_t imudata_result = 0;
+    ui->log->appendPlainText("收到六轴数据");
+    // qDebug() << getIndex()<< "收到数据: " << getIndex();
+    if (is_start_ium_cali)
+    {
+        //  ui->msgEdit->appendPlainText("收到的个数=" + QString::number(x.data_count));
+        for (int i = 0; i < x.data_count; i++)
+        {
+            orgData.acc[0] = x.data[i].acc_x;
+            orgData.acc[1] = x.data[i].acc_y;
+            orgData.acc[2] = x.data[i].acc_z;
+            orgData.gyro[0] = x.data[i].gyro_x;
+            orgData.gyro[1] = x.data[i].gyro_y;
+            orgData.gyro[2] = x.data[i].gyro_z;
+
+            refresh_imu_data_to_csv(
+                QString::number(x.data[i].timestamp),
+                QString::number(orgData.gyro[0]) + "," + QString::number(orgData.gyro[1]) + "," +
+                    QString::number(orgData.gyro[2]) + "," + QString::number(orgData.acc[0]) + "," +
+                    QString::number(orgData.acc[1]) + "," + QString::number(orgData.acc[2]));
+
+#ifdef NEW_IMU_CALI
+            nqimuc->imu_time = QString::number(x.data[i].timestamp);
+
+            //  ui->msgEdit->appendPlainText("时间为=" + QString::number(x.data[i].timestamp));
+
+#else
+            nqimuc->imu_time = QString::number(x.data[i].timestamp);
+            qimuc->imu_time = QString::number(x.data[i].timestamp);
+            // qDebug() << getIndex()<< "时间为" << qimuc->imu_time;
+#endif
+
+            if (x.data[0].gyro_x & 0x8000)
+            {   // 判断最高位是否为 1，表示负数
+                imudata_result =
+                    static_cast<int32_t>(x.data[0].gyro_x | 0xFFFF0000);   // 扩展为 32 位的负数
+            }
+            else
+            {
+                imudata_result = static_cast<int32_t>(x.data[0].gyro_x);   // 保持正数不变
+            }
+
+            // qDebug()<< "Converted back result: " << imudata_result;
+            if (imudata_result == -32768)
+            {
+                ui->msgEdit->appendPlainText("数据异常正在重新唤醒");
+                waitWork(WAITTIME);
+                pb->setDevForbidSleepState(FacSwitch_STOP);
+                waitWork(WAITTIME);
+                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                waitWork(1000);
+                break;
+            }
+
+            ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
+            ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
+            ui->gyro_z->setText("gyro_z=" + QString::number(orgData.gyro[2]));
+            ui->acc_x->setText("acc_x=" + QString::number(orgData.acc[0]));
+            ui->acc_y->setText("acc_y=" + QString::number(orgData.acc[1]));
+            ui->acc_z->setText("acc_z=" + QString::number(orgData.acc[2]));
+
+            // ui->msgEdit->appendPlainText("gyro_x="+QString::number(orgData.gyro[0]));
+            // ui->msgEdit->appendPlainText("gyro_y="+QString::number(orgData.gyro[1]));
+            // ui->msgEdit->appendPlainText("gyro_z="+QString::number(orgData.gyro[2]));
+            // ui->msgEdit->appendPlainText("acc_x="+QString::number(orgData.acc[0]));
+            // ui->msgEdit->appendPlainText("acc_y="+QString::number(orgData.acc[1]));
+            // ui->msgEdit->appendPlainText("acc_z="+QString::number(orgData.acc[2]));
+
+#ifdef NEW_IMU_CALI
+            nqimuc->sensorhub_timer_callback(&orgData);
+            ret = nqimuc->acccalib_sensors_task();
+
+#else
+            nqimuc->sensorhub_timer_callback(&orgData);
+            ret = nqimuc->acccalib_sensors_task();
+            if (is_old_cali)
+                old_ret = qimuc->imu_calib_proc(&orgData);
+
+            if (old_ret == 0)
+                is_old_cali = 0;
+#endif
+
+            if (ret == 1)   // 标定失败
+            {
+                ui->msgEdit->appendPlainText("加速度校准失败");
+                is_start_ium_cali = 0;
+                result = failValue;
+                state = STATE_SAVE_RESULT;
+#ifdef NEW_IMU_CALI
+
+                ui->msgEdit->appendPlainText("校准值kx=" + QString::number(nqimuc->calData.kx));
+                ui->msgEdit->appendPlainText("校准值ky=" + QString::number(nqimuc->calData.ky));
+                ui->msgEdit->appendPlainText("校准值kz=" + QString::number(nqimuc->calData.kz));
+                ui->msgEdit->appendPlainText("校准值syx=" + QString::number(nqimuc->calData.syx));
+                ui->msgEdit->appendPlainText("校准值szx=" + QString::number(nqimuc->calData.szx));
+                ui->msgEdit->appendPlainText("校准值szy=" + QString::number(nqimuc->calData.szy));
+                ui->msgEdit->appendPlainText("校准值bx=" + QString::number(nqimuc->calData.bx));
+                ui->msgEdit->appendPlainText("校准值by=" + QString::number(nqimuc->calData.by));
+                ui->msgEdit->appendPlainText("校准值bz=" + QString::number(nqimuc->calData.bz));
+
+#else
+                ui->msgEdit->appendPlainText("校准值kx=" + QString::number(nqimuc->calData.kx));
+                ui->msgEdit->appendPlainText("校准值ky=" + QString::number(nqimuc->calData.ky));
+                ui->msgEdit->appendPlainText("校准值kz=" + QString::number(nqimuc->calData.kz));
+                ui->msgEdit->appendPlainText("校准值syx=" + QString::number(nqimuc->calData.syx));
+                ui->msgEdit->appendPlainText("校准值szx=" + QString::number(nqimuc->calData.szx));
+                ui->msgEdit->appendPlainText("校准值szy=" + QString::number(nqimuc->calData.szy));
+                ui->msgEdit->appendPlainText("校准值bx=" + QString::number(nqimuc->calData.bx));
+                ui->msgEdit->appendPlainText("校准值by=" + QString::number(nqimuc->calData.by));
+                ui->msgEdit->appendPlainText("校准值bz=" + QString::number(nqimuc->calData.bz));
+
+                ui->msgEdit->appendPlainText("校准值x=" +
+                                             QString::number(qimuc->calData.gyro_offset[0]));
+                ui->msgEdit->appendPlainText("校准值y=" +
+                                             QString::number(qimuc->calData.gyro_offset[1]));
+                ui->msgEdit->appendPlainText("校准值z=" +
+                                             QString::number(qimuc->calData.gyro_offset[2]));
+
+#endif
+                break;
+            }
+
+            // waitWork(10);
+            // ui->msgEdit->appendPlainText("imu校准返回值："+QString::number(ret));
+
+            // qDebug() << getIndex()<< "imu校准结果" << ret;
+            if (ret == 0 && old_ret == 0)
+            {
+                isimuCaliOk = 1;
+                is_start_ium_cali = 0;
+                break;
+            }
+        }
+    }
+
+    if (is_start_ium_test)
+    {
+        for (int i = 0; i < x.data_count; i++)
+        {
+            orgData.acc[0] = x.data[i].acc_x;
+            orgData.acc[1] = x.data[i].acc_y;
+            orgData.acc[2] = x.data[i].acc_z;
+            orgData.gyro[0] = x.data[i].gyro_x;
+            orgData.gyro[1] = x.data[i].gyro_y;
+            orgData.gyro[2] = x.data[i].gyro_z;
+
+            ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
+            ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
+            ui->gyro_z->setText("gyro_z=" + QString::number(orgData.gyro[2]));
+            ui->acc_x->setText("acc_x=" + QString::number(orgData.acc[0]));
+            ui->acc_y->setText("acc_y=" + QString::number(orgData.acc[1]));
+            ui->acc_z->setText("acc_z=" + QString::number(orgData.acc[2]));
+
+            int32_t result = 0;
+
+            if (x.data[i].acc_z & 0x8000)
+            {   // 判断最高位是否为 1，表示负数
+                result = static_cast<int32_t>(x.data[i].acc_z | 0xFFFF0000);   // 扩展为 32 位的负数
+            }
+            else
+            {
+                result = static_cast<int32_t>(x.data[i].acc_z);   // 保持正数不变
+            }
+
+            qDebug() << getIndex() << "Converted back result: " << result;
+            if (result < ImuCompareData)
+            {
+                ui->msgEdit->appendPlainText("六轴测试通过" + QString::number(orgData.acc[2]));
+                is_imu_test_ok = 1;
+                is_start_ium_test = 0;
+                break;
+            }
+        }
+    }
+}
+void imucali::refresh_base_data(FacGetDevBaseInfo data)
+{
+    ui->msgEdit->appendPlainText("设备名字为" + QString(data.product_name));
+
+    product_name = QString(data.product_name);
+
+    if (QString(data.product_name).compare("P20P") == 0 ||
+        QString(data.product_name).compare("Q20") == 0)
+    {
+        nqimuc->LSB = 1;
+        ui->msgEdit->appendPlainText("LSB改为" + QString::number(nqimuc->LSB));
+    }
+    else
+    {
+        nqimuc->LSB = 4;
+        if (QString(data.product_name).compare("U7") == 0)
+        {
+            nqimuc->imu_static_state = 0;
+            ui->msgEdit->appendPlainText("当前姿态为q20");
+        }
+        else
+        {
+            nqimuc->imu_static_state = 1;
+            ui->msgEdit->appendPlainText("当前姿态为y20");
+        }
+
+        ui->msgEdit->appendPlainText("LSB改为" + QString::number(nqimuc->LSB));
+    }
+}
+
+void imucali::processInspection(QString stringsn)
+{
+    if (stringsn != "" || !ui->isusemes->checkState())
+    {
+        if (ui->isusemes->checkState())
+        {
+            ui->msgEdit->appendPlainText("正在进行站前检测");
+            pack.sn = stringsn;
+
+            pack.mechines = getIndex();
+            
+
+            pack.is_hq_send_mac = 0;
+            pack.instruct_num = "079";
+
+            emit sendProcessInspection(pack);
+        }
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("SN比对错误");
+    }
+
+    if (!ui->isusemes->checkState())   // 离线
+    {
+        ui->mes_state->setText("MES");
+        ui->mes_state->setStyleSheet(
+            "font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+    }
+}
+void imucali::end_task()
+{
+    on_stopimuCaliButton_clicked();
+}
+void imucali::start_task()   // 编写六轴校准的代码
+{
+    if (isimuCaliContinue)
+    {
+        ui->test_time->display(TestTime.elapsed() / 1000);
+        switch (state)
+        {
+        case STATE_IDLE:   // 复位一切
+            information = "";
+            testItems.clear();
+            isovertime = 0;
+            is_old_cali = 1;
+            is_imu_test_ok = 0;
+            is_fix_set_ok = 0;   // 是否治具设置ok
+            iscompareovertime = 0;
+            isimuCaliOk = 0;   // 是否校准完成
+            is_start_ium_test = 0;
+            is_start_ium_cali = 0;
+            isStartSendCaliResult = 0;   // 是否开始发送校验结果
+            imudata_check = 0;
+            count123 = 0;
+            count4567 = 0;
+            count89 = 0;
+            nqimuc->calData.gyro_offset[0] = 0;
+            nqimuc->calData.gyro_offset[1] = 0;
+            nqimuc->calData.gyro_offset[2] = 0;
+            nqimuc->calData.kx = 0.0f;
+            nqimuc->calData.ky = 0.0f;
+            nqimuc->calData.kz = 0.0f;
+            nqimuc->calData.syx = 0.0f;
+            nqimuc->calData.szx = 0.0f;
+            nqimuc->calData.szy = 0.0f;
+            nqimuc->calData.bx = 0.0f;
+            nqimuc->calData.by = 0.0f;
+            nqimuc->calData.bz = 0.0f;
+
+            pb->reset_all_pb();
+            at->resetConnected();
+            //  at->sendMac(ui->macInput->text());//发送mac地址
+            result = passValue;
+
+            ui->tail_sn->setText("芯片存储的尾盖sn:");
+
+            for (int la = 0; la < 12; la++)
+            {
+                QLabel *label = labelList.at(la);
+                label->setStyleSheet(
+                    " background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+
+            TestTime.start();
+            state = STATE_WATI_CONNECT;
+            break;
+
+        case STATE_WATI_CONNECT:   // 设置禁止休眠
+            if (at->getConnected())
+            {
+                waitWork(WAITTIME);
+                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                waitWork(WAITTIME);
+                state = STATE_DISABLE_SLEEP_1;
+            }
+            break;
+
+        case STATE_DISABLE_SLEEP_1:   // 设置设备采集
+            if (pb->getDisableSleep())
+            {
+                ui->msgEdit->appendPlainText("已进入禁止休眠");
+                pb->getBaseInfo();
+                state = STATE_GETBASEDATA;
+            }
+            else
+            {
+                waitWork(500);
+                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                ui->msgEdit->appendPlainText("正在重发禁止休眠");
+            }
+            break;
+        case STATE_GETBASEDATA:
+
+            if (pb->getisGetBaseInfo())
+            {
+                pb->setimuCollectParam(FacSwitch_START);
+                pb->get_sn(FacDevInfoType_TAIL_SN);
+                ui->msgEdit->appendPlainText("正在查询SN");
+                state = STATE_CAIL;
+            }
+            else
+            {
+                waitWork(500);
+                ui->msgEdit->appendPlainText("正在重发获取设备信息");
+                pb->getBaseInfo();
+            }
+            break;
+
+        case STATE_CAIL:   // 开始校准
+            if (pb->get_isSetimuCollectParam())
+            {
+                ui->msgEdit->appendPlainText("已设置imu采集参数");
+#ifdef NEW_IMU_CALI
+                nqimuc->acccalib_sensors_init();
+#else
+                qimuc->imu_calib_init();
+                nqimuc->acccalib_sensors_init();
+#endif
+
+                is_start_ium_cali = 1;
+                qDebug() << getIndex() << "开始校准";
+                ui->msgEdit->appendPlainText("等待校准");
+                waittime->start(imu_wait_time);
+                caliwaittime->start(imu_cali_wait_time);
+                emit fixture_up(getIndex());
+                state = STATE_SEND_CAIL_RESULT;
+            }
+            else
+            {
+                pb->setimuCollectParam(FacSwitch_START);
+                waitWork(500);
+            }
+            break;
+
+        case STATE_SEND_CAIL_RESULT:   // 开始发送校准值
+            if (isimuCaliOk)
+            {
+                caliwaittime->stop();
+                waittime->stop();
+                ui->msgEdit->appendPlainText("IMU校准成功");
+
+                pb->setimuCollectParam(FacSwitch_STOP);
+
+#ifdef NEW_IMU_CALI
+                pb->send_new_imuCaliResult(nqimuc->calData);
+#else
+
+                nqimuc->calData.gyro_offset[0] = qimuc->calData.gyro_offset[0];
+                nqimuc->calData.gyro_offset[1] = qimuc->calData.gyro_offset[1];
+                nqimuc->calData.gyro_offset[2] = qimuc->calData.gyro_offset[2];
+                pb->send_new_imuCaliResult(nqimuc->calData);
+                // pb->sendimuCaliResult(qimuc->calData);
+#endif
+
+                state = STATE_SENDOK;
+
+                break;
+            }
+            if (isovertime)
+            {
+                caliwaittime->stop();
+                is_start_ium_cali = 0;
+                refresh_imu_cali_msg("六轴校准失败");
+                isovertime = 0;
+                ui->msgEdit->appendPlainText("六轴校准失败：超时");
+                waitWork(WAITTIME);
+                pb->setimuCollectParam(FacSwitch_STOP);
+                waitWork(WAITTIME);
+                state = STATE_SAVE_RESULT;
+                result = failValue;
+            }
+
+            break;
+
+        case STATE_SENDOK:
+
+            if (pb->get_is_save_imu_cali_ok())
+            {
+                pb->getimuCaliResult();
+                state = STATE_CHECKOK;
+            }
+            else
+            {
+                waitWork(500);
+                ui->msgEdit->appendPlainText("正在重发六轴校准结果");
+                pb->send_new_imuCaliResult(nqimuc->calData);
+            }
+            break;
+
+        case STATE_CHECKOK:
+
+            if (imudata_check == 1)
+            {
+                state = STATE_SAVE_RESULT;
+            }
+            else if (imudata_check == 2)
+            {
+                result = failValue;
+                ui->msgEdit->appendPlainText("获取的牙刷校准值错误");
+                state = STATE_SAVE_RESULT;
+            }
+            else
+            {
+                waitWork(500);
+                ui->msgEdit->appendPlainText("正在重发获取六轴校准结果");
+                pb->getimuCaliResult();
+            }
+            break;
+
+        case STATE_SAVE_RESULT:
+            if (result == failValue)
+            {
+                TestItem test;
+                test.testItem = "IMU校准测试";
+                test.testData = qimuc->imureason + nqimuc->imureason;
+                test.testResult = "失败";
+                testItems.append(test);
+
+                ui->msgEdit->appendPlainText("六轴校准结束");
+                emit endcali(getIndex());
+                state = STATE_END;
+                break;
+            }
+            if (pb->get_is_get_imu_cali_data())
+            {
+                TestItem test;
+                test.testItem = "IMU校准测试";
+                // 使用 QString 连接所有内容
+                QString data;
+                data.append("校准值kx=" + QString::number(nqimuc->calData.kx) + "\n");
+                data.append("校准值ky=" + QString::number(nqimuc->calData.ky) + "\n");
+                data.append("校准值kz=" + QString::number(nqimuc->calData.kz) + "\n");
+                data.append("校准值syx=" + QString::number(nqimuc->calData.syx) + "\n");
+                data.append("校准值szx=" + QString::number(nqimuc->calData.szx) + "\n");
+                data.append("校准值szy=" + QString::number(nqimuc->calData.szy) + "\n");
+                data.append("校准值bx=" + QString::number(nqimuc->calData.bx) + "\n");
+                data.append("校准值by=" + QString::number(nqimuc->calData.by) + "\n");
+                data.append("校准值bz=" + QString::number(nqimuc->calData.bz) + "\n");
+                data.append("校准值x=" + QString::number(qimuc->calData.gyro_offset[0]) + "\n");
+                data.append("校准值y=" + QString::number(qimuc->calData.gyro_offset[1]) + "\n");
+                data.append("校准值z=" + QString::number(qimuc->calData.gyro_offset[2]) + "\n");
+
+                // 将连接好的字符串赋值给 test.testData
+                test.testData = data;
+                test.testResult = "通过";
+
+                testItems.append(test);
+                ui->msgEdit->appendPlainText(data);
+
+                ui->msgEdit->appendPlainText("六轴校准结束");
+                emit endcali(getIndex());
+
+                if (pack.factory == "hq")
+                    state = STATE_END;
+                else
+                    state = STATE_END;   // STATE_GETPARAM
+            }
+            else
+            {
+                ui->msgEdit->appendPlainText("正在重试获取校准结果");
+                pb->getimuCaliResult();
+                waitWork(500);
+            }
+
+            break;
+
+        case STATE_END:
+            if (result == passValue)
+            {
+                QString mesresult = "PASS";
+                QString itemvalue;
+                itemvalue = QString("|gyro_offsetx:%1").arg(nqimuc->calData.gyro_offset[0]) +
+                            QString("|gyro_offsety:%1").arg(nqimuc->calData.gyro_offset[1]) +
+                            QString("|gyro_offsetz:%1").arg(nqimuc->calData.gyro_offset[2]) +
+                            QString("|kx:%1").arg(nqimuc->calData.kx) +
+                            QString("|ky:%1").arg(nqimuc->calData.ky) +
+                            QString("|kz:%1").arg(nqimuc->calData.kz) +
+                            QString("|syx:%1").arg(nqimuc->calData.syx) +
+                            QString("|szx:%1").arg(nqimuc->calData.szx) +
+                            QString("|szy:%1").arg(nqimuc->calData.szy) +
+                            QString("|bx:%1").arg(nqimuc->calData.bx) +
+                            QString("|by:%1").arg(nqimuc->calData.by) +
+                            QString("|bz:%1|").arg(nqimuc->calData.bz) +
+                            QString("IMU_TEST_RESULT:PASS|");
+
+                pack.result = mesresult;
+
+                pack.itemvalue = itemvalue;
+
+                pack.instruct_num = "084";
+                pack.sn = ui->get_mac->text();
+                if (ui->isusemes->checkState())
+                {
+                    sendTestPass(pack);
+                    pb->set_fac_mode(0);
+                    pb->set_ship_mode(1);
+                    ui->msgEdit->appendPlainText("已发送进入船运模式");
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+            }
+            if ((result == failValue))
+            {
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+                QString mesresult = "NG";
+                QString itemvalue =
+                    QString("|IMU_CALI_RESULT:NG|") + QString("IMU_TEST_RESULT:NG|");
+                pack.result = mesresult;
+
+                pack.itemvalue = itemvalue;
+
+                pack.sn = ui->get_mac->text();
+
+                if (ui->isusemes->checkState())
+                {
+                    sendTestPass(pack);
+                }
+            }
+            log->saveTestCsv(IMU_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
+
+            waitWork(WAITTIME);
+            pb->setimuCollectParam(FacSwitch_STOP);
+            waitWork(100);
+            at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+            stringsn = "";
+            ui->macInput->setDisabled(0);
+            ui->get_mac->setDisabled(0);
+            ui->macInput->clear();
+            ui->get_mac->clear();
+
+            emit fixture_left(getIndex());
+            emit fixture_down(getIndex());
+            emit fixture_right(getIndex());
+            emit fixture_up(getIndex());
+            emit endTest(getIndex());
+
+            ui->msgEdit->appendPlainText("流程结束");
+
+            isimuCaliContinue = false;   // 结束
+            waitWork(100);
+            on_disconnectButton_clicked();
+            state = STATE_IDLE;
+
+            break;
+        default:
+
+            break;
+        }
+    }
+}
+void imucali::get_dongle_ver(QString data)
+{
+    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+}
+void imucali::on_pushButton_clicked()
+{
+
+    emit endTest(getIndex());
+
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");
+    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // // ui->macInput->setText("74:4D:BD:95:7F:36");
+    // // ui->macInput->setText("e2:66:07:34:2d:f7");
+    // // ui->macInput->setText("74:4D:BD:95:80:7e");
+    // // ui->macInput->setText("e2:66:07:34:2d:f7");//E4:08:09:30:7E:FB
+
+    // on_macInput_returnPressed();
+}
+
+void imucali::on_stopimuCaliButton_clicked()
+{
+    at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    waitWork(100);
+    ui->macInput->setDisabled(0);
+    ui->get_mac->setDisabled(0);
+
+    ui->macInput->clear();
+    ui->get_mac->clear();
+    ui->get_mac->setFocus();
+    on_disconnectButton_clicked();
+}
+
+void imucali::on_pushButton_2_clicked()
+{
+    // pb->setDevForbidSleepState(FacSwitch_OPEN);
+
+    for (int la = 0; la < 12; la++)
+    {
+        QLabel *label = labelList.at(la);
+
+        label->setStyleSheet(   // border: 2px solid #00FF00;
+            " background-color: #00FF00; color: black;  border-radius: 10px; padding: 10px; text-align: center;");
+
+        // QPalette palette = label->palette();
+        // palette.setColor(QPalette::Window, Qt::gray);
+        // label->setAutoFillBackground(true);
+        // label->setPalette(palette);
+    }
+}
+
+void imucali::get_mac(QString sn_to_search)
+{
+    QFile file("mac_sn.txt");   // 创建一个文件对象
+    if (file.open(QIODevice::ReadOnly))
+    {   // 打开文件
+        QTextStream in(&file);
+        while (!in.atEnd())
+        {                                           // 逐行读取文件
+            QString line = in.readLine();           // 读取一行
+            QStringList fields = line.split(",");   // 将行按照逗号分隔成两个字段
+            if (fields.count() >= 2)
+            {                                 // 至少需要两个字段
+                QString sn = fields.at(0);    // 第一个字段是sn
+                QString mac = fields.at(1);   // 第二个字段是mac
+                if (sn == sn_to_search)
+                {   // 检查是否是待检索的sn
+                    ui->msgEdit->appendPlainText("这是从文件获取的mac地址");
+                    ui->macInput->setText(mac);
+                     on_macInput_returnPressed();
+                    qDebug() << getIndex() << "The corresponding mac is: " << mac;
+                    break;
+                }
+            }
+            else
+            {
+                ui->msgEdit->appendPlainText("存在没有逗号分开的" +
+                                             QString::number(fields.count()) + line);
+            }
+        }
+        file.close();   // 关闭文件
+    }
+}
+void imucali::on_get_mac_returnPressed()
+{
+    ui->log->clear();
+    ui->msgEdit->clear();
+    ui->get_mac->setDisabled(1);
+    ui->macInput->setDisabled(1);
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet(
+        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+
+    // 检查是否是序列号格式
+    QRegularExpression snRegex(snPattern);
+    // 使用正则表达式匹配
+    if (!snRegex.match(ui->get_mac->text()).hasMatch())
+    {
+        ui->get_mac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        ui->msgEdit->appendPlainText("序列号错误");
+        ui->get_mac->clear();
+        return;
+    }
+
+    ui->msgEdit->appendPlainText("正在查询mac地址");
+    get_mac(ui->get_mac->text());   // 文件获取
+    processInspection(ui->get_mac->text());
+
+    processGetMesTestValue();   // mes获取
+}
+
+void imucali::processGetMesTestValue()
+{
+    if (ui->isusemes->checkState())
+    {
+        pack.sn = ui->get_mac->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+
+        emit getMesTestValue(pack);
+    }
+}

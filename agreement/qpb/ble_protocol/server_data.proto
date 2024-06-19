@@ -1,0 +1,173 @@
+/* **************************************************************
+ ** Copyright (C), 2020-2023, usmile
+ ** VENDOR_EDIT
+
+ ** ---------------------Revision History: ----------------------
+ **  <author>     <data>       <version >           <desc>
+ ***************************************************************/
+
+syntax = "proto3";
+import "nanopb.proto";
+import "fx_ble_msg.proto";
+
+///请求服务器参数
+message RequestPackage {
+    string request_url = 1 [(nanopb).max_size = 128];
+    RequestType request_type = 2;
+    repeated RequestParam request_param = 3 [(nanopb).max_count = 3];
+    oneof request_data {
+        WifiInfo upload_wifi_info = 101;
+        BrushingReport upload_brush_report = 102;
+        SettingVO setting_vo = 103;
+        ConnectPro upload_connect_pro = 104;
+        OtaUpdateInfo upload_ota_info = 105;
+        CustomButtonInfo upload_custom_button_info = 106;
+        AudioDataInfoVO audio_info_vo = 107;
+        RecommendInfo upload_recommend_info = 108;
+        CustomPlanGroupInfoVO group_info_vo = 109;
+        UserThemeInfoVO theme_info_vo = 110;
+        UserGiftInfoVO gift_theme_info = 111;
+        FileInfo file_info = 112;
+        UsGiftDetail us_gift_detail = 113;
+    }
+}
+
+///服务器返回数据
+message ResponsePackage {
+    bool flag = 1;
+    uint32 code = 2;
+    string message = 3 [(nanopb).max_size = 128];
+    oneof response_data {
+        WifiInfo get_wifi_info = 101;
+        BrushingReport upload_brush_report = 102;
+        SettingVO setting_vo = 103;
+        ConnectPro upload_connect_pro = 104;
+        OtaUpdateInfo upload_ota_info = 105;
+        CustomButtonInfo upload_custom_button_info = 106;
+        AudioDataInfoVO audio_info_vo = 107;
+        RecommendInfo upload_recommend_info = 108;
+        CustomPlanGroupInfoVO group_info_vo = 109;
+        UserThemeInfoVO theme_info_vo = 110;
+        UserGiftInfoVO gift_theme_info = 111;
+        FileInfo file_info = 112;
+        UsGiftDetail us_gift_detail = 113;
+    }
+}
+
+message UsGiftDetailVO {
+    repeated UsGiftDetail us_gift_detail_list = 1;
+}
+message UsGiftDetail {
+    uint32 id = 1;
+    string sender_meb_id = 2;
+    string sender_nickname = 3;
+    string receiver_phone = 4;
+    uint32 model_id = 5;
+    uint32 theme_detail_id = 6;
+    uint32 status = 7;
+    uint32 file_id = 8;
+}
+
+message FileInfo {
+    uint32 file_id = 1;
+    string file_url = 2 [(nanopb).max_size = 256];
+    uint32 file_size = 3;
+    string file_md5 = 4 [(nanopb).max_size = 64];
+}
+
+message UserGiftInfoVO {
+    repeated UserThemeInfo gift_info_list = 1 [(nanopb).max_count = 2];
+    bool isGetGift = 2;
+}
+
+message UserThemeInfoVO {
+    repeated UserThemeOption theme_info_list = 1 [(nanopb).max_count = 2];
+}
+
+message UserThemeOption {
+    string name = 1 [(nanopb).max_size = 32];;
+    UserThemeInfo user_theme_info = 2;
+    string preview_img_file_url = 3 [(nanopb).max_size = 256];
+}
+
+message AudioDataInfoVO {
+    repeated AudioDataOption audio_option_list = 1 [(nanopb).max_count = 2];
+}
+
+message AudioDataOption {
+    string name = 1 [(nanopb).max_count = 64];
+    AudioDataInfo audio_data_info = 2;
+    string preview_file_url = 3 [(nanopb).max_size = 256];;
+    string preview_img_file_url = 4 [(nanopb).max_size = 256];
+}
+
+message CustomPlanGroupInfoVO {
+    repeated CustomGroupOption option_list = 1 [(nanopb).max_count = 5];
+}
+
+message CustomGroupOption {
+    string name = 1 [(nanopb).max_size = 32];
+    CustomPlanGroupInfo group_info = 2;
+}
+
+message SettingVO {
+    repeated Setting setting_list = 1 [(nanopb).max_count = 3];
+}
+
+message Setting {
+    uint32 setting_id = 1;
+    oneof setting_data {
+        // Connect Service 0x10
+        DeviceInfo get_device_info = 7;           // 0x06
+        DeviceStateInfo device_state_set = 15;    // 0x0E
+        CustomButtonInfo get_custom_button_info = 17; // 0x11
+        // User Service 0x20
+        UserThemeInfo  get_user_theme_info = 0x23;
+        // Algorithm Service 0x30
+        AlgorithmPro algorithm_pro = 0x31;
+
+        // Video linkage service 0x40
+        AudioDataInfo get_audio_info = 0x46;
+
+        // Plan Service 0x70
+        PlanInfo get_plan_info = 0x71;
+        RecommendInfo get_recommend_info = 0x73;
+        CustomPlanGroupInfo get_custom_group_info = 0x75;
+    }
+}
+
+enum RequestType {
+    GET = 0;
+    POST = 1;
+    PUT = 2;
+    DELETE = 3;
+    PATCH = 4;
+}
+
+message RequestParam {
+    oneof request_param {
+        string user_id = 1 [(nanopb).max_size = 64];
+        string device_id = 2 [(nanopb).max_size = 64];
+        uint32 connect_type = 3; // ConnectType
+    }
+}
+
+message OtaUpdateInfo {
+    string device_id = 1 [(nanopb).max_size = 64];
+    uint32 hardware_id = 2;
+    uint32 model_id = 3;
+    uint32 version_code = 4;
+    uint32 version_type = 5;
+    uint32 firmware_id = 6;
+    uint32 version_code_min = 7;
+    uint32 version_code_max = 8;
+    repeated MetaData meta_data = 100 [(nanopb).max_count = 6];
+}
+
+message MetaData {
+    uint32 version_type = 1;
+    uint32 version_code = 2;
+    string url = 3 [(nanopb).max_size = 128];
+    string md5 = 4 [(nanopb).max_size = 64];
+    uint32 size = 5;
+}

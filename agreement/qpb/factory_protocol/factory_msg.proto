@@ -1,0 +1,578 @@
+/* **************************************************************
+ ** Copyright (C), 2020-2023, usmile
+ ** VENDOR_EDIT
+ ** FileName: factory_msg.proto
+ ** Description:
+ ** Version: 1.0.1
+ ** Date: 2023/11/14
+ ** Author: jinpeng.chen
+
+ ** ---------------------Revision History: ----------------------
+ **  <author>     	  <data>       <version >           <desc>
+ **  jinpeng.chen     2023/11/14    1.0.1               create 
+ 
+ ***************************************************************/
+syntax = "proto3";
+import "nanopb.proto";
+
+
+enum FacErrorCode {
+    NO_ERROR = 0x00;
+    NO_SUPPORT = 0x01;
+    NO_MEMORY = 0x02;
+    GENERALLY = 0x03;
+}
+
+enum FactroyCmd {
+    FIRST_COMMAND_NO_USE = 0x00;
+    GET_DEVICE_BASE_INFO = 0x01;
+    SET_DEVICE_STATE = 0x02;
+    GET_DEVICE_STATE = 0x03;
+    GET_PERIPH_STATE = 0x04;
+    SET_DEVICE_INFO = 0x05;
+    GET_DEVICE_INFO = 0x06;
+
+    SET_COLLECT_PARAM = 0x10;
+    GET_COLLECT_PARAM = 0x11;
+    UPLOAD_PRESS_SENSOR = 0x13;
+    UPLOAD_NINE_ALEX = 0x14;
+    GET_BUTTON_STATE=0x15;
+    UPLOAD_BUTTON_STATE=0x16;
+    UPLOAD_MOTORCALI_DATA=0x17;
+
+    SET_PRESS_SENSOR_CALIB = 0x20;
+    GET_PRESS_SENSOR_CALIB = 0x21;
+    SET_IMU_CALIB = 0x22;
+    GET_IMU_CALIB = 0x23;
+    LED_CONTROL = 0x24;
+    LCD_CONTROL = 0x25;
+    MOTO_CONTROL = 0x26;
+    BRUSH_CONTROL = 0x27;
+    SET_TIME = 0x28;
+    CAMERA_CONTROL = 0x29;
+
+    SET_AGEING_TEST = 0x32;
+    SET_BRUSH_RECORD = 0x33;
+    WIFI_DEMAND = 0x34;
+
+    INTERNET_OTA = 0x40;
+}
+
+message FactoryDataPackage {
+    FactroyCmd cmd_id = 1;
+    oneof command_data {
+        FacGetDevBaseInfo get_dev_base_info = 2;
+        FacDevState set_dev_state = 3;
+        FacDevState get_dev_state = 4;
+        FacGetPeriphState get_periph_state = 5;
+        FacDevInfo get_dev_info = 6;
+        FacDevInfo set_dev_info = 7;
+
+        FacCollectParam set_collect_param = 0x10;
+        FacCollectParam get_collect_param = 0x11;
+        FacUploadPresSensor press_sensor = 0x13;
+        FacUploadNineAlex upload_nine_alex = 0x14;
+        FacButtonState get_button_state=0x15;
+        FacButtonState upload_button_state=0x16;
+        FacMotorCalibResult upload_motorcali_data=0x17;
+
+        FacPreSensorCalibResult set_fsensor_calib = 0x20;
+        FacPreSensorCalibResult get_fsensor_calib = 0x21;
+        FacImuCalibResult set_imu_calib = 0x22;
+        FacImuCalibResult get_imu_calib = 0x23;
+        FacLedControl led_control = 0x24;
+        FacLcdControl lcd_control = 0x25;
+        FacMotoControl moto_control  = 0x26;
+        FacBrushControl brush_control = 0x27;
+        FacSetTime set_time = 0x28;
+        FacCameraControl camera_control = 0x29;
+        FacAgeingTest ageing = 0x32;
+        FacSetBrushRecord set_brush_record = 0x33;
+        FacWifiDemand wifi_demand = 0x34;
+
+        //ota
+        FacInternetOta internet_ota = 0x40;
+    }
+}
+
+enum FacProtoId {
+    PROTOCOL_NONE = 0;
+    V1000 = 1000;
+}
+
+message FacGetDevBaseInfo
+{
+    string product_name = 1 [(nanopb).max_size= 8];	 //string
+    uint32 pb_phone_ver = 2;	 //string	
+    FacProtoId pb_factory_ver = 3; //string
+    string hw_version = 4 [(nanopb).max_size= 4];	//string	
+    string soft_version = 5 [(nanopb).max_size= 4];	//string
+    string res_version = 6 [(nanopb).max_size= 4];	//string
+    string algo_version = 7 [(nanopb).max_size= 4];  //string
+    string presure_version = 8 [(nanopb).max_size= 24];
+    bytes ble_mac = 9 [(nanopb).max_size= 6];
+    bytes wifi_mac = 10 [(nanopb).max_size= 6];
+    uint32 imu_id = 11[(nanopb).max_size= 6];
+    bool ageing_state = 12;
+    string motor_version = 13 [(nanopb).max_size= 24];
+
+    FacErrorCode result = 100;
+}
+
+enum DevStateType
+{
+    REBOOT = 0;
+    RESET = 1;
+    SLEEP = 2;
+    FORBID_SLEEP = 3;
+    FACTORY_QRCORD = 4;
+    SHIP = 5;
+}
+
+enum FacSwitch
+{
+    option allow_alias = true;
+    STOP = 0;
+    CLOSE = 0;
+    START = 1;
+    OPEN = 1;
+}
+
+message FacDevState
+{
+    DevStateType dev_state_type = 1;
+    FacSwitch state = 2;
+    FacErrorCode result = 100;
+}
+
+enum FacDevInfoType
+{
+    WIFI_INFO = 0;
+    TAIL_SN = 1;
+    BOARD_SN = 2;
+    BRUSH_MODE = 3;
+    BATTERY_INFO = 4;
+    IF_QUALIFIED = 5;
+}
+
+enum FacChargeStateType
+{
+    ERROR = 0;
+    FULL = 1;
+    CHARGING = 2;
+    UNCHARGE = 3;
+    NO_BATT = 4;
+}
+
+message FacBatteryInfo {
+    FacChargeStateType charge_state = 1;
+    uint32 voltage = 2;
+    uint32 percent = 3;
+
+}
+
+message FacWifiInfo {
+    string wifi_name = 1 [(nanopb).max_size = 32];
+    string wifi_password = 2 [(nanopb).max_size = 64];
+    bytes ip_address = 3 [(nanopb).max_size =4];
+    uint32 port = 4;
+}
+
+message FacDevInfoValue {
+    FacDevInfoType info_item = 1;
+    oneof value_item {
+        FacWifiInfo wifi_info = 2;
+        string tail_sn = 3 [(nanopb).max_size = 64];
+        string board_sn = 4 [(nanopb).max_size = 64];
+        uint32 brush_mode = 5;
+        FacBatteryInfo battery = 6;
+        FacSwitch if_qualified = 7;
+    }
+}
+
+message FacDevInfo
+{
+    repeated FacDevInfoValue dev_info = 1 [(nanopb).max_count = 5];
+    FacErrorCode result = 100;
+}
+
+message FacGetPeriphState
+{
+    bool imu_state = 1;	
+    bool flash_state = 2;
+    bool magnet_state = 3;
+    bool press_state = 4;
+    bool audio_state = 5;
+    FacErrorCode result = 100;
+}
+
+enum FacAgeingTestType
+{
+    AGEING_1 = 0;
+    AGEING_2 = 1;
+    AGEING_3 = 2;
+    AGEING_4 = 3;
+    AGEING_PRODUCTION_1 = 4;
+}
+
+message FacAgeingTest
+{
+    FacAgeingTestType type = 1;
+    FacSwitch switch_state = 2;
+    uint32 brush_mode = 3;
+    uint32 work_time = 4;
+    uint32 stop_time = 5;
+    uint32 cycle_count = 6;
+    FacErrorCode result = 100;
+}
+
+enum FacLcdControlType
+{
+    color = 0;
+    reg = 1;
+}
+
+message FacRegisterConfig
+{
+    uint32 addr = 1;
+    uint32 value = 2;
+}
+
+message FacLcdControl
+{
+    FacLcdControlType type = 1;
+    oneof value_item {
+        uint32 color = 2;
+        FacRegisterConfig config = 3;
+    }
+
+    FacErrorCode result = 100;
+}
+
+
+enum FacMotoControlType
+{
+    motor_state = 0;
+    motor_param = 1;
+    play_file = 2;
+    motor_cali=3;
+    motor_test=4;
+    damping_state=5;
+    motor_cali_data=6;
+    servo_param=7;   
+  
+}
+
+message FacMotoParam
+{
+    uint32 freq = 1;
+    float gain_or_duty = 2;    
+    uint32 volume = 3;
+}
+
+
+message ServoMotorParam
+{
+    float vibrate_angle = 1;
+    uint32 sweeping_angle = 2;
+    uint32 vibrate_freq = 3;
+    float sweeping_freq = 4;
+}
+
+enum FacMotoCali 
+{
+        HALL_CALIBRATION = 0;
+        ZERO_CALIBRATION = 1;
+        MOTOR_CALI_START = 2;
+        MOTOR_CALI_STOP = 3;
+}
+
+message FacMotoControl
+{
+    FacMotoControlType type = 1;
+    oneof value_item {
+        FacSwitch switch_state = 2;
+        FacMotoParam param = 3;
+        string file_name = 4 [(nanopb).max_size = 128];
+        FacMotoCali switch_cali = 5;
+        FacSwitch  motor_testing= 6;
+        FacSwitch damping_switch= 7;
+        uint32 motor_cali_result = 8;
+        ServoMotorParam  servoparam =9;
+    
+    }
+
+    FacErrorCode result = 100;
+}
+
+enum FacMotorUploadType
+{
+    HALL_CALIBRATION_DATA = 0;
+    ZERO_CALIBRATION_DATA = 1;
+    MOTOR_LOG = 2;
+}
+
+message FacMotorCalibResult
+{
+    FacMotorUploadType type = 1;
+    oneof value_item {
+        uint32 hall_calibration_data= 2; 
+        uint32 zero_calibration_data= 3;
+        string motor_log = 4 [(nanopb).max_size= 128];
+    }
+
+    FacErrorCode result = 100;
+}
+
+enum FacCameraControlType
+{
+    camera_state = 0;
+    camera_light = 1;
+    camera_exposure_time = 2;
+    camera_display_on_screen=3;
+    camera_support_state=4;
+    camera_get_picture=5;
+}
+
+message FacCameraControl
+{
+    FacCameraControlType type = 1;
+    oneof value_item {
+        FacSwitch camera_switch = 2;
+        FacSwitch light_switch = 3;
+        uint32  exposure_time = 4;
+        FacSwitch display_on_screen = 5;
+        FacSwitch camera_support = 6;
+        FacSwitch get_picture = 7;
+    }
+
+    FacErrorCode result = 100;
+}
+
+enum LedPosition
+{
+    led_left_up = 0;
+    led_left_down = 1;
+    led_right_up = 2;
+    led_right_down = 3;
+}
+message FacLedColor
+{
+    LedPosition index = 1;
+    uint32 R = 2;
+    uint32 G = 3;
+    uint32 B = 4;
+}
+
+
+message FacLedControl
+{
+    uint32 which_led = 1;
+    FacSwitch switch_state = 2;
+    repeated FacLedColor led_state = 3 [(nanopb).max_count = 8];
+    FacErrorCode result = 100;
+}
+
+enum DataCollectType
+{
+    BATTERY = 0;
+    PRESSURE_SENSOR = 1;
+    NINE_AXLE = 2;
+}
+
+enum FacBrushControlType
+{
+    BRUSH_START = 0;
+    CHANGE_MODE = 1; 
+}
+
+message FacBrushControl
+{
+    FacBrushControlType type = 1;
+    oneof value_item {
+        FacSwitch brush_start = 2;
+        uint32 change_mode = 3;
+    }
+
+    FacErrorCode result = 100;
+}
+
+message DataCollectParam
+{
+    FacSwitch state = 1;   
+    uint32 sampling_count = 2;      //采样次数  0xFFFFFFFF不限次数
+    uint32 sampling_rate = 3;       //采样率
+    uint32 upload_rate = 4;         //上报频率
+}
+
+message FacDataCollectItem
+{
+    DataCollectType type = 1;
+    oneof command_data {
+        DataCollectParam bat_vol = 2;   //电池电压
+        DataCollectParam pressure_sensor = 3; //压感 刷头压感+压感按键
+        DataCollectParam nine_axle = 4;	      //9轴 地磁+IMU
+    }
+}
+
+message FacCollectParam
+{
+    repeated FacDataCollectItem param = 2 [(nanopb).max_count = 8];
+    FacErrorCode result = 100;
+}
+
+enum FacButtonType
+{
+    POWER_BUTTON = 0;
+    MODEL_BUTTON = 1;
+    PRESS_MECHANICAL = 2;
+}
+
+enum ButtonState
+{
+    NULL=0;
+    PRESSED = 1;
+    RELEASED = 2;
+    HELD = 3;
+}
+
+message DataButtonParam
+{
+    FacSwitch state = 1;   
+    ButtonState button_state_now = 2;	 //按键状态
+}
+message FacButtonItem 
+{
+    FacButtonType type = 1;
+    oneof command_data {
+        DataButtonParam power_button = 2;   
+        DataButtonParam mode_button = 3; 
+        DataButtonParam press_mechanical = 4;	     
+    }
+}
+
+message FacButtonState
+{
+    repeated FacButtonItem  button_state = 2 [(nanopb).max_count = 8];
+    FacErrorCode result = 100;
+}
+
+message FacWifiDemand
+{
+    float wifi_speed = 1;
+    uint32 connect_command = 2;
+    uint32 connect_result = 3;
+    string ota_data = 4 [(nanopb).max_size= 50];
+    FacWifiInfo wifi_info = 5;
+    uint32 ota_result = 6;
+    FacErrorCode result = 100;
+}
+
+message NineAlexData
+{
+    uint32 timestamp = 1;
+    uint32 acc_x = 2;
+    uint32 acc_y = 3;
+    uint32 acc_z = 4;
+    uint32 gyro_x = 5;
+    uint32 gyro_y = 6;
+    uint32 gyro_z = 7;
+    uint32 magnet_x = 8;
+    uint32 magnet_y = 9;
+    uint32 magnet_z = 10;
+}
+
+message FacUploadNineAlex 
+{
+    repeated NineAlexData data = 2 [(nanopb).max_count = 15];
+    FacErrorCode result = 100;
+}
+
+
+message PresurceSensorItem
+{
+    uint32 adc = 1;
+    uint32 value = 2;
+}
+
+message PresurceSensorData
+{
+    uint32 timestamp = 1;
+    uint32 temperature = 2;
+    PresurceSensorItem brush_head = 3;
+    PresurceSensorItem mode_button = 4;
+    PresurceSensorItem power_button = 5;
+}
+
+message FacUploadPresSensor
+{
+    repeated PresurceSensorData sensor_data = 2 [(nanopb).max_count = 15];
+    FacErrorCode result = 100;
+}
+
+message FacPreSensorCalibResult
+{
+    uint32 brush_head_adc = 1;    //uint16
+    uint32 mode_button_adc = 2;   //uint16
+    uint32 power_button_adc = 3;
+    uint32 temperature = 4;
+
+    FacErrorCode result = 100;
+}
+
+message AccCaliData
+{
+    float kx = 1;
+    float ky = 2;
+    float kz = 3;
+    float syx = 4;
+    float szx = 5;
+    float szy = 6;
+    float bx = 7;
+    float by = 8;
+    float bz = 9;
+}
+
+
+message FacImuCalibResult
+{
+    uint32 gyro_x = 1;
+    uint32 gyro_y = 2;
+    uint32 gyro_z = 3;
+    uint32 acc_x = 4;
+    uint32 acc_y = 5;
+    uint32 acc_z = 6;   
+    AccCaliData  new_cali=7;
+
+    FacErrorCode result = 100;
+}
+
+message FacSetTime
+{
+    uint32 timestamp = 1;
+    uint32 timezone = 2;
+}
+
+message FacSetBrushRecord
+{
+    uint32 timestamp = 1;
+    uint32 plaque = 2;	//菌斑
+    bytes work_time = 3 [(nanopb).max_size= 24];
+    bytes pressure_time = 4 [(nanopb).max_size= 12];
+    bytes horizon_brush = 5 [(nanopb).max_size= 12];
+}
+
+message FacOtaFileInfo 
+{
+    uint32 file_size = 1;
+    uint32 version_code = 2;    //版本号
+    uint32 version_type = 3;    //文件类型  201固件  202资源  303音频 304主题 305音乐文件
+    string url = 4 [(nanopb).max_size= 256];
+    string md5 = 5 [(nanopb).max_size= 64];
+}
+
+message FacInternetOta
+{
+    repeated FacOtaFileInfo file_info = 1 [(nanopb).max_count = 2];    
+    FacErrorCode result = 100;
+}
