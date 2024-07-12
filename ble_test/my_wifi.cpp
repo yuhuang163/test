@@ -1,4 +1,4 @@
-#include "my_wifi.h"
+#include "config.h"
 
 boolean send_img_flag = false;
 boolean send_video_flag = false;
@@ -27,11 +27,8 @@ void wifi_init()
     String ssid = "WIFI_TEST_" + String(macStr);
     const char *password = "usmile123";
     Serial.println("wifi名字为" + ssid);
-   
-      
-Serial.print("AT+WIFINAME=");
-Serial.println(ssid);
-
+    Serial.print("AT+WIFINAME=");
+    Serial.println(ssid);
     if (!WiFi.softAP(ssid, password, 1, 0, 10))
     {
         Serial.println("ap设置失败");
@@ -39,25 +36,21 @@ Serial.println(ssid);
             ;
     }
 
-#if log == 1
-    IPAddress myIP = WiFi.softAPIP();
-    Serial.print("AP IP address: ");
-    Serial.println(myIP);
-#endif
-    server.begin();
-#if log == 1
-    Serial.println("Server started");
-#endif
+    // IPAddress myIP = WiFi.softAPIP();
+    // Serial.print("AP IP address: ");
+    // Serial.println(myIP);
 
-    if (Udp.begin(MyPort))
-    {
-#if log == 1
-        Serial.println("UDP启动成功");
-        Serial.print(WiFi.softAPIP());
-        Serial.print(":");
-        Serial.println(MyPort);
-#endif
-    }
+    // server.begin();
+
+    // Serial.println("Server started");
+
+    // if (Udp.begin(MyPort))
+    // {
+    //     Serial.println("UDP启动成功");
+    //     Serial.print(WiFi.softAPIP());
+    //     Serial.print(":");
+    //     Serial.println(MyPort);
+    // }
     // getImage();
 }
 void construct_and_send_packet_with_CRC16(uint8_t *pData, size_t length)
@@ -116,9 +109,8 @@ void cmd_len()
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
         Udp.print("getCam");
         Udp.endPacket();
-#if log == 1
+
         Serial.println("fail to receive length!");
-#endif
 
         receive_data(3, cmd_len, getImage);
         return;
@@ -147,9 +139,8 @@ void cmd_data()
         Udp.print("getCam ");
         Udp.print(image_get_n);
         Udp.endPacket();
-#if log == 1
+
         Serial.println("fail to receive image!");
-#endif
 
         receive_data(2 + minimum(image_len - image_get_n * maxData, maxData), cmd_data, getImage);
         return;
@@ -174,13 +165,12 @@ void cmd_data()
             construct_and_send_packet_with_CRC16(imagedata, sizeof(imagedata));
         }
 
-#if log == 1
         Serial.print("读取完成 耗时");
         Serial.print(millis() - image_get_time);
         Serial.print("ms ( ");
         Serial.print((float)1000 / (float)(millis() - image_get_time));
         Serial.println(" fps)");
-#endif
+
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
         Udp.print("finished");
         Udp.endPacket();
