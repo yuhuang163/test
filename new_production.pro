@@ -80,6 +80,7 @@ SOURCES += \
     lib/quicklz/quicklz.cpp \
     lib/quicklz/quicklz_dec.cpp \
     main.cpp \
+    mainlogic.cpp \
     mainwindow.cpp \
     qlog/qlog.cpp \
     work_station/box_base.cpp \

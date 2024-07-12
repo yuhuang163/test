@@ -235,7 +235,6 @@ private:
     void clear_display();
     void SendRadomDataPushButton();
     void waitWork(int ms);
-    void delay(int ms);
     void sendData(bool is_random);
     void SendRecord();
     bool isContinue = true;
