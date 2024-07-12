@@ -111,7 +111,7 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
     LowworkCurrent = settings.value("Current/LowworkCurrent").toDouble();
 
     HighmusicCurrent = settings.value("Current/HighmusicCurrent").toDouble();
-        LowmusicCurrent = settings.value("Current/LowmusicCurrent").toDouble();
+    LowmusicCurrent = settings.value("Current/LowmusicCurrent").toDouble();
 
     HighstaticCurrent = settings.value("Current/HighstaticCurrent").toDouble();
     LowstaticCurrent = settings.value("Current/LowstaticCurrent").toDouble();
@@ -150,17 +150,12 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
     showlog("HighworkCurrent=" + QString::number(HighworkCurrent));
     showlog("LowworkCurrent=" + QString::number(LowworkCurrent));
 
-
     showlog("HighmusicCurrent=" + QString::number(HighmusicCurrent));
     showlog("LowmusicCurrent=" + QString::number(LowmusicCurrent));
-
-
 
     showlog("HighstaticCurrent=" + QString::number(HighstaticCurrent));
     showlog("LowstaticCurrent=" + QString::number(LowstaticCurrent));
     showlog("RssiTestTime=" + QString::number(RssiTestTime));
-
-    
 
     if (pack.product == "P20P" || pack.product == "Q20")
     {
@@ -417,8 +412,6 @@ void PcbaForm::checkbutton(FacButtonState data)
 }
 PcbaForm::~PcbaForm()
 {
-
-
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "PcbaFormd的析构";
     delete ui;
@@ -499,11 +492,11 @@ void PcbaForm::refresh_base_data(FacGetDevBaseInfo data)
         QString pressureSenseVersion =
             settings.value("ProductInfo/Pressure_Sense_Version").toString();
         QString imuId = settings.value("ProductInfo/IMU_ID").toString();
-        QString ble_ver =settings.value("ProductInfo/Ble_Ver").toString();
+        QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
 
-
-        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&data.ble_version == ble_ver &&
-            data.presure_version == pressureSenseVersion && data.product_name == productName &&
+        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
+            data.ble_version == ble_ver && data.presure_version == pressureSenseVersion &&
+            data.product_name == productName &&
             QString("%1").arg(data.pb_phone_ver) == appProtocolVersion &&
             QString("%1").arg(data.pb_factory_ver) == factoryProtocolVersion &&
             data.soft_version == softwareVersion && data.res_version == resourceVersion &&
@@ -959,8 +952,7 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "音频电流:" << packetData.musicCurrent;
 
-        if (packetData.musicCurrent < HighmusicCurrent &&
-            packetData.musicCurrent > LowmusicCurrent)
+        if (packetData.musicCurrent < HighmusicCurrent && packetData.musicCurrent > LowmusicCurrent)
 
         {
             testItem = "音频电流";
@@ -978,7 +970,7 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
 #else
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "音频情况:" << packetData.music_state;
-                                   if (packetData.music_state == music_state)
+        if (packetData.music_state == music_state)
         {
             testItem = "音频测试";
             testData = QString::number(packetData.music_state);
@@ -993,10 +985,6 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
         }
 
 #endif
-
-
-
-
 
         if (packetData.overVoltageLight == overVoltageLight)
         {
@@ -1288,97 +1276,87 @@ void PcbaForm::start_task()
             if (canGoNext)
             {
                 showlog("成功关闭六轴数据");
-                pb->get_base_info();
+                sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+
                 state = STATE_WATI_GET_BASE_STATE;
             }
             break;
 
         case STATE_WATI_GET_BASE_STATE:
-            if (base_state == 1)   // 外设状态正常
+            if (canGoNext)
             {
-                showlog("基础信息验证通过");
-                waitWork(WAITTIME);
-                pb->get_periph_state();
+                if (base_state == 1)   // 外设状态正常
+                {
+                    showlog("基础信息验证通过");
+                    waitWork(WAITTIME);
+                    sendCommandWithRetry(std::bind(&Qpb::get_periph_state, pb));
 
-                showlog("2、设备外设测试");
-                state = STATE_WATI_GET_PERIPHERAL_STATE;
-            }
-            if (base_state == 2)
-            {
-                waitWork(WAITTIME);
-                showlog("基础信息验证失败");
-                pb->get_periph_state();
-                showlog("2、设备外设测试");
-                totalresult = failValue;
-                state = STATE_WATI_GET_PERIPHERAL_STATE;
-            }
-            if (base_state == 0)
-            {
-                waitWork(500);
-                pb->get_base_info();
+                    showlog("2、设备外设测试");
+                    state = STATE_WATI_GET_PERIPHERAL_STATE;
+                }
+                if (base_state == 2)
+                {
+                    waitWork(WAITTIME);
+                    showlog("基础信息验证失败");
+                    sendCommandWithRetry(std::bind(&Qpb::get_periph_state, pb));
+                    showlog("2、设备外设测试");
+                    totalresult = failValue;
+                    state = STATE_WATI_GET_PERIPHERAL_STATE;
+                }
             }
             break;
         case STATE_WATI_GET_PERIPHERAL_STATE:
-            if (periph_state == 1)   // 设备信息正常
+            if (canGoNext)
             {
-                showlog("外设状态正常");
-                // pb->get_button_state(1);
-                // showlog("8、按键测试");
-                // showlog("请按下按键");
-                state = STATE_WATI_CHARGE_CURRENT;
-            }
-            if (periph_state == 2)   // 设备信息异常
-            {
-                totalresult = failValue;
-                showlog("外设状态异常");
-                state = STATE_WATI_CHARGE_CURRENT;
-            }
-            if (periph_state == 0)
-            {
-                waitWork(500);
-                pb->get_periph_state();
+                if (periph_state == 1)   // 设备信息正常
+                {
+                    showlog("外设状态正常");
+                    // pb->get_button_state(1);
+                    // showlog("8、按键测试");
+                    // showlog("请按下按键");
+                    state = STATE_WATI_CHARGE_CURRENT;
+                }
+                if (periph_state == 2)   // 设备信息异常
+                {
+                    totalresult = failValue;
+                    showlog("外设状态异常");
+                    state = STATE_WATI_CHARGE_CURRENT;
+                }
             }
             break;
 
         case STATE_WATI_CHARGE_CURRENT:
 
-            if (1)   // 待确认
+            if (pack.product == "P20P" || pack.product == "U7P" || pack.product == "U7")
             {
-                if (pack.product == "P20P")
+                bool ok = false;
+                value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(
+                    &ok, 16);   // 将十六进制字符串转换为
+                if (ok)
                 {
-                    bool ok = false;
-                    value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(
-                        &ok, 16);   // 将十六进制字符串转换为
-                    if (ok)
-                    {
-                        qDebug()
-                            << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                            << "电机参数为"
-                            << value;   // 输出 38822029，即十六进制字符串 "003bdf6d" 对应的数值
-                    }
-                    else
-                    {
-                        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                                 << "Invalid input string";
-                    }
-
-                    pb->set_motor_cali_result_param(value);
-                    waitWork(300);
-                    pb->set_motor_cali_result_param(value);
-                    waitWork(300);
-                    pb->set_motor_cali_result_param(value);
-                    state = STATE_WATI_GET_CORRECT_MOTOR;
+                    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+                             << "电机参数为"
+                             << value;   // 输出 38822029，即十六进制字符串 "003bdf6d" 对应的数值
                 }
                 else
                 {
-                    showlog("3、wifi测试");
-                    connectwifi();
-                    wificonnectwaittime->setInterval(wifi_connect_waittime);
-                    wificonnectwaittime->start();
-                    wificonnectwaittimehalf->setInterval(wifi_connect_waittime / 2);
-                    wificonnectwaittimehalf->start();
-                    state = STATE_WATI_CONNECT_WIFI;
+                    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+                             << "Invalid input string";
                 }
+
+                sendCommandWithRetry(std::bind(&Qpb::set_motor_cali_result_param, pb, value));
+
+                state = STATE_WATI_GET_CORRECT_MOTOR;
+            }
+            else
+            {
+                showlog("3、wifi测试");
+                connectwifi();
+                wificonnectwaittime->setInterval(wifi_connect_waittime);
+                wificonnectwaittime->start();
+                wificonnectwaittimehalf->setInterval(wifi_connect_waittime / 2);
+                wificonnectwaittimehalf->start();
+                state = STATE_WATI_CONNECT_WIFI;
             }
 
             break;
@@ -1477,7 +1455,7 @@ void PcbaForm::start_task()
             break;
 
         case STATE_WATI_GET_CORRECT_MOTOR:
-            if (pb->get_is_motor_cali_data_set())
+            if (canGoNext)
             {
                 showlog("已收到电机校准参数");
                 showlog("5、蓝牙强度测试");
@@ -1488,12 +1466,7 @@ void PcbaForm::start_task()
                 blewaittime->start();
                 state = STATE_WATI_GET_CORRECT_BLERSSI;
             }
-            else
-            {
-                pb->set_motor_cali_result_param(value);
-                showlog("已重发电机校准参数");
-                waitWork(500);
-            }
+
             break;
         case STATE_WATI_GET_CORRECT_BLERSSI:
 
@@ -1546,7 +1519,6 @@ void PcbaForm::start_task()
                     ui->msgEdit->appendPlainText("重试测试蓝牙" + BLE_RSSI);
                     if (rssitestfailcount >= RssiTestTime)   // 蓝牙信号不可以
                     {
-
                         testItem = "蓝牙信号";
                         testData = BLE_RSSI;
                         pcba_test_data_update(testItem, testData, failValue);
@@ -1729,7 +1701,6 @@ void PcbaForm::start_task()
                 showlog("正在重发开始休眠");
                 at->sendMac("00:00:00:00:00:00");
                 waitWork(500);
-
             }
 
             break;
