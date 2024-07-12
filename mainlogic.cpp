@@ -1,59 +1,104 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-
-QString MainWindow::getMotorStateString(FacMotoState state) {
-    switch (state) {
-    case FacMotoState_UGT_E_SS_IDLE_A: return "空闲任务A";
-    case FacMotoState_UGT_E_SS_INIT_B: return "空闲任务B";
-    case FacMotoState_UGT_E_SS_STOP_C: return "停止任务C";
-    case FacMotoState_UGT_E_SS_START_D: return "开始任务D";
-    case FacMotoState_UGT_E_SS_PRECHARGE_E: return "预充任务E";
-    case FacMotoState_UGT_E_SS_TRACK_F: return "追踪任务F";
-    case FacMotoState_UGT_E_SS_IDENTIFY_G: return "识别任务G";
-    case FacMotoState_UGT_E_SS_ALIGNMENT_H: return "定位任务H";
-    case FacMotoState_UGT_E_SS_OPENLOOP_I: return "开环任务I";
-    case FacMotoState_UGT_E_SS_CLOSEDLOOP_J: return "闭环任务J";
-    case FacMotoState_UGT_E_SS_BRAKE_K: return "打断任务K";
-    case FacMotoState_UGT_E_SS_FAULT_L: return "故障任务L";
-    case FacMotoState_UGT_E_SS_WAIT_M: return "等待任务M";
-    case FacMotoState_UGT_E_SS_WRITE_FLASH: return "写入任务N";
-    default: return "未知状态";
+QString MainWindow::getMotorStateString(FacMotoState state)
+{
+    switch (state)
+    {
+    case FacMotoState_UGT_E_SS_IDLE_A:
+        return "空闲任务A";
+    case FacMotoState_UGT_E_SS_INIT_B:
+        return "空闲任务B";
+    case FacMotoState_UGT_E_SS_STOP_C:
+        return "停止任务C";
+    case FacMotoState_UGT_E_SS_START_D:
+        return "开始任务D";
+    case FacMotoState_UGT_E_SS_PRECHARGE_E:
+        return "预充任务E";
+    case FacMotoState_UGT_E_SS_TRACK_F:
+        return "追踪任务F";
+    case FacMotoState_UGT_E_SS_IDENTIFY_G:
+        return "识别任务G";
+    case FacMotoState_UGT_E_SS_ALIGNMENT_H:
+        return "定位任务H";
+    case FacMotoState_UGT_E_SS_OPENLOOP_I:
+        return "开环任务I";
+    case FacMotoState_UGT_E_SS_CLOSEDLOOP_J:
+        return "闭环任务J";
+    case FacMotoState_UGT_E_SS_BRAKE_K:
+        return "打断任务K";
+    case FacMotoState_UGT_E_SS_FAULT_L:
+        return "故障任务L";
+    case FacMotoState_UGT_E_SS_WAIT_M:
+        return "等待任务M";
+    case FacMotoState_UGT_E_SS_WRITE_FLASH:
+        return "写入任务N";
+    default:
+        return "未知状态";
     }
 }
 
-QString MainWindow::getMotorFaultCodeString(FacMotorFaultCode faultCode) {
-    switch (faultCode) {
-    case FacMotorFaultCode_NoFault: return "无异常";
-    case FacMotorFaultCode_OverVoltage: return "过压";
-    case FacMotorFaultCode_UnderVoltage: return "欠压";
-    case FacMotorFaultCode_OverCurrent: return "软件过流";
-    case FacMotorFaultCode_HardOverCurrent: return "硬件过流";
-    case FacMotorFaultCode_OverTempMotor: return "电机过温";
-    case FacMotorFaultCode_Abnormal_working_current: return "工作状态电流达到饱和";
-    case FacMotorFaultCode_OverTempIGBT: return "IPM过温";
-    case FacMotorFaultCode_StartupFail: return "启动失败";
-    case FacMotorFaultCode_StartupFailContious: return "连续启动失败";
-    case FacMotorFaultCode_OverLoad: return "软件过载，降额运行";
-    case FacMotorFaultCode_OverWindSpeed: return "超速";
-    case FacMotorFaultCode_LosePhase: return "丢相";
-    case FacMotorFaultCode_OverIAs: return "A相过流";
-    case FacMotorFaultCode_OverIBs: return "B相过流";
-    case FacMotorFaultCode_OverICs: return "C相过流";
-    case FacMotorFaultCode_OverIAsIBsICs: return "全相过流";
-    case FacMotorFaultCode_STOPMode: return "停止模式";
-    case FacMotorFaultCode_MotorStall: return "堵转";
-    default: return "未知错误码";
+QString MainWindow::getMotorFaultCodeString(FacMotorFaultCode faultCode)
+{
+    switch (faultCode)
+    {
+    case FacMotorFaultCode_NoFault:
+        return "无异常";
+    case FacMotorFaultCode_OverVoltage:
+        return "过压";
+    case FacMotorFaultCode_UnderVoltage:
+        return "欠压";
+    case FacMotorFaultCode_OverCurrent:
+        return "软件过流";
+    case FacMotorFaultCode_HardOverCurrent:
+        return "硬件过流";
+    case FacMotorFaultCode_OverTempMotor:
+        return "电机过温";
+    case FacMotorFaultCode_Abnormal_working_current:
+        return "工作状态电流达到饱和";
+    case FacMotorFaultCode_OverTempIGBT:
+        return "IPM过温";
+    case FacMotorFaultCode_StartupFail:
+        return "启动失败";
+    case FacMotorFaultCode_StartupFailContious:
+        return "连续启动失败";
+    case FacMotorFaultCode_OverLoad:
+        return "软件过载，降额运行";
+    case FacMotorFaultCode_OverWindSpeed:
+        return "超速";
+    case FacMotorFaultCode_LosePhase:
+        return "丢相";
+    case FacMotorFaultCode_OverIAs:
+        return "A相过流";
+    case FacMotorFaultCode_OverIBs:
+        return "B相过流";
+    case FacMotorFaultCode_OverICs:
+        return "C相过流";
+    case FacMotorFaultCode_OverIAsIBsICs:
+        return "全相过流";
+    case FacMotorFaultCode_STOPMode:
+        return "停止模式";
+    case FacMotorFaultCode_MotorStall:
+        return "堵转";
+    default:
+        return "未知错误码";
     }
 }
 
-QString MainWindow::getCaliMarkString(CaliMark caliMark)  {
-    switch (caliMark) {
-    case CaliMark_zer_hallzer_comple_flag: return "零点霍尔校准完成标志";
-    case CaliMark_us_zer_comple_flag: return "零点电压校准完成标志";
-    case CaliMark_hallzer_comple_flag: return "霍尔校准完成标志";
-    case CaliMark_zer_hallzer_incomple_flag: return "零点霍尔校准未完成标志";
-    default: return "未知校准标志";
+QString MainWindow::getCaliMarkString(CaliMark caliMark)
+{
+    switch (caliMark)
+    {
+    case CaliMark_zer_hallzer_comple_flag:
+        return "零点霍尔校准完成标志";
+    case CaliMark_us_zer_comple_flag:
+        return "零点电压校准完成标志";
+    case CaliMark_hallzer_comple_flag:
+        return "霍尔校准完成标志";
+    case CaliMark_zer_hallzer_incomple_flag:
+        return "零点霍尔校准未完成标志";
+    default:
+        return "未知校准标志";
     }
 }
 void MainWindow::get_servo_motor_info_msg(FacMotorCalibResult data)
@@ -64,14 +109,24 @@ void MainWindow::get_servo_motor_info_msg(FacMotorCalibResult data)
     // ui->msgEdit->appendPlainText("伺服电机电压为"+QString::number(data.value_item.servo_info.motor_voltage));
     // ui->msgEdit->appendPlainText("伺服电机错误码为"+QString::number(data.value_item.servo_info.FaultCode));
 
-    ui->msgEdit->appendPlainText("伺服电机校准标志：" + getCaliMarkString(static_cast<CaliMark>(data.value_item.servo_info.motor_cali_mark)));
-    ui->msgEdit->appendPlainText("伺服电机电流：" + QString::number(data.value_item.servo_info.motor_current));
-    ui->msgEdit->appendPlainText("伺服电机工作状态：" + getMotorStateString(static_cast<FacMotoState>(data.value_item.servo_info.motor_state)));
-    ui->msgEdit->appendPlainText("伺服电机电压：" + QString::number(data.value_item.servo_info.motor_voltage));
-    ui->msgEdit->appendPlainText("伺服电机错误码：" + getMotorFaultCodeString(static_cast<FacMotorFaultCode>(data.value_item.servo_info.FaultCode)));
+    ui->msgEdit->appendPlainText(
+        "伺服电机校准标志：" +
+        getCaliMarkString(static_cast<CaliMark>(data.value_item.servo_info.motor_cali_mark)));
+    ui->msgEdit->appendPlainText("伺服电机电流：" +
+                                 QString::number(data.value_item.servo_info.motor_current));
+    ui->msgEdit->appendPlainText(
+        "伺服电机工作状态：" +
+        getMotorStateString(static_cast<FacMotoState>(data.value_item.servo_info.motor_state)));
+    ui->msgEdit->appendPlainText("伺服电机电压：" +
+                                 QString::number(data.value_item.servo_info.motor_voltage));
+    ui->msgEdit->appendPlainText("伺服电机错误码：" +
+                                 getMotorFaultCodeString(static_cast<FacMotorFaultCode>(
+                                     data.value_item.servo_info.FaultCode)));
 }
-void MainWindow::updateHIDComboBox(QComboBox *comboBox) {
-    if (!comboBox) return;
+void MainWindow::updateHIDComboBox(QComboBox *comboBox)
+{
+    if (!comboBox)
+        return;
 
     int st = -1;
     HANDLE icdev = (HANDLE)-1;
@@ -79,7 +134,8 @@ void MainWindow::updateHIDComboBox(QComboBox *comboBox) {
 
     // 获取当前的项目列表
     QSet<QString> currentItems;
-    for (int i = 0; i < comboBox->count(); ++i) {
+    for (int i = 0; i < comboBox->count(); ++i)
+    {
         currentItems.insert(comboBox->itemText(i));
     }
 
@@ -91,23 +147,31 @@ void MainWindow::updateHIDComboBox(QComboBox *comboBox) {
 
     QTextStream stream(&output);
     QString line;
-    QStringList newDevices; // 存储新的设备列表
-    int k=100;
-    while (stream.readLineInto(&line)) {
-        if (line.contains("DeviceID")) continue; // 跳过标题行
+    QStringList newDevices;   // 存储新的设备列表
+    int k = 100;
+    while (stream.readLineInto(&line))
+    {
+        if (line.contains("DeviceID"))
+            continue;   // 跳过标题行
         QStringList parts = line.split(QRegExp("\\s{2,}"), Qt::SkipEmptyParts);
-        if (parts.size() >= 2) {
+        if (parts.size() >= 2)
+        {
             QString device = parts[1].trimmed();
-            if (device.contains("VID_0471")) {
+            if (device.contains("VID_0471"))
+            {
                 icdev = dc_init(k, 115200);
                 st = dc_srd_eeprom(icdev, 0, 8, buff_1);
-                if (st != 0) {
+                if (st != 0)
+                {
                     qDebug() << "nfc烧录器读取失败";
-                } else {
+                }
+                else
+                {
                     qDebug() << "nfc烧录器读取成功";
-                    QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
+                    QString buffStr =
+                        QString::fromLatin1(reinterpret_cast<const char *>(buff_1), 8);
                     qDebug() << "nfc设备为:" << buffStr;
-                            newDevices << QString("%1:%2").arg(k).arg(buffStr);
+                    newDevices << QString("%1:%2").arg(k).arg(buffStr);
                 }
                 ++k;
             }
@@ -115,22 +179,24 @@ void MainWindow::updateHIDComboBox(QComboBox *comboBox) {
     }
 
     // 移除不再存在的设备
-    for (int i = 0; i < comboBox->count(); ++i) {
+    for (int i = 0; i < comboBox->count(); ++i)
+    {
         QString currentItem = comboBox->itemText(i);
-        if (!newDevices.contains(currentItem)) {
+        if (!newDevices.contains(currentItem))
+        {
             comboBox->removeItem(i);
             currentItems.remove(currentItem);
-            --i; // 因为移除了一个项，所以要调整索引
+            --i;   // 因为移除了一个项，所以要调整索引
         }
     }
 
     // 添加新的设备
-    for (const QString &newDevice : newDevices) {
-        if (!currentItems.contains(newDevice)) {
-
+    for (const QString &newDevice : newDevices)
+    {
+        if (!currentItems.contains(newDevice))
+        {
             comboBox->addItem(newDevice);
             currentItems.insert(newDevice);
-
         }
     }
 
@@ -138,18 +204,17 @@ void MainWindow::updateHIDComboBox(QComboBox *comboBox) {
 }
 void MainWindow::processTheDatagram(QByteArray &datagram)
 {
-
-
-    if(ui->quicklz_picture->isChecked())
+    if (ui->quicklz_picture->isChecked())
     {
         // 调用解压缩函数
-        uint32_t decompressed_size = quicklz_decompress(reinterpret_cast<uint8_t *>(datagram.data()), datagram.size(), my_write_cb, my_read_cb);
+        uint32_t decompressed_size = quicklz_decompress(
+            reinterpret_cast<uint8_t *>(datagram.data()), datagram.size(), my_write_cb, my_read_cb);
 
         // 检查解压缩结果
         if (decompressed_size > 0)
         {
             qDebug() << "解压缩成功，解压后的数据大小为" << decompressed_size << "字节。";
-                        ui->msgEdit->appendPlainText("解压缩成功");
+            ui->msgEdit->appendPlainText("解压缩成功");
 
             // 读取解压后的数据并处理
             QFile file("output.dat");
@@ -164,17 +229,15 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
             else
             {
                 ui->msgEdit->appendPlainText("无法打开解压后的数据文件。");
-
             }
         }
         else
         {
             ui->msgEdit->appendPlainText("解压缩失败。");
-
         }
     }
 
-    //qDebug() << "Received datagram with length: " << datagram.size();
+    // qDebug() << "Received datagram with length: " << datagram.size();
 
     uint8_t *data = reinterpret_cast<uint8_t *>(datagram.data());
 
@@ -210,13 +273,11 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
 
     // 检查并打印图像数据大小
     qDebug() << "图像数据大小:" << imageBytes.size();
-        if (imageBytes.isEmpty())
+    if (imageBytes.isEmpty())
     {
         qWarning() << "图像数据为空。";
         return;
     }
-
-
 
     // 尝试将 QByteArray 转换为 QImage
     QImage image(reinterpret_cast<const uchar *>(imageBytes.data()), 180, 200,
@@ -226,7 +287,7 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
     {
         // 打印图像数据的前20字节
         qDebug() << "图像数据前20字节:" << imageBytes.left(20).toHex();
-                                                  qWarning() << "直接从字节数据转换图像失败，尝试使用 loadFromData。";
+        qWarning() << "直接从字节数据转换图像失败，尝试使用 loadFromData。";
 
         // 如果直接转换失败，尝试使用 loadFromData
         if (!image.loadFromData(imageBytes))
@@ -239,7 +300,6 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
             qDebug() << "从数据加载图像成功。";
         }
     }
-
 
     qDebug() << "图像加载成功";
     // 继续处理加载成功的图像，例如显示在界面上
@@ -279,14 +339,12 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
     // int Rect2_Width = settings.value("CAMERA/Rect2_Width", 52).toInt();
     // int Rect2_Height = settings.value("CAMERA/Rect2_Height", 34).toInt();
 
-    QPen pen(Qt::red);     // 创建一个红色的画笔
-    painter.setPen(pen);   // 设置画笔颜色
-    painter.drawImage(0, 0, image);   // 在 pixmap 上绘制图片
+    QPen pen(Qt::red);                                               // 创建一个红色的画笔
+    painter.setPen(pen);                                             // 设置画笔颜色
+    painter.drawImage(0, 0, image);                                  // 在 pixmap 上绘制图片
     painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);   // 绘制第一个矩形
     // painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);   // 绘制第二个矩形
     viewercamrea->updateImage();   // 更新视图
-
-
 }
 void MainWindow::write_camera_data(uint8_t *p_data, int data_len)
 {
@@ -303,7 +361,7 @@ void MainWindow::write_camera_data(uint8_t *p_data, int data_len)
 
         int write_len =
             cameraRingBuf->usmile_ring_buffer_write(&p_cameraRingBuffer, p_data, data_len);
-        qDebug() << "写入摄像头数据包长度"<<write_len;
+        qDebug() << "写入摄像头数据包长度" << write_len;
     }
     else
     {
@@ -412,7 +470,7 @@ void MainWindow::solve_frame(void)
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
         if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC)
         {
-            //qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
+            // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
 
@@ -426,7 +484,7 @@ void MainWindow::solve_frame(void)
             {
                 qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
 
-                    break;
+                break;
             }
 
             // 从环形缓冲区中读取整个帧的数据
@@ -475,7 +533,7 @@ void MainWindow::solve_frame(void)
         QCoreApplication::processEvents();
     }
 }
-//int totalsize = 0;
+// int totalsize = 0;
 
 void MainWindow::readDongleSerialPortData()
 {
@@ -495,7 +553,6 @@ void MainWindow::readDongleSerialPortData()
         qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();
     }
 
-
     at->parseCmd(dataTemp);   // at回应用
     pb->parseCmd(dataTemp);
     getmacadress(dataTemp);   // 搜索设备用
@@ -507,11 +564,13 @@ void MainWindow::readDongleSerialPortData()
 void MainWindow::refresh_dongle_uart_state(int state)
 {
     if (state)
-    {  ui->msgEdit->appendPlainText("dongle串口连接成功");
+    {
+        ui->msgEdit->appendPlainText("dongle串口连接成功");
         uartStatusLabel = new QLabel("串口连接：<font color='green'>成功</font>");
     }
     else
-    {    uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
+    {
+        uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
         ui->msgEdit->appendPlainText("dongle串口连接断开");
@@ -676,15 +735,14 @@ void MainWindow::solve_picture_frame(void)
         ext_picture_layer_t *head = (ext_picture_layer_t *)frame_picture_buf;
         if (head->width == 0xb4 && head->height == 0xc8)
         {
-
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
 
-            qDebug() << "数据包："<<++dataNumber;
+            qDebug() << "数据包：" << ++dataNumber;
 
-                                          if (frame_size > ring_size)
+            if (frame_size > ring_size)
             {
                 qDebug() << "图片帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
-                    break;
+                break;
             }
 
             qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size
@@ -693,7 +751,6 @@ void MainWindow::solve_picture_frame(void)
             // 从环形缓冲区中读取整个帧的数据
             cameraRingBuf->usmile_ring_buffer_pick(&p_cameraRingBuffer, frame_picture_buf,
                                                    frame_size);
-
 
             crc16 = head->data_crc16;
             crc_cali = CRC16(head->data, head->data_size);
@@ -721,7 +778,6 @@ void MainWindow::solve_picture_frame(void)
 
             // 删除已经处理的帧数据
             dongleRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, frame_size);
-
         }
         else
         {
@@ -754,7 +810,7 @@ void MainWindow::convertImageTo16BitPaletteHigh(const QString &imagePath,
     if (image.isNull())
     {
         qDebug() << "无法加载图片：" << imagePath;
-            return;
+        return;
     }
 
     // 将图片转换为16位调色板格式
@@ -779,7 +835,7 @@ void MainWindow::convertImageTo16BitPaletteHigh(const QString &imagePath,
     if (!file.open(QIODevice::WriteOnly))
     {
         qDebug() << "无法打开输出文件：" << outputFilePath;
-            return;
+        return;
     }
 
     // 将图片宽度和高度以16位整数（大端字节序）写入文件
@@ -861,14 +917,14 @@ void MainWindow::renameFilesInFolder(const QString &folderPath)
         if (!QFile::rename(filePath, newFilePath))
         {
             qDebug() << "重命名文件" << filePath << "失败";
-                    convertImageTo16BitPaletteHigh(newFilePath, newFileName);
+            convertImageTo16BitPaletteHigh(newFilePath, newFileName);
             continue;
         }
 
         qDebug() << "文件" << filePath << "重命名为" << newFilePath;
 
-            // 运行convertImageTo16BitPaletteHigh函数
-            convertImageTo16BitPaletteHigh(newFilePath, newFileName);
+        // 运行convertImageTo16BitPaletteHigh函数
+        convertImageTo16BitPaletteHigh(newFilePath, newFileName);
     }
 }
 
@@ -1178,34 +1234,26 @@ void MainWindow::save_battary_data_to_csv(double vol, QString charge_state, QStr
 
 void MainWindow::refresh_sn(FacDevInfo data)
 {
-
-
-
     if (data.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag)
     {
-    qDebug() << "原始的board_sn：" << data.dev_info[0].value_item.board_sn;
-    QString board_sn_string = QString::fromUtf8(data.dev_info[0].value_item.board_sn);
-   board_sn->setText("板子sn:"+board_sn_string);
-
-
+        qDebug() << "原始的board_sn：" << data.dev_info[0].value_item.board_sn;
+        QString board_sn_string = QString::fromUtf8(data.dev_info[0].value_item.board_sn);
+        board_sn->setText("板子sn:" + board_sn_string);
     }
 
-        if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag)
-        {    qDebug() << "原始的sub_pid：" << data.dev_info[0].value_item.sub_pid;
-                                             QString sub_pid_string = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
+    if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag)
+    {
+        qDebug() << "原始的sub_pid：" << data.dev_info[0].value_item.sub_pid;
+        QString sub_pid_string = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
         sub_pid->setText("sub_pid:" + sub_pid_string);
+    }
 
-      }
-
-        if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag)
-        {    qDebug() << "原始的tail_sn：" << data.dev_info[0].value_item.tail_sn;
-                                             QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-          tail_sn->setText("尾盖sn:" + tail_sn_string);
-
-        }
-
-
-
+    if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag)
+    {
+        qDebug() << "原始的tail_sn：" << data.dev_info[0].value_item.tail_sn;
+        QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+        tail_sn->setText("尾盖sn:" + tail_sn_string);
+    }
 }
 void MainWindow::refresh_ble_rssi(QString data)
 {
@@ -1395,8 +1443,6 @@ void MainWindow::get_mac(QString sn_to_search)
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
 
-
-
     if (settings.value("Mes/FACTORY").toString() == "hq")
         fileName = "mac_sn.txt";
     else if (settings.value("Mes/FACTORY").toString() == "lx")
@@ -1405,7 +1451,6 @@ void MainWindow::get_mac(QString sn_to_search)
         fileName = "mac_sn.txt";
     else
     {
-
         QString path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
         QFileInfo fileInfo(path);
         // 创建一个文件对象
@@ -1418,13 +1463,10 @@ void MainWindow::get_mac(QString sn_to_search)
         else
         {
             fileName = "mac_sn.txt";
-            //file.setFileName("mac_sn.txt");
+            // file.setFileName("mac_sn.txt");
             ui->msgEdit->appendPlainText("云端文件不存在，正在打开本地文件...");
         }
-
     }
-
-
 
     // 在需要的地方使用这个变量创建 QFile 对象
     QFile file(fileName);
@@ -1490,7 +1532,7 @@ void MainWindow::band_sn_mac_to_csv(const QString &macAddress, const QString &sn
         {
             QStringList headers;
             headers << "时间" << "mac地址" << "sn码";
-                stream << headers.join(",") << "\n";
+            stream << headers.join(",") << "\n";
         }
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
         // 写入数据
@@ -2090,17 +2132,14 @@ void MainWindow::SendRadomDataPushButton()
     ui->horizalBrushTime->setText(horizantol_time);
     ui->spinBox->setValue(QRandomGenerator::global()->bounded(0, 100));
 }
-QString MainWindow::getValueBySN(const QString &sn ) {
-
+QString MainWindow::getValueBySN(const QString &sn)
+{
     QString truncatedSN = sn.left(8);
-    ui->msgEdit->appendPlainText("truncatedSN:"+truncatedSN);
+    ui->msgEdit->appendPlainText("truncatedSN:" + truncatedSN);
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    QString value =  settings.value("SUBPID/"+truncatedSN, "SUBPID_ERRO").toString();
-    ui->msgEdit->appendPlainText("匹配到的subpid："+value);
-
-
-
+    QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+    ui->msgEdit->appendPlainText("匹配到的subpid：" + value);
 
     return value;
 }
@@ -2155,15 +2194,15 @@ void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult)
         QStringList headers;
         headers << "sn" << "上位机版本" << "mac地址" << "时间戳" << "测试项" << "测试结果";
 
-            // 获取当前时间戳
-            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        // 获取当前时间戳
+        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 
         stream << headers.join(",") << "\n";
 
         // 写入数据
         QStringList rowData;
         rowData << SN << Mac << timestamp << "电机测试" << csvresult;
-                stream << rowData.join(",") << "\n";
+        stream << rowData.join(",") << "\n";
         rowData.clear();   // 清空rowData，以便添加新的数据
         file.close();
         qDebug() << "Data appended to" << filePath;
@@ -2250,7 +2289,12 @@ void MainWindow::saveCustom()
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     settings.setValue("Window/Size", this->size());
 
+    QString baseKey = QString("mechine/%1").arg(0);
+    // 保存COM口相关信息
+    settings.setValue(QString("%1/%2").arg(baseKey).arg("comName"),
+                      ui->comNameCombo->currentText());
 
+    qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }
 
 void MainWindow::recoverCustom()
@@ -2262,6 +2306,10 @@ void MainWindow::recoverCustom()
     restoreState(settings.value("Window/windowState").toByteArray());
     ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
     ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    QString baseKey = QString("mechine/%1").arg(0);
+    QString comName = settings.value(QString("%1/comName").arg(baseKey)).toString();
+    ui->comNameCombo->setCurrentText(comName);
+    qDebug() << "配置内容" << comName;
 }
 
 void MainWindow::initBasicInfo()
@@ -2295,29 +2343,27 @@ void MainWindow::initBasicInfo()
     QString motor_ver = "=" + settings.value("ProductInfo/Motor_Ver").toString();
     QString ble_ver = "=" + settings.value("ProductInfo/Ble_Ver").toString();
 
-
-
     imu_wait_time = settings.value("IMU/IMU_Wait_Time", "15000").toInt();
 
     music_time = settings.value("music/music_Time", "music_time").toInt();
 
     QList<namePair> basicItems = {{"product_name", "产品名称", productName},
-                                    {"pb_phone_ver", "app协议版本号", appProtocolVersion},
-                                     {"camera_id", "摄像头版本号", camera_id},
-                                      {"pb_factory_ver", "工厂协议版本号", factoryProtocolVersion},
-                                       {"hw_version", "硬件版本号", hardwareVersion},
-                                        {"soft_version", "软件版本号", softwareVersion},
-                                         {"res_version", "资源版本号", resourceVersion},
-                                          {"algo_version", "算法版本号", algorithmVersion},
-                                           {"presure_version", "压感版本号", pressureSenseVersion},
-                                            {"ble_mac", "蓝牙的MAC", ""},
-                                             {"wifi_mac", "WIFI的MAC", ""},
-                                              {"imu_id", "IMU版本号", imuId},
-                                               {"age_state", "老化状态", age_state},
-                                                {"motor_ver", "电机版本号", motor_ver},
-                                                 {"ble_ver", "蓝牙版本号", ble_ver}
+                                  {"pb_phone_ver", "app协议版本号", appProtocolVersion},
+                                  {"camera_id", "摄像头版本号", camera_id},
+                                  {"pb_factory_ver", "工厂协议版本号", factoryProtocolVersion},
+                                  {"hw_version", "硬件版本号", hardwareVersion},
+                                  {"soft_version", "软件版本号", softwareVersion},
+                                  {"res_version", "资源版本号", resourceVersion},
+                                  {"algo_version", "算法版本号", algorithmVersion},
+                                  {"presure_version", "压感版本号", pressureSenseVersion},
+                                  {"ble_mac", "蓝牙的MAC", ""},
+                                  {"wifi_mac", "WIFI的MAC", ""},
+                                  {"imu_id", "IMU版本号", imuId},
+                                  {"age_state", "老化状态", age_state},
+                                  {"motor_ver", "电机版本号", motor_ver},
+                                  {"ble_ver", "蓝牙版本号", ble_ver}
 
-                                                 };
+    };
 
     for (auto name : basicItems)
     {
@@ -2367,7 +2413,7 @@ void MainWindow::initBasicInfo()
             }
 
             qDebug() << "mac结果" << mac;
-                basicInfoModel->getTestItemByName("ble_mac")->setData(mac, Qt::DisplayRole);
+            basicInfoModel->getTestItemByName("ble_mac")->setData(mac, Qt::DisplayRole);
             mac.clear();
 
             for (int var = 0; var < baseInfo.wifi_mac.size; ++var)
@@ -2380,15 +2426,15 @@ void MainWindow::initBasicInfo()
             }
 
             qDebug() << "wifimac结果" << mac;
-                basicInfoModel->getTestItemByName("wifi_mac")->setData(mac, Qt::DisplayRole);
+            basicInfoModel->getTestItemByName("wifi_mac")->setData(mac, Qt::DisplayRole);
             basicInfoModel->getTestItemByName("imu_id")->setData(QString("%1").arg(baseInfo.imu_id),
                                                                  Qt::DisplayRole);
             basicInfoModel->getTestItemByName("age_state")
                 ->setData(QString("%1").arg(baseInfo.ageing_state), Qt::DisplayRole);
             basicInfoModel->getTestItemByName("motor_ver")
                 ->setData(QString("%1").arg(baseInfo.motor_version), Qt::DisplayRole);
-            basicInfoModel->getTestItemByName("ble_ver")
-                ->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
+            basicInfoModel->getTestItemByName("ble_ver")->setData(
+                QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
 
             writeDataToCSVFile();
         });
@@ -2412,10 +2458,10 @@ void MainWindow::initPeriphState()
 
     QList<namePair> items = {
         {"imu_state", "imu状态", imuStatus},
-         {"flash_state", "flash状态", flashStatus},
-          {"magnet_state", "地磁状态", magneticStatus},
-           {"press_state", "压感状态", pressureStatus},
-           };
+        {"flash_state", "flash状态", flashStatus},
+        {"magnet_state", "地磁状态", magneticStatus},
+        {"press_state", "压感状态", pressureStatus},
+    };
 
     for (auto name : items)
     {

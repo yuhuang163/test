@@ -18,9 +18,9 @@ void MainWindow::on_pushButton_clicked()
 {
     ui->macInput->setText("B4:56:5D:BF:53:66");
     ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
-    ui->macInput->setText("b4:56:5d:bf:54:4e");     //wd牙刷
-   // ui->macInput->setText("f8:8f:c8:57:72:df");
-     ui->macInput->setText("b4:56:5d:bf:57:9d");
+    ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
+    // ui->macInput->setText("f8:8f:c8:57:72:df");
+    ui->macInput->setText("b4:56:5d:bf:57:9d");
     ui->macInput->setText("3C:84:27:07:A8:D2");
 
     on_macInput_returnPressed();
@@ -28,8 +28,6 @@ void MainWindow::on_pushButton_clicked()
 }
 void MainWindow::on_pushButton_3_clicked()
 {
-
-
     solve_frame();
     // pb->get_battery();
     // pb->get_battery();
@@ -91,7 +89,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     update_main_style("Ubuntu.qss");
-    recoverCustom();
     ui->wifi_test_result->setText("WIFI:WAIT");
     ui->wifi_test_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -120,7 +117,6 @@ MainWindow::MainWindow(QWidget *parent)
     tail_sn = new QLabel("尾盖sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
 
-
     ota_source_set(1);   // 一开机锁住
     ota_fw_set(1);       // 一开机锁住
     ui->statusbar->addPermanentWidget(board_sn);
@@ -138,7 +134,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refresh_pb_data(QString)));
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this,
             SLOT(getPressSensorData(FacUploadPresSensor)));
-    connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
+    connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this,
+            SLOT(getimuData(FacUploadNineAlex)));
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refresh_battary_data(FacDevInfo)));
     connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(update_wifi(FacDevInfo)));
     connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
@@ -155,10 +152,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this,
             SLOT(update_IMU_CALIB_result(FacImuCalibResult)));
 
-
     connect(pb, SIGNAL(send_servo_motor_info_msg(FacMotorCalibResult)), this,
             SLOT(get_servo_motor_info_msg(FacMotorCalibResult)));
-
 
     connect(this, SIGNAL(refreshDongleSerialPortState(int)), this,
             SLOT(refresh_dongle_uart_state(int)));
@@ -166,8 +161,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->is_ota_2, SIGNAL(stateChanged(int)), this, SLOT(ota_fw_set(int)));
     connect(ui->show_rssi, SIGNAL(stateChanged(int)), at, SLOT(sendBLELOG(int)));
     connect(ui->show_bursh_log, SIGNAL(stateChanged(int)), pb, SLOT(set_uart_receive(int)));
-    connect(ui->press_sensor_temp__switch, SIGNAL(stateChanged(int)), pb, SLOT(set_press_sensor_temp(int)));
-
+    connect(ui->press_sensor_temp__switch, SIGNAL(stateChanged(int)), pb,
+            SLOT(set_press_sensor_temp(int)));
 
     connect(this, &MainWindow::imageProcessed, this, &MainWindow::updateImageOnMainThread);
 
@@ -189,13 +184,10 @@ MainWindow::MainWindow(QWidget *parent)
                 dongleSerialPortBuf.append(dongleSerialPort->readAll());   // 将读到的数据放入缓冲区
             });
 
-
     // 连接信号和槽
-   // QObject::connect(cameratimer, &QTimer::timeout, this, &MainWindow::solve_frame);
+    // QObject::connect(cameratimer, &QTimer::timeout, this, &MainWindow::solve_frame);
     // 启动定时器
-   // cameratimer->start(1000);
-
-
+    // cameratimer->start(1000);
 
     QFont font("Arial", 10);
     ui->gyro_x->setFont(font);
@@ -206,11 +198,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->acc_z->setFont(font);
     ui->get_mac->setFocus();
 
-    //U7
+    // U7
     ui->nfc_combo->addItem("U7P");
-    //U7P
+    // U7P
     ui->nfc_combo->addItem("U7");
-
 
     ui->music_combo->addItem("/data/audio/scan_f.bin");
     ui->music_combo->addItem("/data/audio/white.bin");
@@ -263,8 +254,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->active_picture->installEventFilter(this);
     ui->active_picture->setAcceptDrops(true);
 
-
-
     if (settings.value("Mes/FACTORY").toString() == "hq")
         ui->statusbar->addPermanentWidget(new QLabel("华勤"));
     else if (settings.value("Mes/FACTORY").toString() == "lx")
@@ -282,7 +271,6 @@ MainWindow::MainWindow(QWidget *parent)
         new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
 
-
     // //  在需要的地方调用 QtConcurrent::run 来异步执行函数
     // QFuture<void> future = QtConcurrent::run([this]() {
 
@@ -294,32 +282,31 @@ MainWindow::MainWindow(QWidget *parent)
     //     }
 
     // });
+    recoverCustom();
 
     // 启动后台线程
-    future = QtConcurrent::run([this]() {
-        while (running.load()) {
-            solve_frame();
-            QThread::msleep(10); // 等待10毫秒
-        }
-    });
+    future = QtConcurrent::run(
+        [this]()
+        {
+            while (running.load())
+            {
+                solve_frame();
+                QThread::msleep(10);   // 等待10毫秒
+            }
+        });
     running.store(true);
-
 }
-
-
 
 void MainWindow::on_add_data_clicked()
 {
     int ring_size = cameraRingBuf->usmile_ring_buffer_items_count_get(&p_cameraRingBuffer);
-    if (36040 > ring_size) {
-        std::vector<uint8_t> p_data(36040 - ring_size, 0); // 动态分配大小并初始化为0
-        write_camera_data(p_data.data(), p_data.size()); // 使用向量的数据和大小
+    if (36040 > ring_size)
+    {
+        std::vector<uint8_t> p_data(36040 - ring_size, 0);   // 动态分配大小并初始化为0
+        write_camera_data(p_data.data(), p_data.size());     // 使用向量的数据和大小
         solve_picture_frame();
     }
 }
-
-
-
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
@@ -372,7 +359,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-
 void MainWindow::on_clear_picture_clicked()
 {
     // 创建网络访问管理器
@@ -408,8 +394,6 @@ void MainWindow::on_clear_picture_clicked()
             });
 }
 
-
-
 MainWindow::~MainWindow()
 {
     is_motor_continue = false;
@@ -419,13 +403,9 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-
-
-
-
 void MainWindow::closeEvent(QCloseEvent *)
 {
-     running.store(false);
+    running.store(false);
     // 等待线程结束
     future.waitForFinished();
     saveCustom();
@@ -502,7 +482,6 @@ void MainWindow::closeDongleSerialPort()
     emit refreshDongleSerialPortState(0);
 }
 
-
 void MainWindow::on_clear_scan_clicked()
 {
     ui->mac_combo->clear();
@@ -550,7 +529,6 @@ void MainWindow::on_snbanding_returnPressed()
     ui->snbanding->clear();
 }
 
-
 void MainWindow::on_get_mac_returnPressed()
 {
     get_mac(ui->get_mac->text());   // 文件获取
@@ -590,7 +568,6 @@ void MainWindow::on_connectButton_clicked()
     openDongleSerialPort();
 }
 
-
 void MainWindow::on_getBasicInfoButton_clicked()
 {
     basicInfoModel->resetAllTestResult();
@@ -609,8 +586,6 @@ void MainWindow::on_stopimuCaliButton_clicked()
     ui->imuCaliButton->setEnabled(true);
 }
 
-
-
 void MainWindow::on_enterShipModeButton_clicked()
 {
     if (1)   //(at->getConnected())
@@ -623,8 +598,6 @@ void MainWindow::on_enterShipModeButton_clicked()
         ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
     }
 }
-
-
 
 void MainWindow::on_macInput_returnPressed()
 {
@@ -692,9 +665,9 @@ void MainWindow::on_snInput_returnPressed()
     }
 
     stringsn = ui->snInput->text();
-    subpid=getValueBySN(ui->snInput->text()).toUtf8();
-    if("SUBPID_ERRO"==subpid){
-
+    subpid = getValueBySN(ui->snInput->text()).toUtf8();
+    if ("SUBPID_ERRO" == subpid)
+    {
         QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
         return;
     }
@@ -703,7 +676,7 @@ void MainWindow::on_snInput_returnPressed()
     if (at->getConnected())
     {
         pb->set_sn(FacDevInfoType_SUB_PID, subpid);
-         ui->msgEdit->appendPlainText("已绑定subpid到牙刷");
+        ui->msgEdit->appendPlainText("已绑定subpid到牙刷");
 
         pb->set_sn(FacDevInfoType_TAIL_SN, sn);
         ui->msgEdit->appendPlainText("已绑定sn到牙刷");
@@ -716,10 +689,8 @@ void MainWindow::on_snInput_returnPressed()
         ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
     }
 
-
     if (ui->checkbanding->checkState())
     {
-
     }
     else
     {
@@ -729,8 +700,6 @@ void MainWindow::on_snInput_returnPressed()
         on_getperipheralButton_clicked();
     }
 }
-
-
 
 void MainWindow::on_enterBurningMode_clicked()
 {
@@ -923,7 +892,6 @@ void MainWindow::on_fac_mode_clicked()
         ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
     }
 }
-
 
 void MainWindow::on_getwifi_clicked()
 {
@@ -1683,7 +1651,6 @@ void MainWindow::on_otaTestPushButton_clicked()
     ui->otaTestPushButton->setEnabled(true);
 }
 
-
 void MainWindow::on_configWifiPushButton_clicked() {}
 void MainWindow::on_end_motor_cali_clicked()
 {
@@ -2084,7 +2051,6 @@ void MainWindow::on_start_local_ota_clicked()
     }
 }
 
-
 void MainWindow::on_new_connectwifi_clicked()
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
@@ -2206,8 +2172,6 @@ void MainWindow::on_close_motor_cali_clicked()
 {
     pb->set_motor_cali_state(0);
 }
-
-
 
 void MainWindow::on_R1_valueChanged(int value)
 {
@@ -2450,8 +2414,6 @@ void MainWindow::on_calculate_returnPressed()
     file.close();
 }
 
-
-
 void MainWindow::on_distribution_network_clicked()
 {
     // 获取IP地址
@@ -2565,19 +2527,22 @@ void MainWindow::on_nfc_write_read_clicked()
         hexString += QString("%1").arg(text[i].toLatin1(), 2, 16, QChar('0'));
     }
 
-    QString  nfcdataHeadText;
-    if(QString(ui->nfc_combo->currentText()).compare("U7P") == 0 )
+    QString nfcdataHeadText;
+    if (QString(ui->nfc_combo->currentText()).compare("U7P") == 0)
     {
-        nfcdataHeadText = "033BD2023668772001004800324F3130"+getValueBySN(ui->nfc_sn->text()).toUtf8()+"810800272000141785911410";
+        nfcdataHeadText = "033BD2023668772001004800324F3130" +
+                          getValueBySN(ui->nfc_sn->text()).toUtf8() + "810800272000141785911410";
         ui->msgEdit->appendPlainText("当前nfc写入的是U7P!");
     }
-    if( QString(ui->nfc_combo->currentText()).compare("U7") == 0){
-        nfcdataHeadText = "033BD2023668772001004800324F3045"+getValueBySN(ui->nfc_sn->text()).toUtf8()+"810800272000141785911410";
+    if (QString(ui->nfc_combo->currentText()).compare("U7") == 0)
+    {
+        nfcdataHeadText = "033BD2023668772001004800324F3045" +
+                          getValueBySN(ui->nfc_sn->text()).toUtf8() + "810800272000141785911410";
         ui->msgEdit->appendPlainText("当前nfc写入的是U7!");
     }
 
-    QString dataText = nfcdataHeadText+ hexString +
-                       "170102910B0101010A06" + ui->nfc_mac->text().remove(":");
+    QString dataText =
+        nfcdataHeadText + hexString + "170102910B0101010A06" + ui->nfc_mac->text().remove(":");
 
     QByteArray dataBytes =
         QByteArray::fromHex(dataText.toLatin1());   // 将十六进制字符串转换为字节数组
@@ -2586,10 +2551,11 @@ void MainWindow::on_nfc_write_read_clicked()
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 
-    int nfcport=100;
+    int nfcport = 100;
     QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport= parts[0].toInt();
+    if (parts.size() == 2)
+    {
+        nfcport = parts[0].toInt();
     }
     icdev = dc_init(nfcport, 115200);
     if ((intptr_t)icdev <= 0)
@@ -2698,10 +2664,11 @@ void MainWindow::on_clear_nfc_data_clicked()
     unsigned char writedata[8] = {0x03, 0x00, 0xFE, 0x00};   // 写入数据缓冲区
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
-    int nfcport=100;
+    int nfcport = 100;
     QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport= parts[0].toInt();
+    if (parts.size() == 2)
+    {
+        nfcport = parts[0].toInt();
     }
     icdev = dc_init(nfcport, 115200);
     if ((intptr_t)icdev <= 0)
@@ -2793,8 +2760,8 @@ void MainWindow::on_close_support_camera_clicked()
 
 void MainWindow::on_open_camera_picture_clicked()
 {
-   // totalsize = 0;
-    dataNumber=0;
+    // totalsize = 0;
+    dataNumber = 0;
     pb->set_camera_picture_state(1);
     std::memset(dongle_ring_buffer, 0, sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
     std::memset(camera_ring_buf, 0, sizeof(camera_ring_buf));   // 将数组全部初始化为零
@@ -2805,9 +2772,6 @@ void MainWindow::on_close_camera_picture_clicked()
     pb->set_camera_picture_state(0);
 }
 
-
-
-
 void MainWindow::on_nfc_read_clicked()
 
 {
@@ -2817,14 +2781,15 @@ void MainWindow::on_nfc_read_clicked()
     unsigned char szSnr[100] = "\0";
     unsigned int SnrLen = 0;
     QString ReadNfcData = "";
-    int dataSize =62;
+    int dataSize = 62;
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 
-    int nfcport=100;
+    int nfcport = 100;
     QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport= parts[0].toInt();
+    if (parts.size() == 2)
+    {
+        nfcport = parts[0].toInt();
     }
     icdev = dc_init(nfcport, 115200);
     if ((intptr_t)icdev <= 0)
@@ -2874,7 +2839,7 @@ void MainWindow::on_nfc_read_clicked()
             hex_a(rdata, rdatahex, 16);
             std::string str1 = (char *)rdatahex;
             ReadNfcData = ReadNfcData + QString::fromStdString(str1);
-         //   ui->msgEdit->appendPlainText(QString::fromStdString(str1));
+            //   ui->msgEdit->appendPlainText(QString::fromStdString(str1));
         }
     }
     if (dataSize % 16)
@@ -2892,61 +2857,62 @@ void MainWindow::on_nfc_read_clicked()
             hex_a(rdata, rdatahex, dataSize % 16);
             std::string str1 = (char *)rdatahex;
             ReadNfcData = ReadNfcData + QString::fromStdString(str1);
-          //  ui->msgEdit->appendPlainText(QString::fromStdString(str1));
+            //  ui->msgEdit->appendPlainText(QString::fromStdString(str1));
         }
     }
     ui->msgEdit->appendPlainText("nfc信息读取结束");
-    ui->msgEdit->appendPlainText("nfc内容为："+ReadNfcData);
-
+    ui->msgEdit->appendPlainText("nfc内容为：" + ReadNfcData);
 }
-
 
 void MainWindow::on_nfcComFresh_clicked()
 {
     updateHIDComboBox(ui->NfcComboBox);
-
 }
 
 void MainWindow::on_nfc_encode_clicked()
 {
     int st = -1;
     HANDLE icdev = (HANDLE)-1;
-    int nfcport=100;
+    int nfcport = 100;
     QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport= parts[0].toInt();
+    if (parts.size() == 2)
+    {
+        nfcport = parts[0].toInt();
     }
     icdev = dc_init(nfcport, 115200);
     QString nfcName = ui->nfc_name->text();
 
     // 将QString转换为QByteArray，然后获取其const char *指针
-    QByteArray byteArray = nfcName.toLatin1(); // 使用Latin-1编码，确保兼容性
+    QByteArray byteArray = nfcName.toLatin1();   // 使用Latin-1编码，确保兼容性
     const char *data = byteArray.constData();
 
     // 创建一个用于存储数据的缓冲区，并确保长度足够
-    unsigned char buffer[8];  // 假设需要写入的数据长度为8字节
+    unsigned char buffer[8];   // 假设需要写入的数据长度为8字节
 
     // 将const char *的数据复制到unsigned char *的buffer中
     memcpy(buffer, data, byteArray.length());
 
     st = dc_swr_eeprom(icdev, 0, 8, buffer);
 
-    if (st != 0) {
+    if (st != 0)
+    {
         ui->msgEdit->appendPlainText("nfc烧录器写入名字失败");
-    } else {
+    }
+    else
+    {
         ui->msgEdit->appendPlainText("nfc烧录器写入名字成功");
     }
-
 }
 void MainWindow::on_nfc_decode_clicked()
 {
     int st = -1;
     HANDLE icdev = (HANDLE)-1;
     unsigned char buff_1[8];
-    int nfcport=100;
+    int nfcport = 100;
     QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport= parts[0].toInt();
+    if (parts.size() == 2)
+    {
+        nfcport = parts[0].toInt();
     }
     icdev = dc_init(nfcport, 115200);
     st = dc_srd_eeprom(icdev, 0, 8, buff_1);
@@ -2958,19 +2924,16 @@ void MainWindow::on_nfc_decode_clicked()
     {
         ui->msgEdit->appendPlainText("nfc烧录器读取成功");
         // 将 buff_1 数组转换为 QString
-        QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
+        QString buffStr = QString::fromLatin1(reinterpret_cast<const char *>(buff_1), 8);
         // 输出整个字符串
         qDebug() << "nfc设备为:" << buffStr;
     }
 }
 
-
 void MainWindow::on_get_device_subpid_clicked()
 {
     pb->get_sn(FacDevInfoType_SUB_PID);
 }
-
-
 
 void MainWindow::on_init_ui_data_clicked()
 {
@@ -2979,8 +2942,9 @@ void MainWindow::on_init_ui_data_clicked()
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() +
-                        "/clear_spiffs_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+    request.setUrl(
+        QUrl(ui->ui_ip->text() +
+             "/clear_spiffs_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
 
     // 发送 GET 请求
     QNetworkReply *reply = manager->get(request);
@@ -3007,9 +2971,6 @@ void MainWindow::on_init_ui_data_clicked()
             });
 }
 
-
-
-
 void MainWindow::on_get_battery_clicked()
 {
     if (at->getConnected())
@@ -3023,32 +2984,22 @@ void MainWindow::on_get_battery_clicked()
     }
 }
 
-
 void MainWindow::on_get_motor_info_clicked()
 {
-
-        pb->get_servo_motor_info();
-
+    pb->get_servo_motor_info();
 }
-
-
 
 void MainWindow::on_get_board_sn_clicked()
 {
     pb->get_sn(FacDevInfoType_BOARD_SN);
-
 }
-
 
 void MainWindow::on_write_device_sn_clicked()
 {
-
     QByteArray devicesn = ui->snInput->text().toUtf8();
     pb->set_sn(FacDevInfoType_TAIL_SN, devicesn);
     ui->msgEdit->appendPlainText("已绑定尾盖sn到牙刷");
-
 }
-
 
 void MainWindow::on_write_board_sn_clicked()
 {
@@ -3057,16 +3008,14 @@ void MainWindow::on_write_board_sn_clicked()
     ui->msgEdit->appendPlainText("已绑定板子sn到牙刷");
 }
 
-
 void MainWindow::on_write_device_subpid_clicked()
 {
     QByteArray subpid = getValueBySN(ui->snInput->text()).toUtf8();
-    if("SUBPID_ERRO"==subpid){
-
+    if ("SUBPID_ERRO" == subpid)
+    {
         QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
         return;
     }
     pb->set_sn(FacDevInfoType_SUB_PID, subpid);
     ui->msgEdit->appendPlainText("已绑定subpid到牙刷");
 }
-
