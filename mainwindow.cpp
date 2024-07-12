@@ -395,6 +395,83 @@ void MainWindow::on_clear_picture_clicked()
                 manager->deleteLater();
             });
 }
+void MainWindow::on_get_battery_level_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/battery_level"));  // 拼接 "/battery_level" 到 ESP32 的 IP 地址
+
+    // 发送 GET 请求
+    QNetworkReply *reply = manager->get(request);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    QString batteryLevel = reply->readAll();
+                    qDebug() << "Battery level request succeeded";
+                    ui->msgEdit->appendPlainText("电池电量: " + batteryLevel + "%");
+                }
+                else
+                {
+                    qDebug() << "Battery level request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("获取电池电量失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
+void MainWindow::on_send_wifi_config_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 获取用户输入的SSID和密码
+    QString ssid = ui->uissidInput->text();
+    QString password = ui->uipasswordInput->text();
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/wifi_config"));  // 拼接 "/wifi_config" 到 ESP32 的 IP 地址
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    // 创建数据
+    QByteArray data;
+    data.append("ssid=" + QUrl::toPercentEncoding(ssid) + "&");
+    data.append("password=" + QUrl::toPercentEncoding(password));
+
+    // 发送 POST 请求
+    QNetworkReply *reply = manager->post(request, data);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << "WiFi config request succeeded";
+                    ui->msgEdit->appendPlainText("WiFi 配置发送成功");
+                }
+                else
+                {
+                    qDebug() << "WiFi config request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("WiFi 配置发送失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
 
 MainWindow::~MainWindow()
 {

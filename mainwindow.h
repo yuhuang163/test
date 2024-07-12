@@ -439,5 +439,7 @@ private slots:
     void on_write_device_subpid_clicked();
     void scanSerialPorts();
 
+    void on_send_wifi_config_clicked();
+    void on_get_battery_level_clicked();
 };
 #endif   // MAINWINDOW_H
