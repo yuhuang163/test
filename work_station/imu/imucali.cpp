@@ -752,7 +752,7 @@ void imucali::getimuData(FacUploadNineAlex x)
             qimuc->imu_time = QString::number(x.data[i].timestamp);
 
             if (x.data[0].gyro_x & 0x8000)
-            {   // 判断最高位是否为 1，表示负数
+            {   // 判断最高位是否为 1，表示负数测试一下
                 imudata_result =
                     static_cast<int32_t>(x.data[0].gyro_x | 0xFFFF0000);   // 扩展为 32 位的负数
             }
