@@ -1780,7 +1780,14 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage &f)
         is_open_sleep = 1;
         emit sendGetBrushResponse(1);
     }
-     emit sendGetBrushResponse(1);
+    if (x.dev_state_type == DevStateType_SHIP)
+    {
+        qDebug() << "设置船运成功";
+        send_pb_date("设置船运成功");
+        emit sendGetBrushResponse(1);
+    }
+
+  //   emit sendGetBrushResponse(1);
 }
 
 void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage &f)
