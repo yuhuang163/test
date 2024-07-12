@@ -59,14 +59,26 @@ void Qlog::saveTestCsv(const QString &ver, const QString &sn, const QString &mac
 
 void Qlog::save_brush_log(QString macAddress, QString data)
 {
-    // 创建log目录
-    QDir logDir(".");
-    logDir.mkdir("log");
-    // macAddress ="3c:84:27:29:50:32";
+    QString folderName = "牙刷log";
+    QDir dir;
+
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+                return;
+        }
+    }
+    // 获取当前时间并格式化为字符串
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
+
+    // 生成文件路径
     QString fileNamemacAddress = macAddress;
-    // 打开log文件
-    QString fileName = "log/" + fileNamemacAddress.remove(":") + ".log";
-    QFile logFile(fileName);
+    QString fileName = fileNamemacAddress.remove(":") + ".log";
+     QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile logFile(filePath);
+
     // qDebug() << "macAddress:" << macAddress;
 
     if (logFile.open(QIODevice::Append | QIODevice::Text))

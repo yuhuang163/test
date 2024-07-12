@@ -13,7 +13,7 @@ QFreeWorkBox::QFreeWorkBox(QWidget *parent)
     ShowData(this);
     setWindowTitle("自由工站");
     ui->statusbar->addPermanentWidget(
-        new QLabel(SINGLE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+        new QLabel(FREE_VER + QString(__DATE__) + " " + QString(__TIME__)));
 }
 
 QFreeWorkBox::~QFreeWorkBox()

@@ -20,6 +20,10 @@ public:
     Ui::wifibletest *ui;
     void start_task() override;
 private:
+    QString nfcdataHeadText ="";
+
+    QString getValueBySN(const QString &sn ) ;
+
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";
@@ -101,6 +105,11 @@ private slots:
     {
         return ui->comNameCombo;
     };   // dongle口
+    QComboBox *getNfcComboBox() override
+    {
+        return ui->NfcComboBox;
+    };   // nfc的usb口
+
     QComboBox *getUsbcomNameCombo() override
     {
         return ui->usbcomNameCombo;
@@ -160,7 +169,6 @@ private slots:
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
     void refresh_ammeter_data(QString data)override;
-    void on_getbattary_clicked();
 
     // nfc部分
     void on_nfc_write_read_clicked();
@@ -178,6 +186,18 @@ private slots:
     void on_disconnectButton_clicked();
 
     void on_stopTest_clicked();
+
+    void on_nfc_read_clicked();
+
+    void on_nfc_decode_clicked();
+
+    void on_nfc_encode_clicked();
+
+    void on_nfcComFresh_clicked();
+
+
+
+    void on_get_battery_clicked();
 
 signals:
     void endTest(int data);

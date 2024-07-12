@@ -1,4 +1,4 @@
-QT       += core gui serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
+QT       += core gui concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
 
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -28,12 +28,13 @@ INCLUDEPATH += agreement/qjig
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
-
 INCLUDEPATH += my_set
 INCLUDEPATH += lib/form
 INCLUDEPATH += lib/imu
 INCLUDEPATH += lib/nfc
 INCLUDEPATH += lib/productlicense
+INCLUDEPATH += lib/quicklz
+
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
 INCLUDEPATH += work_station/imu
@@ -43,7 +44,6 @@ INCLUDEPATH += work_station/screen
 INCLUDEPATH += work_station/wifi_ble
 INCLUDEPATH += work_station/pcba
 INCLUDEPATH += work_station/freework
-
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 
@@ -77,6 +77,8 @@ SOURCES += \
     lib/imu/sensor_hub.cpp \
     lib/imu/us_eigen_nonsymmsquare.cpp \
     lib/productlicense/productlicense.cpp \
+    lib/quicklz/quicklz.cpp \
+    lib/quicklz/quicklz_dec.cpp \
     main.cpp \
     mainwindow.cpp \
     qlog/qlog.cpp \
@@ -87,6 +89,7 @@ SOURCES += \
     work_station/camera/cameratest.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreeworkbox.cpp \
+    work_station/freework/testFunction.cpp \
     work_station/imu/imubox.cpp \
     work_station/imu/imucali.cpp \
     work_station/motor/motor.cpp \
@@ -129,6 +132,8 @@ HEADERS += \
     lib/imu/us_eigen_nonsymmsquare.h \
     lib/nfc/dcrf32.h \
     lib/productlicense/productlicense.h \
+    lib/quicklz/quicklz.h \
+    lib/quicklz/quicklz_dec.h \
     mainwindow.h \
     my_set/AbIni.h \
     my_set/my_typedef.h \
@@ -184,12 +189,18 @@ CONFIG += embed_translations
 
 RC_ICONS = ./stytle/picture/usmile.ico
 
+TARGET = new_production
+# 将可执行文件放在项目目录的bin文件夹中
+DESTDIR = ./bin
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
- LIBS += -L$$PWD/lib/nfc/ -ldcrf32
+
+
+LIBS += -L$$PWD/lib/nfc/ -ldcrf32
 
 DISTFILES += \
     agreement/qpb/ble_protocol/fx_ble_msg.proto \

@@ -164,7 +164,7 @@ void motor::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -331,6 +331,27 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
     QString resourceVersions = settings.value("ProductInfo/Resource_Version").toString();
     QStringList resourceVersionList = resourceVersions.split('=');
 
+    // 读取电机版本字符串
+    QString motorVersions = settings.value("ProductInfo/Motor_Ver").toString();
+    QStringList motorVersionList = motorVersions.split('=');
+
+    // 读取蓝牙版本字符串
+    QString bleVersions = settings.value("ProductInfo/Ble_Ver").toString();
+    QStringList bleVersionList = bleVersions.split('=');
+
+
+    // 输出蓝牙状态列表
+    for (const QString &version : bleVersionList) {
+        qDebug() << "ble Version:" << version.trimmed();
+    }
+
+
+    // 输出电机版本列表
+    for (const QString &version : motorVersionList)
+    {
+        qDebug() << "motor Version:" << version.trimmed();
+    }
+
     // 输出软件版本列表
     for (const QString &version : softwareVersionList)
     {
@@ -346,12 +367,20 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
     ui->msgEdit->appendPlainText("设备名字为" + QString(data.product_name));
 
     if (softwareVersionList.contains(data.soft_version) &&
-        resourceVersionList.contains(data.res_version))
-    {
-        qDebug() << getIndex() << "软件版本正确" << data.soft_version;
-        qDebug() << getIndex() << "资源版本正确" << data.res_version;
+        resourceVersionList.contains(data.res_version)&&
+          bleVersionList.contains(data.ble_version) &&
+        motorVersionList.contains(data.motor_version))
 
+    {
+
+
+        showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
+        showlog("资源版本正确" + QString::fromUtf8(data.res_version));
+        showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
+        showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
         ui->msgEdit->appendPlainText("软件版本正确");
+
+
     }
     else
     {
@@ -361,11 +390,16 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
 
         ui->msgEdit->appendPlainText("版本错误");
         ui->msgEdit->appendPlainText("当前设备软件版本" + QString::fromUtf8(data.soft_version) +
-                                     "配置文件版本" + softwareVersions);
+                                     "配置文件软件版本" + softwareVersions);
         ui->msgEdit->appendPlainText("当前设备资源版本" + QString::fromUtf8(data.res_version) +
-                                     "配置文件版本" + resourceVersions);
-        // is_motor_continue = false;
-        // ui->msgEdit->appendPlainText("停止运行");
+                                     "配置文件资源版本" + resourceVersions);
+        ui->msgEdit->appendPlainText("当前设备电机版本" + QString::fromUtf8(data.motor_version) +
+                                     "配置文件电机版本" + motorVersions);
+        showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" +
+                                                         bleVersions);
+
+        is_motor_continue = false;
+        ui->msgEdit->appendPlainText("停止运行");
 
         ui->macInput->clear();
 
@@ -397,12 +431,14 @@ void motor::start_task()
             stringsn = "";
             result = passValue;
             TestTime.start();
+            at->sendMac(ui->macInput->text());   // 发送mac地址
+
             state = STATE_WATI_CONNECT;
             break;
         case STATE_WATI_CONNECT:
             if (at->getConnected())
             {
-                pb->getBaseInfo();
+                pb->get_base_info();
                 state = STATE_GETBASEDATA;
             }
             break;
@@ -416,7 +452,7 @@ void motor::start_task()
             {
                 waitWork(500);
                 ui->msgEdit->appendPlainText("正在重发获取设备信息");
-                pb->getBaseInfo();
+                pb->get_base_info();
             }
             break;
 
@@ -424,14 +460,14 @@ void motor::start_task()
             if (pb->getDisableSleep())
             {
                 ui->msgEdit->appendPlainText("已进入禁止休眠模式");
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 ui->msgEdit->appendPlainText("已发送sn绑定");
                 state = STATE_SN_CHECK;
             } else
             {
                 waitWork(500);
                 ui->msgEdit->appendPlainText("正在重发进入禁止休眠");
-                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                pb->set_forbid_sleep(FacSwitch_OPEN);
             }
             break;
 
@@ -467,7 +503,7 @@ void motor::start_task()
             else
             {
                 waitWork(500);
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 ui->msgEdit->appendPlainText("重发sn绑定");
             }
             break;
@@ -914,7 +950,6 @@ void motor::on_macInput_returnPressed()
     else
     {
         macAddress = ui->macInput->text();
-        at->sendMac(ui->macInput->text());   // 发送mac地址
         // qDebug() << getIndex()<< macAddress;
 
         if (ui->ismotortest->isChecked())

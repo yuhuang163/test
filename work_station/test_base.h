@@ -10,7 +10,10 @@
 
 #include "Abini.h"
 #include <qlog.h>
-
+extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
+{
+#include "lib/nfc/dcrf32.h"
+}
 class test_base : public QWidget
 {
     Q_OBJECT
@@ -20,7 +23,8 @@ public:
     virtual void over_task() {};
     virtual void start_task() = 0;
     virtual void endTask() {};
-    virtual void processReceivedData(const QByteArray &data) {};
+    virtual void useMes() {};
+
     virtual QComboBox *getComNameCombo()
     {
         return nullptr;
@@ -37,6 +41,10 @@ public:
     {
         return nullptr;
     };   // 牙刷口（治具）
+   virtual QComboBox *getNfcComboBox()
+    {
+        return nullptr;
+    };   // nfc的usb口
 
     virtual QLineEdit *getMotorCaliParam()
     {
@@ -63,6 +71,9 @@ public:
     int productBaudRate = 1000000;
     int usbBaudRate = 115200;
     int dongleBaudRate = 115200;
+
+    int dongleOutTime = 10;
+
 
     // 通用函数
     void waitWork(int ms);
@@ -112,9 +123,13 @@ public:
 
     bool getRespone = false;
     bool canGoNext = false;
+    bool sendRetryOver = false;
+
+
 
 public slots:
-    void solveGetBrushResponse(int data);
+    void solveGetBrushResponse(int);
+
 
     virtual void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
@@ -136,39 +151,43 @@ public slots:
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
     void scanSerialPorts();
+    void updateHIDComboBox(QComboBox *comboBox);
+
 
 public slots:
-    virtual void getTestValue(const int mechines, const QString value) {};
-    virtual void can_go_next(int x) {};
-    virtual void refresh_camera_CONTROL(FacCameraControl data) {};
+    virtual void getTestValue(const int , const QString ) {};
+    virtual void can_go_next(int ) {};
+    virtual void refresh_camera_CONTROL(FacCameraControl) {};
     virtual void check_LED_CONTROL_state(FacLedControl){};
     virtual void checkbutton(FacButtonState){};
     virtual void check_BrushControl_state(FacBrushControl){};
-    virtual void update_IMU_CALIB_result(FacImuCalibResult data) {};
-    virtual void getimuData(FacUploadNineAlex data) {};
-    virtual void refresh_pb_data(QString data) {};
-    virtual void refresh_motor_cali_msg(QString data) {};
-    virtual void refresh_ble_rssi(QString data) {};
-    virtual void get_dongle_ver(QString data) {};
-    virtual void get_dongle_wifi(QString data) {};
-    virtual void refresh_ble_state(int state) {};
-    virtual void get_wifi_msg(QString data) {};
-    virtual void refresh_base_data(FacGetDevBaseInfo data) {};
-    virtual void refresh_battary_data(FacDevInfo data) {};
-    virtual void refresh_sn(FacDevInfo data) {};
-    virtual void refresh_Lcd_CONTROL(FacLcdControl data) {};
-    virtual void refresh_periph_data(FacGetPeriphState data) {};
-    virtual void refresh_ammeter_data(QString data) {};
-    virtual void refresh_dongle_uart_state(int state) {};
-    virtual void refresh_usb_uart_state(int state) {};
-    virtual void refresh_jig_uart_state(int state) {};
-    virtual void refresh_product_uart_state(int state) {};
+    virtual void update_IMU_CALIB_result(FacImuCalibResult) {};
+    virtual void getimuData(FacUploadNineAlex) {};
+    virtual void refresh_pb_data(QString) {};
+    virtual void refresh_motor_cali_msg(QString) {};
+    virtual void refresh_ble_rssi(QString) {};
+    virtual void get_dongle_ver(QString) {};
+    virtual void get_dongle_wifi(QString) {};
+    virtual void refresh_ble_state(int) {};
+    virtual void get_wifi_msg(QString) {};
+    virtual void refresh_base_data(FacGetDevBaseInfo) {};
+    virtual void refresh_battary_data(FacDevInfo) {};
+    virtual void refresh_sn(FacDevInfo) {};
+    virtual void refresh_Lcd_CONTROL(FacLcdControl) {};
+    virtual void refresh_periph_data(FacGetPeriphState) {};
+    virtual void refresh_ammeter_data(QString) {};
+    virtual void refresh_dongle_uart_state(int) {};
+    virtual void refresh_usb_uart_state(int) {};
+    virtual void refresh_jig_uart_state(int) {};
+    virtual void refresh_product_uart_state(int ) {};
+    virtual void processReceivedData(const QByteArray &) {};
+
 
 signals:
-    void refreshDongleSerialPortState(int state);
-    void refreshUsbSerialPortState(int state);
-    void refreshJigSerialPortState(int state);
-    void refreshProductSerialPortState(int state);
+    void refreshDongleSerialPortState(int);
+    void refreshUsbSerialPortState(int);
+    void refreshJigSerialPortState(int);
+    void refreshProductSerialPortState(int);
 
     void sendProcessInspection(MesPacketData);
     void sendTestPass(MesPacketData);

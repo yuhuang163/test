@@ -7,6 +7,22 @@
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
+void PcbaForm::on_pushButton_clicked()
+{
+    ui->macInput->setText("f4:12:fa:c5:51:c6");   // 测试牙刷
+    //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su牙刷
+    // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏牙刷
+    // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏牙刷
+    // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng牙刷
+    //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    // ui->macInput->setText("e2:66:07:34:2d:f7");
+    // ui->macInput->setText("3c:84:27:29:50:32");
+    ui->macInput->setText("b4:56:5d:bf:54:4e");
+
+    on_macInput_returnPressed();
+    at->sendMac(ui->macInput->text());   // 发送mac地址
+}
 
 PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(index)
 {
@@ -34,9 +50,11 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
     connect(usblogwaittime, &QTimer::timeout,
             [=]()
             {
-                if (pack.product == "P20P"||pack.product == "Q20")
-              {  at->ask_mac();
-                    showlog("正在定时器复位牙刷");}
+                if (pack.product == "P20P" || pack.product == "Q20")
+                {
+                    at->ask_mac();
+                    showlog("正在定时器复位牙刷");
+                }
             });
 
     connect(blewaittime, &QTimer::timeout,
@@ -91,13 +109,17 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
     LowCharCurrent = settings.value("Current/LowCharCurrent").toDouble();
     HighworkCurrent = settings.value("Current/HighworkCurrent").toDouble();
     LowworkCurrent = settings.value("Current/LowworkCurrent").toDouble();
+
+    HighmusicCurrent = settings.value("Current/HighmusicCurrent").toDouble();
+        LowmusicCurrent = settings.value("Current/LowmusicCurrent").toDouble();
+
     HighstaticCurrent = settings.value("Current/HighstaticCurrent").toDouble();
     LowstaticCurrent = settings.value("Current/LowstaticCurrent").toDouble();
     music_state = settings.value("FIXTEST/MusicState").toInt();
     overVoltageLight = settings.value("FIXTEST/OverVoltageLight").toInt();
     button1 = settings.value("FIXTEST/Button1").toInt();
     button2 = settings.value("FIXTEST/Button2").toInt();
-
+    RssiTestTime = settings.value("BLE/RssiCount").toInt();
     acc_x_up = settings.value("IMU/acc_x_up").toInt();
     acc_x_down = settings.value("IMU/acc_x_down").toInt();
 
@@ -106,7 +128,6 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
 
     acc_z_up = settings.value("IMU/acc_z_up").toInt();
     acc_z_down = settings.value("IMU/acc_z_down").toInt();
-
 
     showlog("acc_z_up=" + QString::number(acc_z_up));
     showlog("acc_z_down=" + QString::number(acc_z_down));
@@ -128,8 +149,18 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
     showlog("LowCharCurrent=" + QString::number(LowCharCurrent));
     showlog("HighworkCurrent=" + QString::number(HighworkCurrent));
     showlog("LowworkCurrent=" + QString::number(LowworkCurrent));
+
+
+    showlog("HighmusicCurrent=" + QString::number(HighmusicCurrent));
+    showlog("LowmusicCurrent=" + QString::number(LowmusicCurrent));
+
+
+
     showlog("HighstaticCurrent=" + QString::number(HighstaticCurrent));
     showlog("LowstaticCurrent=" + QString::number(LowstaticCurrent));
+    showlog("RssiTestTime=" + QString::number(RssiTestTime));
+
+    
 
     if (pack.product == "P20P" || pack.product == "Q20")
     {
@@ -258,11 +289,24 @@ void PcbaForm::get_wifi_msg(QString data)
         // qDebug() << getIndex() << " 牙刷的wifiMac:" << wifiMac;
         if (macAddress == wifiMac)
         {
-           // ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
+            ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
             refresh_WIFI_state(1);
             WIFI_RSSI = rssi;
         }
+    }
+
+    bool ok;
+    WIFI_RSSI.toInt(&ok);
+
+    if (!ok)
+    {
+        qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
+    }
+    else
+    {
+        //  ui->msgEdit->appendPlainText("转换成功");
+        intwifirssi = WIFI_RSSI.toInt(&ok);
     }
 }
 void PcbaForm::refresh_usb_uart_state(int state)
@@ -303,7 +347,7 @@ void PcbaForm::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         showlog("已发送禁止休眠");
     }
     else
@@ -315,11 +359,23 @@ void PcbaForm::refresh_ble_state(int state)
 
 void PcbaForm::refresh_ble_rssi(QString data)
 {
-    // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< "rssi = " << data;
-    // ui->WIFI_RSSI->setText("WIFI的RSSI："+data);
+    // qDebug() << data;
+    ui->BLE_RSSI->setText("BLE的RSSI:" + data);
+    // ui->msgEdit->appendPlainText("zzzzz"+data);
     BLE_RSSI = data;
-}
+    bool ok;
+    BLE_RSSI.toInt(&ok);
 
+    if (!ok)
+    {
+        qDebug() << "转换蓝牙rssi失败,内容为" + BLE_RSSI + "内容结束";
+    }
+    else
+    {
+        // ui->msgEdit->appendPlainText("转换成功");
+        intblerssi = BLE_RSSI.toInt(&ok);
+    }
+}
 void PcbaForm::check_LED_CONTROL_state(FacLedControl data)
 {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -361,6 +417,8 @@ void PcbaForm::checkbutton(FacButtonState data)
 }
 PcbaForm::~PcbaForm()
 {
+
+
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "PcbaFormd的析构";
     delete ui;
@@ -441,8 +499,10 @@ void PcbaForm::refresh_base_data(FacGetDevBaseInfo data)
         QString pressureSenseVersion =
             settings.value("ProductInfo/Pressure_Sense_Version").toString();
         QString imuId = settings.value("ProductInfo/IMU_ID").toString();
+        QString ble_ver =settings.value("ProductInfo/Ble_Ver").toString();
 
-        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
+
+        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&data.ble_version == ble_ver &&
             data.presure_version == pressureSenseVersion && data.product_name == productName &&
             QString("%1").arg(data.pb_phone_ver) == appProtocolVersion &&
             QString("%1").arg(data.pb_factory_ver) == factoryProtocolVersion &&
@@ -487,6 +547,17 @@ void PcbaForm::refresh_base_data(FacGetDevBaseInfo data)
         {
             pcba_test_data_update(testItem, testData, failValue);
         }
+        testItem = "蓝牙版本";
+        testData = data.ble_version;
+        if (testData == ble_ver)
+        {
+            pcba_test_data_update(testItem, testData, passValue);
+        }
+        else
+        {
+            pcba_test_data_update(testItem, testData, failValue);
+        }
+
         testItem = "硬件版本";
         testData = data.hw_version;
         if (testData == hardwareVersion)
@@ -648,13 +719,8 @@ void PcbaForm::refresh_periph_data(FacGetPeriphState data)
     }
 }
 
-
-
 void PcbaForm::on_end_clicked()
 {
-
-
-
     usblogwaittime->stop();
     isPcbaTestContinue = false;
     on_disconnectButton_clicked();
@@ -663,7 +729,6 @@ void PcbaForm::on_end_clicked()
         on_productDisconnectButton_clicked();
 
     ui->macInput->setDisabled(0);
-
 }
 
 void PcbaForm::connectwifi()
@@ -794,8 +859,6 @@ void PcbaForm::clear_display()
     ui->log->clear();
 }
 
-
-
 void PcbaForm::on_productConnectButton_clicked()
 {
     openProductSerialPort();
@@ -837,10 +900,8 @@ void PcbaForm::solveMesData(const int mechines, QString msg)
         // ui->mes_state->setStyleSheet(
         //     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000;
         //     border-radius: 10px; padding: 10px; text-align: center; ");
-
     }
 }
-
 
 void PcbaForm::on_connectButton_clicked()
 {
@@ -893,10 +954,31 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
                  << "按键2:" << packetData.button2;
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "充电电流:" << packetData.chargingCurrent << "ma";
+
+#ifdef NEW_MUSIC_CURRENT
+        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+                 << "音频电流:" << packetData.musicCurrent;
+
+        if (packetData.musicCurrent < HighmusicCurrent &&
+            packetData.musicCurrent > LowmusicCurrent)
+
+        {
+            testItem = "音频电流";
+            testData = QString::number(packetData.musicCurrent);
+            pcba_test_data_update(testItem, testData, passValue);
+        }
+        else
+        {
+            totalresult = failValue;
+            testItem = "音频电流";
+            testData = QString::number(packetData.musicCurrent);
+            pcba_test_data_update(testItem, testData, failValue);
+        }
+
+#else
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "音频情况:" << packetData.music_state;
-
-        if (packetData.music_state == music_state)
+                                   if (packetData.music_state == music_state)
         {
             testItem = "音频测试";
             testData = QString::number(packetData.music_state);
@@ -909,6 +991,13 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
             testData = QString::number(packetData.music_state);
             pcba_test_data_update(testItem, testData, failValue);
         }
+
+#endif
+
+
+
+
+
         if (packetData.overVoltageLight == overVoltageLight)
         {
             if (pack.product == "P20P" || pack.product == "Q20")
@@ -1011,7 +1100,6 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
             ui->ng_number->setText("NG:" + QString::number(ngnumber));
             ui->ng_number->setStyleSheet(
                 "font-size: 16px; background-color: #ff557f; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
-            ngnumber++;
 
             ui->test_result->setText("FAIL");
             ui->test_result->setStyleSheet(
@@ -1033,16 +1121,15 @@ void PcbaForm::getimuData(FacUploadNineAlex x)
 {
     for (int i = 0; i < x.data_count; i++)
     {
-   // 处理 IMU 数据
-    really_accx = processIMUData(x.data[i].acc_x);
-    really_accy = processIMUData(x.data[i].acc_y);
-    really_accz = processIMUData(x.data[i].acc_z);
+        // 处理 IMU 数据
+        really_accx = processIMUData(x.data[i].acc_x);
+        really_accy = processIMUData(x.data[i].acc_y);
+        really_accz = processIMUData(x.data[i].acc_z);
 
-
-
-    // 打印实际读取到的加速度数据
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："<< "实际 acc_x:" << really_accx<< "实际 acc_y:" << really_accy<< "实际 acc_z:" << really_accz;
-
+        // 打印实际读取到的加速度数据
+        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+                 << "实际 acc_x:" << really_accx << "实际 acc_y:" << really_accy
+                 << "实际 acc_z:" << really_accz;
     }
     // 检查并记录 IMU 数据
     checkIMUData("acc_x", really_accx, acc_x_up, acc_x_down);
@@ -1052,27 +1139,41 @@ void PcbaForm::getimuData(FacUploadNineAlex x)
 
 int32_t PcbaForm::processIMUData(uint16_t imuData)
 {
-    if (imuData & 0x8000) { // 判断最高位是否为 1，表示负数
-        return static_cast<int32_t>(imuData | 0xFFFF0000); // 扩展为 32 位的负数
-    } else {
-        return static_cast<int32_t>(imuData); // 保持正数不变
+    if (imuData & 0x8000)
+    {   // 判断最高位是否为 1，表示负数
+        return static_cast<int32_t>(imuData | 0xFFFF0000);   // 扩展为 32 位的负数
+    }
+    else
+    {
+        return static_cast<int32_t>(imuData);   // 保持正数不变
     }
 }
 
 void PcbaForm::checkIMUData(const QString &axis, int32_t value, int32_t upper, int32_t lower)
 {
-    if (value <= upper && value >= lower) {
+    if (value <= upper && value >= lower)
+    {
         is_imu_correct_data = 1;
-
-    } else {
+    }
+    else
+    {
         state = STATE_WATI_STOP_IMU_DATA;
 
-        pb->setimuCollectParam(FacSwitch_STOP);
-        totalresult=failValue;
-        testItem = "六轴数据"; testData = QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]").arg(axis).arg(value).arg(lower).arg(upper);
+        pb->set_imu_collect_param(FacSwitch_STOP);
+        totalresult = failValue;
+        testItem = "六轴数据";
+        testData = QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]")
+                       .arg(axis)
+                       .arg(value)
+                       .arg(lower)
+                       .arg(upper);
         pcba_test_data_update(testItem, testData, failValue);
         is_imu_correct_data = 2;
-        showlog(QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]").arg(axis).arg(value).arg(lower).arg(upper));
+        showlog(QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]")
+                    .arg(axis)
+                    .arg(value)
+                    .arg(lower)
+                    .arg(upper));
     }
 }
 
@@ -1101,12 +1202,16 @@ void PcbaForm::start_task()
             refresh_WIFI_state(0);
             testItems.clear();
             periph_state = 0;
+            rssitestfailcount = 0;
+            intblerssi = 0;
             start_sleep = 0;
             TestTime.start();
             refresh_times = 1;
+            intwifirssi = 0;
             refresh_periph_state_times = 1;
             base_state = 0;
             sendcount = 0;
+            rssitestcount = 0;
             really_accx = 0;
             really_accy = 0;
             really_accz = 0;
@@ -1123,9 +1228,9 @@ void PcbaForm::start_task()
             waitWork(500);                       // 用于esp32启动等待时间
             at->sendMac(ui->macInput->text());   // 发送mac地址
             showlog(ui->macInput->text());
-            state = STATE_WATI_CONNECT;
 
             totalresult = passValue;
+            state = STATE_WATI_CONNECT;
 
             break;
 
@@ -1143,21 +1248,20 @@ void PcbaForm::start_task()
                 showlog("已进入禁止休眠");
                 pb->set_fac_mode(1);
                 waitWork(WAITTIME);
-                 pb->setimuCollectParam(FacSwitch_START);
+                pb->set_imu_collect_param(FacSwitch_START);
                 state = STATE_WATI_CORRECT_IMU_DATA;
-
             }
             else
             {
                 waitWork(500);
-                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                pb->set_forbid_sleep(FacSwitch_OPEN);
             }
             break;
 
         case STATE_WATI_CORRECT_IMU_DATA:   // 获取准确inu数据
             if (is_imu_correct_data == 1)
             {
-                showlog("开始关闭六轴开关，当前状态为"+QString::number(pb->getis_imu_set_sta()));
+                showlog("开始关闭六轴开关，当前状态为" + QString::number(pb->getis_imu_set_sta()));
                 showlog("六轴数据正常");
                 showlog("1、设备信息测试");
 
@@ -1167,38 +1271,34 @@ void PcbaForm::start_task()
                                        .arg(really_accy)
                                        .arg(really_accz);
                 pcba_test_data_update(testItem, testData, passValue);
-                sendCommandWithRetry(std::bind(&Qpb::setimuCollectParam, pb, FacSwitch_STOP));
+                sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
                 state = STATE_WATI_STOP_IMU_DATA;
             }
             else
             {
                 waitWork(500);
-                pb->setimuCollectParam(FacSwitch_START);
-
+                pb->set_imu_collect_param(FacSwitch_START);
                 qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                          << "重发六轴参数开";
             }
 
             break;
 
-
         case STATE_WATI_STOP_IMU_DATA:   // 设置设备采集
             if (canGoNext)
             {
                 showlog("成功关闭六轴数据");
-                pb->getBaseInfo();
+                pb->get_base_info();
                 state = STATE_WATI_GET_BASE_STATE;
             }
             break;
-
-
 
         case STATE_WATI_GET_BASE_STATE:
             if (base_state == 1)   // 外设状态正常
             {
                 showlog("基础信息验证通过");
                 waitWork(WAITTIME);
-                pb->getPeriphState();
+                pb->get_periph_state();
 
                 showlog("2、设备外设测试");
                 state = STATE_WATI_GET_PERIPHERAL_STATE;
@@ -1207,7 +1307,7 @@ void PcbaForm::start_task()
             {
                 waitWork(WAITTIME);
                 showlog("基础信息验证失败");
-                pb->getPeriphState();
+                pb->get_periph_state();
                 showlog("2、设备外设测试");
                 totalresult = failValue;
                 state = STATE_WATI_GET_PERIPHERAL_STATE;
@@ -1215,14 +1315,14 @@ void PcbaForm::start_task()
             if (base_state == 0)
             {
                 waitWork(500);
-                pb->getBaseInfo();
+                pb->get_base_info();
             }
             break;
         case STATE_WATI_GET_PERIPHERAL_STATE:
             if (periph_state == 1)   // 设备信息正常
             {
                 showlog("外设状态正常");
-                // pb->getbottonState(1);
+                // pb->get_button_state(1);
                 // showlog("8、按键测试");
                 // showlog("请按下按键");
                 state = STATE_WATI_CHARGE_CURRENT;
@@ -1236,7 +1336,7 @@ void PcbaForm::start_task()
             if (periph_state == 0)
             {
                 waitWork(500);
-                pb->getPeriphState();
+                pb->get_periph_state();
             }
             break;
 
@@ -1297,7 +1397,7 @@ void PcbaForm::start_task()
                 wifiwaittime->setInterval(wifi_wait_time);
                 wifiwaittime->start();
                 state = STATE_WATI_GET_CORRECT_WIFIRSSI;
-                iswificonnectovertime=0;
+                iswificonnectovertime = 0;
             }
 
             if (iswificonnectovertime)
@@ -1320,55 +1420,70 @@ void PcbaForm::start_task()
             break;
 
         case STATE_WATI_GET_CORRECT_WIFIRSSI:
-        {
-            int intwifirssi = WIFI_RSSI.toInt();
-            if (intwifirssi < HighRssi && intwifirssi > LowRssi)   // wifi信号可以
-            {
-                wifiwaittime->stop();
-                testItem = "wifi信号";
-                testData = WIFI_RSSI;
-                pcba_test_data_update(testItem, testData, passValue);
-                showlog("WIFI信号强度正常" + WIFI_RSSI);
-                waitWork(WAITTIME);
-                pb->disconnect_wifi();
-                showlog("5、蓝牙强度测试");
-                at->sendBLELOG(1);   // 日志开
-                blewaittime->setInterval(ble_wait_time);
-                blewaittime->start();
-                state = STATE_WATI_GET_CORRECT_BLERSSI;
-                iswifiovertime = 0;
 
-                break;
-            }
-            else
+            if (intwifirssi != 0)
             {
-                waitWork(100);
-            }
-            if (iswifiovertime)
-            {
-                wifiwaittime->stop();
-                testItem = "wifi信号";
-                testData = WIFI_RSSI;
-                pcba_test_data_update(testItem, testData, failValue);
-                showlog("WIFI信号强度测试超时" + WIFI_RSSI);
-                waitWork(WAITTIME);
-                pb->disconnect_wifi();
-                at->sendBLELOG(1);   // 日志开
-                showlog("5、蓝牙强度测试");
-                blewaittime->setInterval(ble_wait_time);
-                blewaittime->start();
-                totalresult = failValue;
-                state = STATE_WATI_GET_CORRECT_BLERSSI;
-            }
-        }
+                if (intwifirssi < HighRssi && intwifirssi > LowRssi)   // wifi信号可以
+                {
+                    rssitestcount++;
+                    ui->msgEdit->appendPlainText("WIFI测试" + QString::number(intwifirssi));
 
-        break;
+                    if (rssitestcount > RssiTestTime)   // wifi信号可以
+                    {
+                        QString wifiName = "usmile_finish";
+                        QString wifiPassword = "12345678";
+                        QByteArray wifiNameBytes = wifiName.toUtf8();
+                        QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
+                        pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
+                        //   pb->set_wifi_disconnect();
+                        testItem = "wifi信号";
+                        testData = WIFI_RSSI;
+                        pcba_test_data_update(testItem, testData, passValue);
+                        state = STATE_WATI_GET_CORRECT_BLERSSI;
+                        showlog("5、蓝牙强度测试");
+                        at->sendBLELOG(1);   // 日志开
+                        rssitestcount = 0;
+                    }
+                }
+                else
+                {
+                    rssitestcount = 0;
+                    rssitestfailcount++;
+                    if (rssitestfailcount > RssiTestTime)   // wifi信号不可以
+                    {
+                        QString wifiName = "usmile_finish";
+                        QString wifiPassword = "12345678";
+                        QByteArray wifiNameBytes = wifiName.toUtf8();
+                        QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
+                        pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
+                        //     pb->set_wifi_disconnect();
+                        totalresult = failValue;
+
+                        testItem = "wifi信号";
+                        testData = WIFI_RSSI;
+                        pcba_test_data_update(testItem, testData, failValue);
+
+                        qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
+                        ui->msgEdit->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
+                        rssitestfailcount = 0;
+                        state = STATE_WATI_GET_CORRECT_BLERSSI;
+                        showlog("5、蓝牙强度测试");
+                        at->sendBLELOG(1);   // 日志开
+                    }
+                }
+            }
+            waitWork(50);
+
+            break;
 
         case STATE_WATI_GET_CORRECT_MOTOR:
             if (pb->get_is_motor_cali_data_set())
             {
+                showlog("已收到电机校准参数");
                 showlog("5、蓝牙强度测试");
                 at->sendBLELOG(1);   // 日志开
+                showlog("已发送蓝牙强度获取指令");
+
                 blewaittime->setInterval(ble_wait_time);
                 blewaittime->start();
                 state = STATE_WATI_GET_CORRECT_BLERSSI;
@@ -1381,75 +1496,101 @@ void PcbaForm::start_task()
             }
             break;
         case STATE_WATI_GET_CORRECT_BLERSSI:
-        {
-            int intblerssi = BLE_RSSI.toInt();
-            if (intblerssi < BleHighRssi && intblerssi > BleLowRssi)   // 蓝牙信号可以
-            {
-                blewaittime->stop();
-                at->sendBLELOG(0);
-                showlog("BLE信号强度正常" + BLE_RSSI);
-                testItem = "蓝牙信号";
-                testData = BLE_RSSI;
-                pcba_test_data_update(testItem, testData, passValue);
-                waitWork(100);   // 防止发送给治具粘包
-                emit overtask(getIndex());
-                showlog("6、等待治具测试");
-                if (pack.product == "P20P")
 
-                    state = STATE_WATI_LIGHT_TEST;
+            if (intblerssi != 0)
+            {
+                if (intblerssi < BleHighRssi && intblerssi > BleLowRssi)   // 蓝牙信号可以
+                {
+                    ui->msgEdit->appendPlainText("蓝牙测试" + QString::number(intblerssi));
+                    rssitestcount++;
+                    if (rssitestcount >= RssiTestTime)   // 蓝牙信号可以
+                    {
+                        testItem = "蓝牙信号";
+                        testData = BLE_RSSI;
+                        pcba_test_data_update(testItem, testData, passValue);
+
+                        ui->msgEdit->appendPlainText("蓝牙测试通过" + QString::number(intblerssi) +
+                                                     "测试次数为" + QString::number(rssitestcount));
+                        rssitestcount = 0;
+                        at->sendBLELOG(0);   // 日志关
+                        waitWork(100);       // 防止发送给治具粘包
+                        emit overtask(getIndex());
+                        showlog("6、等待治具测试");
+                        if (pack.product == "P20P")
+                        {
+                            state = STATE_WATI_LIGHT_TEST;
+                        }
+                        else
+                        {
+                            waitWork(WAITTIME);   // 播放音乐
+                            QString musicFileName = "/data/audio/scan_f.bin";
+                            // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<<
+                            // "文件名为"
+                            // << musicFileName;
+                            QByteArray musicFileNameBytes = musicFileName.toUtf8();
+                            showlog("正在播放音乐");
+                            pb->set_music(musicFileNameBytes);
+                            music_play_time->setInterval(5000);
+                            music_play_time->start();
+                            state = STATE_WATI_WORKING_TEST;
+                        }
+
+                        isbleovertime = 0;
+                        break;
+                    }
+                }
                 else
                 {
-                    waitWork(WAITTIME);   // 播放音乐
-                    QString musicFileName = "/data/audio/scan_f.bin";
-                    // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<<
-                    // "文件名为"
-                    // << musicFileName;
-                    QByteArray musicFileNameBytes = musicFileName.toUtf8();
-                    showlog("正在播放音乐");
-                    pb->set_music(musicFileNameBytes);
-                    music_play_time->setInterval(5000);
-                    music_play_time->start();
-                    state = STATE_WATI_WORKING_TEST;
+                    rssitestcount = 0;
+                    rssitestfailcount++;
+                    ui->msgEdit->appendPlainText("重试测试蓝牙" + BLE_RSSI);
+                    if (rssitestfailcount >= RssiTestTime)   // 蓝牙信号不可以
+                    {
+
+                        testItem = "蓝牙信号";
+                        testData = BLE_RSSI;
+                        pcba_test_data_update(testItem, testData, failValue);
+
+                        totalresult = failValue;
+                        qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
+                        qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
+                        ui->msgEdit->appendPlainText("蓝牙不合格信号强度intblerssi" +
+                                                     QString::number(intblerssi));
+
+                        ui->msgEdit->appendPlainText("蓝牙不合格信号强度" + BLE_RSSI);
+                        ui->msgEdit->appendPlainText("当前蓝牙范围为" +
+                                                     QString::number(BleHighRssi) +
+                                                     QString::number(BleLowRssi));
+
+                        at->sendBLELOG(0);   // 日志关
+                        rssitestfailcount = 0;
+
+                        waitWork(100);   // 防止发送给治具粘包
+                        emit overtask(getIndex());
+                        showlog("6、等待治具测试");
+
+                        if (pack.product == "P20P")
+                        {
+                            state = STATE_WATI_LIGHT_TEST;
+                        }
+                        else
+                        {
+                            QString musicFileName = "/data/audio/scan_f.bin";
+                            // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<<
+                            // "文件名为"
+                            // << musicFileName;
+                            QByteArray musicFileNameBytes = musicFileName.toUtf8();
+                            showlog("正在播放音乐");
+                            pb->set_music(musicFileNameBytes);
+                            music_play_time->setInterval(5000);
+                            music_play_time->start();
+                            state = STATE_WATI_WORKING_TEST;
+                        }
+                    }
                 }
-
-                isbleovertime = 0;
-                break;
             }
-            else
-            {
-                waitWork(100);
-            }
-
-            if (isbleovertime)
-            {
-                blewaittime->stop();
-                at->sendBLELOG(0);
-                showlog("BLE信号强度测试超时" + BLE_RSSI);
-                testItem = "蓝牙信号";
-                testData = BLE_RSSI;
-                pcba_test_data_update(testItem, testData, failValue);
-                waitWork(100);   // 防止发送给治具粘包
-                emit overtask(getIndex());
-                showlog("6、等待治具测试");
-                if (pack.product == "P20P")
-
-                    state = STATE_WATI_LIGHT_TEST;
-                else
-                {
-                    QString musicFileName = "/data/audio/scan_f.bin";
-                    // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<<
-                    // "文件名为"
-                    // << musicFileName;
-                    QByteArray musicFileNameBytes = musicFileName.toUtf8();
-                    showlog("正在播放音乐");
-                    pb->set_music(musicFileNameBytes);
-                    music_play_time->setInterval(5000);
-                    music_play_time->start();
-                    state = STATE_WATI_WORKING_TEST;
-                }
-            }
-        }
-        break;
+            waitWork(50);
+            break;
 
         case STATE_WATI_LIGHT_TEST:
             if (1)
@@ -1475,13 +1616,12 @@ void PcbaForm::start_task()
                 showlog("播放结束");
                 if (pack.product == "Q20")
                 {
-
                     showlog("跑的是q20");
                     pb->set_motor_param(270, 60);
                     pb->set_motor_state(1);
-                    waitWork(1500);
-                    pb->set_device_mode(3);
-    //                    pb->setbrushcontrol(1);
+                    //   waitWork(1500);
+                    //   pb->set_device_mode(3);
+                    //       pb->set_brush_control(1);
                 }
                 else if (pack.product == "P20P")
                 {
@@ -1524,8 +1664,8 @@ void PcbaForm::start_task()
                 {
                     pb->set_motor_param(270, 60);
                     pb->set_motor_state(1);
-                    waitWork(1500);
-                    pb->setbrushcontrol(1);
+                    // waitWork(1500);
+                    // pb->set_brush_control(1);
                 }
                 else if (pack.product == "P20P")
                 {
@@ -1543,7 +1683,7 @@ void PcbaForm::start_task()
             if (start_sleep)
             {
                 start_sleep = 0;
-                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                pb->set_forbid_sleep(FacSwitch_OPEN);
                 showlog("已发送取消禁止休眠");
                 state = STATE_CLOSE_FORBID_SLEEP;
             }
@@ -1551,7 +1691,7 @@ void PcbaForm::start_task()
             break;
 
         case STATE_CLOSE_FORBID_SLEEP:
-            if (pb->get_is_close_forbid_sleep())   // q20bug
+            if (pb->get_is_close_forbid_sleep())
             {
                 // if (pack.product == "P20P")
                 // {
@@ -1561,21 +1701,18 @@ void PcbaForm::start_task()
                 // }
                 // else
                 // {
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    waitWork(100);
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    waitWork(100);
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    waitWork(100);
-
-                    showlog("已经发送3次请求牙刷休眠");
-                    state = STATE_SLEEP_OPEN;
+                pb->set_sleeep(FacSwitch_OPEN);
+                waitWork(100);
+                at->sendMac("00:00:00:00:00:00");
+                waitWork(100);
+                showlog("已经发送请求牙刷休眠");
+                state = STATE_SLEEP_OPEN;
                 // }
             }
             else
             {
                 waitWork(500);
-                pb->setDevForbidSleepState(FacSwitch_CLOSE);
+                pb->set_forbid_sleep(FacSwitch_CLOSE);
                 showlog("正在重发取消禁止休眠");
             }
 
@@ -1588,17 +1725,11 @@ void PcbaForm::start_task()
             }
             else
             {
-                if (pack.product == "P20P")
-                {
-                    at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-                    showlog("重发断开蓝牙方式休眠");
-                }
-                else
-                {
-                    waitWork(500);
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    showlog("正在重发开始休眠");
-                }
+                pb->set_sleeep(FacSwitch_OPEN);
+                showlog("正在重发开始休眠");
+                at->sendMac("00:00:00:00:00:00");
+                waitWork(500);
+
             }
 
             break;
@@ -1677,7 +1808,7 @@ void PcbaForm::start_task()
             // waitWork(300);
             on_disconnectButton_clicked();
 
-            emit end_total(getIndex());
+            emit endTest(getIndex());
 
             state = STATE_IDLE;
         }
@@ -1691,30 +1822,15 @@ void PcbaForm::start_task()
     }
 }
 
-void PcbaForm::on_pushButton_clicked()
-{
-    ui->macInput->setText("f4:12:fa:c5:51:c6");   // 测试牙刷
-    //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su牙刷
-    // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏牙刷
-    // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏牙刷
-    // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng牙刷
-    //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    // ui->macInput->setText("e2:66:07:34:2d:f7");
-    // ui->macInput->setText("3c:84:27:29:50:32");
-
-    on_macInput_returnPressed();
-    at->sendMac(ui->macInput->text());   // 发送mac地址
-}
-
 void PcbaForm::on_pushButton_2_clicked()   // 单机
 {
-    testItem = "六轴状态";
-    testData = "QString::number(data.imu_state)";
+    at->sendBLELOG(1);
+    // testItem = "六轴状态";
+    // testData = "QString::number(data.imu_state)";
 
-    pcba_test_data_update(testItem, testData, passValue);
+    // pcba_test_data_update(testItem, testData, passValue);
 
-    // pb->setDevForbidSleepState(FacSwitch_CLOSE);
+    // pb->set_forbid_sleep(FacSwitch_CLOSE);
     // pb->set_sleeep(FacSwitch_OPEN);
     // waitWork(100);
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
@@ -1727,22 +1843,21 @@ void PcbaForm::on_pushButton_2_clicked()   // 单机
     // ui->ng_number->setText("NG:"+QString::number(ngnumber));
     // ui->ng_number->setStyleSheet("font-size: 16px; background-color: #FF0000; color: black;
     // border: 2px solid #FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
-    // ngnumber++;
 
-    //  pb->disconnect_wifi();
+    //  pb->set_wifi_disconnect();
     // pb->set_device_mode();//进入亮白
     // waitWork(500);
-    // pb->setbrushcontrol(1);
+    // pb->set_brush_control(1);
     //  pb->set_ship_mode(1);
 
     //  pb->set_led_color(1);
-    //  pb->getbattary();
+    //  pb->get_battery();
     //  pb->set_sleeep(FacSwitch_OPEN);
     // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< " getIndex()"<<
     // getIndex();
     //     emit overtask(getIndex());
 
-    // pb->getPeriphState();
+    // pb->get_periph_state();
 
     // static int t=1;
     // if(t==1){
@@ -1753,7 +1868,7 @@ void PcbaForm::on_pushButton_2_clicked()   // 单机
     //   t=1;
     // }
 
-    // pb->disconnect_wifi();
+    // pb->set_wifi_disconnect();
     // pb->set_fac_mode(1);
     // emit overtask(getIndex());
 
@@ -1765,11 +1880,11 @@ void PcbaForm::on_pushButton_2_clicked()   // 单机
     //       connectwifi();
     //     t=0;
     // }else{
-    //    pb->disconnect_wifi();
+    //    pb->set_wifi_disconnect();
     //     t=1;
     // }
 
-    // pb->setDevForbidSleepState(FacSwitch_CLOSE);
+    // pb->set_forbid_sleep(FacSwitch_CLOSE);
     // waitWork(WAITTIME);
     // pb->set_sleeep(FacSwitch_OPEN);
 }
@@ -1819,7 +1934,7 @@ void PcbaForm::on_macInput_returnPressed()
         // // 执行 USB 断开操作
         // if (pack.product == "P20P" || pack.product == "Q20")
         // {
-             on_productDisconnectButton_clicked();
+        //     on_productDisconnectButton_clicked();
         // }
 
         macAddress = ui->macInput->text();

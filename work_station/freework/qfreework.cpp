@@ -10,7 +10,6 @@ extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加ext
 }
 
 QFreeWork::QFreeWork(int index, QWidget *parent) : ui(new Ui::QFreeWork), m_index(index)
-
 {
     ui->setupUi(this);
     update_main_style("Ubuntu.qss");
@@ -87,44 +86,44 @@ QFreeWork::QFreeWork(int index, QWidget *parent) : ui(new Ui::QFreeWork), m_inde
     }
 
     ui->tabWidget->setTabText(0, "自由工站");
+    createTestFunctions();
+    conFiglayout = qobject_cast<QVBoxLayout *>(
+        ui->tabWidget->widget(3)->findChild<QVBoxLayout *>("config_areas"));
 
+    // 获取QGridLayout，而不是QVBoxLayout
+    canUselayout = qobject_cast<QGridLayout *>(
+        ui->tabWidget->widget(3)->findChild<QGridLayout *>("use_areas"));
 
+    // 定义行列数
+    int colCount = 3;   // 例如：3列
 
-// 创建一个函数对象的lambda表达式，其中包含需要执行的函数调用
-auto forbidSleepFunction = [&]() { sendCommandWithRetry(std::bind(&Qpb::setDevForbidSleepState, pb, FacSwitch_OPEN)); };
-auto getBaseInfoFunction = [&]() { sendCommandWithRetry(std::bind(&Qpb::getBaseInfo, pb)); };
-auto getBatteryFunction = [&]() { sendCommandWithRetry(std::bind(&Qpb::getbattary, pb)); };
+    for (int i = 0; i < testFunctions.size(); ++i)
+    {
+        // 创建复选框，使用 NamedFunction 结构体中的名称
+        DraggableCheckBox *checkBox = new DraggableCheckBox(testFunctions[i].name, i, this);
+        checkBoxes.append(checkBox);   // 添加到复选框列表
 
-// 将每个函数对象与其对应的名字绑定到NamedFunction结构体中，并添加到functions向量中
- functions = {
-    {"禁止休眠", forbidSleepFunction},
-     {"获取基本信息", getBaseInfoFunction},
-      {"获取电量信息", getBatteryFunction}
-      };
+        // 计算行和列的位置
+        int row = i / colCount;
+        int col = i % colCount;
 
-
-
-
-for (int i = 0; i < 10 && i < functions.size(); ++i)
-{   // 循环创建10个复选框，限制在 functions 向量大小内
-    DraggableCheckBox *checkBox =
-        new DraggableCheckBox(functions[i].name, i, this);   // 创建复选框，使用 NamedFunction 结构体中的名称
-    checkBoxes.append(checkBox);                 // 添加到复选框列表
-    ui->verticalLayout_6->addWidget(checkBox);   // 将复选框添加到布局
-}
-
-
-
-    freelayout = qobject_cast<QVBoxLayout *>(
-        ui->tabWidget->widget(3)->findChild<QVBoxLayout *>("verticalLayout_6"));
+        // 将复选框添加到网格布局的指定位置
+        canUselayout->addWidget(checkBox, row, col);
+    }
 
     setAcceptDrops(true);   // 允许接收拖放操作
 }
+void QFreeWork::showlog(QString msg)
+{
+    ui->msgEdit->appendPlainText(msg);
+    qDebug() << getIndex() << msg;
+}
+
 void QFreeWork::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasText())
     {   // 如果拖动的数据有文本
-        //qDebug() << "拖动数据有文本Enter";
+        // qDebug() << "拖动数据有文本Enter";
         event->acceptProposedAction();   // 接受拖动操作
     }
 }
@@ -133,7 +132,7 @@ void QFreeWork::dragMoveEvent(QDragMoveEvent *event)
 {
     if (event->mimeData()->hasText())
     {   // 如果拖动的数据有文本
-       // qDebug() << "拖动数据有文本Move";
+        // qDebug() << "拖动数据有文本Move";
 
         // 更新拖动位置
         dragPos = event->pos();
@@ -161,28 +160,29 @@ void QFreeWork::dropEvent(QDropEvent *event)
     if (mimeData->hasText())
     {                                                 // 如果数据有文本
         int sourceIndex = mimeData->text().toInt();   // 获取源索引
-
-        DraggableCheckBox *sourceCheckBox = getCheckBoxByIndex(sourceIndex);   // 根据索引获取源复选框
+    QRect configAreaRect = ui->can_use->geometry();
+        DraggableCheckBox *sourceCheckBox =
+            getCheckBoxByIndex(sourceIndex);   // 根据索引获取源复选框
         if (sourceCheckBox)
         {
             // 获取事件位置
             QPoint adjustedPos = event->pos();
-            adjustedPos.setY(adjustedPos.y() - 30);
 
+            adjustedPos.setY(adjustedPos.y() - ui->can_use->y()*2);
+            qDebug() << "ui->can_use->y()" << ui->can_use->y()<<ui->config_areas->geometry().y();
             // 获取目标位置的索引
-            int destIndex = getIndexAt(adjustedPos);
-
-            if (destIndex >= 0 && destIndex != freelayout->indexOf(sourceCheckBox))
+            int destIndex = getIndexAt(adjustedPos);   // 位置第几个
+            if (destIndex >= 0 && destIndex != conFiglayout->indexOf(sourceCheckBox))
             {   // 如果目标索引有效且不等于源控件的当前位置索引
                 qDebug() << "目标索引有效且不等于源索引" << destIndex;
                 // 获取布局
-                if (freelayout)
+                if (conFiglayout)
                 {   // 如果布局存在
                     qDebug() << "布局存在";
                     // 从布局中移除源复选框
-                    freelayout->removeWidget(sourceCheckBox);
+                    conFiglayout->removeWidget(sourceCheckBox);
                     // 在目标位置插入源复选框
-                    freelayout->insertWidget(destIndex, sourceCheckBox);
+                    conFiglayout->insertWidget(destIndex, sourceCheckBox);
                     // 接受拖放操作
                     event->acceptProposedAction();
                 }
@@ -191,22 +191,109 @@ void QFreeWork::dropEvent(QDropEvent *event)
                     qDebug() << "未找到布局";
                 }
             }
+            else
+            {
+
+                if (canUselayout && configAreaRect.contains(event->pos()))
+                {
+                    qDebug() << "";
+                    qDebug() << "在canuse中放置复选框";
+
+                    // 移除复选框在现有布局中的位置
+                    conFiglayout->removeWidget(sourceCheckBox);
+                    // adjustedPos.setY(adjustedPos.y() + 80);
+
+                    qDebug() << "adjustedPos" << adjustedPos;
+                    qDebug() << "每个的大小"
+                             << (configAreaRect.height() / canUselayout->rowCount());
+
+                    // 计算目标网格位置
+                    int colCount = canUselayout->columnCount();
+                    int row =
+                        adjustedPos.y() / (configAreaRect.height() / canUselayout->rowCount());
+                    int col = (event->pos().x() - ui->config->geometry().width()) /
+                              (configAreaRect.width() / colCount);
+                    qDebug() << "row" << row;
+                    qDebug() << "col" << col;
+
+                    // 调整行列以确保在有效范围内
+                    row = qMax(0, qMin(row, canUselayout->rowCount() - 1));
+                    col = qMax(0, qMin(col, colCount - 1));
+
+                    // 将复选框添加到新的网格位置
+                    canUselayout->addWidget(sourceCheckBox, row, col);
+
+                    // 接受拖放操作
+                    event->acceptProposedAction();
+                }
+                else
+                {
+                    qDebug() << "鼠标放下的位置不对" << "目标" << configAreaRect << "实际"
+                             << event->pos();
+                }
+            }
+        }
+        else
+        {
+            DraggableCheckBox *sourceCheckBox =
+                getCanUseCheckBoxByIndex(sourceIndex);   // 根据索引获取源复选框
+
+            QRect layoutGeometry = ui->config->geometry();
+            if (conFiglayout && layoutGeometry.contains(event->pos()))
+            {
+                qDebug() << "在config_areas中放置复选框";
+                // 将复选框添加到config_areas布局中
+                canUselayout->removeWidget(sourceCheckBox);
+                conFiglayout->addWidget(sourceCheckBox);
+                // 接受拖放操作
+                event->acceptProposedAction();
+            }
+            else
+            {
+                qDebug() << "鼠标放下的位置不对" << "目标" << layoutGeometry << "实际"
+                         << event->pos();
+            }
         }
     }
+}
+DraggableCheckBox *QFreeWork::getCanUseCheckBoxByIndex(int index)
+{
+    if (!canUselayout)
+    {
+        qDebug() << "特定布局不存在";
+        return nullptr;
+    }
+    qDebug() << "canUselayout个数" << canUselayout->count();
+    // 遍历布局中的所有子项
+    for (int i = 0; i < canUselayout->count(); ++i)
+    {
+        DraggableCheckBox *checkBox =
+            qobject_cast<DraggableCheckBox *>(canUselayout->itemAt(i)->widget());
+
+        if (checkBox && checkBox->getIndex() == index)
+        {
+            qDebug() << "拿起的索引为" << index;
+            return checkBox;   // 返回匹配的复选框
+        }
+    }
+
+    qDebug() << "CanUse源复选框不存在" << index << canUselayout->count();
+    return nullptr;   // 如果没有找到匹配的复选框，返回空指针
 }
 
 DraggableCheckBox *QFreeWork::getCheckBoxByIndex(int index)
 {
-    if (!freelayout)
+    if (!conFiglayout)
     {
         qDebug() << "特定布局不存在";
         return nullptr;
     }
 
     // 遍历布局中的所有子项
-    for (int i = 0; i < freelayout->count(); ++i)
+    for (int i = 0; i < conFiglayout->count(); ++i)
     {
-        DraggableCheckBox *checkBox = qobject_cast<DraggableCheckBox *>(freelayout->itemAt(i)->widget());
+        DraggableCheckBox *checkBox =
+            qobject_cast<DraggableCheckBox *>(conFiglayout->itemAt(i)->widget());
 
         if (checkBox && checkBox->getIndex() == index)
         {
@@ -221,17 +308,17 @@ DraggableCheckBox *QFreeWork::getCheckBoxByIndex(int index)
 
 int QFreeWork::getIndexAt(const QPoint &pos)
 {
-    qDebug() << pos << freelayout->count();
+    qDebug() << "鼠标位置为" << pos << conFiglayout->count();
     // 遍历布局中的所有子项
-    for (int i = 0; i < freelayout->count(); ++i)
+    for (int i = 0; i < conFiglayout->count(); ++i)
     {
         // 获取当前子项的控件
-        QWidget *widget = freelayout->itemAt(i)->widget();
+        QWidget *widget = conFiglayout->itemAt(i)->widget();
         if (!widget)
             continue;   // 跳过空的子项
 
         // 扩大控件范围，考虑到偏移
-        QRect expandedRect = widget->geometry().adjusted(-5, -5, 5, 5);
+        QRect expandedRect = widget->geometry().adjusted(-5, -5, 5, 5);   // 有问题获取的
         qDebug() << "检查第" << i << "个子项，几何位置:" << expandedRect;
         // 如果位置在扩大后的范围内，则认为匹配到了该子项
         if (expandedRect.contains(pos))
@@ -248,10 +335,10 @@ int QFreeWork::getIndexAt(const QPoint &pos)
 void QFreeWork::showTestIndexes()
 {
     qDebug() << "当前测试顺序为";   // 更新复选框的索引
-    for (int i = 0; i < freelayout->count(); ++i)
+    for (int i = 0; i < conFiglayout->count(); ++i)
     {   // 遍历布局中的所有子项
         DraggableCheckBox *checkBox =
-            qobject_cast<DraggableCheckBox *>(freelayout->itemAt(i)->widget());   // 获取复选框
+            qobject_cast<DraggableCheckBox *>(conFiglayout->itemAt(i)->widget());   // 获取复选框
         if (checkBox)
         {                                               // 如果复选框存在
             qDebug() << checkBox->getIndex();           // 更新复选框的索引
@@ -288,18 +375,21 @@ QFreeWork::State QFreeWork::getNextState(State currentState)
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
 }
 // 定义一个函数，用于执行具有特定名称的函数
-void QFreeWork::executeFunctionByName(const QString functionName) {
+void QFreeWork::executeFunctionByName(const QString functionName)
+{
     // 在 functions 向量中查找具有特定名称的函数对象
-    for (const auto& namedFunction : functions) {
-        if (namedFunction.name == functionName) {
+    for (const auto &namedFunction : testFunctions)
+    {
+        if (namedFunction.name == functionName)
+        {
             // 执行找到的函数对象
             namedFunction.function();
-            return; // 执行完成后直接返回
+            return;   // 执行完成后直接返回
         }
     }
 
     // 如果没有找到匹配的函数名，则输出错误信息
-    qDebug() << "Error: Function with name " << functionName << " not found!" ;
+    qDebug() << "Error: Function with name " << functionName << " not found!";
 }
 
 void QFreeWork::start_task()
@@ -307,370 +397,76 @@ void QFreeWork::start_task()
     if (iswifibleContinue)
     {
         ui->test_time->display(TestTime.elapsed() / 1000);
-
-        for (int i = 0; i < freelayout->count(); ++i)
-        {   // 遍历布局中的所有子项
-
-            DraggableCheckBox *checkBox =
-                qobject_cast<DraggableCheckBox *>(freelayout->itemAt(i)->widget());   // 获取复选框
-            if (checkBox->checkState())
-            {                                                       // 如果复选框被勾选
-                qDebug() << "正在测试内容为" << checkBox->text();   // 更新复选框的索引
-               executeFunctionByName( checkBox->text());
+        if (teststate == -1)
+        {
+            ui->msgEdit->appendPlainText("开始测试");
+            initDate();
+            at->sendMac(macAddress);   // 开始连接
+            teststate++;
+        }
+        if (at->getConnected())
+        {
+            for (; teststate < conFiglayout->count();)
+            {
+                // qDebug() << "程序在跑" << teststate;
+                if (canGoNext)
+                {
+                    DraggableCheckBox *checkBox = qobject_cast<DraggableCheckBox *>(
+                        conFiglayout->itemAt(teststate)->widget());   // 获取复选框
+                    if (checkBox->checkState())
+                    {
+                        executeFunctionByName(checkBox->text());
+                        ui->msgEdit->appendPlainText("正在测试内容："+checkBox->text());
+                        qDebug() << "正在测试内容：" << checkBox->text();
+                        ++teststate;
+                    }
+                }
                 break;
             }
         }
+        if (teststate == conFiglayout->count())
+        {
+            if (TestResult == failValue)
+            {
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+                pack.itemvalue =  QString("|FREE_TEST:PASS|");
+                pack.result = "NG";
+                pack.sn = ui->get_mac->text();
+                pack.instruct_num = "079";
+                if (ui->isusemes->checkState())
+                {
+                    sendTestPass(pack);
+                }
+            }
+            else
+            {
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+                pack.result = "PASS";
+                pack.itemvalue =  QString("|FREE_TEST:FAIL|");
+                pack.sn = ui->get_mac->text();
+                pack.instruct_num = "079";
+                if (ui->isusemes->checkState())
+                {
+                    sendTestPass(pack);
+                }
+            }
 
-    // case STATE_DISABLE_SLEEP_1:   // 设置设备采集
-    //     if (canGoNext)
-    //     {
-    //         sendCommandWithRetry(std::bind(&Qpb::getBaseInfo, pb));
-    //         ui->msgEdit->appendPlainText("已进入禁止休眠");
-    //         state = getNextState(state);
-    //     }
-    //     break;
-
-    // case STATE_SAVE_RESULT:
-    //     iswifibleContinue = false;
-    //     break;
+            qDebug() << "测试结束";
+            teststate = -1;
+            ui->macInput->clear();
+            ui->snInput->clear();
+            ui->nfc_sn->clear();
+            ui->macInput->setDisabled(0);
+            ui->get_mac->setDisabled(0);
+            emit endTest(getIndex());
+            ui->get_mac->clear();
+            iswifibleContinue = false;
+        }
     }
-}
-
-//     switch (testIndexes[testState])
-//     {
-
-//     case 0:   // 复位一切
-//         initDate();
-//         at->sendMac(macAddress);   // 开始连接
-//         ui->msgEdit->appendPlainText("开始测试");
-//         break;
-//     case 1:   // 设置禁止休眠
-//         if (at->getConnected())
-//         {
-//             ui->msgEdit->appendPlainText("蓝牙连接成功");
-//             sendCommandWithRetry(std::bind(&Qpb::setDevForbidSleepState, pb,
-//             FacSwitch_OPEN));
-//         }
-//         break;
-
-//     case STATE_DISABLE_SLEEP_1:   // 设置设备采集
-//         if (canGoNext)
-//         {
-//             sendCommandWithRetry(std::bind(&Qpb::getBaseInfo, pb));
-//             ui->msgEdit->appendPlainText("已进入禁止休眠");
-//             state = getNextState(state);
-//         }
-//         break;
-
-//     case STATE_WATI_BASE_INFO:
-//         if (canGoNext)
-//         {
-//             ui->msgEdit->appendPlainText("已检查牙刷状态");
-//             ui->msgEdit->appendPlainText("打开蓝牙日志");
-//             at->sendBLELOG(1);   // 日志开
-//             state = STATE_WATI_GET_CORRECT_BLERSSI;
-//         }
-
-//         break;
-
-//     case STATE_WATI_GET_CORRECT_BLERSSI:
-//         if (intblerssi != 0)
-//         {
-//             if (intblerssi < BleHighRssi && intblerssi > BleLowRssi)   // 蓝牙信号可以
-//             {
-//                 ui->msgEdit->appendPlainText("蓝牙测试" + QString::number(intblerssi));
-//                 rssitestcount++;
-//                 if (rssitestcount >= RssiTestTime)   // 蓝牙信号可以
-//                 {
-//                     TestItem bleRssi;
-//                     bleRssi.testItem = "蓝牙信号强度测试";
-//                     bleRssi.testData = BLE_RSSI;
-//                     bleRssi.testResult = "通过";
-//                     testItems.append(bleRssi);
-//                     ui->msgEdit->appendPlainText("蓝牙测试通过" + QString::number(intblerssi)
-//                     +
-//                                                  "测试次数为" +
-//                                                  QString::number(rssitestcount));
-
-//                     rssitestcount = 0;
-//                     at->sendBLELOG(0);   // 日志关
-//                     if (product == "P20P" || product == "U7")
-//                     {
-//                         state = STATE_WATI_CORRECT_BATTARY;
-//                     }
-//                     else
-//                     {
-//                         on_connectwifi_clicked();
-//                         state = STATE_WATI_WIFI_CONNECT;
-//                     }
-//                 }
-//             }
-//             else
-//             {
-//                 rssitestcount = 0;
-//                 rssitestfailcount++;
-
-//                 if (rssitestfailcount >= RssiTestTime)   // 蓝牙信号不可以
-//                 {
-//                     TestItem bleRssi;
-
-//                     bleRssi.testItem = "蓝牙信号强度测试";
-//                     bleRssi.testData = BLE_RSSI;
-//                     bleRssi.testResult = "失败";
-//                     testItems.append(bleRssi);
-//                     TestResult = failValue;
-//                     qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
-//                     qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
-//                     ui->msgEdit->appendPlainText("蓝牙不合格信号强度intblerssi" +
-//                                                  QString::number(intblerssi));
-
-//                     ui->msgEdit->appendPlainText("蓝牙不合格信号强度" + BLE_RSSI);
-//                     ui->msgEdit->appendPlainText("当前蓝牙范围为" +
-//                                                  QString::number(BleHighRssi) +
-//                                                  QString::number(BleLowRssi));
-
-//                     at->sendBLELOG(0);   // 日志关
-//                     rssitestfailcount = 0;
-
-//                     if (product == "P20P" || product == "U7")
-//                     {
-//                         wifiresult = "通过";
-//                         state = STATE_WATI_CORRECT_BATTARY;
-//                     }
-//                     else
-//                     {
-//                         on_connectwifi_clicked();
-//                         state = STATE_WATI_WIFI_CONNECT;
-//                     }
-//                 }
-//             }
-//         }
-//         waitWork(100);
-
-//         break;
-
-//     case STATE_WATI_WIFI_CONNECT:
-
-//         if (wifistate)   // wifi
-//         {
-//             ui->msgEdit->appendPlainText("wifi连接成功");
-//             state = STATE_WATI_GET_CORRECT_WIFIRSSI;
-//         }
-
-//         // waitWork(1500);//防止重发
-//         // if (!pb->get_is_wifi_set_ok())   // wifi
-//         // {
-//         //      ui->msgEdit->appendPlainText("正在重连wifi");
-//         //      on_connectwifi_clicked();
-//         // }
-
-//         break;
-
-//     case STATE_WATI_GET_CORRECT_WIFIRSSI:
-
-//         if (intwifirssi != 0)
-//         {
-//             if (intwifirssi < HighRssi && intwifirssi > LowRssi)   // wifi信号可以
-//             {
-//                 rssitestcount++;
-//                 ui->msgEdit->appendPlainText("WIFI测试" + QString::number(intwifirssi));
-
-//                 if (rssitestcount > RssiTestTime)   // wifi信号可以
-//                 {
-//                     QString wifiName = "usmile_finish";
-//                     QString wifiPassword = "12345678";
-//                     QByteArray wifiNameBytes = wifiName.toUtf8();
-//                     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-//                     pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-//                     //   pb->disconnect_wifi();
-//                     wifiresult = "通过";
-//                     TestItem wifiRssi;
-
-//                     wifiRssi.testItem = "WIFI信号强度";
-//                     wifiRssi.testData = WIFI_RSSI;
-//                     wifiRssi.testResult = "通过";
-//                     testItems.append(wifiRssi);
-//                     sendCommandWithRetry(std::bind(&Qpb::getbattary, pb));
-//                     state = STATE_WATI_CORRECT_BATTARY;
-//                     rssitestcount = 0;
-//                 }
-//             }
-//             else
-//             {
-//                 rssitestcount = 0;
-//                 rssitestfailcount++;
-//                 if (rssitestfailcount > RssiTestTime)   // wifi信号不可以
-//                 {
-//                     QString wifiName = "usmile_finish";
-//                     QString wifiPassword = "12345678";
-//                     QByteArray wifiNameBytes = wifiName.toUtf8();
-//                     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-//                     pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-//                     //     pb->disconnect_wifi();
-//                     TestResult = failValue;
-//                     TestItem wifiRssi;
-
-//                     wifiRssi.testItem = "WIFI信号强度";
-//                     wifiRssi.testData = WIFI_RSSI;
-//                     wifiRssi.testResult = TestResult;
-//                     testItems.append(wifiRssi);
-//                     qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
-//                     ui->msgEdit->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
-//                     rssitestfailcount = 0;
-//                     sendCommandWithRetry(std::bind(&Qpb::getbattary, pb));
-//                     state = STATE_WATI_CORRECT_BATTARY;
-//                 }
-//             }
-//         }
-//         waitWork(100);
-
-//         break;
-
-//     case STATE_WATI_CORRECT_BATTARY:   // 设置禁止休眠
-//         if (canGoNext)
-//         {
-//             ui->msgEdit->appendPlainText("已成功完成电量测试");
-//             if (pack.factory == "lx" || pack.factory == "jj")
-//             {
-//                 state = STATE_WATI_CORRECT_CURRENT;
-//                 qDebug() << getIndex() << "开始计时" << QDateTime::currentDateTime();
-//                 waittime->setInterval(measure_wait_time);
-//                 waittime->start();
-//             }
-//             else
-//                 state = STATE_SAVE_RESULT;
-//         }
-
-//         break;
-
-//     case STATE_WATI_CORRECT_CURRENT:   // 设置禁止休眠
-
-//         if (isovertime &&
-//             (measure_ammeter < LowCurrent || measure_ammeter > HighCurrent))   // 失败
-//         {
-//             waittime->stop();
-//             ui->msgEdit->appendPlainText("充电电流测试失败：超时");
-//             ui->msgEdit->appendPlainText("电流测量值为" + QString::number(measure_ammeter));
-//             currentresult = "失败";
-//             TestItem chargeAmmeter;
-
-//             chargeAmmeter.testItem = "充电电流";
-//             chargeAmmeter.testData = measure_ammeter;
-//             chargeAmmeter.testResult = currentresult;
-//             testItems.append(chargeAmmeter);
-//             TestResult = failValue;
-//             state = STATE_SAVE_RESULT;
-
-//             break;
-//         }
-//         if (measure_ammeter > LowCurrent && measure_ammeter < HighCurrent)   // 成功
-//         {
-//             ui->msgEdit->appendPlainText("充电电流正常");
-//             waittime->stop();
-//             currentresult = "通过";
-//             state = STATE_SAVE_RESULT;
-//             TestItem chargeAmmeter;
-//             chargeAmmeter.testItem = "充电电流";
-//             chargeAmmeter.testData = measure_ammeter;
-//             chargeAmmeter.testResult = currentresult;
-//             testItems.append(chargeAmmeter);
-//         }
-//         else
-//         {
-//             if (pack.factory == "lx" || pack.factory == "jj")
-//             {
-//                 usb->getlxMEASure(getIndex());
-//                 ui->msgEdit->appendPlainText("等待治具测量充电电流");
-//                 waitWork(1000);
-//             }
-//         }
-//         break;
-
-//     case STATE_SAVE_RESULT:
-
-//         if (TestResult == failValue)
-//         {
-//             ui->test_result->setText("FAIL");
-//             ui->test_result->setStyleSheet(
-//                 "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid
-//                 #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-
-//             pack.itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
-//                              QString("|WIFI_TEST:%1|").arg(intwifirssi) +
-//                              QString("BLE_TEST:%1").arg(intblerssi) +
-//                              QString("|CHAR_TEST:%1|").arg(chargestate) +
-//                              QString("VOL_TEST:%1|").arg(voltage);
-//             pack.result = "NG";
-
-//             pack.sn = ui->get_mac->text();
-
-//             pack.instruct_num = "079";
-//             if (ui->isusemes->checkState())
-//             {
-//                 sendTestPass(pack);
-//             }
-//         }
-//         else
-//         {
-//             ui->test_result->setText("PASS");
-//             ui->test_result->setStyleSheet(
-//                 "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid
-//                 #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
-
-//             QString itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
-//                                 QString("|WIFI_TEST:%1|").arg(intwifirssi) +
-//                                 QString("BLE_TEST:%1").arg(intblerssi) +
-//                                 QString("|CHAR_TEST:%1|").arg(chargestate) +
-//                                 QString("VOL_TEST:%1|").arg(voltage);
-
-//             pack.result = "PASS";
-
-//             pack.itemvalue = itemvalue;
-//             pack.sn = ui->get_mac->text();
-
-//             pack.instruct_num = "079";
-//             if (ui->isusemes->checkState())
-//             {
-//                 sendTestPass(pack);
-//             }
-//         }
-
-//         if (product == "P20P" || product == "U7")
-//         {
-//             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-//             waitWork(50);
-//             on_disconnectButton_clicked();
-//         }
-
-//         else if (getIndex() != 1)
-//         {
-//             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-//             waitWork(50);
-//             // on_disconnectButton_clicked();
-//         }
-
-//         ui->msgEdit->appendPlainText("测试结束");
-
-//         log->saveTestCsv(SINGLE_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
-//         state = STATE_IDLE;
-//         iswifibleContinue = false;
-//         ui->macInput->clear();
-//         ui->snInput->clear();
-//         ui->nfc_sn->clear();
-//         emit endTest(getIndex());
-//         ui->snInput->setDisabled(0);
-//         ui->get_mac->clear();
-//         break;
-//     }
-// }
-
-//  QCoreApplication::processEvents();
-//}
-
-void QFreeWork::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
 }
 
 QFreeWork::~QFreeWork()
@@ -859,10 +655,10 @@ void QFreeWork::refresh_sn(FacDevInfo data)
     qDebug() << getIndex() << "stringsn" << stringsn;
     ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
 
-    if (stringsn == "")
-    {
-        QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
-    }
+    // if (stringsn == "")
+    // {
+    //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
+    // }
 }
 void QFreeWork::refreshMesState(int state)
 {
@@ -917,7 +713,7 @@ void QFreeWork::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -1008,7 +804,7 @@ void QFreeWork::solveMesData(const int mechines, QString msg)
 
 void QFreeWork::closeEvent(QCloseEvent *event)
 {
-    //qDebug() << getIndex() << "开始关闭";
+    // qDebug() << getIndex() << "开始关闭";
     iswifibleContinue = false;
 }
 
@@ -1056,6 +852,8 @@ void QFreeWork::initDate()
     rssitestfailcount = 0;
     wifistate = 0;
     measure_ammeter = 0;
+    dongleOutTime = 10;
+    canGoNext = 1;
     isovertime = 0;
     BLE_RSSI = "";
     WIFI_RSSI = "";
@@ -1082,7 +880,7 @@ void QFreeWork::on_pushButton_clicked()
     // // ui->macInput->setText("3c:84:27:06:f7:5e");
     ui->macInput->setText("3C:84:27:07:A8:D2");
     // // ui->macInput->setText("3c:84:27:29:50:32");
-    // // ui->macInput->setText("3c:84:27:29:43:4a");
+    ui->macInput->setText("b4:56:5d:bf:57:9d");
 
     on_macInput_returnPressed();
     // // usb-> getlxMEASure();
@@ -1092,11 +890,11 @@ void QFreeWork::on_pushButton_clicked()
     // ui->comNameCombo->setCurrentText("COM134");
 }
 
-void QFreeWork::on_getbattary_clicked()
+void QFreeWork::on_get_battery_clicked()
 {
     if (at->getConnected())
     {
-        pb->getbattary();
+        pb->get_battery();
         ui->msgEdit->appendPlainText("正在获取牙刷电量");
     }
     else
@@ -1109,7 +907,7 @@ void QFreeWork::on_disconnectwifi_clicked()
 {
     if (at->getConnected())
     {
-        pb->disconnect_wifi();
+        pb->set_wifi_disconnect();
         ui->msgEdit->appendPlainText("已设置断开wifi");
     }
     else
@@ -1175,7 +973,7 @@ void QFreeWork::on_macInput_returnPressed()
         ui->start_wifible_test->setEnabled(false);
         // 主状态机流程
         iswifibleContinue = true;
-        state = STATE_IDLE;
+        teststate = -1;
 
         emit goNextFocus();
         ui->get_mac->setDisabled(1);
@@ -1205,6 +1003,7 @@ void QFreeWork::on_get_mac_returnPressed()
         ui->get_mac->clear();
         return;
     }
+       sn = ui->get_mac->text().toUtf8();
     ui->msgEdit->appendPlainText("正在查询mac地址");
     get_mac(ui->get_mac->text());             // 文件获取
     processInspection(ui->get_mac->text());   // 站前检测
@@ -1446,13 +1245,9 @@ void QFreeWork::banding_mac_sn_mes(QString bandingmac, QString bandingsn)
 {
     pack.mechines = 1;   // 1脱1,1号上位机
     pack.sn = snbanding;
-
     pack.result = "PASS";
-
     pack.itemvalue = QString("|BTMAC:%1|").arg(bandingmac);
-
     pack.instruct_num = "076";
-
     if (ui->isusemes->checkState())
     {
         sendTestPass(pack);
@@ -1837,4 +1632,17 @@ void QFreeWork::on_disconnectButton_clicked()
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     closeDongleSerialPort();
+}
+
+void QFreeWork::on_stopTest_clicked()
+{
+    at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    waitWork(100);
+    ui->macInput->setDisabled(0);
+    ui->get_mac->setDisabled(0);
+
+    ui->macInput->clear();
+    ui->get_mac->clear();
+    ui->get_mac->setFocus();
+    on_disconnectButton_clicked();
 }

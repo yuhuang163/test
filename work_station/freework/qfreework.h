@@ -21,6 +21,7 @@ public:
     Ui::QFreeWork *ui;
     void start_task() override;
 private:
+    int teststate=-1;
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";
@@ -103,11 +104,17 @@ private:
     DraggableCheckBox* checkBox1;
     DraggableCheckBox* checkBox2;
     DraggableCheckBox* getCheckBoxByIndex(int index);
+    DraggableCheckBox* getCanUseCheckBoxByIndex(int index);
+
+
     int getIndexAt(const QPoint& pos);
     void showTestIndexes();
      QVector<int> testIndexes; // 存储索引的容器
     void saveIndexesToFile(const QVector<int>& indexes);
-    QVBoxLayout* freelayout;
+    QVBoxLayout* conFiglayout;
+     QGridLayout * canUselayout;
+
+    QByteArray sn;
        void paintEvent(QPaintEvent* event) override;
     void showInsertIndicator(const QPoint& pos);
        void executeFunctionByName(const QString functionName);
@@ -116,7 +123,8 @@ private:
            QString name;
            std::function<void()> function;
        };
-       std::vector<NamedFunction> functions;
+       void createTestFunctions();
+       std::vector<NamedFunction> testFunctions;
 protected:
     // virtual void closeEvent(QCloseEvent *);
     void closeEvent(QCloseEvent *event) override;   // 添加 override 关键字
@@ -186,7 +194,7 @@ private slots:
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
     void refresh_ammeter_data(QString data);
-    void on_getbattary_clicked();
+    void on_get_battery_clicked();
 
     // nfc部分
     void on_nfc_write_read_clicked();
@@ -203,6 +211,8 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
+
+    void on_stopTest_clicked();
 
 signals:
     void endTest(int data);

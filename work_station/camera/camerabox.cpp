@@ -11,7 +11,6 @@
 #endif
 
 camerabox::camerabox(QWidget *parent) : box_base(parent), ui(new Ui::camerabox)
-
 {
     ui->setupUi(this);
     CreatWindow<cameratest>(this);

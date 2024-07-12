@@ -7,6 +7,7 @@ DraggableCheckBox::DraggableCheckBox(const QString& text, int index, QWidget* pa
     // 设置样式表
     setStyleSheet("border-width: 2px; border-style: solid; border-color: rgb(255, 165, 0);");
     setAcceptDrops(true); // 允许接收拖放操作
+    setCheckState(Qt::Checked);
 }
 
 

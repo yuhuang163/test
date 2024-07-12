@@ -9,7 +9,7 @@
 
 Qjig::Qjig(QSerialPort *parent) : QSerialPort(parent), serialPort(parent) {}
 
-void Qjig::set_cylinder_state(int state)
+void Qjig::set_cylinder_state(int state,int mechine)
 {
     // if (getIndex() == 2)
     //     return;
@@ -26,26 +26,26 @@ void Qjig::set_cylinder_state(int state)
         waitWork(1500);
 #endif
 
-        //             if (getIndex() == 1)
-        //         {
-        // #ifdef NEW_XWD_QUIESCENT_CURRENT
+          if (mechine == 1)
+                {
+        #ifdef NEW_XWD_QUIESCENT_CURRENT
 
-        // #else
-        //             set_relay_state(1);
-        // #endif
-        //         }
-        //         if (getIndex() == 2)
-        //         {
-        // #ifdef NEW_XWD_QUIESCENT_CURRENT
-        //             sendjigData(STATE_RELAY_OPEN);
-        //             waitWork(50);
-        //             sendjigData(STATE_CYLINDER_OPEN);
-        //             waitWork(3000);
-        //             sendjigData(STATE_RELAY_RESET);
-        // #else
-        //             set_relay_state(2);
-        // #endif
-        //        }
+        #else
+                    set_relay_state(1);
+        #endif
+                }
+        if (mechine == 2)
+                {
+        #ifdef NEW_XWD_QUIESCENT_CURRENT
+                    sendjigData(STATE_RELAY_OPEN);
+                    waitWork(50);
+                    sendjigData(STATE_CYLINDER_OPEN);
+                    waitWork(3000);
+                    sendjigData(STATE_RELAY_RESET);
+        #else
+                    set_relay_state(2);
+        #endif
+               }
     }
     else
     {

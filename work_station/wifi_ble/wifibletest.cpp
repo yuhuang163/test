@@ -1,17 +1,35 @@
-﻿
-
-#include "wifibletest.h"
+﻿#include "wifibletest.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_wifibletest.h"
 
+
+
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
-extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
+// extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
+// {
+// #include "lib/nfc/dcrf32.h"
+// }
+
+void wifibletest::on_pushButton_clicked()
 {
-#include "lib/nfc/dcrf32.h"
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");
+    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // // ui->macInput->setText("3c:84:27:06:f7:5e");
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    // // ui->macInput->setText("3c:84:27:29:50:32");
+   // ui->macInput->setText("B4:56:5D:BF:53:71");
+
+    on_macInput_returnPressed();
+    // // usb-> getlxMEASure();
+    // // waitWork(1000);
+
+    // ui->msgEdit->appendPlainText("正在获取牙刷电量");
+    // ui->comNameCombo->setCurrentText("COM134");
 }
+
 wifibletest::wifibletest(int index, QWidget *parent) : ui(new Ui::wifibletest), m_index(index)
 
 {
@@ -90,6 +108,8 @@ wifibletest::wifibletest(int index, QWidget *parent) : ui(new Ui::wifibletest), 
     }
 
     ui->tabWidget->setTabText(0, "信号测试");
+
+
 }
 
 void wifibletest::showlog(QString msg)
@@ -110,10 +130,20 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
     if (QString(data.product_name).compare("U7P") == 0 ||
         QString(data.product_name).compare("U7") == 0)
     {
-        sku = "55040701";
         ui->msgEdit->appendPlainText("开始写入nfc数据");
+        if(QString(data.product_name).compare("U7P") == 0 )
+        {
+            nfcdataHeadText = "033BD2023668772001004800324F3130"+getValueBySN(ui->get_mac->text()).toUtf8()+"810800272000141785911410";
+            ui->msgEdit->appendPlainText("当前nfc写入的是U7P!");
+        }
+        if( QString(data.product_name).compare("U7") == 0){
+            nfcdataHeadText = "033BD2023668772001004800324F3045"+getValueBySN(ui->get_mac->text()).toUtf8()+"810800272000141785911410";
+            ui->msgEdit->appendPlainText("当前nfc写入的是U7!");
+        }
 
         on_nfc_write_read_clicked();
+
+
     }
 
 
@@ -130,6 +160,24 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
     // 读取老化状态字符串
     QString ageStates = settings.value("ProductInfo/Age_State").toString();
     QStringList ageStateList = ageStates.split('=');
+
+    // 读取蓝牙版本字符串
+    QString bleVersions = settings.value("ProductInfo/Ble_Ver").toString();
+    QStringList bleVersionList = bleVersions.split('=');
+
+    // 读取压感版本字符串
+    QString pressVersions = settings.value("ProductInfo/Pressure_Sense_Version").toString();
+    QStringList pressVersionList = pressVersions.split('=');
+
+    // 读取电机版本字符串
+    QString motorVersions = settings.value("ProductInfo/Motor_Ver").toString();
+    QStringList motorVersionList = motorVersions.split('=');
+
+
+    // 输出蓝牙状态列表
+    for (const QString &version : bleVersionList) {
+        qDebug() << "ble Version:" << version.trimmed();
+    }
 
     // 输出软件版本列表
     for (const QString &version : softwareVersionList) {
@@ -160,11 +208,23 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
     // 检查软件版本、资源版本和老化状态是否匹配
     if (softwareVersionList.contains(data.soft_version) &&
         resourceVersionList.contains(data.res_version) &&
+         bleVersionList.contains(data.ble_version) &&
+
+           pressVersionList.contains(data.presure_version) &&
+           motorVersionList.contains(data.motor_version) &&
+
         ageStateList.contains(QString::number(data.ageing_state)))
     {
         showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
         showlog("资源版本正确" + QString::fromUtf8(data.res_version));
         showlog("老化状态正确" + QString::number(data.ageing_state));
+        showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
+
+        showlog("压感状态正确" + QString::fromUtf8(data.presure_version));
+        showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
+
+        ui->msgEdit->appendPlainText("软件版本正确");
+
     }
     else
     {
@@ -172,11 +232,21 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
         TestResult = failValue;
         ui->msgEdit->appendPlainText("状态错误");
         ui->msgEdit->appendPlainText("当前设备软件版本" + QString::fromUtf8(data.soft_version) +
-                                     "配置文件版本" + softwareVersions);
+                                     "配置文件软件版本" + softwareVersions);
         ui->msgEdit->appendPlainText("当前设备资源版本" + QString::fromUtf8(data.res_version) +
-                                     "配置文件版本" + resourceVersions);
+                                     "配置文件资源版本" + resourceVersions);
+
         showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" +
                 ageStates);
+
+        showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" +
+                                                         bleVersions);
+
+
+        showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
+                                                           pressVersions);
+        showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" +
+                                                           motorVersions);
 
 
         iswifibleContinue = false;
@@ -374,7 +444,7 @@ void wifibletest::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -554,7 +624,7 @@ void wifibletest::start_task()
             if (at->getConnected())
             {
                 ui->msgEdit->appendPlainText("蓝牙连接成功");
-                sendCommandWithRetry(std::bind(&Qpb::setDevForbidSleepState, pb, FacSwitch_OPEN));
+                sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
                 state = getNextState(state);
             }
             break;
@@ -562,7 +632,7 @@ void wifibletest::start_task()
         case STATE_DISABLE_SLEEP_1:   // 设置设备采集
             if (canGoNext)
             {
-                sendCommandWithRetry(std::bind(&Qpb::getBaseInfo, pb));
+                sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                 ui->msgEdit->appendPlainText("已进入禁止休眠");
                 state = getNextState(state);
             }
@@ -600,6 +670,7 @@ void wifibletest::start_task()
                         at->sendBLELOG(0);   // 日志关
                         if (pack.product== "P20P" || pack.product== "U7"|| pack.product== "U7P")
                         {
+                            sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                             state = STATE_WATI_CORRECT_BATTARY;
                         }
                         else
@@ -639,6 +710,7 @@ void wifibletest::start_task()
                         if (pack.product== "P20P" || pack.product== "U7"|| pack.product== "U7P")
                         {
                             wifiresult = "通过";
+                            sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                             state = STATE_WATI_CORRECT_BATTARY;
                         }
                         else
@@ -686,7 +758,7 @@ void wifibletest::start_task()
                         QByteArray wifiNameBytes = wifiName.toUtf8();
                         QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
                         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-                        //   pb->disconnect_wifi();
+                        //   pb->set_wifi_disconnect();
                         wifiresult = "通过";
                         TestItem wifiRssi;
 
@@ -694,7 +766,7 @@ void wifibletest::start_task()
                         wifiRssi.testData = WIFI_RSSI;
                         wifiRssi.testResult = "通过";
                         testItems.append(wifiRssi);
-                        sendCommandWithRetry(std::bind(&Qpb::getbattary, pb));
+                        sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                         state = STATE_WATI_CORRECT_BATTARY;
                         rssitestcount = 0;
                     }
@@ -710,7 +782,7 @@ void wifibletest::start_task()
                         QByteArray wifiNameBytes = wifiName.toUtf8();
                         QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
                         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-                        //     pb->disconnect_wifi();
+                        //     pb->set_wifi_disconnect();
                         TestResult = failValue;
                         TestItem wifiRssi;
 
@@ -721,7 +793,7 @@ void wifibletest::start_task()
                         qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                         ui->msgEdit->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
                         rssitestfailcount = 0;
-                        sendCommandWithRetry(std::bind(&Qpb::getbattary, pb));
+                        sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                         state = STATE_WATI_CORRECT_BATTARY;
                     }
                 }
@@ -731,7 +803,7 @@ void wifibletest::start_task()
             break;
 
         case STATE_WATI_CORRECT_BATTARY:   // 设置禁止休眠
-            if (canGoNext)
+            if (is_battary_test)
             {
                 ui->msgEdit->appendPlainText("已成功完成电量测试");
                 if (pack.factory == "lx" || pack.factory == "jj")
@@ -741,8 +813,9 @@ void wifibletest::start_task()
                     waittime->setInterval(measure_wait_time);
                     waittime->start();
                 }
-                else
+                else{
                     state = STATE_SAVE_RESULT;
+                }
             }
 
             break;
@@ -858,7 +931,7 @@ void wifibletest::start_task()
             ui->macInput->clear();
             ui->snInput->clear();
 
-            ui->snInput->setDisabled(0);
+            ui->macInput->setDisabled(0);
             ui->get_mac->setDisabled(0);
             emit endTest(getIndex());
 
@@ -870,41 +943,14 @@ void wifibletest::start_task()
     //  QCoreApplication::processEvents();
 }
 
-void wifibletest::on_pushButton_clicked()
-{
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    // // ui->macInput->setText("3c:84:27:29:50:32");
-   ui->macInput->setText("B4:56:5D:BF:53:71");
 
-    on_macInput_returnPressed();
-    // // usb-> getlxMEASure();
-    // // waitWork(1000);
 
-    // ui->msgEdit->appendPlainText("正在获取牙刷电量");
-    // ui->comNameCombo->setCurrentText("COM134");
-}
-
-void wifibletest::on_getbattary_clicked()
-{
-    if (at->getConnected())
-    {
-        pb->getbattary();
-        ui->msgEdit->appendPlainText("正在获取牙刷电量");
-    }
-    else
-    {
-        ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
-    }
-}
 
 void wifibletest::on_disconnectwifi_clicked()
 {
     if (at->getConnected())
     {
-        pb->disconnect_wifi();
+        pb->set_wifi_disconnect();
         ui->msgEdit->appendPlainText("已设置断开wifi");
     }
     else
@@ -1360,7 +1406,13 @@ void wifibletest::on_clear_nfc_data_clicked()
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 
-    icdev = dc_init(100, 115200);
+    int nfcport=100;
+    QStringList parts = ui->NfcComboBox->currentText().split(":");
+    if (parts.size() == 2) {
+        nfcport= parts[0].toInt();
+    }
+    icdev = dc_init(nfcport, 115200);
+
     if ((intptr_t)icdev <= 0)
     {
         ui->msgEdit->appendPlainText("Init Com Error!");
@@ -1468,12 +1520,32 @@ QString wifibletest::generateHexString(int productionNumber)
     QString productionStr = QString("%1").arg(productionNumber, 4, 16, QChar('0'));
 
     // 构造十六进制字符串
+    sku = "55040701";
+
     QString hexString = sku;           // 固定部分
     hexString += generateDateCode();   // 日期部分
     hexString += productionStr;        // 生产数量
     qDebug() << getIndex() << "nfc的序列号: " << hexString;
 
     return hexString;
+}
+
+QString wifibletest::getValueBySN(const QString &sn ) {
+
+    QString truncatedSN = sn.left(8);
+    ui->msgEdit->appendPlainText("truncatedSN:"+truncatedSN);
+
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QString value =  settings.value("SUBPID/"+truncatedSN, "SUBPID_ERRO").toString();
+    ui->msgEdit->appendPlainText("匹配到的subpid："+value);
+
+
+    if("SUBPID_ERRO"==value){
+        QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
+
+    }
+
+    return value;
 }
 void wifibletest::on_nfc_write_read_clicked()
 {
@@ -1502,17 +1574,24 @@ void wifibletest::on_nfc_write_read_clicked()
         hexString += QString("%1").arg(text[i].toLatin1(), 2, 16, QChar('0'));
     }
 
-    QString dataText = "033BD2023668772001004800324F304500810800272000141785911410" + hexString +
-                       "170102910B0101010A06" + macAddress.remove(":").toUpper();
-    ui->msgEdit->appendPlainText("写入的nfc数据为"+dataText);
+      QString  nfcdataText = nfcdataHeadText+ hexString.toUpper() +
+            "170102910B0101010A06" + macAddress.remove(":").toUpper();
+
+
+    ui->msgEdit->appendPlainText("写入的nfc数据为"+nfcdataText);
     QByteArray dataBytes =
-        QByteArray::fromHex(dataText.toLatin1());   // 将十六进制字符串转换为字节数组
+        QByteArray::fromHex(nfcdataText.toLatin1());   // 将十六进制字符串转换为字节数组
     int dataSize = dataBytes.size();                // 获取字节数组的大小
-    qDebug() << getIndex() << "dataSize: " << dataSize << dataText;
+    qDebug() << getIndex() << "dataSize: " << dataSize << nfcdataText;
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 
-    icdev = dc_init(100, 115200);
+    int nfcport=100;
+    QStringList parts = ui->NfcComboBox->currentText().split(":");
+    if (parts.size() == 2) {
+        nfcport= parts[0].toInt();
+    }
+    icdev = dc_init(nfcport, 115200);
     if ((intptr_t)icdev <= 0)
     {
         ui->msgEdit->appendPlainText("初始化nfc接口失败!");
@@ -1602,7 +1681,7 @@ void wifibletest::on_nfc_write_read_clicked()
         }
     }
     ui->msgEdit->appendPlainText("nfc信息读取结束");
-    if (ReadNfcData == dataText)
+    if (ReadNfcData == nfcdataText)
     {
         ui->msgEdit->appendPlainText("写入的与读取的比对通过");
     }
@@ -1654,3 +1733,173 @@ void wifibletest::on_stopTest_clicked()
     ui->get_mac->setFocus();
     on_disconnectButton_clicked();
 }
+
+void wifibletest::on_nfc_read_clicked()
+{
+    HANDLE icdev = (HANDLE)-1;
+    int st = -1;
+    unsigned char _Snr[100] = "\0";
+    unsigned char szSnr[100] = "\0";
+    unsigned int SnrLen = 0;
+    ReadNfcData = "";
+    int dataSize =62;
+    unsigned char rdata[100] = "\0";
+    unsigned char rdatahex[100] = "\0";
+
+    int nfcport=100;
+    QStringList parts = ui->NfcComboBox->currentText().split(":");
+    if (parts.size() == 2) {
+        nfcport= parts[0].toInt();
+    }
+    icdev = dc_init(nfcport, 115200);
+    if ((intptr_t)icdev <= 0)
+    {
+        ui->msgEdit->appendPlainText("初始化nfc接口失败!");
+        TestResult = failValue;
+        return;
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("初始化nfc接口成功");
+    }
+
+    dc_beep(icdev, 10);
+    // 射频复位
+    dc_reset(icdev, 1);
+    st = dc_card_n(icdev, 0, &SnrLen, _Snr);
+    if (st != 0)
+    {
+        if (st == 1)
+            ui->msgEdit->appendPlainText("nfc卡识别不到");
+        if (st < 0)
+            ui->msgEdit->appendPlainText("nfc卡查询失败");
+
+        TestResult = failValue;
+        return;
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("nfc卡查询成功");
+        memset(szSnr, 0x00, sizeof(szSnr));
+        hex_a(_Snr, szSnr, SnrLen);
+        std::string str1 = (char *)szSnr;
+        ui->msgEdit->appendPlainText("卡的序列号为" + QString::fromStdString(str1));
+    }
+
+    for (int i = 4; i * 4 < dataSize; i += 4)
+    {   // 每次处理16个字节
+        st = dc_read(icdev, i, rdata);
+        if (st != 0)
+        {
+            // ui->msgEdit->appendPlainText("dc_read Error!");
+            ui->msgEdit->appendPlainText("nfc信息读取失败");
+            TestResult = failValue;
+            return;
+        }
+        else
+        {
+            memset(rdatahex, 0x00, sizeof(rdatahex));
+            hex_a(rdata, rdatahex, 16);
+            std::string str1 = (char *)rdatahex;
+            ReadNfcData = ReadNfcData + QString::fromStdString(str1);
+         //   ui->msgEdit->appendPlainText(QString::fromStdString(str1));
+        }
+    }
+    if (dataSize % 16)
+    {
+        st = dc_read(icdev, 4 + (dataSize / 16) * 4, rdata);
+        if (st != 0)
+        {
+            ui->msgEdit->appendPlainText("nfc信息读取失败");
+            TestResult = failValue;
+            //  ui->msgEdit->appendPlainText("dc_read Error!");
+            return;
+        }
+        else
+        {
+            memset(rdatahex, 0x00, sizeof(rdatahex));
+            hex_a(rdata, rdatahex, dataSize % 16);
+            std::string str1 = (char *)rdatahex;
+            ReadNfcData = ReadNfcData + QString::fromStdString(str1);
+          //  ui->msgEdit->appendPlainText(QString::fromStdString(str1));
+        }
+    }
+    ui->msgEdit->appendPlainText("nfc信息读取结束");
+    ui->msgEdit->appendPlainText("nfc内容为："+ReadNfcData);
+
+}
+
+//写入
+void wifibletest::on_nfc_encode_clicked()
+{
+    int st = -1;
+    HANDLE icdev = (HANDLE)-1;
+    int nfcport=100;
+    QStringList parts = ui->NfcComboBox->currentText().split(":");
+    if (parts.size() == 2) {
+        nfcport= parts[0].toInt();
+    }
+    icdev = dc_init(nfcport, 115200);
+    st = dc_swr_eeprom(icdev, 0, 8, (unsigned char *)"READER_A");
+    if (st != 0)
+    {
+        ui->msgEdit->appendPlainText("nfc烧录器写入失败");
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("nfc烧录器写入成功");
+    }
+
+}
+
+//读取
+void wifibletest::on_nfc_decode_clicked()
+{
+    int st = -1;
+    HANDLE icdev = (HANDLE)-1;
+    unsigned char buff_1[8];
+    int nfcport=100;
+    QStringList parts = ui->NfcComboBox->currentText().split(":");
+    if (parts.size() == 2) {
+        nfcport= parts[0].toInt();
+    }
+    icdev = dc_init(nfcport, 115200);
+    st = dc_srd_eeprom(icdev, 0, 8, buff_1);
+    if (st != 0)
+    {
+        ui->msgEdit->appendPlainText("nfc烧录器读取失败");
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("nfc烧录器读取成功");
+        // 将 buff_1 数组转换为 QString
+        QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
+        // 输出整个字符串
+        qDebug() << "nfc设备为:" << buffStr;
+    }
+
+}
+
+
+void wifibletest::on_nfcComFresh_clicked()
+{
+    updateHIDComboBox(getNfcComboBox());
+}
+
+
+
+
+
+void wifibletest::on_get_battery_clicked()
+{
+    if (at->getConnected())
+    {
+        pb->get_battery();
+        ui->msgEdit->appendPlainText("正在获取牙刷电量");
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
+    }
+}
+

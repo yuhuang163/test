@@ -1,0 +1,15 @@
+import re
+
+# 读取AbIni.h文件
+with open('AbIni.h', 'r') as file:
+    content = file.read()
+
+# 匹配版本定义和更新内容
+pattern = r'#define\s+(\w+_VER)\s+"(.+)"\s+\/\/\s+(.+)'
+matches = re.findall(pattern, content)
+
+# 写入版本发布.txt文件
+with open('版本发布.txt', 'w') as file:
+    for version, ver_num, update_content in matches:
+        file.write(f'版本号：{ver_num}\n')
+        file.write(f'更新内容：{update_content}\n\n')

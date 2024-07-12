@@ -11,10 +11,9 @@ Qat::Qat(QSerialPort *parent) : QSerialPort(parent), serialPort(parent)
 {
 
 
-    if (serialPort) {
-        qDebug() << "Qat指向" << serialPort;
-    } else {
+    if (!serialPort) {
         qDebug() << "Qat指向一个空指针";
+        return;
     }
 
 
@@ -29,7 +28,11 @@ void Qat::parseCmd(const QByteArray &byte)
     {
         dataQueue.push_back((uint8_t)c);
     }
+    QString data=byte;
+    if(data.contains("deviceName")){
+        disconnected(data);
 
+    }
     while (dataQueue.isEmpty() == false)
     {
         char c = dataQueue.dequeue();
@@ -144,7 +147,14 @@ void Qat::sendMac(QString mac)
 }
 void Qat::sendBLELOG(int state)
 {
+    if (state > 1)
+        state = 1;
     QString s = "AT+BLELOG=" + QString::number(state) + "\r\n";
+    sendCmd(s);
+}
+void Qat::sendBLEDEVICELOG(int state)
+{
+    QString s = "AT+BLEDEVICELOG=" + QString::number(state) + "\r\n";
     sendCmd(s);
 }
 
@@ -164,6 +174,7 @@ void Qat::registerCommand()
 
     commandList["AT+CONNECT_SUCCESS"] = std::bind(&Qat::connected, this, std::placeholders::_1);
     commandList["AT+DISCONNECT"] = std::bind(&Qat::disconnected, this, std::placeholders::_1);
+
     commandList["AT+WIFIRSSI"] = std::bind(&Qat::wifi_rssi, this, std::placeholders::_1);
     commandList["AT+WIFI_CONNECT_SUCCESS"] =
         std::bind(&Qat::WIFI_connected, this, std::placeholders::_1);

@@ -1,8 +1,24 @@
 ﻿#include "test_base.h"
 #include "qcoreapplication.h"
+#include "qprocess.h"
+#include <windows.h>
+#include <setupapi.h>
+#include <devguid.h>
+#include <initguid.h>
+#include <hidclass.h>
+#include <QSet>
+#include <QString>
+#include <hidsdi.h>
+#include <dbt.h>
+
+#pragma comment(lib, "hid.lib")
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "ole32.lib")
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
+
+
 test_base::test_base()
     : log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
       at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
@@ -35,7 +51,6 @@ void test_base::initData()
 }
 void test_base::signalAndslot()
 {
-    qDebug() << "test的信号绑定";
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refresh_ble_state(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refresh_ble_rssi(QString)));
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(get_wifi_msg(QString)));
@@ -51,16 +66,16 @@ void test_base::signalAndslot()
             SLOT(check_LED_CONTROL_state(FacLedControl)));
     connect(pb, SIGNAL(send_camera_CONTROL_state(FacCameraControl)), this,
             SLOT(refresh_camera_CONTROL(FacCameraControl)));
-    connect(pb, SIGNAL(imuDataReady(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
+    connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
     connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this,
             SLOT(update_IMU_CALIB_result(FacImuCalibResult)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refresh_pb_data(QString)));
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refresh_motor_cali_msg(QString)));
-    connect(pb, SIGNAL(periphStateReady(FacGetPeriphState)), this,
+    connect(pb, SIGNAL(send_periph_data(FacGetPeriphState)), this,
             SLOT(refresh_periph_data(FacGetPeriphState)));
     connect(pb, SIGNAL(send_Lcd_CONTROL_state(FacLcdControl)), this,
             SLOT(refresh_Lcd_CONTROL(FacLcdControl)));
-    connect(pb, SIGNAL(baseInfoReady(FacGetDevBaseInfo)), this,
+    connect(pb, SIGNAL(send_base_data(FacGetDevBaseInfo)), this,
             SLOT(refresh_base_data(FacGetDevBaseInfo)));
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refresh_battary_data(FacDevInfo)));
     connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
@@ -88,10 +103,9 @@ void test_base::signalAndslot()
     connect(dongleSerialPort, &QSerialPort::readyRead, this,
             [=]()
             {
-                dongleSerialPortTimer->start(10);   // 设置100毫秒的延时
+                dongleSerialPortTimer->start(dongleOutTime);   // 设置100毫秒的延时
                 dongleSerialPortBuf.append(dongleSerialPort->readAll());   // 将读到的数据放入缓冲区
             });
-
     connect(usbSerialPort, &QSerialPort::readyRead, this,
             [=]()
             {
@@ -130,6 +144,8 @@ void test_base::scanSerialPorts()
         {
             currentItems.insert(comboBox->itemText(i));
         }
+
+
         // 添加新的项目
         for (const QSerialPortInfo &info : ports)
         {
@@ -155,7 +171,79 @@ void test_base::scanSerialPorts()
     updateComboBox(getUsbcomNameCombo(), ports);
     updateComboBox(getJigcomNameCombo(), ports);
     updateComboBox(getProductcomNameCombo(), ports);
+
 }
+
+void test_base::updateHIDComboBox(QComboBox *comboBox) {
+    if (!comboBox) return;
+
+    int st = -1;
+    HANDLE icdev = (HANDLE)-1;
+    unsigned char buff_1[8];
+
+    // 获取当前的项目列表
+    QSet<QString> currentItems;
+    for (int i = 0; i < comboBox->count(); ++i) {
+        currentItems.insert(comboBox->itemText(i));
+    }
+
+    QProcess process;
+    // Windows系统上使用 "wmic" 命令获取带有 USB 字符串的设备列表
+    process.start("wmic path Win32_PnPEntity where \"Name like '%USB%'\" get DeviceID,Description");
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput();
+
+    QTextStream stream(&output);
+    QString line;
+    QStringList newDevices; // 存储新的设备列表
+    int k=100;
+    while (stream.readLineInto(&line)) {
+        if (line.contains("DeviceID")) continue; // 跳过标题行
+        QStringList parts = line.split(QRegExp("\\s{2,}"), Qt::SkipEmptyParts);
+        if (parts.size() >= 2) {
+            QString device = parts[1].trimmed();
+            if (device.contains("VID_0471")) {
+                icdev = dc_init(k, 115200);
+                st = dc_srd_eeprom(icdev, 0, 8, buff_1);
+                if (st != 0) {
+                    qDebug() << "nfc烧录器读取失败";
+                } else {
+                    qDebug() << "nfc烧录器读取成功";
+                    QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
+                    qDebug() << "nfc设备为:" << buffStr;
+                    newDevices << QString("%1:%2").arg(k).arg(buffStr);
+                }
+                ++k;
+            }
+        }
+    }
+
+    // 移除不再存在的设备
+    for (int i = 0; i < comboBox->count(); ++i) {
+        QString currentItem = comboBox->itemText(i);
+        if (!newDevices.contains(currentItem)) {
+            comboBox->removeItem(i);
+            currentItems.remove(currentItem);
+            --i; // 因为移除了一个项，所以要调整索引
+        }
+    }
+
+    // 添加新的设备
+    for (const QString &newDevice : newDevices) {
+        if (!currentItems.contains(newDevice)) {
+
+            comboBox->addItem(newDevice);
+            currentItems.insert(newDevice);
+
+        }
+    }
+
+    qDebug() << "设备个数" << currentItems.size();
+}
+
+
+
+
 void test_base::readDongleSerialPortData()
 {
     dongleSerialPortTimer->stop();               // 关闭定时器
@@ -181,9 +269,8 @@ void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error)
     if (error == QSerialPort::PermissionError)
     {
         closeDongleSerialPort();
-        // QMessageBox::warning(NULL, "警告", " Dongle串口连接断开！\t\r\n");
 
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        msgEdit()->appendPlainText("串口权限问题");
     }
 }
 
@@ -258,7 +345,15 @@ void test_base::readUsbSerialPortData()
     usbSerialPortTimer->stop();               // 关闭定时器
     QByteArray dataTemp = usbSerialPortBuf;   // 读取缓冲区数据
 
-    usb->processlxModbusRTUData(dataTemp);   // 立讯充电电流
+
+    if(pack.factory=="xwd")
+    {
+        usb->parseCmd(dataTemp);    //欣旺达充电电流
+    }
+    else
+    {
+        usb->processlxModbusRTUData(dataTemp);   // 立讯充电电流
+    }
 
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
@@ -429,6 +524,7 @@ void test_base::readProductSerialPortData()
 
     log->save_brush_log(macAddress, dataTemp);
     processReceivedData(dataTemp);
+    logEdit()->appendPlainText("收到牙刷日志");
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // msgEdit()->appendPlainText(QString::fromUtf8(dataTemp));
@@ -548,6 +644,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc)
 {
     static int retryCount = 0;
     canGoNext = false;
+    //sendRetryOver = false;
     if (commandFunc != nullptr)
     {
         commandFunc();   // 重新发送指令
@@ -572,7 +669,10 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc)
                     {
                         getRespone = 0;
                         retryCount = 0;
+                       // sendRetryOver=1;
                         timer->stop();   // 达到最大重试次数，停止定时器
+                        msgEdit()->appendPlainText("达到最大重试次数，停止定时器");
+                         qDebug() << "达到最大重试次数，停止定时器";
                         delete timer;
                         return 0;
                     }
@@ -591,6 +691,6 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc)
                 return 0;
             });
 
-    timer->start(500);   // 启动定时器
+    timer->start(1000);   // 启动定时器
     return 0;
 }

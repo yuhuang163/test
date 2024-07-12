@@ -1,6 +1,8 @@
 ﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include "Abini.h"
+#include "quicklz_dec.h"
+
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
 #include "sensor_hub.h"
@@ -54,6 +56,8 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 public:
 /*摄像头传图部分*/
+    QByteArray pictureByteArray=0;
+
     int dataNumber=0;
 #define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
     unsigned short crc16_compute(unsigned char const *p_data, unsigned int size,
@@ -72,7 +76,10 @@ public:
 
         return crc;
     }
-#define EXT_UART_PHY_LAYER_MAGIC      0xAAAAAAAAAAAAAAAA
+//0xAAAAAAAAAAAAAAAA
+//0xCCCCCCCCCCCCCCCC
+
+#define EXT_UART_MAGIC      0xCCCCCCCCCCCCCCCC
 #define UART_PHY_LAYER_HEAD_SIZE      9   // 头大小
 // #define UART_PHY_LAYER_FRAME_SIZE 256
 #define UART_PHY_LAYER_CRC_SIZE       0
@@ -137,6 +144,8 @@ public:
 private:
     NewImuCalData calData;
     new_imu_calibrate *nqimuc = nullptr;
+    QString getValueBySN(const QString &sn ) ;
+    QByteArray subpid;
 
     bool eventFilter(QObject *watched, QEvent *event);
     QString receivedData = "";
@@ -173,6 +182,10 @@ private:
     QLabel *macLabel = nullptr;
     QLabel *board_sn = nullptr;
     QLabel *tail_sn = nullptr;
+    QLabel *sub_pid = nullptr;
+
+  std::atomic<bool> running;
+     QFuture<void> future;
     Qpb *pb;
     Qat *at;
     typedef enum
@@ -205,6 +218,9 @@ private:
     bool is_start_ium_cali = 0;   // 是否开始六轴校准
     void update_main_style(QString style);
     QTimer *waittime = new QTimer(this);
+    // 在您的类中声明定时器
+    QTimer *cameratimer = new QTimer(this);
+
     int imu_wait_time = 15000;
     int music_time = 30000;
     bool isovertime = 0;              // 是否开始发送校验结果
@@ -227,6 +243,7 @@ private:
     void on_radomDataPushButton_clicked();
     QTimer *dongleSerialPortTimer = new QTimer(this);
     QByteArray dongleSerialPortBuf = 0;
+    void updateHIDComboBox(QComboBox *comboBox);
 
     // 定义用于保存MAC地址的QString变量
     QString csvmac;
@@ -243,8 +260,13 @@ signals:
     void send_mac(QString data);
     void send_frame_rate(QString data);
     void refreshDongleSerialPortState(int state);
+    void imageProcessed();
+
+
 
 private slots:
+    void updateImageOnMainThread();
+
     void showlog(QString msg);
     void refresh_imu_cali_msg(QString msg);
     void send_picture(const QString &url, const QString &filePath);
@@ -286,7 +308,6 @@ private slots:
     void on_forbidsleep_clicked();
     void on_pushButton_clicked();
     void on_fac_mode_clicked();
-    void on_getbattary_clicked();
     void on_getwifi_clicked();
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
@@ -331,7 +352,7 @@ private slots:
     void on_otaTestPushButton_2_clicked();
     void ota_source_set(int state);
     void ota_fw_set(int state);
-    void show_ble_rssi(int state);
+
     void refresh_pb_data(QString data);
     void on_close_camera_clicked();
     void on_open_camera_clicked();
@@ -344,6 +365,11 @@ private slots:
     void on_start_brush_clicked();
     void on_open_press_collect_clicked();
     void getPressSensorData(FacUploadPresSensor x);
+    void get_servo_motor_info_msg(FacMotorCalibResult data);
+    QString getMotorStateString(FacMotoState state) ;
+    QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
+    QString getCaliMarkString(CaliMark caliMark);
+
     void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
                                bool appHeader);
     void on_close_press_collect_clicked();
@@ -397,5 +423,18 @@ private slots:
     void on_close_support_camera_clicked();
     void on_open_camera_picture_clicked();
     void on_close_camera_picture_clicked();
+    void on_nfc_decode_clicked();
+    void on_nfc_read_clicked();
+    void on_nfcComFresh_clicked();
+    void on_nfc_encode_clicked();
+    void on_get_device_subpid_clicked();
+    void on_add_data_clicked();
+    void on_init_ui_data_clicked();
+    void on_get_battery_clicked();
+    void on_get_motor_info_clicked();
+    void on_get_board_sn_clicked();
+    void on_write_device_sn_clicked();
+    void on_write_board_sn_clicked();
+    void on_write_device_subpid_clicked();
 };
 #endif   // MAINWINDOW_H

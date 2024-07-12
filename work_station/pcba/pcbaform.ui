@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>347</width>
+    <width>270</width>
     <height>380</height>
    </rect>
   </property>
@@ -339,6 +339,115 @@
        <string>待拓展功能</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
+       <item row="7" column="0">
+        <widget class="QLabel" name="usbuartstate">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>usb串口连接：</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="uartstate">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>串口连接：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="bleStatusLabel">
+             <property name="text">
+              <string>蓝牙连接：</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="7" column="1">
+        <widget class="QLabel" name="WIFIStatusLabel">
+         <property name="text">
+          <string>WIFI连接：</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="pushButton_2">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>单个测试按键</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>自动化测试按键</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_23">
+         <item>
+          <widget class="QLabel" name="label_13">
+           <property name="text">
+            <string>电机校准参数</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="pcba_motor_cali_param">
+           <property name="text">
+            <string>0071494700</string>
+           </property>
+           <property name="placeholderText">
+            <string>请输入电机参数</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="1" column="0" colspan="2">
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
@@ -382,110 +491,22 @@
          </item>
         </layout>
        </item>
-       <item row="6" column="1">
-        <widget class="QLabel" name="WIFIStatusLabel">
-         <property name="text">
-          <string>WIFI连接：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QPushButton" name="pushButton_2">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>单个测试按键</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pushButton">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="text">
-            <string>自动化测试按键</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="usbuartstate">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>usb串口连接：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_23">
-         <item>
-          <widget class="QLabel" name="label_13">
-           <property name="text">
-            <string>电机校准参数</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="pcba_motor_cali_param">
-           <property name="text">
-            <string>0071494700</string>
-           </property>
-           <property name="placeholderText">
-            <string>请输入电机参数</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="3" column="0" colspan="2">
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <layout class="QHBoxLayout" name="horizontalLayout_13">
          <property name="topMargin">
           <number>0</number>
          </property>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_8">
-           <property name="topMargin">
-            <number>0</number>
+          <widget class="QLabel" name="BLE_RSSI">
+           <property name="text">
+            <string>BLE的RSSI：</string>
            </property>
-           <item>
-            <widget class="QLabel" name="uartstate">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>串口连接：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="bleStatusLabel">
-             <property name="text">
-              <string>蓝牙连接：</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
+          </widget>
          </item>
          <item>
-          <widget class="QLabel" name="macLabel">
+          <widget class="QLabel" name="WIFI_RSSI">
            <property name="text">
-            <string>蓝牙mac：</string>
+            <string>wifi的RSSI：</string>
            </property>
           </widget>
          </item>

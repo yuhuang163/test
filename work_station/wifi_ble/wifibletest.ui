@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>454</width>
-    <height>482</height>
+    <height>485</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -211,6 +211,23 @@
             <string>停止测试</string>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_17">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QComboBox" name="NfcComboBox"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="nfcComFresh">
+             <property name="text">
+              <string>刷新nfc口</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -473,7 +490,7 @@
        <item row="6" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_22">
          <item>
-          <widget class="QPushButton" name="getbattary">
+          <widget class="QPushButton" name="get_battery">
            <property name="text">
             <string>显示充电情况</string>
            </property>
@@ -495,6 +512,34 @@
        <string>蓝牙绑定工站</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
+       <item row="7" column="1">
+        <widget class="QPushButton" name="nfc_read">
+         <property name="text">
+          <string>nfc读取</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1">
+        <widget class="QPushButton" name="clear_nfc_data">
+         <property name="text">
+          <string>清空nfc数据</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QPushButton" name="nfc_write_read">
+         <property name="text">
+          <string>nfc读写</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="clear_scan">
+         <property name="text">
+          <string>清空扫描</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_10">
          <item>
@@ -518,6 +563,37 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="banding_result">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="nfc_count">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="nfc_mac">
+         <property name="text">
+          <string>3C:84:27:07:A8:D2</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QPushButton" name="nfc_decode">
+         <property name="text">
+          <string>烧录器读取编号</string>
+         </property>
+        </widget>
        </item>
        <item row="1" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_16">
@@ -543,48 +619,10 @@
          </item>
         </layout>
        </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="clear_scan">
-         <property name="text">
-          <string>清空扫描</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="banding_result">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="nfc_mac">
-         <property name="text">
-          <string>3C:84:27:07:A8:D2</string>
-         </property>
-        </widget>
-       </item>
        <item row="5" column="1">
-        <widget class="QPushButton" name="nfc_write_read">
+        <widget class="QPushButton" name="nfc_encode">
          <property name="text">
-          <string>nfc读写</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QPushButton" name="clear_nfc_data">
-         <property name="text">
-          <string>清空nfc数据</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="nfc_count">
-         <property name="text">
-          <string>0</string>
+          <string>烧录器写入编号</string>
          </property>
         </widget>
        </item>

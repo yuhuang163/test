@@ -59,7 +59,9 @@ typedef enum _DevStateType {
     DevStateType_SLEEP = 2, 
     DevStateType_FORBID_SLEEP = 3, 
     DevStateType_FACTORY_QRCORD = 4, 
-    DevStateType_SHIP = 5 
+    DevStateType_SHIP = 5, 
+    DevStateType_UART_RECEIVE = 6, 
+    DevStateType_PRESS_SENSOR_TEMP = 7 
 } DevStateType;
 
 typedef enum _FacSwitch { 
@@ -75,7 +77,8 @@ typedef enum _FacDevInfoType {
     FacDevInfoType_BOARD_SN = 2, 
     FacDevInfoType_BRUSH_MODE = 3, 
     FacDevInfoType_BATTERY_INFO = 4, 
-    FacDevInfoType_IF_QUALIFIED = 5 
+    FacDevInfoType_IF_QUALIFIED = 5, 
+    FacDevInfoType_SUB_PID = 6 
 } FacDevInfoType;
 
 typedef enum _FacChargeStateType { 
@@ -107,8 +110,55 @@ typedef enum _FacMotoControlType {
     FacMotoControlType_motor_test = 4, 
     FacMotoControlType_damping_state = 5, 
     FacMotoControlType_motor_cali_data = 6, 
-    FacMotoControlType_servo_param = 7 
+    FacMotoControlType_servo_param = 7, 
+    FacMotoControlType_get_servo_info_data = 8 
 } FacMotoControlType;
+
+typedef enum _FacMotoState { 
+    FacMotoState_UGT_E_SS_IDLE_A = 0, /* 空闲任务A */
+    FacMotoState_UGT_E_SS_INIT_B = 1, /* 空闲任务B */
+    FacMotoState_UGT_E_SS_STOP_C = 2, /*  */
+    FacMotoState_UGT_E_SS_START_D = 3, /* 开始任务D */
+    FacMotoState_UGT_E_SS_PRECHARGE_E = 4, /* 预充任务E */
+    FacMotoState_UGT_E_SS_TRACK_F = 5, /* 追踪任务F */
+    FacMotoState_UGT_E_SS_IDENTIFY_G = 6, /* 识别任务G */
+    FacMotoState_UGT_E_SS_ALIGNMENT_H = 7, /* 定位任务H */
+    FacMotoState_UGT_E_SS_OPENLOOP_I = 8, /* 开环任务I */
+    FacMotoState_UGT_E_SS_CLOSEDLOOP_J = 9, /* 闭环任务J */
+    FacMotoState_UGT_E_SS_BRAKE_K = 10, /* 打断任务K */
+    FacMotoState_UGT_E_SS_FAULT_L = 11, /* 故障任务L */
+    FacMotoState_UGT_E_SS_WAIT_M = 12, /* 等待任务M */
+    FacMotoState_UGT_E_SS_WRITE_FLASH = 13 /* 写入任务N */
+} FacMotoState;
+
+typedef enum _FacMotorFaultCode { 
+    FacMotorFaultCode_NoFault = 0, /* 无故障 */
+    FacMotorFaultCode_OverVoltage = 1, /* 过压 */
+    FacMotorFaultCode_UnderVoltage = 2, /* 欠压 */
+    FacMotorFaultCode_OverCurrent = 3, /* 软件过流 */
+    FacMotorFaultCode_HardOverCurrent = 4, /* 硬件过流 */
+    FacMotorFaultCode_OverTempMotor = 5, /* 电机过温 */
+    FacMotorFaultCode_Abnormal_working_current = 6, /* 工作状态电流达到饱和 */
+    FacMotorFaultCode_OverTempIGBT = 7, /* IPM过温 */
+    FacMotorFaultCode_StartupFail = 8, /* 启动失败 */
+    FacMotorFaultCode_StartupFailContious = 9, /* 连续启动失败 */
+    FacMotorFaultCode_OverLoad = 10, /* 软件过载，降额运行 */
+    FacMotorFaultCode_OverWindSpeed = 11, /* 超速 */
+    FacMotorFaultCode_LosePhase = 12, /* 丢相 */
+    FacMotorFaultCode_OverIAs = 13, /* A相过流 */
+    FacMotorFaultCode_OverIBs = 14, /* B相过流 */
+    FacMotorFaultCode_OverICs = 15, /* C相过流 */
+    FacMotorFaultCode_OverIAsIBsICs = 16, /* 全相过流 */
+    FacMotorFaultCode_STOPMode = 17, /* 停止模式 */
+    FacMotorFaultCode_MotorStall = 18 /* 堵转 */
+} FacMotorFaultCode;
+
+typedef enum _CaliMark { 
+    CaliMark_zer_hallzer_comple_flag = 0, 
+    CaliMark_us_zer_comple_flag = 1, 
+    CaliMark_hallzer_comple_flag = 2, 
+    CaliMark_zer_hallzer_incomple_flag = 3 
+} CaliMark;
 
 typedef enum _FacMotoCali { 
     FacMotoCali_HALL_CALIBRATION = 0, 
@@ -120,7 +170,8 @@ typedef enum _FacMotoCali {
 typedef enum _FacMotorUploadType { 
     FacMotorUploadType_HALL_CALIBRATION_DATA = 0, 
     FacMotorUploadType_ZERO_CALIBRATION_DATA = 1, 
-    FacMotorUploadType_MOTOR_LOG = 2 
+    FacMotorUploadType_MOTOR_LOG = 2, 
+    FacMotorUploadType_SERVO_INFO = 3 
 } FacMotorUploadType;
 
 typedef enum _FacCameraControlType { 
@@ -240,16 +291,18 @@ typedef struct _FacGetDevBaseInfo {
     char product_name[8]; /* string */
     uint32_t pb_phone_ver; /* string */
     FacProtoId pb_factory_ver; /* string */
-    char hw_version[4]; /* string */
-    char soft_version[4]; /* string */
-    char res_version[4]; /* string */
-    char algo_version[4]; /* string */
+    char hw_version[24]; /* string */
+    char soft_version[24]; /* string */
+    char res_version[24]; /* string */
+    char algo_version[24]; /* string */
     char presure_version[24]; 
     FacGetDevBaseInfo_ble_mac_t ble_mac; 
     FacGetDevBaseInfo_wifi_mac_t wifi_mac; 
     uint32_t imu_id; 
     bool ageing_state; 
     char motor_version[24]; 
+    char ble_version[24]; /* string */
+    char camera_version[24]; /* string */
     FacErrorCode result; 
 } FacGetDevBaseInfo;
 
@@ -274,17 +327,6 @@ typedef struct _FacMotoParam {
     float gain_or_duty; 
     uint32_t volume; 
 } FacMotoParam;
-
-typedef struct _FacMotorCalibResult { 
-    FacMotorUploadType type; 
-    pb_size_t which_value_item;
-    union {
-        uint32_t hall_calibration_data;
-        uint32_t zero_calibration_data;
-        char motor_log[128];
-    } value_item; 
-    FacErrorCode result; 
-} FacMotorCalibResult;
 
 typedef struct _FacOtaFileInfo { 
     uint32_t file_size; 
@@ -349,6 +391,14 @@ typedef struct _PresurceSensorItem {
     uint32_t value; 
 } PresurceSensorItem;
 
+typedef struct _ServoMotorInfo { 
+    FacMotoState motor_state; 
+    FacMotorFaultCode FaultCode; 
+    uint32_t motor_current; 
+    uint32_t motor_voltage; 
+    CaliMark motor_cali_mark; 
+} ServoMotorInfo;
+
 typedef struct _ServoMotorParam { 
     float vibrate_angle; 
     uint32_t sweeping_angle; 
@@ -386,6 +436,7 @@ typedef struct _FacDevInfoValue {
         uint32_t brush_mode;
         FacBatteryInfo battery;
         FacSwitch if_qualified;
+        char sub_pid[64];
     } value_item; 
 } FacDevInfoValue;
 
@@ -437,9 +488,22 @@ typedef struct _FacMotoControl {
         FacSwitch damping_switch;
         uint32_t motor_cali_result;
         ServoMotorParam servoparam;
+        FacSwitch get_servo_info;
     } value_item; 
     FacErrorCode result; 
 } FacMotoControl;
+
+typedef struct _FacMotorCalibResult { 
+    FacMotorUploadType type; 
+    pb_size_t which_value_item;
+    union {
+        uint32_t hall_calibration_data;
+        uint32_t zero_calibration_data;
+        char motor_log[128];
+        ServoMotorInfo servo_info;
+    } value_item; 
+    FacErrorCode result; 
+} FacMotorCalibResult;
 
 typedef struct _FacUploadNineAlex { 
     pb_size_t data_count;
@@ -542,16 +606,16 @@ typedef struct _FactoryDataPackage {
 #define _FacProtoId_ARRAYSIZE ((FacProtoId)(FacProtoId_V1000+1))
 
 #define _DevStateType_MIN DevStateType_REBOOT
-#define _DevStateType_MAX DevStateType_SHIP
-#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_SHIP+1))
+#define _DevStateType_MAX DevStateType_PRESS_SENSOR_TEMP
+#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_PRESS_SENSOR_TEMP+1))
 
 #define _FacSwitch_MIN FacSwitch_CLOSE
 #define _FacSwitch_MAX FacSwitch_START
 #define _FacSwitch_ARRAYSIZE ((FacSwitch)(FacSwitch_START+1))
 
 #define _FacDevInfoType_MIN FacDevInfoType_WIFI_INFO
-#define _FacDevInfoType_MAX FacDevInfoType_IF_QUALIFIED
-#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_IF_QUALIFIED+1))
+#define _FacDevInfoType_MAX FacDevInfoType_SUB_PID
+#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_SUB_PID+1))
 
 #define _FacChargeStateType_MIN FacChargeStateType_ERROR
 #define _FacChargeStateType_MAX FacChargeStateType_NO_BATT
@@ -566,16 +630,28 @@ typedef struct _FactoryDataPackage {
 #define _FacLcdControlType_ARRAYSIZE ((FacLcdControlType)(FacLcdControlType_reg+1))
 
 #define _FacMotoControlType_MIN FacMotoControlType_motor_state
-#define _FacMotoControlType_MAX FacMotoControlType_servo_param
-#define _FacMotoControlType_ARRAYSIZE ((FacMotoControlType)(FacMotoControlType_servo_param+1))
+#define _FacMotoControlType_MAX FacMotoControlType_get_servo_info_data
+#define _FacMotoControlType_ARRAYSIZE ((FacMotoControlType)(FacMotoControlType_get_servo_info_data+1))
+
+#define _FacMotoState_MIN FacMotoState_UGT_E_SS_IDLE_A
+#define _FacMotoState_MAX FacMotoState_UGT_E_SS_WRITE_FLASH
+#define _FacMotoState_ARRAYSIZE ((FacMotoState)(FacMotoState_UGT_E_SS_WRITE_FLASH+1))
+
+#define _FacMotorFaultCode_MIN FacMotorFaultCode_NoFault
+#define _FacMotorFaultCode_MAX FacMotorFaultCode_MotorStall
+#define _FacMotorFaultCode_ARRAYSIZE ((FacMotorFaultCode)(FacMotorFaultCode_MotorStall+1))
+
+#define _CaliMark_MIN CaliMark_zer_hallzer_comple_flag
+#define _CaliMark_MAX CaliMark_zer_hallzer_incomple_flag
+#define _CaliMark_ARRAYSIZE ((CaliMark)(CaliMark_zer_hallzer_incomple_flag+1))
 
 #define _FacMotoCali_MIN FacMotoCali_HALL_CALIBRATION
 #define _FacMotoCali_MAX FacMotoCali_MOTOR_CALI_STOP
 #define _FacMotoCali_ARRAYSIZE ((FacMotoCali)(FacMotoCali_MOTOR_CALI_STOP+1))
 
 #define _FacMotorUploadType_MIN FacMotorUploadType_HALL_CALIBRATION_DATA
-#define _FacMotorUploadType_MAX FacMotorUploadType_MOTOR_LOG
-#define _FacMotorUploadType_ARRAYSIZE ((FacMotorUploadType)(FacMotorUploadType_MOTOR_LOG+1))
+#define _FacMotorUploadType_MAX FacMotorUploadType_SERVO_INFO
+#define _FacMotorUploadType_ARRAYSIZE ((FacMotorUploadType)(FacMotorUploadType_SERVO_INFO+1))
 
 #define _FacCameraControlType_MIN FacCameraControlType_camera_state
 #define _FacCameraControlType_MAX FacCameraControlType_camera_get_picture
@@ -608,7 +684,7 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define FactoryDataPackage_init_default          {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_default}}
-#define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", _FacErrorCode_MIN}
+#define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0}
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
@@ -619,6 +695,7 @@ extern "C" {
 #define FacRegisterConfig_init_default           {0, 0}
 #define FacLcdControl_init_default               {_FacLcdControlType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacMotoParam_init_default                {0, 0, 0}
+#define ServoMotorInfo_init_default              {_FacMotoState_MIN, _FacMotorFaultCode_MIN, 0, 0, _CaliMark_MIN}
 #define ServoMotorParam_init_default             {0, 0, 0, 0}
 #define FacMotoControl_init_default              {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_default         {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
@@ -646,7 +723,7 @@ extern "C" {
 #define FacOtaFileInfo_init_default              {0, 0, 0, "", ""}
 #define FacInternetOta_init_default              {0, {FacOtaFileInfo_init_default, FacOtaFileInfo_init_default}, _FacErrorCode_MIN}
 #define FactoryDataPackage_init_zero             {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_zero}}
-#define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", _FacErrorCode_MIN}
+#define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0}
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
@@ -657,6 +734,7 @@ extern "C" {
 #define FacRegisterConfig_init_zero              {0, 0}
 #define FacLcdControl_init_zero                  {_FacLcdControlType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacMotoParam_init_zero                   {0, 0, 0}
+#define ServoMotorInfo_init_zero                 {_FacMotoState_MIN, _FacMotorFaultCode_MIN, 0, 0, _CaliMark_MIN}
 #define ServoMotorParam_init_zero                {0, 0, 0, 0}
 #define FacMotoControl_init_zero                 {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_zero            {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
@@ -738,6 +816,8 @@ extern "C" {
 #define FacGetDevBaseInfo_imu_id_tag             11
 #define FacGetDevBaseInfo_ageing_state_tag       12
 #define FacGetDevBaseInfo_motor_version_tag      13
+#define FacGetDevBaseInfo_ble_version_tag        14
+#define FacGetDevBaseInfo_camera_version_tag     15
 #define FacGetDevBaseInfo_result_tag             100
 #define FacGetPeriphState_imu_state_tag          1
 #define FacGetPeriphState_flash_state_tag        2
@@ -752,11 +832,6 @@ extern "C" {
 #define FacMotoParam_freq_tag                    1
 #define FacMotoParam_gain_or_duty_tag            2
 #define FacMotoParam_volume_tag                  3
-#define FacMotorCalibResult_type_tag             1
-#define FacMotorCalibResult_hall_calibration_data_tag 2
-#define FacMotorCalibResult_zero_calibration_data_tag 3
-#define FacMotorCalibResult_motor_log_tag        4
-#define FacMotorCalibResult_result_tag           100
 #define FacOtaFileInfo_file_size_tag             1
 #define FacOtaFileInfo_version_code_tag          2
 #define FacOtaFileInfo_version_type_tag          3
@@ -792,6 +867,11 @@ extern "C" {
 #define NineAlexData_magnet_z_tag                10
 #define PresurceSensorItem_adc_tag               1
 #define PresurceSensorItem_value_tag             2
+#define ServoMotorInfo_motor_state_tag           1
+#define ServoMotorInfo_FaultCode_tag             2
+#define ServoMotorInfo_motor_current_tag         3
+#define ServoMotorInfo_motor_voltage_tag         4
+#define ServoMotorInfo_motor_cali_mark_tag       5
 #define ServoMotorParam_vibrate_angle_tag        1
 #define ServoMotorParam_sweeping_angle_tag       2
 #define ServoMotorParam_vibrate_freq_tag         3
@@ -811,6 +891,7 @@ extern "C" {
 #define FacDevInfoValue_brush_mode_tag           5
 #define FacDevInfoValue_battery_tag              6
 #define FacDevInfoValue_if_qualified_tag         7
+#define FacDevInfoValue_sub_pid_tag              8
 #define FacImuCalibResult_gyro_x_tag             1
 #define FacImuCalibResult_gyro_y_tag             2
 #define FacImuCalibResult_gyro_z_tag             3
@@ -838,7 +919,14 @@ extern "C" {
 #define FacMotoControl_damping_switch_tag        7
 #define FacMotoControl_motor_cali_result_tag     8
 #define FacMotoControl_servoparam_tag            9
+#define FacMotoControl_get_servo_info_tag        10
 #define FacMotoControl_result_tag                100
+#define FacMotorCalibResult_type_tag             1
+#define FacMotorCalibResult_hall_calibration_data_tag 2
+#define FacMotorCalibResult_zero_calibration_data_tag 3
+#define FacMotorCalibResult_motor_log_tag        4
+#define FacMotorCalibResult_servo_info_tag       5
+#define FacMotorCalibResult_result_tag           100
 #define FacUploadNineAlex_data_tag               2
 #define FacUploadNineAlex_result_tag             100
 #define FacWifiDemand_wifi_speed_tag             1
@@ -964,6 +1052,8 @@ X(a, STATIC,   SINGULAR, BYTES,    wifi_mac,         10) \
 X(a, STATIC,   SINGULAR, UINT32,   imu_id,           11) \
 X(a, STATIC,   SINGULAR, BOOL,     ageing_state,     12) \
 X(a, STATIC,   SINGULAR, STRING,   motor_version,    13) \
+X(a, STATIC,   SINGULAR, STRING,   ble_version,      14) \
+X(a, STATIC,   SINGULAR, STRING,   camera_version,   15) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacGetDevBaseInfo_CALLBACK NULL
 #define FacGetDevBaseInfo_DEFAULT NULL
@@ -997,7 +1087,8 @@ X(a, STATIC,   ONEOF,    STRING,   (value_item,tail_sn,value_item.tail_sn),   3)
 X(a, STATIC,   ONEOF,    STRING,   (value_item,board_sn,value_item.board_sn),   4) \
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,brush_mode,value_item.brush_mode),   5) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,battery,value_item.battery),   6) \
-X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualified),   7)
+X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualified),   7) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8)
 #define FacDevInfoValue_CALLBACK NULL
 #define FacDevInfoValue_DEFAULT NULL
 #define FacDevInfoValue_value_item_wifi_info_MSGTYPE FacWifiInfo
@@ -1053,6 +1144,15 @@ X(a, STATIC,   SINGULAR, UINT32,   volume,            3)
 #define FacMotoParam_CALLBACK NULL
 #define FacMotoParam_DEFAULT NULL
 
+#define ServoMotorInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    motor_state,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    FaultCode,         2) \
+X(a, STATIC,   SINGULAR, UINT32,   motor_current,     3) \
+X(a, STATIC,   SINGULAR, UINT32,   motor_voltage,     4) \
+X(a, STATIC,   SINGULAR, UENUM,    motor_cali_mark,   5)
+#define ServoMotorInfo_CALLBACK NULL
+#define ServoMotorInfo_DEFAULT NULL
+
 #define ServoMotorParam_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, FLOAT,    vibrate_angle,     1) \
 X(a, STATIC,   SINGULAR, UINT32,   sweeping_angle,    2) \
@@ -1071,6 +1171,7 @@ X(a, STATIC,   ONEOF,    UENUM,    (value_item,motor_testing,value_item.motor_te
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,damping_switch,value_item.damping_switch),   7) \
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,motor_cali_result,value_item.motor_cali_result),   8) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,servoparam,value_item.servoparam),   9) \
+X(a, STATIC,   ONEOF,    UENUM,    (value_item,get_servo_info,value_item.get_servo_info),  10) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacMotoControl_CALLBACK NULL
 #define FacMotoControl_DEFAULT NULL
@@ -1082,9 +1183,11 @@ X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,hall_calibration_data,value_item.hall_calibration_data),   2) \
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,zero_calibration_data,value_item.zero_calibration_data),   3) \
 X(a, STATIC,   ONEOF,    STRING,   (value_item,motor_log,value_item.motor_log),   4) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,servo_info,value_item.servo_info),   5) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacMotorCalibResult_CALLBACK NULL
 #define FacMotorCalibResult_DEFAULT NULL
+#define FacMotorCalibResult_value_item_servo_info_MSGTYPE ServoMotorInfo
 
 #define FacCameraControl_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
@@ -1309,6 +1412,7 @@ extern const pb_msgdesc_t FacAgeingTest_msg;
 extern const pb_msgdesc_t FacRegisterConfig_msg;
 extern const pb_msgdesc_t FacLcdControl_msg;
 extern const pb_msgdesc_t FacMotoParam_msg;
+extern const pb_msgdesc_t ServoMotorInfo_msg;
 extern const pb_msgdesc_t ServoMotorParam_msg;
 extern const pb_msgdesc_t FacMotoControl_msg;
 extern const pb_msgdesc_t FacMotorCalibResult_msg;
@@ -1349,6 +1453,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacRegisterConfig_fields &FacRegisterConfig_msg
 #define FacLcdControl_fields &FacLcdControl_msg
 #define FacMotoParam_fields &FacMotoParam_msg
+#define ServoMotorInfo_fields &ServoMotorInfo_msg
 #define ServoMotorParam_fields &ServoMotorParam_msg
 #define FacMotoControl_fields &FacMotoControl_msg
 #define FacMotorCalibResult_fields &FacMotorCalibResult_msg
@@ -1391,7 +1496,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacDevInfoValue_size                     114
 #define FacDevInfo_size                          583
 #define FacDevState_size                         7
-#define FacGetDevBaseInfo_size                   115
+#define FacGetDevBaseInfo_size                   245
 #define FacGetPeriphState_size                   13
 #define FacImuCalibResult_size                   86
 #define FacInternetOta_size                      691
@@ -1414,6 +1519,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define NineAlexData_size                        60
 #define PresurceSensorData_size                  54
 #define PresurceSensorItem_size                  12
+#define ServoMotorInfo_size                      18
 #define ServoMotorParam_size                     22
 
 #ifdef __cplusplus

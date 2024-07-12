@@ -1,5 +1,5 @@
 /* **************************************************************
- ** Copyright (C), 2020-2023, usmile
+ ** Copyright (C); 2020-2023; usmile
  ** VENDOR_EDIT
  ** FileName: factory_msg.proto
  ** Description:
@@ -105,17 +105,18 @@ message FacGetDevBaseInfo
     string product_name = 1 [(nanopb).max_size= 8];	 //string
     uint32 pb_phone_ver = 2;	 //string	
     FacProtoId pb_factory_ver = 3; //string
-    string hw_version = 4 [(nanopb).max_size= 4];	//string	
-    string soft_version = 5 [(nanopb).max_size= 4];	//string
-    string res_version = 6 [(nanopb).max_size= 4];	//string
-    string algo_version = 7 [(nanopb).max_size= 4];  //string
+    string hw_version = 4 [(nanopb).max_size= 24];	//string	
+    string soft_version = 5 [(nanopb).max_size= 24];	//string
+    string res_version = 6 [(nanopb).max_size= 24];	//string
+    string algo_version = 7 [(nanopb).max_size= 24];  //string
     string presure_version = 8 [(nanopb).max_size= 24];
     bytes ble_mac = 9 [(nanopb).max_size= 6];
     bytes wifi_mac = 10 [(nanopb).max_size= 6];
     uint32 imu_id = 11[(nanopb).max_size= 6];
     bool ageing_state = 12;
     string motor_version = 13 [(nanopb).max_size= 24];
-
+    string ble_version = 14 [(nanopb).max_size= 24];	//string
+    string camera_version = 15 [(nanopb).max_size= 24];	//string
     FacErrorCode result = 100;
 }
 
@@ -127,6 +128,9 @@ enum DevStateType
     FORBID_SLEEP = 3;
     FACTORY_QRCORD = 4;
     SHIP = 5;
+    UART_RECEIVE = 6;
+    PRESS_SENSOR_TEMP = 7;
+
 }
 
 enum FacSwitch
@@ -153,6 +157,8 @@ enum FacDevInfoType
     BRUSH_MODE = 3;
     BATTERY_INFO = 4;
     IF_QUALIFIED = 5;
+    SUB_PID = 6;
+
 }
 
 enum FacChargeStateType
@@ -187,6 +193,9 @@ message FacDevInfoValue {
         uint32 brush_mode = 5;
         FacBatteryInfo battery = 6;
         FacSwitch if_qualified = 7;
+        string sub_pid = 8 [(nanopb).max_size = 64];
+
+        
     }
 }
 
@@ -260,6 +269,8 @@ enum FacMotoControlType
     damping_state=5;
     motor_cali_data=6;
     servo_param=7;   
+    get_servo_info_data =8;
+
   
 }
 
@@ -270,6 +281,66 @@ message FacMotoParam
     uint32 volume = 3;
 }
 
+enum FacMotoState
+{
+	UGT_E_SS_IDLE_A				= 0;// 空闲任务A
+	UGT_E_SS_INIT_B				= 1;//空闲任务B
+	UGT_E_SS_STOP_C				= 2; 	//
+	UGT_E_SS_START_D			= 3;//开始任务D
+	UGT_E_SS_PRECHARGE_E 	= 4; //预充任务E
+	UGT_E_SS_TRACK_F			= 5;//追踪任务F
+	UGT_E_SS_IDENTIFY_G		= 6; 	//识别任务G
+	UGT_E_SS_ALIGNMENT_H	=	7; //定位任务H
+	UGT_E_SS_OPENLOOP_I		=	8;//开环任务I
+	UGT_E_SS_CLOSEDLOOP_J	= 9; //闭环任务J
+	UGT_E_SS_BRAKE_K			= 10; //打断任务K
+	UGT_E_SS_FAULT_L			= 11;//故障任务L
+	UGT_E_SS_WAIT_M				= 12;//等待任务M
+	UGT_E_SS_WRITE_FLASH	= 13;//写入任务N
+
+
+}
+enum FacMotorFaultCode
+{
+    NoFault=0;                      //无故障
+    OverVoltage=1;       	// 过压 
+    UnderVoltage=2;                 // 欠压 
+    OverCurrent=3;   			    // 软件过流
+    HardOverCurrent=4;              // 硬件过流
+    OverTempMotor=5;                // 电机过温
+    Abnormal_working_current=6;     //工作状态电流达到饱和
+    OverTempIGBT=7;				    // IPM过温
+    StartupFail=8;				    // 启动失败
+    StartupFailContious=9;	        // 连续启动失败
+    OverLoad=10;       	            // 软件过载，降额运行
+    OverWindSpeed=11;				// 超速
+    LosePhase=12;                   //丢相
+    OverIAs=13;                     //A相过流
+    OverIBs=14;                     //B相过流
+    OverICs=15;                     //C相过流
+    OverIAsIBsICs=16;               //全相过流
+    STOPMode=17;                    //停止模式
+    MotorStall=18;   			    //堵转
+  
+}
+enum CaliMark
+{
+    zer_hallzer_comple_flag=0;
+    us_zer_comple_flag=1;
+    hallzer_comple_flag=2;
+    zer_hallzer_incomple_flag=3;
+
+}
+
+message ServoMotorInfo 
+{
+    FacMotoState motor_state = 1;
+    FacMotorFaultCode FaultCode = 2;
+    uint32 motor_current = 3;
+    uint32 motor_voltage = 4;
+    CaliMark  motor_cali_mark=5;
+}
+
 
 message ServoMotorParam
 {
@@ -278,7 +349,6 @@ message ServoMotorParam
     uint32 vibrate_freq = 3;
     float sweeping_freq = 4;
 }
-
 enum FacMotoCali 
 {
         HALL_CALIBRATION = 0;
@@ -297,8 +367,10 @@ message FacMotoControl
         FacMotoCali switch_cali = 5;
         FacSwitch  motor_testing= 6;
         FacSwitch damping_switch= 7;
-        uint32 motor_cali_result = 8;
+        uint32 motor_cali_result = 8;       //发送校准结果
         ServoMotorParam  servoparam =9;
+        FacSwitch  get_servo_info =10; 
+
     
     }
 
@@ -310,6 +382,7 @@ enum FacMotorUploadType
     HALL_CALIBRATION_DATA = 0;
     ZERO_CALIBRATION_DATA = 1;
     MOTOR_LOG = 2;
+    SERVO_INFO= 3;
 }
 
 message FacMotorCalibResult
@@ -319,6 +392,8 @@ message FacMotorCalibResult
         uint32 hall_calibration_data= 2; 
         uint32 zero_calibration_data= 3;
         string motor_log = 4 [(nanopb).max_size= 128];
+        ServoMotorInfo  servo_info = 5;      //获取校准参数
+
     }
 
     FacErrorCode result = 100;

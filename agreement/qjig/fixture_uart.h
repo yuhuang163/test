@@ -40,11 +40,19 @@ typedef struct FixturePacketData
     uchar overVoltageLight = 0;
     uchar button1 = 0;
     uchar button2 = 0;
+
+#ifdef NEW_MUSIC_CURRENT
+    uint musicCurrent = 0;
+#else
     uchar music_state = 0;
+#endif
     uint staticCurrent = 0;
     uint workingCurrent = 0;
     uint chargingCurrent = 0;
 } FixturePacketData;
+
+// 声明为元类型
+Q_DECLARE_METATYPE(FixturePacketData)
 namespace Ui
 {
     class Fixture_uart;
@@ -54,22 +62,38 @@ class Fixture_uart : public QWidget
 {
     Q_OBJECT
 public:
+
+    std::atomic<bool> running;
+    QFuture<void> future;
+    //void closeEvent(QCloseEvent *)override;
     explicit Fixture_uart(QWidget *parent = nullptr);
     ~Fixture_uart();
     Ui::Fixture_uart *ui;
     void sendimuData(imuFixtureState fixstate);
     void sendFixtureData(FixtureState fixstate);
+    int fixBaudRate=9600;
 private:
-#define EXT_UART_PHY_LAYER_MAGIC      0x55
-#define UART_PHY_LAYER_HEAD_SIZE      1   // 头大小
-#define UART_PHY_LAYER_FRAME_SIZE     12
-#define UART_PHY_LAYER_CRC_SIZE       1
-#define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
+    #define EXT_UART_PHY_LAYER_MAGIC      0x55
+    #define FIX_PHY_LAYER_HEAD_SIZE      1   // 头大小
+
+#ifdef NEW_MUSIC_CURRENT
+    #define FIX_PHY_LAYER_FRAME_SIZE     13
+#else
+    #define FIX_PHY_LAYER_FRAME_SIZE     12
+#endif
+
+    #define FIX_PHY_LAYER_CRC_SIZE       1
+    #define FIX_PHY_LAYER_HEADER_ADN_CRC (FIX_PHY_LAYER_HEAD_SIZE + FIX_PHY_LAYER_CRC_SIZE)
 
 // 55 01 0E 00 26 00 C6 01 01 00 03 1F 01 AA        数据包
+ //55 01 0F 00 26 00 C6 01 01 00 03 1F 01 02 AA  数据包带音频电流
 // 55 01 05 CC AA                                   开始休眠
 // 55 AA 05 AA AA                                   开始测试
-
+// 板厂的数据包通信协议：
+//     0x55  机号（1拖多的情况）  0x长度（整包长度）   静态电流值，工作电流，过压灯正常，按键1，按键2，充电电流，音频情况，0xaa
+//     0x55  0x01， 0x长度   0x00(高)，0x00（低）（ua）， 0x00(高)，0x00（低）（ma）， 0x00 0x00 0x00 0x00(高)，0x00（低）（ma）0x01 0xaa
+//     ========================治具的测试过程===================
+//     55 01 0E 00 26 00 C6 01 01 00 03 1F 01 AA
 
 #pragma pack(1)
     typedef struct
@@ -77,15 +101,24 @@ private:
         uint8_t magic;
         uint8_t mechine;
         uint8_t length;
+        uint16_t staticCurrent;
+        uint16_t workingCurrent;
         uint8_t overVoltageLight;
         uint8_t button1;
         uint8_t button2;
-        uint8_t music_state;
-        uint16_t staticCurrent;
-        uint16_t workingCurrent;
         uint16_t chargingCurrent;
+
+#ifdef NEW_MUSIC_CURRENT
+       uint16_t music_state;
+#else
+       uint8_t music_state;
+#endif
+
         uint8_t end;
     } ext_uart_phy_layer_t;
+
+
+
 #pragma pack()
 
     RingBuf *fixRingBuf = nullptr;
@@ -96,7 +129,6 @@ private:
     uint8_t frame_buf[2 * 1024];   // 队列池
 
     QSerialPort *fixtureSerialPort;
-    QString data_command = "";
 
     QTimer *fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;
@@ -106,6 +138,9 @@ signals:
     void send_data_to_mechine_imu(int state);
     void send_data_to_mechine_sleep(const FixturePacketData datapack);
     void send_data_to_mechine_start();
+    void start_fix_action(int state);
+
+
 private slots:
     void readFixtureSerialPortData();
 

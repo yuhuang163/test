@@ -48,7 +48,7 @@ void quiescent_current_box::checkAllover(int fixtureNumber)
     {
         testList[0]->getMacLineEdit()->setFocus();
 
-        testList[testList.size() - 1]->jig->set_cylinder_state(0);
+        testList[testList.size() - 1]->jig->set_cylinder_state(0,testList.size());
         waitWork(500);
         for (int i = 0; i < testList.size(); ++i)
         {

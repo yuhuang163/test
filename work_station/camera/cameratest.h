@@ -25,6 +25,7 @@ class ImageViewer : public QGraphicsView {
 public:
     // 加载和显示图片
     QPixmap pixmap;
+    QPixmap temporarypixmap;
 
     // 构造函数
     ImageViewer(const QString &filePath = "", QWidget *parent = nullptr) : QGraphicsView(parent) {
@@ -80,9 +81,13 @@ class cameratest : public test_base
 {
     Q_OBJECT
 public:
+    int cameradatasize=0;
+    QTimer *cameratimer = new QTimer(this);
 
 /*摄像头传图部分*/
 
+    std::atomic<bool> running;
+    QFuture<void> future;
 #define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
     unsigned short crc16_compute(unsigned char const *p_data, unsigned int size, unsigned short const * p_crc)
     {
@@ -98,7 +103,7 @@ public:
 
         return crc;
     }
-#define EXT_UART_PHY_LAYER_MAGIC 0xAAAAAAAAAAAAAAAA
+#define EXT_UART_MAGIC      0xCCCCCCCCCCCCCCCC
 #define UART_PHY_LAYER_HEAD_SIZE  9  //头大小
 //#define UART_PHY_LAYER_FRAME_SIZE 256
 #define UART_PHY_LAYER_CRC_SIZE  0
@@ -187,7 +192,7 @@ private:
     QString passValue = "通过";
     QString failValue = "失败";
     bool is_can_go_next = 0;
-
+    QByteArray pictureByteArray=0;
     QString stringsn;
     QUdpSocket *udpSocket;
     QByteArray sn;
@@ -277,16 +282,31 @@ private slots:
     void on_DirtyTestButton_clicked();
 
     void on_OffsetTest_clicked();
-
-
     void on_stopTest_clicked();
+  void updateImageOnMainThread();
 
-signals:
+    void on_jxl_normal_clicked();
+
+  void on_jxl_abnormal_clicked();
+
+    void on_zw_normal_clicked();
+
+  void on_zw_abnormal_clicked();
+
+    void on_py_normal_clicked();
+
+  void on_py_abnormal_clicked();
+
+  signals:
     void goNextFocus();
     void goNextTest(int data);
-
     void endTest(int data);
     void startTest(int data);
+    void imageProcessed();
+
+
+
+
 };
 
 

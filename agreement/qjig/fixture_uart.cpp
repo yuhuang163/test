@@ -23,18 +23,41 @@ Fixture_uart::Fixture_uart(QWidget *parent)
     connect(fixtureSerialPort, &QSerialPort::readyRead, this,
             [=]()
             {
-                fixtureSerialPortTimer->start(50);   // 设置100毫秒的延时
+                fixtureSerialPortTimer->start(10);   // 设置100毫秒的延时
                 fixtureSerialPortBuf.append(
                     fixtureSerialPort->readAll());   // 将读到的数据放入缓冲区
             });
 
     fixRingBuf = new RingBuf(&p_fixRingBuffer, fix_ring_buffer, 1, sizeof(fix_ring_buffer));
+
+
+    // 启动后台线程
+    future = QtConcurrent::run([this]() {
+        while (running.load()) {
+            solve_frame();
+            QThread::msleep(10); // 等待10毫秒
+        }
+    });
+    running.store(true);
+
+
 }
 
 Fixture_uart::~Fixture_uart()
 {
+    running.store(false);
+    // 等待线程结束
+    future.waitForFinished();
     delete ui;
 }
+
+// void Fixture_uart::closeEvent(QCloseEvent *)
+// {
+//     running.store(false);
+//     // 等待线程结束
+//     future.waitForFinished();
+// }
+
 
 void Fixture_uart::closeFixtureSerialPort()
 {
@@ -48,6 +71,9 @@ void Fixture_uart::closeFixtureSerialPort()
         fixtureSerialPort->close();
     disconnect(fixtureSerialPortTimer, &QTimer::timeout, this,
                &Fixture_uart::readFixtureSerialPortData);   // timeout执行真正的读取操作
+
+
+
 }
 
 void Fixture_uart::refresh_Fixtureuart_state(int state)
@@ -84,7 +110,8 @@ void Fixture_uart::openFixtureSerialPort(void)
     // 设置串口名
     fixtureSerialPort->setPortName(ui->FixturecomNameCombo->currentText());
     // 设置波特率
-    fixtureSerialPort->setBaudRate(9600);   // 飞安瑞是9600
+    fixtureSerialPort->setBaudRate(fixBaudRate);   // 飞安瑞是9600治具是115200
+
     // 设置数据位
     fixtureSerialPort->setDataBits(QSerialPort::Data8);
     // 设置校验位
@@ -120,7 +147,7 @@ void Fixture_uart::readFixtureSerialPortData()
 {
     fixtureSerialPortTimer->stop();               // 关闭定时器
     QByteArray dataTemp = fixtureSerialPortBuf;   // 读取缓冲区数据
-
+    qDebug() << "hyj接收到治具数据"<<dataTemp;
     int write_len = 0;
     int len = dataTemp.size();
     write_len = fixRingBuf->usmile_ring_buffer_write(
@@ -130,13 +157,12 @@ void Fixture_uart::readFixtureSerialPortData()
     {
         qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();
     }
+    qDebug() << "开始处理 << dataTemp.size()";
 
-    solve_frame();
+ //   solve_frame();
 
 
-    //qDebug() << QString::fromUtf8(dataTemp);
 
-    //processshortdData(dataTemp);
     processimuReceivedData(dataTemp);
     save_Fixture_uart_log(0, dataTemp);
 
@@ -148,11 +174,11 @@ void Fixture_uart::solve_frame(void)
     {
         // 从环形缓冲区中读取帧头
         fixRingBuf->usmile_ring_buffer_pick(&p_fixRingBuffer, frame_buf,
-                                            UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_FRAME_SIZE);
+                                            FIX_PHY_LAYER_HEAD_SIZE + FIX_PHY_LAYER_FRAME_SIZE+FIX_PHY_LAYER_FRAME_SIZE);
         int ring_size = fixRingBuf->usmile_ring_buffer_items_count_get(&p_fixRingBuffer);
-        if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC)
+        if (ring_size <= FIX_PHY_LAYER_HEADER_ADN_CRC)
         {
-            qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
+           // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
 
@@ -173,11 +199,12 @@ void Fixture_uart::solve_frame(void)
 
             if (frame_buf[head->length-1] == 0xAA)
             {
-
                 // 创建 QByteArray 并将结构体内容拷贝进去
                 QByteArray buffer(reinterpret_cast<const char *>(head), frame_size);
                   if (head->length == 0x05)
-                { processshortdData(buffer);}
+                {
+                    processshortdData(buffer);
+                  }
                   else{
                       processReceivedData(buffer);
                   }
@@ -197,7 +224,7 @@ void Fixture_uart::solve_frame(void)
         {
             qDebug() << "串口数据流错误寻找下一帧";
             qDebug() << "串口数据包头为:"
-                     << QByteArray(reinterpret_cast<char *>(frame_buf), UART_PHY_LAYER_HEAD_SIZE)
+                     << QByteArray(reinterpret_cast<char *>(frame_buf), FIX_PHY_LAYER_HEAD_SIZE)
                             .toHex();
 
             if (ext_ble_find_next_frame())
@@ -244,24 +271,25 @@ int Fixture_uart::ext_ble_find_next_frame(void)
 }
 void Fixture_uart::save_Fixture_uart_log(int txrx, QByteArray data)
 {
-    // 创建log目录
-    QDir logDir(".");
-    logDir.mkdir("log");
 
-    // 创建治具日志log目录
-    QString logPath = "治具日志log";
-    if (!logDir.exists(logPath))
-    {
-        logDir.mkpath(logPath);
+    QString folderName = "治具log";
+    QDir dir;
+
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+                return;
+        }
     }
-
     // 获取当前时间并格式化为字符串
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
-    // 生成带有时间戳的文件名
-    QString fileName = logPath + "/" + timestamp + ".log";
-    QFile logFile(fileName);
+    // 生成文件路径
+    QString fileName = "治具日志"+timestamp + ".log";
+    QString filePath = dir.filePath(folderName + "/" + fileName);
 
+    QFile logFile(filePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text))
     {
         qDebug() << "写入成功治具日志";
@@ -318,41 +346,44 @@ void Fixture_uart::processshortdData(const QByteArray &data)
 }
 void Fixture_uart::processimuReceivedData(const QByteArray &data)
 {
-    data_command = data_command + data;
+    QString data_command = data;
+
 
     if (data_command.contains("OK"))
     {
         emit send_data_to_mechine_imu(1);
         qDebug() << "收到治具ok指令";
-        data_command = "";
+       data_command.clear();
     }
 
     if (data_command.contains("ERROR"))
     {
         emit send_data_to_mechine_imu(0);
-        data_command = "";
+        data_command.clear();
     }
 }
 void Fixture_uart::processReceivedData(const QByteArray &data)
 {
      QByteArray receivebuf =data;
-    //receivebuf = receivebuf + data;
-    if (receivebuf.size() > 14)
+    if (receivebuf.size() > receivebuf.at(2))
     {
+         qDebug() << "收到的pcba治具数据大于"<<receivebuf.at(2) ;
         for (int i = 0; i < receivebuf.size(); i++)
         {
             if (static_cast<int>(receivebuf.at(i)) == 85)
             {
+                 uchar length = receivebuf.at(2);
                 qDebug() << "i====" << i;
                 receivebuf = receivebuf.remove(0, i);
+                receivebuf = receivebuf.remove(length, receivebuf.size());
+                qDebug() << "截取包头到包尾内容" ;
 
-                receivebuf = receivebuf.remove(14, receivebuf.size());
             }
         }
         qDebug() << "receivebuf.size()====" << receivebuf.size();
-        if (receivebuf.size() > 14)
+        if (receivebuf.size() > receivebuf.at(2))
         {
-            receivebuf = 0;
+             receivebuf.clear();
             return;
         }
     }
@@ -402,7 +433,7 @@ void Fixture_uart::processReceivedData(const QByteArray &data)
     if (static_cast<int>(receivebuf.at(0)) != 85 ||
         static_cast<int>(receivebuf.at(receivebuf.size() - 1)) != -86)
     {
-        qDebug() << "接收到的数据包格式不正确";
+        qDebug() << "接收到的数据包开头或结尾格式不正确";
         return;
     }
 
@@ -418,7 +449,15 @@ void Fixture_uart::processReceivedData(const QByteArray &data)
     // uint chargingCurrent;
     datapack.chargingCurrent =
         (static_cast<uint8_t>(receivebuf.at(10)) << 8) | static_cast<uint8_t>(receivebuf.at(11));
+
+#ifdef NEW_MUSIC_CURRENT
+      datapack.musicCurrent =
+        (static_cast<uint8_t>(receivebuf.at(12)) << 8) | static_cast<uint8_t>(receivebuf.at(13));
+
+#else
     datapack.music_state = receivebuf.at(12);
+
+#endif
 
     // 在这里使用提取出的字段进行后续处理
     qDebug() << "机号:" << datapack.machineNumber;
@@ -428,12 +467,15 @@ void Fixture_uart::processReceivedData(const QByteArray &data)
     qDebug() << "按键1:" << datapack.button1;
     qDebug() << "按键2:" << datapack.button2;
     qDebug() << "充电电流:" << datapack.chargingCurrent << "ma";
-    qDebug() << "音频情况:" << datapack.music_state;
 
+#ifdef NEW_MUSIC_CURRENT
+        qDebug() << "音频电流:" << datapack.musicCurrent;
+#else
+        qDebug() << "音频情况:" << datapack.music_state;
+#endif
     emit send_data_to_mechine(datapack);
-    qDebug() << "音频情况:" << datapack.music_state;
 
-    receivebuf = 0;
+    receivebuf.clear();
 }
 
 // 欣旺达的六轴治具通信
@@ -443,49 +485,60 @@ void Fixture_uart::sendimuData(imuFixtureState fixstate)
     {
         qDebug() << "带页面的治具串口未打开，无法发送数据";
 
-       // QMessageBox::warning(NULL, "警告", " 未打开串口\t\r\n  无法发送数据！\r\n");
+        // QMessageBox::warning(NULL, "警告", " 未打开串口\t\r\n  无法发送数据！\r\n");
         return;
     }
+
+    QByteArray dataToSend;
 
     switch (fixstate)
     {
     case STATE_START:
-        fixtureSerialPort->write(QByteArray("START"));
+        dataToSend = QByteArray("START");
         break;
     case STATE_END:
-        fixtureSerialPort->write(QByteArray("END"));
+        dataToSend = QByteArray("END");
         break;
     case STATE_RESET:
-        fixtureSerialPort->write(QByteArray("RESET"));
+        dataToSend = QByteArray("RESET");
         break;
     case STATE_RETURN:
-        fixtureSerialPort->write(QByteArray("S0180"));
+        dataToSend = QByteArray("S0180");
         break;
     case STATE_40:
-        fixtureSerialPort->write(QByteArray("S0040"));
+        dataToSend = QByteArray("S0040");
         break;
     case STATE_FU40:
-        fixtureSerialPort->write(QByteArray("S1040"));
+        dataToSend = QByteArray("S1040");
         break;
     case STATE_BRUSH_UP:
-        fixtureSerialPort->write(QByteArray("B0000"));
+        dataToSend = QByteArray("B0000");
         break;
     case STATE_BRUSH_DOWN:
-        fixtureSerialPort->write(QByteArray("B0180"));
+        dataToSend = QByteArray("B0180");
         break;
     case STATE_BRUSH_LEFT:
-        fixtureSerialPort->write(QByteArray("B0090"));
+        dataToSend = QByteArray("B0090");
         break;
     case STATE_BRUSH_RIGHT:
-        fixtureSerialPort->write(QByteArray("B0270"));
+        dataToSend = QByteArray("B0270");
         break;
     case STATE_HOME:
-        fixtureSerialPort->write(QByteArray("HOME"));
+        dataToSend = QByteArray("HOME");
         break;
     default:
         break;
     }
+
+    if (!dataToSend.isEmpty())
+    {
+        fixtureSerialPort->write(dataToSend);
+        save_Fixture_uart_log(1, dataToSend);
+        start_fix_action(1);
+    }
+
 }
+
 
 void Fixture_uart::sendFixtureData(FixtureState fixstate)
 {

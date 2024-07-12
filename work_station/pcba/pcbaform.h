@@ -21,7 +21,7 @@ class PcbaForm : public test_base
 {
     Q_OBJECT
 signals:
-    void end_total(int);
+
     void overtask(int);
     void start_sleep_command(int);
     void start_white_modle_command(int);
@@ -129,6 +129,11 @@ private:
     int32_t really_accx = 0;
     int32_t really_accy = 0;
     int32_t really_accz = 0;
+    int intblerssi = 0;
+    int RssiTestTime = 0;
+    int rssitestcount = 0;
+    int rssitestfailcount = 0;
+    int intwifirssi = 0;
 
     int32_t processIMUData(uint16_t imuData);
 
@@ -199,9 +204,14 @@ private:
     QString stringsn;
     double HighCharCurrent = 0;   // 充电电流
     double LowCharCurrent = 0;
+
+
+    double HighmusicCurrent = 0;     // 工作电流
+    double LowmusicCurrent = 0;      // 工作电流
     double HighworkCurrent = 0;     // 工作电流
-    double HighstaticCurrent = 0;   // 静态电流
     double LowworkCurrent = 0;      // 工作电流
+
+    double HighstaticCurrent = 0;   // 静态电流
     double LowstaticCurrent = 0;    // 静态电流
     double measure_ammeter = 0;
     int music_state;

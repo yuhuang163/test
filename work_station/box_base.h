@@ -57,8 +57,9 @@ public:
     std::vector<int> FixTureStates;
 
 public slots:
-    virtual void checkAllover(int fixtureNumber);
-    virtual void checkAllTest(int fixtureNumber){};
+    virtual void checkAllover(int );
+    virtual void checkAllTest(int ){};
+   virtual void resetall();
 
     void startAllReturnPressed();
 

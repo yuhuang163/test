@@ -33,7 +33,7 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
                             SLOT(start_test()));
                     for (int i = 0; i < testList.size(); i++)
                     {
-                        connect(testList[i], SIGNAL(end_total(int)), this, SLOT(checkover(int)));
+
                         connect(testList[i], SIGNAL(overtask(int)), Fixture_uart_ui,
                                 SLOT(send_start_command(int)));
                         connect(testList[i], SIGNAL(start_sleep_command(int)), Fixture_uart_ui,
@@ -54,6 +54,8 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
 
                     // Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(settings.value("mechine/FixturecomName").toString());
                 }
+                // 注册类型
+                qRegisterMetaType<FixturePacketData>("FixturePacketData");
                 Fixture_uart_ui->show();
                 Fixture_uart_ui->activateWindow();
             });
@@ -76,6 +78,8 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
                 {
                     testList[i]->over_task();
                 }
+                testList[0]->getMacLineEdit()->setFocus();
+
             });
 }
 
@@ -94,6 +98,6 @@ pcbabox::~pcbabox()
     if (Fixture_uart_ui != NULL)
         settings.setValue(QString("0/masterFixturecomName"),
                           Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
-
+    delete Fixture_uart_ui;
     delete ui;
 }

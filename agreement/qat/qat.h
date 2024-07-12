@@ -12,11 +12,7 @@ class Qat : public QSerialPort
 public :
     explicit Qat(QSerialPort *parent = nullptr);
     void parseCmd(const QByteArray &byte);
-    void sendbleMac(QString mac);
-    void sendCmd(QString cmd);
-    void sendotaMac(QString mac);
-    void sendMac(QString mac);
-    void sendBLELOG(int state);
+
     bool getConnected()
     {
         return isConnected;
@@ -84,6 +80,15 @@ private:
     void WIFI_disconnected(QString p);
     bool isConnected = 0;
     bool iswifiConnected = 0;
+
+public slots:
+    void sendBLELOG(int state);
+    void sendbleMac(QString mac);
+    void sendCmd(QString cmd);
+    void sendotaMac(QString mac);
+    void sendMac(QString mac);
+    void sendBLEDEVICELOG(int state);
+
 
 private slots:
     void processCmd(QString cmd, QString parameter);

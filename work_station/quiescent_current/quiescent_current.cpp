@@ -460,7 +460,7 @@ void quiescent_current::on_snInput_returnPressed()
     {
         openJigSerialPort();
     }
-    jig->set_cylinder_state(1);
+    jig->set_cylinder_state(1,getIndex());
 }
 void quiescent_current::on_macInput_returnPressed()
 {
@@ -540,7 +540,7 @@ void quiescent_current::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -628,8 +628,8 @@ void quiescent_current::on_usbdisconnectButton_clicked()
 void quiescent_current::on_productConnectButton_clicked()
 {
     openProductSerialPort();
-    ui->productComNameCombo->setEnabled(true);
-    ui->productConnectButton->setEnabled(true);
+    ui->productComNameCombo->setEnabled(false);
+    ui->productConnectButton->setEnabled(false);
 }
 
 void quiescent_current::on_productDisconnectButton_clicked()
@@ -698,10 +698,7 @@ void quiescent_current::processInspection(QString stringsn)
         {
             ui->msgEdit->appendPlainText("正在进行站前检测");
             pack.sn = stringsn;
-
             pack.mechines = getIndex();
-            
-
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
 
@@ -757,7 +754,7 @@ void quiescent_current::start_task()
                 qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                 waitWork(WAITTIME);
                 ui->msgEdit->appendPlainText("蓝牙连接成功");
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 state = STATE_BANDING;
             }
             break;
@@ -771,7 +768,7 @@ void quiescent_current::start_task()
             else
             {
                 waitWork(500);
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 ui->msgEdit->appendPlainText("已发送sn绑定");
             }
 
@@ -782,13 +779,13 @@ void quiescent_current::start_task()
             if (pb->getDisableSleep())
             {
                 ui->msgEdit->appendPlainText("已进入禁止休眠");
-                pb->getBaseInfo();
+                pb->get_base_info();
                 state = STATE_WATI_GET_BASE_STATE;
             }
             else
             {
                 waitWork(500);
-                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                pb->set_forbid_sleep(FacSwitch_OPEN);
                 ui->msgEdit->appendPlainText("已发送禁止休眠");
             }
             break;
@@ -799,7 +796,7 @@ void quiescent_current::start_task()
             {
                 waitWork(WAITTIME);
                 ui->msgEdit->appendPlainText("基础信息验证通过");
-                pb->getPeriphState();
+                pb->get_periph_state();
 
                 state = STATE_WATI_GET_PERIPHERAL_STATE;
             }
@@ -807,7 +804,7 @@ void quiescent_current::start_task()
             {
                 waitWork(WAITTIME);
                 ui->msgEdit->appendPlainText("基础信息验证失败");
-                pb->getPeriphState();
+                pb->get_periph_state();
                 QString mesresult = "NG";
                 QString itemvalue = QString("|版本信息:错误|");
                 pack.result = mesresult;
@@ -834,7 +831,7 @@ void quiescent_current::start_task()
             else
             {
                 waitWork(500);
-                pb->getBaseInfo();
+                pb->get_base_info();
                 ui->msgEdit->appendPlainText("正在重发获取基本信息");
             }
             break;
@@ -844,7 +841,7 @@ void quiescent_current::start_task()
             {
                 ui->msgEdit->appendPlainText("外设状态正常");
                 ui->msgEdit->appendPlainText("正在发送取消静止休眠");
-                pb->setDevForbidSleepState(FacSwitch_CLOSE);
+                pb->set_forbid_sleep(FacSwitch_CLOSE);
                 qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
                 ble_waittime->setInterval(disconnect_wait_time);
                 ble_waittime->start();
@@ -876,7 +873,7 @@ void quiescent_current::start_task()
             if (periph_state == 0)
             {
                 waitWork(500);
-                pb->getPeriphState();
+                pb->get_periph_state();
                 ui->msgEdit->appendPlainText("正在重发获取外设信息");
             }
             break;
@@ -899,16 +896,16 @@ void quiescent_current::start_task()
             else
             {
                 waitWork(500);
-                pb->setDevForbidSleepState(FacSwitch_CLOSE);
+                pb->set_forbid_sleep(FacSwitch_CLOSE);
                 ui->msgEdit->appendPlainText("正在重发取消禁止休眠");
             }
 
             break;
         case STATE_SLEEP_OPEN:
-            if (1)   // if(!at->getConnected())
+            if(!at->getConnected())
             {
                 at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-
+                    waitWork(2000);
                 qDebug() << getIndex() << "开始计时" << QDateTime::currentDateTime();
                 waittime->setInterval(measure_wait_time);
                 waittime->start();
@@ -932,11 +929,8 @@ void quiescent_current::start_task()
                 QString itemvalue = QString("|BTMAC:%1").arg(macAddress) +
                                     QString("|CURRENT:%1|").arg(measure_ammeter);
                 pack.result = mesresult;
-
                 pack.itemvalue = itemvalue;
-
                 pack.instruct_num = "076";
-
                 pack.sn = ui->snInput->text();
                 if (ui->isusemes->checkState())
                 {
@@ -988,7 +982,6 @@ void quiescent_current::start_task()
                     usb->getlxMEASure(1);
                     waitWork(1000);
                 }
-
                 else
                 {
                     usb->getMEASure("");
@@ -1026,8 +1019,7 @@ void quiescent_current::start_task()
 #else   // 旧的复位
 
             if (pack.factory == "xwd")
-
-                set_cylinder_state(0);
+                jig-> set_cylinder_state(0,getIndex());
 
 #endif
             on_disconnectButton_clicked();
@@ -1071,7 +1063,7 @@ void quiescent_current::on_pushButton_2_clicked()
     isquiescent_currentContinue = false;   // 结束
     if (pack.factory != "jj")
     {
-        jig->set_cylinder_state(0);
+        jig->set_cylinder_state(0,getIndex());
     }
     ui->snInput->setDisabled(0);
     ui->macInput->setDisabled(0);
@@ -1080,13 +1072,13 @@ void quiescent_current::on_pushButton_2_clicked()
 
 void quiescent_current::on_pushButton_3_clicked()
 {
-    // if (pack.factory == "hq" )
-    //     usb-> gethqMEASure();
-    // #else
-    //     usb->getMEASure("");
-    // #endif
+    if (pack.factory == "hq" )
+        usb-> gethqMEASure();
+    else
+        usb->getMEASure("");
 
-    at->ask_mac();
+
+   // at->ask_mac();
     // MesInit();
 }
 void quiescent_current::processReceivedData(const QByteArray &data)
@@ -1181,7 +1173,7 @@ void quiescent_current::banding_mac_sn(QString bandingmac, QString bandingsn)
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
-        path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
+        path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
 
     else
         path = "mac_sn.txt";

@@ -62,7 +62,7 @@ new_imu_calibrate::sensordata_q *new_imu_calibrate::init_int_3(int n)
     return q;
 }
 
-bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *calib_data)
+bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *add_calib_data)
 {
     double fixed_positions[11][3] = {};   // 去掉const关键字
 
@@ -91,17 +91,19 @@ bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *calib_data)
 
         }else{
                 double q20_positions[11][3] = {
-                    {0, 0, 1},             // Position 8
-                    {1, 0, 0},             // Position 9
-                    {0, 0, -1} ,           // Position 10
-                    {0, 0.643, 0.766},     // Position 2
-                    {0.766, 0.643, 0},     // Position 0
-                    {0, 0.643, -0.766},    // Position 3
-                    {-0.766, 0.643, 0},    // Position 1
-                    {0, -0.643, 0.766},    // Position 6
-                    {-0.766, -0.643, 0},   // Position 5
-                    {0, -0.643, -0.766},    // Position 7
-                    {0.766, -0.643, 0}    // Position 4
+
+                {0, 0, 1},             // Position 1
+                {1, 0, 0},             // Position 2
+                {0, 0, -1} ,           // Position 3
+                {0, 0.643, 0.766},     // Position 4
+                {0.766, 0.643, 0},     // Position 5
+                {0, 0.643, -0.766},    // Position 6
+                {-0.766, 0.643, 0},    // Position 7
+                {0, -0.643, 0.766},    // Position 8
+                {0.766, -0.643, 0},    // Position 9
+                {0, -0.643, -0.766},    // Position 10
+                {-0.766, -0.643, 0}   // Position 11
+
                 };
             memcpy(fixed_positions, q20_positions, sizeof(fixed_positions));
 
@@ -111,17 +113,18 @@ bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *calib_data)
     {
         // for q20 and p20pro
         double q20_positions[11][3] = {
-            {0, 0, 1},             // Position 8
-            {1, 0, 0},             // Position 9
-            {0, 0, -1} ,           // Position 10
-            {0, 0.643, 0.766},     // Position 2
-            {0.766, 0.643, 0},     // Position 0
-            {0, 0.643, -0.766},    // Position 3
-            {-0.766, 0.643, 0},    // Position 1
-            {0, -0.643, 0.766},    // Position 6
-            {-0.766, -0.643, 0},   // Position 5
-            {0, -0.643, -0.766},    // Position 7
-            {0.766, -0.643, 0}    // Position 4
+            {0, 0, 1},             // Position 1
+            {1, 0, 0},             // Position 2
+            {0, 0, -1} ,           // Position 3
+            {0, 0.643, 0.766},     // Position 4
+            {0.766, 0.643, 0},     // Position 5
+            {0, 0.643, -0.766},    // Position 6
+            {-0.766, 0.643, 0},    // Position 7
+            {0, -0.643, 0.766},    // Position 8
+            {0.766, -0.643, 0},    // Position 9
+            {0, -0.643, -0.766},    // Position 10
+            {-0.766, -0.643, 0}   // Position 11
+
         };
         memcpy(fixed_positions, q20_positions, sizeof(fixed_positions));
     }
@@ -132,31 +135,31 @@ bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *calib_data)
             fabs(data[1] - fixed_positions[i][1]) < MAX_POSE_ERROR &&
             fabs(data[2] - fixed_positions[i][2]) < MAX_POSE_ERROR)
         {
-            for (int k = 0; k < calib_data->size; k++)
+            for (int k = 0; k < calib_datasets->size; k++)
             {
-                if (fabs(calib_data->data[k].data[0] - fixed_positions[i][0]) < MAX_POSE_ERROR &&
-                    fabs(calib_data->data[k].data[1] - fixed_positions[i][1]) < MAX_POSE_ERROR &&
-                    fabs(calib_data->data[k].data[2] - fixed_positions[i][2]) < MAX_POSE_ERROR)
+                if (fabs(calib_datasets->data[k].data[0] - fixed_positions[i][0]) < MAX_POSE_ERROR &&
+                    fabs(calib_datasets->data[k].data[1] - fixed_positions[i][1]) < MAX_POSE_ERROR &&
+                    fabs(calib_datasets->data[k].data[2] - fixed_positions[i][2]) < MAX_POSE_ERROR)
                 {
                     emit send_imu_cali_msg("位置已经存在,换一个");
                     return false;
                 }
             }
 
-            calib_data->data[calib_data->size].data[0] = data[0];
-            calib_data->data[calib_data->size].data[1] = data[1];
-            calib_data->data[calib_data->size].data[2] = data[2];
+            add_calib_data->data[add_calib_data->size].data[0] = data[0];
+            add_calib_data->data[add_calib_data->size].data[1] = data[1];
+            add_calib_data->data[add_calib_data->size].data[2] = data[2];
 
-            printf("data %d added: %.2f, %.2f, %.2f\n", calib_data->size,
-                   calib_data->data[calib_data->size].data[0],
-                   calib_data->data[calib_data->size].data[1],
-                   calib_data->data[calib_data->size].data[2]);
+            printf("data %d added: %.2f, %.2f, %.2f\n", add_calib_data->size,
+                   add_calib_data->data[add_calib_data->size].data[0],
+                   add_calib_data->data[add_calib_data->size].data[1],
+                   add_calib_data->data[add_calib_data->size].data[2]);
 
-            emit send_imu_cali_msg("data:" + QString::number(calib_data->size) + +",added" +
-                                   QString::number(calib_data->data[calib_data->size].data[0]) +
-                                   QString::number(calib_data->data[calib_data->size].data[1]) +
-                                   QString::number(calib_data->data[calib_data->size].data[2]));
-            calib_data->size++;
+            emit send_imu_cali_msg("data:" + QString::number(add_calib_data->size) + +",added" +
+                                   QString::number(add_calib_data->data[add_calib_data->size].data[0]) +
+                                   QString::number(add_calib_data->data[add_calib_data->size].data[1]) +
+                                   QString::number(add_calib_data->data[add_calib_data->size].data[2]));
+            add_calib_data->size++;
             qDebug() << "状态加1"
                      << "位置为" << i;
 
@@ -170,10 +173,10 @@ bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *calib_data)
     }
     emit send_imu_cali_msg("位置不对,换一个");
 
-    emit send_imu_cali_msg("data:" + QString::number(calib_data->size) + +",added" +
-                           QString::number(calib_data->data[calib_data->size].data[0]) +
-                           QString::number(calib_data->data[calib_data->size].data[1]) +
-                           QString::number(calib_data->data[calib_data->size].data[2]));
+    emit send_imu_cali_msg("data:" + QString::number(add_calib_data->size) + +",added" +
+                           QString::number(add_calib_data->data[add_calib_data->size].data[0]) +
+                           QString::number(add_calib_data->data[add_calib_data->size].data[1]) +
+                           QString::number(add_calib_data->data[add_calib_data->size].data[2]));
 
     return false;
 }
@@ -192,8 +195,23 @@ new_imu_calibrate::CalibDatasets *new_imu_calibrate::init_CalibData()
     calib_data->size = 0;
     calib_data->add = &new_imu_calibrate::add_CalibData;
 
-    qDebug() << "指向完成";
     return calib_data;
+}
+new_imu_calibrate::CalibDatasets *new_imu_calibrate::init_ExtraCalibData()
+{
+    extra_calib_data = (CalibDatasets *)malloc(sizeof(CalibDatasets));
+
+    for (int i = 0; i < EXTRA_POSE_NUM; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {   // make sure the initial value is not near the fixed position
+             extra_calib_data->data[i].data[j] = 0;
+        }
+    }
+
+    extra_calib_data->size = 0;
+   // qDebug() << "指向完成";
+    return extra_calib_data;
 }
 
 new_imu_calibrate::imu_calib_parameters *new_imu_calibrate::imu_calib_parameters_alloc()
@@ -335,7 +353,7 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT *imu_in)
             for (int i = 0; i < 3; i++)
             {
                 q->accdata_mean[i] = (float)(q->accdata_sum[i] / (STATIC_CONV_COUNT-STATIC_CONV_DELAY)) / 2048;//增加延时取数据
-                qDebug() << "q->accdata_mean[i]" << q->accdata_mean[i];
+                //qDebug() << "q->accdata_mean[i]" << q->accdata_mean[i];
             }
             q->mean_cal_done = true;
 
@@ -350,8 +368,17 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT *imu_in)
                     }
                 }
             }
-            else
+            else if (extra_calib_datasets->size < EXTRA_POSE_NUM)//加载extra_calib_datasets
             {
+
+                if (add_CalibData(q->accdata_mean, extra_calib_datasets))
+                {
+                    for (int i = 0; i < extra_calib_datasets->size; i++)
+                    {
+                        printf("extra_data %d: %.2f, %.2f, %.2f\n", i, extra_calib_datasets->data[i].data[0],
+                               extra_calib_datasets->data[i].data[1], extra_calib_datasets->data[i].data[2]);
+                    }
+                }
             }
 
             for (int i = 0; i < 3; i++)
@@ -401,7 +428,15 @@ void new_imu_calibrate::acccalib_sensors_init()
     us_matrix_float_set(imu_calib->acc_calib, 7, 0, 0);
     us_matrix_float_set(imu_calib->acc_calib, 8, 0, 0);
     loss=0;
-    calib_datasets = init_CalibData();
+    cali_loop =0;
+    // if(temp_calib_datasets != nullptr)
+    // {
+    //     free(temp_calib_datasets);
+    //  }
+    calib_datasets = init_CalibData();//calib_data
+    extra_calib_datasets = init_ExtraCalibData();//extra_calib_data
+
+
     printf("2:start acccalib task!\n");
 }
 
@@ -412,16 +447,30 @@ void new_imu_calibrate::acccalib_sensors_init()
 // after gathering enough data, run LM to get acc calib parameters
 int new_imu_calibrate::acccalib_sensors_task()
 {
-    // qDebug() << "calib_datasets->size：" <<calib_datasets->size;
+   // qDebug() << "calib_datasets->size：" <<calib_datasets->size;
+   // qDebug() << "extra_calib_datasets->size：" <<extra_calib_datasets->size;
 
    // qDebug() << "初始loss等于" << loss;
-    if (calib_datasets->size >= FACTORY_POSE_NUM)
+    if ((calib_datasets->size >= FACTORY_POSE_NUM)&&(extra_calib_datasets->size >= EXTRA_POSE_NUM))
     {
-        printf("enough data, run LM\n");
+        if (cali_loop == 0)
+        {
 
-        for (int x = 0; x < 9; ++x) {
-            qDebug() <<"task:data"<<calib_datasets->data[x].data[0]<< calib_datasets->data[x].data[1]<<calib_datasets->data[x].data[2];
+            temp_calib_datasets = (CalibDatasets *)malloc(sizeof(CalibDatasets));
+            for (int i = 0; i < FACTORY_POSE_NUM; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    temp_calib_datasets->data[i].data[j] = calib_datasets->data[i].data[j];
+                }
+            }
         }
+
+        for (int x = 0; x < 9; ++x)
+        {
+            qDebug() << "task:data" <<"x"<< calib_datasets->data[x].data[0] << calib_datasets->data[x].data[1] << calib_datasets->data[x].data[2];
+        }
+        qDebug() << "extra_datasets:" << extra_calib_datasets->data[0].data[0] << extra_calib_datasets->data[0].data[1] << extra_calib_datasets->data[0].data[2];
 
         // pre update. just for convert the data format
         // todo merge data struct
@@ -469,7 +518,7 @@ int new_imu_calibrate::acccalib_sensors_task()
 
             qDebug() << "loss等于" << loss;
             emit send_imu_cali_msg("loss等于" + QString::number(loss));
-            qDebug() << "lambda_LM等于" << lambda_LM;
+            qDebug() << "lambda_LM原始" << lambda_LM;
             // addjust penalty term lambda
             if (loss < last_loss)
             {
@@ -481,7 +530,7 @@ int new_imu_calibrate::acccalib_sensors_task()
                 lambda_LM = lambda_LM * 2;
             }
 
-            qDebug() << "lambda_LM=" << lambda_LM;
+            qDebug() << "lambda_LM计算后=" << lambda_LM;
 
             if (loss < ACC_CALIB_ACCURACY)
             {
@@ -513,6 +562,43 @@ int new_imu_calibrate::acccalib_sensors_task()
                     (us_matrix_float_get(imu_calib->acc_calib, 8, 0) > 0.5) ||
                     (us_matrix_float_get(imu_calib->acc_calib, 8, 0) < -0.5))
                 {
+                    if (cali_loop < FACTORY_POSE_NUM)
+                    {
+                        // 标定参数重新初始化
+                        us_matrix_float_set(imu_calib->acc_calib, 0, 0, 1);
+                        us_matrix_float_set(imu_calib->acc_calib, 1, 0, 1);
+                        us_matrix_float_set(imu_calib->acc_calib, 2, 0, 1);
+                        us_matrix_float_set(imu_calib->acc_calib, 3, 0, 0);
+                        us_matrix_float_set(imu_calib->acc_calib, 4, 0, 0);
+                        us_matrix_float_set(imu_calib->acc_calib, 5, 0, 0);
+                        us_matrix_float_set(imu_calib->acc_calib, 6, 0, 0);
+                        us_matrix_float_set(imu_calib->acc_calib, 7, 0, 0);
+                        us_matrix_float_set(imu_calib->acc_calib, 8, 0, 0);
+                        loss = 0;
+                        if (cali_loop)
+                        {
+                            for (int i = 0; i < FACTORY_POSE_NUM; i++)
+                            {
+                                for (int j = 0; j < 3; j++)
+                                {
+                                    calib_datasets->data[i].data[j] = temp_calib_datasets->data[i].data[j];
+                                }
+                            }
+                        }
+                        //用extra_calib_datasets中的数据替换calib_datasets中的数据
+                        calib_datasets->data[cali_loop].data[0] = extra_calib_datasets->data[0].data[0];
+                        calib_datasets->data[cali_loop].data[1] = extra_calib_datasets->data[0].data[1];
+                        calib_datasets->data[cali_loop].data[2] = extra_calib_datasets->data[0].data[2];
+                        cali_loop++;
+                        emit send_imu_cali_msg("重复次数：" + QString::number(cali_loop));
+                        qDebug() << "重复次数：" << cali_loop;
+                       int k= acccalib_sensors_task();
+                        if(k == CALIB_SUCCESS)
+                        {
+                            return CALIB_SUCCESS;//重标校准成功
+                        }
+                    }
+
                     qDebug() << "数据异常，校准失败";
                     emit send_imu_cali_msg("数据异常，校准失败");
                     calData.kx = us_matrix_float_get(imu_calib->acc_calib, 0, 0);
@@ -535,7 +621,7 @@ int new_imu_calibrate::acccalib_sensors_task()
                                            ", calData.by=" + QString::number(calData.by) +
                                            ", calData.bz=" + QString::number(calData.bz));
 
-                    return 1;// 校准失败
+                     return CALIB_FAIL;// 校准失败
                 }
 
 
@@ -560,21 +646,55 @@ int new_imu_calibrate::acccalib_sensors_task()
                                        ", calData.by=" + QString::number(calData.by) +
                                        ", calData.bz=" + QString::number(calData.bz));
 
-                return 0;   // 校准成功
+                return CALIB_SUCCESS;   // 校准成功
             }
         }
-
-        return 1;   // 校准失败
+        if (cali_loop < FACTORY_POSE_NUM)
+        {
+            //标定参数重新初始化
+            us_matrix_float_set(imu_calib->acc_calib, 0, 0, 1);
+            us_matrix_float_set(imu_calib->acc_calib, 1, 0, 1);
+            us_matrix_float_set(imu_calib->acc_calib, 2, 0, 1);
+            us_matrix_float_set(imu_calib->acc_calib, 3, 0, 0);
+            us_matrix_float_set(imu_calib->acc_calib, 4, 0, 0);
+            us_matrix_float_set(imu_calib->acc_calib, 5, 0, 0);
+            us_matrix_float_set(imu_calib->acc_calib, 6, 0, 0);
+            us_matrix_float_set(imu_calib->acc_calib, 7, 0, 0);
+            us_matrix_float_set(imu_calib->acc_calib, 8, 0, 0);
+            loss = 0;
+            if (cali_loop)
+            {
+                for (int i = 0; i < FACTORY_POSE_NUM; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        calib_datasets->data[i].data[j] = temp_calib_datasets->data[i].data[j];
+                    }
+                }
+            }
+            calib_datasets->data[cali_loop].data[0] = extra_calib_datasets->data[0].data[0];
+            calib_datasets->data[cali_loop].data[1] = extra_calib_datasets->data[0].data[1];
+            calib_datasets->data[cali_loop].data[2] = extra_calib_datasets->data[0].data[2];
+            cali_loop++;
+            emit send_imu_cali_msg("重复次数：" + QString::number(cali_loop));
+            qDebug() << "重复次数：" << cali_loop;
+            int k= acccalib_sensors_task();
+            if (k == CALIB_SUCCESS)
+            {
+                return CALIB_SUCCESS;//重标校准成功
+            }
+        }
+        return CALIB_FAIL;   // 校准失败
     }
 
-    return 2;   // 还没开始
+    return CALIB_NOT_START;   // 还没开始
 }
 
 
 
 void new_imu_calibrate::add_csvdata(CalibData*csv_data){
 
-    calib_datasets->size=0;
+
 
     while(calib_datasets->size<9){
     calib_datasets->data[calib_datasets->size].data[0] =  csv_data[calib_datasets->size].data[0];

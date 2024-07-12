@@ -53,72 +53,22 @@ class Qpb : public QSerialPort
 {
     Q_OBJECT
 public:
-    void set_rgb_color(FacLedControl data);
-    void set_motor_cali(int state);
-    void set_motor_damping_state(int state);
-    void set_motor_test_state(int state);
-    void set_motor_cali_state(int state);
-    void set_fac_result(int state);
     explicit Qpb(QSerialPort *parent = nullptr);
     void parseCmd(const QByteArray &byte);
     void sendShortPack(const FactoryDataPackage &pack);
     void sendShortPack(const DataPackage &pack);
     uint32_t sendlongPack(const FactoryDataPackage &pack);
     void waitWork(int ms);
-    void getCaliResult();      // 发送校准结果
-    void getimuCaliResult();   // 获取校准结果
-    void getDeviceInfo();
-    void getBaseInfo();
-    void set_camera_picture_state(int state);   // 开启补光灯
-
-    // void getFacMotorCalibResult();
-    void getPeriphState();
-    void setPressCollectParam(FacSwitch sta);
-    void setimuCollectParam(FacSwitch sta);   // 设置imu采集开关
     void setPbMode(int p)
     {
         pb_mode = (PB_MODE)p;
     }
-    void set_device_mode(int mode);
-    void getbattary();
-    void getbottonState(int state);
-    void getwifistate();
-    void disconnect_wifi();   // 断开wifi
-    void connect_wifi(const QByteArray &name, const QByteArray &password, const QString &ip,
-                      const QString &port);
-    void setbrushcontrol(int state);                               // 开始暂停刷牙
-    void set_fac_mode(int state);                                  // 开始工厂
-    void send_sn(FacDevInfoType which_sn, const QByteArray &sn);   // 绑定sn码
-    void get_sn(FacDevInfoType which_sn);
-    void set_screen_color(int state);   // 开始屏幕颜色
-    void set_led_color(int state, int lednumber);
-    void set_ship_mode(int state);   // 开始船运
-    void set_motor_param(uint32_t fre, float duty);
-    void set_motor_state(int state);
-    void set_motor_cali_result_param(uint32_t data);
-    void set_connect_wifi(const QByteArray &name, const QByteArray &password);   // 开始连接wifi
-    void set_music(const QByteArray &data);
-    void set_burning_mode(int state, FacSwitch switchs);   // 开始老化测试
-    void set_brush_record(const FacSetBrushRecord &record);
-    void set_brush_time(int timestamp);
-    void set_sleeep(FacSwitch state);   // 进入休眠状态
-    void setDevForbidSleepState(FacSwitch state);
-    void set_camera_state(int state);   // 开启摄像头
-    void set_screen_camera_state(int state);
-    void set_camera_light_state(int state);
-    void set_camera_support_state(int state);
+    DataPackage getBlePack() const;
+    void setBlePack(const DataPackage &newBlePack);
 
-    void set_camera_exposure_time(uint32_t time);
-    void setDevRstState();   // 复位牙刷
-    void set_brush_reset();
-    void sendCaliResult(unsigned short *cali_ok);
-    void sendimuCaliResult(ImuCalData cali_ok);   // 发送校准结果
-    void send_new_imuCaliResult(NewImuCalData cali_ok);
-    void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
-                               uint32_t vibrate_freq);
     int getisHallCali()
     {
-        return isHallCali;
+        return is_hall_cali;
     }
     int getis_camera_control()
     {
@@ -153,11 +103,11 @@ public:
 
     int getisZeroCali()
     {
-        return isZeroCali;
+        return is_zero_cali;
     }
     bool getDisableSleep()
     {
-        return isDisableSleep;
+        return is_disable_sleep;
     }
     bool get_is_set_age_test()
     {
@@ -165,7 +115,7 @@ public:
     }
     bool getCollectParam()
     {
-        return isSetPressCollectParam;
+        return is_set_press_collect_param;
     }
 
     bool getis_imu_set_sta()
@@ -175,11 +125,11 @@ public:
 
     bool getisDevintowhitemode()
     {
-        return isDevintowhitemode;
+        return is_dev_into_white_mode;
     }
     bool getisGetBaseInfo()
     {
-        return isGetBaseInfo;
+        return is_get_base_info;
     }
 
     bool get_is_save_press_cali_data()
@@ -221,9 +171,8 @@ public:
 
     bool get_isSetimuCollectParam()
     {
-        return isSetimuCollectParam;
+        return is_setimu_collect_param;
     }
-    void set_local_ota(local_ota_data x[2]);
 
     void reset_all_pb()
     {
@@ -233,18 +182,18 @@ public:
         is_motor_cali_data_set = 0;
         is_get_battery_data = 0;
         is_stop_motor_cali = 0;
-        isHallCali = 0;
+        is_hall_cali = 0;
         is_camera_control = 0;
-        isZeroCali = 0;
+        is_zero_cali = 0;
         is_banding_ok = 0;
         is_wifi_set_ok = 0;
         is_set_age_test = 0;
-        isDisableSleep = 0;
-        isSetPressCollectParam = 0;
+        is_disable_sleep = 0;
+        is_set_press_collect_param = 0;
         is_imu_set_sta = 0;
-        isSetimuCollectParam = 0;
-        isDevintowhitemode = 0;
-        isGetBaseInfo = 0;
+        is_setimu_collect_param = 0;
+        is_dev_into_white_mode = 0;
+        is_get_base_info = 0;
         is_save_press_cali_data = 0;
         is_close_forbid_sleep = 0;
         is_motor_param_set = 0;
@@ -252,39 +201,6 @@ public:
         is_get_imu_cali_data = 0;
         is_save_imu_cali_ok = 0;
     }   // 复位参数
-    void process_Dev_into_white_mode(FactoryDataPackage &f);
-    void process_connect_info(DataPackage &f);
-    void process_ota(DataPackage &f);
-    void getConnectInfo();
-    DataPackage getBlePack() const;
-    void setBlePack(const DataPackage &newBlePack);
-    void startOTA();
-    void configNetwork(WifiInfo info);
-    void processFactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage &f);
-
-signals:
-    void parseFinished(FactoryDataPackage);
-    void pressSensorDataReady(FacUploadPresSensor);
-    void baseInfoReady(FacGetDevBaseInfo get_dev_base_info);
-    void periphStateReady(FacGetPeriphState state);
-    void imuDataReady(FacUploadNineAlex);
-    void send_battary(FacDevInfo);
-    void send_wifi_State(FacDevInfo);
-    void send_sn_data(FacDevInfo);
-    void send_button_state(FacButtonState);
-    void send_BrushControl_state(FacBrushControl);
-    void send_LED_CONTROL_state(FacLedControl);
-    void send_Lcd_CONTROL_state(FacLcdControl);
-    void send_IMU_CALIB_result(FacImuCalibResult);
-    void send_FactroyCmd_INTERNET_OTA(FacInternetOta);
-    void send_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
-    void send_camera_CONTROL_state(FacCameraControl);
-    void send_pb_date(QString data);
-    void send_motor_cali_msg(QString data);
-    void sendInfo(QString info);
-    void sendOTAProgress(int progress);
-    void sendOTAResult(int result);
-    void sendGetBrushResponse(int data);
 private:
     typedef enum
     {
@@ -295,6 +211,12 @@ private:
         STATE_PB_HEADER,
         STATE_UNPACK
     } State;
+    enum PB_MODE
+    {
+        CLIENT,
+        FACTORY,
+    } pb_mode = FACTORY;
+
     State state = STATE_IDLE;
     int hitTimes = 0;
     int len = 1;
@@ -317,53 +239,136 @@ private:
     bool is_set_age_test = 0;
     bool is_banding_ok = 0;
     bool is_wifi_set_ok = 0;
-
-    bool isDisableSleep = 0;
-    int isHallCali = 0;
+    bool is_disable_sleep = 0;
+    int is_hall_cali = 0;
     int is_camera_control = 0;
-
-    int isZeroCali = 0;
+    int is_zero_cali = 0;
     int is_damping_state = 0;
     int is_wif_set = 0;
-
     int is_motor_test_state = 0;
     int is_stop_motor_cali = 0;
     int is_motor_cali_data_set = 0;
     int is_get_battery_data = 0;
-
     bool is_imu_set_sta = 0;
+    bool is_set_press_collect_param = 0;
+    bool is_setimu_collect_param = 0;
+    bool is_dev_into_white_mode = 0;
+    bool is_get_base_info = 0;
 
-    bool isSetPressCollectParam = 0;
-    bool isSetimuCollectParam = 0;
-    bool isDevintowhitemode = 0;
-    bool isGetBaseInfo = 0;
-    enum PB_MODE
-    {
-        CLIENT,
-        FACTORY,
-    } pb_mode = FACTORY;
+public slots:
+    void set_press_sensor_temp(int state);
+
+    void set_uart_receive(int state);                  // 设置UART接收状态
+    void set_rgb_color(FacLedControl data);            // 设置RGB颜色
+    void set_motor_cali(int state);                    // 设置电机校准状态
+    void set_motor_damping_state(int state);           // 设置电机阻尼状态
+    void set_motor_test_state(int state);              // 设置电机测试状态
+    void set_motor_cali_state(int state);              // 设置电机校准状态
+    void set_fac_result(int state);                    // 设置工厂结果状态
+    void set_screen_color(int state);                  // 设置屏幕颜色
+    void set_led_color(int state, int lednumber);      // 设置LED颜色
+    void set_ship_mode(int state);                     // 设置船运模式
+    void set_motor_param(uint32_t fre, float duty);    // 设置电机参数
+    void set_motor_state(int state);                   // 设置电机状态
+    void set_motor_cali_result_param(uint32_t data);   // 设置电机校准结果参数
+    void set_connect_wifi(const QByteArray &name, const QByteArray &password);   // 连接WiFi
+    void set_music(const QByteArray &data);                                      // 设置音乐
+    void set_burning_mode(int state, FacSwitch switchs);      // 设置老化测试模式
+    void set_brush_record(const FacSetBrushRecord &record);   // 设置刷牙记录
+    void set_brush_time(int timestamp);                       // 设置刷牙时间
+    void set_sleeep(FacSwitch state);                         // 设置休眠状态
+    void set_forbid_sleep(FacSwitch state);                   // 禁止休眠
+    void set_camera_state(int state);                         // 设置摄像头状态
+    void set_screen_camera_state(int state);                  // 设置屏幕摄像头状态
+    void set_camera_light_state(int state);                   // 设置摄像头灯光状态
+    void set_camera_support_state(int state);                 // 设置摄像头支持状态
+    void set_camera_exposure_time(uint32_t time);             // 设置摄像头曝光时间
+    void set_dev_reset();                                     // 设备复位
+    void set_brush_reset();                                   // 刷牙复位
+    void set_press_cali_result(unsigned short *cali_ok);      // 设置压力校准结果
+    void set_imu_cali_result(ImuCalData cali_ok);             // 发送IMU校准结果
+    void set_new_imu_cali_result(NewImuCalData cali_ok);      // 发送新的IMU校准结果
+    void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
+                               uint32_t vibrate_freq);            // 设置舵机电机参数
+    void set_device_mode(int mode);                               // 设置设备模式
+    void set_brush_control(int state);                            // 设置刷牙控制状态
+    void set_fac_mode(int state);                                 // 设置工厂模式
+    void set_sn(FacDevInfoType which_sn, const QByteArray &sn);   // 绑定SN码
+    void set_camera_picture_state(int state);                     // 设置摄像头图片状态
+    void set_local_ota(local_ota_data x[2]);                      // 设置本地OTA
+    void set_start_ota_app();                                     // 启动OTA应用
+    void set_config_network_app(WifiInfo info);                   // 配置网络应用
+    void set_wifi_disconnect();                                   // 断开WiFi
+    void set_new_connect_wifi(const QByteArray &name, const QByteArray &password, const QString &ip,
+                              const QString &port);   // 设置新的WiFi连接
+    void set_press_collect_param(FacSwitch sta);      // 设置压力采集参数
+    void set_imu_collect_param(FacSwitch sta);        // 设置IMU采集参数
+
+public slots:
+    void get_battery();                                   // 获取电池信息
+    void get_button_state(int state);                     // 获取按钮状态
+    void get_sn(FacDevInfoType which_sn);                 // 获取SN码
+    void get_cali_result();                               // 获取校准结果
+    void get_imu_cali_result();                           // 获取IMU校准结果
+    void get_device_info();                               // 获取设备信息
+    void get_base_info();                                 // 获取基本信息
+    void get_periph_state();                              // 获取外围设备状态
+    void get_connect_info();                              // 获取连接信息
+    void get_wifi_info();                                 // 获取WiFi信息
+    void get_servo_motor_info();                            // 获取电机信息
 
 private slots:
+    void process_CommandId_CONNECT_PRO(DataPackage &f);
+    void process_CommandId_ROTAS(DataPackage &f);
+    void process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage &f);
+    void process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage &f);
     void process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage &f);
     void process_FactroyCmd_LCD_CONTROL(FactoryDataPackage &f);
     void process_FactroyCmd_SET_AGEING_TEST(FactoryDataPackage &f);
     void process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage &f);
-    void processPressSensorData(FactoryDataPackage &f);
-    void processimuData(FactoryDataPackage &f);
-    void process_set_dev_state(FactoryDataPackage &f);
-    void process_SET_PRESS_SENSOR_CALIB(FactoryDataPackage &f);
-    void process_get_PRESS_SENSOR_CALIB(FactoryDataPackage &f);
-    void process_SET_imu_SENSOR_CALIB(FactoryDataPackage &f);
-    void process_DEVICE_BASE_INFO(FactoryDataPackage &f);
-    void process_GET_PERIPH_STATE(FactoryDataPackage &f);
-    void process_dev_info(FactoryDataPackage &f);
-    void process_UPLOAD_BUTTON_STATE(FactoryDataPackage &f);
-    void process_LED_CONTROL(FactoryDataPackage &f);
-    void process_BRUSH_CONTROL(FactoryDataPackage &f);
+    void process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage &f);
+    void process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage &f);
+    void process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage &f);
+    void process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage &f);
+    void process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage &f);
+    void process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage &f);
+    void process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage &f);
+    void process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage &f);
+    void process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage &f);
+    void process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage &f);
+    void process_FactroyCmd_LED_CONTROL(FactoryDataPackage &f);
+    void process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage &f);
     void process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage &f);
     void process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage &f);
     void process_FactroyCmd_INTERNET_OTA(FactoryDataPackage &f);
     void process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage &f);
+signals:
+    void send_press_data(FacUploadPresSensor);
+    void send_base_data(FacGetDevBaseInfo get_dev_base_info);
+    void send_periph_data(FacGetPeriphState state);
+    void send_imu_data(FacUploadNineAlex);
+    void send_battary(FacDevInfo);
+    void send_wifi_State(FacDevInfo);
+    void send_sn_data(FacDevInfo);
+    void send_button_state(FacButtonState);
+    void send_BrushControl_state(FacBrushControl);
+    void send_LED_CONTROL_state(FacLedControl);
+    void send_Lcd_CONTROL_state(FacLcdControl);
+    void send_IMU_CALIB_result(FacImuCalibResult);
+    void send_FactroyCmd_INTERNET_OTA(FacInternetOta);
+    void send_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
+    void send_camera_CONTROL_state(FacCameraControl);
+    void send_servo_motor_info_msg(FacMotorCalibResult);
+
+
+    void send_pb_date(QString data);
+    void send_motor_cali_msg(QString data);
+    void send_pb_info(QString info);
+    void send_ota_progress(int progress);
+    void send_ota_result(int result);
+
+
+    void sendGetBrushResponse(int data);
 };
 
 #endif   // QPB_H

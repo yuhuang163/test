@@ -6,7 +6,13 @@
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
-
+void screentest::on_pushButton_clicked()
+{
+    ui->macInput->setText("f4:12:fa:c5:51:c6");
+    //    ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    on_macInput_returnPressed();
+}
 screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest), m_index(index)
 {
     ui->setupUi(this);
@@ -66,7 +72,7 @@ void screentest::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -116,7 +122,6 @@ void screentest::on_macInput_returnPressed()
     {
         macAddress = ui->macInput->text();
         ui->macLabel->setText("蓝牙mac: " + macAddress);
-        at->sendMac(ui->macInput->text());   // 发送mac地址
         qDebug() << getIndex() << macAddress;
         isScreenContinue = true;
         emit goNextFocus();
@@ -250,6 +255,8 @@ void screentest::start_task()   // 编写六轴校准的代码
             is_can_go_next = 0;
             is_lcd_control = 0;
             TestTime.start();
+            at->sendMac(ui->macInput->text());   // 发送mac地址
+
             state = STATE_WATI_CONNECT;
             break;
         case STATE_WATI_CONNECT:
@@ -380,7 +387,7 @@ void screentest::start_task()   // 编写六轴校准的代码
             stringsn = "";
             ui->get_mac->clear();
             ui->macInput->clear();
-            pb->setDevRstState();
+            pb->set_dev_reset();
             ui->macInput->setDisabled(0);
             ui->get_mac->setDisabled(0);
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
@@ -398,17 +405,11 @@ void screentest::start_task()   // 编写六轴校准的代码
     }
 }
 
-void screentest::on_pushButton_clicked()
-{
-    ui->macInput->setText("f4:12:fa:c5:51:c6");
-    //    ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    on_macInput_returnPressed();
-}
+
 
 void screentest::on_lcdTestButton_clicked()
 {
-    pb->setDevRstState();
+    pb->set_dev_reset();
     // waitWork(WAITTIME);
     //
     // waitWork(WAITTIME);

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1247</width>
+    <width>1331</width>
     <height>1009</height>
    </rect>
   </property>
@@ -145,10 +145,36 @@
            <string>信息显示</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_13">
+           <item row="0" column="0">
+            <layout class="QGridLayout" name="gridLayout_14">
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QPlainTextEdit" name="log"/>
+             </item>
+             <item row="0" column="1">
+              <widget class="QPlainTextEdit" name="msgEdit">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
            <item row="1" column="0">
             <widget class="QTabWidget" name="tabWidget">
              <property name="currentIndex">
-              <number>12</number>
+              <number>2</number>
              </property>
              <property name="tabBarAutoHide">
               <bool>false</bool>
@@ -471,7 +497,7 @@
                    <number>1</number>
                   </property>
                   <item>
-                   <widget class="QPushButton" name="getbattary">
+                   <widget class="QPushButton" name="get_battery">
                     <property name="text">
                      <string>显示充电情况</string>
                     </property>
@@ -592,13 +618,6 @@
                      </widget>
                     </item>
                     <item>
-                     <widget class="QPushButton" name="get_device_sn">
-                      <property name="text">
-                       <string>获取设备的sn</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
                      <widget class="QPushButton" name="forbidsleep">
                       <property name="text">
                        <string>禁止休眠模式</string>
@@ -606,6 +625,72 @@
                      </widget>
                     </item>
                    </layout>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_76">
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QPushButton" name="get_device_sn">
+                      <property name="text">
+                       <string>获取尾盖的sn</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="get_board_sn">
+                      <property name="text">
+                       <string>获取板子sn</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="get_device_subpid">
+                      <property name="text">
+                       <string>获取设备的sbupid</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_78">
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QPushButton" name="write_device_sn">
+                      <property name="text">
+                       <string>写入尾盖的sn</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="write_board_sn">
+                      <property name="text">
+                       <string>写入板子sn</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="write_device_subpid">
+                      <property name="text">
+                       <string>写入设备sbupid</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="show_bursh_log">
+                    <property name="text">
+                     <string>串口指令模式是否打开</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </widget>
@@ -1464,13 +1549,20 @@
                  </property>
                  <layout class="QGridLayout" name="gridLayout_15">
                   <item row="0" column="0">
-                   <layout class="QVBoxLayout" name="verticalLayout_66">
+                   <layout class="QVBoxLayout" name="verticalLayout_31">
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                   </layout>
+                  </item>
+                  <item row="1" column="0">
+                   <layout class="QHBoxLayout" name="horizontalLayout_77">
                     <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_31">
-                      <property name="topMargin">
-                       <number>0</number>
+                     <widget class="QPushButton" name="add_data">
+                      <property name="text">
+                       <string>补数据</string>
                       </property>
-                     </layout>
+                     </widget>
                     </item>
                     <item>
                      <widget class="QPushButton" name="save_photo">
@@ -1807,6 +1899,13 @@
                   </item>
                   <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_26">
+                    <item>
+                     <widget class="QCheckBox" name="press_sensor_temp__switch">
+                      <property name="text">
+                       <string>压感温度补偿开关</string>
+                      </property>
+                     </widget>
+                    </item>
                     <item>
                      <widget class="QPushButton" name="open_press_collect">
                       <property name="text">
@@ -2259,6 +2358,13 @@
                  <property name="leftMargin">
                   <number>0</number>
                  </property>
+                 <item>
+                  <widget class="QPushButton" name="get_motor_info">
+                   <property name="text">
+                    <string>获取电机信息</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item>
                   <widget class="QPushButton" name="swing_test">
                    <property name="text">
@@ -3259,7 +3365,7 @@
                <string>ui预览</string>
               </attribute>
               <layout class="QGridLayout" name="gridLayout_16">
-               <item row="1" column="1">
+               <item row="1" column="2">
                 <layout class="QHBoxLayout" name="horizontalLayout_69">
                  <item>
                   <widget class="QLabel" name="label_42">
@@ -3271,7 +3377,7 @@
                  <item>
                   <widget class="QLineEdit" name="ui_ip">
                    <property name="text">
-                    <string>http://192.168.252.91/</string>
+                    <string>http://192.168.252.54/</string>
                    </property>
                   </widget>
                  </item>
@@ -3284,7 +3390,7 @@
                  </property>
                 </widget>
                </item>
-               <item row="0" column="0" colspan="2">
+               <item row="0" column="0" colspan="3">
                 <layout class="QHBoxLayout" name="horizontalLayout_50">
                  <item>
                   <widget class="QLabel" name="high_speed_tp">
@@ -3318,6 +3424,111 @@ border-color: rgb(255, 165, 0)</string>
                  </item>
                 </layout>
                </item>
+               <item row="1" column="1">
+                <widget class="QPushButton" name="init_ui_data">
+                 <property name="text">
+                  <string>格式化</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="tab_15">
+              <attribute name="title">
+               <string>NFC</string>
+              </attribute>
+              <layout class="QGridLayout" name="gridLayout_18">
+               <item row="0" column="0">
+                <layout class="QVBoxLayout" name="verticalLayout_32">
+                 <item>
+                  <widget class="QComboBox" name="nfc_combo">
+                   <property name="minimumSize">
+                    <size>
+                     <width>550</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="nfc_sn">
+                   <property name="text">
+                    <string>5504866823111111</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="nfc_mac">
+                   <property name="text">
+                    <string>3C:84:27:07:A8:D2</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="nfc_write_read">
+                   <property name="text">
+                    <string>nfc读写</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="nfc_read">
+                   <property name="text">
+                    <string>nfc读</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="clear_nfc_data">
+                   <property name="text">
+                    <string>清空nfc数据</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="0" column="1">
+                <layout class="QVBoxLayout" name="verticalLayout_33">
+                 <item>
+                  <widget class="QLineEdit" name="nfc_name">
+                   <property name="text">
+                    <string>READER_A</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="nfc_decode">
+                   <property name="text">
+                    <string>烧录器读取编号</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="nfc_encode">
+                   <property name="text">
+                    <string>烧录器写入编号</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="1" column="0" colspan="2">
+                <layout class="QHBoxLayout" name="horizontalLayout_75">
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QComboBox" name="NfcComboBox"/>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="nfcComFresh">
+                   <property name="text">
+                    <string>刷新nfc口</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
               </layout>
              </widget>
              <widget class="QWidget" name="tab_14">
@@ -3327,8 +3538,8 @@ border-color: rgb(255, 165, 0)</string>
               <widget class="QLineEdit" name="calculate">
                <property name="geometry">
                 <rect>
-                 <x>440</x>
-                 <y>290</y>
+                 <x>270</x>
+                 <y>180</y>
                  <width>251</width>
                  <height>25</height>
                 </rect>
@@ -3343,86 +3554,8 @@ border-color: rgb(255, 165, 0)</string>
                 <string>将六轴数据生成校准结果敲回车接口</string>
                </property>
               </widget>
-              <widget class="QPushButton" name="nfc_write_read">
-               <property name="geometry">
-                <rect>
-                 <x>130</x>
-                 <y>280</y>
-                 <width>93</width>
-                 <height>28</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>nfc读写</string>
-               </property>
-              </widget>
-              <widget class="QLineEdit" name="nfc_sn">
-               <property name="geometry">
-                <rect>
-                 <x>50</x>
-                 <y>198</y>
-                 <width>249</width>
-                 <height>25</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>5504070123111111</string>
-               </property>
-              </widget>
-              <widget class="QLineEdit" name="nfc_mac">
-               <property name="geometry">
-                <rect>
-                 <x>50</x>
-                 <y>230</y>
-                 <width>249</width>
-                 <height>25</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>3C:84:27:07:A8:D2</string>
-               </property>
-              </widget>
-              <widget class="QPushButton" name="clear_nfc_data">
-               <property name="geometry">
-                <rect>
-                 <x>130</x>
-                 <y>340</y>
-                 <width>93</width>
-                 <height>28</height>
-                </rect>
-               </property>
-               <property name="text">
-                <string>清空nfc数据</string>
-               </property>
-              </widget>
              </widget>
             </widget>
-           </item>
-           <item row="0" column="0">
-            <layout class="QGridLayout" name="gridLayout_14">
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <item row="0" column="1">
-              <widget class="QPlainTextEdit" name="msgEdit">
-               <property name="enabled">
-                <bool>true</bool>
-               </property>
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QPlainTextEdit" name="log"/>
-             </item>
-            </layout>
            </item>
           </layout>
          </widget>
@@ -3554,7 +3687,7 @@ border-color: rgb(255, 165, 0)</string>
              <item row="2" column="5">
               <widget class="QCheckBox" name="checkbanding">
                <property name="text">
-                <string>只绑定</string>
+                <string>只绑定不获取版本号</string>
                </property>
               </widget>
              </item>
@@ -3616,7 +3749,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1247</width>
+     <width>1331</width>
      <height>24</height>
     </rect>
    </property>

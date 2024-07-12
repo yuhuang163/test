@@ -24,11 +24,16 @@
         p_ring_buff->write_index   = 0;
         p_ring_buff->read_index    = 0;
 
-        qDebug() << "初始化环形队列成功" ;
+       // qDebug() << "初始化环形队列成功" ;
     }
 }
 RingBuf::~RingBuf()
-{}
+{
+    mutex.unlock();
+    qDebug() << "Destructor called, lock released.";
+}
+
+
 bool RingBuf::usmile_ring_buffer_deinit(usmile_ring_buffer_t *p_ring_buff)
 {
     if (NULL == p_ring_buff)

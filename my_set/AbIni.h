@@ -5,7 +5,7 @@
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
-
+#include <QtConcurrent>
 #include "qcombobox.h"
 #include "qlineedit.h"
 #include <QAuthenticator>
@@ -51,19 +51,23 @@
 
 #define WAITTIME 0   // 指令的300延时防止粘包
 #define NEW_XWD_QUIESCENT_CURRENT
-//#define NEW_IMU_CALI   // 老校准6轴，新的是acc
-
-#define AGE_VER    "老化工站 V1.0.9"         // 支持1拖多
-#define CAMERA_VER "摄像头测试工站 V1.0.5"   // 支持摄像头工站
-#define IMU_VER    "imu校准工站 V1.2.7"      // 支持自动化治具
-#define MOTOR_VER  "电机校准 V1.0.8"
-#define QC_VER     "静态电流测试 V1.2.7"   // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站 V1.0.7"
-#define LIGHT_VER  "灯光测试工站 V1.0.7"
-#define SINGLE_VER "信号测试工站 V1.2.4"   // 立讯bug
-#define MAIN_VER   "电刷产测工具 V1.1.7"   // 调整ota功能
-#define PCBA_VER   "电刷 PCBA 测试 V1.2.3"
+#define NEW_MUSIC_CURRENT
 
 #define SETTING_NAME "上位机设置.ini"
+
+#define DEBUG_VER  "电刷产测工具 V1.1.7"            // 支持1拖多
+#define AGE_VER    "老化工站 V1.0.9"            // 支持1拖多
+#define CAMERA_VER "摄像头测试工站 V1.0.6"      // 支持摄像头工站
+#define IMU_VER    "imu校准工站 V1.2.9"         // 支持自动化治具
+#define MOTOR_VER  "电机校准 V1.0.8"            // 加定时器判断休
+#define QC_VER     "静态电流测试 V1.2.7"        // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站 V1.0.7"        // 加定时器判断休
+#define LIGHT_VER  "灯光测试工站 V1.0.7"        // 加定时器判断休
+#define SINGLE_VER "信号测试工站 V1.2.4"        // 立讯bug
+#define FREE_VER   "自由测试工站 V1.0.0"        // 立讯bug
+
+#define MAIN_VER   "电刷产测工具 V1.1.8"        // 调整ota功能
+#define PCBA_VER   "电刷 PCBA 测试 V1.2.3"      // 加定时器判断休
+
 
 #endif   // ABINI_H

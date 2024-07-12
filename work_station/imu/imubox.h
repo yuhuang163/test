@@ -23,7 +23,6 @@ public:
 private:
     Ui::imubox *ui;
 
-    std::vector<int> testStates;
     std::vector<int> stage1States;
     std::vector<int> stage2States;
     std::vector<int> stage3States;
@@ -34,13 +33,15 @@ private:
 
     Fixture_uart *Fixture_uart_ui = NULL;   // 牙刷控制窗口
 
+    int mehineState[12]={0};//从0开始
+
+
 signals:
     void send_fixture_log(QString data);
 
 private slots:
     void set_cylinder_state(imuFixtureState state);
-    void check_all_over_test(int testNumber);
-    bool checkstateReady(std::vector<int> States);
+    void checkAllover(int testNumber)override;
     void check_all_over_stage1(int testNumber);
     void check_all_over_stage2(int testNumber);
     void check_all_over_stage3(int testNumber);
@@ -48,9 +49,10 @@ private slots:
     void check_all_over_fixture_down(int testNumber);
     void check_all_over_fixture_right(int testNumber);
     void check_all_over_fixture_up(int testNumber);
-    bool checkAlltestReady();
-    void set_relay_state(int state);
-    void resetall();
+    void resetall()override;
+    void set_vector_state(int state);
+    void start_test();
+
 };
 
 #endif   // IMUBOX_H

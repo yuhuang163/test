@@ -9,7 +9,30 @@
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
 #endif
+void cameratest::on_pushButton_clicked()
+{
+    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    ui->macInput->setText("3C:84:27:20:01:3E");
+    ui->macInput->setText("3c:84:27:20:00:c6");
+    ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
+    ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
+    ui->macInput->setText("b4:56:5d:bf:57:9d");
+    ui->macInput->setText("F8:8F:C8:57:73:E9");
 
+
+    on_macInput_returnPressed();
+
+
+
+    // for(int i=0 ;i<500;i++)
+    // {
+    //     ui->log->appendPlainText("当前次数为：" + QString::number(i));
+    //         at->sendMac(ui->macInput->text());   // 开始连接
+    //     waitWork(1000);
+
+    // }
+}
 cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_index(index)
 {
     ui->setupUi(this);
@@ -36,11 +59,10 @@ cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_i
     ui->msgEdit->appendPlainText("line=" + pack.line);
     ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
 
-
-
     // 将定时器的timeout信号连接到槽函数onTimeout
     connect(cameraSendTimer, &QTimer::timeout, this, &cameratest::onTimeout);
 
+    connect(this, &cameratest::imageProcessed, this, &cameratest::updateImageOnMainThread);
 
     viewercamrea = new ImageViewer("image_markings.png", this);
     ui->verticalLayout->addWidget(viewercamrea);   // 将 ImageViewer 添加到布局中
@@ -48,6 +70,20 @@ cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_i
     dongleRingBuf =
         new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
+
+    // 启动后台线程
+    future = QtConcurrent::run([this]() {
+        while (running.load()) {
+            solve_frame();
+            QThread::msleep(10); // 等待10毫秒
+        }
+    });
+    running.store(true);
+
+    // //连接信号和槽
+    // QObject::connect(cameratimer, &QTimer::timeout, this, &cameratest::solve_frame);
+    // //启动定时器
+    // cameratimer->start(10);
 }
 void cameratest::write_camera_data(uint8_t *p_data, int data_len)
 {
@@ -80,13 +116,13 @@ int cameratest::ext_ble_find_next_frame(void)
 
     for (i = 0; i < len; i++)
     {
-        if (frame_buf[i] == 0xAA && frame_buf[i + 1] == 0xAA && frame_buf[i + 2] == 0xAA &&
-            frame_buf[i + 3] == 0xAA)
+        if (frame_buf[i] == 0xCC && frame_buf[i + 1] == 0xCC && frame_buf[i + 2] == 0xCC &&
+            frame_buf[i + 3] == 0xCC)
         {
             head = (ext_uart_phy_layer_t *)&frame_buf[i];
-            if (head->magic == EXT_UART_PHY_LAYER_MAGIC)
+            if (head->magic == EXT_UART_MAGIC)
             {
-                qDebug() << "匹配到了串口数据包头";
+                qDebug() << "匹配到了串口帧头";
 
                 dongleRingBuf->usmile_ring_buffer_delete(&p_dongleRingBuffer, i);
 
@@ -113,10 +149,10 @@ int cameratest::ext_ble_find_next_picture_frame(void)
             frame_picture_buf[i + 2] == 0xA5 && frame_picture_buf[i + 3] == 0xA5)
         {
             head = (ext_picture_layer_t *)&frame_picture_buf[i - 20];
-            if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC)
+            if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC && head->width == 0xb4 &&
+                head->height == 0xc8)
             {
                 qDebug() << "匹配到了图片数据包头";
-
                 cameraRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, i - 20);
 
                 return 1;
@@ -164,26 +200,24 @@ void cameratest::solve_picture_frame(void)
         }
 
         ext_picture_layer_t *head = (ext_picture_layer_t *)frame_picture_buf;
-        if (head->width == 0xb4 && head->height == 0xc8)//回车
+        if (head->width == 0xb4 && head->height == 0xc8)   // 回车
         {
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
 
             if (frame_size > ring_size)
             {
-                qDebug() << "图片帧数据不完整" << "需要" << frame_size
-                         << "实际为" << ring_size<<"包数"<<ring_size/244
-                         << "余数"<<ring_size%244
-                         <<"包头内容为"<<frame_picture_buf[ring_size];
+                qDebug() << "图片帧数据不完整" << "需要" << frame_size << "实际为" << ring_size
+                         << "包数" << ring_size / 244 << "余数" << ring_size % 244 << "包头内容为"
+                         << frame_picture_buf[ring_size];
                 break;
             }
 
             // 从环形缓冲区中读取整个帧的数据
             cameraRingBuf->usmile_ring_buffer_pick(&p_cameraRingBuffer, frame_picture_buf,
                                                    frame_size);
-            qDebug() << "图片帧数据完整" << "需要" << frame_size
-                     << "实际为" << ring_size<<"包数"<<ring_size/244
-                     << "余数"<<ring_size%244
-                     <<"包头内容为"<<frame_picture_buf[ring_size];
+            qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size << "包数"
+                     << ring_size / 244 << "余数" << ring_size % 244 << "包头内容为"
+                     << frame_picture_buf[ring_size];
 
             qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size
                      << sizeof(head);
@@ -194,31 +228,31 @@ void cameratest::solve_picture_frame(void)
             {
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char *>(head), frame_size);
-                processTheDatagram(byteArray);   // 显示图片
+                pictureByteArray = byteArray;
+                emit imageProcessed();
             }
             else
             {
                 qDebug() << "head content:"
                          << QByteArray(reinterpret_cast<char *>(head), PICTURE_PHY_LAYER_HEAD_SIZE)
                                 .toHex();
+                ui->msgEdit->appendPlainText("图片的crc错误");
                 qDebug() << "crc校验失败" << crc_cali << crc16 << "head->data[0]" << head->data[0]
                          << "head->data[1]" << head->data[1];
-                printSquareData(head->data, head->data_size);
+                // printSquareData(head->data, head->data_size);
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
-                QByteArray byteArray(reinterpret_cast<const char *>(head),
-                                     head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE);
-                processTheDatagram(byteArray);   // 显示图片
-
+                QByteArray byteArray(reinterpret_cast<const char *>(head), frame_size);
+                pictureByteArray = byteArray;
+                emit imageProcessed();
             }
 
             // 删除已经处理的帧数据
             dongleRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, frame_size);
-
         }
         else
         {
-            qDebug() << "数据流错误寻找下一帧";
-            qDebug() << "数据包头为:"
+            qDebug() << "数据流错误寻找下一帧不满足head->width == 0xb4 && head->height == 0xc8";
+            qDebug() << "当前数据包头为:"
                      << QByteArray(reinterpret_cast<char *>(frame_picture_buf),
                                    PICTURE_PHY_LAYER_HEAD_SIZE)
                             .toHex();
@@ -234,7 +268,7 @@ void cameratest::solve_picture_frame(void)
             }
         }
 
-        // 处理完一帧数据后，让 Qt 处理事件循环，以确保界面更新等操作得到及时响应
+        // QThread::msleep(100); // 等待1秒
         QCoreApplication::processEvents();
     }
 }
@@ -249,20 +283,19 @@ void cameratest::solve_frame(void)
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
         if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC)
         {
-            qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
+            // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
 
         ext_uart_phy_layer_t *head = (ext_uart_phy_layer_t *)frame_buf;
 
-        if (head->magic == EXT_UART_PHY_LAYER_MAGIC)
+        if (head->magic == EXT_UART_MAGIC)
         {
             int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
 
             if (frame_size > ring_size)
             {
-                qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
-
+                // qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
                 break;
             }
 
@@ -274,9 +307,8 @@ void cameratest::solve_frame(void)
             {
                 // 处理帧数据
                 write_camera_data(head->data, head->length);
+                cameradatasize = head->length + cameradatasize;
                 solve_picture_frame();
-
-
             }
             else
             {
@@ -304,18 +336,17 @@ void cameratest::solve_frame(void)
             }
             else
             {
-                // qDebug() << "找不到帧头";
+                qDebug() << "找不到串口帧头";
                 break;
             }
         }
-
-        // 处理完一帧数据后，让 Qt 处理事件循环，以确保界面更新等操作得到及时响应
         QCoreApplication::processEvents();
+        // QThread::msleep(100); // 等待1秒
     }
 }
 void cameratest::refresh_camera_CONTROL(FacCameraControl style)
 {
-    qDebug() << getIndex() << style.result;
+    qDebug() << getIndex() << "收到摄像头控制回应" << style.result;
     is_camera_control = 1;
 }
 
@@ -338,7 +369,7 @@ void cameratest::refresh_ble_state(int state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   ui->msgEdit->appendPlainText("蓝牙连接成功");
-        pb->setDevForbidSleepState(FacSwitch_OPEN);
+        pb->set_forbid_sleep(FacSwitch_OPEN);
         ui->msgEdit->appendPlainText("已发送禁止休眠");
     }
     else
@@ -367,6 +398,11 @@ void cameratest::on_connectButton_clicked()
 }
 void cameratest::on_macInput_returnPressed()
 {
+    viewercamrea->pixmap = QPixmap();
+
+    viewercamrea->temporarypixmap= QPixmap();
+    viewercamrea->updateImage();
+
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -387,8 +423,7 @@ void cameratest::on_macInput_returnPressed()
     {
         macAddress = ui->macInput->text();
         ui->macLabel->setText("蓝牙mac: " + macAddress);
-        at->sendMac(ui->macInput->text());   // 发送mac地址
-        qDebug() << getIndex() << macAddress;
+
         isScreenContinue = true;
         emit goNextFocus();
 
@@ -419,7 +454,7 @@ void cameratest::solveMesData(const int mechines, QString msg)
         ui->msgEdit->appendPlainText("停止运行");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-         emit endTest(getIndex());
+        emit endTest(getIndex());
 
         ui->get_mac->clear();
         ui->get_mac->setFocus();
@@ -468,6 +503,10 @@ void cameratest::band_sn_mac_to_csv(const QString &macAddress, const QString &sn
 
 void cameratest::closeEvent(QCloseEvent *)
 {
+
+    running.store(false);
+    // 等待线程结束
+    future.waitForFinished();
     qDebug() << getIndex() << "开始关闭";
     isScreenContinue = false;
 }
@@ -502,13 +541,9 @@ void cameratest::processInspection(QString stringsn)
         {
             ui->msgEdit->appendPlainText("正在进行站前检测");
             pack.sn = stringsn;
-
             pack.mechines = getIndex();
-            
-
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
-
             emit sendProcessInspection(pack);
         }
     }
@@ -532,7 +567,8 @@ void cameratest::onTimeout()
                 sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
     std::memset(camera_ring_buf, 0,
                 sizeof(camera_ring_buf));   // 将数组全部初始化为零
-
+    ui->msgEdit->appendPlainText("图片数据包大小=" + QString::number(cameradatasize));
+    cameradatasize = 0;
 }
 void cameratest::start_task()
 {
@@ -542,6 +578,7 @@ void cameratest::start_task()
         switch (state)
         {
         case STATE_IDLE:   // 复位一切
+
             ui->msgEdit->appendPlainText("开始测试");
             pb->reset_all_pb();
             testItems.clear();
@@ -550,11 +587,14 @@ void cameratest::start_task()
             refresh_ble_state(0);
             ui->tail_sn->setText("存储尾盖sn:");
             stringsn = "";
+            cameraSendTimer->stop();
             result = passValue;
             is_can_go_next = 0;
             is_camera_control = 0;
             TestTime.start();
-
+            dongleOutTime = 10;   // 太快会死锁
+            at->sendMac(ui->macInput->text());   // 发送mac地址
+            qDebug() << getIndex() << macAddress;
             state = STATE_WATI_CONNECT;
             break;
         case STATE_WATI_CONNECT:
@@ -564,7 +604,7 @@ void cameratest::start_task()
                 qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                 waitWork(WAITTIME);
                 ui->msgEdit->appendPlainText("蓝牙连接成功");
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 band_sn_mac_to_csv(macAddress, sn);
                 state = STATE_BANDING;
             }
@@ -573,14 +613,14 @@ void cameratest::start_task()
         case STATE_BANDING:
             if (pb->get_is_banding_ok())
             {
-                pb->getBaseInfo();
+                pb->get_base_info();
                 ui->msgEdit->appendPlainText("sn已成功绑定保存");
                 state = STATE_DISABLE_SLEEP_1;
             }
             else
             {
                 waitWork(500);
-                pb->send_sn(FacDevInfoType_TAIL_SN, sn);
+                pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 ui->msgEdit->appendPlainText("正在重试sn绑定");
             }
 
@@ -591,7 +631,6 @@ void cameratest::start_task()
                 ui->msgEdit->appendPlainText("已进入禁止休眠模式");
                 if (pack.product == "U7P")
                 {
-
                     // 设置定时器的超时时间为6000毫秒（6秒）
                     cameraSendTimer->setInterval(6000);
                     // 启动定时器
@@ -602,7 +641,6 @@ void cameratest::start_task()
                                 sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
                     std::memset(camera_ring_buf, 0,
                                 sizeof(camera_ring_buf));   // 将数组全部初始化为零
-
 
                     state = CAMERA_TEST;
 
@@ -617,7 +655,7 @@ void cameratest::start_task()
             else
             {
                 waitWork(500);
-                pb->setDevForbidSleepState(FacSwitch_OPEN);
+                pb->set_forbid_sleep(FacSwitch_OPEN);
                 ui->msgEdit->appendPlainText("已发送禁止休眠");
             }
             break;
@@ -711,9 +749,9 @@ void cameratest::start_task()
             ui->macInput->setDisabled(0);
             ui->get_mac->setDisabled(0);
             waitWork(WAITTIME);
-            pb->setDevRstState();
+            pb->set_dev_reset();
             waitWork(WAITTIME);
-             emit endTest(getIndex());
+            emit endTest(getIndex());
 
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(150);
@@ -728,21 +766,9 @@ void cameratest::start_task()
     }
 }
 
-void cameratest::on_pushButton_clicked()
-{
-    ui->macInput->setText("f4:12:fa:c5:51:c6");
-    //    ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    ui->macInput->setText("3C:84:27:20:01:3E");
-    ui->macInput->setText("3c:84:27:20:00:c6");
-    ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
-
-    on_macInput_returnPressed();
-}
-
 void cameratest::on_lcdTestButton_clicked()
 {
-    pb->setDevRstState();
+    pb->set_dev_reset();
     // waitWork(WAITTIME);
     //
     // waitWork(WAITTIME);
@@ -896,13 +922,12 @@ void cameratest::on_get_mac_returnPressed()
 }
 void cameratest::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+    if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-
         emit getMesTestValue(pack);
     }
 }
@@ -953,7 +978,7 @@ void cameratest::on_distribution_network_clicked()
 
     if (at->getConnected())
     {
-        pb->connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
+        pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
         ui->msgEdit->appendPlainText("已设置连接wifi");
     }
     else
@@ -1012,7 +1037,6 @@ void cameratest::readDongleSerialPortData()
 {
     dongleSerialPortTimer->stop();               // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;   // 读取缓冲区数据
-
     int write_len = 0;
     int len = dataTemp.size();
     write_len = dongleRingBuf->usmile_ring_buffer_write(
@@ -1021,9 +1045,10 @@ void cameratest::readDongleSerialPortData()
     if (write_len < len)
     {
         qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();
+        ui->msgEdit->appendPlainText("写入串口池失败");
     }
 
-    solve_frame();
+    // solve_frame();
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
@@ -1032,7 +1057,10 @@ void cameratest::readDongleSerialPortData()
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-    logEdit()->appendPlainText(QString::fromUtf8(dataTemp));
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
+    // 将最终字符串追加到日志编辑器中
+    logEdit()->appendPlainText(logEntry);
     dongleSerialPortBuf.clear();   // 清除缓冲区
 }
 
@@ -1145,8 +1173,11 @@ void cameratest::processTheDatagram(QByteArray &datagram)
 
     // 绘制图像和矩形
     viewercamrea->pixmap = QPixmap::fromImage(image);
-    QPainter painter(&viewercamrea->pixmap);
+    viewercamrea->temporarypixmap = QPixmap::fromImage(image);
 
+
+
+    QPainter painter(&viewercamrea->pixmap);
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
@@ -1166,10 +1197,12 @@ void cameratest::processTheDatagram(QByteArray &datagram)
 
     painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);   // 绘制第一个矩形
     // painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);   // 绘制第二个矩形
-
     viewercamrea->updateImage();   // 更新视图
 }
-
+void cameratest::updateImageOnMainThread()
+{
+    processTheDatagram(pictureByteArray);   // 显示图片
+}
 void cameratest::on_normal_clicked()
 {
     can_go_next(0);
@@ -1180,7 +1213,6 @@ void cameratest::on_abnormal_clicked()
 {
     can_go_next(getIndex());
     cameraSendTimer->stop();
-
 }
 
 void cameratest::on_exposure_time_edit_returnPressed()
@@ -1253,9 +1285,191 @@ void cameratest::on_stopTest_clicked()
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->get_mac->setDisabled(0);
-
+    cameraSendTimer->stop();
     ui->macInput->clear();
     ui->get_mac->clear();
     ui->get_mac->setFocus();
     on_disconnectButton_clicked();
 }
+
+void cameratest::on_jxl_abnormal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力不正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+}
+
+
+void cameratest::on_jxl_normal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+}
+
+
+void cameratest::on_zw_normal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+}
+
+
+void cameratest::on_zw_abnormal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污不正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+}
+
+
+void cameratest::on_py_normal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+    on_normal_clicked();
+}
+
+
+void cameratest::on_py_abnormal_clicked()
+{
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName =  ui->get_mac->text()+"_"+ timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移不正常";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        QString filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+     on_abnormal_clicked();
+}
+

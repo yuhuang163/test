@@ -28,17 +28,15 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
         fixtureRightStates.push_back(0);
         fixtureDownStates.push_back(0);
         fixtureUpStates.push_back(0);
+
     }
-    for (int i = 0; i < testList.size(); i++)
-    {
-        testStates.push_back(0);   // 添加0到vector中
-    }
+
 
     for (int i = 0; i < testList.size(); i++)
     {
+        connect(testList[i], SIGNAL(endTest(int)), this, SLOT(set_vector_state(int)));
+
         // 收集结束信号
-        connect(testList[i], SIGNAL(endcali(int)), this, SLOT(checkAllover(int)));
-        connect(testList[i], SIGNAL(endTest(int)), this, SLOT(check_all_over_test(int)));
         connect(testList[i], SIGNAL(stage1_ok(int)), this, SLOT(check_all_over_stage1(int)));
         connect(testList[i], SIGNAL(stage2_ok(int)), this, SLOT(check_all_over_stage2(int)));
         connect(testList[i], SIGNAL(stage3_ok(int)), this, SLOT(check_all_over_stage3(int)));
@@ -67,30 +65,28 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
                 if (Fixture_uart_ui == NULL)
                 {
                     Fixture_uart_ui = new Fixture_uart;
-
+                    Fixture_uart_ui->fixBaudRate=115200;
                     for (int i = 0; i < testList.size(); i++)
                     {
                         connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_imu(int)), testList[i],
                                 SLOT(set_fix_result(int)));
+
+                        connect(Fixture_uart_ui, SIGNAL(start_fix_action(int)), testList[i],
+                                SLOT(get_fix_action(int)));
                     }
+
                     QSettings settings(SETTING_NAME, QSettings::IniFormat);
-                    Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(
-                        settings.value("mechine/FixturecomName").toString());
+                    QString masterFixturecomName =
+                        settings.value(QString("0/masterFixturecomName")).toString();
+                    Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
+
                 }
+
                 Fixture_uart_ui->show();
                 Fixture_uart_ui->activateWindow();
             });
 
-    QAction *start_test_act = ui->menubar->addAction("开始测试");
-    connect(start_test_act, &QAction::triggered,
-            [=]()
-            {
-                set_cylinder_state(STATE_START);
-                for (int i = 0; i < testList.size(); i++)
-                {
-                    testList[i]->macInputLineEdit()->returnPressed();
-                }
-            });
+
 
     QAction *end_test_act = ui->menubar->addAction("结束所有测试");
     connect(end_test_act, &QAction::triggered,
@@ -101,29 +97,110 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
                 {
                     testList[i]->endTask();
                 }
+
             });
 
-#ifdef NEW_IMU_CALI
-    setWindowTitle("三轴校准上位机");
-#else
-    setWindowTitle("全新六轴校准上位机");
-#endif
 
-    // 最后一个回车会清空所有状态重新开始测试
-    connect(testList[testList.size() - 1]->macInputLineEdit(), SIGNAL(returnPressed()), this,
-            SLOT(resetall()));
+    QAction *use_mes_act = ui->menubar->addAction("开关MES");
+    connect(use_mes_act, &QAction::triggered,
+            [=]()
+            {
+                for (int i = 0; i < testList.size(); i++)
+                {
+                    testList[i]->useMes();
+                }
+
+            });
+
+    QAction *debug_act = ui->menubar->addAction("打印");
+    connect(debug_act, &QAction::triggered,
+            [=]()
+            {
+                for (int i = 0; i < testList.size(); i++)
+                {
+                    qDebug() <<"FixTureStates"<<i<<FixTureStates[i];
+                    qDebug() <<"stage1States"<<i<< stage1States[i];
+                    qDebug() <<"stage2States"<<i<<stage2States[i];
+                    qDebug() <<"stage3States" <<i<< stage3States[i];
+                    qDebug() <<"fixtureLeftStates"<<i<< fixtureLeftStates[i];
+                    qDebug() <<"fixtureRightStates"<<i<< fixtureRightStates[i];
+                    qDebug() <<"fixtureDownStates"<<i<< fixtureDownStates[i];
+                    qDebug() <<"fixtureUpStates"<<i<< fixtureUpStates[i];
+
+                    // Creating the message to append
+                    QString message = QString("FixTureStates%1: %2\n"
+                                              "stage1States%1: %3\n"
+                                              "stage2States%1: %4\n"
+                                              "stage3States%1: %5\n"
+                                              "fixtureLeftStates%1: %6\n"
+                                              "fixtureRightStates%1: %7\n"
+                                              "fixtureDownStates%1: %8\n"
+                                              "fixtureUpStates%1: %9\n"
+                                              "mehineState%1: %10\n")
+                                          .arg(i+1)
+                                          .arg(FixTureStates[i])
+                                          .arg(stage1States[i])
+                                          .arg(stage2States[i])
+                                          .arg(stage3States[i])
+                                          .arg(fixtureLeftStates[i])
+                                          .arg(fixtureRightStates[i])
+                                          .arg(fixtureDownStates[i])
+                                          .arg(fixtureUpStates[i])
+                                           .arg(mehineState[i]);
+
+                    // Append the message to the plain text edit
+                    testList[i]->msgEdit()->appendPlainText(message);
+                }
+            });
+
+
+    setWindowTitle("IMU校准上位机");
+
+}
+void imubox::start_test()
+{
+    for (int i = 0; i < testList.size(); i++)
+    {
+        qDebug() << "开始测试";
+        testList[i]->start_test();
+
+    }
 }
 
 imubox::~imubox()
 {
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+
+    if (Fixture_uart_ui != NULL)
+        settings.setValue(QString("0/masterFixturecomName"),
+                          Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+
     delete ui;
 }
 void imubox::resetall()
 {
+    if (pack.factory == "lx")
+    {
+        start_test();
+    }
+
     set_cylinder_state(STATE_RESET);
+    waitWork(500);
+
+    if (pack.product == "Y20"||pack.product == "Q20"||pack.product == "U7P"||pack.product == "U7")
+    {
+
+        set_cylinder_state(STATE_BRUSH_LEFT);
+        waitWork(1500);
+    }
+
+
+
+    set_cylinder_state(STATE_BRUSH_UP);
+
     for (int i = 0; i < testList.size(); ++i)
     {
-        testStates[i] = 0;
+        mehineState[i]=0;
         FixTureStates[i] = 0;
         stage1States[i] = 0;
         stage2States[i] = 0;
@@ -132,8 +209,35 @@ void imubox::resetall()
         fixtureRightStates[i] = 0;
         fixtureDownStates[i] = 0;
         fixtureUpStates[i] = 0;
+        qDebug() << "初始化vetorok";
     }
 }
+void imubox::set_vector_state(int state){
+
+        state= state-1;
+    if(state>=0&&state<=12){
+        stage1States[state] = 1;
+        stage2States[state] = 1;
+        stage3States[state] = 1;
+        fixtureLeftStates[state] = 1;
+        fixtureRightStates[state] = 1;
+        fixtureDownStates[state] = 1;
+        fixtureUpStates[state] = 1;
+
+
+         testList[state]->msgEdit()->appendPlainText("杀死mehineState变成"+
+                                             QString::number(state));
+
+            mehineState[state]=1;
+    }else{
+        testList[state]->msgEdit()->appendPlainText("set_vector_state函数的state超范围了(state>=0&&state<=12)"+
+                                             QString::number(state));
+
+    }
+
+}
+
+
 void imubox::check_all_over_fixture_up(int testNumber)
 {
     testNumber = testNumber - 1;
@@ -144,13 +248,14 @@ void imubox::check_all_over_fixture_up(int testNumber)
     }
     fixtureUpStates[testNumber] = 1;
 
-    if (checkstateReady(fixtureUpStates))
+    if (checkStateReady(fixtureUpStates))
     {
         qDebug() << "check_all_over_fixture_up结束";
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_UP);
         for (int i = 0; i < testList.size(); ++i)
         {
+            if(!mehineState[i])
             fixtureUpStates[i] = 0;
         }
     }
@@ -167,7 +272,7 @@ void imubox::check_all_over_fixture_down(int testNumber)
     }
     fixtureDownStates[testNumber] = 1;
 
-    if (checkstateReady(fixtureDownStates))
+    if (checkStateReady(fixtureDownStates))
     {
         qDebug() << "check_all_over_fixture_down结束";
         // emit send_fixture_log("所有牙刷90度测试完成,旋转90度");
@@ -175,6 +280,7 @@ void imubox::check_all_over_fixture_down(int testNumber)
         set_cylinder_state(STATE_BRUSH_DOWN);
         for (int i = 0; i < testList.size(); ++i)
         {
+              if(!mehineState[i])
             fixtureDownStates[i] = 0;
         }
     }
@@ -191,14 +297,14 @@ void imubox::check_all_over_fixture_right(int testNumber)
     }
     fixtureRightStates[testNumber] = 1;
 
-    if (checkstateReady(fixtureRightStates))
+    if (checkStateReady(fixtureRightStates))
     {
         qDebug() << "check_all_over_fixture_right结束";
         // emit send_fixture_log("所有牙刷180度测试完成,旋转90度");
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_RIGHT);
         for (int i = 0; i < testList.size(); ++i)
-        {
+        {  if(!mehineState[i])
             fixtureRightStates[i] = 0;
         }
     }
@@ -212,16 +318,17 @@ void imubox::check_all_over_fixture_left(int testNumber)
         // emit send_fixture_log("所有牙刷90度测试完成");
         return;
     }
+    qDebug() << "收到check_all_over_fixture_left的testNumber"<<testNumber;
     fixtureLeftStates[testNumber] = 1;
 
-    if (checkstateReady(fixtureLeftStates))
+    if (checkStateReady(fixtureLeftStates))
     {
         // emit send_fixture_log("所有牙刷90度测试完成");
         qDebug() << "check_all_over_fixture_left结束";
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_LEFT);
         for (int i = 0; i < testList.size(); ++i)
-        {
+        {  if(!mehineState[i])
             fixtureLeftStates[i] = 0;
         }
     }
@@ -236,14 +343,23 @@ void imubox::check_all_over_stage1(int testNumber)
     }
     stage1States[testNumber] = 1;
 
-    if (checkstateReady(stage1States))
+    if (checkStateReady(stage1States))
     {
         qDebug() << "阶段1结束";
         waitWork(300);
         set_cylinder_state(STATE_40);
         for (int i = 0; i < testList.size(); ++i)
         {
+            if(!mehineState[i]){
+            FixTureStates[i] = 0;
             stage1States[i] = 0;
+            stage2States[i] = 0;
+            stage3States[i] = 0;
+            fixtureLeftStates[i] = 0;
+            fixtureRightStates[i] = 0;
+            fixtureDownStates[i] = 0;
+            fixtureUpStates[i] = 0;
+            }
         }
     }
 }
@@ -256,14 +372,23 @@ void imubox::check_all_over_stage2(int testNumber)
         return;
     }
     stage2States[testNumber] = 1;
-    if (checkstateReady(stage2States))
+    if (checkStateReady(stage2States))
     {
         waitWork(300);
         qDebug() << "阶段2结束";
         set_cylinder_state(STATE_FU40);
         for (int i = 0; i < testList.size(); ++i)
         {
+            if(!mehineState[i]){
+            FixTureStates[i] = 0;
+            stage1States[i] = 0;
             stage2States[i] = 0;
+            stage3States[i] = 0;
+            fixtureLeftStates[i] = 0;
+            fixtureRightStates[i] = 0;
+            fixtureDownStates[i] = 0;
+            fixtureUpStates[i] = 0;}
+
         }
     }
 }
@@ -276,7 +401,7 @@ void imubox::check_all_over_stage3(int testNumber)
         return;
     }
     stage3States[testNumber] = 1;
-    if (checkstateReady(stage3States))
+    if (checkStateReady(stage3States))
     {
         if (pack.factory == "lx")
         {
@@ -292,7 +417,7 @@ void imubox::check_all_over_stage3(int testNumber)
             qDebug() << "阶段3结束";
             set_cylinder_state(STATE_BRUSH_UP);
             waitWork(300);
-            set_cylinder_state(STATE_40);
+            set_cylinder_state(STATE_RESET);
         }
 
         for (int i = 0; i < testList.size(); ++i)
@@ -303,52 +428,38 @@ void imubox::check_all_over_stage3(int testNumber)
 }
 
 
-void imubox::check_all_over_test(int testNumber)   // 结束测试最后结束
+void imubox::checkAllover(int fixtureNumber)
 {
-    testNumber = testNumber - 1;
-    if (testNumber < 0 || testNumber > testList.size())
+    fixtureNumber = fixtureNumber - 1;
+    if (fixtureNumber < 0 || fixtureNumber > testList.size())
     {
         return;
     }
-    testStates[testNumber] = 1;
-    if (checkAlltestReady())
+    FixTureStates[fixtureNumber] = 1;
+    if (checkStateReady(FixTureStates))
     {
+        waitWork(300);
+        set_cylinder_state(STATE_BRUSH_UP);
+        waitWork(300);
         set_cylinder_state(STATE_END);
         qDebug() << "测试结束";
-        testList[0]->getMacLineEdit()->setFocus();
-
-        // set_cylinder_state(STATE_HOME);
-
         for (int i = 0; i < testList.size(); ++i)
         {
-            testStates[i] = 0;
+            FixTureStates[i] = 0;
+            stage1States[i] = 0;
+            stage2States[i] = 0;
+            stage3States[i] = 0;
+            fixtureLeftStates[i] = 0;
+            fixtureRightStates[i] = 0;
+            fixtureDownStates[i] = 0;
+            fixtureUpStates[i] = 0;
+            qDebug() << "checkAllover初始化vetorok";
         }
+
+        testList[0]->getMacLineEdit()->setFocus();
     }
 }
 
-bool imubox::checkstateReady(std::vector<int> States)
-{
-    for (int i = 0; i < testList.size(); ++i)
-    {
-        if (States[i] != 1)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool imubox::checkAlltestReady()
-{
-    for (int i = 0; i < testList.size(); ++i)
-    {
-        if (testStates[i] != 1)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 
 void imubox::set_cylinder_state(imuFixtureState state)
 {
@@ -419,24 +530,5 @@ void imubox::set_cylinder_state(imuFixtureState state)
     {
         Fixture_uart_ui->sendimuData(STATE_HOME);
         qDebug() << "刷头270度";
-    }
-}
-void imubox::set_relay_state(int state)
-{
-    if (Fixture_uart_ui == NULL)
-    {
-        return;
-    }
-    if (state == 1)
-    {
-        Fixture_uart_ui->sendFixtureData(STATE_RELAY1_OPEN);
-        waitWork(200);
-        Fixture_uart_ui->sendFixtureData(STATE_RELAY1_RESET);
-    }
-    if (state == 4)
-    {
-        Fixture_uart_ui->sendFixtureData(STATE_RELAY4_OPEN);
-        waitWork(200);
-        Fixture_uart_ui->sendFixtureData(STATE_RELAY4_RESET);
     }
 }

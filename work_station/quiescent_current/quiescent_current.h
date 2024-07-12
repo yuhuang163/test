@@ -110,7 +110,6 @@ private:
     typedef enum
     {
         STATE_IDLE,                 // 休眠状态
-        STATE_PROCESS_INSPECTION,    // 站前检测
         STATE_WATI_CONNECT,         // 等待连接
         STATE_BANDING,              // 等待连接
         STATE_WATI_DISABLE_SLEEP,   // 等待进入禁止休眠
@@ -133,7 +132,6 @@ private:
     int refresh_periph_times;
     int firstconnectbrush = 1;
     QTimer *usblogwaittime = new QTimer(this);
-    QString macAddress = "没有mac地址";
     QString last_macAddress = "没有mac地址";
     QTimer *waittime = new QTimer(this);
     QTimer *ble_waittime = new QTimer(this);

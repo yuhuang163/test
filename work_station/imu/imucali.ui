@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>609</width>
-    <height>403</height>
+    <width>414</width>
+    <height>423</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -347,6 +347,45 @@
        <string>待拓展</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="1" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QLabel" name="tail_sn">
+           <property name="text">
+            <string>芯片存储的尾盖sn：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="pushButton_2">
+           <property name="text">
+            <string>PushButton</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="imuCaliButton">
+           <property name="text">
+            <string>六轴校准</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="0" column="0">
         <layout class="QVBoxLayout" name="imulayout">
          <property name="topMargin">
@@ -410,7 +449,7 @@
          </item>
         </layout>
        </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="p12">
          <property name="text">
           <string>12</string>
@@ -420,40 +459,29 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <property name="leftMargin">
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_14">
+         <property name="topMargin">
           <number>0</number>
          </property>
          <item>
-          <widget class="QPushButton" name="pushButton_2">
+          <widget class="QLabel" name="battary_state">
            <property name="text">
-            <string>PushButton</string>
+            <string>充电状态：</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="imuCaliButton">
+          <widget class="QLabel" name="battary_voltage">
            <property name="text">
-            <string>六轴校准</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>芯片存储的尾盖sn：</string>
+            <string>电压为:</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="macLabel">
+          <widget class="QLabel" name="battary_value">
            <property name="text">
-            <string>蓝牙mac：</string>
+            <string>电量为：</string>
            </property>
           </widget>
          </item>

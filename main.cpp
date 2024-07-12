@@ -32,6 +32,11 @@
 // 3.清空缓冲区
 // 	fflush(stdout);
 // 	fflush(stdout)刷新标准输出缓冲区，把输出缓冲区里的东西打印到标准输出设备上
+// qInfo() << "This is an info message.";
+// qDebug() << "This is a debug message.";
+// qWarning() << "This is a warning message.";
+// qCritical() << "This is a critical message.";
+// qFatal("This is a fatal message.");
 
 // 自定义消息处理函数
 void customMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
@@ -66,10 +71,24 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext &context, con
                           .append(" line:")
                           .append(QString::number(context.line).append(" 日志内容：" + msg));
     // .append(" version:").append(QString::number(context.version)));
-    // QString filePath = QString("%1/%2.txt").arg("上位机日志",
-    // QDate::currentDate().toString("上位机日志yyyy-MM-dd"));
-    //   QFile file(filePath);
-    QFile file(QString(QDate::currentDate().toString("上位机日志yyyy-MM-dd") + ".txt"));
+
+
+    QString folderName = "上位机log";
+    QDir dir;
+
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+                return;
+        }
+    }
+
+    // 生成文件路径
+    QString fileName = QDate::currentDate().toString("上位机日志yyyy-MM-dd") + ".txt";
+     QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile file(filePath);
     file.open(QIODevice::WriteOnly | QIODevice::Append);
     QTextStream text_stream(&file);
     printf("%s\r\n", msg.toUtf8().constData());   // 或者使用

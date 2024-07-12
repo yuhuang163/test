@@ -23,7 +23,13 @@ public:
 
     Ui::imucali *ui;
     ImuDataT orgData;
-    void end_task();
+    void endTask() override;
+    bool turn=true;
+
+     void useMes() override;
+
+    void start_test()override;
+
     QComboBox *getComNameCombo() override
     {
         return ui->comNameCombo;
@@ -45,12 +51,13 @@ public:
     QPlainTextEdit *logEdit() override
     {
         return ui->log;
-    };   // mac地址输入口
+    };   // log地址输入口
     QPlainTextEdit *msgEdit() override
     {
         return ui->msgEdit;
     };   // msg输入口
 private:
+    void dataInit();
     QList<QLabel *> labelList;
     QString information;
     int m_index;
@@ -65,13 +72,11 @@ private:
     QString stringsn;
     QString macAddress = "没有mac地址";
     bool isAgeContinue = 0;
-            // 操作员工号
-              // 线体
-         // 设备编号
-             // 动作
-       // 制程
-             // 机种
-          // 机种
+
+     int upPositionIndex=0;//上一个位置的索引
+       bool isNeedNewCali = 0;
+
+
     bool mes_set_ok = 0;
     bool isimuCaliContinue = false;
     bool isovertime = 0;              // 是否开始发送校验结果
@@ -83,6 +88,11 @@ private:
     bool is_fix_set_ok = 0;           // 是否治具设置ok
     bool is_imu_test_ok = 0;          // 是否测试ok
     bool is_old_cali = 0;             // 是否测试ok
+    bool is_new_cali = 0;             // 是否测试ok
+
+
+    int  is_out_counts= 0;             // 跳过次数
+
     int count123 = 0;
     int count4567 = 0;
     int count89 = 0;
@@ -94,6 +104,11 @@ private:
     int imu_wait_time = 15000;
     int imu_compare_wait_time = 15000;
     int ImuCompareData = 15000;
+    void refresh_battary_data(FacDevInfo adc)override;
+    double standbattary = 0;
+    double voltage=0;
+    int is_battary_test = 0;
+
     typedef enum
     {
         STATE_IDLE,   // 休眠状态
@@ -101,6 +116,7 @@ private:
         STATE_WATI_CONNECT,      // 等待连接
         STATE_DISABLE_SLEEP_1,   // 进入禁止休眠
         STATE_GETBASEDATA,
+        STATE_GETBATTERY,
         STATE_SET_COLLECT_PARAM_1,   // 获取采集参数
         STATE_CAIL,                  // 开始校准
         STATE_SEND_CAIL_RESULT,      // 发送校准结果
@@ -111,14 +127,16 @@ private:
         STATE_TEST,   // 六轴测试
         STATE_WIAT_FIX_SET,
         STATE_COMPARE,
-        STATE_END
+        STATE_END,
+        STATE_SHIP_MODE_CHECK
     } State;
     State state = STATE_IDLE;
     QTime TestTime;
 protected:
-    virtual void closeEvent(QCloseEvent *);
+     void closeEvent(QCloseEvent *)override;
 
 private slots:
+    void get_fix_action(int state);
     void get_dongle_ver(QString data) override;
 
     void showlog(QString msg);
@@ -140,9 +158,9 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void refresh_dongle_uart_state(int state);
-    void refresh_ble_state(int state);
-    void refresh_sn(FacDevInfo data);
+    void refresh_dongle_uart_state(int state)override;
+    void refresh_ble_state(int state)override;
+    void refresh_sn(FacDevInfo data)override;
     void on_pushButton_clicked();
     void refresh_imu_cali_msg(QString msg);
     void refresh_imu_cali_reslt_msg(QString msg);
@@ -157,18 +175,6 @@ private slots:
     void processInspection(QString stringsn);
 signals:
     void goNextTest(int data);
-
-    // void send_GetTestData(MesPacketData);
-    // void send_GetTestData(MesPacketData pack);
-    // void send_getsn_jj(MesPacketData pack);
-    // void processInspection(MesPacketData pack);
-    // void processInspection(MesPacketData pack);
-    // void send_processInspection_jj(MesPacketData pack);
-    // void sendTestPass(MesPacketData pack);
-    // void sendTestPass(MesPacketData pack);
-    // void sendTestPass(MesPacketData pack);
-    // void processInspection(MesPacketData);
-    // void sendTestPass(MesPacketData);
 
     void endcali(int data);
     void endTest(int data);

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>QFreeWork</class>
  <widget class="QWidget" name="QFreeWork">
@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>507</width>
-    <height>447</height>
+    <width>454</width>
+    <height>476</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>3</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -31,64 +31,6 @@
            <property name="topMargin">
             <number>0</number>
            </property>
-           <item>
-            <widget class="QCheckBox" name="isusemes">
-             <property name="text">
-              <string>是否使用mes</string>
-             </property>
-             <property name="checkable">
-              <bool>true</bool>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="bleStatusLabel">
-             <property name="text">
-              <string>蓝牙连接：</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_14">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="battary_state">
-             <property name="text">
-              <string>充电状态：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="battary_voltage">
-             <property name="text">
-              <string>电压为:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="battary_value">
-             <property name="text">
-              <string>电量为：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLCDNumber" name="test_time">
-             <property name="smallDecimalPoint">
-              <bool>false</bool>
-             </property>
-             <property name="segmentStyle">
-              <enum>QLCDNumber::Flat</enum>
-             </property>
-            </widget>
-           </item>
           </layout>
          </item>
          <item>
@@ -211,6 +153,13 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QPushButton" name="stopTest">
+           <property name="text">
+            <string>停止测试</string>
+           </property>
+          </widget>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -473,7 +422,7 @@
        <item row="6" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_22">
          <item>
-          <widget class="QPushButton" name="getbattary">
+          <widget class="QPushButton" name="get_battery">
            <property name="text">
             <string>显示充电情况</string>
            </property>
@@ -495,6 +444,47 @@
        <string>蓝牙绑定工站</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="nfc_count">
+         <property name="text">
+          <string>0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_16">
+         <item>
+          <widget class="QComboBox" name="mac_combo">
+           <property name="editable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="snbanding">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="placeholderText">
+            <string>切换英文输入再扫码</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="banding_result">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_10">
          <item>
@@ -519,72 +509,31 @@
          </item>
         </layout>
        </item>
-       <item row="1" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_16">
-         <item>
-          <widget class="QComboBox" name="mac_combo">
-           <property name="editable">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="snbanding">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QPushButton" name="clear_scan">
          <property name="text">
           <string>清空扫描</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="banding_result">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="nfc_mac">
-         <property name="text">
-          <string>3C:84:27:07:A8:D2</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QPushButton" name="nfc_write_read">
          <property name="text">
           <string>nfc读写</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QPushButton" name="clear_nfc_data">
          <property name="text">
           <string>清空nfc数据</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="nfc_count">
+       <item row="5" column="1">
+        <widget class="QLineEdit" name="nfc_mac">
          <property name="text">
-          <string>0</string>
+          <string>3C:84:27:07:A8:D2</string>
          </property>
         </widget>
        </item>
@@ -592,25 +541,126 @@
      </widget>
      <widget class="QWidget" name="tab_4">
       <attribute name="title">
-       <string>页</string>
+       <string>配置页</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_5">
+       <item row="1" column="1">
+        <widget class="QGroupBox" name="can_use">
+         <property name="styleSheet">
+          <string notr="true">
+QGroupBox {
+           border-width: 2px;
+           border-style: solid;
+         border-color: rgb(255, 165, 0);
+        }
+        QGroupBox::title {
+          font-weight: bold;
+         color: blue;
+       }</string>
+         </property>
+         <property name="title">
+          <string>可选区域</string>
+         </property>
+         <layout class="QVBoxLayout" name="can_use_area">
+          <item>
+           <layout class="QGridLayout" name="use_areas"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
        <item row="1" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout_6">
-         <property name="spacing">
-          <number>6</number>
+        <widget class="QGroupBox" name="config">
+         <property name="styleSheet">
+          <string notr="true">QGroupBox {
+           border-width: 2px;
+           border-style: solid;
+         border-color: rgb(255, 165, 0);
+        }
+        QGroupBox::title {
+          font-weight: bold;
+         color: blue;
+       }</string>
          </property>
-         <property name="bottomMargin">
-          <number>0</number>
+         <property name="title">
+          <string>配置区域</string>
          </property>
-        </layout>
+         <layout class="QVBoxLayout" name="config_area">
+          <property name="spacing">
+           <number>6</number>
+          </property>
+          <property name="bottomMargin">
+           <number>1</number>
+          </property>
+          <item>
+           <layout class="QVBoxLayout" name="config_areas"/>
+          </item>
+         </layout>
+        </widget>
        </item>
        <item row="0" column="0">
-        <widget class="QCheckBox" name="checkBox">
+        <widget class="QCheckBox" name="isusemes">
          <property name="text">
           <string>是否使用mes</string>
          </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
         </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_5">
+      <attribute name="title">
+       <string>设备信息页</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_6">
+       <item row="0" column="0">
+        <widget class="QLabel" name="bleStatusLabel">
+         <property name="text">
+          <string>蓝牙连接：</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_14">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="battary_state">
+           <property name="text">
+            <string>充电状态：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="battary_voltage">
+           <property name="text">
+            <string>电压为:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="battary_value">
+           <property name="text">
+            <string>电量为：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLCDNumber" name="test_time">
+           <property name="smallDecimalPoint">
+            <bool>false</bool>
+           </property>
+           <property name="segmentStyle">
+            <enum>QLCDNumber::Flat</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

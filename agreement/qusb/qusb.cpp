@@ -8,12 +8,11 @@ Qusb::Qusb(QSerialPort *parent) :
 QSerialPort(parent), serialPort(parent)
 {
 
-
-        if (serialPort) {
-        qDebug() << "Qusb指向" << serialPort;
-    } else {
-        qDebug() << "Qusb指向一个空指针";
+    if (!serialPort) {
+        qDebug() << "Qat指向一个空指针";
+        return;
     }
+
 
     registerCommand();
 }
@@ -32,9 +31,7 @@ void Qusb::CONFigureFUNCtion(QString p)
 
 void Qusb::parseCmd(const QByteArray &byte)
 {
-    processModbusRTUData(byte);
-
-
+    processModbusRTUData(byte);//可能是另一个静态电流协议，华勤的应该是
     foreach(char c, byte)
     {
         if (c == '\r' || c == '\n')
@@ -69,8 +66,6 @@ void Qusb::processCmd(QString cmd, QString parameter)
 }
 void Qusb::sendCmd(QString cmd)
 {
-
-
 
     if (!serialPort->isOpen())
     {
@@ -214,7 +209,7 @@ void Qusb::processModbusRTUData(const QByteArray &response)
     }
     else
     {
-        qDebug() << "Invalid Modbus RTU response frame";
+        qDebug() << "processModbus RTUDataInvalid Modbus RTU response frame";
     }
 }
 
@@ -260,7 +255,7 @@ void Qusb::processlxModbusRTUData(const QByteArray &response)
                 qDebug() << "Current Value = " << current_uA << "uA";
 
                 QString stringValue = QString::number(current_uA);
-                emit send_ammeter_data(stringValue);
+                emit send_ammeter_data(stringValue);//立讯的发送
                 data = 0;
             }
             else
@@ -275,6 +270,6 @@ void Qusb::processlxModbusRTUData(const QByteArray &response)
     }
     else
     {
-        qDebug() << "Invalid Modbus RTU response frame";
+        qDebug() << "processlxModb usRTUData Invalid Modbus RTU response frame";
     }
 }

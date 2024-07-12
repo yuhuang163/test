@@ -18,6 +18,7 @@ void box_base::signalAndslot()
     for (int i = 0; i < testList.size(); i++)
     {
         connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(can_go_next(int)));
+        // 最后一个回车会清空所有状态重新开始测试
 
         connect(testList[i], SIGNAL(goNextTest(int)), this, SLOT(checkAllTest(int)));
         connect(testList[i], SIGNAL(endTest(int)), this, SLOT(checkAllover(int)));
@@ -49,8 +50,17 @@ void box_base::signalAndslot()
 
     connect(testList[testList.size() - 1], SIGNAL(goNextFocus()), testList[0]->getMacLineEdit(),
             SLOT(setFocus()));
+    connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this,
+            SLOT(resetall()));
 
     initData();
+}
+void box_base::resetall()
+{
+    for (int i = 0; i < testList.size(); ++i)
+    {
+        FixTureStates[i] = 0;
+    }
 }
 void box_base::reset_vector(int i)
 {

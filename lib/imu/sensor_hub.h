@@ -20,6 +20,11 @@
 
 #define ACC_CALIB_DATASIZE 12
 #define FACTORY_POSE_NUM   9
+#define EXTRA_POSE_NUM     1  
+
+#define CALIB_SUCCESS      0
+#define CALIB_FAIL         1
+#define CALIB_NOT_START    2
 
 #define THETA_ACC(n)       us_matrix_float_get(theta, n, 0)
 #define DATA_ACC(n)        us_matrix_float_get(acc_data, n, 0)
@@ -39,7 +44,7 @@ public:
 
     int LSB = 8192;
     int imu_static_state = 1;
-
+    int cali_loop = 0;
     QString imureason = "";
     QString imu_time;
     NewImuCalData calData;
@@ -91,28 +96,32 @@ public:
     void acccalib_jacobian(us_matrix_float *J, CalibDatasets *acc_raw, us_matrix_float *theta);
 
     CalibDatasets *init_CalibData();
+    CalibDatasets *init_ExtraCalibData();
     float acccalib_vl(us_matrix_float *v, us_matrix_float *acc_data);
     imu_calib_parameters *imu_calib_parameters_alloc();
     void acc_update(us_matrix_float *acc_data, CalibDatasets *acc_raw, us_matrix_float *theta);
 
-    sensordata_q *q;
-    CalibDatasets *calib_datasets;
-    us_matrix_float *acccalib_datasets_matrix;
-    us_matrix_float *acccalib_value_matrix;
-    us_matrix_float *acccalib_jacobian_matrix;
-    us_matrix_float *acccalib_gradient_matrix;
-    us_matrix_float *acccalib_delta_matrix;
-    imu_calib_parameters *imu_calib;
+    sensordata_q *q= nullptr;
+    CalibDatasets *calib_datasets= nullptr;
+    CalibDatasets *extra_calib_datasets= nullptr;
+    us_matrix_float *acccalib_datasets_matrix= nullptr;
+    us_matrix_float *acccalib_value_matrix= nullptr;
+    us_matrix_float *acccalib_jacobian_matrix= nullptr;
+    us_matrix_float *acccalib_gradient_matrix= nullptr;
+    us_matrix_float *acccalib_delta_matrix= nullptr;
+    imu_calib_parameters *imu_calib= nullptr;
     float lambda_LM = 100;
     float loss = 0, last_loss = 0;
     int signum;
-    us_matrix_float *jtj;
-    us_matrix_float *inv;
-    us_permutation *p;
+    us_matrix_float *jtj= nullptr;
+    us_matrix_float *inv= nullptr;
+    us_permutation *p= nullptr;
     int  qconv = 0;
 
-    bool add_CalibData(float *data, new_imu_calibrate::CalibDatasets *calib_data);
-    CalibDatasets *calib_data;
+    bool add_CalibData(float *data, new_imu_calibrate::CalibDatasets *add_calib_data);
+    CalibDatasets *calib_data= nullptr;
+    CalibDatasets *extra_calib_data= nullptr;
+    CalibDatasets *temp_calib_datasets= nullptr;
 
     int STATIC_CONV_VAR = 200;
     int STATIC_CONV_COUNT = 45; 

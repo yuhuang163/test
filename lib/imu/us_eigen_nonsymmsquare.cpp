@@ -356,6 +356,7 @@ int us_matrix_add(us_matrix_float *a, const us_matrix_float *b)
         }
         return GSL_SUCCESS;
     }
+    return -1;
 }
 
 // single precision, general matrix-matrix multiplication
@@ -518,6 +519,7 @@ int us_blas_sgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alph
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 us_vector_float_view us_vector_view_array(const float *base, size_t n)
@@ -844,6 +846,7 @@ int us_linalg_balance_matrix(us_matrix *A, us_vector *D)
 
         return GSL_SUCCESS;
     }
+     return -1;
 } /* us_linalg_balance_matrix() */
 
 float cblas_dnrm2(const int N, const float *X, const int incX)
@@ -996,6 +999,7 @@ int us_blas_daxpy(float alpha, const us_vector *X, us_vector *Y)
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
@@ -1195,6 +1199,7 @@ int us_linalg_hessenberg_decomp(us_matrix *A, us_vector *tau)
 
         return GSL_SUCCESS;
     }
+     return -1;
 } /* us_linalg_hessenberg_decomp() */
 
 void us_matrix_set_identity(us_matrix *m)
@@ -1277,6 +1282,7 @@ int us_linalg_hessenberg_unpack_accum(us_matrix *H, us_vector *tau, us_matrix *V
 
         return GSL_SUCCESS;
     }
+     return -1;
 } /* us_linalg_hessenberg_unpack_accum() */
 
 int us_linalg_hessenberg_unpack(us_matrix *H, us_vector *tau, us_matrix *U)
@@ -1580,6 +1586,7 @@ int us_blas_drot(us_vector *X, us_vector *Y, const float c, const float s)
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 int us_isnan(const float x)
@@ -2073,6 +2080,7 @@ int us_eigen_francis(us_matrix *H, us_vector_complex *eval, us_eigen_francis_wor
 
         return GSL_SUCCESS;
     }
+     return -1;
 } /* us_eigen_francis() */
 
 us_matrix *us_eigen_francis_Z(us_matrix *H, us_vector_complex *eval, us_matrix *Z,
@@ -2124,6 +2132,7 @@ int us_eigen_nonsymm(us_matrix *A, us_vector_complex *eval, us_eigen_nonsymm_wor
         w->n_evals = w->francis_workspace_p->n_evals;
         return s;
     }
+     return -1;
 } /* us_eigen_nonsymm() */
 
 us_complex us_vector_complex_get(const us_vector_complex *v, const size_t i)
@@ -2216,6 +2225,7 @@ int us_blas_scopy(const us_vector_float *X, us_vector_float *Y)
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 int us_matrix_memcpy(us_matrix_float *dest, const us_matrix_float *src)
@@ -2306,7 +2316,7 @@ us_matrix_float_view us_matrix_submatrix(us_matrix *m, const size_t i, const siz
     }
     else if (i + n1 > m->size1)
     {
-        printf("first dimension overflows, raw:%d, target:%d\n", m->size1, i + n1);
+        printf("first dimension overflows, raw:%zu, target:%zu\n", m->size1, i + n1);
         return view;
     }
     else if (j + n2 > m->size2)
@@ -2471,6 +2481,7 @@ int us_blas_dswap(us_vector *X, us_vector *Y)
     {
         printf("invalid length");
     };
+     return -1;
 }
 
 void cblas_dscal(const int N, const float alpha, float *X, const int incX)
@@ -2553,6 +2564,7 @@ int us_blas_dger(float alpha, const us_vector *X, const us_vector *Y, us_matrix 
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 float *us_matrix_ptr(us_matrix *m, const size_t i, const size_t j)
@@ -2636,6 +2648,7 @@ static int LU_decomp_L2(us_matrix *A, us_vector *ipiv)
 
         return GSL_SUCCESS;
     }
+     return -1;
 }
 
 us_vector_float_view us_vector_float_subvector(us_vector *v, size_t offset, size_t n)
@@ -2686,6 +2699,7 @@ static int apply_pivots(us_matrix *A, const us_vector *ipiv)
 
         return GSL_SUCCESS;
     }
+     return -1;
 }
 
 void cblas_dtrsm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
@@ -3031,6 +3045,7 @@ int us_blas_dtrsm(CBLAS_SIDE_t Side, CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
@@ -3191,6 +3206,7 @@ int us_blas_dgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alph
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 static int LU_decomp_L3(us_matrix *A, us_vector *ipiv)
@@ -3277,6 +3293,7 @@ static int LU_decomp_L3(us_matrix *A, us_vector *ipiv)
 
         return GSL_SUCCESS;
     }
+     return -1;
 }
 
 void permutation_init(us_permutation *p)
@@ -3344,6 +3361,7 @@ int us_linalg_LU_decomp(us_matrix *A, us_permutation *p, int *signum)
         us_vector_float_free(ipiv);
         return status;
     }
+     return -1;
 }
 
 static int triangular_singular(const us_matrix *T)
@@ -3578,6 +3596,7 @@ static int triangular_inverse_L2(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
 
         return GSL_SUCCESS;
     }
+     return -1;
 }
 
 void cblas_dtrmm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
@@ -3863,6 +3882,7 @@ int us_blas_dtrmm(CBLAS_SIDE_t Side, CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA
     {
         printf("invalid length");
     }
+     return -1;
 }
 
 static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
@@ -3924,7 +3944,7 @@ static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
             return status;
 
         return GSL_SUCCESS;
-    }
+    } return -1;
 }
 
 int us_linalg_tri_invert(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
@@ -3944,7 +3964,7 @@ int us_linalg_tri_invert(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
             return status;
 
         return triangular_inverse_L3(Uplo, Diag, T);
-    }
+    } return -1;
 }
 
 void cblas_dgemv(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE TransA, const int M,
@@ -4058,7 +4078,7 @@ int us_blas_dgemv(CBLAS_TRANSPOSE_t TransA, float alpha, const us_matrix *A, con
     else
     {
         printf("invalid length");
-    }
+    } return -1;
 }
 
 float cblas_ddot(const int N, const float *X, const int incX, const float *Y, const int incY)
@@ -4096,7 +4116,7 @@ int us_blas_ddot(const us_vector *X, const us_vector *Y, float *result)
     else
     {
         printf("invalid length");
-    }
+    } return -1;
 }
 
 static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix *A)
@@ -4156,7 +4176,7 @@ static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix *A)
         }
 
         return GSL_SUCCESS;
-    }
+    } return -1;
 }
 
 static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix *A)
@@ -4219,7 +4239,7 @@ static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix *A)
             return status;
 
         return GSL_SUCCESS;
-    }
+    } return -1;
 }
 
 int us_linalg_tri_UL(us_matrix *LU)
@@ -4296,7 +4316,7 @@ int us_linalg_LU_invx(us_matrix *LU, const us_permutation *p)
         }
 
         return GSL_SUCCESS;
-    }
+    } return -1;
 }
 
 int us_linalg_LU_invert(const us_matrix *LU, const us_permutation *p, us_matrix *inverse)
@@ -4317,5 +4337,5 @@ int us_linalg_LU_invert(const us_matrix *LU, const us_permutation *p, us_matrix 
     {
         us_matrix_memcpy(inverse, LU);
         return us_linalg_LU_invx(inverse, p);
-    }
+    } return -1;
 }

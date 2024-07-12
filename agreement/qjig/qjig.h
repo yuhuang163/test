@@ -29,7 +29,7 @@ public:
         STATE_PEN_PRESS,
     } jigState;
     void sendjigData(jigState fixstate);
-    void set_cylinder_state(int state);
+    void set_cylinder_state(int state,int mechine);
     void waitWork(int ms);
     void set_relay_state(int state);
 };

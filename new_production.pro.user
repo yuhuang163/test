@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 12.0.0, 2024-06-19T09:39:31. -->
+<!-- Written by QtCreator 12.0.0, 2024-07-10T14:32:19. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -246,11 +246,12 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:D:/new_production/new_production/new_production.pro</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/new_production/new_production/new_production.pro</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
-    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">D:/new_production/build-new_production-Desktop_Qt_5_15_2_MSVC2019_64bit-Debug</value>
+    <value type="int" key="RunConfiguration.UseQmlDebugger">0</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">false</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">D:/new_production/build-new_production-Desktop_Qt_5_15_2_MSVC2019_64bit-Debug/./bin</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>
