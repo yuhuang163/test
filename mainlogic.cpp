@@ -566,11 +566,12 @@ void MainWindow::refresh_dongle_uart_state(int state)
     if (state)
     {
         ui->msgEdit->appendPlainText("dongle串口连接成功");
-        uartStatusLabel = new QLabel("串口连接：<font color='green'>成功</font>");
+        uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
+
     }
     else
     {
-        uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
+        uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
         ui->msgEdit->appendPlainText("dongle串口连接断开");
@@ -2251,6 +2252,51 @@ void MainWindow::updateComboBox()
         }
     }
 }
+
+void MainWindow::scanSerialPorts()
+{
+    QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+
+    auto updateComboBox = [](QComboBox *comboBox, const QList<QSerialPortInfo> &ports)
+    {
+        if (!comboBox)
+        {
+            return;
+        }
+
+        // 获取当前的项目列表
+        QSet<QString> currentItems;
+        for (int i = 0; i < comboBox->count(); ++i)
+        {
+            currentItems.insert(comboBox->itemText(i));
+        }
+
+
+        // 添加新的项目
+        for (const QSerialPortInfo &info : ports)
+        {
+            if (!currentItems.contains(info.portName()))
+            {
+                comboBox->addItem(info.portName());
+            }
+            currentItems.remove(info.portName());   // 移除已存在的项目
+        }
+
+        // 移除不存在的项目
+        for (const QString &item : currentItems)
+        {
+            int index = comboBox->findText(item);
+            if (index != -1)
+            {
+                comboBox->removeItem(index);
+            }
+        }
+    };
+
+    updateComboBox(ui->comNameCombo, ports);
+
+}
+
 void MainWindow::getmacadress(const QByteArray &byte)
 {
     receivedData += QString::fromUtf8(byte);

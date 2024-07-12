@@ -102,7 +102,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->local_ota_result->setText("OTA");
     ui->local_ota_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
-    on_refreshButton_clicked();
+    scanSerialPorts();   // 要搜索一下一开始
+    scanSerialPortsTimer->start(1000);   // 每秒刷新一次
+    connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
+
+
     initBasicInfo();
     initPeriphState();
 
@@ -121,9 +125,7 @@ MainWindow::MainWindow(QWidget *parent)
     ota_fw_set(1);       // 一开机锁住
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(tail_sn);
-
     ui->statusbar->addPermanentWidget(sub_pid);
-
     ui->statusbar->addPermanentWidget(macLabel);
     ui->statusbar->addPermanentWidget(bleStatusLabel);
     ui->statusbar->addPermanentWidget(WifiStatusLabel);
@@ -547,19 +549,11 @@ void MainWindow::on_damping_close_clicked()
 void MainWindow::on_disconnectButton_clicked()
 {
     closeDongleSerialPort();
-    ui->refreshButton->setEnabled(true);
     ui->connectButton->setEnabled(true);
     refresh_ble_state(0);
 }
 
-void MainWindow::on_refreshButton_clicked()
-{
-    ui->comNameCombo->clear();
-    foreach(const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
-    {
-        ui->comNameCombo->addItem(info.portName());
-    }
-}
+
 
 void MainWindow::on_connectButton_clicked()
 {

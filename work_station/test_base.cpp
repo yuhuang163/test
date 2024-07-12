@@ -28,6 +28,7 @@ test_base::test_base()
 {
     signalAndslot();
     scanSerialPortsTimer->start(1000);   // 每秒刷新一次
+
     initData();
 }
 void test_base::initData()

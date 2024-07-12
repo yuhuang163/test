@@ -55,6 +55,9 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
+
+    QTimer *scanSerialPortsTimer = new QTimer(this);
+
 /*摄像头传图部分*/
     QByteArray pictureByteArray=0;
 
@@ -283,7 +286,6 @@ private slots:
     void openDongleSerialPort(void);
     void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
-    void on_refreshButton_clicked();
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
     void on_getperipheralButton_clicked();
@@ -435,5 +437,7 @@ private slots:
     void on_write_device_sn_clicked();
     void on_write_board_sn_clicked();
     void on_write_device_subpid_clicked();
+    void scanSerialPorts();
+
 };
 #endif   // MAINWINDOW_H
