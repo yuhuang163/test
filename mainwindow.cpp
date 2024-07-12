@@ -1935,7 +1935,7 @@ void MainWindow::on_configWifiPushButton_2_clicked()
     ProductLicense &Testlicense = ProductLicense::getTestInstance();
 
     LicensePair pair = license.getLicense();
-    LicensePair testpair = Testlicense.getLicense();
+    LicensePair testpair = Testlicense.getTestLicense();
     WifiInfo info;
     QString name = ui->wifiUserName->text();
     QString password = ui->wifiPassword->text();
