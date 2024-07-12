@@ -174,7 +174,7 @@
            <item row="1" column="0">
             <widget class="QTabWidget" name="tabWidget">
              <property name="currentIndex">
-              <number>12</number>
+              <number>1</number>
              </property>
              <property name="tabBarAutoHide">
               <bool>false</bool>
@@ -3372,10 +3372,35 @@
                <string>ui预览</string>
               </attribute>
               <layout class="QGridLayout" name="gridLayout_16">
-               <item row="1" column="0">
-                <widget class="QPushButton" name="send_wifi_config">
+               <item row="1" column="3">
+                <widget class="QLineEdit" name="uissidInput">
                  <property name="text">
-                  <string>配置网络信息</string>
+                  <string>usmile_guest</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="3" colspan="2">
+                <layout class="QHBoxLayout" name="horizontalLayout_69">
+                 <item>
+                  <widget class="QLabel" name="label_42">
+                   <property name="text">
+                    <string>设备的ip地址：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="ui_ip">
+                   <property name="text">
+                    <string>http://192.168.252.54/</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="2" column="1">
+                <widget class="QPushButton" name="init_ui_data">
+                 <property name="text">
+                  <string>格式化存储</string>
                  </property>
                 </widget>
                </item>
@@ -3427,42 +3452,17 @@ border-color: rgb(255, 165, 0)</string>
                  </item>
                 </layout>
                </item>
-               <item row="2" column="1">
-                <widget class="QPushButton" name="init_ui_data">
-                 <property name="text">
-                  <string>格式化存储</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="3">
-                <widget class="QLineEdit" name="uissidInput">
-                 <property name="text">
-                  <string>usmile_guest</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="3" colspan="2">
-                <layout class="QHBoxLayout" name="horizontalLayout_69">
-                 <item>
-                  <widget class="QLabel" name="label_42">
-                   <property name="text">
-                    <string>设备的ip地址：</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLineEdit" name="ui_ip">
-                   <property name="text">
-                    <string>http://192.168.252.54/</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="1">
+               <item row="1" column="0">
                 <widget class="QPushButton" name="get_battery_level">
                  <property name="text">
                   <string>获取电量</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QPushButton" name="send_wifi_config">
+                 <property name="text">
+                  <string>配置网络信息</string>
                  </property>
                 </widget>
                </item>

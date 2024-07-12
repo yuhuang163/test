@@ -1949,12 +1949,16 @@ void MainWindow::on_configWifiPushButton_2_clicked()
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
     }
-    if (OTAGroup->checkedId() == 1)   // 测试版本
+    else if (OTAGroup->checkedId() == 1)   // 测试版本
     {
         ui->testMsg->appendPlainText("正在运行测试版本OTA");
         productName = testpair.product_name;
         deviceName = testpair.device_key;
         deviceSecret = testpair.device_secret;
+    }else{
+
+        QMessageBox::warning(NULL, "警告", " 请选择ota环境\r\n");
+        return;
     }
 
     ui->productKey->setText(productName);
