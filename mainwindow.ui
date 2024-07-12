@@ -174,7 +174,7 @@
            <item row="1" column="0">
             <widget class="QTabWidget" name="tabWidget">
              <property name="currentIndex">
-              <number>2</number>
+              <number>4</number>
              </property>
              <property name="tabBarAutoHide">
               <bool>false</bool>
@@ -1557,6 +1557,13 @@
                   </item>
                   <item row="1" column="0">
                    <layout class="QHBoxLayout" name="horizontalLayout_77">
+                    <item>
+                     <widget class="QCheckBox" name="quicklz_picture">
+                      <property name="text">
+                       <string>压缩</string>
+                      </property>
+                     </widget>
+                    </item>
                     <item>
                      <widget class="QPushButton" name="add_data">
                       <property name="text">

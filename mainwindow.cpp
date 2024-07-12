@@ -4578,33 +4578,40 @@ void MainWindow::on_calculate_returnPressed()
 void MainWindow::processTheDatagram(QByteArray &datagram)
 {
 
-    // // 调用解压缩函数
-    // uint32_t decompressed_size = quicklz_decompress(reinterpret_cast<uint8_t *>(datagram.data()), datagram.size(), my_write_cb, my_read_cb);
 
-    // // 检查解压缩结果
-    // if (decompressed_size > 0)
-    // {
-    //     qDebug() << "解压缩成功，解压后的数据大小为" << decompressed_size << "字节。";
+    if(ui->quicklz_picture->isChecked())
+    {
+    // 调用解压缩函数
+    uint32_t decompressed_size = quicklz_decompress(reinterpret_cast<uint8_t *>(datagram.data()), datagram.size(), my_write_cb, my_read_cb);
 
-    //         // 读取解压后的数据并处理
-    //         QFile file("output.dat");
-    //     if (file.open(QIODevice::ReadOnly))
-    //     {
-    //         QByteArray decompressed_data = file.readAll();
-    //         file.close();
+    // 检查解压缩结果
+    if (decompressed_size > 0)
+    {
+        qDebug() << "解压缩成功，解压后的数据大小为" << decompressed_size << "字节。";
+        ui->msgEdit->appendPlainText("解压缩成功");
 
-    //         // 处理解压后的数据
-    //         qDebug() << "解压后的数据内容：" << decompressed_data;
-    //     }
-    //     else
-    //     {
-    //         qDebug() << "无法打开解压后的数据文件。";
-    //     }
-    // }
-    // else
-    // {
-    //     qDebug() << "解压缩失败。";
-    // }
+            // 读取解压后的数据并处理
+            QFile file("output.dat");
+        if (file.open(QIODevice::ReadOnly))
+        {
+            datagram = file.readAll();
+            file.close();
+
+            // 处理解压后的数据
+            qDebug() << "解压后的数据内容：" << datagram;
+        }
+        else
+        {
+            ui->msgEdit->appendPlainText("无法打开解压后的数据文件。");
+
+        }
+    }
+    else
+    {
+        ui->msgEdit->appendPlainText("解压缩失败。");
+
+    }
+    }
 
     //qDebug() << "Received datagram with length: " << datagram.size();
 
