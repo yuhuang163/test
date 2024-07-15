@@ -772,7 +772,7 @@ void ageing::show_product(QString name)
 
 void ageing::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+    if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
 

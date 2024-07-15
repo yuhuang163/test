@@ -920,7 +920,7 @@ void motor::on_get_mac_returnPressed()
 }
 void motor::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+    if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
 

@@ -211,7 +211,7 @@ void screentest::processInspection(QString stringsn)
 {
     if (stringsn != "" || !ui->isusemes->checkState())
     {
-        if (ui->isusemes->checkState())
+        if (ui->isformmes->checkState())
         {
             ui->msgEdit->appendPlainText("正在进行站前检测");
             pack.sn = stringsn;

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>414</width>
+    <width>639</width>
     <height>423</height>
    </rect>
   </property>
@@ -57,6 +57,16 @@
          <property name="topMargin">
           <number>0</number>
          </property>
+         <item>
+          <widget class="QCheckBox" name="isformmes">
+           <property name="text">
+            <string>是否从mes获取mac</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QCheckBox" name="isusemes">
            <property name="text">

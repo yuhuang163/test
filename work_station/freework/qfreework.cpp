@@ -1041,7 +1041,7 @@ void QFreeWork::processInspection(QString stringsn)
 
 void QFreeWork::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+    if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
 

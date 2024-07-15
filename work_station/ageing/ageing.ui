@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>509</width>
+    <width>734</width>
     <height>434</height>
    </rect>
   </property>
@@ -110,9 +110,19 @@
                <number>0</number>
               </property>
               <item>
+               <widget class="QCheckBox" name="isformmes">
+                <property name="text">
+                 <string>是否从mes获取mac</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QCheckBox" name="isusemes">
                 <property name="text">
-                 <string>是否使用mes</string>
+                 <string>是否过站</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>

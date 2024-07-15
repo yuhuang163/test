@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>960</width>
-    <height>431</height>
+    <width>677</width>
+    <height>441</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -67,9 +67,19 @@
        <item row="2" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <item>
+          <widget class="QCheckBox" name="isformmes">
+           <property name="text">
+            <string>是否从mes获取mac</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="isusemes">
            <property name="text">
-            <string>是否使用mes</string>
+            <string>是否过站</string>
            </property>
            <property name="checkable">
             <bool>true</bool>

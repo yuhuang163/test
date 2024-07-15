@@ -1086,7 +1086,7 @@ void wifibletest::processInspection(QString stringsn)
 
 void wifibletest::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+     if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
 

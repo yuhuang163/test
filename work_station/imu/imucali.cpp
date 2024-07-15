@@ -1572,7 +1572,7 @@ void imucali::on_get_mac_returnPressed()
 
 void imucali::processGetMesTestValue()
 {
-    if (ui->isusemes->checkState())
+    if (ui->isformmes->checkState())
     {
         pack.sn = ui->get_mac->text();
         pack.is_hq_send_mac = 1;
