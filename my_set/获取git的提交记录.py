@@ -59,7 +59,7 @@ def get_git_commits(repo_path, since, until):
         print(f"Command output: {e.output}")
         print(f"Command stderr: {e.stderr}")
         return None
-
+    
 def save_commits_to_md(commits, file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         # 获取当前日期
@@ -69,22 +69,33 @@ def save_commits_to_md(commits, file_path):
         file.write(f"# 版本发布 ({current_date})\n\n")
         file.write("内置版本内容（需要配合新的固件使用）:\n")
         
-        # 按照定义将提交消息格式化为 Markdown
-        index = 1
+       
+        # 获取最长的定义长度
+        max_def_length = max(len(definition) for definition in COMMIT_DEFINITIONS.values()) + 1  # 加1是为了留出空格
+        print(f"Max definition length: {max_def_length}")
+
+        # 打印 COMMIT_DEFINITIONS 的内容
+        print("Commit definitions:")
         for tag, definition in COMMIT_DEFINITIONS.items():
-            file.write(f"{index}. {definition}")
+            print(f"{tag}: {definition}")
+        # 按照定义将提交消息格式化为 Markdown
+        for index, (tag, definition) in enumerate(COMMIT_DEFINITIONS.items(), start=1):
             found_tag = False
             for line in commits.splitlines():
                 if tag in line:
                     start_index = line.index(tag) + len(tag) + 1
                     update_info = line[start_index:].strip()
                     if update_info:
-                        file.write(f" ({update_info})")
+                        update_info = f" ({update_info})"
+                    # 计算需要的填充空格数，确保括号对齐
+                    padding_length = max_def_length - len(definition)
+      
+                    file.write(f"{index:2}. {definition}{padding_length * ' '}{update_info}\n")
                     found_tag = True
+                    break  # 找到匹配后即可退出循环
             if not found_tag:
-                file.write(" (无更新内容)")
-            file.write("\n")
-            index += 1
+                padding_length = max_def_length - len(definition)
+                file.write(f"{index:2}. {definition}{padding_length * ' '} (-----)\n")
 
 if __name__ == "__main__":
     print(f"Using repository path: {REPO_PATH}")

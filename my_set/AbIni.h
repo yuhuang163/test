@@ -55,20 +55,20 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具 V1.1.7"        // 支持1拖多
-#define AGE_VER    "老化工站 V1.0.9"            // 支持1拖多
-#define CAMERA_VER "摄像头测试工站 V1.0.6"      // 支持摄像头工站
-#define IMU_VER    "imu校准工站 V1.2.9"         // 支持自动化治具
-#define MOTOR_VER  "电机校准 V1.0.9"            // 加定时器判断休
-#define QC_VER     "静态电流测试 V1.2.7"        // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站 V1.0.7"        // 加定时器判断休
-#define LIGHT_VER  "灯光测试工站 V1.0.7"        // 加定时器判断休
-#define SINGLE_VER "信号测试工站 V1.2.4"        // 立讯bug
-#define FREE_VER   "自由测试工站 V1.0.0"        // 立讯bug
-#define MAIN_VER   "电刷产测工具 V1.1.9"        // 调整ota功能
-#define PCBA_VER   "电刷 PCBA 测试 V1.2.3"      // 加定时器判断休
+#define DEBUG_VER  "电刷产测工具   V1.1.7"        // 支持1拖多
+#define AGE_VER    "老化测试工站   V1.0.9"            // 支持1拖多
+#define MOTOR_VER  "电机校准工站   V1.0.9"            // 加定时器判断休
+#define QC_VER     "静态电流测试   V1.2.7"        // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.0.7"        // 加定时器判断休
+#define LIGHT_VER  "灯光测试工站   V1.0.7"        // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.2.4"        // 立讯bug
+#define FREE_VER   "自由测试工站   V1.0.0"        // 立讯bug
+#define MAIN_VER   "电刷产测工具   V1.1.9"        // 调整ota功能
+#define PCBA_VER   "电刷板子测试   V1.2.3"      // 加定时器判断休
+#define CAMERA_VER "摄像测试工站   V1.0.6"      // 支持摄像头工站
+#define IMU_VER    "IMU校准工站    V1.2.9"         // 支持自动化治具
 
-// [DEBUG_VER] 修复了1拖多支持的bug
+// [DEBUG_VER] 电刷产测工具
 // [AGE_VER] 增加了自动化测试功能
 // [CAMERA_VER] 更新了摄像头测试工站的图像处理算法
 // [IMU_VER] 优化了传感器校准逻辑
