@@ -55,7 +55,7 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具 V1.1.7"            // 支持1拖多
+#define DEBUG_VER  "电刷产测工具 V1.1.7"        // 支持1拖多
 #define AGE_VER    "老化工站 V1.0.9"            // 支持1拖多
 #define CAMERA_VER "摄像头测试工站 V1.0.6"      // 支持摄像头工站
 #define IMU_VER    "imu校准工站 V1.2.9"         // 支持自动化治具
@@ -65,9 +65,20 @@
 #define LIGHT_VER  "灯光测试工站 V1.0.7"        // 加定时器判断休
 #define SINGLE_VER "信号测试工站 V1.2.4"        // 立讯bug
 #define FREE_VER   "自由测试工站 V1.0.0"        // 立讯bug
-
 #define MAIN_VER   "电刷产测工具 V1.1.8"        // 调整ota功能
 #define PCBA_VER   "电刷 PCBA 测试 V1.2.3"      // 加定时器判断休
 
+// [DEBUG_VER] 修复了1拖多支持的bug
+// [AGE_VER] 增加了自动化测试功能
+// [CAMERA_VER] 更新了摄像头测试工站的图像处理算法
+// [IMU_VER] 优化了传感器校准逻辑
+// [MOTOR_VER] 调整了电机校准的定时器判断逻辑
+// [QC_VER] 增加了静态电流测试的定时器判断休眠功能
+// [SCREEN_VER] 修复了屏幕测试工站的显示异常问题
+// [LIGHT_VER] 更新了灯光测试工站的亮度调节功能
+// [SINGLE_VER] 修复了信号测试工站的bug
+// [FREE_VER] 解决了自由测试工站的bug
+// [MAIN_VER] 调整了电刷产测工具的OTA功能
+// [PCBA_VER] 优化了电刷PCBA测试的定时器处理逻辑
 
 #endif   // ABINI_H
