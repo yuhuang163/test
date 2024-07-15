@@ -56,6 +56,7 @@ private slots:
 
     void refresh_ble_state(int state) override;
     void refresh_dongle_uart_state(int state)override;
+    void refresh_battary_data(FacDevInfo adc);
 
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
@@ -78,6 +79,7 @@ private:
         STATE_IDLE,              // 休眠状态
         STATE_WATI_CONNECT,      // 等待连接
         STATE_GETBASEDATA,       // 获取基本信息
+        STATE_WATI_CORRECT_BATTARY,
         STATE_DISABLE_SLEEP_1,   // 进入禁止休眠
         STATE_SN_CHECK,
         UNLOCK_DAMPING,
@@ -95,6 +97,9 @@ private:
     QString test_result = "";
     QString passValue = "通过";
     QString failValue = "失败";
+    int is_battary_test = 0;
+    double standbattary = 0;
+
     bool is_motor_continue = 0;
     bool is_motor_test_continue = 0;
     int m_index;

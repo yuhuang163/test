@@ -27,7 +27,9 @@ motor::motor(int index, QWidget *parent) : ui(new Ui::motor), m_index(index)
 
    
     update_main_style("Ubuntu.qss");
+    standbattary = settings.value("BATTARY/standbattary").toDouble();
 
+    ui->msgEdit->appendPlainText("standbattary=" + QString::number(standbattary));
     ui->msgEdit->appendPlainText("action=" + pack.action);
     ui->msgEdit->appendPlainText("line=" + pack.line);
     ui->msgEdit->appendPlainText("model=" + pack.model);
@@ -412,7 +414,70 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
 #endif
     }
 }
+void motor::refresh_battary_data(FacDevInfo adc)
+{
+    QString chargeStateStr;
+    switch (adc.dev_info[0].value_item.battery.charge_state)
+    {
+    case 1:
+        chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
+        break;
+    case 2:
+        chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
+        break;
+    case 3:
+        chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
+        break;
+    case 4:
+        chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
+        break;
+    default:
+        chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
+        break;
+    }
+    ui->battary_state->setText(chargeStateStr);
 
+    // 修改电量的显示样式
+    QString batteryPercentStr = "电量为：<span style='color:blue'>" +
+                                QString::number(adc.dev_info[0].value_item.battery.percent) +
+                                "%</span>";
+    ui->battary_value->setText(batteryPercentStr);
+
+    // 修改电压的显示样式
+    QString batteryVoltageStr =
+        "电压为：<span style='color:purple'>" +
+        QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0, 'f', 3) + "V</span>";
+    ui->battary_voltage->setText(batteryVoltageStr);
+
+    // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
+    // QRegularExpressionMatch match = regex.match(chargeStateStr);
+    // chargestate = match.captured(2);
+    is_battary_test = 1;
+    if (adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary)
+    {
+        TestItem charge;
+        charge.testItem = "充电测试";
+        charge.testData =
+            "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        charge.testResult = "通过";
+        testItems.append(charge);
+
+        ui->msgEdit->appendPlainText("电量通过");
+    }else{
+        TestItem charge;
+        charge.testItem = "充电测试";
+        charge.testData =
+            "当前电压为" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+         charge.testResult = "失败";
+        testItems.append(charge);
+        ui->msgEdit->appendPlainText("电压太低"+ QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
+        result = failValue;
+          state = STATE_SAVE_RESULT;
+
+    }
+
+
+}
 void motor::start_task()
 {
     if (is_motor_continue)
@@ -432,28 +497,36 @@ void motor::start_task()
             result = passValue;
             TestTime.start();
             at->sendMac(ui->macInput->text());   // 发送mac地址
+            is_battary_test = 0;
 
             state = STATE_WATI_CONNECT;
             break;
         case STATE_WATI_CONNECT:
             if (at->getConnected())
             {
-                pb->get_base_info();
+                sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                 state = STATE_GETBASEDATA;
             }
+
+
             break;
         case STATE_GETBASEDATA:
-
-            if (pb->getisGetBaseInfo())
+            if (canGoNext)
             {
+                sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                state = STATE_WATI_CORRECT_BATTARY;
+
+            }
+            break;
+
+
+        case STATE_WATI_CORRECT_BATTARY:   // 设置禁止休眠
+            if (is_battary_test)
+            {
+                ui->msgEdit->appendPlainText("已成功完成电量测试");
                 state = STATE_DISABLE_SLEEP_1;
             }
-            else
-            {
-                waitWork(500);
-                ui->msgEdit->appendPlainText("正在重发获取设备信息");
-                pb->get_base_info();
-            }
+
             break;
 
         case STATE_DISABLE_SLEEP_1:
