@@ -557,7 +557,12 @@ void MainWindow::readDongleSerialPortData()
     pb->parseCmd(dataTemp);
     getmacadress(dataTemp);   // 搜索设备用
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
-    ui->log->appendPlainText(QString::fromUtf8(dataTemp));
+
+    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
+
+
+    ui->log->appendPlainText(logEntry);
     dongleSerialPortBuf.clear();   // 清除缓冲区
 }
 
