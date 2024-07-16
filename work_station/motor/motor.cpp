@@ -461,7 +461,6 @@ void motor::refresh_battary_data(FacDevInfo adc)
             "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
         charge.testResult = "通过";
         testItems.append(charge);
-
         ui->msgEdit->appendPlainText("电量通过");
     }else{
         TestItem charge;
@@ -472,7 +471,7 @@ void motor::refresh_battary_data(FacDevInfo adc)
         testItems.append(charge);
         ui->msgEdit->appendPlainText("电压太低"+ QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
         result = failValue;
-          state = STATE_SAVE_RESULT;
+        state = STATE_SAVE_RESULT;
 
     }
 
