@@ -5,6 +5,8 @@
 #include "ui_mainwindow.h"
 #include <QRandomGenerator>
 #include <QtConcurrent>
+
+
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
@@ -1907,29 +1909,6 @@ void MainWindow::on_configWifiPushButton_2_clicked()
 {
     ui->configWifiPushButton_2->setEnabled(false);
     QTime timeout;
-    at->resetConnected();
-    at->sendbleMac(ui->macInput_7->text());
-    pb->setPbMode(0);
-    timeout.start();
-    isContinue = true;
-    while (at->getConnected() == false)
-    {
-        waitWork(100);
-        if (timeout.elapsed() > 1000 * 30)
-        {
-            ui->testMsg->appendPlainText("蓝牙连接超时");
-            isContinue = false;
-        }
-        if (isContinue == false)
-            break;
-    }
-    waitWork(1000);
-    if (isContinue == false)
-    {
-        ui->configWifiPushButton_2->setEnabled(true);
-        return;
-    }
-
     // 更新license
     ProductLicense &license = ProductLicense::getInstance();
     ProductLicense &Testlicense = ProductLicense::getTestInstance();
@@ -1955,11 +1934,40 @@ void MainWindow::on_configWifiPushButton_2_clicked()
         productName = testpair.product_name;
         deviceName = testpair.device_key;
         deviceSecret = testpair.device_secret;
-    }else{
+        if(ui->ota_secret->text()!="usmile"){
+            QMessageBox::warning(NULL, "警告", "密码错误\r\n");
+            return;
+        }
 
+    }else{
         QMessageBox::warning(NULL, "警告", " 请选择ota环境\r\n");
         return;
     }
+
+
+    at->resetConnected();
+    at->sendbleMac(ui->macInput_7->text());
+    pb->setPbMode(0);
+    timeout.start();
+    isContinue = true;
+    while (at->getConnected() == false)
+    {
+        waitWork(100);
+        if (timeout.elapsed() > 1000 * 30)
+        {
+            ui->testMsg->appendPlainText("蓝牙连接超时");
+            isContinue = false;
+        }
+        if (isContinue == false)
+            break;
+    }
+    waitWork(1000);
+    if (isContinue == false)
+    {
+        ui->configWifiPushButton_2->setEnabled(true);
+        return;
+    }
+
 
     ui->productKey->setText(productName);
     ui->deviceName->setText(deviceName);

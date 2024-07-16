@@ -2715,6 +2715,20 @@
                   <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_42">
                     <item>
+                     <widget class="QLabel" name="label_28">
+                      <property name="text">
+                       <string>测试环境密码：</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="ota_secret">
+                      <property name="echoMode">
+                       <enum>QLineEdit::Password</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QLabel" name="label_26">
                       <property name="text">
                        <string>输入MAC连接：</string>
@@ -2882,56 +2896,13 @@
                      <item>
                       <layout class="QFormLayout" name="formLayout_3">
                        <item row="0" column="0">
-                        <widget class="QLabel" name="label_28">
-                         <property name="text">
-                          <string>wifi名称</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLineEdit" name="wifiName">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QLabel" name="label_29">
-                         <property name="text">
-                          <string>wifi密码</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLineEdit" name="wifiPassword_2">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="echoMode">
-                          <enum>QLineEdit::Password</enum>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
                         <widget class="QLabel" name="label_30">
                          <property name="text">
                           <string>产品Key</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="1">
+                       <item row="0" column="1">
                         <widget class="QLineEdit" name="productKey">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -2950,14 +2921,14 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
+                       <item row="1" column="0">
                         <widget class="QLabel" name="label_31">
                          <property name="text">
                           <string>设备名</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
+                       <item row="1" column="1">
                         <widget class="QLineEdit" name="deviceName">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -2976,14 +2947,14 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
+                       <item row="2" column="0">
                         <widget class="QLabel" name="label_32">
                          <property name="text">
                           <string>设备秘钥</string>
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
+                       <item row="2" column="1">
                         <widget class="QLineEdit" name="deviceSecret">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -3105,7 +3076,7 @@
                    <item>
                     <widget class="QPushButton" name="stopTestPushButton">
                      <property name="text">
-                      <string>结束OTA</string>
+                      <string>结束以上测试</string>
                      </property>
                     </widget>
                    </item>
