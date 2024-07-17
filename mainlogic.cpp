@@ -2442,7 +2442,6 @@ void MainWindow::initBasicInfo()
                 ->setData(QString("%1").arg(baseInfo.pb_factory_ver), Qt::DisplayRole);
             basicInfoModel->getTestItemByName("camera_id")
                 ->setData(QString("%1").arg(baseInfo.camera_version), Qt::DisplayRole);
-
             basicInfoModel->getTestItemByName("hw_version")
                 ->setData(baseInfo.hw_version, Qt::DisplayRole);
             basicInfoModel->getTestItemByName("soft_version")

@@ -6,7 +6,7 @@ from datetime import datetime
 # 可配置的内容置顶
 REPO_PATH = r"D:\new_production\new_production"
 SINCE_DATE = "2024-01-01"
-UNTIL_DATE = "2024-12-31"
+UNTIL_DATE = "2024-7-17"
 
 # 定义头文件路径
 HEADERS_FILE = r"D:\new_production\new_production\my_set\AbIni.h"
@@ -69,7 +69,7 @@ def save_commits_to_md(commits, file_path):
         date_info = f"日期:从 {SINCE_DATE} 到 {UNTIL_DATE}，发布日期 {current_date}"
         
         # 写入版本发布信息，包含日期信息
-        file.write(f"# 上位机版本发布 ({date_info})\n")
+        file.write(f"##### 上位机版本发布 ({date_info})\n")
         file.write("内置版本内容（需要配合新的固件使用）:\n")
         
         # 初始化版本更新信息列表
