@@ -48,6 +48,10 @@ INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 
 
+# INCLUDEPATH += advance/xlsx
+# DEPENDPATH  += advance/xlsx
+
+include(advance/xlsx/qtxlsx.pri)
 
 
 

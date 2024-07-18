@@ -1,5 +1,9 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "xlsxdocument.h"
+
+
+
 
 QString MainWindow::getMotorStateString(FacMotoState state)
 {
@@ -493,6 +497,12 @@ void MainWindow::solve_frame(void)
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
             if (1)
             {
+
+                qDebug() << "图片数据包的第一字节为" << head->data[0];
+                 emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
+                 emit send_thread_date("图片数据包总数" + QString::number(++dataNumber));
+                 emit send_thread_date("图片数据包总字节数" + QString::number(totalsize=totalsize+head->length));
+
                 // 处理帧数据
                 write_camera_data(head->data, head->length);
 
@@ -766,6 +776,8 @@ void MainWindow::solve_picture_frame(void)
                 QByteArray byteArray(reinterpret_cast<const char *>(head), frame_size);
                 pictureByteArray = byteArray;
                 emit imageProcessed();
+
+
             }
             else
             {
@@ -799,7 +811,7 @@ void MainWindow::solve_picture_frame(void)
             }
             else
             {
-                qDebug() << "找不到帧头";
+                qDebug() << "找不到图片帧头";
                 break;
             }
         }
@@ -1333,10 +1345,56 @@ void MainWindow::update_main_style(QString style)
         }
     }
 }
-void MainWindow::getimuData(FacUploadNineAlex x)
+
+
+void MainWindow::saveToExcel(const QString &filename, const FacUploadNineAlex &x)
 {
+    QXlsx::Document xlsx(filename);  // 尝试打开现有文件
+
+    // 检查是否已存在名为 "data" 的工作表
+    if (!xlsx.selectSheet("data")) {
+        // 如果不存在，创建新的工作表并写入标题行
+        xlsx.addSheet("data");
+        xlsx.write(1, 1, "timestamp");
+        xlsx.write(1, 2, "AccX");
+        xlsx.write(1, 3, "AccY");
+        xlsx.write(1, 4, "AccZ");
+        xlsx.write(1, 5, "GyroX");
+        xlsx.write(1, 6, "GyroY");
+        xlsx.write(1, 7, "GyroZ");
+    }
+
+    // 获取已存在的工作表中最后一行的行号
+    QXlsx::Worksheet* sheet = dynamic_cast<QXlsx::Worksheet*>(xlsx.currentSheet());
+    int lastRow = sheet ? sheet->dimension().lastRow() : 1;
+    int row = (lastRow == 0) ? 2 : lastRow + 1;  // 如果为空，则从第2行开始写入数据
+
+    // 将数据写入Excel文件
     for (int i = 0; i < x.data_count; i++)
     {
+        xlsx.write(row, 1, x.data[i].timestamp);
+        xlsx.write(row, 2, x.data[i].acc_x);
+        xlsx.write(row, 3, x.data[i].acc_y);
+        xlsx.write(row, 4, x.data[i].acc_z);
+        xlsx.write(row, 5, x.data[i].gyro_x);
+        xlsx.write(row, 6, x.data[i].gyro_y);
+        xlsx.write(row, 7, x.data[i].gyro_z);
+        row++;
+    }
+
+    if (xlsx.saveAs(filename)) {
+        qDebug() << "文件保存成功：" << filename;
+    } else {
+        qDebug() << "文件保存失败：" << filename;
+    }
+}
+void MainWindow::getimuData(FacUploadNineAlex x)
+{
+     qDebug() << "开始保存" ;
+    for (int i = 0; i < x.data_count; i++)
+    {
+
+        saveToExcel("六轴数据.xlsx", x);
         orgData.acc[0] = x.data[i].acc_x;
         orgData.acc[1] = x.data[i].acc_y;
         orgData.acc[2] = x.data[i].acc_z;
@@ -1350,6 +1408,9 @@ void MainWindow::getimuData(FacUploadNineAlex x)
         ui->acc_x->setText("acc_x=" + QString::number(orgData.acc[0]));
         ui->acc_y->setText("acc_y=" + QString::number(orgData.acc[1]));
         ui->acc_z->setText("acc_z=" + QString::number(orgData.acc[2]));
+
+
+
     }
     // qDebug()<<"收到六轴数据";
     int ret = 0;
@@ -2167,6 +2228,10 @@ void MainWindow::refresh_pb_data(QString data)
 {
     ui->msgEdit->appendPlainText(data);
 }
+void MainWindow::refresh_log_data(QString data)
+{
+    ui->log->appendPlainText(data);
+}
 
 void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult)
 {
@@ -2535,4 +2600,54 @@ void MainWindow::initPeriphState()
                              ->setData(QString("%1").arg(state.press_state), Qt::DisplayRole);
                          writePeripheralDataToCSVFile();
                      });
+}
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->high_speed_tp || watched == ui->active_picture)
+    {
+        if (event->type() == QEvent::DragEnter)
+        {
+            // [[2]]: 当拖放时鼠标进入label时, label接受拖放的动作
+            QDragEnterEvent *dee = dynamic_cast<QDragEnterEvent *>(event);
+            dee->acceptProposedAction();
+            return true;
+        }
+        else if (event->type() == QEvent::Drop)
+        {
+            // [[3]]: 当放操作发生后, 取得拖放的数据
+            QDropEvent *de = dynamic_cast<QDropEvent *>(event);
+            QList<QUrl> urls = de->mimeData()->urls();
+            if (urls.isEmpty())
+            {
+                return true;
+            }
+            QString path = urls.first().toLocalFile();
+            qDebug() << "路径为：" << path;
+
+                // [[4]]: 在label上显示拖放的图片
+                QImage image(path);
+            // QImage对I/O优化过, QPixmap对显示优化
+            if (!image.isNull() || !path.isNull())
+            {
+                if (ui->active_picture->underMouse())
+                {   // 如果拖到了active_picture上
+
+                    renameFilesInFolder(path);
+                }
+                if (ui->high_speed_tp->underMouse())
+                {   // 如果拖到了high_speed_tp上
+                    ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
+                    QFileInfo fileInfo(path);
+                    QString fileName = fileInfo.fileName();
+                    convertImageTo16BitPaletteHigh(path, fileName);
+                }
+                else
+                {
+                    qDebug() << "Image dropped on an unknown widget.";
+                }
+            }
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }

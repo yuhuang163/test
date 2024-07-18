@@ -38,5 +38,7 @@ motorbox::motorbox(QWidget *parent) : box_base(parent), ui(new Ui::motorbox)
 
 motorbox::~motorbox()
 {
+   // delete Fixture_uart_ui;
+
     delete ui;
 }

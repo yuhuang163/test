@@ -88,7 +88,7 @@ MainWindow::MainWindow(QWidget *parent)
       nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
+    qDebug() << "当前类名为:" << metaObject()->className();
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     update_main_style("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
@@ -136,6 +136,8 @@ MainWindow::MainWindow(QWidget *parent)
         new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refresh_pb_data(QString)));
+    connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refresh_pb_data(QString)));
+
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this,
             SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this,
@@ -312,66 +314,16 @@ void MainWindow::on_add_data_clicked()
     }
 }
 
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == ui->high_speed_tp || watched == ui->active_picture)
-    {
-        if (event->type() == QEvent::DragEnter)
-        {
-            // [[2]]: 当拖放时鼠标进入label时, label接受拖放的动作
-            QDragEnterEvent *dee = dynamic_cast<QDragEnterEvent *>(event);
-            dee->acceptProposedAction();
-            return true;
-        }
-        else if (event->type() == QEvent::Drop)
-        {
-            // [[3]]: 当放操作发生后, 取得拖放的数据
-            QDropEvent *de = dynamic_cast<QDropEvent *>(event);
-            QList<QUrl> urls = de->mimeData()->urls();
-            if (urls.isEmpty())
-            {
-                return true;
-            }
-            QString path = urls.first().toLocalFile();
-            qDebug() << "路径为：" << path;
-
-            // [[4]]: 在label上显示拖放的图片
-            QImage image(path);
-            // QImage对I/O优化过, QPixmap对显示优化
-            if (!image.isNull() || !path.isNull())
-            {
-                if (ui->active_picture->underMouse())
-                {   // 如果拖到了active_picture上
-
-                    renameFilesInFolder(path);
-                }
-                if (ui->high_speed_tp->underMouse())
-                {   // 如果拖到了high_speed_tp上
-                    ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
-                    QFileInfo fileInfo(path);
-                    QString fileName = fileInfo.fileName();
-                    convertImageTo16BitPaletteHigh(path, fileName);
-                }
-                else
-                {
-                    qDebug() << "Image dropped on an unknown widget.";
-                }
-            }
-            return true;
-        }
-    }
-    return QWidget::eventFilter(watched, event);
-}
-
-void MainWindow::on_clear_picture_clicked()
+void MainWindow::on_init_ui_data_clicked()
 {
     // 创建网络访问管理器
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() +
-                        "/trigger_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+    request.setUrl(
+        QUrl(ui->ui_ip->text() +
+             "/trigger_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
 
     // 发送 GET 请求
     QNetworkReply *reply = manager->get(request);
@@ -384,12 +336,12 @@ void MainWindow::on_clear_picture_clicked()
                 if (reply->error() == QNetworkReply::NoError)
                 {
                     qDebug() << "Request succeeded";
-                    ui->msgEdit->appendPlainText("图片删除完毕");
+                    ui->msgEdit->appendPlainText("文件系统初始化完毕");
                 }
                 else
                 {
                     qDebug() << "Request failed:" << reply->errorString();
-                    ui->msgEdit->appendPlainText("图片删除失败");
+                    ui->msgEdit->appendPlainText("文件系统初始化失败");
                 }
 
                 // 释放资源
@@ -397,6 +349,7 @@ void MainWindow::on_clear_picture_clicked()
                 manager->deleteLater();
             });
 }
+
 void MainWindow::on_get_battery_level_clicked()
 {
     // 创建网络访问管理器
@@ -2843,7 +2796,7 @@ void MainWindow::on_close_support_camera_clicked()
 
 void MainWindow::on_open_camera_picture_clicked()
 {
-    // totalsize = 0;
+    totalsize = 0;
     dataNumber = 0;
     pb->set_camera_picture_state(1);
     std::memset(dongle_ring_buffer, 0, sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
@@ -3018,41 +2971,7 @@ void MainWindow::on_get_device_subpid_clicked()
     pb->get_sn(FacDevInfoType_SUB_PID);
 }
 
-void MainWindow::on_init_ui_data_clicked()
-{
-    // 创建网络访问管理器
-    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
 
-    // 创建请求
-    QNetworkRequest request;
-    request.setUrl(
-        QUrl(ui->ui_ip->text() +
-             "/clear_spiffs_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
-
-    // 发送 GET 请求
-    QNetworkReply *reply = manager->get(request);
-
-    // 处理请求完成信号
-    connect(reply, &QNetworkReply::finished,
-            [=]()
-            {
-                // 检查响应状态码
-                if (reply->error() == QNetworkReply::NoError)
-                {
-                    qDebug() << "Request succeeded";
-                    ui->msgEdit->appendPlainText("文件系统初始化完毕");
-                }
-                else
-                {
-                    qDebug() << "Request failed:" << reply->errorString();
-                    ui->msgEdit->appendPlainText("文件系统初始化失败");
-                }
-
-                // 释放资源
-                reply->deleteLater();
-                manager->deleteLater();
-            });
-}
 
 void MainWindow::on_get_battery_clicked()
 {
@@ -3102,3 +3021,147 @@ void MainWindow::on_write_device_subpid_clicked()
     pb->set_sn(FacDevInfoType_SUB_PID, subpid);
     ui->msgEdit->appendPlainText("已绑定subpid到牙刷");
 }
+void MainWindow::on_clear_picture_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() +
+                        "/clear_spiffs_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+
+    // 发送 GET 请求
+    QNetworkReply *reply = manager->get(request);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << "Request succeeded";
+                    ui->msgEdit->appendPlainText("图片删除完毕");
+                }
+                else
+                {
+                    qDebug() << "Request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("图片删除失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
+void MainWindow::on_up_picture_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(
+        QUrl(ui->ui_ip->text() +
+             "/upPicture_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+
+    // 发送 GET 请求
+    QNetworkReply *reply = manager->get(request);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << "Request succeeded";
+                    ui->msgEdit->appendPlainText("向上翻页完成");
+                }
+                else
+                {
+                    qDebug() << "Request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("向上翻页失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
+
+
+void MainWindow::on_down_picture_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(
+        QUrl(ui->ui_ip->text() +
+             "/downPicture_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+
+    // 发送 GET 请求
+    QNetworkReply *reply = manager->get(request);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << "Request succeeded";
+                    ui->msgEdit->appendPlainText("向下翻页完成");
+                }
+                else
+                {
+                    qDebug() << "Request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("向下翻页失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
+
+
+void MainWindow::on_play_picture_clicked()
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(
+        QUrl(ui->ui_ip->text() +
+             "/playPicture_function"));   // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
+
+    // 发送 GET 请求
+    QNetworkReply *reply = manager->get(request);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << "Request succeeded";
+                    ui->msgEdit->appendPlainText("播放完成");
+                }
+                else
+                {
+                    qDebug() << "Request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText("播放失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+}
+

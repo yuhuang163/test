@@ -60,7 +60,7 @@ public:
 
 /*摄像头传图部分*/
     QByteArray pictureByteArray=0;
-
+ int totalsize = 0;
     int dataNumber=0;
 #define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
     unsigned short crc16_compute(unsigned char const *p_data, unsigned int size,
@@ -186,6 +186,7 @@ private:
     QLabel *board_sn = nullptr;
     QLabel *tail_sn = nullptr;
     QLabel *sub_pid = nullptr;
+    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
 
   std::atomic<bool> running;
      QFuture<void> future;
@@ -249,7 +250,6 @@ private:
 
     // 定义用于保存MAC地址的QString变量
     QString csvmac;
-
     QComboBox *comNameCombo;
     QUdpSocket *udpSocket;
 protected:
@@ -263,11 +263,12 @@ signals:
     void send_frame_rate(QString data);
     void refreshDongleSerialPortState(int state);
     void imageProcessed();
-
+    void send_thread_date(QString);
 
 
 private slots:
     void updateImageOnMainThread();
+    void refresh_log_data(QString data);
 
     void showlog(QString msg);
     void refresh_imu_cali_msg(QString msg);
@@ -441,5 +442,8 @@ private slots:
 
     void on_send_wifi_config_clicked();
     void on_get_battery_level_clicked();
+    void on_up_picture_clicked();
+    void on_down_picture_clicked();
+    void on_play_picture_clicked();
 };
 #endif   // MAINWINDOW_H

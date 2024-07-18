@@ -28,7 +28,6 @@ void imucali::on_pushButton_clicked()
     //     waitWork(5000);
 
     // }
-
 }
 imucali::imucali(int index, QWidget *parent)
     : ui(new Ui::imucali), m_index(index), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate)
@@ -71,14 +70,14 @@ imucali::imucali(int index, QWidget *parent)
     }
     ui->mechine_number->setText(QString::number(getIndex()) + "号机");
     ui->mechine_number->setStyleSheet(
-        "font-size: 33px; background-color: yellow; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+        "font-size: 20px; background-color: yellow; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
-        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+        "font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet(
-        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+        "font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 
     connect(waittime, &QTimer::timeout,
             [=]()
@@ -416,7 +415,7 @@ void imucali::solveMesSucess(const int mechines)
         ui->msgEdit->appendPlainText("mes操作成功");
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
-            "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+            "font-size: 20px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
         mes_set_ok = 1;
     }
@@ -431,7 +430,7 @@ void imucali::solveMesData(const int mechines, QString msg)
         isimuCaliContinue = false;   // 结束
         ui->msgEdit->appendPlainText("停止运行");
         ui->mes_state->setStyleSheet(
-            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+            "font-size: 20px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
         emit endTest(getIndex());
 
         ui->get_mac->clear();
@@ -955,7 +954,7 @@ void imucali::processInspection(QString stringsn)
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
-            "font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+            "font-size: 20px; background-color: #FFFF00; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
 void imucali::refresh_battary_data(FacDevInfo adc)
@@ -1021,7 +1020,7 @@ void imucali::dataInit()
     iscompareovertime = 0;
     isimuCaliOk = 0;   // 是否校准完成
     is_start_ium_test = 0;
-     dongleOutTime = 50;//调小会奔溃
+    dongleOutTime = 50;   // 调小会奔溃
     is_start_ium_cali = 0;
     isStartSendCaliResult = 0;   // 是否开始发送校验结果
     imudata_check = 0;
@@ -1065,7 +1064,7 @@ void imucali::dataInit()
     ui->acc_z->setText("acc_z=");
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
-        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+        "font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 }
 
 void imucali::useMes()
@@ -1208,16 +1207,11 @@ void imucali::start_task()   // 编写六轴校准的代码
             {
                 waittime->stop();
                 ui->msgEdit->appendPlainText("IMU校准成功");
-
-                pb->set_imu_collect_param(FacSwitch_STOP);
-
                 nqimuc->calData.gyro_offset[0] = qimuc->calData.gyro_offset[0];
                 nqimuc->calData.gyro_offset[1] = qimuc->calData.gyro_offset[1];
                 nqimuc->calData.gyro_offset[2] = qimuc->calData.gyro_offset[2];
-
-                sendCommandWithRetry(std::bind(&Qpb::set_new_imu_cali_result, pb, nqimuc->calData));
-
-                state = STATE_SENDOK;
+                sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
+                state = STATE_END_CALI_DATA;
 
                 break;
             }
@@ -1237,13 +1231,25 @@ void imucali::start_task()   // 编写六轴校准的代码
 
             break;
 
+        case STATE_END_CALI_DATA:
+
+            if (canGoNext)
+            {
+                ui->msgEdit->appendPlainText("开始设置六轴校准结果");
+                sendCommandWithRetry(std::bind(&Qpb::set_new_imu_cali_result, pb, nqimuc->calData));
+                state = STATE_SENDOK;
+            }
+            break;
+
+
+
         case STATE_SENDOK:
 
             if (canGoNext)
             {
+                ui->msgEdit->appendPlainText("已获取到imu校准结果发送回应");
                 sendCommandWithRetry(std::bind(&Qpb::get_imu_cali_result, pb));
-
-                // ui->msgEdit->appendPlainText("已进入禁止休眠");
+                ui->msgEdit->appendPlainText("开始获取imu校准结果");
                 state = STATE_CHECKOK;
             }
             break;
@@ -1266,7 +1272,7 @@ void imucali::start_task()   // 编写六轴校准的代码
 
             break;
 
-        case STATE_SAVE_RESULT:
+        case STATE_SAVE_RESULT://保存结果用的
             if (result == failValue)
             {
                 TestItem test;
@@ -1280,7 +1286,7 @@ void imucali::start_task()   // 编写六轴校准的代码
                 state = STATE_END;
                 break;
             }
-            if (pb->get_is_get_imu_cali_data())
+            if (result == passValue)
             {
                 TestItem test;
                 // 使用 QString 连接所有内容
@@ -1324,12 +1330,7 @@ void imucali::start_task()   // 编写六轴校准的代码
                     state = STATE_END;
                 }
             }
-            else
-            {
-                ui->msgEdit->appendPlainText("正在重试获取校准结果");
-                pb->get_imu_cali_result();
-                waitWork(500);
-            }
+
 
             break;
 
@@ -1347,7 +1348,6 @@ void imucali::start_task()   // 编写六轴校准的代码
                 ui->msgEdit->appendPlainText("可能还没进入船运");
                 waitWork(500);
             }
-
 
             break;
 
@@ -1383,13 +1383,13 @@ void imucali::start_task()   // 编写六轴校准的代码
 
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
-                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+                    "font-size: 20px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
             }
             else if (result == failValue)
             {
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
-                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+                    "font-size: 20px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
                 QString mesresult = "NG";
                 QString itemvalue = QString("|outvoltage:%1").arg(voltage) +
                                     QString("|IMU_CALI_RESULT:NG|") +
@@ -1545,7 +1545,7 @@ void imucali::on_get_mac_returnPressed()
     ui->macInput->setDisabled(1);
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet(
-        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
+        "font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);

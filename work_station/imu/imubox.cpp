@@ -174,7 +174,7 @@ imubox::~imubox()
     if (Fixture_uart_ui != NULL)
         settings.setValue(QString("0/masterFixturecomName"),
                           Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
-
+    delete Fixture_uart_ui;
     delete ui;
 }
 void imubox::resetall()

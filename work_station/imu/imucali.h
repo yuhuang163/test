@@ -120,6 +120,8 @@ private:
         STATE_SET_COLLECT_PARAM_1,   // 获取采集参数
         STATE_CAIL,                  // 开始校准
         STATE_SEND_CAIL_RESULT,      // 发送校准结果
+        STATE_END_CALI_DATA,                // 发送成功检查
+
         STATE_SENDOK,                // 发送成功检查
         STATE_CHECKOK,               // 数据获取检查
         STATE_SAVE_RESULT,           // 保存结果在本地

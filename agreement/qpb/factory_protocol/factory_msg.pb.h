@@ -180,7 +180,8 @@ typedef enum _FacCameraControlType {
     FacCameraControlType_camera_exposure_time = 2, 
     FacCameraControlType_camera_display_on_screen = 3, 
     FacCameraControlType_camera_support_state = 4, 
-    FacCameraControlType_camera_get_picture = 5 
+    FacCameraControlType_camera_get_picture = 5, 
+    FacCameraControlType_camera_respond_data_packet = 6 
 } FacCameraControlType;
 
 typedef enum _LedPosition { 
@@ -275,6 +276,7 @@ typedef struct _FacCameraControl {
         FacSwitch display_on_screen;
         FacSwitch camera_support;
         FacSwitch get_picture;
+        FacErrorCode respond_data_packet;
     } value_item; 
     FacErrorCode result; 
 } FacCameraControl;
@@ -654,8 +656,8 @@ typedef struct _FactoryDataPackage {
 #define _FacMotorUploadType_ARRAYSIZE ((FacMotorUploadType)(FacMotorUploadType_SERVO_INFO+1))
 
 #define _FacCameraControlType_MIN FacCameraControlType_camera_state
-#define _FacCameraControlType_MAX FacCameraControlType_camera_get_picture
-#define _FacCameraControlType_ARRAYSIZE ((FacCameraControlType)(FacCameraControlType_camera_get_picture+1))
+#define _FacCameraControlType_MAX FacCameraControlType_camera_respond_data_packet
+#define _FacCameraControlType_ARRAYSIZE ((FacCameraControlType)(FacCameraControlType_camera_respond_data_packet+1))
 
 #define _LedPosition_MIN LedPosition_led_left_up
 #define _LedPosition_MAX LedPosition_led_right_down
@@ -799,6 +801,7 @@ extern "C" {
 #define FacCameraControl_display_on_screen_tag   5
 #define FacCameraControl_camera_support_tag      6
 #define FacCameraControl_get_picture_tag         7
+#define FacCameraControl_respond_data_packet_tag 8
 #define FacCameraControl_result_tag              100
 #define FacDevState_dev_state_type_tag           1
 #define FacDevState_state_tag                    2
@@ -1197,6 +1200,7 @@ X(a, STATIC,   ONEOF,    UINT32,   (value_item,exposure_time,value_item.exposure
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,display_on_screen,value_item.display_on_screen),   5) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,camera_support,value_item.camera_support),   6) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,get_picture,value_item.get_picture),   7) \
+X(a, STATIC,   ONEOF,    UENUM,    (value_item,respond_data_packet,value_item.respond_data_packet),   8) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacCameraControl_CALLBACK NULL
 #define FacCameraControl_DEFAULT NULL
