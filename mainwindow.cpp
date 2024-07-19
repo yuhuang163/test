@@ -18,15 +18,17 @@ extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加ext
 
 void MainWindow::on_pushButton_clicked()
 {
-    ui->macInput->setText("B4:56:5D:BF:53:66");
-    ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
-    ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
-    // ui->macInput->setText("f8:8f:c8:57:72:df");
-    ui->macInput->setText("b4:56:5d:bf:57:9d");
-    ui->macInput->setText("3C:84:27:07:A8:D2");
+    // ui->macInput->setText("B4:56:5D:BF:53:66");
+    // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
+    // // ui->macInput->setText("f8:8f:c8:57:72:df");
+    // ui->macInput->setText("b4:56:5d:bf:57:9d");
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
 
-    on_macInput_returnPressed();
-    // pb->set_device_mode();//进入亮白
+    // on_macInput_returnPressed();
+    // // pb->set_device_mode();//进入亮白
+
+    pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
 }
 void MainWindow::on_pushButton_3_clicked()
 {
@@ -88,7 +90,6 @@ MainWindow::MainWindow(QWidget *parent)
       nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    qDebug() << "当前类名为:" << metaObject()->className();
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     update_main_style("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
@@ -1764,8 +1765,8 @@ void MainWindow::on_otaTestPushButton_2_clicked()
       << "FLASH错误" << "No Memory" << "TRANS_TIMEOUT" << "TRANS_OVER_RANGE" << " 下载成功"
       << "下载失败";
 
-    at->resetConnected();
-    at->sendotaMac(ui->macInput_7->text());
+    // at->resetConnected();
+    // at->sendotaMac(ui->macInput_7->text());
     pb->setPbMode(0);
     timeout.start();
 
@@ -1900,7 +1901,7 @@ void MainWindow::on_configWifiPushButton_2_clicked()
 
     at->resetConnected();
     at->sendbleMac(ui->macInput_7->text());
-    pb->setPbMode(0);
+    pb->setPbMode(0);//app
     timeout.start();
     isContinue = true;
     while (at->getConnected() == false)
@@ -3163,5 +3164,104 @@ void MainWindow::on_play_picture_clicked()
                 reply->deleteLater();
                 manager->deleteLater();
             });
+}
+
+
+void MainWindow::on_open_imu_collect_solve_clicked()
+{
+    pb->set_solve_imu_collect_param(FacSwitch_START);
+
+}
+
+
+void MainWindow::on_py_test_clicked()
+{
+    // 创建 QProcess 对象
+    QProcess process;
+
+    // 定义参数
+    QStringList arguments;
+    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
+
+    // 启动进程并传递参数
+    process.start("python", arguments);
+
+    // 检查进程是否成功启动
+    if (!process.waitForStarted())
+        qDebug() << "开始运行失败";
+
+    // 等待进程完成
+    if (!process.waitForFinished())
+        qDebug() << "等待完成失败";
+
+    // 读取标准输出
+    QString output(process.readAllStandardOutput());
+    qDebug() << "输出内容" << output;
+
+        // 读取标准错误输出
+        QString errorOutput(process.readAllStandardError());
+    qDebug() << "错误输出: " << errorOutput;
+}
+
+
+void MainWindow::on_set_play_speed_clicked()
+{
+
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // 获取用户输入的SSID和密码
+    QString playspeed = ui->play_speed->text();
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/play_speed"));  // 拼接 "/_config" 到 ESP32 的 IP 地址
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    // 创建数据
+    QByteArray data;
+    data.append("playspeed=" + QUrl::toPercentEncoding(playspeed));
+
+    // 发送 POST 请求
+    QNetworkReply *reply = manager->post(request, data);
+
+     qDebug() << "data: " << data;
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished,
+            [=]()
+            {
+                // 检查响应状态码
+                if (reply->error() == QNetworkReply::NoError)
+                {
+                    qDebug() << " config request succeeded";
+                    ui->msgEdit->appendPlainText(" 播放速度配置发送成功");
+                }
+                else
+                {
+                    qDebug() << " config request failed:" << reply->errorString();
+                    ui->msgEdit->appendPlainText(" 播放速度配置发送失败");
+                }
+
+                // 释放资源
+                reply->deleteLater();
+                manager->deleteLater();
+            });
+
+
+}
+
+
+void MainWindow::on_close_imu_collect_solve_clicked()
+{
+    pb->set_solve_imu_collect_param(FacSwitch_STOP);
+
+}
+
+
+void MainWindow::on_transfer_xls_clicked()
+{
+    convertCsvToXls("6轴IMU性能验证.csv", "6轴IMU性能验证.xls");
+
 }
 

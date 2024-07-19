@@ -194,7 +194,8 @@ typedef enum _LedPosition {
 typedef enum _DataCollectType { 
     DataCollectType_BATTERY = 0, 
     DataCollectType_PRESSURE_SENSOR = 1, 
-    DataCollectType_NINE_AXLE = 2 
+    DataCollectType_NINE_AXLE = 2, 
+    DataCollectType_NINE_AXLE_SOLVE = 3 
 } DataCollectType;
 
 typedef enum _FacBrushControlType { 
@@ -386,6 +387,15 @@ typedef struct _NineAlexData {
     uint32_t magnet_x; 
     uint32_t magnet_y; 
     uint32_t magnet_z; 
+    float solve_acc_x; 
+    float solve_acc_y; 
+    float solve_acc_z; 
+    float solve_gyro_x; 
+    float solve_gyro_y; 
+    float solve_gyro_z; 
+    float solve_magn_x; 
+    float solve_magn_y; 
+    float solve_magn_z; 
 } NineAlexData;
 
 typedef struct _PresurceSensorItem { 
@@ -425,6 +435,7 @@ typedef struct _FacDataCollectItem {
         DataCollectParam bat_vol;
         DataCollectParam pressure_sensor;
         DataCollectParam nine_axle;
+        DataCollectParam nine_axle_solve;
     } command_data; /* µÁ≥ÿµÁ—π */
 } FacDataCollectItem;
 
@@ -664,8 +675,8 @@ typedef struct _FactoryDataPackage {
 #define _LedPosition_ARRAYSIZE ((LedPosition)(LedPosition_led_right_down+1))
 
 #define _DataCollectType_MIN DataCollectType_BATTERY
-#define _DataCollectType_MAX DataCollectType_NINE_AXLE
-#define _DataCollectType_ARRAYSIZE ((DataCollectType)(DataCollectType_NINE_AXLE+1))
+#define _DataCollectType_MAX DataCollectType_NINE_AXLE_SOLVE
+#define _DataCollectType_ARRAYSIZE ((DataCollectType)(DataCollectType_NINE_AXLE_SOLVE+1))
 
 #define _FacBrushControlType_MIN FacBrushControlType_BRUSH_START
 #define _FacBrushControlType_MAX FacBrushControlType_CHANGE_MODE
@@ -712,7 +723,7 @@ extern "C" {
 #define FacButtonItem_init_default               {_FacButtonType_MIN, 0, {DataButtonParam_init_default}}
 #define FacButtonState_init_default              {0, {FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_default               {0, 0, 0, "", false, FacWifiInfo_init_default, 0, _FacErrorCode_MIN}
-#define NineAlexData_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define NineAlexData_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_default           {0, {NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_default          {0, 0}
 #define PresurceSensorData_init_default          {0, 0, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default}
@@ -751,7 +762,7 @@ extern "C" {
 #define FacButtonItem_init_zero                  {_FacButtonType_MIN, 0, {DataButtonParam_init_zero}}
 #define FacButtonState_init_zero                 {0, {FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_zero                  {0, 0, 0, "", false, FacWifiInfo_init_zero, 0, _FacErrorCode_MIN}
-#define NineAlexData_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define NineAlexData_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_zero              {0, {NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_zero             {0, 0}
 #define PresurceSensorData_init_zero             {0, 0, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero}
@@ -868,6 +879,15 @@ extern "C" {
 #define NineAlexData_magnet_x_tag                8
 #define NineAlexData_magnet_y_tag                9
 #define NineAlexData_magnet_z_tag                10
+#define NineAlexData_solve_acc_x_tag             12
+#define NineAlexData_solve_acc_y_tag             13
+#define NineAlexData_solve_acc_z_tag             14
+#define NineAlexData_solve_gyro_x_tag            15
+#define NineAlexData_solve_gyro_y_tag            16
+#define NineAlexData_solve_gyro_z_tag            17
+#define NineAlexData_solve_magn_x_tag            18
+#define NineAlexData_solve_magn_y_tag            19
+#define NineAlexData_solve_magn_z_tag            20
 #define PresurceSensorItem_adc_tag               1
 #define PresurceSensorItem_value_tag             2
 #define ServoMotorInfo_motor_state_tag           1
@@ -887,6 +907,7 @@ extern "C" {
 #define FacDataCollectItem_bat_vol_tag           2
 #define FacDataCollectItem_pressure_sensor_tag   3
 #define FacDataCollectItem_nine_axle_tag         4
+#define FacDataCollectItem_nine_axle_solve_tag   5
 #define FacDevInfoValue_info_item_tag            1
 #define FacDevInfoValue_wifi_info_tag            2
 #define FacDevInfoValue_tail_sn_tag              3
@@ -1242,12 +1263,14 @@ X(a, STATIC,   SINGULAR, UINT32,   upload_rate,       4)
 X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,bat_vol,command_data.bat_vol),   2) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,pressure_sensor,command_data.pressure_sensor),   3) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,nine_axle,command_data.nine_axle),   4)
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,nine_axle,command_data.nine_axle),   4) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,nine_axle_solve,command_data.nine_axle_solve),   5)
 #define FacDataCollectItem_CALLBACK NULL
 #define FacDataCollectItem_DEFAULT NULL
 #define FacDataCollectItem_command_data_bat_vol_MSGTYPE DataCollectParam
 #define FacDataCollectItem_command_data_pressure_sensor_MSGTYPE DataCollectParam
 #define FacDataCollectItem_command_data_nine_axle_MSGTYPE DataCollectParam
+#define FacDataCollectItem_command_data_nine_axle_solve_MSGTYPE DataCollectParam
 
 #define FacCollectParam_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, MESSAGE,  param,             2) \
@@ -1302,7 +1325,16 @@ X(a, STATIC,   SINGULAR, UINT32,   gyro_y,            6) \
 X(a, STATIC,   SINGULAR, UINT32,   gyro_z,            7) \
 X(a, STATIC,   SINGULAR, UINT32,   magnet_x,          8) \
 X(a, STATIC,   SINGULAR, UINT32,   magnet_y,          9) \
-X(a, STATIC,   SINGULAR, UINT32,   magnet_z,         10)
+X(a, STATIC,   SINGULAR, UINT32,   magnet_z,         10) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_acc_x,      12) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_acc_y,      13) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_acc_z,      14) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_gyro_x,     15) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_gyro_y,     16) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_gyro_z,     17) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_magn_x,     18) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_magn_y,     19) \
+X(a, STATIC,   SINGULAR, FLOAT,    solve_magn_z,     20)
 #define NineAlexData_CALLBACK NULL
 #define NineAlexData_DEFAULT NULL
 
@@ -1515,12 +1547,12 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacRegisterConfig_size                   12
 #define FacSetBrushRecord_size                   66
 #define FacSetTime_size                          12
-#define FacUploadNineAlex_size                   933
+#define FacUploadNineAlex_size                   1683
 #define FacUploadPresSensor_size                 843
 #define FacWifiDemand_size                       189
 #define FacWifiInfo_size                         110
-#define FactoryDataPackage_size                  939
-#define NineAlexData_size                        60
+#define FactoryDataPackage_size                  1689
+#define NineAlexData_size                        110
 #define PresurceSensorData_size                  54
 #define PresurceSensorItem_size                  12
 #define ServoMotorInfo_size                      18

@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>12</number>
+               <number>9</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1317,6 +1317,13 @@
                         </property>
                        </widget>
                       </item>
+                      <item row="4" column="0">
+                       <widget class="QPushButton" name="py_test">
+                        <property name="text">
+                         <string>脚本测试</string>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </widget>
                    </item>
@@ -1669,6 +1676,27 @@
                       <widget class="QPushButton" name="stopimuCaliButton">
                        <property name="text">
                         <string>停止六轴校准</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="open_imu_collect_solve">
+                       <property name="text">
+                        <string>开启六轴采集（处理）</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="close_imu_collect_solve">
+                       <property name="text">
+                        <string>关闭六轴采集（处理）</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="transfer_xls">
+                       <property name="text">
+                        <string>转化xls</string>
                        </property>
                       </widget>
                      </item>
@@ -3341,10 +3369,24 @@
                 <string>ui预览</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_16">
-                <item row="3" column="0">
-                 <widget class="QPushButton" name="clear_picture">
+                <item row="3" column="3">
+                 <widget class="QPushButton" name="play_picture">
                   <property name="text">
-                   <string>清空牙刷图片</string>
+                   <string>播放</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="5">
+                 <widget class="QLineEdit" name="uissidInput">
+                  <property name="text">
+                   <string>usmile_guest</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="4">
+                 <widget class="QPushButton" name="set_play_speed">
+                  <property name="text">
+                   <string>设置播放速度</string>
                   </property>
                  </widget>
                 </item>
@@ -3382,6 +3424,13 @@ border-color: rgb(255, 165, 0)</string>
                   </item>
                  </layout>
                 </item>
+                <item row="4" column="4">
+                 <widget class="QPushButton" name="init_ui_data">
+                  <property name="text">
+                   <string>格式化存储</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="2" column="3">
                  <widget class="QPushButton" name="up_picture">
                   <property name="text">
@@ -3389,35 +3438,7 @@ border-color: rgb(255, 165, 0)</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0">
-                 <widget class="QPushButton" name="get_battery_level">
-                  <property name="text">
-                   <string>获取电量</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="6">
-                 <widget class="QLineEdit" name="uipasswordInput">
-                  <property name="text">
-                   <string>Starspulse#@2024</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QPushButton" name="send_wifi_config">
-                  <property name="text">
-                   <string>配置网络信息</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="2">
-                 <widget class="QPushButton" name="init_ui_data">
-                  <property name="text">
-                   <string>格式化存储</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="5" colspan="2">
+                <item row="4" column="5" colspan="2">
                  <layout class="QHBoxLayout" name="horizontalLayout_69">
                   <item>
                    <widget class="QLabel" name="label_42">
@@ -3435,24 +3456,48 @@ border-color: rgb(255, 165, 0)</string>
                   </item>
                  </layout>
                 </item>
-                <item row="2" column="5">
-                 <widget class="QLineEdit" name="uissidInput">
+                <item row="2" column="6">
+                 <widget class="QLineEdit" name="uipasswordInput">
                   <property name="text">
-                   <string>usmile_guest</string>
+                   <string>Starspulse#@2024</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="3">
+                <item row="4" column="0">
+                 <widget class="QPushButton" name="clear_picture">
+                  <property name="text">
+                   <string>清空牙刷图片</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="4">
+                 <widget class="QPushButton" name="send_wifi_config">
+                  <property name="text">
+                   <string>配置网络信息</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QPushButton" name="get_battery_level">
+                  <property name="text">
+                   <string>获取电量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="3">
                  <widget class="QPushButton" name="down_picture">
                   <property name="text">
                    <string>下一张</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="4">
-                 <widget class="QPushButton" name="play_picture">
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="play_speed">
                   <property name="text">
-                   <string>播放</string>
+                   <string>50</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>输入播放间隔时间</string>
                   </property>
                  </widget>
                 </item>

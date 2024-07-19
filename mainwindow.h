@@ -186,7 +186,6 @@ private:
     QLabel *board_sn = nullptr;
     QLabel *tail_sn = nullptr;
     QLabel *sub_pid = nullptr;
-    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
 
   std::atomic<bool> running;
      QFuture<void> future;
@@ -269,6 +268,7 @@ signals:
 private slots:
     void updateImageOnMainThread();
     void refresh_log_data(QString data);
+    void saveToCsv(const QString &filename, const FacUploadNineAlex &x);
 
     void showlog(QString msg);
     void refresh_imu_cali_msg(QString msg);
@@ -371,6 +371,8 @@ private slots:
     QString getMotorStateString(FacMotoState state) ;
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
+    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
+    void  convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
 
     void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
                                bool appHeader);
@@ -445,5 +447,10 @@ private slots:
     void on_up_picture_clicked();
     void on_down_picture_clicked();
     void on_play_picture_clicked();
+    void on_open_imu_collect_solve_clicked();
+    void on_py_test_clicked();
+    void on_set_play_speed_clicked();
+    void on_close_imu_collect_solve_clicked();
+    void on_transfer_xls_clicked();
 };
 #endif   // MAINWINDOW_H

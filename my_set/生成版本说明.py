@@ -6,7 +6,7 @@ from datetime import datetime
 # 可配置的内容置顶
 REPO_PATH = r"D:\new_production\new_production"
 SINCE_DATE = "2024-01-01"
-UNTIL_DATE = "2024-7-17"
+UNTIL_DATE = "2024-12-31"
 
 # 定义头文件路径
 HEADERS_FILE = r"D:\new_production\new_production\my_set\AbIni.h"
@@ -61,6 +61,7 @@ def get_git_commits(repo_path, since, until):
         return None
     
 def save_commits_to_md(commits, file_path):
+    print(commits)
     with open(file_path, 'a', encoding='utf-8') as file:  # 使用 'a' 模式打开文件，追加内容
         # 获取当前日期
         current_date = datetime.now().strftime("%Y-%m-%d")
@@ -79,10 +80,12 @@ def save_commits_to_md(commits, file_path):
         for line in commits.splitlines():
             for tag, definition in COMMIT_DEFINITIONS.items():
                 if tag in line:
-                    start_index = line.index(tag) + len(tag) + 1
-                    update_info = line[start_index:].strip()
-                    version_updates[tag].append(update_info)
-                    break  # 找到匹配后即可退出内层循环
+                    # 提取包含该标签的所有部分
+                    updates = re.findall(rf"\[{tag}\]\s*(.*?)(?=\s*\[\w+_VER\]|$)", line)
+             
+                    for update_info in updates:
+                        # print(update_info)
+                        version_updates[tag].append(update_info.strip())
         
         # 写入每个版本号及其对应的更新信息
         for index, (tag, definition) in enumerate(COMMIT_DEFINITIONS.items(), start=1):
@@ -98,6 +101,7 @@ def save_commits_to_md(commits, file_path):
                 file.write(" (-----)")
             file.write("\n")
         file.write("\n")
+
 if __name__ == "__main__":
     print(f"使用的git本地库为: {REPO_PATH}")
     

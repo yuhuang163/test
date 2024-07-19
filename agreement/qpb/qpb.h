@@ -257,7 +257,7 @@ private:
 
 public slots:
     void set_press_sensor_temp(int state);
-
+    void set_solve_imu_collect_param(FacSwitch sta);   // 设置imu采集开关
     void set_uart_receive(int state);                  // 设置UART接收状态
     void set_rgb_color(FacLedControl data);            // 设置RGB颜色
     void set_motor_cali(int state);                    // 设置电机校准状态

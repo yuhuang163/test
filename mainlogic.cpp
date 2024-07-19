@@ -487,21 +487,23 @@ void MainWindow::solve_frame(void)
             if (frame_size > ring_size)
             {
                 qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
-
                 break;
             }
 
             // 从环形缓冲区中读取整个帧的数据
             dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, frame_size);
-
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
             if (1)
             {
-
-                qDebug() << "图片数据包的第一字节为" << head->data[0];
+                if(head->data[0]==dataNumber){
+                    pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
+                    qDebug() << "响应" ;
+                }
+                 qDebug() << "图片数据包的第一字节为" << head->data[0];
                  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
                  emit send_thread_date("图片数据包总数" + QString::number(++dataNumber));
                  emit send_thread_date("图片数据包总字节数" + QString::number(totalsize=totalsize+head->length));
+
 
                 // 处理帧数据
                 write_camera_data(head->data, head->length);
@@ -753,7 +755,7 @@ void MainWindow::solve_picture_frame(void)
         {
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
 
-            qDebug() << "数据包：" << ++dataNumber;
+            //qDebug() << "数据包：" << ++dataNumber;
 
             if (frame_size > ring_size)
             {
@@ -1373,28 +1375,104 @@ void MainWindow::saveToExcel(const QString &filename, const FacUploadNineAlex &x
     for (int i = 0; i < x.data_count; i++)
     {
         xlsx.write(row, 1, x.data[i].timestamp);
-        xlsx.write(row, 2, x.data[i].acc_x);
-        xlsx.write(row, 3, x.data[i].acc_y);
-        xlsx.write(row, 4, x.data[i].acc_z);
-        xlsx.write(row, 5, x.data[i].gyro_x);
-        xlsx.write(row, 6, x.data[i].gyro_y);
-        xlsx.write(row, 7, x.data[i].gyro_z);
+        xlsx.write(row, 2, x.data[i].solve_acc_x);
+        xlsx.write(row, 3, x.data[i].solve_acc_y);
+        xlsx.write(row, 4, x.data[i].solve_acc_z);
+        xlsx.write(row, 5, x.data[i].solve_gyro_x);
+        xlsx.write(row, 6, x.data[i].solve_gyro_y);
+        xlsx.write(row, 7, x.data[i].solve_gyro_z);
         row++;
+
+        QCoreApplication::processEvents();
+
     }
 
     if (xlsx.saveAs(filename)) {
         qDebug() << "文件保存成功：" << filename;
+        qDebug() << "保存数量为" << x.data_count;
+
     } else {
         qDebug() << "文件保存失败：" << filename;
     }
 }
+void  MainWindow::convertCsvToXls(const QString &csvFilename, const QString &xlsFilename)
+{
+    QFile csvFile(csvFilename);
+    if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "无法打开 CSV 文件进行读取：" << csvFilename;
+        return;
+    }
+
+    QTextStream in(&csvFile);
+    QXlsx::Document xlsx;  // 创建一个新的 XLSX 文档
+    xlsx.addSheet("data");  // 创建一个名为 "data" 的工作表
+    xlsx.selectSheet("data");  // 选择该工作表
+    int row = 1;
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList fields = line.split(',', QString::SkipEmptyParts);
+
+        for (int col = 0; col < fields.size(); ++col) {
+            xlsx.write(row, col + 1, fields.at(col));
+        }
+
+        row++;
+        QCoreApplication::processEvents();  // 避免长时间操作时 UI 冻结
+    }
+
+    csvFile.close();
+
+    if (xlsx.saveAs(xlsFilename)) {
+        qDebug() << "文件转换成功：" << xlsFilename;
+    } else {
+        qDebug() << "文件转换失败：" << xlsFilename;
+    }
+}
+void MainWindow::saveToCsv(const QString &filename, const FacUploadNineAlex &x)
+{
+    QFile file(filename);
+    bool fileExists = file.exists();
+
+    if (!file.open(QIODevice::Append | QIODevice::Text)) {
+        qDebug() << "无法打开文件进行写入：" << filename;
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // 如果文件不存在，写入标题行
+    if (!fileExists) {
+        out << "timestamp,AccX,AccY,AccZ,GyroX,GyroY,GyroZ\n";
+    }
+
+    // 写入数据行
+    for (int i = 0; i < x.data_count; i++)
+    {
+        out << x.data[i].timestamp << ','
+            << x.data[i].solve_acc_x << ','
+            << x.data[i].solve_acc_y << ','
+            << x.data[i].solve_acc_z << ','
+            << x.data[i].solve_gyro_x << ','
+            << x.data[i].solve_gyro_y << ','
+            << x.data[i].solve_gyro_z << '\n';
+
+        // 如果需要防止UI冻结，调用processEvents()
+        QCoreApplication::processEvents();
+    }
+
+    file.close();
+
+    qDebug() << "文件保存成功：" << filename;
+    qDebug() << "保存数量为" << x.data_count;
+}
 void MainWindow::getimuData(FacUploadNineAlex x)
 {
      qDebug() << "开始保存" ;
+    //saveToExcel("data.xlsx", x);
+   saveToCsv("6轴IMU性能验证.csv", x);
     for (int i = 0; i < x.data_count; i++)
     {
 
-        saveToExcel("六轴数据.xlsx", x);
         orgData.acc[0] = x.data[i].acc_x;
         orgData.acc[1] = x.data[i].acc_y;
         orgData.acc[2] = x.data[i].acc_z;
@@ -1408,7 +1486,6 @@ void MainWindow::getimuData(FacUploadNineAlex x)
         ui->acc_x->setText("acc_x=" + QString::number(orgData.acc[0]));
         ui->acc_y->setText("acc_y=" + QString::number(orgData.acc[1]));
         ui->acc_z->setText("acc_z=" + QString::number(orgData.acc[2]));
-
 
 
     }

@@ -455,6 +455,8 @@ enum DataCollectType
     BATTERY = 0;
     PRESSURE_SENSOR = 1;
     NINE_AXLE = 2;
+    NINE_AXLE_SOLVE = 3;
+
 }
 
 enum FacBrushControlType
@@ -489,6 +491,7 @@ message FacDataCollectItem
         DataCollectParam bat_vol = 2;   //电池电压
         DataCollectParam pressure_sensor = 3; //压感 刷头压感+压感按键
         DataCollectParam nine_axle = 4;	      //9轴 地磁+IMU
+        DataCollectParam nine_axle_solve = 5;	//处理过的9轴 地磁+IMU
     }
 }
 
@@ -557,6 +560,17 @@ message NineAlexData
     uint32 magnet_x = 8;
     uint32 magnet_y = 9;
     uint32 magnet_z = 10;
+
+    float solve_acc_x = 12;
+    float solve_acc_y = 13;
+    float solve_acc_z = 14;
+    float solve_gyro_x = 15;
+    float solve_gyro_y = 16;
+    float solve_gyro_z = 17;
+    float solve_magn_x = 18;
+    float solve_magn_y = 19;
+    float solve_magn_z = 20;
+
 }
 
 message FacUploadNineAlex 
@@ -564,6 +578,11 @@ message FacUploadNineAlex
     repeated NineAlexData data = 2 [(nanopb).max_count = 15];
     FacErrorCode result = 100;
 }
+
+
+
+
+
 
 
 message PresurceSensorItem

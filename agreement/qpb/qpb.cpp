@@ -1303,7 +1303,23 @@ void Qpb::set_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
     sendShortPack(pack);
     qDebug() << "设置imu采集开关" << sta;
 }
+void Qpb::set_solve_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
+{
+    FactroyCmd cmd = FactroyCmd_SET_COLLECT_PARAM;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_set_collect_param_tag;
+    pack.command_data.set_collect_param.param_count = 1;
+    pack.command_data.set_collect_param.param[0].type = DataCollectType_NINE_AXLE_SOLVE;
+    pack.command_data.set_collect_param.param[0].which_command_data =
+        FacDataCollectItem_nine_axle_solve_tag;
+    pack.command_data.set_collect_param.param[0].command_data.nine_axle.state = sta;
+    pack.command_data.set_collect_param.param[0].command_data.nine_axle.sampling_rate = 50;
 
+    sendShortPack(pack);
+    qDebug() << "设置处理后的imu采集开关" << sta;
+}
 void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
 {
 
@@ -1316,7 +1332,7 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
     pack.command_data.camera_control.value_item.respond_data_packet = sta;
     pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
     sendShortPack(pack);
-    qDebug() << "摄像头数据包回应";
+    qDebug() << "发送摄像头数据包回应";
 }
 
 void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果

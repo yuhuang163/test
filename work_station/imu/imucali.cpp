@@ -128,6 +128,8 @@ imucali::imucali(int index, QWidget *parent)
     ui->msgEdit->appendPlainText("IMU_Wait_Time=" + QString::number(imu_wait_time));
     ui->msgEdit->appendPlainText("IMU_Compare_Wait_Time=" + QString::number(imu_compare_wait_time));
     ui->msgEdit->appendPlainText("ImuCompareData=" + QString::number(ImuCompareData));
+    ui->msgEdit->appendPlainText("imu_cali_wait_time=" + QString::number(imu_cali_wait_time));
+
 
     QFont font("Arial", 10);
     ui->gyro_x->setFont(font);
