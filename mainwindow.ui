@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>9</number>
+               <number>12</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3427,7 +3427,7 @@ border-color: rgb(255, 165, 0)</string>
                 <item row="4" column="4">
                  <widget class="QPushButton" name="init_ui_data">
                   <property name="text">
-                   <string>格式化存储</string>
+                   <string>格式化全部</string>
                   </property>
                  </widget>
                 </item>

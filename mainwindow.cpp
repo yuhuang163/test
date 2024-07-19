@@ -1765,7 +1765,7 @@ void MainWindow::on_otaTestPushButton_2_clicked()
       << "FLASH错误" << "No Memory" << "TRANS_TIMEOUT" << "TRANS_OVER_RANGE" << " 下载成功"
       << "下载失败";
 
-    // at->resetConnected();
+    // at->resetConnected();//注释
     // at->sendotaMac(ui->macInput_7->text());
     pb->setPbMode(0);
     timeout.start();
