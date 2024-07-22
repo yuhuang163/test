@@ -112,6 +112,8 @@ int main(int argc, char *argv[])
     QString station = settings.value("SYSTEM/station").toString();   // 工站
     qDebug() << "工站为：" + station;
 
+
+      qRegisterMetaType<FacErrorCode>("FacErrorCode");
     // #QUIESCENT_CURRENT
     // #MOTOR_TEST
     // #IMU_CALI

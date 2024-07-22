@@ -24,6 +24,7 @@ Qpb::Qpb(QSerialPort *parent) : QSerialPort{parent}
 {
     serialPort = parent;
     registerCommand();
+
 }
 
 uint16_t Qpb::calCrc16(const std::vector<uint8_t> &d)
@@ -231,6 +232,7 @@ void Qpb::sendShortPack(const FactoryDataPackage &pack)
         tx_buffer[0] = 0;
         tx_buffer[len + 1] =
             calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+
         serialPort->write((char *)tx_buffer.data(), len + 2);
 
         /**************自我验证pb正常吗****************/
@@ -1333,6 +1335,8 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
     pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
     sendShortPack(pack);
     qDebug() << "发送摄像头数据包回应";
+
+    emit send_pb_date("发送摄像头数据包回应");
 }
 
 void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果

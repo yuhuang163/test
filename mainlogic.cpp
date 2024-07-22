@@ -496,8 +496,16 @@ void MainWindow::solve_frame(void)
             if (1)
             {
                 if(head->data[0]==dataNumber){
-                    pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
-                    qDebug() << "响应" ;
+                   //emit need_send_camera_respone(FacErrorCode_NO_ERROR);
+                  //  pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
+                   if (pb == nullptr) {
+                       qWarning() << "pb 是空指针，无法调用 set_camera_data_respone";
+                       return;
+                   }
+
+                   QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::QueuedConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
+
+                    qDebug() << "响应";
                 }
                  qDebug() << "图片数据包的第一字节为" << head->data[0];
                  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
@@ -536,7 +544,7 @@ void MainWindow::solve_frame(void)
             }
             else
             {
-                // qDebug() << "找不到帧头";
+                 qDebug() << "找不到帧头";
                 break;
             }
         }
@@ -1467,9 +1475,9 @@ void MainWindow::saveToCsv(const QString &filename, const FacUploadNineAlex &x)
 }
 void MainWindow::getimuData(FacUploadNineAlex x)
 {
-     qDebug() << "开始保存" ;
-    //saveToExcel("data.xlsx", x);
-   saveToCsv("6轴IMU性能验证.csv", x);
+    qDebug() << "开始保存" ;
+
+    saveToCsv("6轴IMU性能验证.csv", x);
     for (int i = 0; i < x.data_count; i++)
     {
 

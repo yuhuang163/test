@@ -27,12 +27,12 @@ void MainWindow::on_pushButton_clicked()
 
     // on_macInput_returnPressed();
     // // pb->set_device_mode();//进入亮白
+    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
 
-    pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
+   // pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
 }
 void MainWindow::on_pushButton_3_clicked()
 {
-    solve_frame();
     // pb->get_battery();
     // pb->get_battery();
     // pb->get_battery();
@@ -112,7 +112,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     initBasicInfo();
     initPeriphState();
-
     OTAGroup->addButton(ui->product_ver, 0);   // 分组1、序号0
     OTAGroup->addButton(ui->test_ver, 1);      // 分组1、序号1
 
@@ -151,6 +150,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(get_wifi_msg(QString)));
     connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this,
             SLOT(update_local_ota_result(FacInternetOta)));
+
+    connect(this, SIGNAL(need_send_camera_respone(FacErrorCode)), pb,
+            SLOT(set_camera_data_respone(FacErrorCode)));
+
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refresh_motor_cali_msg(QString)));
 
     connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(FacWifiDemand)), this,
@@ -277,6 +280,7 @@ MainWindow::MainWindow(QWidget *parent)
     dongleRingBuf =
         new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
+    recoverCustom();
 
     // //  在需要的地方调用 QtConcurrent::run 来异步执行函数
     // QFuture<void> future = QtConcurrent::run([this]() {
@@ -289,7 +293,6 @@ MainWindow::MainWindow(QWidget *parent)
     //     }
 
     // });
-    recoverCustom();
 
     // 启动后台线程
     future = QtConcurrent::run(
@@ -581,6 +584,10 @@ void MainWindow::on_damping_close_clicked()
 
 void MainWindow::on_disconnectButton_clicked()
 {
+        at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+
+    waitWork(100);
+
     closeDongleSerialPort();
     ui->connectButton->setEnabled(true);
     refresh_ble_state(0);
@@ -3255,13 +3262,19 @@ void MainWindow::on_set_play_speed_clicked()
 void MainWindow::on_close_imu_collect_solve_clicked()
 {
     pb->set_solve_imu_collect_param(FacSwitch_STOP);
-
 }
 
 
 void MainWindow::on_transfer_xls_clicked()
 {
-    convertCsvToXls("6轴IMU性能验证.csv", "6轴IMU性能验证.xls");
+
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    // 按照指定格式格式化日期和时间
+    QString formattedDateTime = currentDateTime.toString("yyyyMMdd");
+    // 构建新的文件名
+   QString newcsvFileName = QString("xx_%1_s1_t1_g1_people_F_30_160_R_%2.xls").arg(macAddress.remove(':').right(4)).arg(formattedDateTime);
+
+    convertCsvToXls("6轴IMU性能验证.csv", newcsvFileName);
 
 }
 

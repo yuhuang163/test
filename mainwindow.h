@@ -43,6 +43,7 @@
 #include <QGraphicsView>
 #include <QPixmap>
 #include <QWheelEvent>
+Q_DECLARE_METATYPE(FacErrorCode)
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -263,7 +264,7 @@ signals:
     void refreshDongleSerialPortState(int state);
     void imageProcessed();
     void send_thread_date(QString);
-
+    void need_send_camera_respone(FacErrorCode);
 
 private slots:
     void updateImageOnMainThread();

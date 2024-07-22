@@ -190,7 +190,14 @@ void imubox::resetall()
     if (pack.product == "Y20"||pack.product == "Q20"||pack.product == "U7P"||pack.product == "U7")
     {
 
-        set_cylinder_state(STATE_BRUSH_LEFT);
+        if (pack.factory == "xwd")
+        {
+             set_cylinder_state(STATE_BRUSH_RIGHT);
+        }else{
+            set_cylinder_state(STATE_BRUSH_LEFT);
+
+        }
+
         waitWork(1500);
     }
 

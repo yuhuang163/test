@@ -55,7 +55,7 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具   V1.2.0"        // 支持1拖多
+#define DEBUG_VER  "电刷产测工具   V1.2.1"        // 支持1拖多
 #define AGE_VER    "老化测试工站   V1.0.9"            // 支持1拖多
 #define MOTOR_VER  "电机校准工站   V1.0.9"            // 加定时器判断休
 #define QC_VER     "静态电流测试   V1.2.7"        // 增加定时器判断休眠
@@ -67,8 +67,8 @@
 #define CAMERA_VER "摄像测试工站   V1.0.6"      // 支持摄像头工站
 #define IMU_VER    "IMU校准工站    V1.3.0"         // 支持自动化治具
 
-// [DEBUG_VER] 进一步解决算法采集的要求，ui预览增加播放速度的修改，初步验证算法的python运行情况
-// [IMU_VER] 解决六轴退不出问题，确保发送校准结果不被别的事件影响
+// [DEBUG_VER] 修改生成的采测的xls文件的名字
+// [IMU_VER] 适配欣旺达的六轴新治具
 // [AGE_VER] 增加了自动化测试功能
 // [CAMERA_VER] 更新了摄像头测试工站的图像处理算法
 
