@@ -29,7 +29,14 @@ void MainWindow::on_pushButton_clicked()
     // on_macInput_returnPressed();
     // // pb->set_device_mode();//进入亮白
    // emit need_send_camera_respone(FacErrorCode_NO_ERROR);
-    printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()), pictureByteArray.size());
+  //  printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()), pictureByteArray.size());
+
+
+    QVector<int> faultData = {1, 2, 3, 4, 5};
+  emit  need_send_fault_data_packet(faultData.size(), faultData);
+
+
+
     // for(int i=0;i<100;i++){
     //     pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
     //     waitWork(10);
@@ -39,7 +46,7 @@ void MainWindow::on_pushButton_3_clicked()
 {
 
     qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
+    allPackets.clear();
     const int width = 180;
     const int height = 200;
     const int half_width = width / 2;
@@ -217,6 +224,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refresh_pb_data(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refresh_pb_data(QString)));
 
+
+
+
+        connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
+                SLOT(getPictureSendOver(FacPictureDataAck)));
+
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this,
             SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this,
@@ -232,6 +245,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(this, SIGNAL(need_send_camera_respone(FacErrorCode)), pb,
             SLOT(set_camera_data_respone(FacErrorCode)));
+
+    connect(this, SIGNAL(need_send_fault_data_packet(int ,const QVector<int>&)), pb,
+            SLOT(set_camera_fault_data_packet(int ,const QVector<int>&)));
+
 
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refresh_motor_cali_msg(QString)));
 
@@ -396,7 +413,7 @@ void MainWindow::on_add_data_clicked()
     {
         std::vector<uint8_t> p_data(36040 - ring_size, 0);   // 动态分配大小并初始化为0
         write_camera_data(p_data.data(), p_data.size());     // 使用向量的数据和大小
-        solve_picture_frame();
+      //  solve_picture_frame();
     }
 }
 
@@ -2886,6 +2903,7 @@ void MainWindow::on_close_support_camera_clicked()
 
 void MainWindow::on_open_camera_picture_clicked()
 {
+    faultData.clear();
     cameradatasize = 0;
     dataNumber = 0;
     pb->set_camera_picture_state(1);

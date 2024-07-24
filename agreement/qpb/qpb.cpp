@@ -1327,21 +1327,39 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
 {
   //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-    FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
-    FactoryDataPackage pack;
-    memset(&pack, 0, sizeof(pack));
-    pack.cmd_id = cmd;
-    pack.which_command_data = FactoryDataPackage_camera_control_tag;
-    pack.command_data.camera_control.which_value_item = FacCameraControl_respond_data_packet_tag;
-    pack.command_data.camera_control.value_item.respond_data_packet = sta;
-    pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
-    sendShortPack(pack);
-    //qDebug() << "发送摄像头数据包回应";
-    qDebug() << "pb2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    // FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
+    // FactoryDataPackage pack;
+    // memset(&pack, 0, sizeof(pack));
+    // pack.cmd_id = cmd;
+    // pack.which_command_data = FactoryDataPackage_camera_control_tag;
+    // pack.command_data.camera_control.which_value_item = FacCameraControl_respond_data_packet_tag;
+    // pack.command_data.camera_control.value_item.respond_data_packet = sta;
+    // pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
+    // sendShortPack(pack);
+    // //qDebug() << "发送摄像头数据包回应";
+    // qDebug() << "pb2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
    // emit send_pb_date("发送摄像头数据包回应");
 }
+void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 发送校准结果
+{
+    //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
+    FactroyCmd cmd = FactroyCmd_UPLOAD_PICTURE_DATA;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_upload_picture_data_tag;
+    pack.command_data.upload_picture_data.fault_data_packet_count = count;
+
+    for(int i = 0; i < count && i < data.size(); i++) {
+        pack.command_data.upload_picture_data.fault_data_packet[i] = data[i];
+    }
+
+    sendShortPack(pack);
+
+    emit send_pb_date("发送摄像头数据包回应");
+}
 void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果
 {
     FactroyCmd cmd = FactroyCmd_SET_PRESS_SENSOR_CALIB;
@@ -1498,7 +1516,25 @@ void Qpb::registerCommand()
 
     factoryCommandList[FactroyCmd_WIFI_DEMAND] = std::bind(
         &Qpb::process_FactroyCmd_WIFI_DEMAND, this, std::placeholders::_1);   // 获取电量信息
+
+    factoryCommandList[FactroyCmd_UPLOAD_PICTURE_DATA] = std::bind(
+        &Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA, this, std::placeholders::_1);   // 获取电量信息
+
 }
+void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage &f)
+{
+    FacPictureDataAck x;
+    memcpy(&x, &f.command_data, sizeof(x));
+    if( x.send_data_over==FacErrorCode_NO_ERROR){
+
+    emit send_get_picture_send_over(x);
+    emit sendGetBrushResponse(1);
+
+    }
+    qDebug() << "收到发送数据包结束回应" << x.send_data_over;
+
+}
+
 void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage &f)
 {
     FacWifiDemand x;

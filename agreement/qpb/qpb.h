@@ -304,6 +304,7 @@ public slots:
     void set_press_collect_param(FacSwitch sta);      // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);        // 设置IMU采集参数
     void set_camera_data_respone(FacErrorCode sta);        // 设置IMU采集参数
+    void set_camera_fault_data_packet(int count, const QVector<int>& data);
 
 public slots:
     void get_battery();                                   // 获取电池信息
@@ -343,6 +344,8 @@ private slots:
     void process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage &f);
     void process_FactroyCmd_INTERNET_OTA(FactoryDataPackage &f);
     void process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage &f);
+    void process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage &f);
+
 signals:
     void send_press_data(FacUploadPresSensor);
     void send_base_data(FacGetDevBaseInfo get_dev_base_info);
@@ -361,6 +364,7 @@ signals:
     void send_camera_CONTROL_state(FacCameraControl);
     void send_servo_motor_info_msg(FacMotorCalibResult);
 
+    void send_get_picture_send_over(FacPictureDataAck);
 
     void send_pb_date(QString data);
     void send_motor_cali_msg(QString data);

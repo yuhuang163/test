@@ -57,6 +57,9 @@ PB_BIND(FacMotorCalibResult, FacMotorCalibResult, 2)
 PB_BIND(FacCameraControl, FacCameraControl, 2)
 
 
+PB_BIND(FacPictureDataAck, FacPictureDataAck, 2)
+
+
 PB_BIND(FacLedColor, FacLedColor, AUTO)
 
 

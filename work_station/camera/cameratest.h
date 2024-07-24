@@ -244,7 +244,7 @@ protected:
 
 private slots:
     void readDongleSerialPortData() override;
-    void refresh_pb_data(QString data);
+    void getPictureSendOver(FacPictureDataAck x);
 
     void onTimeout();
     void get_dongle_ver(QString data) override;

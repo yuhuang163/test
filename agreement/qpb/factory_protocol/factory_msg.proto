@@ -39,6 +39,7 @@ enum FactroyCmd {
     GET_BUTTON_STATE=0x15;
     UPLOAD_BUTTON_STATE=0x16;
     UPLOAD_MOTORCALI_DATA=0x17;
+    UPLOAD_PICTURE_DATA=0x18;
 
     SET_PRESS_SENSOR_CALIB = 0x20;
     GET_PRESS_SENSOR_CALIB = 0x21;
@@ -75,6 +76,8 @@ message FactoryDataPackage {
         FacButtonState get_button_state=0x15;
         FacButtonState upload_button_state=0x16;
         FacMotorCalibResult upload_motorcali_data=0x17;
+        FacPictureDataAck upload_picture_data=0x18;
+
 
         FacPreSensorCalibResult set_fsensor_calib = 0x20;
         FacPreSensorCalibResult get_fsensor_calib = 0x21;
@@ -86,6 +89,8 @@ message FactoryDataPackage {
         FacBrushControl brush_control = 0x27;
         FacSetTime set_time = 0x28;
         FacCameraControl camera_control = 0x29;
+
+
         FacAgeingTest ageing = 0x32;
         FacSetBrushRecord set_brush_record = 0x33;
         FacWifiDemand wifi_demand = 0x34;
@@ -407,7 +412,7 @@ enum FacCameraControlType
     camera_display_on_screen=3;
     camera_support_state=4;
     camera_get_picture=5;
-    camera_respond_data_packet=6;
+
 }
 
 message FacCameraControl
@@ -420,9 +425,20 @@ message FacCameraControl
         FacSwitch display_on_screen = 5;
         FacSwitch camera_support = 6;
         FacSwitch get_picture = 7;
-        FacErrorCode respond_data_packet = 8;
+  
+
     }
 
+    FacErrorCode result = 100;
+}
+
+
+message FacPictureDataAck
+{
+    FacErrorCode send_data_over = 1;
+    repeated uint32 fault_data_packet = 2[(nanopb).max_count = 20];
+
+    
     FacErrorCode result = 100;
 }
 

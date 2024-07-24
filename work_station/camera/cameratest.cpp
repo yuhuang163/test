@@ -134,7 +134,8 @@ cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_i
     connect(this, SIGNAL(need_send_camera_respone(FacErrorCode)), pb,
             SLOT(set_camera_data_respone(FacErrorCode)));
     connect(this, &cameratest::imageProcessed, this, &cameratest::updateImageOnMainThread);
-
+    connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
+            SLOT(getPictureSendOver(FacPictureDataAck)));
     viewercamrea = new ImageViewer("image_markings.png", this);
     ui->verticalLayout->addWidget(viewercamrea);   // 将 ImageViewer 添加到布局中
     viewercamrea->show();                          // 显示 ImageViewer
@@ -187,11 +188,16 @@ void cameratest::write_camera_data(uint8_t *p_data, int data_len)
         qDebug() << "通道不是摄像头";
     }
 }
-
-void cameratest::refresh_pb_data(QString data)
+void cameratest::getPictureSendOver(FacPictureDataAck x)
 {
-    ui->msgEdit->appendPlainText(data);
+
+
+
+
+
 }
+
+
 int cameratest::ext_ble_find_next_frame(void)
 {
     int i = 0;

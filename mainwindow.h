@@ -32,7 +32,13 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QWebEngineView>
-
+#include <QVector>
+#include <QCoreApplication>
+#include <QDebug>
+#include <QByteArray>
+#include <QMap>
+#include <QVector>
+#include <algorithm>
 // #include <iomanip>
 // #include <iostream>
 #include "camerabox.h"
@@ -50,7 +56,11 @@ namespace Ui
 {
     class MainWindow;
 }
+
 QT_END_NAMESPACE
+
+
+
 
 class MainWindow : public QMainWindow
 {
@@ -135,12 +145,13 @@ public:
     uint8_t camera_ring_buf[100 * 1024];       // 摄像头队列池
     uint8_t frame_picture_buf[50 * 1024];      // 照片队列池
     int ext_ble_find_next_frame(void);
-    int ext_ble_find_next_picture_frame(void);
+    int ext_ble_find_next_picture_frame(QByteArray &picturedata);
     void write_camera_data(uint8_t *p_data, int data_len);
     RingBuf *dongleRingBuf = nullptr;
     RingBuf *cameraRingBuf = nullptr;
     void solve_frame(void);
-    void solve_picture_frame(void);
+    void solve_picture_frame(QByteArray picturedata);
+
     /*摄像头传图部分*/
 
     MainWindow(QWidget *parent = nullptr);
@@ -225,7 +236,9 @@ private:
     QTimer *waittime = new QTimer(this);
     // 在您的类中声明定时器
     QTimer *cameratimer = new QTimer(this);
-
+    QVector<int> faultData ;
+    void addPacket(const QByteArray &packet);
+    QByteArray reassembleData();
     int imu_wait_time = 15000;
     int music_time = 30000;
     bool isovertime = 0;              // 是否开始发送校验结果
@@ -266,8 +279,12 @@ signals:
     void imageProcessed();
     void send_thread_date(QString);
     void need_send_camera_respone(FacErrorCode);
+    void need_send_fault_data_packet(int ,const QVector<int>&);
+
 
 private slots:
+    void getPictureSendOver(FacPictureDataAck x);
+
     void updateImageOnMainThread();
     void refresh_log_data(QString data);
     void saveToCsv(const QString &filename, const FacUploadNineAlex &x);
@@ -455,4 +472,7 @@ private slots:
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
 };
+
+
+
 #endif   // MAINWINDOW_H

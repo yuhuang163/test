@@ -32,6 +32,7 @@ typedef enum _FactroyCmd {
     FactroyCmd_GET_BUTTON_STATE = 21, 
     FactroyCmd_UPLOAD_BUTTON_STATE = 22, 
     FactroyCmd_UPLOAD_MOTORCALI_DATA = 23, 
+    FactroyCmd_UPLOAD_PICTURE_DATA = 24, 
     FactroyCmd_SET_PRESS_SENSOR_CALIB = 32, 
     FactroyCmd_GET_PRESS_SENSOR_CALIB = 33, 
     FactroyCmd_SET_IMU_CALIB = 34, 
@@ -180,8 +181,7 @@ typedef enum _FacCameraControlType {
     FacCameraControlType_camera_exposure_time = 2, 
     FacCameraControlType_camera_display_on_screen = 3, 
     FacCameraControlType_camera_support_state = 4, 
-    FacCameraControlType_camera_get_picture = 5, 
-    FacCameraControlType_camera_respond_data_packet = 6 
+    FacCameraControlType_camera_get_picture = 5 
 } FacCameraControlType;
 
 typedef enum _LedPosition { 
@@ -277,7 +277,6 @@ typedef struct _FacCameraControl {
         FacSwitch display_on_screen;
         FacSwitch camera_support;
         FacSwitch get_picture;
-        FacErrorCode respond_data_packet;
     } value_item; 
     FacErrorCode result; 
 } FacCameraControl;
@@ -338,6 +337,13 @@ typedef struct _FacOtaFileInfo {
     char url[256]; 
     char md5[64]; 
 } FacOtaFileInfo;
+
+typedef struct _FacPictureDataAck { 
+    FacErrorCode send_data_over; 
+    pb_size_t fault_data_packet_count;
+    uint32_t fault_data_packet[20]; 
+    FacErrorCode result; 
+} FacPictureDataAck;
 
 typedef struct _FacPreSensorCalibResult { 
     uint32_t brush_head_adc; /* uint16 */
@@ -587,6 +593,7 @@ typedef struct _FactoryDataPackage {
         FacButtonState get_button_state;
         FacButtonState upload_button_state;
         FacMotorCalibResult upload_motorcali_data;
+        FacPictureDataAck upload_picture_data;
         FacPreSensorCalibResult set_fsensor_calib;
         FacPreSensorCalibResult get_fsensor_calib;
         FacImuCalibResult set_imu_calib;
@@ -667,8 +674,8 @@ typedef struct _FactoryDataPackage {
 #define _FacMotorUploadType_ARRAYSIZE ((FacMotorUploadType)(FacMotorUploadType_SERVO_INFO+1))
 
 #define _FacCameraControlType_MIN FacCameraControlType_camera_state
-#define _FacCameraControlType_MAX FacCameraControlType_camera_respond_data_packet
-#define _FacCameraControlType_ARRAYSIZE ((FacCameraControlType)(FacCameraControlType_camera_respond_data_packet+1))
+#define _FacCameraControlType_MAX FacCameraControlType_camera_get_picture
+#define _FacCameraControlType_ARRAYSIZE ((FacCameraControlType)(FacCameraControlType_camera_get_picture+1))
 
 #define _LedPosition_MIN LedPosition_led_left_up
 #define _LedPosition_MAX LedPosition_led_right_down
@@ -713,6 +720,7 @@ extern "C" {
 #define FacMotoControl_init_default              {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_default         {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacCameraControl_init_default            {_FacCameraControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
+#define FacPictureDataAck_init_default           {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
 #define FacLedColor_init_default                 {_LedPosition_MIN, 0, 0, 0}
 #define FacLedControl_init_default               {0, _FacSwitch_MIN, 0, {FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default}, _FacErrorCode_MIN}
 #define FacBrushControl_init_default             {_FacBrushControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
@@ -752,6 +760,7 @@ extern "C" {
 #define FacMotoControl_init_zero                 {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_zero            {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacCameraControl_init_zero               {_FacCameraControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
+#define FacPictureDataAck_init_zero              {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
 #define FacLedColor_init_zero                    {_LedPosition_MIN, 0, 0, 0}
 #define FacLedControl_init_zero                  {0, _FacSwitch_MIN, 0, {FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero}, _FacErrorCode_MIN}
 #define FacBrushControl_init_zero                {_FacBrushControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
@@ -812,7 +821,6 @@ extern "C" {
 #define FacCameraControl_display_on_screen_tag   5
 #define FacCameraControl_camera_support_tag      6
 #define FacCameraControl_get_picture_tag         7
-#define FacCameraControl_respond_data_packet_tag 8
 #define FacCameraControl_result_tag              100
 #define FacDevState_dev_state_type_tag           1
 #define FacDevState_state_tag                    2
@@ -851,6 +859,9 @@ extern "C" {
 #define FacOtaFileInfo_version_type_tag          3
 #define FacOtaFileInfo_url_tag                   4
 #define FacOtaFileInfo_md5_tag                   5
+#define FacPictureDataAck_send_data_over_tag     1
+#define FacPictureDataAck_fault_data_packet_tag  2
+#define FacPictureDataAck_result_tag             100
 #define FacPreSensorCalibResult_brush_head_adc_tag 1
 #define FacPreSensorCalibResult_mode_button_adc_tag 2
 #define FacPreSensorCalibResult_power_button_adc_tag 3
@@ -987,6 +998,7 @@ extern "C" {
 #define FactoryDataPackage_get_button_state_tag  21
 #define FactoryDataPackage_upload_button_state_tag 22
 #define FactoryDataPackage_upload_motorcali_data_tag 23
+#define FactoryDataPackage_upload_picture_data_tag 24
 #define FactoryDataPackage_set_fsensor_calib_tag 32
 #define FactoryDataPackage_get_fsensor_calib_tag 33
 #define FactoryDataPackage_set_imu_calib_tag     34
@@ -1018,6 +1030,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,upload_nine_alex,command_data.u
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_button_state,command_data.get_button_state),  21) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,upload_button_state,command_data.upload_button_state),  22) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,upload_motorcali_data,command_data.upload_motorcali_data),  23) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,upload_picture_data,command_data.upload_picture_data),  24) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_fsensor_calib,command_data.set_fsensor_calib),  32) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_fsensor_calib,command_data.get_fsensor_calib),  33) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_imu_calib,command_data.set_imu_calib),  34) \
@@ -1047,6 +1060,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.inter
 #define FactoryDataPackage_command_data_get_button_state_MSGTYPE FacButtonState
 #define FactoryDataPackage_command_data_upload_button_state_MSGTYPE FacButtonState
 #define FactoryDataPackage_command_data_upload_motorcali_data_MSGTYPE FacMotorCalibResult
+#define FactoryDataPackage_command_data_upload_picture_data_MSGTYPE FacPictureDataAck
 #define FactoryDataPackage_command_data_set_fsensor_calib_MSGTYPE FacPreSensorCalibResult
 #define FactoryDataPackage_command_data_get_fsensor_calib_MSGTYPE FacPreSensorCalibResult
 #define FactoryDataPackage_command_data_set_imu_calib_MSGTYPE FacImuCalibResult
@@ -1221,10 +1235,16 @@ X(a, STATIC,   ONEOF,    UINT32,   (value_item,exposure_time,value_item.exposure
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,display_on_screen,value_item.display_on_screen),   5) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,camera_support,value_item.camera_support),   6) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,get_picture,value_item.get_picture),   7) \
-X(a, STATIC,   ONEOF,    UENUM,    (value_item,respond_data_packet,value_item.respond_data_packet),   8) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacCameraControl_CALLBACK NULL
 #define FacCameraControl_DEFAULT NULL
+
+#define FacPictureDataAck_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    send_data_over,    1) \
+X(a, STATIC,   REPEATED, UINT32,   fault_data_packet,   2) \
+X(a, STATIC,   SINGULAR, UENUM,    result,          100)
+#define FacPictureDataAck_CALLBACK NULL
+#define FacPictureDataAck_DEFAULT NULL
 
 #define FacLedColor_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    index,             1) \
@@ -1453,6 +1473,7 @@ extern const pb_msgdesc_t ServoMotorParam_msg;
 extern const pb_msgdesc_t FacMotoControl_msg;
 extern const pb_msgdesc_t FacMotorCalibResult_msg;
 extern const pb_msgdesc_t FacCameraControl_msg;
+extern const pb_msgdesc_t FacPictureDataAck_msg;
 extern const pb_msgdesc_t FacLedColor_msg;
 extern const pb_msgdesc_t FacLedControl_msg;
 extern const pb_msgdesc_t FacBrushControl_msg;
@@ -1494,6 +1515,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacMotoControl_fields &FacMotoControl_msg
 #define FacMotorCalibResult_fields &FacMotorCalibResult_msg
 #define FacCameraControl_fields &FacCameraControl_msg
+#define FacPictureDataAck_fields &FacPictureDataAck_msg
 #define FacLedColor_fields &FacLedColor_msg
 #define FacLedControl_fields &FacLedControl_msg
 #define FacBrushControl_fields &FacBrushControl_msg
@@ -1543,6 +1565,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacMotoParam_size                        17
 #define FacMotorCalibResult_size                 135
 #define FacOtaFileInfo_size                      341
+#define FacPictureDataAck_size                   125
 #define FacPreSensorCalibResult_size             27
 #define FacRegisterConfig_size                   12
 #define FacSetBrushRecord_size                   66
