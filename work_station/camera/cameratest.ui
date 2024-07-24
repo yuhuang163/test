@@ -138,6 +138,9 @@
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="text">
+            <string/>
+           </property>
            <property name="placeholderText">
             <string>切换英文输入再扫码</string>
            </property>
@@ -234,7 +237,7 @@
             <string/>
            </property>
            <property name="text">
-            <string/>
+            <string>b4:56:5d:bf:57:9d</string>
            </property>
            <property name="placeholderText">
             <string>切换英文输入再扫码</string>
@@ -627,7 +630,32 @@
       <string>摄像头实时画面</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
+      <item row="4" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_7">
+        <item>
+         <widget class="QPushButton" name="normal">
+          <property name="text">
+           <string>正常</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="abnormal">
+          <property name="text">
+           <string>不正常</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
       <item row="2" column="0">
+       <widget class="QPushButton" name="save_photo">
+        <property name="text">
+         <string>保存图片</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <property name="topMargin">
          <number>0</number>
@@ -727,24 +755,6 @@
         </item>
        </layout>
       </item>
-      <item row="3" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_7">
-        <item>
-         <widget class="QPushButton" name="normal">
-          <property name="text">
-           <string>正常</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="abnormal">
-          <property name="text">
-           <string>不正常</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
       <item row="0" column="0">
        <layout class="QVBoxLayout" name="verticalLayout">
         <property name="topMargin">
@@ -753,11 +763,11 @@
        </layout>
       </item>
       <item row="1" column="0">
-       <widget class="QPushButton" name="save_photo">
-        <property name="text">
-         <string>保存图片</string>
+       <layout class="QVBoxLayout" name="verticalLayout_py">
+        <property name="topMargin">
+         <number>0</number>
         </property>
-       </widget>
+       </layout>
       </item>
      </layout>
     </widget>

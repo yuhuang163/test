@@ -210,7 +210,7 @@ void Qpb::sendShortPack(const DataPackage &pack)
 
 void Qpb::sendShortPack(const FactoryDataPackage &pack)
 {
-    waitWork(100);
+   // waitWork(20);
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
 
@@ -502,7 +502,7 @@ void Qpb::set_camera_support_state(int state)   // 开启补光灯
 
     sendShortPack(pack);
 }
-void Qpb::set_camera_picture_state(int state)   // 开启补光灯
+void Qpb::set_camera_picture_state(int state)
 {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -517,6 +517,7 @@ void Qpb::set_camera_picture_state(int state)   // 开启补光灯
         pack.command_data.camera_control.value_item.get_picture = FacSwitch_CLOSE;
 
     sendShortPack(pack);
+    qDebug() << "已发送请求图片";
 }
 void Qpb::set_camera_light_state(int state)   // 开启补光灯
 {
@@ -1324,6 +1325,7 @@ void Qpb::set_solve_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
 }
 void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
 {
+  //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -1334,9 +1336,10 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
     pack.command_data.camera_control.value_item.respond_data_packet = sta;
     pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
     sendShortPack(pack);
-    qDebug() << "发送摄像头数据包回应";
+    //qDebug() << "发送摄像头数据包回应";
+    qDebug() << "pb2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-    emit send_pb_date("发送摄像头数据包回应");
+   // emit send_pb_date("发送摄像头数据包回应");
 }
 
 void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果

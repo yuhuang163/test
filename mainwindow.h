@@ -1,10 +1,9 @@
 ﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include "Abini.h"
-#include "quicklz_dec.h"
-
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
+#include "quicklz_dec.h"
 #include "sensor_hub.h"
 #include "testmodel.h"
 #include <QApplication>
@@ -33,6 +32,7 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QWebEngineView>
+
 // #include <iomanip>
 // #include <iostream>
 #include "camerabox.h"
@@ -56,13 +56,14 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-
+    bool deleteCsvFile(const QString &filePath);
     QTimer *scanSerialPortsTimer = new QTimer(this);
+    void printSquareData(uint8_t *data, size_t data_size);
 
-/*摄像头传图部分*/
-    QByteArray pictureByteArray=0;
- int totalsize = 0;
-    int dataNumber=0;
+    /*摄像头传图部分*/
+    QByteArray pictureByteArray = 0;
+    int cameradatasize = 0;
+    int dataNumber = 0;
 #define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
     unsigned short crc16_compute(unsigned char const *p_data, unsigned int size,
                                  unsigned short const *p_crc)
@@ -80,10 +81,10 @@ public:
 
         return crc;
     }
-//0xAAAAAAAAAAAAAAAA
-//0xCCCCCCCCCCCCCCCC
+    // 0xAAAAAAAAAAAAAAAA
+    // 0xCCCCCCCCCCCCCCCC
 
-#define EXT_UART_MAGIC      0xCCCCCCCCCCCCCCCC
+#define EXT_UART_MAGIC                0xCCCCCCCCCCCCCCCC
 #define UART_PHY_LAYER_HEAD_SIZE      9   // 头大小
 // #define UART_PHY_LAYER_FRAME_SIZE 256
 #define UART_PHY_LAYER_CRC_SIZE       0
@@ -132,7 +133,7 @@ public:
     uint8_t dongle_ring_buffer[100 * 1024];    // 串口队列池
     uint8_t frame_buf[2 * 1024];               // 队列池
     uint8_t camera_ring_buf[100 * 1024];       // 摄像头队列池
-    uint8_t frame_picture_buf[37 * 1024];      // 照片队列池
+    uint8_t frame_picture_buf[50 * 1024];      // 照片队列池
     int ext_ble_find_next_frame(void);
     int ext_ble_find_next_picture_frame(void);
     void write_camera_data(uint8_t *p_data, int data_len);
@@ -148,7 +149,7 @@ public:
 private:
     NewImuCalData calData;
     new_imu_calibrate *nqimuc = nullptr;
-    QString getValueBySN(const QString &sn ) ;
+    QString getValueBySN(const QString &sn);
     QByteArray subpid;
 
     bool eventFilter(QObject *watched, QEvent *event);
@@ -188,8 +189,8 @@ private:
     QLabel *tail_sn = nullptr;
     QLabel *sub_pid = nullptr;
 
-  std::atomic<bool> running;
-     QFuture<void> future;
+    std::atomic<bool> running;
+    QFuture<void> future;
     Qpb *pb;
     Qat *at;
     typedef enum
@@ -369,11 +370,11 @@ private slots:
     void on_open_press_collect_clicked();
     void getPressSensorData(FacUploadPresSensor x);
     void get_servo_motor_info_msg(FacMotorCalibResult data);
-    QString getMotorStateString(FacMotoState state) ;
+    QString getMotorStateString(FacMotoState state);
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
     void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
-    void  convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
+    void convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
 
     void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
                                bool appHeader);

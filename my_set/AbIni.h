@@ -55,7 +55,7 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具   V1.2.1"        // 支持1拖多
+#define DEBUG_VER  "电刷产测工具   V1.2.2"        // 支持1拖多
 #define AGE_VER    "老化测试工站   V1.0.9"            // 支持1拖多
 #define MOTOR_VER  "电机校准工站   V1.0.9"            // 加定时器判断休
 #define QC_VER     "静态电流测试   V1.2.7"        // 增加定时器判断休眠
@@ -65,13 +65,12 @@
 #define FREE_VER   "自由测试工站   V1.0.0"        // 立讯bug
 #define PCBA_VER   "电刷板子测试   V1.2.3"      // 加定时器判断休
 #define CAMERA_VER "摄像测试工站   V1.0.6"      // 支持摄像头工站
-#define IMU_VER    "IMU校准工站    V1.3.0"         // 支持自动化治具
+#define IMU_VER    "IMU校准工站    V1.3.1"         // 支持自动化治具
 
-// [DEBUG_VER] 修改生成的采测的xls文件的名字
-// [IMU_VER] 适配欣旺达的六轴新治具
+// [DEBUG_VER] 修改生成的采测的xls文件的名字,第一次采测删除csv文件
+// [IMU_VER] 复位变量改成测试完成后复位
+// [CAMERA_VER] 修改配置文件的工站英文名字，导入回应的接收，导入算法的测试偏位
 // [AGE_VER] 增加了自动化测试功能
-// [CAMERA_VER] 更新了摄像头测试工站的图像处理算法
-
 // [MOTOR_VER] 调整了电机校准的定时器判断逻辑
 // [QC_VER] 增加了静态电流测试的定时器判断休眠功能
 // [SCREEN_VER] 修复了屏幕测试工站的显示异常问题

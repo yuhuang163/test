@@ -15,6 +15,7 @@ extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加ext
 {
 #include "lib/nfc/dcrf32.h"
 }
+QByteArray allPackets;
 
 void MainWindow::on_pushButton_clicked()
 {
@@ -27,12 +28,87 @@ void MainWindow::on_pushButton_clicked()
 
     // on_macInput_returnPressed();
     // // pb->set_device_mode();//进入亮白
-    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
-
-   // pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
+   // emit need_send_camera_respone(FacErrorCode_NO_ERROR);
+    printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()), pictureByteArray.size());
+    // for(int i=0;i<100;i++){
+    //     pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
+    //     waitWork(10);
+    // }
 }
 void MainWindow::on_pushButton_3_clicked()
 {
+
+    qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+
+    const int width = 180;
+    const int height = 200;
+    const int half_width = width / 2;
+    // 图像数据（每个像素一个字节，灰度值）
+   QByteArray imageData;
+
+    // 填充图像数据
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (x < half_width) {
+                // 左半边白色（灰度值 255）
+                imageData[y * width + x] = 0;
+            } else {
+                // 右半边黑色（灰度值 0）
+                imageData[y * width + x] = 244;
+            }
+        }
+    }
+    // 十六进制字符串
+    QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c000078016405784f5558";
+
+    // 将十六进制字符串转换为 QByteArray
+    QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
+
+    // 将 hexData 添加到 padding 的开头
+    QByteArray finalData = padding + imageData;
+
+
+    const int headerSize = 8;
+    QByteArray header(headerSize, 0xcc);
+    header.append(static_cast<char>(244));
+
+    int dataSize = finalData.size();
+    qDebug() << "dataSize:" << dataSize;
+
+    int numberOfPackets = (dataSize/ 243)+1; // 计算需要的包数量
+    qDebug() <<"有这么多包"<< numberOfPackets;
+    for (int i = 0; i < numberOfPackets; ++i) {
+        int offset = i * 243;
+
+        if(i==(numberOfPackets-1))
+        {
+            header[8]=1+(static_cast<char>(dataSize% 243));
+
+        }
+        QByteArray packet = header;
+        // 添加包的索引
+        QByteArray index(1, static_cast<char>(i));
+        packet.append(index);
+
+        packet.append(finalData.mid(offset, 243));
+        allPackets.append(packet);
+    }
+    qDebug() << "allPacketssize:" << allPackets.size();
+
+    int write_len = 0;
+    int len = allPackets.size();
+    write_len = dongleRingBuf->usmile_ring_buffer_write(
+        &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(allPackets.data()), allPackets.size());
+    qDebug() << "写完了:" << allPackets.size();
+
+    if (write_len < len)
+    {
+        qDebug() << "write_len:" << write_len << "len:" << allPackets.size();
+    }
+
+   // processTheDatagram(finalData);
+
+
     // pb->get_battery();
     // pb->get_battery();
     // pb->get_battery();
@@ -83,6 +159,9 @@ void MainWindow::on_pushButton_3_clicked()
     // {
     //     qDebug().noquote() << hexDump1;
     // }
+
+
+
 }
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
@@ -281,6 +360,7 @@ MainWindow::MainWindow(QWidget *parent)
         new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
     recoverCustom();
+    //qDebug() << "Thread video_frame_data_struct..."<<sizeof(video_frame_data_struct);
 
     // //  在需要的地方调用 QtConcurrent::run 来异步执行函数
     // QFuture<void> future = QtConcurrent::run([this]() {
@@ -301,7 +381,9 @@ MainWindow::MainWindow(QWidget *parent)
             while (running.load())
             {
                 solve_frame();
-                QThread::msleep(10);   // 等待10毫秒
+                QCoreApplication::processEvents();
+
+               // QThread::msleep(10);   // 等待10毫秒
             }
         });
     running.store(true);
@@ -2522,9 +2604,9 @@ void MainWindow::on_distribution_network_clicked()
 
 void MainWindow::on_save_photo_clicked()
 {
-    if (!viewercamrea->pixmap.isNull())
+    if (!viewercamrea->temporarypixmap.isNull())
     {
-        QPixmap pix = viewercamrea->pixmap;
+        QPixmap pix = viewercamrea->temporarypixmap;
         // 使用QFileDialog让用户选择保存文件的路径
         QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"), "/home",
                                                         tr("Images (*.png *.xpm *.jpg)"));
@@ -2804,7 +2886,7 @@ void MainWindow::on_close_support_camera_clicked()
 
 void MainWindow::on_open_camera_picture_clicked()
 {
-    totalsize = 0;
+    cameradatasize = 0;
     dataNumber = 0;
     pb->set_camera_picture_state(1);
     std::memset(dongle_ring_buffer, 0, sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
@@ -3177,37 +3259,50 @@ void MainWindow::on_play_picture_clicked()
 void MainWindow::on_open_imu_collect_solve_clicked()
 {
     pb->set_solve_imu_collect_param(FacSwitch_START);
+    deleteCsvFile("6轴IMU性能验证.csv");
 
 }
 
 
 void MainWindow::on_py_test_clicked()
 {
-    // 创建 QProcess 对象
+//python.exe .u7p_camera_defect_detect_env/code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
+   // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
+    //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
+    //python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
+
     QProcess process;
 
-    // 定义参数
+    // 设置虚拟环境的 Python 可执行文件路径
+    QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
+
+    // 设置要运行的 Python 脚本及其参数
+    QString scriptPath = "./code/onnx_inference.py";
     QStringList arguments;
-    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
+    arguments << "--model" << "./code/infer_240723_320_model.onnx"
+              << "--img" << "./code/test.png";
 
-    // 启动进程并传递参数
-    process.start("python", arguments);
+    // 设置工作目录为虚拟环境目录
+    process.setWorkingDirectory("./u7p_camera_defect_detect_env");
 
-    // 检查进程是否成功启动
-    if (!process.waitForStarted())
-        qDebug() << "开始运行失败";
+    // 启动进程
+    process.start(pythonPath, QStringList() << scriptPath << arguments);
 
-    // 等待进程完成
-    if (!process.waitForFinished())
-        qDebug() << "等待完成失败";
+    // 等待进程启动
+    if (!process.waitForStarted()) {
+        qDebug() << "Failed to start process";
+    }
 
-    // 读取标准输出
-    QString output(process.readAllStandardOutput());
-    qDebug() << "输出内容" << output;
+    // 等待进程结束
+    process.waitForFinished();
 
-        // 读取标准错误输出
-        QString errorOutput(process.readAllStandardError());
-    qDebug() << "错误输出: " << errorOutput;
+    // 获取标准输出和标准错误输出
+    QString output = process.readAllStandardOutput();
+    QString errorOutput = process.readAllStandardError();
+
+    qDebug() << "Output:" << output;
+    qDebug() << "Error Output:" << errorOutput;
+
 }
 
 
@@ -3275,6 +3370,5 @@ void MainWindow::on_transfer_xls_clicked()
    QString newcsvFileName = QString("xx_%1_s1_t1_g1_people_F_30_160_R_%2.xls").arg(macAddress.remove(':').right(4)).arg(formattedDateTime);
 
     convertCsvToXls("6轴IMU性能验证.csv", newcsvFileName);
-
 }
 

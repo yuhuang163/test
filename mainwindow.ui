@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1331</width>
+    <width>1406</width>
     <height>1000</height>
    </rect>
   </property>
@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>12</number>
+               <number>4</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3674,7 +3674,7 @@ border-color: rgb(255, 165, 0)</string>
              <item>
               <widget class="QLineEdit" name="name_range">
                <property name="text">
-                <string>P20</string>
+                <string>H</string>
                </property>
                <property name="placeholderText">
                 <string>输入筛选的设备信号强度</string>
@@ -3684,7 +3684,7 @@ border-color: rgb(255, 165, 0)</string>
              <item>
               <widget class="QLineEdit" name="rssi_range">
                <property name="text">
-                <string>-40</string>
+                <string>-60</string>
                </property>
                <property name="placeholderText">
                 <string>输入筛选的设备名字</string>
@@ -3813,7 +3813,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1331</width>
+     <width>1406</width>
      <height>24</height>
     </rect>
    </property>

@@ -245,6 +245,7 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
 
     uint8_t *data = reinterpret_cast<uint8_t *>(datagram.data());
 
+
     // 提取前8个字节并转换为uint64_t
     uint64_t timestamp = 0;
     if (datagram.size() >= sizeof(uint64_t))
@@ -261,7 +262,7 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
     ui->timestamp_value->setText(timestampStr);
 
     // 提取图像数据
-    QByteArray imageBytes;   // 从第8个字节开始提取图像数据
+    QByteArray imageBytes;
 
     if (datagram.size() > PICTURE_PHY_LAYER_HEAD_SIZE)
     {
@@ -282,13 +283,18 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
         qWarning() << "图像数据为空。";
         return;
     }
+    qDebug() << "图片数据前40字节:" << datagram.left(40).toHex();
+         // printSquareData(reinterpret_cast<uint8_t*>(imageBytes.data()), imageBytes.size());
 
     // 尝试将 QByteArray 转换为 QImage
-    QImage image(reinterpret_cast<const uchar *>(imageBytes.data()), 180, 200,
+    QImage image(reinterpret_cast<const uchar *>(imageBytes.data()), static_cast<unsigned char>(datagram[8]),  static_cast<unsigned char>(datagram[12]),
                  QImage::Format_Grayscale8);
 
     if (image.isNull())
     {
+        qDebug() << " datagram[8]"<< static_cast<unsigned char>(datagram[8]);
+        qDebug() << " datagram[11]"<< static_cast<unsigned char>(datagram[12]);
+
         // 打印图像数据的前20字节
         qDebug() << "图像数据前20字节:" << imageBytes.left(20).toHex();
         qWarning() << "直接从字节数据转换图像失败，尝试使用 loadFromData。";
@@ -309,7 +315,7 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
     // 继续处理加载成功的图像，例如显示在界面上
 
     // 检查图像大小是否符合预期
-    if (image.width() != 180 || image.height() != 200)
+    if (image.width() !=  static_cast<unsigned char>(datagram[8]) || image.height() !=  static_cast<unsigned char>(datagram[12]))
     {
         qWarning() << "Image size is not as expected (180x200).";
         return;
@@ -329,6 +335,8 @@ void MainWindow::processTheDatagram(QByteArray &datagram)
     }
     // // 绘制图像和矩形
     viewercamrea->pixmap = QPixmap::fromImage(image);
+    viewercamrea->temporarypixmap = QPixmap::fromImage(image);
+
     QPainter painter(&viewercamrea->pixmap);
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
@@ -365,7 +373,10 @@ void MainWindow::write_camera_data(uint8_t *p_data, int data_len)
 
         int write_len =
             cameraRingBuf->usmile_ring_buffer_write(&p_cameraRingBuffer, p_data, data_len);
-        qDebug() << "写入摄像头数据包长度" << write_len;
+        if (write_len < data_len)
+        {
+            qDebug() << "write_len:" << write_len << "len:" << data_len;
+        }
     }
     else
     {
@@ -430,11 +441,11 @@ int MainWindow::ext_ble_find_next_picture_frame(void)
     return 0;
 }
 
-void printSquareData(uint8_t *data, size_t data_size)
+void MainWindow::printSquareData(uint8_t *data, size_t data_size)
 {
-    if (data_size < 36000)
-        return;
-    const int dimension = 32;           // 每行的列数
+
+
+    const int dimension = 180;           // 每行的列数
     const int totalItems = data_size;   // 数据总量
     for (int i = 0; i < totalItems; i += dimension)
     {
@@ -486,9 +497,10 @@ void MainWindow::solve_frame(void)
 
             if (frame_size > ring_size)
             {
-                qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
+               // qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
                 break;
             }
+            //qDebug() << "哈哈哈" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
             // 从环形缓冲区中读取整个帧的数据
             dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, frame_size);
@@ -496,25 +508,29 @@ void MainWindow::solve_frame(void)
             if (1)
             {
                 if(head->data[0]==dataNumber){
-                   //emit need_send_camera_respone(FacErrorCode_NO_ERROR);
-                  //  pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
-                   if (pb == nullptr) {
-                       qWarning() << "pb 是空指针，无法调用 set_camera_data_respone";
-                       return;
-                   }
+                    qDebug() << "solve1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-                   QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::QueuedConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
+                  //  QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::DirectConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
+                    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
 
-                    qDebug() << "响应";
+                  //  qDebug() << "solve2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+
+                   // 强制事件循环处理，确保立即响应
+                   QCoreApplication::processEvents(QEventLoop::AllEvents);
+                 //  qDebug() << "solve3响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+
                 }
-                 qDebug() << "图片数据包的第一字节为" << head->data[0];
+
+                qDebug() << "图片数据包的第一字节为" << head->data[0];
+
                  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
-                 emit send_thread_date("图片数据包总数" + QString::number(++dataNumber));
-                 emit send_thread_date("图片数据包总字节数" + QString::number(totalsize=totalsize+head->length));
+                 emit send_thread_date("图片数据包总数" + QString::number(dataNumber));
+                 emit send_thread_date("图片数据包总字节数" + QString::number(cameradatasize=cameradatasize+head->length-1));
+                ++dataNumber;
 
 
                 // 处理帧数据
-                write_camera_data(head->data, head->length);
+                write_camera_data(head->data+1, head->length-1);
 
                 solve_picture_frame();
             }
@@ -533,10 +549,10 @@ void MainWindow::solve_frame(void)
         }
         else
         {
-            // qDebug() << "串口数据流错误寻找下一帧";
-            // qDebug() << "串口数据包头为:"
-            //          << QByteArray(reinterpret_cast<char *>(frame_buf), UART_PHY_LAYER_HEAD_SIZE)
-            //                 .toHex();
+            qDebug() << "串口数据流错误寻找下一帧";
+            qDebug() << "串口数据包头为:"
+                     << QByteArray(reinterpret_cast<char *>(frame_buf), UART_PHY_LAYER_HEAD_SIZE)
+                            .toHex();
 
             if (ext_ble_find_next_frame())
             {
@@ -544,7 +560,7 @@ void MainWindow::solve_frame(void)
             }
             else
             {
-                 qDebug() << "找不到帧头";
+                // qDebug() << "找不到帧头";
                 break;
             }
         }
@@ -553,7 +569,7 @@ void MainWindow::solve_frame(void)
         QCoreApplication::processEvents();
     }
 }
-// int totalsize = 0;
+// int cameradatasize = 0;
 
 void MainWindow::readDongleSerialPortData()
 {
@@ -565,8 +581,9 @@ void MainWindow::readDongleSerialPortData()
     write_len = dongleRingBuf->usmile_ring_buffer_write(
         &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(dataTemp.data()), dataTemp.size());
 
-    // totalsize = dataTemp.size() + totalsize;
-    // qDebug() << "totalsize:" << totalsize;
+    //printSquareData(reinterpret_cast<uint8_t*>(dataTemp.data()), dataTemp.size());
+    // cameradatasize = dataTemp.size() + cameradatasize;
+    // qDebug() << "cameradatasize:" << cameradatasize;
 
     if (write_len < len)
     {
@@ -759,7 +776,7 @@ void MainWindow::solve_picture_frame(void)
         }
 
         ext_picture_layer_t *head = (ext_picture_layer_t *)frame_picture_buf;
-        if (head->width == 0xb4 && head->height == 0xc8)
+            if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC)
         {
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
 
@@ -791,6 +808,8 @@ void MainWindow::solve_picture_frame(void)
             }
             else
             {
+                qDebug() << "哈哈哈2" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+
                 qDebug() << "head content:"
                          << QByteArray(reinterpret_cast<char *>(head), PICTURE_PHY_LAYER_HEAD_SIZE)
                                 .toHex();
@@ -1000,7 +1019,14 @@ void MainWindow::send_picture(const QString &url, const QString &filePath)
 
     // 创建事件循环
     QEventLoop loop;
-
+    QTimer timer;
+    timer.setInterval(5000); // 10 seconds timeout
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, [&loop]() {
+        qDebug() << "Request timeout";
+        loop.quit();
+    });
+     timer.start();
     // 连接请求完成信号和事件循环退出
     QObject::connect(reply, &QNetworkReply::finished,
                      [&loop, reply, filePath, ui = this->ui]()
@@ -1022,6 +1048,10 @@ void MainWindow::send_picture(const QString &url, const QString &filePath)
 
     // 开始事件循环，等待请求完成
     loop.exec();
+
+    // 清理
+    reply->deleteLater();
+    manager->deleteLater();
 }
 
 void MainWindow::update_IMU_CALIB_result(FacImuCalibResult x)
@@ -1408,6 +1438,7 @@ void  MainWindow::convertCsvToXls(const QString &csvFilename, const QString &xls
     QFile csvFile(csvFilename);
     if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qDebug() << "无法打开 CSV 文件进行读取：" << csvFilename;
+        ui->msgEdit->appendPlainText("无法打开 CSV 文件进行读取："+csvFilename);
         return;
     }
 
@@ -1431,8 +1462,12 @@ void  MainWindow::convertCsvToXls(const QString &csvFilename, const QString &xls
     csvFile.close();
 
     if (xlsx.saveAs(xlsFilename)) {
+        ui->msgEdit->appendPlainText("文件转换成功："+xlsFilename);
+
         qDebug() << "文件转换成功：" << xlsFilename;
     } else {
+        ui->msgEdit->appendPlainText("文件转换失败");
+
         qDebug() << "文件转换失败：" << xlsFilename;
     }
 }
@@ -2716,11 +2751,13 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             {
                 if (ui->active_picture->underMouse())
                 {   // 如果拖到了active_picture上
-
+                    on_clear_picture_clicked();
                     renameFilesInFolder(path);
                 }
                 if (ui->high_speed_tp->underMouse())
                 {   // 如果拖到了high_speed_tp上
+                    on_clear_picture_clicked();
+
                     ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
                     QFileInfo fileInfo(path);
                     QString fileName = fileInfo.fileName();
@@ -2735,4 +2772,19 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         }
     }
     return QWidget::eventFilter(watched, event);
+}
+bool MainWindow::deleteCsvFile(const QString &filePath) {
+    QFile file(filePath);
+    if (file.exists()) {
+        if (file.remove()) {
+            qDebug() << "File deleted successfully.";
+            return true;
+        } else {
+            qDebug() << "Failed to delete file:" << file.errorString();
+            return false;
+        }
+    } else {
+        qDebug() << "File does not exist.";
+        return false;
+    }
 }

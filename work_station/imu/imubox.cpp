@@ -92,6 +92,21 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
     connect(end_test_act, &QAction::triggered,
             [=]()
             {
+
+                for (int i = 0; i < testList.size(); ++i)
+                {
+                    mehineState[i]=0;
+                    FixTureStates[i] = 0;
+                    stage1States[i] = 0;
+                    stage2States[i] = 0;
+                    stage3States[i] = 0;
+                    fixtureLeftStates[i] = 0;
+                    fixtureRightStates[i] = 0;
+                    fixtureDownStates[i] = 0;
+                    fixtureUpStates[i] = 0;
+                    qDebug() << "初始化vetorok";
+                }
+
                 set_cylinder_state(STATE_HOME);
                 for (int i = 0; i < testList.size(); i++)
                 {
@@ -183,41 +198,28 @@ void imubox::resetall()
     {
         start_test();
     }
+    if (pack.factory != "xwd"){
+                set_cylinder_state(STATE_RESET);
+                waitWork(500);
 
-    set_cylinder_state(STATE_RESET);
-    waitWork(500);
+                if (pack.product == "Y20"||pack.product == "Q20"||pack.product == "U7P"||pack.product == "U7")
+                {
 
-    if (pack.product == "Y20"||pack.product == "Q20"||pack.product == "U7P"||pack.product == "U7")
-    {
+                    if (pack.factory == "xwd")
+                    {
+                        set_cylinder_state(STATE_BRUSH_RIGHT);
+                    }else{
+                        set_cylinder_state(STATE_BRUSH_LEFT);
+                    }
 
-        if (pack.factory == "xwd")
-        {
-             set_cylinder_state(STATE_BRUSH_RIGHT);
-        }else{
-            set_cylinder_state(STATE_BRUSH_LEFT);
+                    waitWork(1500);
+                }
 
-        }
-
-        waitWork(1500);
+                set_cylinder_state(STATE_BRUSH_UP);
     }
 
 
 
-    set_cylinder_state(STATE_BRUSH_UP);
-
-    for (int i = 0; i < testList.size(); ++i)
-    {
-        mehineState[i]=0;
-        FixTureStates[i] = 0;
-        stage1States[i] = 0;
-        stage2States[i] = 0;
-        stage3States[i] = 0;
-        fixtureLeftStates[i] = 0;
-        fixtureRightStates[i] = 0;
-        fixtureDownStates[i] = 0;
-        fixtureUpStates[i] = 0;
-        qDebug() << "初始化vetorok";
-    }
 }
 void imubox::set_vector_state(int state){
 
@@ -427,10 +429,21 @@ void imubox::check_all_over_stage3(int testNumber)
             set_cylinder_state(STATE_RESET);
         }
 
+
         for (int i = 0; i < testList.size(); ++i)
         {
+            mehineState[i]=0;
+            FixTureStates[i] = 0;
+            stage1States[i] = 0;
+            stage2States[i] = 0;
             stage3States[i] = 0;
+            fixtureLeftStates[i] = 0;
+            fixtureRightStates[i] = 0;
+            fixtureDownStates[i] = 0;
+            fixtureUpStates[i] = 0;
+            qDebug() << "初始化vetorok";
         }
+
     }
 }
 
