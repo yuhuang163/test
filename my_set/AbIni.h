@@ -55,28 +55,28 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具   V1.2.2"        // 支持1拖多
-#define AGE_VER    "老化测试工站   V1.0.9"            // 支持1拖多
-#define MOTOR_VER  "电机校准工站   V1.0.9"            // 加定时器判断休
-#define QC_VER     "静态电流测试   V1.2.7"        // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.0.7"        // 加定时器判断休
-#define LIGHT_VER  "灯光测试工站   V1.0.7"        // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.2.4"        // 立讯bug
-#define FREE_VER   "自由测试工站   V1.0.0"        // 立讯bug
-#define PCBA_VER   "电刷板子测试   V1.2.3"      // 加定时器判断休
-#define CAMERA_VER "摄像测试工站   V1.0.6"      // 支持摄像头工站
+#define DEBUG_VER  "电刷产测工具   V1.2.3"        // 支持1拖多
+#define AGE_VER    "老化测试工站   V1.1.0"            // 支持1拖多
+#define MOTOR_VER  "电机校准工站   V1.1.0"            // 加定时器判断休
+#define QC_VER     "静态电流测试   V1.2.8"        // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.0.8"        // 加定时器判断休
+#define LIGHT_VER  "灯光测试工站   V1.0.8"        // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.2.5"        // 立讯bug
+#define FREE_VER   "自由测试工站   V1.0.1"        // 立讯bug
+#define PCBA_VER   "电刷板子测试   V1.2.4"      // 加定时器判断休
+#define CAMERA_VER "摄像测试工站   V1.0.7"      // 支持摄像头工站
 #define IMU_VER    "IMU校准工站    V1.3.1"         // 支持自动化治具
 
-// [DEBUG_VER] 修复概率性的传输第一行显示异常问题
-// [IMU_VER] 复位变量改成测试完成后复位
-// [CAMERA_VER] 将每次回应改成，发送结束后回应，加入进度条显示传输过程
-// [AGE_VER] 增加了自动化测试功能
-// [MOTOR_VER] 调整了电机校准的定时器判断逻辑
-// [QC_VER] 增加了静态电流测试的定时器判断休眠功能
-// [SCREEN_VER] 修复了屏幕测试工站的显示异常问题
-// [LIGHT_VER] 更新了灯光测试工站的亮度调节功能
-// [SINGLE_VER] 修复了信号测试工站的bug
-// [FREE_VER] 解决了自由测试工站的bug
-// [PCBA_VER] 优化了电刷PCBA测试的定时器处理逻辑
+// [DEBUG_VER] 修改dongle波特率为921600
+// [IMU_VER] 修改dongle波特率为921600
+// [CAMERA_VER] 修改dongle波特率为921600
+// [AGE_VER] 修改dongle波特率为921600
+// [MOTOR_VER] 修改dongle波特率为921600
+// [QC_VER] 修改dongle波特率为921600
+// [SCREEN_VER] 修改dongle波特率为921600
+// [LIGHT_VER] 修改dongle波特率为921600
+// [SINGLE_VER] 修改dongle波特率为921600
+// [FREE_VER] 修改dongle波特率为921600
+// [PCBA_VER] 修改dongle波特率为921600
 
 #endif   // ABINI_H
