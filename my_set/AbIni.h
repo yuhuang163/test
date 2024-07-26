@@ -69,7 +69,7 @@
 
 // [DEBUG_VER] 修改dongle波特率为921600
 // [IMU_VER] 修改dongle波特率为921600
-// [CAMERA_VER] 修改dongle波特率为921600
+// [CAMERA_VER] 导入算法的python脚本偏移测试
 // [AGE_VER] 修改dongle波特率为921600
 // [MOTOR_VER] 修改dongle波特率为921600
 // [QC_VER] 修改dongle波特率为921600

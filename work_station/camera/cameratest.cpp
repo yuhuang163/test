@@ -1626,6 +1626,12 @@ void cameratest::on_OffsetTest_clicked()
     // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
     //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
     //python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+
+    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
+    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
+    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
+    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
 
     QString filePath ;
     if (!viewercamrea->temporarypixmap.isNull()) {
@@ -1655,19 +1661,23 @@ void cameratest::on_OffsetTest_clicked()
     }
 
     QProcess process;
-
-    // 设置虚拟环境的 Python 可执行文件路径
+  // 设置虚拟环境的 Python 可执行文件路径
     QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
 
     // 设置要运行的 Python 脚本及其参数
     QString scriptPath = "./code/onnx_inference.py";
     QStringList arguments;
-    arguments << "--model" << "./code/infer_240723_320_model.onnx"
-              << "--img" << filePath;
+    arguments << "--model" << "./code/infer_240725_320_model.onnx"
+              << "--img" << filePath<<"--x1_s"<<QString::number(Rect1_X)
+              <<"--y1_s"<<QString::number(Rect1_Y)<<"--w_s"<<QString::number(Rect1_Width)
+              <<"--h_s"<<QString::number(Rect1_Height);
+
 
     // 设置工作目录为虚拟环境目录
     process.setWorkingDirectory("./u7p_camera_defect_detect_env");
 
+
+ qDebug() << "指令内容为:" <<  scriptPath << arguments;
     // 启动进程
     process.start(pythonPath, QStringList() << scriptPath << arguments);
 
@@ -1720,12 +1730,7 @@ void cameratest::on_OffsetTest_clicked()
     QImage image;
     image.load(filePath); // 加载图像文件
     QPainter painter(&viewercamrea_py->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
-    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
-    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
-    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
-    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
 
     int Rect2_X =x1;
     int Rect2_Y =y1;
