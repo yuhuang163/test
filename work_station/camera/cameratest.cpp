@@ -21,77 +21,79 @@ void cameratest::on_pushButton_clicked()
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     // ui->macInput->setText("F8:8F:C8:57:73:E9");
 
+    QVector<int> faultData = {1, 2, 3, 4, 5};
+    emit  need_send_fault_data_packet(faultData.size(), faultData);
 
     // on_macInput_returnPressed();
-    QByteArray allPackets;
+    // QByteArray allPackets;
 
-    qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    // qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-    const int width = 180;
-    const int height = 200;
-    const int half_width = width / 2;
-    // 图像数据（每个像素一个字节，灰度值）
-    QByteArray imageData;
+    // const int width = 180;
+    // const int height = 200;
+    // const int half_width = width / 2;
+    // // 图像数据（每个像素一个字节，灰度值）
+    // QByteArray imageData;
 
-    // 填充图像数据
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (x < half_width) {
-                // 左半边白色（灰度值 255）
-                imageData[y * width + x] = 0;
-            } else {
-                // 右半边黑色（灰度值 0）
-                imageData[y * width + x] = 244;
-            }
-        }
-    }
-    // 十六进制字符串
-    QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c000078016405784f5558";
+    // // 填充图像数据
+    // for (int y = 0; y < height; ++y) {
+    //     for (int x = 0; x < width; ++x) {
+    //         if (x < half_width) {
+    //             // 左半边白色（灰度值 255）
+    //             imageData[y * width + x] = 0;
+    //         } else {
+    //             // 右半边黑色（灰度值 0）
+    //             imageData[y * width + x] = 244;
+    //         }
+    //     }
+    // }
+    // // 十六进制字符串
+    // QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c000078016405784f5558";
 
-    // 将十六进制字符串转换为 QByteArray
-    QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
+    // // 将十六进制字符串转换为 QByteArray
+    // QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
 
-    // 将 hexData 添加到 padding 的开头
-    QByteArray finalData = padding + imageData;
+    // // 将 hexData 添加到 padding 的开头
+    // QByteArray finalData = padding + imageData;
 
 
-    const int headerSize = 8;
-    QByteArray header(headerSize, 0xcc);
-    header.append(static_cast<char>(244));
+    // const int headerSize = 8;
+    // QByteArray header(headerSize, 0xcc);
+    // header.append(static_cast<char>(244));
 
-    int dataSize = finalData.size();
-    qDebug() << "dataSize:" << dataSize;
+    // int dataSize = finalData.size();
+    // qDebug() << "dataSize:" << dataSize;
 
-    int numberOfPackets = (dataSize/ 243)+1; // 计算需要的包数量
-    qDebug() <<"有这么多包"<< numberOfPackets;
-        for (int i = 0; i < numberOfPackets; ++i) {
-        int offset = i * 243;
+    // int numberOfPackets = (dataSize/ 243)+1; // 计算需要的包数量
+    // qDebug() <<"有这么多包"<< numberOfPackets;
+    //     for (int i = 0; i < numberOfPackets; ++i) {
+    //     int offset = i * 243;
 
-        if(i==(numberOfPackets-1))
-        {
-            header[8]=1+(static_cast<char>(dataSize% 243));
+    //     if(i==(numberOfPackets-1))
+    //     {
+    //         header[8]=1+(static_cast<char>(dataSize% 243));
 
-        }
-        QByteArray packet = header;
-        // 添加包的索引
-        QByteArray index(1, static_cast<char>(i));
-        packet.append(index);
+    //     }
+    //     QByteArray packet = header;
+    //     // 添加包的索引
+    //     QByteArray index(1, static_cast<char>(i));
+    //     packet.append(index);
 
-        packet.append(finalData.mid(offset, 243));
-        allPackets.append(packet);
-    }
-    qDebug() << "allPacketssize:" << allPackets.size();
+    //     packet.append(finalData.mid(offset, 243));
+    //     allPackets.append(packet);
+    // }
+    // qDebug() << "allPacketssize:" << allPackets.size();
 
-    int write_len = 0;
-    int len = allPackets.size();
-    write_len = dongleRingBuf->usmile_ring_buffer_write(
-        &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(allPackets.data()), allPackets.size());
-    qDebug() << "写完了:" << allPackets.size();
+    // int write_len = 0;
+    // int len = allPackets.size();
+    // write_len = dongleRingBuf->usmile_ring_buffer_write(
+    //     &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(allPackets.data()), allPackets.size());
+    // qDebug() << "写完了:" << allPackets.size();
 
-                                if (write_len < len)
-    {
-        qDebug() << "write_len:" << write_len << "len:" << allPackets.size();
-    }
+    //                             if (write_len < len)
+    // {
+    //     qDebug() << "write_len:" << write_len << "len:" << allPackets.size();
+    // }
 
 
     // for(int i=0 ;i<500;i++)
@@ -127,6 +129,12 @@ cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_i
     ui->msgEdit->appendPlainText("action=" + pack.action);
     ui->msgEdit->appendPlainText("line=" + pack.line);
     ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
+
+
+    connect(this, SIGNAL(send_picture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
+
+    connect(this, SIGNAL(need_send_fault_data_packet(int ,const QVector<int>&)), pb,
+            SLOT(set_camera_fault_data_packet(int ,const QVector<int>&)));
 
     // 将定时器的timeout信号连接到槽函数onTimeout
     connect(cameraSendTimer, &QTimer::timeout, this, &cameratest::onTimeout);
@@ -188,14 +196,6 @@ void cameratest::write_camera_data(uint8_t *p_data, int data_len)
         qDebug() << "通道不是摄像头";
     }
 }
-void cameratest::getPictureSendOver(FacPictureDataAck x)
-{
-
-
-
-
-
-}
 
 
 int cameratest::ext_ble_find_next_frame(void)
@@ -226,33 +226,34 @@ int cameratest::ext_ble_find_next_frame(void)
 
     return 0;
 }
-int cameratest::ext_ble_find_next_picture_frame(void)
+    int cameratest::ext_ble_find_next_picture_frame(QByteArray &picturedata)
 {
-    int i = 0;
-    ext_picture_layer_t *head = NULL;
-    int len =
-        cameraRingBuf->usmile_ring_buffer_pick(&p_cameraRingBuffer, frame_picture_buf, 2 * 1024);
-    // qDebug() << "查找下一帧，剩下：" << len;
+    int len = picturedata.size();
+    ext_picture_layer_t *head = nullptr;
 
-    for (i = 0; i < len; i++)
+    // 获取原始数据指针
+    const uchar *data = reinterpret_cast<const uchar*>(picturedata.constData());
+
+    for (int i = 0; i <= len - 4; ++i)
     {
-        if (frame_picture_buf[i] == 0xA5 && frame_picture_buf[i + 1] == 0xA5 &&
-            frame_picture_buf[i + 2] == 0xA5 && frame_picture_buf[i + 3] == 0xA5)
+        if (data[i] == 0xA5 && data[i + 1] == 0xA5 &&
+            data[i + 2] == 0xA5 && data[i + 3] == 0xA5)
         {
-            head = (ext_picture_layer_t *)&frame_picture_buf[i - 20];
-            if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC && head->width == 0xb4 &&
-                head->height == 0xc8)
+            if (i >= 20)
             {
-                qDebug() << "匹配到了图片数据包头";
-                cameraRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, i - 20);
-
-                return 1;
+                // 将数据转换为指向结构体的指针
+                head = reinterpret_cast<ext_picture_layer_t*>(const_cast<uchar*>(&data[i - 20]));
+                if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC)
+                {
+                    qDebug() << "匹配到了图片数据包头";
+                    picturedata.remove(0, i - 20);
+                    return 1;
+                }
             }
         }
     }
 
-    cameraRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, len);
-
+    picturedata.clear();
     return 0;
 }
 
@@ -274,50 +275,40 @@ void cameratest::printSquareData(uint8_t *data, size_t data_size)
     }
 }
 
-void cameratest::solve_picture_frame(void)
-{
-    // cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1,
-    // sizeof(camera_ring_buf));
+void cameratest::solve_picture_frame(QByteArray picturedata){
+
     uint16_t crc16 = NULL;
     uint16_t crc_cali = 0;
     while (true)
     {
-        // 从环形缓冲区中读取帧头
-        cameraRingBuf->usmile_ring_buffer_pick(&p_cameraRingBuffer, frame_picture_buf,
-                                               PICTURE_PHY_LAYER_HEAD_SIZE);
-        int ring_size = cameraRingBuf->usmile_ring_buffer_items_count_get(&p_cameraRingBuffer);
+
+        int ring_size =picturedata.size();
         if (ring_size <= PICTURE_PHY_LAYER_HEADER_ADN_CRC)
         {
             qDebug() << "摄像头环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
 
-        ext_picture_layer_t *head = (ext_picture_layer_t *)frame_picture_buf;
+        ext_picture_layer_t *head = (ext_picture_layer_t *)picturedata.data();
+
         if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC)
         {
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
+            float progressValue = ((float)ring_size / frame_size) * 100;
+            // 如果需要整数，可以转换为 int
+            int progressInt = (int)progressValue;
 
-            //qDebug() << "数据包：" << ++dataNumber;
-
+            emit send_picture_speed(progressInt);
+            QCoreApplication::processEvents(QEventLoop::AllEvents);
             if (frame_size > ring_size)
             {
-                     qDebug() << "图片帧数据不完整" << "需要" << frame_size << "实际为" << ring_size
-                         << "包数" << ring_size / 244 << "余数" << ring_size % 244 << "包头内容为"
-                         << frame_picture_buf[ring_size];
-                    break;
+                //qDebug() << "图片帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
+                break;
             }
 
-            qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size
-                     << sizeof(head);
+            // qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size
+            //          << sizeof(head);
 
-            // 从环形缓冲区中读取整个帧的数据
-            cameraRingBuf->usmile_ring_buffer_pick(&p_cameraRingBuffer, frame_picture_buf,
-                                                   frame_size);           qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size << "包数"
-                     << ring_size / 244 << "余数" << ring_size % 244 << "包头内容为"
-                     << frame_picture_buf[ring_size];
-
-            qDebug() << "图片帧数据完整" << "需要" << frame_size << "实际为" << ring_size
-                     << sizeof(head);
 
             crc16 = head->data_crc16;
             crc_cali = CRC16(head->data, head->data_size);
@@ -328,7 +319,6 @@ void cameratest::solve_picture_frame(void)
                 pictureByteArray = byteArray;
                 emit imageProcessed();
 
-
             }
             else
             {
@@ -337,29 +327,28 @@ void cameratest::solve_picture_frame(void)
                 qDebug() << "head content:"
                          << QByteArray(reinterpret_cast<char *>(head), PICTURE_PHY_LAYER_HEAD_SIZE)
                                 .toHex();
-                ui->msgEdit->appendPlainText("图片的crc错误");
+
+
                 qDebug() << "crc校验失败" << crc_cali << crc16 << "head->data[0]" << head->data[0]
                          << "head->data[1]" << head->data[1];
+
                 // printSquareData(head->data, head->data_size);
+
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char *>(head),
-                                     head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE);
+                                     frame_size);
                 pictureByteArray = byteArray;
                 emit imageProcessed();
             }
+            packetMap.clear();
+            picturedata.clear();
 
-            // 删除已经处理的帧数据
-            dongleRingBuf->usmile_ring_buffer_delete(&p_cameraRingBuffer, frame_size);
         }
         else
         {
             qDebug() << "数据流错误寻找下一帧";
-            qDebug() << "数据包头为:"
-                     << QByteArray(reinterpret_cast<char *>(frame_picture_buf),
-                                   PICTURE_PHY_LAYER_HEAD_SIZE)
-                            .toHex();
 
-            if (ext_ble_find_next_picture_frame())
+            if (ext_ble_find_next_picture_frame(picturedata))
             {
                 continue;
             }
@@ -379,59 +368,79 @@ void cameratest::solve_frame(void)
     while (true)
     {
         // 从环形缓冲区中读取帧头
-        dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf,
-                                               UART_PHY_LAYER_HEAD_SIZE);
+
+    dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf,UART_PHY_LAYER_HEAD_SIZE);
+
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
         if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC)
         {
             // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
-
+        // qDebug() << "ring_size" << ring_size;
+        // qDebug() << "frame_buf:"
+        //          << QByteArray(reinterpret_cast<char *>(frame_buf), 500) .toHex();
         ext_uart_phy_layer_t *head = (ext_uart_phy_layer_t *)frame_buf;
 
         if (head->magic == EXT_UART_MAGIC)
         {
-            int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
+            // qDebug() << "now content:"
+            //          << QByteArray(reinterpret_cast<char *>(head), 280).toHex();
 
+            int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
             if (frame_size > ring_size)
             {
-               // qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
+                qDebug() << "串口帧数据不完整" << "需要" << frame_size << "实际为" << ring_size;
                 break;
             }
-            //qDebug() << "哈哈哈" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
             // 从环形缓冲区中读取整个帧的数据
             dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, frame_size);
+            // qDebug() << "head content:"
+            //          << QByteArray(reinterpret_cast<char *>(head), 280).toHex();
+            //qDebug() << "2串口帧数据大小"<<frame_size<< "2数据大小"<<head->length;
+
+
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
             if (1)
             {
-                if(head->data[0]==dataNumber){
-                    qDebug() << "solve1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+                // if(head->data[0]!=dataNumber){
+                //     qDebug() << "丢包号码" << dataNumber;
+                //     faultData.append(dataNumber);
+                //   //  qDebug() << "solve1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-                  //  QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::DirectConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
-                    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
+                //  //  //  QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::DirectConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
+                //  //    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
 
-                  //  qDebug() << "solve2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+                //  //  //  qDebug() << "solve2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-                   // 强制事件循环处理，确保立即响应
-                   QCoreApplication::processEvents(QEventLoop::AllEvents);
-                 //  qDebug() << "solve3响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+                //  //   // 强制事件循环处理，确保立即响应
+                //  //   QCoreApplication::processEvents(QEventLoop::AllEvents);
+                //  // //  qDebug() << "solve3响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-                }
+                // }
 
-                qDebug() << "图片数据包的第一字节为" << head->data[0];
+                qDebug() << "图片数据包的第一字节为2" << head->data[0];
 
-                 emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
-                 emit send_thread_date("图片数据包总数" + QString::number(dataNumber));
-                 emit send_thread_date("图片数据包总字节数" + QString::number(cameradatasize=cameradatasize+head->length-1));
-                ++dataNumber;
+               //  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
+                cameradatasize=cameradatasize+head->length-1;
+                // emit send_thread_date("图片数据包总数" + QString::number(dataNumber));
+                 //emit send_thread_date("图片数据包总字节数" + QString::number(cameradatasize=cameradatasize+head->length-1));
+                 ++dataNumber;
+
+               //  qDebug() << "1串口帧数据大小"<<frame_size<< "1数据大小"<<head->length;
+
+                QByteArray byteArray(reinterpret_cast<const char *>(head->data), head->length);
+                addPacket(byteArray);
+
+                QByteArray completeData = reassembleData();
+                solve_picture_frame(completeData);
 
 
-                // 处理帧数据
-                write_camera_data(head->data+1, head->length-1);
+                // // 处理帧数据
+                // write_camera_data(head->data+1, head->length-1);
 
-                solve_picture_frame();
+                // solve_picture_frame();
             }
             else
             {
@@ -445,6 +454,8 @@ void cameratest::solve_frame(void)
 
             // 删除已经处理的帧数据
             dongleRingBuf->usmile_ring_buffer_delete(&p_dongleRingBuffer, frame_size);
+            std::memset(frame_buf, 0, sizeof(frame_buf));
+            qDebug() << "删除串口帧数据"<<frame_size;
         }
         else
         {
@@ -452,6 +463,9 @@ void cameratest::solve_frame(void)
             qDebug() << "串口数据包头为:"
                      << QByteArray(reinterpret_cast<char *>(frame_buf), UART_PHY_LAYER_HEAD_SIZE)
                             .toHex();
+            // qDebug() << "串口数据为:"
+            //          << QByteArray(reinterpret_cast<char *>(frame_buf), 50)
+            //                 .toHex();
 
             if (ext_ble_find_next_frame())
             {
@@ -689,8 +703,10 @@ void cameratest::processInspection(QString stringsn)
 }
 void cameratest::onTimeout()
 {
+    packetMap.clear();
+    faultData.clear();
     dataNumber = 0;
-    ui->msgEdit->appendPlainText("再次获取图片");
+   // ui->msgEdit->appendPlainText("再次获取图片");
     pb->set_camera_picture_state(1);
     std::memset(dongle_ring_buffer, 0,
                 sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
@@ -760,12 +776,16 @@ void cameratest::start_task()
                 ui->msgEdit->appendPlainText("已进入禁止休眠模式");
                 if (pack.product == "U7P")
                 {
+
+
                     // 设置定时器的超时时间为6000毫秒（6秒）
-                    cameraSendTimer->setInterval(30000);
+                    cameraSendTimer->setInterval(6000);
                     // 启动定时器
                     cameraSendTimer->start();
                     dataNumber = 0;
-
+                    packetMap.clear();
+                    faultData.clear();
+                    ui->log->appendPlainText("开始发送开摄像头");
                     pb->set_camera_picture_state(1);
                     std::memset(dongle_ring_buffer, 0,
                                 sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
@@ -1720,4 +1740,58 @@ void cameratest::on_OffsetTest_clicked()
     painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);   // 绘制第一个矩形
     painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);   // 绘制第二个矩形
     viewercamrea_py->updateImage();   // 更新视图
+}
+
+
+// 添加数据包到容器
+void cameratest::addPacket(const QByteArray &packet) {
+
+
+    int seqNumber = static_cast<uchar>(packet[0]);
+    packetMap.insert(seqNumber, packet.mid(1)); // 存储去掉序号的数据部分
+    qDebug() << "添加包:" << seqNumber;
+}
+
+// 检查是否有丢失的包
+void cameratest::checkMissingPackets() {
+    int lastSeqNumber = packetMap.isEmpty() ? -1 : packetMap.lastKey();
+
+    for (int i = 0; i <= lastSeqNumber; ++i) {
+        if (!packetMap.contains(i)) {
+            faultData.append(i);
+        }
+    }
+
+    if (faultData.isEmpty()) {
+        qDebug() << "No missing packets.";
+    } else {
+        qDebug() << "Missing packets:" << faultData;
+    }
+}
+// 重新组装数据包
+QByteArray cameratest:: reassembleData() {
+    // 从 QMap 获取序号列表
+    QList<int> keysList = packetMap.keys();
+
+    // 将 QList 转换为 QVector
+    QVector<int> keysVector(keysList.begin(), keysList.end());
+
+    std::sort(keysVector.begin(), keysVector.end()); // 按序号排序
+
+    QByteArray completeData;
+
+    for (int seq : keysVector) {
+        completeData.append(packetMap.value(seq));
+    }
+
+    return completeData;
+}
+ void cameratest::getPictureSendOver(FacPictureDataAck x)
+{
+    waitWork(50);//等待数据彻底处理完毕
+     checkMissingPackets();
+     qDebug() << "错误个数"+QString::number(faultData.size());
+  //   ui->msgEdit->appendPlainText("错误个数"+QString::number(faultData.size()));
+     emit  need_send_fault_data_packet(faultData.size(), faultData);
+
 }

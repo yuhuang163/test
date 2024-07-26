@@ -601,6 +601,14 @@ void test_base::closeProductSerialPort()
 
     emit refreshProductSerialPortState(0);
 }
+
+void  test_base::refresh_pb_data(QString data) {
+
+    msgEdit()->appendPlainText(data);
+
+
+}
+
 void test_base::waitWork(int ms)
 {
     QTime t;

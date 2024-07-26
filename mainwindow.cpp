@@ -29,7 +29,7 @@ void MainWindow::on_pushButton_clicked()
     // on_macInput_returnPressed();
     // // pb->set_device_mode();//进入亮白
    // emit need_send_camera_respone(FacErrorCode_NO_ERROR);
-  //  printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()), pictureByteArray.size());
+ // printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()), pictureByteArray.size());
 
 
     QVector<int> faultData = {1, 2, 3, 4, 5};
@@ -65,8 +65,11 @@ void MainWindow::on_pushButton_3_clicked()
             }
         }
     }
+    char byte = imageData[37];  // 获取第37个字节
+    qDebug() << "imageData[37]:" << QString::number(static_cast<unsigned char>(byte), 16).toUpper();  // 打印为十六进制字符串
+
     // 十六进制字符串
-    QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c000078016405784f5558";
+    QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c00007801640578";
 
     // 将十六进制字符串转换为 QByteArray
     QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
@@ -100,10 +103,14 @@ void MainWindow::on_pushButton_3_clicked()
         packet.append(finalData.mid(offset, 243));
         allPackets.append(packet);
     }
+    finalData.clear();
+
     qDebug() << "allPacketssize:" << allPackets.size();
 
     int write_len = 0;
     int len = allPackets.size();
+    //printSquareData(reinterpret_cast<uint8_t*>(allPackets.data()), allPackets.size());
+
     write_len = dongleRingBuf->usmile_ring_buffer_write(
         &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(allPackets.data()), allPackets.size());
     qDebug() << "写完了:" << allPackets.size();
@@ -225,6 +232,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refresh_pb_data(QString)));
 
 
+    connect(this, SIGNAL(send_picture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
 
 
         connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
@@ -286,7 +294,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(dongleSerialPort, &QSerialPort::readyRead, this,
             [=]()
             {
-                dongleSerialPortTimer->start(10);   // 设置100毫秒的延时
+                dongleSerialPortTimer->start(5);   // 设置100毫秒的延时
                 dongleSerialPortBuf.append(dongleSerialPort->readAll());   // 将读到的数据放入缓冲区
             });
 
@@ -377,7 +385,7 @@ MainWindow::MainWindow(QWidget *parent)
         new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
     recoverCustom();
-    //qDebug() << "Thread video_frame_data_struct..."<<sizeof(video_frame_data_struct);
+  //  qDebug() << "Thread video_frame_data_struct..."<<sizeof(video_frame_data_struct);
 
     // //  在需要的地方调用 QtConcurrent::run 来异步执行函数
     // QFuture<void> future = QtConcurrent::run([this]() {
@@ -398,9 +406,9 @@ MainWindow::MainWindow(QWidget *parent)
             while (running.load())
             {
                 solve_frame();
-                QCoreApplication::processEvents();
+               // QCoreApplication::processEvents();
 
-               // QThread::msleep(10);   // 等待10毫秒
+                QThread::msleep(10);   // 等待10毫秒
             }
         });
     running.store(true);
@@ -573,7 +581,7 @@ void MainWindow::openDongleSerialPort()
     // 设置串口名
     dongleSerialPort->setPortName(ui->comNameCombo->currentText());
     // 设置波特率
-    dongleSerialPort->setBaudRate(115200);
+    dongleSerialPort->setBaudRate(921600);
     // 设置数据位
     dongleSerialPort->setDataBits(QSerialPort::Data8);
     // 设置校验位
@@ -2903,6 +2911,7 @@ void MainWindow::on_close_support_camera_clicked()
 
 void MainWindow::on_open_camera_picture_clicked()
 {
+    packetMap.clear();
     faultData.clear();
     cameradatasize = 0;
     dataNumber = 0;

@@ -341,7 +341,7 @@ typedef struct _FacOtaFileInfo {
 typedef struct _FacPictureDataAck { 
     FacErrorCode send_data_over; 
     pb_size_t fault_data_packet_count;
-    uint32_t fault_data_packet[20]; 
+    uint32_t fault_data_packet[50]; 
     FacErrorCode result; 
 } FacPictureDataAck;
 
@@ -720,7 +720,7 @@ extern "C" {
 #define FacMotoControl_init_default              {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_default         {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacCameraControl_init_default            {_FacCameraControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
-#define FacPictureDataAck_init_default           {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
+#define FacPictureDataAck_init_default           {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
 #define FacLedColor_init_default                 {_LedPosition_MIN, 0, 0, 0}
 #define FacLedControl_init_default               {0, _FacSwitch_MIN, 0, {FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default, FacLedColor_init_default}, _FacErrorCode_MIN}
 #define FacBrushControl_init_default             {_FacBrushControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
@@ -760,7 +760,7 @@ extern "C" {
 #define FacMotoControl_init_zero                 {_FacMotoControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
 #define FacMotorCalibResult_init_zero            {_FacMotorUploadType_MIN, 0, {0}, _FacErrorCode_MIN}
 #define FacCameraControl_init_zero               {_FacCameraControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
-#define FacPictureDataAck_init_zero              {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
+#define FacPictureDataAck_init_zero              {_FacErrorCode_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, _FacErrorCode_MIN}
 #define FacLedColor_init_zero                    {_LedPosition_MIN, 0, 0, 0}
 #define FacLedControl_init_zero                  {0, _FacSwitch_MIN, 0, {FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero, FacLedColor_init_zero}, _FacErrorCode_MIN}
 #define FacBrushControl_init_zero                {_FacBrushControlType_MIN, 0, {_FacSwitch_MIN}, _FacErrorCode_MIN}
@@ -1565,7 +1565,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacMotoParam_size                        17
 #define FacMotorCalibResult_size                 135
 #define FacOtaFileInfo_size                      341
-#define FacPictureDataAck_size                   125
+#define FacPictureDataAck_size                   305
 #define FacPreSensorCalibResult_size             27
 #define FacRegisterConfig_size                   12
 #define FacSetBrushRecord_size                   66

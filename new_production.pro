@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 
 CONFIG += c++17
-
+QMAKE_CXXFLAGS += /MP
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -191,6 +191,15 @@ TRANSLATIONS += \
     new_production_zh_CN.ts
 CONFIG += lrelease
 CONFIG += embed_translations
+
+
+# 添加config配置
+CONFIG += precompile_header
+# 指定要使用的预编译头文件
+# PRECOMPILED_HEADER += $$PWD/my_set/AbInit.h
+
+
+
 
 RC_ICONS = ./stytle/picture/usmile.ico
 

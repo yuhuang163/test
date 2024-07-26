@@ -66,47 +66,22 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    bool deleteCsvFile(const QString &filePath);
-    QTimer *scanSerialPortsTimer = new QTimer(this);
-    void printSquareData(uint8_t *data, size_t data_size);
+
 
     /*摄像头传图部分*/
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;
     int dataNumber = 0;
 #define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
-    unsigned short crc16_compute(unsigned char const *p_data, unsigned int size,
-                                 unsigned short const *p_crc)
-    {
-        unsigned short crc = (p_crc == NULL) ? 0xFFFF : *p_crc;
-
-        for (uint32_t i = 0; i < size; i++)
-        {
-            crc = (unsigned char)(crc >> 8) | (crc << 8);
-            crc ^= p_data[i];
-            crc ^= (unsigned char)(crc & 0xFF) >> 4;
-            crc ^= (crc << 8) << 4;
-            crc ^= ((crc & 0xFF) << 4) << 1;
-        }
-
-        return crc;
-    }
-    // 0xAAAAAAAAAAAAAAAA
-    // 0xCCCCCCCCCCCCCCCC
-
-#define EXT_UART_MAGIC                0xCCCCCCCCCCCCCCCC
+#define EXT_UART_MAGIC                0xCCCCCCCCCCCCCCCC    // 0xAAAAAAAAAAAAAAAA
 #define UART_PHY_LAYER_HEAD_SIZE      9   // 头大小
-// #define UART_PHY_LAYER_FRAME_SIZE 256
 #define UART_PHY_LAYER_CRC_SIZE       0
-// #define UART_PHY_LAYER_PLAYLOAD_SIZE 244
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC      0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE      40   // 头大小
-// #define PICTURE_PHY_LAYER_FRAME_SIZE 256
-#define PICTURE_PHY_LAYER_CRC_SIZE       0
-// #define PICTURE_PHY_LAYER_PLAYLOAD_SIZE 244
-#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE + PICTURE_PHY_LAYER_CRC_SIZE)
+#define PICTURE_PHY_LAYER_HEAD_SIZE      sizeof(video_frame_data_struct)   // 头大小
+#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE )
+#pragma pack(1)
 
     typedef struct video_frame_data_struct
     {
@@ -120,13 +95,12 @@ public:
         uint8_t exposure_time_max;    // 最大曝光时间
         uint8_t exposure_time_mini;   // 最小曝光时间
         uint8_t exposure_time;        // 设置曝光时间
-        uint8_t
-            exposure_time_rate_of_change;   // 最大曝光时间变化(控制平滑度,数字越大，曝光调整越平滑)
+        uint8_t exposure_time_rate_of_change;   // 最大曝光时间变化
         uint8_t brightness_target;   // 目标亮度 范围：0~255
         uint8_t data[0];             // 图像帧内容.
+
     } ext_picture_layer_t;
 
-#pragma pack(1)
     typedef struct
     {
         uint64_t magic;
@@ -160,14 +134,11 @@ public:
 private:
     NewImuCalData calData;
     new_imu_calibrate *nqimuc = nullptr;
-    QString getValueBySN(const QString &sn);
-    QByteArray subpid;
 
-    bool eventFilter(QObject *watched, QEvent *event);
-    QString receivedData = "";
+    QByteArray subpid;
+      QString receivedData = "";
     QString voltageresult;
     QString charageresult;
-    void save_battary_data_to_csv(double vol, QString charge_state, QString chares, QString volres);
     double voltage;
     QString chargestate;
     double standbattary = 0;
@@ -188,8 +159,7 @@ private:
     int BleLowRssi;
     int RssiTestTime;
     QString productName;
-    void save_RSSI_data_to_csv(int intwifirssi, int intblerssi, QString wifiresult,
-                               QString bleresult);
+
     QLabel *bleStatusLabel = nullptr;
     QLabel *WifiStatusLabel = nullptr;
     QSerialPort *dongleSerialPort;   // dongle硬件层
@@ -226,24 +196,52 @@ private:
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
     Ui::MainWindow *ui;
-    void saveCustom();
-    void recoverCustom();
+
     QString snbanding;
     QString macAddress = "没有mac地址";
     bool isimuCaliOk = 0;         // 是否校准完成
     bool is_start_ium_cali = 0;   // 是否开始六轴校准
     void update_main_style(QString style);
     QTimer *waittime = new QTimer(this);
-    // 在您的类中声明定时器
     QTimer *cameratimer = new QTimer(this);
-    QVector<int> faultData ;
-    void addPacket(const QByteArray &packet);
-    QByteArray reassembleData();
+    QTimer *scanSerialPortsTimer = new QTimer(this);
+    QTimer *dongleSerialPortTimer = new QTimer(this);
+
+
+
     int imu_wait_time = 15000;
     int music_time = 30000;
     bool isovertime = 0;              // 是否开始发送校验结果
     bool isfirstsavedata = 0;         // 是否开始按键200校准
     bool isStartSendCaliResult = 0;   // 是否开始发送校验结果
+    bool isContinue = true;
+    // 存储数据包的容器，按序号排序
+    QMap<int, QByteArray> packetMap;
+    QVector<int> faultData ;
+    QByteArray dongleSerialPortBuf = 0;
+
+    // 定义用于保存MAC地址的QString变量
+    QString csvmac;
+    QComboBox *comNameCombo;
+    QUdpSocket *udpSocket;
+protected:
+    virtual void closeEvent(QCloseEvent *);
+
+private slots:
+    void checkMissingPackets();
+    void addPacket(const QByteArray &packet);
+    QByteArray reassembleData();
+    void printSquareData(uint8_t *data, size_t data_size);
+    bool deleteCsvFile(const QString &filePath);
+    QString getValueBySN(const QString &sn);
+    void save_battary_data_to_csv(double vol, QString charge_state, QString chares, QString volres);
+    bool eventFilter(QObject *watched, QEvent *event);
+    void saveCustom();
+    void recoverCustom();
+
+    void save_RSSI_data_to_csv(int intwifirssi, int intblerssi, QString wifiresult,
+                               QString bleresult);
+    void updateHIDComboBox(QComboBox *comboBox);
     void save_imu_test_data_to_csv(const QString &macAddress, const QString &result);
     void initBasicInfo();
     void initPeriphState();
@@ -255,40 +253,10 @@ private:
     void waitWork(int ms);
     void sendData(bool is_random);
     void SendRecord();
-    bool isContinue = true;
-    void on_sendRecord_clicked();
-    void on_radomDataPushButton_clicked();
-    QTimer *dongleSerialPortTimer = new QTimer(this);
-    QByteArray dongleSerialPortBuf = 0;
-    void updateHIDComboBox(QComboBox *comboBox);
-
-    // 定义用于保存MAC地址的QString变量
-    QString csvmac;
-    QComboBox *comNameCombo;
-    QUdpSocket *udpSocket;
-protected:
-    virtual void closeEvent(QCloseEvent *);
-
-signals:
-    void sendMessage(QString s);
-    void send_uart_state(int data);
-    void send_ble_state(int data);
-    void send_mac(QString data);
-    void send_frame_rate(QString data);
-    void refreshDongleSerialPortState(int state);
-    void imageProcessed();
-    void send_thread_date(QString);
-    void need_send_camera_respone(FacErrorCode);
-    void need_send_fault_data_packet(int ,const QVector<int>&);
-
-
-private slots:
     void getPictureSendOver(FacPictureDataAck x);
-
     void updateImageOnMainThread();
     void refresh_log_data(QString data);
     void saveToCsv(const QString &filename, const FacUploadNineAlex &x);
-
     void showlog(QString msg);
     void refresh_imu_cali_msg(QString msg);
     void send_picture(const QString &url, const QString &filePath);
@@ -306,6 +274,39 @@ private slots:
     void openDongleSerialPort(void);
     void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
+    void refresh_ble_rssi(QString data);
+    void refresh_wifi_rssi(QString data);
+    void refresh_ble_state(int state);
+    void getimuData(FacUploadNineAlex x);
+    void refresh_battary_data(FacDevInfo adc);
+    void update_wifi(FacDevInfo wifi);
+    void banding_mac_sn(QString bandingmac, QString bandingsn);
+    void get_mac(QString sn_to_search);
+    void update_local_ota_result(FacInternetOta x);
+    void update_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
+    void ota_source_set(int state);
+    void ota_fw_set(int state);
+    void refresh_pb_data(QString data);
+    void getPressSensorData(FacUploadPresSensor x);
+    void get_servo_motor_info_msg(FacMotorCalibResult data);
+    QString getMotorStateString(FacMotoState state);
+    QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
+    QString getCaliMarkString(CaliMark caliMark);
+    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
+    void convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
+
+    void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
+                               bool appHeader);
+    void readPendingDatagrams();
+    void refresh_color1();
+    void refresh_color2();
+    void refresh_color3();
+    void refresh_color4();
+    void refresh_motor_cali_msg(QString msg);
+    void processTheDatagram(QByteArray &datagram);
+    void scanSerialPorts();
+
+private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
     void on_getperipheralButton_clicked();
@@ -314,12 +315,6 @@ private slots:
     void on_lcdTestButton_clicked();
     void on_enterShipModeButton_clicked();
     void on_macInput_returnPressed();
-    void refresh_ble_rssi(QString data);
-    void refresh_wifi_rssi(QString data);
-    void refresh_ble_state(int state);
-    void getimuData(FacUploadNineAlex x);
-    void refresh_battary_data(FacDevInfo adc);
-    void update_wifi(FacDevInfo wifi);
     void on_enterBurningMode_clicked();
     void on_exitBurningMode_clicked();
     void on_snInput_returnPressed();
@@ -352,12 +347,8 @@ private slots:
     void on_clear_scan_clicked();
     void on_pushButton_2_clicked();
     void on_mac_combo_textActivated(const QString &arg1);
-    void banding_mac_sn(QString bandingmac, QString bandingsn);
-    void get_mac(QString sn_to_search);
     void on_bleTestPushButton_clicked();
     void on_macInput_7_returnPressed();
-    void update_local_ota_result(FacInternetOta x);
-    void update_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
     void on_stopTestPushButton_clicked();
     void on_configWifiPushButton_clicked();
     void on_getInfoPushButton_clicked();
@@ -371,10 +362,6 @@ private slots:
     void on_start_scan_clicked();
     void on_enterwhitemode_clicked();
     void on_otaTestPushButton_2_clicked();
-    void ota_source_set(int state);
-    void ota_fw_set(int state);
-
-    void refresh_pb_data(QString data);
     void on_close_camera_clicked();
     void on_open_camera_clicked();
     void on_open_camear_light_clicked();
@@ -385,22 +372,11 @@ private slots:
     void on_motor_cali_param_returnPressed();
     void on_start_brush_clicked();
     void on_open_press_collect_clicked();
-    void getPressSensorData(FacUploadPresSensor x);
-    void get_servo_motor_info_msg(FacMotorCalibResult data);
-    QString getMotorStateString(FacMotoState state);
-    QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
-    QString getCaliMarkString(CaliMark caliMark);
-    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
-    void convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
-
-    void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
-                               bool appHeader);
     void on_close_press_collect_clicked();
     void on_test_cali_clicked();
     void on_open_motor_test_clicked();
     void on_close_motor_test_clicked();
     void on_start_local_ota_clicked();
-    void readPendingDatagrams();
     void on_new_connectwifi_clicked();
     void on_get_imu_info_clicked();
     void on_swing_test_clicked();
@@ -422,15 +398,9 @@ private slots:
     void on_R4_valueChanged(int value);
     void on_G4_valueChanged(int value);
     void on_B4_valueChanged(int value);
-    void refresh_color1();
-    void refresh_color2();
-    void refresh_color3();
-    void refresh_color4();
     void on_pushButton_3_clicked();
     void on_pink_led_clicked();
     void on_white_led_clicked();
-    void refresh_motor_cali_msg(QString msg);
-    void processTheDatagram(QByteArray &datagram);
     void on_get_motor_log_clicked();
     void on_set_imu_info_clicked();
     void on_calculate_returnPressed();
@@ -459,8 +429,6 @@ private slots:
     void on_write_device_sn_clicked();
     void on_write_board_sn_clicked();
     void on_write_device_subpid_clicked();
-    void scanSerialPorts();
-
     void on_send_wifi_config_clicked();
     void on_get_battery_level_clicked();
     void on_up_picture_clicked();
@@ -471,6 +439,21 @@ private slots:
     void on_set_play_speed_clicked();
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
+
+
+signals:
+    void sendMessage(QString s);
+    void send_uart_state(int data);
+    void send_ble_state(int data);
+    void send_mac(QString data);
+    void send_frame_rate(QString data);
+    void refreshDongleSerialPortState(int state);
+    void imageProcessed();
+    void send_thread_date(QString);
+    void need_send_camera_respone(FacErrorCode);
+    void need_send_fault_data_packet(int ,const QVector<int>&);
+    void send_picture_speed(int);
+
 };
 
 

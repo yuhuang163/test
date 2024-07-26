@@ -70,7 +70,7 @@ public:
     int jigBaudRate = 115200;
     int productBaudRate = 1000000;
     int usbBaudRate = 115200;
-    int dongleBaudRate = 115200;
+    int dongleBaudRate = 921600;
 
     int dongleOutTime = 10;
 
@@ -163,7 +163,7 @@ public slots:
     virtual void check_BrushControl_state(FacBrushControl){};
     virtual void update_IMU_CALIB_result(FacImuCalibResult) {};
     virtual void getimuData(FacUploadNineAlex) {};
-    virtual void refresh_pb_data(QString) {};
+    virtual void refresh_pb_data(QString);
     virtual void refresh_motor_cali_msg(QString) {};
     virtual void refresh_ble_rssi(QString) {};
     virtual void get_dongle_ver(QString) {};

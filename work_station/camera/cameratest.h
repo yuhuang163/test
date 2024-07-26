@@ -116,18 +116,13 @@ public:
     }
 #define EXT_UART_MAGIC                0xCCCCCCCCCCCCCCCC
 #define UART_PHY_LAYER_HEAD_SIZE      9   // 头大小
-// #define UART_PHY_LAYER_FRAME_SIZE 256
 #define UART_PHY_LAYER_CRC_SIZE       0
-// #define UART_PHY_LAYER_PLAYLOAD_SIZE 244
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC      0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE      40   // 头大小
-// #define PICTURE_PHY_LAYER_FRAME_SIZE 256
-#define PICTURE_PHY_LAYER_CRC_SIZE       0
-// #define PICTURE_PHY_LAYER_PLAYLOAD_SIZE 244
-#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE + PICTURE_PHY_LAYER_CRC_SIZE)
-
+#define PICTURE_PHY_LAYER_HEAD_SIZE      sizeof(video_frame_data_struct)    // 头大小
+#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE )
+#pragma pack(1)
     typedef struct video_frame_data_struct
     {
         uint64_t timestamp;
@@ -145,7 +140,7 @@ public:
         uint8_t data[0];                        // 图像帧内容.
     } ext_picture_layer_t;
 
-#pragma pack(1)
+
     typedef struct
     {
         uint64_t magic;
@@ -167,18 +162,20 @@ public:
     uint8_t camera_ring_buf[100 * 1024];       // 摄像头队列池
     uint8_t frame_picture_buf[37 * 1024];      // 照片队列池
     int ext_ble_find_next_frame(void);
-    int ext_ble_find_next_picture_frame(void);
+    int ext_ble_find_next_picture_frame(QByteArray &picturedata);
     void write_camera_data(uint8_t *p_data, int data_len);
     RingBuf *dongleRingBuf = nullptr;
     RingBuf *cameraRingBuf = nullptr;
     void solve_frame(void);
-    void solve_picture_frame(void);
+    void solve_picture_frame(QByteArray picturedata);
     /*摄像头传图部分*/
 
     explicit cameratest(int index, QWidget *parent = nullptr);
     ~cameratest();
     Ui::cameratest *ui;
     void start_task() override;
+    QMap<int, QByteArray> packetMap;
+    QVector<int> faultData ;
 private:
     QPixmap currentPixmap;
 
@@ -243,6 +240,9 @@ protected:
     void closeEvent(QCloseEvent *) override;
 
 private slots:
+    void checkMissingPackets();
+    void addPacket(const QByteArray &packet);
+    QByteArray reassembleData();
     void readDongleSerialPortData() override;
     void getPictureSendOver(FacPictureDataAck x);
 
@@ -317,7 +317,8 @@ signals:
     void endTest(int data);
     void startTest(int data);
     void imageProcessed();
-
+    void need_send_fault_data_packet(int ,const QVector<int>&);
+    void send_picture_speed(int);
     void send_thread_date(QString);
     void need_send_camera_respone(FacErrorCode);
 };

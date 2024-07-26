@@ -204,13 +204,13 @@ void Qpb::sendShortPack(const DataPackage &pack)
     }
     else
     {
-        qDebug() << "编码失败原因：" << PB_GET_ERROR(&o_stream);
+        qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 }
 
 void Qpb::sendShortPack(const FactoryDataPackage &pack)
 {
-   // waitWork(20);
+   waitWork(20);
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
 
@@ -264,7 +264,7 @@ void Qpb::sendShortPack(const FactoryDataPackage &pack)
     }
     else
     {
-        qDebug() << "工厂pb编码失败原因：" << PB_GET_ERROR(&o_stream);
+        qDebug() << "短包工厂pb编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 }
 
@@ -278,7 +278,7 @@ void Qpb::waitWork(int ms)
 
 uint32_t Qpb::sendlongPack(const FactoryDataPackage &pack)
 {
-    std::vector<uint8_t> tx_buffer(1024);
+    std::vector<uint8_t> tx_buffer(4096);
     std::vector<uint8_t> small_buffer(244);
 
     uint32_t ret = 0;                  // 初始化返回值为0
@@ -343,7 +343,7 @@ uint32_t Qpb::sendlongPack(const FactoryDataPackage &pack)
     }
     else
     {
-        qDebug() << "编码失败原因：" << PB_GET_ERROR(&o_stream);
+        qDebug() << "长包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 
     return ret;   // 如果成功则返回0
@@ -1343,11 +1343,17 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
 }
 void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 发送校准结果
 {
-    //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
+    qDebug() << "错误个数"<<count;
     FactroyCmd cmd = FactroyCmd_UPLOAD_PICTURE_DATA;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
+
+    if(count>sizeof(pack.command_data.upload_picture_data.fault_data_packet)/sizeof(uint32_t)){
+        emit send_pb_date("丢包过多"+QString::number(count));
+        count=50;
+
+    }
+
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_upload_picture_data_tag;
     pack.command_data.upload_picture_data.fault_data_packet_count = count;
@@ -1358,7 +1364,7 @@ void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 
 
     sendShortPack(pack);
 
-    emit send_pb_date("发送摄像头数据包回应");
+    emit send_pb_date("成功发送摄像头错误数据包个数"+QString::number(count));
 }
 void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果
 {
@@ -1531,6 +1537,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage &f)
     emit sendGetBrushResponse(1);
 
     }
+
     qDebug() << "收到发送数据包结束回应" << x.send_data_over;
 
 }

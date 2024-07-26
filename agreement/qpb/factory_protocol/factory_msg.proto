@@ -436,7 +436,7 @@ message FacCameraControl
 message FacPictureDataAck
 {
     FacErrorCode send_data_over = 1;
-    repeated uint32 fault_data_packet = 2[(nanopb).max_count = 20];
+    repeated uint32 fault_data_packet = 2[(nanopb).max_count = 50];
 
     
     FacErrorCode result = 100;

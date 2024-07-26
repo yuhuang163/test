@@ -1553,14 +1553,7 @@
                    <string>摄像头实时画面</string>
                   </property>
                   <layout class="QGridLayout" name="gridLayout_15">
-                   <item row="0" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_31">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                    </layout>
-                   </item>
-                   <item row="1" column="0">
+                   <item row="2" column="0">
                     <layout class="QHBoxLayout" name="horizontalLayout_77">
                      <item>
                       <widget class="QCheckBox" name="quicklz_picture">
@@ -1584,6 +1577,20 @@
                       </widget>
                      </item>
                     </layout>
+                   </item>
+                   <item row="0" column="0">
+                    <layout class="QVBoxLayout" name="verticalLayout_31">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                    </layout>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QProgressBar" name="picture_speed">
+                     <property name="value">
+                      <number>24</number>
+                     </property>
+                    </widget>
                    </item>
                   </layout>
                  </widget>
