@@ -6,9 +6,10 @@
 #endif
 
 quiescent_current::quiescent_current(int index, QWidget *parent)
-    : ui(new Ui::quiescent_current), m_index(index), basicInfoModel(new TestModel),
+    : ui(new Ui::quiescent_current), basicInfoModel(new TestModel),
       peripheralModel(new TestModel)
-{
+{    m_index=index;
+
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
     update_main_style("Ubuntu.qss");
@@ -53,15 +54,15 @@ quiescent_current::quiescent_current(int index, QWidget *parent)
 
    
 
-    ui->msgEdit->appendPlainText("action=" + pack.test_station);
-    ui->msgEdit->appendPlainText("line=" + pack.line);
-    ui->msgEdit->appendPlainText("action=" + pack.action);
-    ui->msgEdit->appendPlainText("model=" + pack.model);
+    showlog("action=" + pack.test_station);
+    showlog("line=" + pack.line);
+    showlog("action=" + pack.action);
+    showlog("model=" + pack.model);
 
-    ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
-    ui->msgEdit->appendPlainText("HighCurrent=" + QString::number(HighCurrent));
-    ui->msgEdit->appendPlainText("LowCurrent=" + QString::number(LowCurrent));
-    ui->msgEdit->appendPlainText("measure_wait_time=" + QString::number(measure_wait_time));
+    showlog("machineNo=" + pack.machineNo);
+    showlog("HighCurrent=" + QString::number(HighCurrent));
+    showlog("LowCurrent=" + QString::number(LowCurrent));
+    showlog("measure_wait_time=" + QString::number(measure_wait_time));
 
     if (pack.factory == "hq" || pack.factory == "jj")
     {
@@ -360,7 +361,7 @@ void quiescent_current::refresh_ammeter_data(QString data)
         QString formattedValue = QString::number(normalValue, 'f', 8);
         qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
         // ui->log->appendPlainText(formattedValue+"ma");
-        ui->msgEdit->appendPlainText(formattedValue + "ma");
+        showlog(formattedValue + "ma");
     }
     else
     {
@@ -421,7 +422,7 @@ void quiescent_current::on_snInput_returnPressed()
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch())
     {
-        ui->msgEdit->appendPlainText("序列号错误");
+        showlog("序列号错误");
         ui->snInput->clear();
         return;
     }
@@ -497,7 +498,7 @@ void quiescent_current::on_macInput_returnPressed()
         {
             state = STATE_SAVE_RESULT;
             totalresult = failValue;
-            ui->msgEdit->appendPlainText("mac地址重复,请交叉复测...如复测也报错，机子异常");
+            showlog("mac地址重复,请交叉复测...如复测也报错，机子异常");
         }
         isquiescent_currentContinue = true;
     }
@@ -539,62 +540,62 @@ void quiescent_current::refresh_ble_state(int state)
     if (state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        ui->msgEdit->appendPlainText("蓝牙连接成功");
+        showlog("蓝牙连接成功");
         pb->set_forbid_sleep(FacSwitch_OPEN);
-        ui->msgEdit->appendPlainText("已发送禁止休眠");
+        showlog("已发送禁止休眠");
     }
     else
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        ui->msgEdit->appendPlainText("蓝牙连接断开");
+        showlog("蓝牙连接断开");
     }
 }
 
 void quiescent_current::refresh_product_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("product串口连接成功");
+        showlog("product串口连接成功");
     else
     {
         ui->productComNameCombo->setEnabled(true);
         ui->productConnectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("product串口连接断开");
+        showlog("product串口连接断开");
     }
 }
 
 void quiescent_current::refresh_dongle_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("dongle串口连接成功");
+        showlog("dongle串口连接成功");
     else
     {
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("dongle串口连接断开");
+        showlog("dongle串口连接断开");
     }
 }
 
 void quiescent_current::refresh_jig_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("治具串口连接成功");
+        showlog("治具串口连接成功");
     else
     {
         ui->jigComNameCombo->setEnabled(true);
         ui->jigConnectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("治具串口连接断开");
+        showlog("治具串口连接断开");
     }
 }
 
 void quiescent_current::refresh_usb_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("usb串口连接成功");
+        showlog("usb串口连接成功");
     else
     {
         ui->usbcomNameCombo->setEnabled(true);
         ui->usbconnectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("usb串口连接断开");
+        showlog("usb串口连接断开");
     }
 }
 void quiescent_current::on_connectButton_clicked()
@@ -657,7 +658,7 @@ void quiescent_current::solveMesSucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("mes操作成功");
+        showlog("mes操作成功");
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -670,9 +671,9 @@ void quiescent_current::solveMesData(const int mechines, QString msg)
     if (mechines == getIndex())
     {
         on_pushButton_2_clicked();
-        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        showlog("MES:报错信息:" + msg);
         isquiescent_currentContinue = false;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
         ui->macInput->clear();
         ui->snInput->clear();
         ui->mes_state->setStyleSheet(
@@ -683,20 +684,16 @@ void quiescent_current::solveMesData(const int mechines, QString msg)
 }
 void quiescent_current::get_dongle_ver(QString data)
 {
-    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+    showlog("当前dongle的版本为：" + data);
 }
-void quiescent_current::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
-}
+
 void quiescent_current::processInspection(QString stringsn)
 {
     if (stringsn != "" || !ui->isusemes->checkState())
     {
         if (ui->isusemes->checkState())
         {
-            ui->msgEdit->appendPlainText("正在进行站前检测");
+            showlog("正在进行站前检测");
             pack.sn = stringsn;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
@@ -707,7 +704,7 @@ void quiescent_current::processInspection(QString stringsn)
     }
     else
     {
-        ui->msgEdit->appendPlainText("SN比对错误");
+        showlog("SN比对错误");
     }
 
     if (!ui->isusemes->checkState())   // 离线
@@ -742,7 +739,7 @@ void quiescent_current::start_task()
             at->resetConnected();
             measure_ammeter = 0;
             at->sendMac(ui->macInput->text());   // 发送mac地址
-            ui->msgEdit->appendPlainText("已经发送mac地址");
+            showlog("已经发送mac地址");
             TestTime.start();
             state = STATE_WATI_CONNECT;
 
@@ -753,7 +750,7 @@ void quiescent_current::start_task()
             {
                 qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("蓝牙连接成功");
+                showlog("蓝牙连接成功");
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 state = STATE_BANDING;
             }
@@ -762,14 +759,14 @@ void quiescent_current::start_task()
         case STATE_BANDING:
             if (pb->get_is_banding_ok())
             {
-                ui->msgEdit->appendPlainText("sn已成功绑定保存");
+                showlog("sn已成功绑定保存");
                 state = STATE_WATI_DISABLE_SLEEP;
             }
             else
             {
                 waitWork(500);
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                ui->msgEdit->appendPlainText("已发送sn绑定");
+                showlog("已发送sn绑定");
             }
 
             break;
@@ -778,7 +775,7 @@ void quiescent_current::start_task()
 
             if (pb->getDisableSleep())
             {
-                ui->msgEdit->appendPlainText("已进入禁止休眠");
+                showlog("已进入禁止休眠");
                 pb->get_base_info();
                 state = STATE_WATI_GET_BASE_STATE;
             }
@@ -786,7 +783,7 @@ void quiescent_current::start_task()
             {
                 waitWork(500);
                 pb->set_forbid_sleep(FacSwitch_OPEN);
-                ui->msgEdit->appendPlainText("已发送禁止休眠");
+                showlog("已发送禁止休眠");
             }
             break;
 
@@ -795,7 +792,7 @@ void quiescent_current::start_task()
             if (base_state == 1)   // 基础信息正常
             {
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("基础信息验证通过");
+                showlog("基础信息验证通过");
                 pb->get_periph_state();
 
                 state = STATE_WATI_GET_PERIPHERAL_STATE;
@@ -803,7 +800,7 @@ void quiescent_current::start_task()
             if (base_state == 2)
             {
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("基础信息验证失败");
+                showlog("基础信息验证失败");
                 pb->get_periph_state();
                 QString mesresult = "NG";
                 QString itemvalue = QString("|版本信息:错误|");
@@ -832,15 +829,15 @@ void quiescent_current::start_task()
             {
                 waitWork(500);
                 pb->get_base_info();
-                ui->msgEdit->appendPlainText("正在重发获取基本信息");
+                showlog("正在重发获取基本信息");
             }
             break;
 
         case STATE_WATI_GET_PERIPHERAL_STATE:
             if (periph_state == 1)   // 设备信息正常
             {
-                ui->msgEdit->appendPlainText("外设状态正常");
-                ui->msgEdit->appendPlainText("正在发送取消静止休眠");
+                showlog("外设状态正常");
+                showlog("正在发送取消静止休眠");
                 pb->set_forbid_sleep(FacSwitch_CLOSE);
                 qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
                 ble_waittime->setInterval(disconnect_wait_time);
@@ -849,7 +846,7 @@ void quiescent_current::start_task()
             }
             if (periph_state == 2)   // 设备信息异常
             {
-                ui->msgEdit->appendPlainText("外设状态异常");
+                showlog("外设状态异常");
                 QString mesresult = "NG";
                 QString itemvalue = QString("|设备信息:错误");
                 pack.result = mesresult;
@@ -874,7 +871,7 @@ void quiescent_current::start_task()
             {
                 waitWork(500);
                 pb->get_periph_state();
-                ui->msgEdit->appendPlainText("正在重发获取外设信息");
+                showlog("正在重发获取外设信息");
             }
             break;
 
@@ -897,7 +894,7 @@ void quiescent_current::start_task()
             {
                 waitWork(500);
                 pb->set_forbid_sleep(FacSwitch_CLOSE);
-                ui->msgEdit->appendPlainText("正在重发取消禁止休眠");
+                showlog("正在重发取消禁止休眠");
             }
 
             break;
@@ -915,7 +912,7 @@ void quiescent_current::start_task()
             {
                 waitWork(500);
                 pb->set_sleeep(FacSwitch_OPEN);
-                ui->msgEdit->appendPlainText("正在重发开始休眠");
+                showlog("正在重发开始休眠");
             }
 
             break;
@@ -936,8 +933,8 @@ void quiescent_current::start_task()
                 {
                     sendTestPass(pack);
                 }
-                ui->msgEdit->appendPlainText("静态电流测试失败：超时");
-                ui->msgEdit->appendPlainText("电流测量值为" + QString::number(measure_ammeter));
+                showlog("静态电流测试失败：超时");
+                showlog("电流测量值为" + QString::number(measure_ammeter));
                 testItem = "静态电流(ma)";
                 testData = QString::number(measure_ammeter);
                 pcba_test_data_update(testItem, testData, failValue);
@@ -961,7 +958,7 @@ void quiescent_current::start_task()
                 {
                     sendTestPass(pack);
                 }
-                ui->msgEdit->appendPlainText("静态电流正常");
+                showlog("静态电流正常");
                 testItem = "静态电流(ma)";
                 testData = QString::number(measure_ammeter);
                 pcba_test_data_update(testItem, testData, passValue);
@@ -1008,7 +1005,7 @@ void quiescent_current::start_task()
             }
 
             log->saveTestCsv(QC_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
-            ui->msgEdit->appendPlainText("测试结束");
+            showlog("测试结束");
             ui->macInput->clear();
             ui->snInput->clear();
 
@@ -1142,12 +1139,12 @@ void quiescent_current::on_pushButton_4_clicked()
     switch (clickStep)
     {
     case 1:
-        ui->msgEdit->appendPlainText("Running processInspection");
+        showlog("Running processInspection");
         break;
 
     case 2:
         emit sendTestPass(pack);
-        ui->msgEdit->appendPlainText("Running sendTestPass");
+        showlog("Running sendTestPass");
         break;
     }
 
@@ -1163,9 +1160,9 @@ void quiescent_current::on_pushButton_4_clicked()
 void quiescent_current::refreshMesState(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("mes登录成功");
+        showlog("mes登录成功");
     else
-        ui->msgEdit->appendPlainText("mes登录失败");
+        showlog("mes登录失败");
 }
 
 void quiescent_current::banding_mac_sn(QString bandingmac, QString bandingsn)

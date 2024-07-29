@@ -44,7 +44,6 @@ public:
 private slots:
     void get_dongle_ver(QString data) override;
 
-    void showlog(QString msg);
     void refresh_base_data(FacGetDevBaseInfo data) override;
     void processInspection(QString stringsn);
     void refresh_motor_cali_msg(QString msg) override;
@@ -102,11 +101,7 @@ private:
 
     bool is_motor_continue = 0;
     bool is_motor_test_continue = 0;
-    int m_index;
-    int getIndex() const
-    {
-        return m_index;
-    }
+
     bool mes_set_ok = 0;
 
 

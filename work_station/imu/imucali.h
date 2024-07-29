@@ -60,7 +60,6 @@ private:
     void dataInit();
     QList<QLabel *> labelList;
     QString information;
-    int m_index;
     QString result = "";
     QString passValue = "PASS";
 
@@ -141,7 +140,6 @@ private slots:
     void get_fix_action(int state);
     void get_dongle_ver(QString data) override;
 
-    void showlog(QString msg);
     void print_fixture_log(QString data);
     void refresh_base_data(FacGetDevBaseInfo data) override;
     void refreshMesState(int state);
@@ -149,10 +147,6 @@ private slots:
     void getimuData(FacUploadNineAlex x) override;
     void update_IMU_CALIB_result(FacImuCalibResult x) override;
 
-    int getIndex() const
-    {
-        return m_index;
-    }
 
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);

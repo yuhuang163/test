@@ -64,11 +64,11 @@
 #define SINGLE_VER "信号测试工站   V1.2.5"        // 立讯bug
 #define FREE_VER   "自由测试工站   V1.0.1"        // 立讯bug
 #define PCBA_VER   "电刷板子测试   V1.2.4"      // 加定时器判断休
-#define CAMERA_VER "摄像测试工站   V1.0.7"      // 支持摄像头工站
-#define IMU_VER    "IMU校准工站    V1.3.1"         // 支持自动化治具
+#define CAMERA_VER "摄像测试工站   V1.0.8"      // 支持摄像头工站
+#define IMU_VER    "IMU校准工站    V1.3.2"         // 支持自动化治具
 
 // [DEBUG_VER] 修改dongle波特率为921600
-// [IMU_VER] 修改dongle波特率为921600
+// [IMU_VER] 添加船运回应限制
 // [CAMERA_VER] 导入算法的python脚本偏移测试
 // [AGE_VER] 修改dongle波特率为921600
 // [MOTOR_VER] 修改dongle波特率为921600

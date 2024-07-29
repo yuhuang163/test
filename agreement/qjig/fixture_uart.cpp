@@ -127,7 +127,7 @@ void Fixture_uart::openFixtureSerialPort(void)
         fixtureSerialPort->setRequestToSend(true);
         // 启用DTR信号
         fixtureSerialPort->setDataTerminalReady(true);
-        // ui->msgEdit->appendPlainText("Fixture串口连接成功");
+        // showlog("Fixture串口连接成功");
         refresh_Fixtureuart_state(1);
         ui->FixturerefreshCom->setEnabled(false);
         ui->FixturecomNameCombo->setEnabled(false);
@@ -140,7 +140,7 @@ void Fixture_uart::openFixtureSerialPort(void)
     else
     {
         QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        //  ui->msgEdit->appendPlainText("打开错误");
+        //  showlog("打开错误");
     }
 }
 void Fixture_uart::readFixtureSerialPortData()

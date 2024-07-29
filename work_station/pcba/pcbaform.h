@@ -67,10 +67,7 @@ public:
     explicit PcbaForm(int index, QWidget *parent = nullptr);
     ~PcbaForm();
     Ui::PcbaForm *ui;
-    int getIndex() const
-    {
-        return m_index;
-    }
+
     int firstconnectbrush = 1;
     bool mac_retry_flag = false;
     bool isPcbaTestContinue = false;
@@ -86,7 +83,6 @@ private slots:
     void solveMesSucess(const int mechines);
     void writeToLogFile(const QByteArray &data, QString currentDate, QString macAddress,
                         int machineNumber);
-    void showlog(QString msg);
     void getimuData(FacUploadNineAlex x) override;
     void get_remain_data(const FixturePacketData packetData);
     void get_remain_data_sleep(const FixturePacketData packetData);
@@ -105,7 +101,7 @@ private slots:
     void refresh_base_data(FacGetDevBaseInfo data) override;
     void refresh_dongle_uart_state(int state) override;
     void refresh_ble_state(int state) override;
-    void refresh_WIFI_state(int state);
+    void refresh_wifi_state(int state);
     void connectwifi();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
@@ -119,7 +115,7 @@ private slots:
 protected:
     void closeEvent(QCloseEvent *) override;
 private:
-    int m_index;
+
     int ble_wait_time = 0;
     int wifi_connect_waittime = 0;
     QTime TestTime;

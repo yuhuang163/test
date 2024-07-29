@@ -104,8 +104,9 @@ void cameratest::on_pushButton_clicked()
 
     // }
 }
-cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_index(index)
-{
+cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest)
+{    m_index=index;
+
     ui->setupUi(this);
     update_main_style("Ubuntu.qss");
 
@@ -124,11 +125,11 @@ cameratest::cameratest(int index, QWidget *parent) : ui(new Ui::cameratest), m_i
 
     settings.setValue("Window/Size", this->size());
 
-    ui->msgEdit->appendPlainText("action=" + pack.test_station);
-    ui->msgEdit->appendPlainText("model=" + pack.model);
-    ui->msgEdit->appendPlainText("action=" + pack.action);
-    ui->msgEdit->appendPlainText("line=" + pack.line);
-    ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
+    showlog("action=" + pack.test_station);
+    showlog("model=" + pack.model);
+    showlog("action=" + pack.action);
+    showlog("line=" + pack.line);
+    showlog("machineNo=" + pack.machineNo);
 
 
     connect(this, SIGNAL(send_picture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
@@ -314,9 +315,12 @@ void cameratest::solve_picture_frame(QByteArray picturedata){
             crc_cali = CRC16(head->data, head->data_size);
             if (crc16 == crc_cali)
             {
-                qDebug() << "图片数据包够了，开始显示" << ring_size;
+                qDebug()
+                    << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char *>(head), frame_size);
-                pictureByteArray = byteArray;
+                pictureByteArray =
+
+                    byteArray;
                 emit imageProcessed();
 
             }
@@ -404,21 +408,7 @@ void cameratest::solve_frame(void)
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
             if (1)
             {
-                // if(head->data[0]!=dataNumber){
-                //     qDebug() << "丢包号码" << dataNumber;
-                //     faultData.append(dataNumber);
-                //   //  qDebug() << "solve1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-                //  //  //  QMetaObject::invokeMethod(pb, "set_camera_data_respone", Qt::DirectConnection, Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
-                //  //    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
-
-                //  //  //  qDebug() << "solve2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-                //  //   // 强制事件循环处理，确保立即响应
-                //  //   QCoreApplication::processEvents(QEventLoop::AllEvents);
-                //  // //  qDebug() << "solve3响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-                // }
 
                 qDebug() << "图片数据包的第一字节为2" << head->data[0];
 
@@ -506,25 +496,25 @@ void cameratest::refresh_ble_state(int state)
     if (state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        //   ui->msgEdit->appendPlainText("蓝牙连接成功");
+        //   showlog("蓝牙连接成功");
         pb->set_forbid_sleep(FacSwitch_OPEN);
-        ui->msgEdit->appendPlainText("已发送禁止休眠");
+        showlog("已发送禁止休眠");
     }
     else
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 void cameratest::refresh_dongle_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("dongle串口连接成功");
+        showlog("dongle串口连接成功");
     else
     {
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("dongle串口连接断开");
+        showlog("dongle串口连接断开");
     }
 }
 
@@ -577,7 +567,7 @@ void cameratest::solveMesSucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("mes操作成功");
+        showlog("mes操作成功");
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -589,11 +579,11 @@ void cameratest::solveMesData(const int mechines, QString msg)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
         ui->get_mac->setDisabled(0);
         isScreenContinue = false;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
         emit endTest(getIndex());
@@ -639,7 +629,7 @@ void cameratest::band_sn_mac_to_csv(const QString &macAddress, const QString &sn
     else
     {
         qDebug() << getIndex() << "文件没关或者其他问题";
-        ui->msgEdit->appendPlainText("文件无法打开");
+        showlog("文件无法打开");
     }
 }
 
@@ -667,9 +657,9 @@ void cameratest::can_go_next(int x)
     if (x == getIndex())
     {
         result = failValue;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
         state = STATE_SAVE_RESULT;
-        ui->msgEdit->appendPlainText("摄像头测试失败");
+        showlog("摄像头测试失败");
         ui->test_result->setText("FAIL");
         ui->test_result->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
@@ -681,7 +671,7 @@ void cameratest::processInspection(QString stringsn)
     {
         if (ui->isusemes->checkState())
         {
-            ui->msgEdit->appendPlainText("正在进行站前检测");
+            showlog("正在进行站前检测");
             pack.sn = stringsn;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
@@ -691,7 +681,7 @@ void cameratest::processInspection(QString stringsn)
     }
     else
     {
-        ui->msgEdit->appendPlainText("SN比对错误");
+        showlog("SN比对错误");
     }
 
     if (!ui->isusemes->checkState())   // 离线
@@ -706,13 +696,13 @@ void cameratest::onTimeout()
     packetMap.clear();
     faultData.clear();
     dataNumber = 0;
-   // ui->msgEdit->appendPlainText("再次获取图片");
+   // showlog("再次获取图片");
     pb->set_camera_picture_state(1);
     std::memset(dongle_ring_buffer, 0,
                 sizeof(dongle_ring_buffer));   // 将数组全部初始化为零
     std::memset(camera_ring_buf, 0,
                 sizeof(camera_ring_buf));   // 将数组全部初始化为零
-    ui->msgEdit->appendPlainText("图片数据包大小=" + QString::number(cameradatasize));
+    showlog("图片数据包大小=" + QString::number(cameradatasize));
     cameradatasize = 0;
 }
 void cameratest::start_task()
@@ -724,7 +714,7 @@ void cameratest::start_task()
         {
         case STATE_IDLE:   // 复位一切
 
-            ui->msgEdit->appendPlainText("开始测试");
+            showlog("开始测试");
             pb->reset_all_pb();
             testItems.clear();
             at->resetConnected();
@@ -748,7 +738,7 @@ void cameratest::start_task()
                 pb->set_camera_state(0);
                 qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("蓝牙连接成功");
+                showlog("蓝牙连接成功");
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                 band_sn_mac_to_csv(macAddress, sn);
                 state = STATE_BANDING;
@@ -759,21 +749,21 @@ void cameratest::start_task()
             if (pb->get_is_banding_ok())
             {
                 pb->get_base_info();
-                ui->msgEdit->appendPlainText("sn已成功绑定保存");
+                showlog("sn已成功绑定保存");
                 state = STATE_DISABLE_SLEEP_1;
             }
             else
             {
                 waitWork(500);
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                ui->msgEdit->appendPlainText("正在重试sn绑定");
+                showlog("正在重试sn绑定");
             }
 
             break;
         case STATE_DISABLE_SLEEP_1:
             if (pb->getDisableSleep())
             {
-                ui->msgEdit->appendPlainText("已进入禁止休眠模式");
+                showlog("已进入禁止休眠模式");
                 if (pack.product == "U7P")
                 {
 
@@ -794,7 +784,7 @@ void cameratest::start_task()
 
                     state = CAMERA_TEST;
 
-                    ui->msgEdit->appendPlainText("等待显示照片");
+                    showlog("等待显示照片");
                 }
                 else
                 {
@@ -806,7 +796,7 @@ void cameratest::start_task()
             {
                 waitWork(500);
                 pb->set_forbid_sleep(FacSwitch_OPEN);
-                ui->msgEdit->appendPlainText("已发送禁止休眠");
+                showlog("已发送禁止休眠");
             }
             break;
 
@@ -814,21 +804,21 @@ void cameratest::start_task()
             waitWork(500);
             if (pb->get_is_wif_set())
             {
-                ui->msgEdit->appendPlainText("已配网成功");
+                showlog("已配网成功");
                 //  waitWork(5000);
-                ui->msgEdit->appendPlainText("现在打开摄像头");
+                showlog("现在打开摄像头");
                 pb->set_camera_state(1);
-                ui->msgEdit->appendPlainText("锁定曝光时间");
+                showlog("锁定曝光时间");
                 on_exposure_time_edit_returnPressed();
                 // pb->set_camera_light_state(1);
                 state = CAMERA_TEST;
-                ui->msgEdit->appendPlainText("等待显示照片");
+                showlog("等待显示照片");
             }
             else
             {
                 waitWork(500);
                 on_distribution_network_clicked();
-                ui->msgEdit->appendPlainText("已重新发送配网");
+                showlog("已重新发送配网");
             }
             break;
 
@@ -836,7 +826,7 @@ void cameratest::start_task()
             is_camera_control = 1;
             if (is_camera_control && is_can_go_next)
             {
-                ui->msgEdit->appendPlainText("摄像头测试通过");
+                showlog("摄像头测试通过");
                 is_can_go_next = 0;
                 is_camera_control = 0;
 
@@ -906,7 +896,7 @@ void cameratest::start_task()
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(150);
             on_disconnectButton_clicked();
-            ui->msgEdit->appendPlainText("测试结束");
+            showlog("测试结束");
             isScreenContinue = false;
             state = STATE_IDLE;
             break;
@@ -931,23 +921,18 @@ void cameratest::on_lcdTestButton_clicked()
     // pb->set_fac_mode(1);
     // waitWork(WAITTIME);
 }
-void cameratest::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
-}
 
 void cameratest::refreshMesState(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("mes登录成功");
+        showlog("mes登录成功");
     else
-        ui->msgEdit->appendPlainText("mes登录失败");
+        showlog("mes登录失败");
 }
 
 void cameratest::getTestValue(const int mechines, const QString value)
 {
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq")
     {
@@ -971,11 +956,11 @@ void cameratest::getTestValue(const int mechines, const QString value)
         }
         else
         {
-            ui->msgEdit->appendPlainText("mes未找到匹配的MAC地址");
-            ui->msgEdit->appendPlainText(value);
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
         }
     }
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     else if (pack.factory == "lx")
     {
         mesmacAddress = value;
@@ -1009,7 +994,7 @@ void cameratest::getTestValue(const int mechines, const QString value)
 }
 void cameratest::get_dongle_ver(QString data)
 {
-    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+    showlog("当前dongle的版本为：" + data);
 }
 void cameratest::get_mac(QString sn_to_search)
 {
@@ -1027,7 +1012,7 @@ void cameratest::get_mac(QString sn_to_search)
                 QString mac = fields.at(1);   // 第二个字段是mac
                 if (sn == sn_to_search)
                 {   // 检查是否是待检索的sn
-                    ui->msgEdit->appendPlainText("这是从文件获取的mac地址");
+                    showlog("这是从文件获取的mac地址");
                     ui->macInput->setText(mac);
                     on_macInput_returnPressed();
                     qDebug() << getIndex() << "The corresponding mac is: " << mac;
@@ -1036,7 +1021,7 @@ void cameratest::get_mac(QString sn_to_search)
             }
             else
             {
-                ui->msgEdit->appendPlainText("存在没有逗号分开的" +
+                showlog("存在没有逗号分开的" +
                                              QString::number(fields.count()) + line);
             }
         }
@@ -1059,12 +1044,12 @@ void cameratest::on_get_mac_returnPressed()
     {
         ui->get_mac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        ui->msgEdit->appendPlainText("序列号错误");
+        showlog("序列号错误");
         ui->get_mac->clear();
         return;
     }
     sn = ui->get_mac->text().toUtf8();
-    ui->msgEdit->appendPlainText("正在查询mac地址");
+    showlog("正在查询mac地址");
     get_mac(ui->get_mac->text());   // 文件获取
     processInspection(ui->get_mac->text());
 
@@ -1129,11 +1114,11 @@ void cameratest::on_distribution_network_clicked()
     if (at->getConnected())
     {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
-        ui->msgEdit->appendPlainText("已设置连接wifi");
+        showlog("已设置连接wifi");
     }
     else
     {
-        ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
+        showlog("请等待连接牙刷后再试");
     }
 
     if (!isExecuted)
@@ -1151,11 +1136,11 @@ void cameratest::on_distribution_network_clicked()
 
         if (!bindResult)
         {
-            ui->msgEdit->appendPlainText("ip绑定失败");
+            showlog("ip绑定失败");
         }
         else
         {
-            ui->msgEdit->appendPlainText("ip绑定成功");
+            showlog("ip绑定成功");
         }
 
         connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
@@ -1195,7 +1180,7 @@ void cameratest::readDongleSerialPortData()
     if (write_len < len)
     {
         qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();
-        ui->msgEdit->appendPlainText("写入串口池失败");
+        showlog("写入串口池失败");
     }
 
     // solve_frame();
@@ -1295,7 +1280,7 @@ void cameratest::processTheDatagram(QByteArray &datagram)
     else
     {
         qDebug() << "直接从字节数据转换图像成功。";
-        ui->msgEdit->appendPlainText("请判断视频是否正常");
+        showlog("请判断视频是否正常");
     }
 
     qDebug() << "图像加载成功。";
@@ -1721,11 +1706,11 @@ void cameratest::on_OffsetTest_clicked()
     qDebug() << "h:" << h;
     qDebug() << "flag:" << flag;
     if(flag==1)
-        ui->msgEdit->appendPlainText("偏位测试通过");
+        showlog("偏位测试通过");
     if(flag==0)
-    ui->msgEdit->appendPlainText("刷头偏位");
+    showlog("刷头偏位");
     if(flag==-1)
-    ui->msgEdit->appendPlainText("算法计算失败");
+    showlog("算法计算失败");
 
     QImage image;
     image.load(filePath); // 加载图像文件
@@ -1796,7 +1781,7 @@ QByteArray cameratest:: reassembleData() {
     waitWork(50);//等待数据彻底处理完毕
      checkMissingPackets();
      qDebug() << "错误个数"+QString::number(faultData.size());
-  //   ui->msgEdit->appendPlainText("错误个数"+QString::number(faultData.size()));
+  //   showlog("错误个数"+QString::number(faultData.size()));
      emit  need_send_fault_data_packet(faultData.size(), faultData);
 
 }

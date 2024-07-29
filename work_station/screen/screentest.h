@@ -19,11 +19,7 @@ public:
     Ui::screentest *ui;
     void start_task() override;
 private:
-    int getIndex() const
-    {
-        return m_index;
-    }
-    int m_index;
+
     typedef enum
     {
         STATE_IDLE,                // 休眠状态
@@ -82,7 +78,6 @@ private slots:
     void refresh_sn(FacDevInfo data) override;
     void get_dongle_ver(QString data) override;
     void refresh_dongle_uart_state(int state) override;
-    void showlog(QString msg);
     void processInspection(QString stringsn);
     void can_go_next(int x) override;
     void refreshMesState(int state);

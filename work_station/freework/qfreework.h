@@ -35,7 +35,6 @@ private:
     int RssiTestTime = 0;
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
-    int m_index;
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
@@ -169,9 +168,8 @@ private slots:
     void refresh_dongle_uart_state(int state) override;
     void refresh_usb_uart_state(int state) override;
 
-    void refresh_WIFI_state(int state);
+    void refresh_wifi_state(int state);
 
-    void showlog(QString msg);
     void banding_mac_sn(QString bandingmac, QString bandingsn);
     void banding_mac_sn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox();
@@ -179,10 +177,6 @@ private slots:
     void processInspection(QString stringsn);
     void processGetMesTestValue();
 
-    int getIndex() const
-    {
-        return m_index;
-    }
 
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);

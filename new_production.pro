@@ -192,13 +192,13 @@ TRANSLATIONS += \
 CONFIG += lrelease
 CONFIG += embed_translations
 
+CONFIG += incremental
 
 # 添加config配置
 CONFIG += precompile_header
 # 指定要使用的预编译头文件
-# PRECOMPILED_HEADER += $$PWD/my_set/AbInit.h
-
-
+#message($$PWD)
+PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 
 
 RC_ICONS = ./stytle/picture/usmile.ico

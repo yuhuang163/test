@@ -13,8 +13,9 @@ void screentest::on_pushButton_clicked()
     ui->macInput->setText("3C:84:27:07:A8:D2");
     on_macInput_returnPressed();
 }
-screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest), m_index(index)
-{
+screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest)
+{    m_index=index;
+
     ui->setupUi(this);
 
     update_main_style("Ubuntu.qss");
@@ -30,21 +31,17 @@ screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest), m_i
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
-    ui->msgEdit->appendPlainText("action=" + pack.test_station);
-    ui->msgEdit->appendPlainText("model=" + pack.model);
-    ui->msgEdit->appendPlainText("line=" + pack.line);
-    ui->msgEdit->appendPlainText("action=" + pack.action);
+    showlog("action=" + pack.test_station);
+    showlog("model=" + pack.model);
+    showlog("line=" + pack.line);
+    showlog("action=" + pack.action);
 
-    ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
+    showlog("machineNo=" + pack.machineNo);
 
    
 }
 
-void screentest::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
-}
+
 void screentest::refresh_Lcd_CONTROL(FacLcdControl style)
 {
     qDebug() << getIndex() << style.result;
@@ -53,7 +50,7 @@ void screentest::refresh_Lcd_CONTROL(FacLcdControl style)
 
 void screentest::get_dongle_ver(QString data)
 {
-    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+    showlog("当前dongle的版本为：" + data);
 }
 screentest::~screentest()
 {
@@ -71,26 +68,26 @@ void screentest::refresh_ble_state(int state)
     if (state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        //   ui->msgEdit->appendPlainText("蓝牙连接成功");
+        //   showlog("蓝牙连接成功");
         pb->set_forbid_sleep(FacSwitch_OPEN);
-        ui->msgEdit->appendPlainText("已发送禁止休眠");
+        showlog("已发送禁止休眠");
     }
     else
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 
 void screentest::refresh_dongle_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("dongle串口连接成功");
+        showlog("dongle串口连接成功");
     else
     {
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("dongle串口连接断开");
+        showlog("dongle串口连接断开");
     }
 }
 
@@ -133,7 +130,7 @@ void screentest::solveMesSucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("mes操作成功");
+        showlog("mes操作成功");
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -145,11 +142,11 @@ void screentest::solveMesData(const int mechines, QString msg)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
         ui->get_mac->setDisabled(0);
         isScreenContinue = false;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
 
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
@@ -179,12 +176,12 @@ void screentest::set_screen_color(int x)
     if (at->getConnected())
     {
         pb->set_screen_color(x);
-        ui->msgEdit->appendPlainText("已设置屏幕颜色" + QString::number(x));
+        showlog("已设置屏幕颜色" + QString::number(x));
 
     }
     else
     {
-        ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
+        showlog("请等待连接牙刷后再试");
     }
 }
 
@@ -197,13 +194,13 @@ void screentest::can_go_next(int x)
     if (x == getIndex())
     {
         result = failValue;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
         ui->test_result->setText("FAIL");
         ui->test_result->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
 
         state = STATE_SAVE_RESULT;
-        ui->msgEdit->appendPlainText("屏幕测试失败");
+        showlog("屏幕测试失败");
     }
 }
 
@@ -213,7 +210,7 @@ void screentest::processInspection(QString stringsn)
     {
         if (ui->isformmes->checkState())
         {
-            ui->msgEdit->appendPlainText("正在进行站前检测");
+            showlog("正在进行站前检测");
             pack.sn = stringsn;
 
             pack.mechines = getIndex();
@@ -226,7 +223,7 @@ void screentest::processInspection(QString stringsn)
     }
     else
     {
-        ui->msgEdit->appendPlainText("SN比对错误");
+        showlog("SN比对错误");
     }
 
     if (!ui->isusemes->checkState())   // 离线
@@ -245,7 +242,7 @@ void screentest::start_task()   // 编写六轴校准的代码
         switch (state)
         {
         case STATE_IDLE:   // 复位一切
-            ui->msgEdit->appendPlainText("开始测试");
+            showlog("开始测试");
             pb->reset_all_pb();
             at->resetConnected();
             refresh_ble_state(0);
@@ -269,9 +266,9 @@ void screentest::start_task()   // 编写六轴校准的代码
         case STATE_DISABLE_SLEEP_1:
             if (pb->getDisableSleep())
             {
-                ui->msgEdit->appendPlainText("已进入禁止休眠模式");
+                showlog("已进入禁止休眠模式");
                 set_screen_color(0);
-                ui->msgEdit->appendPlainText("--------------当前是红色");
+                showlog("--------------当前是红色");
                 emit goNextTest(getIndex());
                 state = STATE_COLOR1;
             }
@@ -283,7 +280,7 @@ void screentest::start_task()   // 编写六轴校准的代码
                 is_can_go_next = 0;
                 is_lcd_control = 0;
                 set_screen_color(1);
-                ui->msgEdit->appendPlainText("--------------当前是绿色");
+                showlog("--------------当前是绿色");
                 emit goNextTest(getIndex());
 
                 state = STATE_COLOR2;
@@ -295,7 +292,7 @@ void screentest::start_task()   // 编写六轴校准的代码
                 is_can_go_next = 0;
                 is_lcd_control = 0;
                 set_screen_color(2);
-                ui->msgEdit->appendPlainText("--------------当前是蓝色");
+                showlog("--------------当前是蓝色");
 
                 emit goNextTest(getIndex());
 
@@ -308,7 +305,7 @@ void screentest::start_task()   // 编写六轴校准的代码
                 is_can_go_next = 0;
                 is_lcd_control = 0;
                 set_screen_color(3);
-                ui->msgEdit->appendPlainText("--------------当前是白色");
+                showlog("--------------当前是白色");
 
                 emit goNextTest(getIndex());
 
@@ -321,7 +318,7 @@ void screentest::start_task()   // 编写六轴校准的代码
                 is_can_go_next = 0;
                 is_lcd_control = 0;
                 set_screen_color(4);
-                ui->msgEdit->appendPlainText("--------------当前是黑色");
+                showlog("--------------当前是黑色");
 
                 emit goNextTest(getIndex());
 
@@ -393,7 +390,7 @@ void screentest::start_task()   // 编写六轴校准的代码
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(50);
             on_disconnectButton_clicked();
-            ui->msgEdit->appendPlainText("测试结束");
+            showlog("测试结束");
             isScreenContinue = false;
             emit endTest(getIndex());
 
@@ -426,13 +423,13 @@ void screentest::on_lcdTestButton_clicked()
 void screentest::refreshMesState(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("mes登录成功");
+        showlog("mes登录成功");
     else
-        ui->msgEdit->appendPlainText("mes登录失败");
+        showlog("mes登录失败");
 }
 void screentest::getTestValue(const int mechines, const QString value)
 {
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq")
     {
@@ -456,11 +453,11 @@ void screentest::getTestValue(const int mechines, const QString value)
         }
         else
         {
-            ui->msgEdit->appendPlainText("mes未找到匹配的MAC地址");
-            ui->msgEdit->appendPlainText(value);
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
         }
     }
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     else if (pack.factory == "lx")
     {
         mesmacAddress = value;
@@ -506,7 +503,7 @@ void screentest::get_mac(QString sn_to_search)
                 QString mac = fields.at(1);   // 第二个字段是mac
                 if (sn == sn_to_search)
                 {   // 检查是否是待检索的sn
-                    ui->msgEdit->appendPlainText("这是从文件获取的mac地址");
+                    showlog("这是从文件获取的mac地址");
                     ui->macInput->setText(mac);
                     on_macInput_returnPressed();
                     qDebug() << getIndex() << "The corresponding mac is: " << mac;
@@ -515,7 +512,7 @@ void screentest::get_mac(QString sn_to_search)
             }
             else
             {
-                ui->msgEdit->appendPlainText("存在没有逗号分开的" +
+                showlog("存在没有逗号分开的" +
                                              QString::number(fields.count()) + line);
             }
         }
@@ -540,12 +537,12 @@ void screentest::on_get_mac_returnPressed()
     {
         ui->get_mac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        ui->msgEdit->appendPlainText("序列号错误");
+        showlog("序列号错误");
         ui->get_mac->clear();
         return;
     }
 
-    ui->msgEdit->appendPlainText("正在查询mac地址");
+    showlog("正在查询mac地址");
     get_mac(ui->get_mac->text());             // 文件获取
     processInspection(ui->get_mac->text());   // 站前检测
     processGetMesTestValue();                 // mes获取

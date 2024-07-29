@@ -179,11 +179,7 @@ public:
 private:
     QPixmap currentPixmap;
 
-    int getIndex() const
-    {
-        return m_index;
-    }
-    int m_index;
+
     typedef enum
     {
         STATE_IDLE,           // 休眠状态
@@ -248,7 +244,6 @@ private slots:
 
     void onTimeout();
     void get_dongle_ver(QString data) override;
-    void showlog(QString msg);
     void processTheDatagram(QByteArray &datagram);
     void refreshMesState(int state);
     void band_sn_mac_to_csv(const QString &macAddress, const QString &sn);

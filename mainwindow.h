@@ -266,7 +266,7 @@ private slots:
     void updateComboBox();
     void getmacadress(const QByteArray &byte);
     void refresh_sn(FacDevInfo data);
-    void refresh_WIFI_state(int state);
+    void refresh_wifi_state(int state);
     void get_wifi_msg(QString data);
     void stopRecording();
     void closeDongleSerialPort(void);

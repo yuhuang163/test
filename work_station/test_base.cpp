@@ -314,7 +314,7 @@ void test_base::openDongleSerialPort()
         // 启用DTR信号
         dongleSerialPort->setDataTerminalReady(true);
 
-        // ui->msgEdit->appendPlainText("串口连接成功");
+        // showlog("串口连接成功");
         emit refreshDongleSerialPortState(1);
 
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
@@ -323,7 +323,7 @@ void test_base::openDongleSerialPort()
     else
     {
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // ui->msgEdit->appendPlainText("打开错误");
+        // showlog("打开错误");
     }
 }
 
@@ -371,7 +371,7 @@ void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error)
         closeUsbSerialPort();
         // QMessageBox::warning(NULL, "警告", " Usb串口连接断开！\t\r\n");
 
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 
@@ -406,7 +406,7 @@ void test_base::openUsbSerialPort()
         // 启用DTR信号
         usbSerialPort->setDataTerminalReady(true);
 
-        // ui->msgEdit->appendPlainText("串口连接成功");
+        // showlog("串口连接成功");
         emit refreshUsbSerialPortState(1);
 
         connect(usbSerialPortTimer, &QTimer::timeout, this,
@@ -415,7 +415,7 @@ void test_base::openUsbSerialPort()
     else
     {
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // ui->msgEdit->appendPlainText("打开错误");
+        // showlog("打开错误");
     }
 }
 void test_base::closeUsbSerialPort()
@@ -454,7 +454,7 @@ void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error)
         closeJigSerialPort();
         // QMessageBox::warning(NULL, "警告", " 治具串口连接断开！\t\r\n");
 
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 
@@ -489,7 +489,7 @@ void test_base::openJigSerialPort()
         // 启用DTR信号
         jigSerialPort->setDataTerminalReady(true);
 
-        // ui->msgEdit->appendPlainText("串口连接成功");
+        // showlog("串口连接成功");
         emit refreshJigSerialPortState(1);
 
         connect(jigSerialPortTimer, &QTimer::timeout, this,
@@ -498,7 +498,7 @@ void test_base::openJigSerialPort()
     else
     {
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // ui->msgEdit->appendPlainText("打开错误");
+        // showlog("打开错误");
     }
 }
 
@@ -540,7 +540,7 @@ void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error)
         closeProductSerialPort();
         // QMessageBox::warning(NULL, "警告", " 产品串口连接断开！\t\r\n");
 
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 
@@ -575,7 +575,7 @@ void test_base::openProductSerialPort()
         // 启用DTR信号
         productSerialPort->setDataTerminalReady(true);
 
-        // ui->msgEdit->appendPlainText("串口连接成功");
+        // showlog("串口连接成功");
         emit refreshProductSerialPortState(1);
         at->ask_mac();
         connect(productSerialPortTimer, &QTimer::timeout, this,
@@ -584,7 +584,7 @@ void test_base::openProductSerialPort()
     else
     {
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // ui->msgEdit->appendPlainText("打开错误");
+        // showlog("打开错误");
     }
 }
 
@@ -603,12 +603,19 @@ void test_base::closeProductSerialPort()
 }
 
 void  test_base::refresh_pb_data(QString data) {
-
     msgEdit()->appendPlainText(data);
-
-
 }
 
+void test_base::showlog(QString msg)
+{
+    msgEdit()->appendPlainText(msg);
+    qDebug() << getIndex() << msg;
+}
+
+int test_base:: getIndex()
+{
+    return m_index;
+}
 void test_base::waitWork(int ms)
 {
     QTime t;

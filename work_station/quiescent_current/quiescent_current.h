@@ -72,11 +72,7 @@ public:
     };   // msg输入口
     void disconnect_dongle();
 private:
-    int m_index;
-    int getIndex() const
-    {
-        return m_index;
-    }
+  
     QByteArray sn;
     double HighCurrent;
     double LowCurrent;
@@ -156,7 +152,6 @@ signals:
 private slots:
     void get_dongle_ver(QString data) override;
 
-    void showlog(QString msg);
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();

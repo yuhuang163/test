@@ -12,8 +12,9 @@
     #pragma execution_character_set("utf-8")
 #endif
 
-motor::motor(int index, QWidget *parent) : ui(new Ui::motor), m_index(index)
-{
+motor::motor(int index, QWidget *parent) : ui(new Ui::motor)
+{    m_index=index;
+
     ui->setupUi(this);
     scanSerialPorts();   // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -29,12 +30,12 @@ motor::motor(int index, QWidget *parent) : ui(new Ui::motor), m_index(index)
     update_main_style("Ubuntu.qss");
     standbattary = settings.value("BATTARY/standbattary").toDouble();
 
-    ui->msgEdit->appendPlainText("standbattary=" + QString::number(standbattary));
-    ui->msgEdit->appendPlainText("action=" + pack.action);
-    ui->msgEdit->appendPlainText("line=" + pack.line);
-    ui->msgEdit->appendPlainText("model=" + pack.model);
-    ui->msgEdit->appendPlainText("action=" + pack.test_station);
-    ui->msgEdit->appendPlainText("machineNo=" + pack.machineNo);
+    showlog("standbattary=" + QString::number(standbattary));
+    showlog("action=" + pack.action);
+    showlog("line=" + pack.line);
+    showlog("model=" + pack.model);
+    showlog("action=" + pack.test_station);
+    showlog("machineNo=" + pack.machineNo);
 
     if (pack.product == "U7" || pack.product == "U7P")
         ui->nfc_sn->setDisabled(1);
@@ -44,7 +45,7 @@ motor::motor(int index, QWidget *parent) : ui(new Ui::motor), m_index(index)
 
 void motor::refresh_motor_cali_msg(QString msg)
 {
-    ui->msgEdit->appendPlainText(msg);
+    showlog(msg);
     // qDebug() << getIndex()<< "收到数据: " << getIndex();
 
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
@@ -146,17 +147,17 @@ motor::~motor()
 
 void motor::refresh_pb_data(QString data)
 {
-    ui->msgEdit->appendPlainText(data);
+    showlog(data);
 }
 void motor::refresh_dongle_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("dongle串口连接成功");
+        showlog("dongle串口连接成功");
     else
     {
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("dongle串口连接断开");
+        showlog("dongle串口连接断开");
     }
 }
 
@@ -165,14 +166,14 @@ void motor::refresh_ble_state(int state)
     if (state)
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        ui->msgEdit->appendPlainText("蓝牙连接成功");
+        showlog("蓝牙连接成功");
         pb->set_forbid_sleep(FacSwitch_OPEN);
-        ui->msgEdit->appendPlainText("已发送禁止休眠");
+        showlog("已发送禁止休眠");
     }
     else
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // ui->msgEdit->appendPlainText("蓝牙连接断开");
+        // showlog("蓝牙连接断开");
     }
 }
 
@@ -211,27 +212,27 @@ void motor::on_motor_cali_clicked()
     {
     case 1:
         pb->set_motor_cali(1);
-        ui->msgEdit->appendPlainText("Running set_motor_cali(1)");
+        showlog("Running set_motor_cali(1)");
         break;
 
     case 2:
         pb->set_motor_cali(2);
-        ui->msgEdit->appendPlainText("Running set_motor_cali(2)");
+        showlog("Running set_motor_cali(2)");
         break;
 
     case 3:
         pb->set_motor_cali(3);
-        ui->msgEdit->appendPlainText("Running set_motor_cali(3)");
+        showlog("Running set_motor_cali(3)");
         break;
 
     case 4:
         pb->set_motor_damping_state(1);
-        ui->msgEdit->appendPlainText("Running set_motor_damping_state(1)");
+        showlog("Running set_motor_damping_state(1)");
         break;
 
     case 5:
         pb->set_motor_damping_state(0);
-        ui->msgEdit->appendPlainText("Running set_motor_damping_state(0)");
+        showlog("Running set_motor_damping_state(0)");
         break;
     }
 
@@ -248,7 +249,7 @@ void motor::solveMesSucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("mes操作成功");
+        showlog("mes操作成功");
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -260,11 +261,11 @@ void motor::solveMesData(const int mechines, QString msg)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
         ui->get_mac->setDisabled(0);
         is_motor_continue = false;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
         emit endTest(getIndex());
@@ -275,7 +276,7 @@ void motor::solveMesData(const int mechines, QString msg)
 }
 void motor::get_dongle_ver(QString data)
 {
-    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+    showlog("当前dongle的版本为：" + data);
 }
 void motor::refresh_sn(FacDevInfo data)
 {
@@ -285,18 +286,14 @@ void motor::refresh_sn(FacDevInfo data)
     ui->tail_sn->setText("存储尾盖sn:" + stringsn);
 }
 
-void motor::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
-}
+
 void motor::processInspection(QString stringsn)
 {
     if (stringsn != "" || !ui->isusemes->checkState())
     {
         if (ui->isusemes->checkState())
         {
-            ui->msgEdit->appendPlainText("正在进行站前检测");
+            showlog("正在进行站前检测");
             pack.sn = stringsn;
 
             pack.mechines = getIndex();
@@ -310,7 +307,7 @@ void motor::processInspection(QString stringsn)
     }
     else
     {
-        ui->msgEdit->appendPlainText("SN比对错误");
+        showlog("SN比对错误");
     }
 
     if (!ui->isusemes->checkState())   // 离线
@@ -366,7 +363,7 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
         qDebug() << "Resource Version:" << version.trimmed();
     }
 
-    ui->msgEdit->appendPlainText("设备名字为" + QString(data.product_name));
+    showlog("设备名字为" + QString(data.product_name));
 
     if (softwareVersionList.contains(data.soft_version) &&
         resourceVersionList.contains(data.res_version)&&
@@ -380,7 +377,7 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
         showlog("资源版本正确" + QString::fromUtf8(data.res_version));
         showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
         showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
-        ui->msgEdit->appendPlainText("软件版本正确");
+        showlog("软件版本正确");
 
 
     }
@@ -390,18 +387,18 @@ void motor::refresh_base_data(FacGetDevBaseInfo data)
         ui->test_result->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
-        ui->msgEdit->appendPlainText("版本错误");
-        ui->msgEdit->appendPlainText("当前设备软件版本" + QString::fromUtf8(data.soft_version) +
+        showlog("版本错误");
+        showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) +
                                      "配置文件软件版本" + softwareVersions);
-        ui->msgEdit->appendPlainText("当前设备资源版本" + QString::fromUtf8(data.res_version) +
+        showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) +
                                      "配置文件资源版本" + resourceVersions);
-        ui->msgEdit->appendPlainText("当前设备电机版本" + QString::fromUtf8(data.motor_version) +
+        showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) +
                                      "配置文件电机版本" + motorVersions);
         showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" +
                                                          bleVersions);
 
         is_motor_continue = false;
-        ui->msgEdit->appendPlainText("停止运行");
+        showlog("停止运行");
 
         ui->macInput->clear();
 
@@ -461,7 +458,7 @@ void motor::refresh_battary_data(FacDevInfo adc)
             "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
         charge.testResult = "通过";
         testItems.append(charge);
-        ui->msgEdit->appendPlainText("电量通过");
+        showlog("电量通过");
     }else{
         TestItem charge;
         charge.testItem = "充电测试";
@@ -469,7 +466,7 @@ void motor::refresh_battary_data(FacDevInfo adc)
             "当前电压为" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
          charge.testResult = "失败";
         testItems.append(charge);
-        ui->msgEdit->appendPlainText("电压太低"+ QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
+        showlog("电压太低"+ QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
         result = failValue;
         state = STATE_SAVE_RESULT;
 
@@ -486,7 +483,7 @@ void motor::start_task()
         {
         case STATE_IDLE:   // 复位一切
             refresh_motor_cali_msg("开始测试");
-            // ui->msgEdit->appendPlainText("开始测试");
+            // showlog("开始测试");
             pb->reset_all_pb();
             testItems.clear();
             at->resetConnected();
@@ -522,7 +519,7 @@ void motor::start_task()
         case STATE_WATI_CORRECT_BATTARY:   // 设置禁止休眠
             if (is_battary_test)
             {
-                ui->msgEdit->appendPlainText("已成功完成电量测试");
+                showlog("已成功完成电量测试");
                 state = STATE_DISABLE_SLEEP_1;
             }
 
@@ -531,14 +528,14 @@ void motor::start_task()
         case STATE_DISABLE_SLEEP_1:
             if (pb->getDisableSleep())
             {
-                ui->msgEdit->appendPlainText("已进入禁止休眠模式");
+                showlog("已进入禁止休眠模式");
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                ui->msgEdit->appendPlainText("已发送sn绑定");
+                showlog("已发送sn绑定");
                 state = STATE_SN_CHECK;
             } else
             {
                 waitWork(500);
-                ui->msgEdit->appendPlainText("正在重发进入禁止休眠");
+                showlog("正在重发进入禁止休眠");
                 pb->set_forbid_sleep(FacSwitch_OPEN);
             }
             break;
@@ -546,10 +543,10 @@ void motor::start_task()
         case STATE_SN_CHECK:
             if (pb->get_is_banding_ok())
             {
-                ui->msgEdit->appendPlainText("sn已成功绑定保存");
+                showlog("sn已成功绑定保存");
 
                 stringsn = ui->get_mac->text();
-                ui->msgEdit->appendPlainText(stringsn);
+                showlog(stringsn);
                 waitWork(WAITTIME);
                 pb->set_motor_test_state(0);
                 waitWork(WAITTIME);
@@ -558,7 +555,7 @@ void motor::start_task()
                 pb->set_motor_damping_state(0);
                 waitWork(WAITTIME);
                 refresh_motor_cali_msg("解除阻尼");
-                // ui->msgEdit->appendPlainText("解除阻尼");
+                // showlog("解除阻尼");
 
                 // #ifdef LXSET
                 //                      waitWork(1000);
@@ -576,7 +573,7 @@ void motor::start_task()
             {
                 waitWork(500);
                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                ui->msgEdit->appendPlainText("重发sn绑定");
+                showlog("重发sn绑定");
             }
             break;
 
@@ -585,7 +582,7 @@ void motor::start_task()
             if (pb->get_is_damping_state() == 1)
             {
                 refresh_motor_cali_msg("正在进行霍尔校准");
-                // ui->msgEdit->appendPlainText("正在进行霍尔校准");
+                // showlog("正在进行霍尔校准");
 
                 pb->set_motor_cali(1);
                 waitWork(WAITTIME);
@@ -594,7 +591,7 @@ void motor::start_task()
             else
             {
                 pb->set_motor_damping_state(0);
-                ui->msgEdit->appendPlainText("重发解除阻尼");
+                showlog("重发解除阻尼");
                 waitWork(500);
             }
 
@@ -603,7 +600,7 @@ void motor::start_task()
             {
                 refresh_motor_cali_msg("霍尔校准完成");
 
-                // ui->msgEdit->appendPlainText("霍尔校准完成");
+                // showlog("霍尔校准完成");
 
                 // #ifdef    LXSET
                 //                    waitWork(WAITTIME);
@@ -616,7 +613,7 @@ void motor::start_task()
                 waitWork(WAITTIME);
                 pb->set_motor_cali(2);
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("正在进行零点校准");
+                showlog("正在进行零点校准");
                 state = MOTOR_CALI2;
             }
             if (pb->getisHallCali() == 2)
@@ -631,7 +628,7 @@ void motor::start_task()
             if (pb->getisZeroCali() == 1)
             {
                 refresh_motor_cali_msg("零点校准完成");
-                // ui->msgEdit->appendPlainText("零点校准完成");
+                // showlog("零点校准完成");
                 if (pack.factory == "lx")
                     QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
 
@@ -649,7 +646,7 @@ void motor::start_task()
             if (pb->get_is_stop_motor_cali())
             {
                 refresh_motor_cali_msg("正在进行电机测试");
-                // ui->msgEdit->appendPlainText("正在进行电机测试");
+                // showlog("正在进行电机测试");
                 pb->set_sevor_motor_param(14, 12, 5.2, 190);
                 //  pb->set_motor_test_state(1);
 
@@ -743,7 +740,7 @@ void motor::start_task()
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(50);
             on_disconnectButton_clicked();
-            // ui->msgEdit->appendPlainText("测试结束");
+            // showlog("测试结束");
             refresh_motor_cali_msg("测试结束");
             is_motor_continue = false;
             emit endTest(getIndex());
@@ -761,7 +758,7 @@ void motor::start_test_task()
         switch (test_state)
         {
         case STATE_IDLE:   // 复位一切
-            ui->msgEdit->appendPlainText("开始电机测试");
+            showlog("开始电机测试");
             pb->reset_all_pb();
             at->resetConnected();
             refresh_ble_state(0);
@@ -780,20 +777,20 @@ void motor::start_test_task()
         case STATE_DISABLE_SLEEP_1:
             if (pb->getDisableSleep())
             {
-                ui->msgEdit->appendPlainText("已进入禁止休眠模式");
+                showlog("已进入禁止休眠模式");
                 waitWork(WAITTIME);
                 pb->set_motor_test_state(0);
                 waitWork(WAITTIME);
                 pb->set_motor_damping_state(0);
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("解除阻尼");
+                showlog("解除阻尼");
                 QMessageBox::warning(NULL, "警告", " 请把刷头置于非0位\t\r\n");
                 pb->get_sn(FacDevInfoType_TAIL_SN);
                 waitWork(WAITTIME);
-                ui->msgEdit->appendPlainText("打开阻尼");
+                showlog("打开阻尼");
                 pb->set_motor_damping_state(1);
                 test_state = MOTOR_TESTING;
-                ui->msgEdit->appendPlainText("正在查询SN");
+                showlog("正在查询SN");
             }
             break;
 
@@ -867,7 +864,7 @@ void motor::start_test_task()
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(50);
             on_disconnectButton_clicked();
-            ui->msgEdit->appendPlainText("测试结束");
+            showlog("测试结束");
             is_motor_test_continue = false;
             test_state = STATE_IDLE;
             break;
@@ -878,13 +875,13 @@ void motor::start_test_task()
 void motor::refreshMesState(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("mes登录成功");
+        showlog("mes登录成功");
     else
-        ui->msgEdit->appendPlainText("mes登录失败");
+        showlog("mes登录失败");
 }
 void motor::getTestValue(const int mechines, const QString value)
 {
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq")
     {
@@ -908,11 +905,11 @@ void motor::getTestValue(const int mechines, const QString value)
         }
         else
         {
-            ui->msgEdit->appendPlainText("mes未找到匹配的MAC地址");
-            ui->msgEdit->appendPlainText(value);
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
         }
     }
-    // ui->msgEdit->appendPlainText(value);
+    // showlog(value);
     else if (pack.factory == "lx")
     {
         mesmacAddress = value;
@@ -976,7 +973,7 @@ void motor::on_get_mac_returnPressed()
     {
         ui->get_mac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        ui->msgEdit->appendPlainText("序列号错误");
+        showlog("序列号错误");
         ui->get_mac->clear();
         return;
     }
@@ -984,7 +981,7 @@ void motor::on_get_mac_returnPressed()
     if (pack.product == "U7" || pack.product == "U7P")
         ui->nfc_sn->setFocus();
 
-    ui->msgEdit->appendPlainText("正在查询mac地址");
+    showlog("正在查询mac地址");
     sn = ui->get_mac->text().toUtf8();
     get_mac(ui->get_mac->text());   // 文件获取
     processInspection(ui->get_mac->text());
@@ -1059,7 +1056,7 @@ void motor::get_mac(QString sn_to_search)
                     {
                         ui->macInput->setText(mac);
                         on_macInput_returnPressed();
-                        ui->msgEdit->appendPlainText("这是从文件获取的mac地址");
+                        showlog("这是从文件获取的mac地址");
                         qDebug() << getIndex() << "The corresponding mac is: " << mac;
                     }
 
@@ -1080,7 +1077,7 @@ void motor::on_end_cali_clicked()
     ui->macInput->clear();
     ui->get_mac->clear();
     ui->get_mac->setFocus();
-    ui->msgEdit->appendPlainText("测试结束");
+    showlog("测试结束");
     is_motor_continue = false;
     state = STATE_IDLE;
 }

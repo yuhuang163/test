@@ -92,16 +92,11 @@ int subpidCompareOk = 0;
     int flash_state = 0;
     int refresh_periph_times;
     QTime TestTime;
-    int getIndex() const
-    {
-        return m_index;
-    }
-    int m_index;
+  
 protected:
     virtual void closeEvent(QCloseEvent *);
 
 private slots:
-    void showlog(QString msg);
     void get_dongle_ver(QString data) override;
     void refresh_sn(FacDevInfo data) override;
     void refresh_periph_data(FacGetPeriphState) override;

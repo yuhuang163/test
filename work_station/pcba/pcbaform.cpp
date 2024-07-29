@@ -24,8 +24,9 @@ void PcbaForm::on_pushButton_clicked()
     at->sendMac(ui->macInput->text());   // 发送mac地址
 }
 
-PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(index)
-{
+PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm)
+{    m_index=index;
+
     ui->setupUi(this);
     update_main_style("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
@@ -172,12 +173,12 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm), m_index(i
 }
 void PcbaForm::get_dongle_ver(QString data)
 {
-    ui->msgEdit->appendPlainText("当前dongle的版本为：" + data);
+    showlog("当前dongle的版本为：" + data);
 }
 void PcbaForm::get_dongle_wifi(QString data)
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    ui->msgEdit->appendPlainText("获取到了wifi名字" + data);
+    showlog("获取到了wifi名字" + data);
 
     // 保存密码
     settings.setValue("WIFI/Password", "usmile123");
@@ -198,7 +199,7 @@ void PcbaForm::processReceivedData(const QByteArray &data)
     logString += data;
 
     logString.replace("\n", "").replace("\r", "");
-    // ui->msgEdit->appendPlainText(logString);
+    // showlog(logString);
     // 查找日志中最后一个 "Local Board" 条目的索引
     int lastIndex = logString.lastIndexOf("Local Board");
 
@@ -286,7 +287,7 @@ void PcbaForm::get_wifi_msg(QString data)
         {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
-            refresh_WIFI_state(1);
+            refresh_wifi_state(1);
             WIFI_RSSI = rssi;
         }
     }
@@ -300,7 +301,7 @@ void PcbaForm::get_wifi_msg(QString data)
     }
     else
     {
-        //  ui->msgEdit->appendPlainText("转换成功");
+        //  showlog("转换成功");
         intwifirssi = WIFI_RSSI.toInt(&ok);
     }
 }
@@ -314,16 +315,16 @@ void PcbaForm::refresh_usb_uart_state(int state)
 void PcbaForm::refresh_dongle_uart_state(int state)
 {
     if (state)
-        ui->msgEdit->appendPlainText("dongle串口连接成功");
+        showlog("dongle串口连接成功");
     else
     {
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
-        ui->msgEdit->appendPlainText("dongle串口连接断开");
+        showlog("dongle串口连接断开");
     }
 }
 
-void PcbaForm::refresh_WIFI_state(int state)
+void PcbaForm::refresh_wifi_state(int state)
 {
     if (state)
     {
@@ -356,7 +357,7 @@ void PcbaForm::refresh_ble_rssi(QString data)
 {
     // qDebug() << data;
     ui->BLE_RSSI->setText("BLE的RSSI:" + data);
-    // ui->msgEdit->appendPlainText("zzzzz"+data);
+    // showlog("zzzzz"+data);
     BLE_RSSI = data;
     bool ok;
     BLE_RSSI.toInt(&ok);
@@ -367,7 +368,7 @@ void PcbaForm::refresh_ble_rssi(QString data)
     }
     else
     {
-        // ui->msgEdit->appendPlainText("转换成功");
+        // showlog("转换成功");
         intblerssi = BLE_RSSI.toInt(&ok);
     }
 }
@@ -739,11 +740,11 @@ void PcbaForm::connectwifi()
     if (at->getConnected())
     {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-        ui->msgEdit->appendPlainText("已设置连接wifi");
+        showlog("已设置连接wifi");
     }
     else
     {
-        ui->msgEdit->appendPlainText("请等待连接牙刷后再试");
+        showlog("请等待连接牙刷后再试");
     }
 }
 
@@ -874,7 +875,7 @@ void PcbaForm::solveMesSucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("mes操作成功");
+        showlog("mes操作成功");
         // ui->mes_state->setText("MES");
         // ui->mes_state->setStyleSheet(
         //     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00;
@@ -887,9 +888,9 @@ void PcbaForm::solveMesData(const int mechines, QString msg)
 {
     if (mechines == getIndex())
     {
-        ui->msgEdit->appendPlainText("MES:报错信息:" + msg);
+        showlog("MES:报错信息:" + msg);
         // is_motor_continue = false;
-        // ui->msgEdit->appendPlainText("停止运行");
+        // showlog("停止运行");
         // ui->mes_state->setStyleSheet(
         //     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000;
         //     border-radius: 10px; padding: 10px; text-align: center; ");
@@ -1165,11 +1166,7 @@ void PcbaForm::checkIMUData(const QString &axis, int32_t value, int32_t upper, i
     }
 }
 
-void PcbaForm::showlog(QString msg)
-{
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log：" << msg;
-}
+
 void PcbaForm::start_task()
 {
     // QMessageBox::StandardButton reply;
@@ -1187,7 +1184,7 @@ void PcbaForm::start_task()
             ui->test_result->setStyleSheet(
                 "font-size: 66px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
             pb->reset_all_pb();
-            refresh_WIFI_state(0);
+            refresh_wifi_state(0);
             testItems.clear();
             periph_state = 0;
             rssitestfailcount = 0;
@@ -1404,7 +1401,7 @@ void PcbaForm::start_task()
                 if (intwifirssi < HighRssi && intwifirssi > LowRssi)   // wifi信号可以
                 {
                     rssitestcount++;
-                    ui->msgEdit->appendPlainText("WIFI测试" + QString::number(intwifirssi));
+                    showlog("WIFI测试" + QString::number(intwifirssi));
 
                     if (rssitestcount > RssiTestTime)   // wifi信号可以
                     {
@@ -1442,7 +1439,7 @@ void PcbaForm::start_task()
                         pcba_test_data_update(testItem, testData, failValue);
 
                         qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
-                        ui->msgEdit->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
+                        showlog("wifi不合格信号强度" + WIFI_RSSI);
                         rssitestfailcount = 0;
                         state = STATE_WATI_GET_CORRECT_BLERSSI;
                         showlog("5、蓝牙强度测试");
@@ -1474,7 +1471,7 @@ void PcbaForm::start_task()
             {
                 if (intblerssi < BleHighRssi && intblerssi > BleLowRssi)   // 蓝牙信号可以
                 {
-                    ui->msgEdit->appendPlainText("蓝牙测试" + QString::number(intblerssi));
+                    showlog("蓝牙测试" + QString::number(intblerssi));
                     rssitestcount++;
                     if (rssitestcount >= RssiTestTime)   // 蓝牙信号可以
                     {
@@ -1482,7 +1479,7 @@ void PcbaForm::start_task()
                         testData = BLE_RSSI;
                         pcba_test_data_update(testItem, testData, passValue);
 
-                        ui->msgEdit->appendPlainText("蓝牙测试通过" + QString::number(intblerssi) +
+                        showlog("蓝牙测试通过" + QString::number(intblerssi) +
                                                      "测试次数为" + QString::number(rssitestcount));
                         rssitestcount = 0;
                         at->sendBLELOG(0);   // 日志关
@@ -1516,7 +1513,7 @@ void PcbaForm::start_task()
                 {
                     rssitestcount = 0;
                     rssitestfailcount++;
-                    ui->msgEdit->appendPlainText("重试测试蓝牙" + BLE_RSSI);
+                    showlog("重试测试蓝牙" + BLE_RSSI);
                     if (rssitestfailcount >= RssiTestTime)   // 蓝牙信号不可以
                     {
                         testItem = "蓝牙信号";
@@ -1526,11 +1523,11 @@ void PcbaForm::start_task()
                         totalresult = failValue;
                         qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
                         qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
-                        ui->msgEdit->appendPlainText("蓝牙不合格信号强度intblerssi" +
+                        showlog("蓝牙不合格信号强度intblerssi" +
                                                      QString::number(intblerssi));
 
-                        ui->msgEdit->appendPlainText("蓝牙不合格信号强度" + BLE_RSSI);
-                        ui->msgEdit->appendPlainText("当前蓝牙范围为" +
+                        showlog("蓝牙不合格信号强度" + BLE_RSSI);
+                        showlog("当前蓝牙范围为" +
                                                      QString::number(BleHighRssi) +
                                                      QString::number(BleLowRssi));
 
