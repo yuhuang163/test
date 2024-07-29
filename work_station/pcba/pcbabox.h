@@ -21,6 +21,6 @@ private:
     Ui::pcbabox *ui;
     Fixture_uart *Fixture_uart_ui = NULL;
 private slots:
-    void start_test();
+    void startTest();
 };
 #endif   // PCBABOX_H

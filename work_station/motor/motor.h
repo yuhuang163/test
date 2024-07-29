@@ -17,9 +17,9 @@ public:
     explicit motor(int index, QWidget *parent = nullptr);
     ~motor();
     Ui::motor *ui;
-    void start_task() override;
+    void startTask() override;
 
-    void start_test_task();
+    void startTest_task();
     QComboBox *getComNameCombo() override
     {
         return ui->comNameCombo;
@@ -27,7 +27,7 @@ public:
 
     QLineEdit *getMacLineEdit() override
     {
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -42,20 +42,20 @@ public:
         return ui->msgEdit;
     };   // msg输入口
 private slots:
-    void get_dongle_ver(QString data) override;
+    void getDongleVer(QString data) override;
 
-    void refresh_base_data(FacGetDevBaseInfo data) override;
+    void refreshBaseData(FacGetDevBaseInfo data) override;
     void processInspection(QString stringsn);
-    void refresh_motor_cali_msg(QString msg) override;
+    void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);
     void refreshMesState(int state);
-    void refresh_sn(FacDevInfo data) override;
+    void refreshSn(FacDevInfo data) override;
 
-    void refresh_ble_state(int state) override;
-    void refresh_dongle_uart_state(int state)override;
-    void refresh_battary_data(FacDevInfo adc);
+    void refreshBleState(int state) override;
+    void refreshDongleUartState(int state)override;
+    void refreshBattaryData(FacDevInfo adc);
 
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
@@ -64,11 +64,11 @@ private slots:
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_motor_cali_clicked();
-    void refresh_pb_data(QString data)override;
+    void refreshPbData(QString data)override;
     void on_damping_open_clicked();
     void on_damping_close_clicked();
-    void on_get_mac_returnPressed();
-    void get_mac(QString sn_to_search);
+    void on_getMac_returnPressed();
+    void getMac(QString sn_to_search);
     void on_end_cali_clicked();
 
     void on_stopTest_clicked();
@@ -113,10 +113,10 @@ private:
     QMap<QString, QMap<QString, QString>> deviceMap;   // 存储设备信息
 
 signals:
-    void goNextFocus();
-    void endTest(int data);
-    void startTest(int data);
-    void goNextTest(int data);
+    void send_go_next_focus();
+    void send_end_test(int data);
+    void send_startTest(int data);
+    void send_go_next_test(int data);
 
 };
 

@@ -25,17 +25,17 @@ public:
     ~quiescent_current();
     Ui::quiescent_current *ui;
     ImuDataT orgData;
-    void start_task() override;
+    void startTask() override;
     void processReceivedData(const QByteArray &data) override;
-    void refresh_dongle_uart_state(int state) override;
-    void refresh_usb_uart_state(int state) override;
-    void refresh_jig_uart_state(int state) override;
-    void refresh_product_uart_state(int state) override;
-    void refresh_sn(FacDevInfo data) override;
-    void refresh_ble_state(int state) override;
-    void refresh_periph_data(FacGetPeriphState data) override;
-    void refresh_base_data(FacGetDevBaseInfo data) override;
-    void refresh_ammeter_data(QString data) override;
+    void refreshDongleUartState(int state) override;
+    void refreshUsbUartState(int state) override;
+    void refreshJigUartState(int state) override;
+    void refreshProductUartState(int state) override;
+    void refreshSn(FacDevInfo data) override;
+    void refreshBleState(int state) override;
+    void refreshPeriphData(FacGetPeriphState data) override;
+    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshAmmeterData(QString data) override;
 
     QComboBox *getComNameCombo() override
     {
@@ -135,22 +135,22 @@ private:
     int disconnect_wait_time = 5000;
     int music_time = 30000;
     bool isovertime = 0;   // 是否开始发送校验结果
-    void save_imu_test_data_to_csv(const QString &macAddress, const QString &result);
+    void saveImuTestDataToCsv(const QString &macAddress, const QString &result);
     void initBasicInfo();
     void initPeriphState();
     void writePeripheralDataToCSVFile();
     void writeDataToCSVFile();
-    void clear_display();
-    void banding_mac_sn(QString bandingmac, QString bandingsn);
+    void clearDisplay();
+    void bandingMacSn(QString bandingmac, QString bandingsn);
 
 signals:
-    void goNextFocus();
-    void endTest(int data);
-    void startTest(int data);
-    void goNextTest(int data);
+    void send_go_next_focus();
+    void send_end_test(int data);
+    void send_startTest(int data);
+    void send_go_next_test(int data);
 
 private slots:
-    void get_dongle_ver(QString data) override;
+    void getDongleVer(QString data) override;
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();

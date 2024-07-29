@@ -13,9 +13,9 @@ QFreeWork::QFreeWork(int index, QWidget *parent) : ui(new Ui::QFreeWork)
 {    m_index=index;
 
     ui->setupUi(this);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
-    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refresh_ble_rssi(QString)));
+    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -76,7 +76,7 @@ QFreeWork::QFreeWork(int index, QWidget *parent) : ui(new Ui::QFreeWork)
     if (pack.factory == "lx" || pack.factory == "jj")
     {
         usbBaudRate = 9600;
-        connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refresh_ammeter_data(QString)));
+        connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
     }
     else
     {
@@ -389,7 +389,7 @@ void QFreeWork::executeFunctionByName(const QString functionName)
     qDebug() << "Error: Function with name " << functionName << " not found!";
 }
 
-void QFreeWork::start_task()
+void QFreeWork::startTask()
 {
     if (iswifibleContinue)
     {
@@ -430,11 +430,11 @@ void QFreeWork::start_task()
                     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
                 pack.itemvalue =  QString("|FREE_TEST:PASS|");
                 pack.result = "NG";
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
                 pack.instruct_num = "079";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
             }
             else
@@ -444,11 +444,11 @@ void QFreeWork::start_task()
                     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
                 pack.result = "PASS";
                 pack.itemvalue =  QString("|FREE_TEST:FAIL|");
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
                 pack.instruct_num = "079";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
             }
 
@@ -458,9 +458,9 @@ void QFreeWork::start_task()
             ui->snInput->clear();
             ui->nfc_sn->clear();
             ui->macInput->setDisabled(0);
-            ui->get_mac->setDisabled(0);
-            emit endTest(getIndex());
-            ui->get_mac->clear();
+            ui->getMac->setDisabled(0);
+            emit send_end_test(getIndex());
+            ui->getMac->clear();
             iswifibleContinue = false;
         }
     }
@@ -471,7 +471,7 @@ QFreeWork::~QFreeWork()
     delete ui;
 }
 
-void QFreeWork::refresh_base_data(FacGetDevBaseInfo data)
+void QFreeWork::refreshBaseData(FacGetDevBaseInfo data)
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     QString softwareVersion = settings.value("ProductInfo/Software_Version").toString();
@@ -520,12 +520,12 @@ void QFreeWork::refresh_base_data(FacGetDevBaseInfo data)
         // showlog("停止运行");
 
         // ui->macInput->clear();
-        // ui->get_mac->clear();
-        // ui->get_mac->setFocus();
+        // ui->getMac->clear();
+        // ui->getMac->setFocus();
     }
 }
 
-void QFreeWork::refresh_battary_data(FacDevInfo adc)
+void QFreeWork::refreshBattaryData(FacDevInfo adc)
 {
     QString chargeStateStr;
     switch (adc.dev_info[0].value_item.battery.charge_state)
@@ -629,7 +629,7 @@ void QFreeWork::refresh_battary_data(FacDevInfo adc)
     }
 }
 
-void QFreeWork::refresh_wifi_state(int state)
+void QFreeWork::refreshWifiState(int state)
 {
     if (state)
     {
@@ -645,7 +645,7 @@ void QFreeWork::refresh_wifi_state(int state)
     }
 }
 
-void QFreeWork::refresh_sn(FacDevInfo data)
+void QFreeWork::refreshSn(FacDevInfo data)
 {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
@@ -665,7 +665,7 @@ void QFreeWork::refreshMesState(int state)
         showlog("mes登录失败");
 }
 
-void QFreeWork::get_dongle_wifi(QString data)
+void QFreeWork::getDongleWifi(QString data)
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
@@ -679,12 +679,12 @@ void QFreeWork::get_dongle_wifi(QString data)
 
     ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
 }
-void QFreeWork::get_dongle_ver(QString data)
+void QFreeWork::getDongleVer(QString data)
 {
     showlog("当前dongle的版本为：" + data);
 }
 
-void QFreeWork::refresh_ble_rssi(QString data)
+void QFreeWork::refreshBleRssi(QString data)
 {
     // qDebug() << data;
     ui->BLE_RSSI->setText("BLE的RSSI:" + data);
@@ -704,7 +704,7 @@ void QFreeWork::refresh_ble_rssi(QString data)
     }
 }
 
-void QFreeWork::refresh_ble_state(int state)
+void QFreeWork::refreshBleState(int state)
 {
     if (state)
     {
@@ -720,7 +720,7 @@ void QFreeWork::refresh_ble_state(int state)
     }
 }
 
-void QFreeWork::refresh_dongle_uart_state(int state)
+void QFreeWork::refreshDongleUartState(int state)
 {
     if (state)
         showlog("dongle串口连接成功");
@@ -731,7 +731,7 @@ void QFreeWork::refresh_dongle_uart_state(int state)
         showlog("dongle串口连接断开");
     }
 }
-void QFreeWork::refresh_usb_uart_state(int state)
+void QFreeWork::refreshUsbUartState(int state)
 {
     if (state)
         showlog("usb串口连接成功");
@@ -743,7 +743,7 @@ void QFreeWork::refresh_usb_uart_state(int state)
         ui->usbcomNameCombo->setDisabled(true);
     }
 }
-void QFreeWork::refresh_ammeter_data(QString data)
+void QFreeWork::refreshAmmeterData(QString data)
 {
     qDebug() << getIndex() << "收到电流数据" << data;
 
@@ -786,7 +786,7 @@ void QFreeWork::solveMesData(const int mechines, QString msg)
     {
         showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         iswifibleContinue = false;
         showlog("停止运行");
         ui->mes_state->setStyleSheet(
@@ -794,8 +794,8 @@ void QFreeWork::solveMesData(const int mechines, QString msg)
 
         bandingresult = false;
 
-        ui->get_mac->clear();
-        ui->get_mac->setFocus();
+        ui->getMac->clear();
+        ui->getMac->setFocus();
     }
 }
 
@@ -805,7 +805,7 @@ void QFreeWork::closeEvent(QCloseEvent *event)
     iswifibleContinue = false;
 }
 
-void QFreeWork::get_wifi_msg(QString data)
+void QFreeWork::getWifiMsg(QString data)
 {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
@@ -822,7 +822,7 @@ void QFreeWork::get_wifi_msg(QString data)
         {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
-            refresh_wifi_state(1);
+            refreshWifiState(1);
             WIFI_RSSI = rssi;
         }
     }
@@ -972,8 +972,8 @@ void QFreeWork::on_macInput_returnPressed()
         iswifibleContinue = true;
         teststate = -1;
 
-        emit goNextFocus();
-        ui->get_mac->setDisabled(1);
+        emit send_go_next_focus();
+        ui->getMac->setDisabled(1);
         ui->macInput->setDisabled(1);
     }
 }
@@ -983,7 +983,7 @@ void QFreeWork::on_pushButton_2_clicked()
     at->sendBLELOG(1);   // 日志开
 }
 
-void QFreeWork::on_get_mac_returnPressed()
+void QFreeWork::on_getMac_returnPressed()
 {
     ui->log->clear();
     ui->msgEdit->clear();
@@ -994,16 +994,16 @@ void QFreeWork::on_get_mac_returnPressed()
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
-    if (!snRegex.match(ui->get_mac->text()).hasMatch())
+    if (!snRegex.match(ui->getMac->text()).hasMatch())
     {
         showlog("序列号错误");
-        ui->get_mac->clear();
+        ui->getMac->clear();
         return;
     }
-       sn = ui->get_mac->text().toUtf8();
+       sn = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
-    get_mac(ui->get_mac->text());             // 文件获取
-    processInspection(ui->get_mac->text());   // 站前检测
+    getMac(ui->getMac->text());             // 文件获取
+    processInspection(ui->getMac->text());   // 站前检测
     processGetMesTestValue();                 // mes获取
 }
 
@@ -1040,7 +1040,7 @@ void QFreeWork::processGetMesTestValue()
 {
     if (ui->isformmes->checkState())
     {
-        pack.sn = ui->get_mac->text();
+        pack.sn = ui->getMac->text();
 
         pack.is_hq_send_mac = 1;
 
@@ -1049,7 +1049,7 @@ void QFreeWork::processGetMesTestValue()
         emit getMesTestValue(pack);
     }
 }
-void QFreeWork::get_mac(QString sn_to_search)
+void QFreeWork::getMac(QString sn_to_search)
 {
     QFile file("mac_sn.txt");   // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly))
@@ -1160,11 +1160,11 @@ void QFreeWork::on_mac_combo_textActivated(const QString &arg1)
         macAddress = arg1;
         // at->sendMac(macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
-        banding_mac_sn(macAddress, snbanding);
+        bandingMacSn(macAddress, snbanding);
     }
     ui->snbanding->setFocus();
 }
-void QFreeWork::banding_mac_sn(QString bandingmac, QString bandingsn)
+void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn)
 {
     if (bandingsn == "" || bandingmac == "")
         bandingresult = false;
@@ -1235,10 +1235,10 @@ void QFreeWork::banding_mac_sn(QString bandingmac, QString bandingsn)
     //     file.close();                                    // 关闭文件
     // }
 
-    banding_mac_sn_mes(bandingmac, bandingsn);
+    bandingMacSn_mes(bandingmac, bandingsn);
 }
 
-void QFreeWork::banding_mac_sn_mes(QString bandingmac, QString bandingsn)
+void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn)
 {
     pack.mechines = 1;   // 1脱1,1号上位机
     pack.sn = snbanding;
@@ -1247,7 +1247,7 @@ void QFreeWork::banding_mac_sn_mes(QString bandingmac, QString bandingsn)
     pack.instruct_num = "076";
     if (ui->isusemes->checkState())
     {
-        sendTestPass(pack);
+        send_end_testPass(pack);
     }
 
     if (bandingresult)
@@ -1340,7 +1340,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value)
         }
     }
 
-    // banding_mac_sn(mesmacAddress, ui->get_mac->text());//获取测试数据不要绑定测试mac——sn
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 void QFreeWork::on_clear_nfc_data_clicked()
 {
@@ -1614,7 +1614,7 @@ void QFreeWork::on_nfc_write_read_clicked()
 }
 void QFreeWork::on_nfc_sn_returnPressed()
 {
-    ui->get_mac->setFocus();
+    ui->getMac->setFocus();
 }
 
 void QFreeWork::on_connectButton_clicked()
@@ -1636,10 +1636,10 @@ void QFreeWork::on_stopTest_clicked()
     at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
-    ui->get_mac->setDisabled(0);
+    ui->getMac->setDisabled(0);
 
     ui->macInput->clear();
-    ui->get_mac->clear();
-    ui->get_mac->setFocus();
+    ui->getMac->clear();
+    ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }

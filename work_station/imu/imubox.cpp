@@ -34,7 +34,7 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
 
     for (int i = 0; i < testList.size(); i++)
     {
-        connect(testList[i], SIGNAL(endTest(int)), this, SLOT(set_vector_state(int)));
+        connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(set_vector_state(int)));
 
         // 收集结束信号
         connect(testList[i], SIGNAL(stage1_ok(int)), this, SLOT(check_all_over_stage1(int)));
@@ -172,12 +172,12 @@ imubox::imubox(QWidget *parent) : box_base(parent), ui(new Ui::imubox)
     setWindowTitle("IMU校准上位机");
 
 }
-void imubox::start_test()
+void imubox::startTest()
 {
     for (int i = 0; i < testList.size(); i++)
     {
         qDebug() << "开始测试";
-        testList[i]->start_test();
+        testList[i]->startTest();
 
     }
 }
@@ -196,7 +196,7 @@ void imubox::resetall()
 {
     if (pack.factory == "lx")
     {
-        start_test();
+        startTest();
     }
     if (pack.factory != "xwd"){
                 set_cylinder_state(STATE_RESET);

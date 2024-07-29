@@ -7,7 +7,7 @@
 #    pragma execution_character_set("utf-8")
 #endif
 void imucali::on_pushButton_clicked() {
-    // emit endTest(getIndex());
+    // emit send_end_test(getIndex());
 
     // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
     ui->macInput->setText("3C:84:27:07:A8:D2");
@@ -34,14 +34,14 @@ imucali::imucali(int index, QWidget* parent) :
     m_index = index;
 
     ui->setupUi(this);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
 
     scanSerialPorts();  // 要搜索一下一开始
 
     connect(nqimuc, SIGNAL(send_imu_cali_position(int)), this, SLOT(refresh_imu_cali_position(int)));
-    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
+    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
 
-    connect(qimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
+    connect(qimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(qimuc, SIGNAL(send_imu_cali_reslt_msg(QString)), this, SLOT(refresh_imu_cali_reslt_msg(QString)));
     connect(qimuc, SIGNAL(send_imu_data_to_csv(QString, QString)), this,
             SLOT(refresh_imu_data_to_csv(QString, QString)));
@@ -128,7 +128,7 @@ imucali::imucali(int index, QWidget* parent) :
     ui->acc_y->setFont(font);
     ui->acc_z->setFont(font);
 }
-void imucali::update_IMU_CALIB_result(FacImuCalibResult x) {
+void imucali::refreshImuCaliResult(FacImuCalibResult x) {
     showlog("以下为收到牙刷的imu校准数据");
     showlog(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
     showlog(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
@@ -302,7 +302,7 @@ void imucali::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // banding_mac_sn(mesmacAddress, ui->get_mac->text());//获取测试数据不要绑定测试mac——sn
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 imucali::~imucali() { delete ui; }
@@ -314,7 +314,7 @@ void imucali::on_disconnectButton_clicked() {
     ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
     showlog("蓝牙连接断开");
 }
-void imucali::refresh_ble_state(int state) {
+void imucali::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
@@ -327,7 +327,7 @@ void imucali::refresh_ble_state(int state) {
         //     on_macInput_returnPressed();
     }
 }
-void imucali::refresh_dongle_uart_state(int state) {
+void imucali::refreshDongleUartState(int state) {
     if (state)
         showlog("dongle串口连接成功");
     else {
@@ -357,15 +357,15 @@ void imucali::solveMesData(const int mechines, QString msg) {
     if (mechines == getIndex()) {
         showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         isimuCaliContinue = false;  // 结束
         showlog("停止运行");
         ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FF0000; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit endTest(getIndex());
+        emit send_end_test(getIndex());
 
-        ui->get_mac->clear();
-        ui->get_mac->setFocus();
+        ui->getMac->clear();
+        ui->getMac->setFocus();
     }
 }
 
@@ -373,7 +373,7 @@ void imucali::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
     isAgeContinue = false;
 }
-void imucali::refresh_sn(FacDevInfo data) {
+void imucali::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
     qDebug() << getIndex() << "stringsn" << stringsn;
@@ -399,7 +399,7 @@ void imucali::get_fix_action(int state) {
 void imucali::print_fixture_log(QString data) { showlog(data); }
 
 void imucali::refresh_imu_cali_reslt_msg(QString msg) { showlog(msg); }
-void imucali::refresh_imu_cali_msg(QString msg) {
+void imucali::refreshImuCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << getIndex()<< "收到数据: " << getIndex();
 
@@ -562,7 +562,7 @@ void imucali::refresh_imu_data_to_csv(QString imutime, QString msg) {
     QString dayFolder = currentDate.toString("dd");
 
     // 构建完整的文件路径，加上日期
-    QString fileName = QString::number(getIndex()) + ui->get_mac->text() + ".csv";
+    QString fileName = QString::number(getIndex()) + ui->getMac->text() + ".csv";
     QString filePath = QDir(folderPath).filePath(fileName);
 
     QFile file(filePath);
@@ -778,7 +778,7 @@ void imucali::getimuData(FacUploadNineAlex x) {
         }
     }
 }
-void imucali::refresh_base_data(FacGetDevBaseInfo data) {
+void imucali::refreshBaseData(FacGetDevBaseInfo data) {
     showlog("设备名字为" + QString(data.product_name));
 
     product_name = QString(data.product_name);
@@ -826,7 +826,7 @@ void imucali::processInspection(QString stringsn) {
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
-void imucali::refresh_battary_data(FacDevInfo adc) {
+void imucali::refreshBattaryData(FacDevInfo adc) {
     QString chargeStateStr;
     switch (adc.dev_info[0].value_item.battery.charge_state) {
         case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
@@ -935,10 +935,10 @@ void imucali::endTask() {
     waittime->stop();
     comparewaittime->stop();
     on_disconnectButton_clicked();
-    emit endTest(getIndex());
+    emit send_end_test(getIndex());
 }
-void imucali::start_test() { on_macInput_returnPressed(); };
-void imucali::start_task()  // 编写六轴校准的代码
+void imucali::startTest() { on_macInput_returnPressed(); };
+void imucali::startTask()  // 编写六轴校准的代码
 {
     if (isimuCaliContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
@@ -1046,7 +1046,7 @@ void imucali::start_task()  // 编写六轴校准的代码
                 if (isovertime) {
                     caliwaittime->stop();
                     is_start_ium_cali = 0;
-                    refresh_imu_cali_msg("六轴校准失败");
+                    refreshImuCaliMsg("六轴校准失败");
                     isovertime = 0;
                     showlog("六轴校准失败：超时");
                     waitWork(WAITTIME);
@@ -1137,7 +1137,7 @@ void imucali::start_task()  // 编写六轴校准的代码
                         waitWork(100);
                         sendCommandWithRetry(std::bind(&Qpb::set_ship_mode, pb, 1));
                         showlog("已发送进入船运模式");
-                        qDebug() << ui->get_mac->text() << macAddress << getIndex() << "已发送进入船运模式";
+                        qDebug() << ui->getMac->text() << macAddress << getIndex() << "已发送进入船运模式";
                         state = STATE_SHIP_MODE_CHECK;
                     } else {
                         state = STATE_END;
@@ -1179,9 +1179,9 @@ void imucali::start_task()  // 编写六轴校准的代码
                     pack.result = mesresult;
                     pack.itemvalue = itemvalue;
                     pack.instruct_num = "084";
-                    pack.sn = ui->get_mac->text();
+                    pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                        sendTestPass(pack);
+                        send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -1200,13 +1200,13 @@ void imucali::start_task()  // 编写六轴校准的代码
 
                     pack.itemvalue = itemvalue;
 
-                    pack.sn = ui->get_mac->text();
+                    pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {
-                        sendTestPass(pack);
+                        send_end_testPass(pack);
                     }
                 }
-                log->saveTestCsv(IMU_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
+                log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 waitWork(WAITTIME);
                 pb->set_imu_collect_param(FacSwitch_STOP);
@@ -1214,15 +1214,15 @@ void imucali::start_task()  // 编写六轴校准的代码
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 stringsn = "";
                 ui->macInput->setDisabled(0);
-                ui->get_mac->setDisabled(0);
+                ui->getMac->setDisabled(0);
                 ui->macInput->clear();
-                ui->get_mac->clear();
+                ui->getMac->clear();
 
                 // emit fixture_left(getIndex());
                 // emit fixture_down(getIndex());
                 // emit fixture_right(getIndex());
                 // emit fixture_up(getIndex());
-                emit endTest(getIndex());
+                emit send_end_test(getIndex());
 
                 showlog("流程结束");
                 caliwaittime->stop();
@@ -1237,18 +1237,18 @@ void imucali::start_task()  // 编写六轴校准的代码
         }
     }
 }
-void imucali::get_dongle_ver(QString data) { showlog("当前dongle的版本为：" + data); }
+void imucali::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void imucali::on_stopimuCaliButton_clicked() {
     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
-    ui->get_mac->setDisabled(0);
+    ui->getMac->setDisabled(0);
     isimuCaliContinue = false;
     showlog("停止运行");
     ui->macInput->clear();
-    ui->get_mac->clear();
-    ui->get_mac->setFocus();
+    ui->getMac->clear();
+    ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
 
@@ -1270,7 +1270,7 @@ void imucali::on_pushButton_2_clicked() {
     // }
 }
 
-void imucali::get_mac(QString sn_to_search) {
+void imucali::getMac(QString sn_to_search) {
     QFile file("mac_sn.txt");              // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly)) {  // 打开文件
         QTextStream in(&file);
@@ -1312,15 +1312,15 @@ void imucali::on_macInput_returnPressed() {
         isimuCaliContinue = true;
         state = STATE_IDLE;
         if (pack.factory != "lx") {
-            emit goNextFocus();
+            emit send_go_next_focus();
         }
     }
 }
 
-void imucali::on_get_mac_returnPressed() {
+void imucali::on_getMac_returnPressed() {
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->get_mac->setDisabled(1);
+    ui->getMac->setDisabled(1);
     ui->macInput->setDisabled(1);
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -1329,27 +1329,27 @@ void imucali::on_get_mac_returnPressed() {
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
-    if (!snRegex.match(ui->get_mac->text()).hasMatch()) {
-        ui->get_mac->setDisabled(0);
+    if (!snRegex.match(ui->getMac->text()).hasMatch()) {
+        ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
-        ui->get_mac->clear();
+        ui->getMac->clear();
         return;
     }
     if (pack.factory == "lx") {
-        emit goNextFocus();
+        emit send_go_next_focus();
     }
     dataInit();
     showlog("正在查询mac地址");
-    get_mac(ui->get_mac->text());  // 文件获取
-    processInspection(ui->get_mac->text());
+    getMac(ui->getMac->text());  // 文件获取
+    processInspection(ui->getMac->text());
 
     processGetMesTestValue();  // mes获取
 }
 
 void imucali::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
-        pack.sn = ui->get_mac->text();
+        pack.sn = ui->getMac->text();
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";

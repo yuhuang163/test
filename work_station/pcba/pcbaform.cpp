@@ -28,7 +28,7 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm)
 {    m_index=index;
 
     ui->setupUi(this);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
     borad_test_table_init();
 
@@ -171,11 +171,11 @@ PcbaForm::PcbaForm(int index, QWidget *parent) : ui(new Ui::PcbaForm)
         ui->productComNameCombo->setEnabled(0);
     }
 }
-void PcbaForm::get_dongle_ver(QString data)
+void PcbaForm::getDongleVer(QString data)
 {
     showlog("当前dongle的版本为：" + data);
 }
-void PcbaForm::get_dongle_wifi(QString data)
+void PcbaForm::getDongleWifi(QString data)
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     showlog("获取到了wifi名字" + data);
@@ -243,7 +243,7 @@ void PcbaForm::processReceivedData(const QByteArray &data)
     }
 }
 
-void PcbaForm::refresh_ammeter_data(QString data)
+void PcbaForm::refreshAmmeterData(QString data)
 {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log：" << "收到电流数据"
              << data;
@@ -270,7 +270,7 @@ void PcbaForm::refresh_ammeter_data(QString data)
     }
 }
 
-void PcbaForm::get_wifi_msg(QString data)
+void PcbaForm::getWifiMsg(QString data)
 {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
@@ -287,7 +287,7 @@ void PcbaForm::get_wifi_msg(QString data)
         {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
-            refresh_wifi_state(1);
+            refreshWifiState(1);
             WIFI_RSSI = rssi;
         }
     }
@@ -305,14 +305,14 @@ void PcbaForm::get_wifi_msg(QString data)
         intwifirssi = WIFI_RSSI.toInt(&ok);
     }
 }
-void PcbaForm::refresh_usb_uart_state(int state)
+void PcbaForm::refreshUsbUartState(int state)
 {
     if (state)
         ui->usbuartstate->setText("usb串口连接：<font color='green'>成功</font>");
     else
         ui->usbuartstate->setText("usb串口连接：<font color='red'>断开</font>");
 }
-void PcbaForm::refresh_dongle_uart_state(int state)
+void PcbaForm::refreshDongleUartState(int state)
 {
     if (state)
         showlog("dongle串口连接成功");
@@ -324,7 +324,7 @@ void PcbaForm::refresh_dongle_uart_state(int state)
     }
 }
 
-void PcbaForm::refresh_wifi_state(int state)
+void PcbaForm::refreshWifiState(int state)
 {
     if (state)
     {
@@ -337,7 +337,7 @@ void PcbaForm::refresh_wifi_state(int state)
         //  showlog("WIFI连接断开");
     }
 }
-void PcbaForm::refresh_ble_state(int state)
+void PcbaForm::refreshBleState(int state)
 {
     if (state)
     {
@@ -353,7 +353,7 @@ void PcbaForm::refresh_ble_state(int state)
     }
 }
 
-void PcbaForm::refresh_ble_rssi(QString data)
+void PcbaForm::refreshBleRssi(QString data)
 {
     // qDebug() << data;
     ui->BLE_RSSI->setText("BLE的RSSI:" + data);
@@ -372,14 +372,14 @@ void PcbaForm::refresh_ble_rssi(QString data)
         intblerssi = BLE_RSSI.toInt(&ok);
     }
 }
-void PcbaForm::check_LED_CONTROL_state(FacLedControl data)
+void PcbaForm::checkLedControlState(FacLedControl data)
 {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "收到led控制状态:" << data.switch_state;
     isledcontrol = 1;
 }
 
-void PcbaForm::check_BrushControl_state(FacBrushControl data)
+void PcbaForm::checkBrushControlState(FacBrushControl data)
 {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "收到牙刷控制状态:" << data.value_item.brush_start;
@@ -423,7 +423,7 @@ void PcbaForm::closeEvent(QCloseEvent *)
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log：" << "已经关闭"
              << isPcbaTestContinue;
 }
-void PcbaForm::refresh_base_data(FacGetDevBaseInfo data)
+void PcbaForm::refreshBaseData(FacGetDevBaseInfo data)
 {
     if (refresh_times)
     {
@@ -619,7 +619,7 @@ void PcbaForm::refresh_base_data(FacGetDevBaseInfo data)
     }
 }
 
-void PcbaForm::refresh_periph_data(FacGetPeriphState data)
+void PcbaForm::refreshPeriphData(FacGetPeriphState data)
 {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log：" << "flash_state"
              << data.flash_state;
@@ -799,7 +799,7 @@ void PcbaForm::pcba_test_data_update(const QString &item, const QString &data,
     ui->show_borad_test_result->setItem(row, 2, resultItem);
 }
 
-void PcbaForm::band_sn_mac_to_csv(const QString &macAddress, const QString &sn)
+void PcbaForm::bandSnMacToCsv(const QString &macAddress, const QString &sn)
 {
     // 获取桌面路径
     QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
@@ -845,7 +845,7 @@ void PcbaForm::band_sn_mac_to_csv(const QString &macAddress, const QString &sn)
     }
 }
 
-void PcbaForm::clear_display()
+void PcbaForm::clearDisplay()
 {
     ui->msgEdit->clear();
     ui->show_borad_test_result->clear();
@@ -867,7 +867,7 @@ void PcbaForm::on_productDisconnectButton_clicked()
     ui->productConnectButton->setEnabled(true);
 }
 
-void PcbaForm::over_task()
+void PcbaForm::overTask()
 {
     on_end_clicked();
 }
@@ -909,7 +909,7 @@ void PcbaForm::on_disconnectButton_clicked()
     closeDongleSerialPort();
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
-    refresh_ble_state(0);
+    refreshBleState(0);
 }
 
 void PcbaForm::get_remain_data_sleep(const FixturePacketData packetData)
@@ -1103,7 +1103,7 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData)
 
         showlog("remain_ok=" + QString::number(remain_ok));
 
-        //    start_task();
+        //    startTask();
     }
 };
 void PcbaForm::getimuData(FacUploadNineAlex x)
@@ -1167,7 +1167,7 @@ void PcbaForm::checkIMUData(const QString &axis, int32_t value, int32_t upper, i
 }
 
 
-void PcbaForm::start_task()
+void PcbaForm::startTask()
 {
     // QMessageBox::StandardButton reply;
     uint32_t value = 0;
@@ -1184,7 +1184,7 @@ void PcbaForm::start_task()
             ui->test_result->setStyleSheet(
                 "font-size: 66px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
             pb->reset_all_pb();
-            refresh_wifi_state(0);
+            refreshWifiState(0);
             testItems.clear();
             periph_state = 0;
             rssitestfailcount = 0;
@@ -1776,7 +1776,7 @@ void PcbaForm::start_task()
             // waitWork(300);
             on_disconnectButton_clicked();
 
-            emit endTest(getIndex());
+            emit send_end_test(getIndex());
 
             state = STATE_IDLE;
         }
@@ -1859,7 +1859,7 @@ void PcbaForm::on_pushButton_2_clicked()   // 单机
 
 void PcbaForm::on_macInput_returnPressed()
 {
-    clear_display();
+    clearDisplay();
 
     // 检查是否是同一个mac地址进行的连续测试
     if (macAddress != lastMacAddress)
@@ -1911,17 +1911,17 @@ void PcbaForm::on_macInput_returnPressed()
         ui->macLabel->setText("蓝牙mac: " + macAddress);
         // QSettings settings(SETTING_NAME,QSettings::IniFormat);
         // if(settings.value("User/formColumn").toInt()*settings.value("User/formRow").toInt()==1)
-        // start_task();
+        // startTask();
 
         isPcbaTestContinue = true;
         state = STATE_IDLE;
-        emit goNextFocus();
+        emit send_go_next_focus();
         ui->macInput->setDisabled(1);
 
         // thread->start();
     }
 }
-void PcbaForm::start_test()
+void PcbaForm::startTest()
 {
     ui->test_time->display(0);
     ui->macInput->clear();
@@ -1931,7 +1931,7 @@ void PcbaForm::start_test()
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
         "font-size: 66px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
-    clear_display();
+    clearDisplay();
     on_connectButton_clicked();
     on_productConnectButton_clicked();
 };

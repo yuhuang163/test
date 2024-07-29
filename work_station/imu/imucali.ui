@@ -279,7 +279,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="get_mac">
+              <widget class="QLineEdit" name="getMac">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>

@@ -51,7 +51,7 @@ private slots:
     void check_all_over_fixture_up(int testNumber);
     void resetall()override;
     void set_vector_state(int state);
-    void start_test();
+    void startTest();
 
 };
 

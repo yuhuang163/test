@@ -173,7 +173,7 @@ public:
     explicit cameratest(int index, QWidget *parent = nullptr);
     ~cameratest();
     Ui::cameratest *ui;
-    void start_task() override;
+    void startTask() override;
     QMap<int, QByteArray> packetMap;
     QVector<int> faultData ;
 private:
@@ -198,7 +198,7 @@ private:
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
-    bool is_can_go_next = 0;
+    bool is_canGoNext = 0;
     QByteArray pictureByteArray = 0;
     QString stringsn;
     QUdpSocket *udpSocket;
@@ -216,7 +216,7 @@ private:
 
     QLineEdit *getMacLineEdit() override
     {
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -241,24 +241,19 @@ private slots:
     QByteArray reassembleData();
     void readDongleSerialPortData() override;
     void getPictureSendOver(FacPictureDataAck x);
-
     void onTimeout();
-    void get_dongle_ver(QString data) override;
+    void getDongleVer(QString data) override;
     void processTheDatagram(QByteArray &datagram);
     void refreshMesState(int state);
-    void band_sn_mac_to_csv(const QString &macAddress, const QString &sn);
-    void refresh_camera_CONTROL(FacCameraControl style) override;
-    void can_go_next(int x) override;
-    void refresh_ble_state(int state) override;
-    void refresh_sn(FacDevInfo data) override;
-
+    void bandSnMacToCsv(const QString &macAddress, const QString &sn);
+    void refreshCameraControl(FacCameraControl style) override;
+    void canGoNextMechine(int x) override;
+    void refreshBleState(int state) override;
+    void refreshSn(FacDevInfo data) override;
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);
-
     void readPendingDatagrams();
-
-    void refresh_dongle_uart_state(int state) override;
-
+    void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_pushButton_clicked();
@@ -266,56 +261,39 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void get_mac(QString sn_to_search);
-    void on_get_mac_returnPressed();
+    void getMac(QString sn_to_search);
+    void on_getMac_returnPressed();
     void processInspection(QString stringsn);
-
     void on_distribution_network_clicked();
-
     void on_open_camera_clicked();
-
     void on_close_camera_clicked();
-
     void on_close_camear_light_clicked();
-
     void on_open_camear_light_clicked();
-
     void on_save_photo_clicked();
-
     void on_normal_clicked();
-
     void on_abnormal_clicked();
-
     void on_exposure_time_edit_returnPressed();
-
     void on_DirtyTestButton_clicked();
-
     void on_OffsetTest_clicked();
     void on_stopTest_clicked();
     void updateImageOnMainThread();
-
     void on_jxl_normal_clicked();
-
     void on_jxl_abnormal_clicked();
-
     void on_zw_normal_clicked();
-
     void on_zw_abnormal_clicked();
-
     void on_py_normal_clicked();
-
     void on_py_abnormal_clicked();
 
 signals:
-    void goNextFocus();
-    void goNextTest(int data);
-    void endTest(int data);
-    void startTest(int data);
-    void imageProcessed();
-    void need_send_fault_data_packet(int ,const QVector<int>&);
-    void send_picture_speed(int);
+    void send_go_next_focus();
+    void send_go_next_test(int data);
+    void send_end_test(int data);
+    void send_startTest(int data);
+    void send_image_processed();
+    void send_fault_data_packet(int ,const QVector<int>&);
+    void sendPicture_speed(int);
     void send_thread_date(QString);
-    void need_send_camera_respone(FacErrorCode);
+    void send_camera_respone(FacErrorCode);
 };
 
 #endif   // CAMERATEST_H

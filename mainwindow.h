@@ -1,17 +1,12 @@
 ﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-#include "Abini.h"
-#include "imu_calibrate.h"
-#include "qaudiorecorder.h"
-#include "quicklz_dec.h"
-#include "sensor_hub.h"
-#include "testmodel.h"
 #include <QApplication>
 #include <QAudioDeviceInfo>
 #include <QAudioFormat>
 #include <QAudioInput>
 #include <QAudioRecorder>
 #include <QButtonGroup>
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
@@ -20,89 +15,84 @@
 #include <QHttpPart>
 #include <QImage>
 #include <QInputDialog>
+#include <QMap>
 #include <QMouseEvent>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QPixmap>
 #include <QQmlApplicationEngine>
 #include <QUdpSocket>
+#include <QVector>
 #include <QWebChannel>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QWebEngineView>
-#include <QVector>
-#include <QCoreApplication>
-#include <QDebug>
-#include <QByteArray>
-#include <QMap>
-#include <QVector>
 #include <algorithm>
+
+#include "Abini.h"
+#include "imu_calibrate.h"
+#include "qaudiorecorder.h"
+#include "quicklz_dec.h"
+#include "sensor_hub.h"
+#include "testmodel.h"
 // #include <iomanip>
 // #include <iostream>
-#include "camerabox.h"
-#include "usmile_ring_buffer.h"
 #include <QApplication>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QPixmap>
 #include <QWheelEvent>
+
+#include "camerabox.h"
+#include "usmile_ring_buffer.h"
 Q_DECLARE_METATYPE(FacErrorCode)
 
 QT_BEGIN_NAMESPACE
-namespace Ui
-{
+namespace Ui {
     class MainWindow;
 }
 
 QT_END_NAMESPACE
 
-
-
-
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
-
-
     /*摄像头传图部分*/
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;
     int dataNumber = 0;
-#define CRC16(data, len) crc16_compute((const uint8_t *)(data), len, NULL)
-#define EXT_UART_MAGIC                0xCCCCCCCCCCCCCCCC    // 0xAAAAAAAAAAAAAAAA
-#define UART_PHY_LAYER_HEAD_SIZE      9   // 头大小
-#define UART_PHY_LAYER_CRC_SIZE       0
+#define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
+#define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
+#define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
+#define UART_PHY_LAYER_CRC_SIZE 0
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
 
-#define EXT_PICTURE_PHY_LAYER_MAGIC      0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE      sizeof(video_frame_data_struct)   // 头大小
-#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE )
+#define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
+#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
+#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
 #pragma pack(1)
 
-    typedef struct video_frame_data_struct
-    {
+    typedef struct video_frame_data_struct {
         uint64_t timestamp;
         int width;
         int height;
         int format;
         int reserved;
-        int data_crc16;               // 图像帧校验
-        uint32_t data_size;           // 图像帧长度
-        uint8_t exposure_time_max;    // 最大曝光时间
-        uint8_t exposure_time_mini;   // 最小曝光时间
-        uint8_t exposure_time;        // 设置曝光时间
-        uint8_t exposure_time_rate_of_change;   // 最大曝光时间变化
-        uint8_t brightness_target;   // 目标亮度 范围：0~255
-        uint8_t data[0];             // 图像帧内容.
+        int data_crc16;                        // 图像帧校验
+        uint32_t data_size;                    // 图像帧长度
+        uint8_t exposure_time_max;             // 最大曝光时间
+        uint8_t exposure_time_mini;            // 最小曝光时间
+        uint8_t exposure_time;                 // 设置曝光时间
+        uint8_t exposure_time_rate_of_change;  // 最大曝光时间变化
+        uint8_t brightness_target;             // 目标亮度 范围：0~255
+        uint8_t data[0];                       // 图像帧内容.
 
     } ext_picture_layer_t;
 
-    typedef struct
-    {
+    typedef struct {
         uint64_t magic;
         uint8_t length;
         // uint8_t channel;
@@ -110,33 +100,32 @@ public:
         uint8_t data[0];
     } ext_uart_phy_layer_t;
 #pragma pack()
-    ImageViewer *viewercamrea;
+    ImageViewer* viewercamrea;
     QMutex mutex;
-    usmile_ring_buffer_t p_dongleRingBuffer;   // 串口的队列指针
-    usmile_ring_buffer_t p_cameraRingBuffer;   // 摄像头的队列指针
-    uint8_t dongle_ring_buffer[100 * 1024];    // 串口队列池
-    uint8_t frame_buf[2 * 1024];               // 队列池
-    uint8_t camera_ring_buf[100 * 1024];       // 摄像头队列池
-    uint8_t frame_picture_buf[50 * 1024];      // 照片队列池
+    usmile_ring_buffer_t p_dongleRingBuffer;  // 串口的队列指针
+    usmile_ring_buffer_t p_cameraRingBuffer;  // 摄像头的队列指针
+    uint8_t dongle_ring_buffer[100 * 1024];   // 串口队列池
+    uint8_t frame_buf[2 * 1024];              // 队列池
+    uint8_t camera_ring_buf[100 * 1024];      // 摄像头队列池
+    uint8_t frame_picture_buf[50 * 1024];     // 照片队列池
     int ext_ble_find_next_frame(void);
-    int ext_ble_find_next_picture_frame(QByteArray &picturedata);
-    void write_camera_data(uint8_t *p_data, int data_len);
-    RingBuf *dongleRingBuf = nullptr;
-    RingBuf *cameraRingBuf = nullptr;
+    int ext_ble_find_next_picture_frame(QByteArray& picturedata);
+    void write_camera_data(uint8_t* p_data, int data_len);
+    RingBuf* dongleRingBuf = nullptr;
+    RingBuf* cameraRingBuf = nullptr;
     void solve_frame(void);
     void solve_picture_frame(QByteArray picturedata);
 
     /*摄像头传图部分*/
-
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
     ImuDataT orgData;
+
 private:
     NewImuCalData calData;
-    new_imu_calibrate *nqimuc = nullptr;
-
+    new_imu_calibrate* nqimuc = nullptr;
     QByteArray subpid;
-      QString receivedData = "";
+    QString receivedData = "";
     QString voltageresult;
     QString charageresult;
     double voltage;
@@ -147,10 +136,10 @@ private:
     QString passValue = "通过";
     QString failValue = "失败";
     QString stringsn;
-    QAudioRecorder *audioRecorder;
+    QAudioRecorder* audioRecorder;
     QString generateOutputFilePath();
     void save_motor_to_csv(QString SN, QString Mac, QString csvresult);
-    QMap<QString, QMap<QString, QString>> deviceMap;   // 存储设备信息
+    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString WIFI_RSSI;
     QString BLE_RSSI;
     int HighRssi;
@@ -159,152 +148,143 @@ private:
     int BleLowRssi;
     int RssiTestTime;
     QString productName;
-
-    QLabel *bleStatusLabel = nullptr;
-    QLabel *WifiStatusLabel = nullptr;
-    QSerialPort *dongleSerialPort;   // dongle硬件层
-    QLabel *uartStatusLabel = nullptr;
-    QLabel *frame_rate = nullptr;
-    QLabel *macLabel = nullptr;
-    QLabel *board_sn = nullptr;
-    QLabel *tail_sn = nullptr;
-    QLabel *sub_pid = nullptr;
+    QLabel* bleStatusLabel = nullptr;
+    QLabel* WifiStatusLabel = nullptr;
+    QSerialPort* dongleSerialPort;  // dongle硬件层
+    QLabel* uartStatusLabel = nullptr;
+    QLabel* frame_rate = nullptr;
+    QLabel* macLabel = nullptr;
+    QLabel* board_sn = nullptr;
+    QLabel* tail_sn = nullptr;
+    QLabel* sub_pid = nullptr;
 
     std::atomic<bool> running;
     QFuture<void> future;
-    Qpb *pb;
-    Qat *at;
-    typedef enum
-    {
-        STATE_IDLE,              // 休眠状态
-        STATE_WATI_CONNECT,      // 等待连接
-        STATE_DISABLE_SLEEP_1,   // 进入禁止休眠
+    Qpb* pb;
+    Qat* at;
+    typedef enum {
+        STATE_IDLE,             // 休眠状态
+        STATE_WATI_CONNECT,     // 等待连接
+        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
         MOTOR_CALI1,
         MOTOR_CALI2,
         MOTOR_CALI_DATA_SET,
         MOTOR_TESTING,
         CAMERA_TEST,
-        STATE_SAVE_RESULT   // 保存结果在本地
+        STATE_SAVE_RESULT  // 保存结果在本地
     } motorState;
-    QButtonGroup *OTAGroup = new QButtonGroup(this);
+    QButtonGroup* OTAGroup = new QButtonGroup(this);
     bool is_motor_continue = false;
     motorState motorstate = STATE_IDLE;
-    imu_calibrate *qimuc = nullptr;
-    TestModel *basicInfoModel = nullptr;
-    TestModel *displaybasicInfoModel = nullptr;
-    TestModel *peripheralModel = nullptr;
+    imu_calibrate* qimuc = nullptr;
+    TestModel* basicInfoModel = nullptr;
+    TestModel* displaybasicInfoModel = nullptr;
+    TestModel* peripheralModel = nullptr;
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
-    Ui::MainWindow *ui;
-
+    Ui::MainWindow* ui;
     QString snbanding;
     QString macAddress = "没有mac地址";
-    bool isimuCaliOk = 0;         // 是否校准完成
-    bool is_start_ium_cali = 0;   // 是否开始六轴校准
-    void update_main_style(QString style);
-    QTimer *waittime = new QTimer(this);
-    QTimer *cameratimer = new QTimer(this);
-    QTimer *scanSerialPortsTimer = new QTimer(this);
-    QTimer *dongleSerialPortTimer = new QTimer(this);
-
-
-
+    bool isimuCaliOk = 0;        // 是否校准完成
+    bool is_start_ium_cali = 0;  // 是否开始六轴校准
+    void updateMainStyle(QString style);
+    QTimer* waittime = new QTimer(this);
+    QTimer* cameratimer = new QTimer(this);
+    QTimer* scanSerialPortsTimer = new QTimer(this);
+    QTimer* dongleSerialPortTimer = new QTimer(this);
     int imu_wait_time = 15000;
     int music_time = 30000;
-    bool isovertime = 0;              // 是否开始发送校验结果
-    bool isfirstsavedata = 0;         // 是否开始按键200校准
-    bool isStartSendCaliResult = 0;   // 是否开始发送校验结果
+    bool isovertime = 0;             // 是否开始发送校验结果
+    bool isfirstsavedata = 0;        // 是否开始按键200校准
+    bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
     bool isContinue = true;
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;
-    QVector<int> faultData ;
+    QVector<int> faultData;
     QByteArray dongleSerialPortBuf = 0;
 
     // 定义用于保存MAC地址的QString变量
     QString csvmac;
-    QComboBox *comNameCombo;
-    QUdpSocket *udpSocket;
+    QComboBox* comNameCombo;
+    QUdpSocket* udpSocket;
+
 protected:
-    virtual void closeEvent(QCloseEvent *);
+    virtual void closeEvent(QCloseEvent*);
 
 private slots:
     void checkMissingPackets();
-    void addPacket(const QByteArray &packet);
-    QByteArray reassembleData();
-    void printSquareData(uint8_t *data, size_t data_size);
-    bool deleteCsvFile(const QString &filePath);
-    QString getValueBySN(const QString &sn);
-    void save_battary_data_to_csv(double vol, QString charge_state, QString chares, QString volres);
-    bool eventFilter(QObject *watched, QEvent *event);
+    void addPacket(const QByteArray& packet);
+    void printSquareData(uint8_t* data, size_t data_size);
+    bool deleteCsvFile(const QString& filePath);
+    void saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres);
+    bool eventFilter(QObject* watched, QEvent* event);
     void saveCustom();
     void recoverCustom();
-
-    void save_RSSI_data_to_csv(int intwifirssi, int intblerssi, QString wifiresult,
-                               QString bleresult);
-    void updateHIDComboBox(QComboBox *comboBox);
-    void save_imu_test_data_to_csv(const QString &macAddress, const QString &result);
+    void saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult);
+    void updateHIDComboBox(QComboBox* comboBox);
+    void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();
     void initPeriphState();
-    void band_sn_mac_to_csv(const QString &macAddress, const QString &sn);
+    void bandSnMacToCsv(const QString& macAddress, const QString& sn);
     void writePeripheralDataToCSVFile();
     void writeDataToCSVFile();
-    void clear_display();
+    void clearDisplay();
     void SendRadomDataPushButton();
     void waitWork(int ms);
-    void sendData(bool is_random);
-    void SendRecord();
+    void sendBrushData(bool is_random);
+    void sendRecord();
     void getPictureSendOver(FacPictureDataAck x);
     void updateImageOnMainThread();
-    void refresh_log_data(QString data);
-    void saveToCsv(const QString &filename, const FacUploadNineAlex &x);
+    void refreshLogData(QString data);
+    void saveToCsv(const QString& filename, const FacUploadNineAlex& x);
     void showlog(QString msg);
-    void refresh_imu_cali_msg(QString msg);
-    void send_picture(const QString &url, const QString &filePath);
-    void renameFilesInFolder(const QString &folderPath);
-    void convertImageTo16BitPaletteHigh(const QString &imagePath, const QString &outputFileName);
-    void update_IMU_CALIB_result(FacImuCalibResult x);
+    void refreshImuCaliMsg(QString msg);
+    void sendPicture(const QString& url, const QString& filePath);
+    void renameFilesInFolder(const QString& folderPath);
+    void convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName);
+    void refreshImuCaliResult(FacImuCalibResult x);
     void updateComboBox();
-    void getmacadress(const QByteArray &byte);
-    void refresh_sn(FacDevInfo data);
-    void refresh_wifi_state(int state);
-    void get_wifi_msg(QString data);
+    void getmacadress(const QByteArray& byte);
+    void refreshSn(FacDevInfo data);
+    void refreshWifiState(int state);
+    void getWifiMsg(QString data);
     void stopRecording();
     void closeDongleSerialPort(void);
-    void refresh_dongle_uart_state(int state);
+    void refreshDongleUartState(int state);
     void openDongleSerialPort(void);
     void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
-    void refresh_ble_rssi(QString data);
-    void refresh_wifi_rssi(QString data);
-    void refresh_ble_state(int state);
+    void refreshBleRssi(QString data);
+    void refreshWifiRssi(QString data);
+    void refreshBleState(int state);
     void getimuData(FacUploadNineAlex x);
-    void refresh_battary_data(FacDevInfo adc);
-    void update_wifi(FacDevInfo wifi);
-    void banding_mac_sn(QString bandingmac, QString bandingsn);
-    void get_mac(QString sn_to_search);
-    void update_local_ota_result(FacInternetOta x);
-    void update_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
-    void ota_source_set(int state);
-    void ota_fw_set(int state);
-    void refresh_pb_data(QString data);
+    void refreshBattaryData(FacDevInfo adc);
+    void updateWifi(FacDevInfo wifi);
+    void bandingMacSn(QString bandingmac, QString bandingsn);
+    void getMac(QString sn_to_search);
+    void updateLocalOtaResult(FacInternetOta x);
+    void refreshWifiDemand(FacWifiDemand);
+    void otaSourceSet(int state);
+    void otaFwSet(int state);
+    void refreshPbData(QString data);
     void getPressSensorData(FacUploadPresSensor x);
-    void get_servo_motor_info_msg(FacMotorCalibResult data);
+    void getServoMotorInfoMsg(FacMotorCalibResult data);
+    void saveToExcel(const QString& filename, const FacUploadNineAlex& x);
+    void convertCsvToXls(const QString& csvFilename, const QString& xlsFilename);
+    void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4, bool appHeader);
+    void readPendingDatagrams();
+    void refreshColor1();
+    void refreshColor2();
+    void refreshColor3();
+    void refreshColor4();
+    void refreshMotorCaliMsg(QString msg);
+    void processTheDatagram(QByteArray& datagram);
+    void scanSerialPorts();
+    QString getValueBySN(const QString& sn);
+    QByteArray reassembleData();
     QString getMotorStateString(FacMotoState state);
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
-    void saveToExcel(const QString &filename, const FacUploadNineAlex &x);
-    void convertCsvToXls(const QString &csvFilename, const QString &xlsFilename);
-
-    void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4,
-                               bool appHeader);
-    void readPendingDatagrams();
-    void refresh_color1();
-    void refresh_color2();
-    void refresh_color3();
-    void refresh_color4();
-    void refresh_motor_cali_msg(QString msg);
-    void processTheDatagram(QByteArray &datagram);
-    void scanSerialPorts();
 
 private slots:
     void on_connectButton_clicked();
@@ -335,7 +315,7 @@ private slots:
     void on_start_motor_clicked();
     void on_setTimePushButton_clicked();
     void on_resetPushButton_clicked();
-    void on_sendDataPushButton_clicked();
+    void on_sendBrushDataPushButton_clicked();
     void on_sendRandomData_clicked();
     void on_clearDataPushButton_clicked();
     void on_just_music_clicked();
@@ -346,14 +326,14 @@ private slots:
     void on_open_imu_collect_clicked();
     void on_clear_scan_clicked();
     void on_pushButton_2_clicked();
-    void on_mac_combo_textActivated(const QString &arg1);
+    void on_mac_combo_textActivated(const QString& arg1);
     void on_bleTestPushButton_clicked();
     void on_macInput_7_returnPressed();
     void on_stopTestPushButton_clicked();
     void on_configWifiPushButton_clicked();
     void on_getInfoPushButton_clicked();
     void on_snbanding_returnPressed();
-    void on_get_mac_returnPressed();
+    void on_getMac_returnPressed();
     void on_damping_open_clicked();
     void on_otaTestPushButton_clicked();
     void on_damping_close_clicked();
@@ -383,7 +363,7 @@ private slots:
     void on_light_test_clicked();
     void on_clear_picture_clicked();
     void on_start_search_clicked();
-    void on_pick_device_textActivated(const QString &arg1);
+    void on_pick_device_textActivated(const QString& arg1);
     void on_open_motor_cali_clicked();
     void on_close_motor_cali_clicked();
     void on_R1_valueChanged(int value);
@@ -440,22 +420,17 @@ private slots:
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
 
-
 signals:
-    void sendMessage(QString s);
     void send_uart_state(int data);
     void send_ble_state(int data);
     void send_mac(QString data);
     void send_frame_rate(QString data);
-    void refreshDongleSerialPortState(int state);
-    void imageProcessed();
+    void send_dongle_serialPort_state(int state);
+    void send_image_processed();
     void send_thread_date(QString);
-    void need_send_camera_respone(FacErrorCode);
-    void need_send_fault_data_packet(int ,const QVector<int>&);
-    void send_picture_speed(int);
-
+    void send_camera_respone(FacErrorCode);
+    void send_fault_data_packet(int, const QVector<int>&);
+    void sendPicture_speed(int);
 };
 
-
-
-#endif   // MAINWINDOW_H
+#endif  // MAINWINDOW_H

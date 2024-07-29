@@ -123,7 +123,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="get_mac">
+            <widget class="QLineEdit" name="getMac">
              <property name="enabled">
               <bool>true</bool>
              </property>

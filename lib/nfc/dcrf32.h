@@ -3236,20 +3236,20 @@ extern "C" {
    * 用2.4G进行指令交互操作。
    * @param[in] icdev 设备标识符。
    * @param[in] slen 发送数据的长度。
-   * @param[in] senddata 发送数据。
+   * @param[in] sendBrushData 发送数据。
    * @param[out] rlen 返回数据的长度。
    * @param[out] recvbuffer 返回的数据。
    * @param[in] timeout 设备超时值，单位为秒。
    * @return <0表示失败，==0表示成功。
    */
-  short USER_API dc_2dot4_command(HANDLE icdev, unsigned int slen, unsigned char *senddata, unsigned int *rlen, unsigned char *recvbuffer, unsigned char timeout);
+  short USER_API dc_2dot4_command(HANDLE icdev, unsigned int slen, unsigned char *sendBrushData, unsigned int *rlen, unsigned char *recvbuffer, unsigned char timeout);
 
   /**
    * @brief  2.4G指令交互。
    * @par    说明：
-   * ::dc_2dot4_command 的HEX形式接口，参数 @a senddata @a recvbuffer 为HEX格式。
+   * ::dc_2dot4_command 的HEX形式接口，参数 @a sendBrushData @a recvbuffer 为HEX格式。
    */
-  short USER_API dc_2dot4_command_hex(HANDLE icdev, unsigned int slen, unsigned char *senddata, unsigned int *rlen, unsigned char *recvbuffer, unsigned char timeout);
+  short USER_API dc_2dot4_command_hex(HANDLE icdev, unsigned int slen, unsigned char *sendBrushData, unsigned int *rlen, unsigned char *recvbuffer, unsigned char timeout);
 
   /**
    * @brief  检测102卡。
@@ -7808,7 +7808,7 @@ extern "C" {
    * @param[in] in_len 输入数据的长度。
    * @return <0表示失败，==0表示成功。
    */
-  short USER_API dc_SendDataToServer(HANDLE icdev, unsigned char channel_number, const unsigned char *in_data, int in_len);
+  short USER_API dc_sendBrushDataToServer(HANDLE icdev, unsigned char channel_number, const unsigned char *in_data, int in_len);
 
   /**
    * @brief  从服务器接收数据。

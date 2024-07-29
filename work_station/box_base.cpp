@@ -17,20 +17,20 @@ void box_base::signalAndslot()
 {
     for (int i = 0; i < testList.size(); i++)
     {
-        connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(can_go_next(int)));
+        connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNext(int)));
         // 最后一个回车会清空所有状态重新开始测试
 
-        connect(testList[i], SIGNAL(goNextTest(int)), this, SLOT(checkAllTest(int)));
-        connect(testList[i], SIGNAL(endTest(int)), this, SLOT(checkAllover(int)));
+        connect(testList[i], SIGNAL(send_go_next_test(int)), this, SLOT(checkAllTest(int)));
+        connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(checkAllover(int)));
         // mes类
-        connect(testList[i], SIGNAL(sendTestPass(MesPacketData)), MesManager,
+        connect(testList[i], SIGNAL(send_end_testPass(MesPacketData)), MesManager,
                 SLOT(TestPassAll(MesPacketData)));
         connect(testList[i], SIGNAL(sendProcessInspection(MesPacketData)), MesManager,
                 SLOT(ProcessInspectionAll(MesPacketData)));
         connect(testList[i], SIGNAL(getMesTestValue(MesPacketData)), MesManager,
                 SLOT(GetTestDataAll(MesPacketData)));
 
-        connect(testList[i], SIGNAL(startTest(int)), this, SLOT(reset_vector(int)));
+        connect(testList[i], SIGNAL(send_startTest(int)), this, SLOT(reset_vector(int)));
 
         // connect(MesManager, SIGNAL(MesState(const int)), testList[i],
         //         SLOT(solveMesSucess(const int)));
@@ -44,11 +44,11 @@ void box_base::signalAndslot()
 
     for (int i = 0; i < testList.size() - 1; i++)
     {
-        connect(testList[i], SIGNAL(goNextFocus()), testList[i + 1]->getMacLineEdit(),
+        connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->getMacLineEdit(),
                 SLOT(setFocus()));
     }
 
-    connect(testList[testList.size() - 1], SIGNAL(goNextFocus()), testList[0]->getMacLineEdit(),
+    connect(testList[testList.size() - 1], SIGNAL(send_go_next_focus()), testList[0]->getMacLineEdit(),
             SLOT(setFocus()));
     connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this,
             SLOT(resetall()));
@@ -142,7 +142,7 @@ void box_base::TotallyTask()
     {
         for (int i = 0; i < testList.size(); i++)
         {
-            testList[i]->start_task();
+            testList[i]->startTask();
         }
 
         QCoreApplication::processEvents();

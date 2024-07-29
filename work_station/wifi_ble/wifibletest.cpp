@@ -36,10 +36,10 @@ wifibletest::wifibletest(int index, QWidget *parent) : ui(new Ui::wifibletest)
 {
     m_index=index;
     ui->setupUi(this);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
 
-    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refresh_ble_rssi(QString)));
+    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -120,7 +120,7 @@ wifibletest::~wifibletest()
     delete ui;
 }
 
-void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
+void wifibletest::refreshBaseData(FacGetDevBaseInfo data)
 {
 
     showlog("当前产品名字为"+pack.product);
@@ -130,11 +130,11 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
         showlog("开始写入nfc数据");
         if(QString(data.product_name).compare("U7P") == 0 )
         {
-            nfcdataHeadText = "033BD2023668772001004800324F3130"+getValueBySN(ui->get_mac->text()).toUtf8()+"810800272000141785911410";
+            nfcdataHeadText = "033BD2023668772001004800324F3130"+getValueBySN(ui->getMac->text()).toUtf8()+"810800272000141785911410";
             showlog("当前nfc写入的是U7P!");
         }
         if( QString(data.product_name).compare("U7") == 0){
-            nfcdataHeadText = "033BD2023668772001004800324F3045"+getValueBySN(ui->get_mac->text()).toUtf8()+"810800272000141785911410";
+            nfcdataHeadText = "033BD2023668772001004800324F3045"+getValueBySN(ui->getMac->text()).toUtf8()+"810800272000141785911410";
             showlog("当前nfc写入的是U7!");
         }
 
@@ -250,12 +250,12 @@ void wifibletest::refresh_base_data(FacGetDevBaseInfo data)
         showlog("停止运行");
 
         ui->macInput->clear();
-        ui->get_mac->clear();
-        ui->get_mac->setFocus();
+        ui->getMac->clear();
+        ui->getMac->setFocus();
     }
 }
 
-void wifibletest::refresh_battary_data(FacDevInfo adc)
+void wifibletest::refreshBattaryData(FacDevInfo adc)
 {
     QString chargeStateStr;
     switch (adc.dev_info[0].value_item.battery.charge_state)
@@ -359,7 +359,7 @@ void wifibletest::refresh_battary_data(FacDevInfo adc)
     }
 }
 
-void wifibletest::refresh_wifi_state(int state)
+void wifibletest::refreshWifiState(int state)
 {
     if (state)
     {
@@ -375,7 +375,7 @@ void wifibletest::refresh_wifi_state(int state)
     }
 }
 
-void wifibletest::refresh_sn(FacDevInfo data)
+void wifibletest::refreshSn(FacDevInfo data)
 {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
@@ -395,7 +395,7 @@ void wifibletest::refreshMesState(int state)
         showlog("mes登录失败");
 }
 
-void wifibletest::get_dongle_wifi(QString data)
+void wifibletest::getDongleWifi(QString data)
 {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     showlog("获取到了wifi名字" + data);
@@ -410,12 +410,12 @@ void wifibletest::get_dongle_wifi(QString data)
 
     ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
 }
-void wifibletest::get_dongle_ver(QString data)
+void wifibletest::getDongleVer(QString data)
 {
     showlog("当前dongle的版本为：" + data);
 }
 
-void wifibletest::refresh_ble_rssi(QString data)
+void wifibletest::refreshBleRssi(QString data)
 {
     // qDebug() << data;
     ui->BLE_RSSI->setText("BLE的RSSI:" + data);
@@ -435,7 +435,7 @@ void wifibletest::refresh_ble_rssi(QString data)
     }
 }
 
-void wifibletest::refresh_ble_state(int state)
+void wifibletest::refreshBleState(int state)
 {
     if (state)
     {
@@ -451,7 +451,7 @@ void wifibletest::refresh_ble_state(int state)
     }
 }
 
-void wifibletest::refresh_dongle_uart_state(int state)
+void wifibletest::refreshDongleUartState(int state)
 {
     if (state)
         showlog("dongle串口连接成功");
@@ -462,7 +462,7 @@ void wifibletest::refresh_dongle_uart_state(int state)
         showlog("dongle串口连接断开");
     }
 }
-void wifibletest::refresh_usb_uart_state(int state)
+void wifibletest::refreshUsbUartState(int state)
 {
     if (state)
         showlog("usb串口连接成功");
@@ -474,7 +474,7 @@ void wifibletest::refresh_usb_uart_state(int state)
         ui->usbcomNameCombo->setDisabled(true);
     }
 }
-void wifibletest::refresh_ammeter_data(QString data)
+void wifibletest::refreshAmmeterData(QString data)
 {
     qDebug() << getIndex() << "收到电流数据" << data;
 
@@ -517,17 +517,17 @@ void wifibletest::solveMesData(const int mechines, QString msg)
     {
         showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         iswifibleContinue = false;
         showlog("停止运行");
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
 
         bandingresult = false;
-        emit endTest(getIndex());
+        emit send_end_test(getIndex());
 
-        ui->get_mac->clear();
-        ui->get_mac->setFocus();
+        ui->getMac->clear();
+        ui->getMac->setFocus();
     }
 }
 
@@ -537,7 +537,7 @@ void wifibletest::closeEvent(QCloseEvent *event)
     iswifibleContinue = false;
 }
 
-void wifibletest::get_wifi_msg(QString data)
+void wifibletest::getWifiMsg(QString data)
 {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
@@ -554,7 +554,7 @@ void wifibletest::get_wifi_msg(QString data)
         {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
-            refresh_wifi_state(1);
+            refreshWifiState(1);
             WIFI_RSSI = rssi;
         }
     }
@@ -604,7 +604,7 @@ wifibletest::State wifibletest::getNextState(State currentState)
 {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
 }
-void wifibletest::start_task()
+void wifibletest::startTask()
 {
     if (iswifibleContinue)
     {
@@ -875,12 +875,12 @@ void wifibletest::start_task()
                                  QString("VOL_TEST:%1|").arg(voltage);
                 pack.result = "NG";
 
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
 
                 pack.instruct_num = "079";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
             }
             else
@@ -895,12 +895,12 @@ void wifibletest::start_task()
                                  QString("BLE_TEST:%1").arg(intblerssi) +
                                  QString("|CHAR_TEST:%1|").arg(chargestate) +
                                  QString("VOL_TEST:%1|").arg(voltage);
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
 
                 pack.instruct_num = "079";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
             }
 
@@ -919,20 +919,20 @@ void wifibletest::start_task()
             }
 
             showlog("测试结束");
-            // log->save_RSSI_data_to_csv(measure_ammeter, intwifirssi, intblerssi, wifiresult,
+            // log->saveRssiDataToCsv(measure_ammeter, intwifirssi, intblerssi, wifiresult,
             //                            bleresult, charageresult, voltageresult);
 
-            log->saveTestCsv(SINGLE_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             state = STATE_IDLE;
             iswifibleContinue = false;
             ui->macInput->clear();
             ui->snInput->clear();
 
             ui->macInput->setDisabled(0);
-            ui->get_mac->setDisabled(0);
-            emit endTest(getIndex());
+            ui->getMac->setDisabled(0);
+            emit send_end_test(getIndex());
 
-            ui->get_mac->clear();
+            ui->getMac->clear();
             break;
         }
     }
@@ -1015,7 +1015,7 @@ void wifibletest::on_macInput_returnPressed()
         iswifibleContinue = true;
         state = STATE_IDLE;
 
-        emit goNextFocus();
+        emit send_go_next_focus();
     }
 }
 
@@ -1024,11 +1024,11 @@ void wifibletest::on_pushButton_2_clicked()
     at->sendBLELOG(1);   // 日志开
 }
 
-void wifibletest::on_get_mac_returnPressed()
+void wifibletest::on_getMac_returnPressed()
 {
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->get_mac->setDisabled(1);
+    ui->getMac->setDisabled(1);
     ui->macInput->setDisabled(1);
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet(
@@ -1038,17 +1038,17 @@ void wifibletest::on_get_mac_returnPressed()
     QRegularExpression snRegex(snPattern);
 
     // 使用正则表达式匹配
-    if (!snRegex.match(ui->get_mac->text()).hasMatch())
+    if (!snRegex.match(ui->getMac->text()).hasMatch())
     {
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
-        ui->get_mac->clear();
+        ui->getMac->clear();
         return;
     }
     showlog("正在查询mac地址");
-    get_mac(ui->get_mac->text());             // 文件获取
-    processInspection(ui->get_mac->text());   // 站前检测
+    getMac(ui->getMac->text());             // 文件获取
+    processInspection(ui->getMac->text());   // 站前检测
     processGetMesTestValue();                 // mes获取
 }
 
@@ -1085,7 +1085,7 @@ void wifibletest::processGetMesTestValue()
 {
      if (ui->isformmes->checkState())
     {
-        pack.sn = ui->get_mac->text();
+        pack.sn = ui->getMac->text();
 
         pack.is_hq_send_mac = 1;
 
@@ -1094,7 +1094,7 @@ void wifibletest::processGetMesTestValue()
         emit getMesTestValue(pack);
     }
 }
-void wifibletest::get_mac(QString sn_to_search)
+void wifibletest::getMac(QString sn_to_search)
 {
     QFile file("mac_sn.txt");   // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly))
@@ -1205,11 +1205,11 @@ void wifibletest::on_mac_combo_textActivated(const QString &arg1)
         macAddress = arg1;
         // at->sendMac(macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
-        banding_mac_sn(macAddress, snbanding);
+        bandingMacSn(macAddress, snbanding);
     }
     ui->snbanding->setFocus();
 }
-void wifibletest::banding_mac_sn(QString bandingmac, QString bandingsn)
+void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn)
 {
     if (bandingsn == "" || bandingmac == "")
         bandingresult = false;
@@ -1280,10 +1280,10 @@ void wifibletest::banding_mac_sn(QString bandingmac, QString bandingsn)
     //     file.close();                                    // 关闭文件
     // }
 
-    banding_mac_sn_mes(bandingmac, bandingsn);
+    bandingMacSn_mes(bandingmac, bandingsn);
 }
 
-void wifibletest::banding_mac_sn_mes(QString bandingmac, QString bandingsn)
+void wifibletest::bandingMacSn_mes(QString bandingmac, QString bandingsn)
 {
     pack.mechines = 1;   // 1脱1,1号上位机
     pack.sn = snbanding;
@@ -1296,7 +1296,7 @@ void wifibletest::banding_mac_sn_mes(QString bandingmac, QString bandingsn)
 
     if (ui->isusemes->checkState())
     {
-        sendTestPass(pack);
+        send_end_testPass(pack);
     }
 
     if (bandingresult)
@@ -1389,7 +1389,7 @@ void wifibletest::getTestValue(const int mechines, const QString value)
         }
     }
 
-    // banding_mac_sn(mesmacAddress, ui->get_mac->text());//获取测试数据不要绑定测试mac——sn
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 void wifibletest::on_clear_nfc_data_clicked()
 {
@@ -1562,7 +1562,7 @@ void wifibletest::on_nfc_write_read_clicked()
 
     static int productionNumber = ui->nfc_count->text().toInt();   // 记录生产数量
     // QString text = generateHexString(productionNumber++);//自己生
-    QString text = ui->get_mac->text();   // 外部给
+    QString text = ui->getMac->text();   // 外部给
 
     ui->nfc_count->setText(QString::number(productionNumber));
 
@@ -1723,11 +1723,11 @@ void wifibletest::on_stopTest_clicked()
     at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
-    ui->get_mac->setDisabled(0);
+    ui->getMac->setDisabled(0);
 
     ui->macInput->clear();
-    ui->get_mac->clear();
-    ui->get_mac->setFocus();
+    ui->getMac->clear();
+    ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
 

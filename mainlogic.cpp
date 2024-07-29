@@ -56,7 +56,7 @@ QString MainWindow::getCaliMarkString(CaliMark caliMark) {
         default: return "未知校准标志";
     }
 }
-void MainWindow::get_servo_motor_info_msg(FacMotorCalibResult data) {
+void MainWindow::getServoMotorInfoMsg(FacMotorCalibResult data) {
     // showlog("伺服电机校准标志为"+QString::number(data.value_item.servo_info.motor_cali_mark));
     // showlog("伺服电机电流为"+QString::number(data.value_item.servo_info.motor_current));
     // showlog("伺服电机工作状态为"+QString::number(data.value_item.servo_info.motor_state));
@@ -363,9 +363,6 @@ void MainWindow::readPendingDatagrams() {
     }
 }
 
-void MainWindow::updateImageOnMainThread() {
-    processTheDatagram(pictureByteArray);  // 显示图片
-}
 void MainWindow::solve_frame(void) {
     while (true) {
         // 从环形缓冲区中读取帧头
@@ -417,7 +414,7 @@ void MainWindow::solve_frame(void) {
                 //  //  //  QMetaObject::invokeMethod(pb,
                 //  "set_camera_data_respone", Qt::DirectConnection,
                 //  Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
-                //  //    emit need_send_camera_respone(FacErrorCode_NO_ERROR);
+                //  //    emit send_camera_respone(FacErrorCode_NO_ERROR);
 
                 //  //  //  qDebug() << "solve2响应" <<
                 //  QDateTime::currentDateTime().toString("yyyy-MM-dd
@@ -517,7 +514,7 @@ void MainWindow::readDongleSerialPortData() {
     dongleSerialPortBuf.clear();  // 清除缓冲区
 }
 
-void MainWindow::refresh_dongle_uart_state(int state) {
+void MainWindow::refreshDongleUartState(int state) {
     if (state) {
         showlog("dongle串口连接成功");
         uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
@@ -529,7 +526,7 @@ void MainWindow::refresh_dongle_uart_state(int state) {
         showlog("dongle串口连接断开");
     }
 }
-void MainWindow::refresh_imu_cali_msg(QString msg) {
+void MainWindow::refreshImuCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << "收到数据: " << getIndex();
 
@@ -593,7 +590,7 @@ void MainWindow::refresh_imu_cali_msg(QString msg) {
         qDebug() << "Error appending to file";
     }
 }
-void MainWindow::refresh_motor_cali_msg(QString msg) {
+void MainWindow::refreshMotorCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << "收到数据: " << getIndex();
 
@@ -730,7 +727,7 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
             // 如果需要整数，可以转换为 int
             int progressInt = (int)progressValue;
 
-            emit send_picture_speed(progressInt);
+            emit sendPicture_speed(progressInt);
             QCoreApplication::processEvents(QEventLoop::AllEvents);
             if (frame_size > ring_size) {
                 // qDebug() << "图片帧数据不完整" << "需要" << frame_size <<
@@ -748,7 +745,7 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char*>(head), frame_size);
                 pictureByteArray = byteArray;
-                emit imageProcessed();
+                emit send_image_processed();
 
             } else {
                 qDebug() << "哈哈哈2" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
@@ -764,7 +761,7 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char*>(head), frame_size);
                 pictureByteArray = byteArray;
-                emit imageProcessed();
+                emit send_image_processed();
             }
             packetMap.clear();
             picturedata.clear();
@@ -786,6 +783,7 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
     }
 }
 void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName) {
+
     // 加载图片
     QImage image(imagePath);
     if (image.isNull()) {
@@ -844,7 +842,7 @@ void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const 
     }
 
     file.close();
-    send_picture(ui->ui_ip->text(), outputFilePath);
+    sendPicture(ui->ui_ip->text(), outputFilePath);
 }
 
 bool compareFileNames(const QString& fileName1, const QString& fileName2) {
@@ -897,7 +895,7 @@ void MainWindow::renameFilesInFolder(const QString& folderPath) {
     }
 }
 
-void MainWindow::send_picture(const QString& url, const QString& filePath) {
+void MainWindow::sendPicture(const QString& url, const QString& filePath) {
     qDebug() << "filePath" << filePath;
     // 创建QFile实例
     QFile* file = new QFile(filePath);
@@ -968,7 +966,7 @@ void MainWindow::send_picture(const QString& url, const QString& filePath) {
     manager->deleteLater();
 }
 
-void MainWindow::update_IMU_CALIB_result(FacImuCalibResult x) {
+void MainWindow::refreshImuCaliResult(FacImuCalibResult x) {
     showlog(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
     showlog(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
     showlog(QString("gyro_z: %1").arg(qint32(x.gyro_z)));
@@ -982,7 +980,7 @@ void MainWindow::update_IMU_CALIB_result(FacImuCalibResult x) {
     showlog(QString("szx: %1").arg(x.new_cali.szx));
     showlog(QString("szy: %1").arg(x.new_cali.szy));
 }
-void MainWindow::ota_fw_set(int state) {
+void MainWindow::otaFwSet(int state) {
     for (int i = 1; i < 2; i++) {
         // 获取相关对象引用
         QComboBox* combo = findChild<QComboBox*>(QString("version_type_%1").arg(i + 1));
@@ -1006,7 +1004,7 @@ void MainWindow::ota_fw_set(int state) {
         }
     }
 }
-void MainWindow::ota_source_set(int state) {
+void MainWindow::otaSourceSet(int state) {
     for (int i = 0; i < 1; i++) {
         // 获取相关对象引用
         QComboBox* combo = findChild<QComboBox*>(QString("version_type_%1").arg(i + 1));
@@ -1030,7 +1028,7 @@ void MainWindow::ota_source_set(int state) {
         }
     }
 }
-void MainWindow::refresh_wifi_state(int state) {
+void MainWindow::refreshWifiState(int state) {
     if (state) {
         // ui->WifiStatusLabel->setText("WIFI连接：<font
         // color='green'>成功</font>");
@@ -1041,7 +1039,7 @@ void MainWindow::refresh_wifi_state(int state) {
         //  showlog("WIFI连接断开");
     }
 }
-void MainWindow::refresh_ble_state(int state) {
+void MainWindow::refreshBleState(int state) {
     if (state) {
         bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
@@ -1054,7 +1052,7 @@ void MainWindow::refresh_ble_state(int state) {
     }
 }
 
-void MainWindow::refresh_battary_data(FacDevInfo adc) {
+void MainWindow::refreshBattaryData(FacDevInfo adc) {
     QString chargeStateStr;
     switch (adc.dev_info[0].value_item.battery.charge_state) {
         case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
@@ -1105,10 +1103,10 @@ void MainWindow::refresh_battary_data(FacDevInfo adc) {
         charageresult = "失败";
     }
 
-    save_battary_data_to_csv(voltage, chargestate, charageresult, voltageresult);
+    saveBattaryDataToCsv(voltage, chargestate, charageresult, voltageresult);
 }
 
-void MainWindow::save_battary_data_to_csv(double vol, QString charge_state, QString chares, QString volres) {
+void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres) {
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
     QString folderPath = "D:/测试结果";
 
@@ -1166,7 +1164,7 @@ void MainWindow::save_battary_data_to_csv(double vol, QString charge_state, QStr
     }
 }
 
-void MainWindow::refresh_sn(FacDevInfo data) {
+void MainWindow::refreshSn(FacDevInfo data) {
     if (data.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
         qDebug() << "原始的board_sn：" << data.dev_info[0].value_item.board_sn;
         QString board_sn_string = QString::fromUtf8(data.dev_info[0].value_item.board_sn);
@@ -1185,17 +1183,17 @@ void MainWindow::refresh_sn(FacDevInfo data) {
         tail_sn->setText("尾盖sn:" + tail_sn_string);
     }
 }
-void MainWindow::refresh_ble_rssi(QString data) {
+void MainWindow::refreshBleRssi(QString data) {
     // qDebug() << "rssi = " << data;
     ui->BLE_RSSI->setText("BLE的RSSI：" + data);
     BLE_RSSI = data;
 }
-void MainWindow::refresh_wifi_rssi(QString data) {
+void MainWindow::refreshWifiRssi(QString data) {
     // qDebug() << "rssi = " << data;
     ui->WIFI_RSSI->setText("WIFI的RSSI：" + data);
     WIFI_RSSI = data;
 }
-void MainWindow::get_wifi_msg(QString data) {
+void MainWindow::getWifiMsg(QString data) {
     // qDebug() << "收到wifi数据为" << data;
     QStringList parts = data.split("-");
     int numPairs = parts.size() / 2;
@@ -1209,7 +1207,7 @@ void MainWindow::get_wifi_msg(QString data) {
         // if(macAddress==wifiMac)
         // {
         //     // qDebug() << getIndex()<< " 收到rssi啦" << rssi;
-        //     refresh_wifi_state(1);
+        //     refreshWifiState(1);
         //     WIFI_RSSI=rssi;
 
         // }
@@ -1218,13 +1216,13 @@ void MainWindow::get_wifi_msg(QString data) {
     }
 }
 
-void MainWindow::update_wifi(FacDevInfo wifi) {
+void MainWindow::updateWifi(FacDevInfo wifi) {
     QString wifiName = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_name);
     showlog(wifiName);
     QString wifipassword = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_password);
     showlog(wifipassword);
 }
-void MainWindow::update_main_style(QString style) {
+void MainWindow::updateMainStyle(QString style) {
     // QSS文件初始化界面样式
     QString stylesheet;
     // QFile qss("../tooth_brush_debug_tools/qss/" + style);
@@ -1415,7 +1413,7 @@ void MainWindow::getimuData(FacUploadNineAlex x) {
     //        isStartSendCaliResult=0;
     //    }
 }
-void MainWindow::refresh_color1() {
+void MainWindow::refreshColor1() {
     int r = ui->R1->value();
     int g = ui->G1->value();
     int b = ui->B1->value();
@@ -1424,7 +1422,7 @@ void MainWindow::refresh_color1() {
     ui->light1->setStyleSheet(styleSheet);
 }
 
-void MainWindow::refresh_color2() {
+void MainWindow::refreshColor2() {
     int r = ui->R2->value();
     int g = ui->G2->value();
     int b = ui->B2->value();
@@ -1433,7 +1431,7 @@ void MainWindow::refresh_color2() {
     ui->light2->setStyleSheet(styleSheet);
 }
 
-void MainWindow::refresh_color3() {
+void MainWindow::refreshColor3() {
     int r = ui->R3->value();
     int g = ui->G3->value();
     int b = ui->B3->value();
@@ -1441,7 +1439,7 @@ void MainWindow::refresh_color3() {
     QString styleSheet = QString("QLineEdit { background-color: rgb(%1, %2, %3); }").arg(r).arg(g).arg(b);
     ui->light3->setStyleSheet(styleSheet);
 }
-void MainWindow::refresh_color4() {
+void MainWindow::refreshColor4() {
     int r = ui->R4->value();
     int g = ui->G4->value();
     int b = ui->B4->value();
@@ -1449,7 +1447,7 @@ void MainWindow::refresh_color4() {
     QString styleSheet = QString("QLineEdit { background-color: rgb(%1, %2, %3); }").arg(r).arg(g).arg(b);
     ui->light4->setStyleSheet(styleSheet);
 }
-void MainWindow::banding_mac_sn(QString bandingmac, QString bandingsn) {
+void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
     QFile file("mac_sn.txt");                                   // 创建一个文件对象
     if (file.open(QIODevice::ReadWrite | QIODevice::Append)) {  // 打开文件
         QTextStream out(&file);                                 // 创建一个文本流对象
@@ -1457,7 +1455,7 @@ void MainWindow::banding_mac_sn(QString bandingmac, QString bandingsn) {
         file.close();                                           // 关闭文件
     }
 }
-void MainWindow::get_mac(QString sn_to_search) {
+void MainWindow::getMac(QString sn_to_search) {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
@@ -1497,8 +1495,8 @@ void MainWindow::get_mac(QString sn_to_search) {
                     showlog("这是从文件获取的mac地址");
 
                     if (ui->is_start_ota->checkState()) {
-                        ui->get_mac->clear();
-                        ui->get_mac->setFocus();
+                        ui->getMac->clear();
+                        ui->getMac->setFocus();
                         ui->macInput_7->setText(mac);
                         on_macInput_7_returnPressed();
                         showlog("开始ota升级");
@@ -1515,7 +1513,7 @@ void MainWindow::get_mac(QString sn_to_search) {
         file.close();  // 关闭文件
     }
 }
-void MainWindow::band_sn_mac_to_csv(const QString& macAddress, const QString& sn) {
+void MainWindow::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
     // 获取桌面路径
     QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 
@@ -1554,7 +1552,7 @@ void MainWindow::band_sn_mac_to_csv(const QString& macAddress, const QString& sn
     }
 }
 
-void MainWindow::clear_display() {
+void MainWindow::clearDisplay() {
     ui->gyro_x->setText("gyro_x=");
     ui->gyro_y->setText("gyro_y=");
     ui->gyro_z->setText("gyro_z=");
@@ -1570,7 +1568,7 @@ void MainWindow::clear_display() {
     peripheralModel->resetAllTestResult();
     basicInfoModel->resetAllTestResult();
 }
-void MainWindow::save_imu_test_data_to_csv(const QString& macAddress, const QString& result) {
+void MainWindow::saveImuTestDataToCsv(const QString& macAddress, const QString& result) {
     // 获取桌面路径
     QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 
@@ -1609,7 +1607,7 @@ void MainWindow::save_imu_test_data_to_csv(const QString& macAddress, const QStr
     }
 }
 
-void MainWindow::update_FactroyCmd_WIFI_DEMAND(FacWifiDemand x) {
+void MainWindow::refreshWifiDemand(FacWifiDemand x) {
     if (x.result) {
         WifiStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
         showlog("WIFI连接断开");
@@ -1618,7 +1616,7 @@ void MainWindow::update_FactroyCmd_WIFI_DEMAND(FacWifiDemand x) {
         showlog("WIFI连接成功");
     }
 }
-void MainWindow::update_local_ota_result(FacInternetOta x) {
+void MainWindow::updateLocalOtaResult(FacInternetOta x) {
     if (x.result)
         qDebug() << "本地ota返回错误，结果为" << x.result;
     ui->local_ota_result->setText("OTA");
@@ -1713,7 +1711,7 @@ void MainWindow::saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3
     file.close();
 }
 
-void MainWindow::sendData(bool is_random) {
+void MainWindow::sendBrushData(bool is_random) {
     int start = ui->startDateTime->date().day();
     int end = ui->endDateTime->date().day() + 1;
     int timestamp = ui->startDateTime->dateTime().toSecsSinceEpoch();
@@ -1790,7 +1788,7 @@ void MainWindow::sendData(bool is_random) {
     }
 }
 
-void MainWindow::save_RSSI_data_to_csv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult) {
+void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult) {
     // 获取桌面路径
     QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 
@@ -1963,7 +1961,7 @@ void MainWindow::writePeripheralDataToCSVFile() {
     // 调用函数写入 CSV 文件
     writeDataToCSV(filePath, peripheralHeaders, peripheralData);
 }
-void MainWindow::SendRecord() {
+void MainWindow::sendRecord() {
     uint32_t work_time[6];
     uint16_t pressure_time[6], horizon_brush[6];
     FacSetBrushRecord record;
@@ -2081,8 +2079,8 @@ void MainWindow::stopRecording() {
     showlog("录音结束");
     audioRecorder->stop();
 }
-void MainWindow::refresh_pb_data(QString data) { showlog(data); }
-void MainWindow::refresh_log_data(QString data) { ui->log->appendPlainText(data); }
+void MainWindow::refreshPbData(QString data) { showlog(data); }
+void MainWindow::refreshLogData(QString data) { ui->log->appendPlainText(data); }
 
 void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult) {
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
@@ -2463,5 +2461,5 @@ void MainWindow::getPictureSendOver(FacPictureDataAck x) {
     checkMissingPackets();
     qDebug() << "错误个数" + QString::number(faultData.size());
     showlog("错误个数" + QString::number(faultData.size()));
-    emit need_send_fault_data_packet(faultData.size(), faultData);
+    emit send_fault_data_packet(faultData.size(), faultData);
 }

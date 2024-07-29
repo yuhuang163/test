@@ -138,7 +138,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="get_mac">
+            <widget class="QLineEdit" name="getMac">
              <property name="placeholderText">
               <string>切换英文输入再扫码</string>
              </property>

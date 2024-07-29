@@ -3346,7 +3346,7 @@
                     </layout>
                    </item>
                    <item>
-                    <widget class="QPushButton" name="sendDataPushButton">
+                    <widget class="QPushButton" name="sendBrushDataPushButton">
                      <property name="text">
                       <string>发送上述数据</string>
                      </property>
@@ -3716,7 +3716,7 @@ border-color: rgb(255, 165, 0)</string>
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QLineEdit" name="get_mac">
+              <widget class="QLineEdit" name="getMac">
                <property name="placeholderText">
                 <string>切换英文输入再扫码</string>
                </property>

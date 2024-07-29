@@ -17,8 +17,8 @@ public:
     explicit ageing(int index, QWidget *parent = nullptr);
     ~ageing();
     Ui::ageing *ui;
-    void start_task() override;
-    void refresh_ble_state(int state) override;
+    void startTask() override;
+    void refreshBleState(int state) override;
     void show_product(QString name);
     QComboBox *getComNameCombo() override
     {
@@ -27,7 +27,7 @@ public:
 
     QLineEdit *getMacLineEdit() override
     {
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -97,10 +97,10 @@ protected:
     virtual void closeEvent(QCloseEvent *);
 
 private slots:
-    void get_dongle_ver(QString data) override;
-    void refresh_sn(FacDevInfo data) override;
-    void refresh_periph_data(FacGetPeriphState) override;
-    void refresh_battary_data(FacDevInfo adc)override;
+    void getDongleVer(QString data) override;
+    void refreshSn(FacDevInfo data) override;
+    void refreshPeriphData(FacGetPeriphState) override;
+    void refreshBattaryData(FacDevInfo adc)override;
 
     void processGetMesTestValue();
     void solveMesData(const int mechines, QString msg);
@@ -110,24 +110,24 @@ private slots:
     void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
     void on_macInput_returnPressed();
-    void refresh_dongle_uart_state(int state);
+    void refreshDongleUartState(int state);
 
     void on_pushButton_clicked();
     void on_enterBurningMode_clicked();
     void on_exitBurningMode_clicked();
-    void on_get_mac_returnPressed();
-    void get_mac(QString sn_to_search);
+    void on_getMac_returnPressed();
+    void getMac(QString sn_to_search);
     void on_snInput_returnPressed();
     void processInspection(QString stringsn);
     void on_stopTest_clicked();
 
 signals:
 
-    void endTest(int data);
-    void goNextTest(int data);
+    void send_end_test(int data);
+    void send_go_next_test(int data);
 
-    void goNextFocus();
-    void startTest(int data);
+    void send_go_next_focus();
+    void send_startTest(int data);
 };
 
 #endif   // AGEING_H

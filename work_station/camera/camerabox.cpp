@@ -20,7 +20,7 @@ camerabox::camerabox(QWidget *parent) : box_base(parent), ui(new Ui::camerabox)
 
     for (int i = 0; i < testList.size(); i++)
     {
-        connect(this, SIGNAL(go_camera_next(int)), testList[i], SLOT(can_go_next(int)));
+        connect(this, SIGNAL(go_camera_next(int)), testList[i], SLOT(canGoNext(int)));
     }
 
     ui->statusbar->addPermanentWidget(

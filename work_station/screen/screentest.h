@@ -17,7 +17,7 @@ public:
     explicit screentest(int index, QWidget *parent = nullptr);
     ~screentest();
     Ui::screentest *ui;
-    void start_task() override;
+    void startTask() override;
 private:
 
     typedef enum
@@ -39,7 +39,7 @@ private:
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
-    bool is_can_go_next = 0;
+    bool is_canGoNext = 0;
     QString stringsn;
     QString macAddress = "没有mac地址";
     bool isScreenContinue = 0;
@@ -59,7 +59,7 @@ private slots:
     };   // dongle口
     QLineEdit *getMacLineEdit() override
     {
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -73,13 +73,13 @@ private slots:
     {
         return ui->msgEdit;
     };   // msg输入口
-    void refresh_Lcd_CONTROL(FacLcdControl style) override;
-    void refresh_ble_state(int state) override;
-    void refresh_sn(FacDevInfo data) override;
-    void get_dongle_ver(QString data) override;
-    void refresh_dongle_uart_state(int state) override;
+    void refreshLcdControl(FacLcdControl style) override;
+    void refreshBleState(int state) override;
+    void refreshSn(FacDevInfo data) override;
+    void getDongleVer(QString data) override;
+    void refreshDongleUartState(int state) override;
     void processInspection(QString stringsn);
-    void can_go_next(int x) override;
+    void canGoNextMechine(int x) override;
     void refreshMesState(int state);
     void set_screen_color(int x);
     void solveMesData(const int mechines, QString msg);
@@ -91,17 +91,15 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void get_mac(QString sn_to_search);
-    void on_get_mac_returnPressed();
-
+    void getMac(QString sn_to_search);
+    void on_getMac_returnPressed();
     void on_stopTest_clicked();
 
 signals:
-    void endTest(int data);
-    void goNextTest(int data);
-
-    void goNextFocus();
-    void startTest(int data);
+    void send_end_test(int data);
+    void send_go_next_test(int data);
+    void send_go_next_focus();
+    void send_startTest(int data);
 };
 
 #endif   // SCREENTEST_H

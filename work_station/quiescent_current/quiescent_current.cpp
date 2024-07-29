@@ -12,7 +12,7 @@ quiescent_current::quiescent_current(int index, QWidget *parent)
 
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
 
     ui->test_result->setText("WAIT");
@@ -91,7 +91,7 @@ void quiescent_current::disconnect_dongle()
     on_disconnectButton_clicked();
 }
 
-void quiescent_current::refresh_base_data(FacGetDevBaseInfo data)
+void quiescent_current::refreshBaseData(FacGetDevBaseInfo data)
 {
     if (refresh_base_times)
     {
@@ -273,7 +273,7 @@ void quiescent_current::pcba_test_data_update(const QString &item, const QString
     ui->show_quiescent_current_test_result->setItem(row, 2, resultItem);
 }
 
-void quiescent_current::refresh_periph_data(FacGetPeriphState data)
+void quiescent_current::refreshPeriphData(FacGetPeriphState data)
 {
     if (refresh_periph_times)
     {
@@ -342,7 +342,7 @@ void quiescent_current::refresh_periph_data(FacGetPeriphState data)
     }
 }
 
-void quiescent_current::refresh_ammeter_data(QString data)
+void quiescent_current::refreshAmmeterData(QString data)
 {
     qDebug() << getIndex() << "收到电流数据" << data;
     double normalValue = 0;
@@ -396,7 +396,7 @@ quiescent_current::~quiescent_current()
     delete ui;
 }
 
-void quiescent_current::refresh_sn(FacDevInfo data)
+void quiescent_current::refreshSn(FacDevInfo data)
 {
     // qDebug() << getIndex()<< "qss not load"<<  data.dev_info[0].value_item.board_sn;
     // qDebug() << getIndex()<< "qss not load"<<  data.dev_info[0].value_item.tail_sn;
@@ -411,7 +411,7 @@ void quiescent_current::refresh_sn(FacDevInfo data)
 
 void quiescent_current::on_snInput_returnPressed()
 {
-    clear_display();
+    clearDisplay();
     macAddress = "没有mac地址";
     logString = "";
     usblogwaittime->setInterval(5000);
@@ -427,7 +427,7 @@ void quiescent_current::on_snInput_returnPressed()
         return;
     }
 
-    emit startTest(getIndex());
+    emit send_startTest(getIndex());
     ui->macInput->setFocus();
 
     ui->snInput->setDisabled(1);
@@ -443,7 +443,7 @@ void quiescent_current::on_snInput_returnPressed()
         on_usbconnectButton_clicked();
     }
 
-    emit goNextFocus();
+    emit send_go_next_focus();
     processInspection(ui->snInput->text());
     if (pack.product == "P20PRO" || pack.product == "Q20")
     {
@@ -492,7 +492,7 @@ void quiescent_current::on_macInput_returnPressed()
             last_macAddress = macAddress;
             ui->macLabel->setText("蓝牙mac: " + macAddress);
             state = STATE_IDLE;
-            banding_mac_sn(macAddress, stringsn);
+            bandingMacSn(macAddress, stringsn);
         }
         else
         {
@@ -519,7 +519,7 @@ void quiescent_current::quiescent_current_test_table_init()
     ui->show_quiescent_current_test_result->horizontalHeader()->setSectionResizeMode(
         QHeaderView::ResizeToContents);
 }
-void quiescent_current::clear_display()
+void quiescent_current::clearDisplay()
 {
     ui->msgEdit->clear();
     ui->show_quiescent_current_test_result->clear();
@@ -535,7 +535,7 @@ void quiescent_current::clear_display()
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
     ui->macInput->clear();
 }
-void quiescent_current::refresh_ble_state(int state)
+void quiescent_current::refreshBleState(int state)
 {
     if (state)
     {
@@ -551,7 +551,7 @@ void quiescent_current::refresh_ble_state(int state)
     }
 }
 
-void quiescent_current::refresh_product_uart_state(int state)
+void quiescent_current::refreshProductUartState(int state)
 {
     if (state)
         showlog("product串口连接成功");
@@ -563,7 +563,7 @@ void quiescent_current::refresh_product_uart_state(int state)
     }
 }
 
-void quiescent_current::refresh_dongle_uart_state(int state)
+void quiescent_current::refreshDongleUartState(int state)
 {
     if (state)
         showlog("dongle串口连接成功");
@@ -575,7 +575,7 @@ void quiescent_current::refresh_dongle_uart_state(int state)
     }
 }
 
-void quiescent_current::refresh_jig_uart_state(int state)
+void quiescent_current::refreshJigUartState(int state)
 {
     if (state)
         showlog("治具串口连接成功");
@@ -587,7 +587,7 @@ void quiescent_current::refresh_jig_uart_state(int state)
     }
 }
 
-void quiescent_current::refresh_usb_uart_state(int state)
+void quiescent_current::refreshUsbUartState(int state)
 {
     if (state)
         showlog("usb串口连接成功");
@@ -610,7 +610,7 @@ void quiescent_current::on_disconnectButton_clicked()
     closeDongleSerialPort();
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
-    refresh_ble_state(0);
+    refreshBleState(0);
 }
 void quiescent_current::on_usbconnectButton_clicked()
 {
@@ -679,10 +679,10 @@ void quiescent_current::solveMesData(const int mechines, QString msg)
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
         ui->snInput->setFocus();
-        emit endTest(getIndex());
+        emit send_end_test(getIndex());
     }
 }
-void quiescent_current::get_dongle_ver(QString data)
+void quiescent_current::getDongleVer(QString data)
 {
     showlog("当前dongle的版本为：" + data);
 }
@@ -715,7 +715,7 @@ void quiescent_current::processInspection(QString stringsn)
     }
 }
 
-void quiescent_current::start_task()
+void quiescent_current::startTask()
 {
     if (isquiescent_currentContinue)
     {
@@ -817,7 +817,7 @@ void quiescent_current::start_task()
                 pack.itemvalue = "base_state=NG";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
                 at->sendMac("00:00:00:00:00:00");   // 发送mac地址
 
@@ -859,7 +859,7 @@ void quiescent_current::start_task()
                 pack.instruct_num = "076";
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
 
                 at->sendMac("00:00:00:00:00:00");   // 发送mac地址
@@ -931,7 +931,7 @@ void quiescent_current::start_task()
                 pack.sn = ui->snInput->text();
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
                 showlog("静态电流测试失败：超时");
                 showlog("电流测量值为" + QString::number(measure_ammeter));
@@ -956,7 +956,7 @@ void quiescent_current::start_task()
                 pack.sn = ui->snInput->text();
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
                 showlog("静态电流正常");
                 testItem = "静态电流(ma)";
@@ -1004,7 +1004,7 @@ void quiescent_current::start_task()
                     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
             }
 
-            log->saveTestCsv(QC_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
+            log->saveTestCsv(QC_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             showlog("测试结束");
             ui->macInput->clear();
             ui->snInput->clear();
@@ -1023,8 +1023,8 @@ void quiescent_current::start_task()
             on_usbdisconnectButton_clicked();
             ui->snInput->setDisabled(0);
             ui->macInput->setDisabled(0);
-            ui->get_mac->setDisabled(0);
-            emit endTest(getIndex());
+            ui->getMac->setDisabled(0);
+            emit send_end_test(getIndex());
             state = STATE_IDLE;
             break;
         }
@@ -1047,7 +1047,7 @@ void quiescent_current::on_pushButton_clicked()
     // ui->macInput->returnPressed();
     // sendjigData(STATE_CYLINDER_RESET);
 
-    // banding_mac_sn(macAddress, stringsn);
+    // bandingMacSn(macAddress, stringsn);
     //     save_brush_log("dataTemp");
 }
 
@@ -1064,7 +1064,7 @@ void quiescent_current::on_pushButton_2_clicked()
     }
     ui->snInput->setDisabled(0);
     ui->macInput->setDisabled(0);
-    ui->get_mac->setDisabled(0);
+    ui->getMac->setDisabled(0);
 }
 
 void quiescent_current::on_pushButton_3_clicked()
@@ -1143,8 +1143,8 @@ void quiescent_current::on_pushButton_4_clicked()
         break;
 
     case 2:
-        emit sendTestPass(pack);
-        showlog("Running sendTestPass");
+        emit send_end_testPass(pack);
+        showlog("Running send_end_testPass");
         break;
     }
 
@@ -1165,7 +1165,7 @@ void quiescent_current::refreshMesState(int state)
         showlog("mes登录失败");
 }
 
-void quiescent_current::banding_mac_sn(QString bandingmac, QString bandingsn)
+void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn)
 {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;

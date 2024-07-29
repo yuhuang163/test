@@ -25,11 +25,11 @@ signals:
     void overtask(int);
     void start_sleep_command(int);
     void start_white_modle_command(int);
-    void goNextFocus();
-    void endTest(int data);
-    void goNextTest(int data);
+    void send_go_next_focus();
+    void send_end_test(int data);
+    void send_go_next_test(int data);
 
-    void startTest(int data);
+    void send_startTest(int data);
 public:
     QComboBox *getComNameCombo() override
     {
@@ -71,13 +71,13 @@ public:
     int firstconnectbrush = 1;
     bool mac_retry_flag = false;
     bool isPcbaTestContinue = false;
-    void start_task() override;
-    void over_task() override;
+    void startTask() override;
+    void overTask() override;
 
-    void start_test() override;
+    void startTest() override;
 
 private slots:
-    void get_dongle_ver(QString data) override;
+    void getDongleVer(QString data) override;
 
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);
@@ -87,29 +87,29 @@ private slots:
     void get_remain_data(const FixturePacketData packetData);
     void get_remain_data_sleep(const FixturePacketData packetData);
     void on_end_clicked();
-    void get_dongle_wifi(QString data) override;
+    void getDongleWifi(QString data) override;
 
     void processReceivedData(const QByteArray &data) override;
-    void get_wifi_msg(QString data)override;
-    void refresh_ble_rssi(QString data) override;
-    void refresh_ammeter_data(QString data) override;
+    void getWifiMsg(QString data)override;
+    void refreshBleRssi(QString data) override;
+    void refreshAmmeterData(QString data) override;
     bool deleteFile(const QString &filePath);
-    void refresh_usb_uart_state(int state)override;
+    void refreshUsbUartState(int state)override;
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-    void refresh_periph_data(FacGetPeriphState data) override;
-    void refresh_base_data(FacGetDevBaseInfo data) override;
-    void refresh_dongle_uart_state(int state) override;
-    void refresh_ble_state(int state) override;
-    void refresh_wifi_state(int state);
+    void refreshPeriphData(FacGetPeriphState data) override;
+    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshDongleUartState(int state) override;
+    void refreshBleState(int state) override;
+    void refreshWifiState(int state);
     void connectwifi();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
-    void band_sn_mac_to_csv(const QString &macAddress, const QString &sn);
+    void bandSnMacToCsv(const QString &macAddress, const QString &sn);
     void on_macInput_returnPressed();
     void checkbutton(FacButtonState data) override;
-    void check_BrushControl_state(FacBrushControl data) override;
-    void check_LED_CONTROL_state(FacLedControl data) override;
+    void checkBrushControlState(FacBrushControl data) override;
+    void checkLedControlState(FacLedControl data) override;
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
 protected:
@@ -240,7 +240,7 @@ private:
     int BleLowRssi;
     void borad_test_table_init();
     void borad_test_process();
-    void clear_display();
+    void clearDisplay();
     void pcba_test_data_update(const QString &item, const QString &data, const QString &result);
 };
 

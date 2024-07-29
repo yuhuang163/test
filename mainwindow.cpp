@@ -28,12 +28,12 @@ void MainWindow::on_pushButton_clicked() {
 
     // on_macInput_returnPressed();
     // // pb->set_device_mode();//进入亮白
-    // emit need_send_camera_respone(FacErrorCode_NO_ERROR);
+    // emit send_camera_respone(FacErrorCode_NO_ERROR);
     // printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()),
     // pictureByteArray.size());
 
     QVector<int> faultData = {1, 2, 3, 4, 5};
-    emit need_send_fault_data_packet(faultData.size(), faultData);
+    emit send_fault_data_packet(faultData.size(), faultData);
 
     // for(int i=0;i<100;i++){
     //     pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
@@ -179,7 +179,7 @@ MainWindow::MainWindow(QWidget* parent) :
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
     ui->wifi_test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
@@ -210,8 +210,8 @@ MainWindow::MainWindow(QWidget* parent) :
     tail_sn = new QLabel("尾盖sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
 
-    ota_source_set(1);  // 一开机锁住
-    ota_fw_set(1);      // 一开机锁住
+    otaSourceSet(1);  // 一开机锁住
+    otaFwSet(1);      // 一开机锁住
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(tail_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
@@ -220,56 +220,56 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->statusbar->addPermanentWidget(WifiStatusLabel);
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
-    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refresh_imu_cali_msg(QString)));
-    connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refresh_pb_data(QString)));
-    connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refresh_pb_data(QString)));
+    connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
+    connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
+    connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
 
-    connect(this, SIGNAL(send_picture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
+    connect(this, SIGNAL(sendPicture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
 
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
 
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
-    connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refresh_battary_data(FacDevInfo)));
-    connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(update_wifi(FacDevInfo)));
-    connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
+    connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
+    connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(updateWifi(FacDevInfo)));
+    connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refreshSn(FacDevInfo)));
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
-    connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(get_wifi_msg(QString)));
+    connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this,
-            SLOT(update_local_ota_result(FacInternetOta)));
+            SLOT(updateLocalOtaResult(FacInternetOta)));
 
-    connect(this, SIGNAL(need_send_camera_respone(FacErrorCode)), pb, SLOT(set_camera_data_respone(FacErrorCode)));
+    connect(this, SIGNAL(send_camera_respone(FacErrorCode)), pb, SLOT(set_camera_data_respone(FacErrorCode)));
 
-    connect(this, SIGNAL(need_send_fault_data_packet(int, const QVector<int>&)), pb,
+    connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
 
-    connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refresh_motor_cali_msg(QString)));
+    connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
 
     connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(FacWifiDemand)), this,
-            SLOT(update_FactroyCmd_WIFI_DEMAND(FacWifiDemand)));
+            SLOT(refreshWifiDemand(FacWifiDemand)));
 
     connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this,
-            SLOT(update_IMU_CALIB_result(FacImuCalibResult)));
+            SLOT(refreshImuCaliResult(FacImuCalibResult)));
 
     connect(pb, SIGNAL(send_servo_motor_info_msg(FacMotorCalibResult)), this,
-            SLOT(get_servo_motor_info_msg(FacMotorCalibResult)));
+            SLOT(getServoMotorInfoMsg(FacMotorCalibResult)));
 
-    connect(this, SIGNAL(refreshDongleSerialPortState(int)), this, SLOT(refresh_dongle_uart_state(int)));
-    connect(ui->is_ota_1, SIGNAL(stateChanged(int)), this, SLOT(ota_source_set(int)));
-    connect(ui->is_ota_2, SIGNAL(stateChanged(int)), this, SLOT(ota_fw_set(int)));
+    connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
+    connect(ui->is_ota_1, SIGNAL(stateChanged(int)), this, SLOT(otaSourceSet(int)));
+    connect(ui->is_ota_2, SIGNAL(stateChanged(int)), this, SLOT(otaFwSet(int)));
     connect(ui->show_rssi, SIGNAL(stateChanged(int)), at, SLOT(sendBLELOG(int)));
     connect(ui->show_bursh_log, SIGNAL(stateChanged(int)), pb, SLOT(set_uart_receive(int)));
     connect(ui->press_sensor_temp__switch, SIGNAL(stateChanged(int)), pb, SLOT(set_press_sensor_temp(int)));
 
-    connect(this, &MainWindow::imageProcessed, this, &MainWindow::updateImageOnMainThread);
+    connect(this, &MainWindow::send_image_processed, this, &MainWindow::updateImageOnMainThread);
 
-    connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refresh_ble_state(int)));
-    connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refresh_ble_rssi(QString)));
-    connect(at, SIGNAL(send_wifi_rssi(QString)), this, SLOT(refresh_wifi_rssi(QString)));
+    connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
+    connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
+    connect(at, SIGNAL(send_wifi_rssi(QString)), this, SLOT(refreshWifiRssi(QString)));
     // connect(at, SIGNAL(send_WIFI_state(int)), this,
-    // SLOT(refresh_wifi_state(int)));
+    // SLOT(refreshWifiState(int)));
 
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
@@ -293,7 +293,7 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->acc_x->setFont(font);
     ui->acc_y->setFont(font);
     ui->acc_z->setFont(font);
-    ui->get_mac->setFocus();
+    ui->getMac->setFocus();
 
     // U7
     ui->nfc_combo->addItem("U7P");
@@ -497,7 +497,9 @@ void MainWindow::on_send_wifi_config_clicked() {
         manager->deleteLater();
     });
 }
-
+void MainWindow::updateImageOnMainThread() {
+    processTheDatagram(pictureByteArray);  // 显示图片
+}
 MainWindow::~MainWindow() {
     is_motor_continue = false;
     isimuCaliContinue = false;
@@ -553,7 +555,7 @@ void MainWindow::openDongleSerialPort() {
         dongleSerialPort->setDataTerminalReady(true);
 
         // showlog("串口连接成功");
-        emit refreshDongleSerialPortState(1);
+        emit send_dongle_serialPort_state(1);
 
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
                 &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
@@ -573,7 +575,7 @@ void MainWindow::closeDongleSerialPort() {
     disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
                &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
 
-    emit refreshDongleSerialPortState(0);
+    emit send_dongle_serialPort_state(0);
 }
 
 void MainWindow::on_clear_scan_clicked() {
@@ -597,7 +599,7 @@ void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
         macAddress = arg1;
         at->sendMac(macAddress);  // 发送mac地址
         qDebug() << macAddress;
-        banding_mac_sn(macAddress, snbanding);
+        bandingMacSn(macAddress, snbanding);
         on_motor_cali_clicked();
     }
 }
@@ -615,8 +617,8 @@ void MainWindow::on_snbanding_returnPressed() {
     ui->snbanding->clear();
 }
 
-void MainWindow::on_get_mac_returnPressed() {
-    get_mac(ui->get_mac->text());  // 文件获取
+void MainWindow::on_getMac_returnPressed() {
+    getMac(ui->getMac->text());  // 文件获取
 }
 
 void MainWindow::on_damping_open_clicked() { pb->set_motor_damping_state(1); }
@@ -630,7 +632,7 @@ void MainWindow::on_disconnectButton_clicked() {
 
     closeDongleSerialPort();
     ui->connectButton->setEnabled(true);
-    refresh_ble_state(0);
+    refreshBleState(0);
 }
 
 void MainWindow::on_connectButton_clicked() {
@@ -665,7 +667,7 @@ void MainWindow::on_enterShipModeButton_clicked() {
 }
 
 void MainWindow::on_macInput_returnPressed() {
-    clear_display();
+    clearDisplay();
 
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
@@ -732,7 +734,7 @@ void MainWindow::on_snInput_returnPressed() {
         pb->set_sn(FacDevInfoType_TAIL_SN, sn);
         showlog("已绑定sn到牙刷");
 
-        band_sn_mac_to_csv(macAddress, sn);
+        bandSnMacToCsv(macAddress, sn);
         showlog("已绑定保存到文件");
     } else {
         showlog("请等待连接牙刷后再试");
@@ -1092,7 +1094,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                 }
             } break;
             case STATE_SAVE_RESULT: {
-                save_RSSI_data_to_csv(intwifirssi, intblerssi, wifiresult, bleresult);
+                saveRssiDataToCsv(intwifirssi, intblerssi, wifiresult, bleresult);
                 state = STATE_IDLE;
                 isrssiContinue = false;
             } break;
@@ -1108,9 +1110,9 @@ void MainWindow::on_setTimePushButton_clicked() {
 }
 
 void MainWindow::on_resetPushButton_clicked() { pb->set_brush_reset(); }
-void MainWindow::on_sendDataPushButton_clicked() { sendData(false); }
+void MainWindow::on_sendBrushDataPushButton_clicked() { sendBrushData(false); }
 
-void MainWindow::on_sendRandomData_clicked() { sendData(true); }
+void MainWindow::on_sendRandomData_clicked() { sendBrushData(true); }
 
 void MainWindow::on_clearDataPushButton_clicked() { ui->msgTest->clear(); }
 void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
@@ -1154,7 +1156,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     showlog("蓝牙连接成功");
-                    refresh_ble_state(1);
+                    refreshBleState(1);
                     state = STATE_DISABLE_SLEEP_1;
                 }
                 break;
@@ -1203,7 +1205,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
 
             case STATE_SAVE_RESULT:
                 if (pb->get_is_get_imu_cali_data()) {
-                    save_imu_test_data_to_csv(macAddress, result);
+                    saveImuTestDataToCsv(macAddress, result);
                     showlog("六轴校准保存完毕");
                     showlog("六轴校准结束");
                     isimuCaliContinue = false;  // 结束
@@ -1211,7 +1213,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
                     state = STATE_IDLE;
                 }
                 if (result == failValue) {
-                    save_imu_test_data_to_csv(macAddress, result);
+                    saveImuTestDataToCsv(macAddress, result);
                     showlog("六轴校准保存完毕");
                     showlog("六轴校准结束");
                     isimuCaliContinue = false;  // 结束
@@ -1253,7 +1255,7 @@ void MainWindow::on_motor_cali_clicked() {
                 showlog("开始测试");
                 pb->reset_all_pb();
                 at->resetConnected();
-                // refresh_ble_state(0);
+                // refreshBleState(0);
                 stringsn = "";
                 motorresult = passValue;
                 motorstate = STATE_WATI_CONNECT;
@@ -1966,64 +1968,64 @@ void MainWindow::on_close_motor_cali_clicked() { pb->set_motor_cali_state(0); }
 void MainWindow::on_R1_valueChanged(int value) {
     ui->label_46->setText(QString::number(value));
 
-    refresh_color1();
+    refreshColor1();
 }
 
 void MainWindow::on_G1_valueChanged(int value) {
     ui->label_47->setText(QString::number(value));
 
-    refresh_color1();
+    refreshColor1();
 }
 
 void MainWindow::on_B1_valueChanged(int value) {
     ui->label_48->setText(QString::number(value));
 
-    refresh_color1();
+    refreshColor1();
 }
 
 void MainWindow::on_R2_valueChanged(int value) {
     ui->label_62->setText(QString::number(value));
-    refresh_color2();
+    refreshColor2();
 }
 
 void MainWindow::on_G2_valueChanged(int value) {
     ui->label_63->setText(QString::number(value));
-    refresh_color2();
+    refreshColor2();
 }
 
 void MainWindow::on_B2_valueChanged(int value) {
     ui->label_64->setText(QString::number(value));
-    refresh_color2();
+    refreshColor2();
 }
 
 void MainWindow::on_R3_valueChanged(int value) {
     ui->label_65->setText(QString::number(value));
-    refresh_color3();
+    refreshColor3();
 }
 
 void MainWindow::on_G3_valueChanged(int value) {
     ui->label_66->setText(QString::number(value));
-    refresh_color3();
+    refreshColor3();
 }
 
 void MainWindow::on_B3_valueChanged(int value) {
     ui->label_67->setText(QString::number(value));
-    refresh_color3();
+    refreshColor3();
 }
 
 void MainWindow::on_R4_valueChanged(int value) {
     ui->label_68->setText(QString::number(value));
-    refresh_color4();
+    refreshColor4();
 }
 
 void MainWindow::on_G4_valueChanged(int value) {
     ui->label_69->setText(QString::number(value));
-    refresh_color4();
+    refreshColor4();
 }
 
 void MainWindow::on_B4_valueChanged(int value) {
     ui->label_70->setText(QString::number(value));
-    refresh_color4();
+    refreshColor4();
 }
 
 void MainWindow::on_pink_led_clicked() {

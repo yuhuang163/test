@@ -30,7 +30,7 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
                 {
                     Fixture_uart_ui = new Fixture_uart;
                     connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this,
-                            SLOT(start_test()));
+                            SLOT(startTest()));
                     for (int i = 0; i < testList.size(); i++)
                     {
 
@@ -60,13 +60,13 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
                 Fixture_uart_ui->activateWindow();
             });
 
-    QAction *start_test_act = ui->menubar->addAction("开始测试");
-    connect(start_test_act, &QAction::triggered,
+    QAction *startTest_act = ui->menubar->addAction("开始测试");
+    connect(startTest_act, &QAction::triggered,
             [=]()
             {
                 for (int i = 0; i < testList.size(); i++)
                 {
-                    testList[i]->start_test();
+                    testList[i]->startTest();
                 }
             });
 
@@ -76,18 +76,18 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
             {
                 for (int i = 0; i < testList.size(); i++)
                 {
-                    testList[i]->over_task();
+                    testList[i]->overTask();
                 }
                 testList[0]->getMacLineEdit()->setFocus();
 
             });
 }
 
-void pcbabox::start_test()
+void pcbabox::startTest()
 {
     for (int i = 0; i < testList.size(); i++)
     {
-        testList[i]->start_test();
+        testList[i]->startTest();
     }
 }
 

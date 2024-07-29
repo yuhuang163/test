@@ -19,9 +19,9 @@ class test_base : public QWidget {
     Q_OBJECT
   public:
     test_base();
-    virtual void start_test(){};
-    virtual void over_task(){};
-    virtual void start_task() = 0;
+    virtual void startTest(){};
+    virtual void overTask(){};
+    virtual void startTask() = 0;
     virtual void endTask(){};
     virtual void useMes(){};
 
@@ -43,7 +43,7 @@ class test_base : public QWidget {
 
     // 通用函数
     void waitWork(int ms);
-    void update_main_style(QString style);
+    void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc);
 
   private:
@@ -123,40 +123,39 @@ class test_base : public QWidget {
 
   public slots:
     virtual void getTestValue(const int, const QString){};
-    virtual void can_go_next(int){};
-    virtual void refresh_camera_CONTROL(FacCameraControl){};
-    virtual void check_LED_CONTROL_state(FacLedControl){};
+    virtual void canGoNextMechine(int){};
+    virtual void refreshCameraControl(FacCameraControl){};
+    virtual void checkLedControlState(FacLedControl){};
     virtual void checkbutton(FacButtonState){};
-    virtual void check_BrushControl_state(FacBrushControl){};
-    virtual void update_IMU_CALIB_result(FacImuCalibResult){};
+    virtual void checkBrushControlState(FacBrushControl){};
+    virtual void refreshImuCaliResult(FacImuCalibResult){};
     virtual void getimuData(FacUploadNineAlex){};
-    virtual void refresh_pb_data(QString);
-    virtual void refresh_motor_cali_msg(QString){};
-    virtual void refresh_ble_rssi(QString){};
-    virtual void get_dongle_ver(QString){};
-    virtual void get_dongle_wifi(QString){};
-    virtual void refresh_ble_state(int){};
-    virtual void get_wifi_msg(QString){};
-    virtual void refresh_base_data(FacGetDevBaseInfo){};
-    virtual void refresh_battary_data(FacDevInfo){};
-    virtual void refresh_sn(FacDevInfo){};
-    virtual void refresh_Lcd_CONTROL(FacLcdControl){};
-    virtual void refresh_periph_data(FacGetPeriphState){};
-    virtual void refresh_ammeter_data(QString){};
-    virtual void refresh_dongle_uart_state(int){};
-    virtual void refresh_usb_uart_state(int){};
-    virtual void refresh_jig_uart_state(int){};
-    virtual void refresh_product_uart_state(int){};
+    virtual void refreshPbData(QString);
+    virtual void refreshMotorCaliMsg(QString){};
+    virtual void refreshBleRssi(QString){};
+    virtual void getDongleVer(QString){};
+    virtual void getDongleWifi(QString){};
+    virtual void refreshBleState(int){};
+    virtual void getWifiMsg(QString){};
+    virtual void refreshBaseData(FacGetDevBaseInfo){};
+    virtual void refreshBattaryData(FacDevInfo){};
+    virtual void refreshSn(FacDevInfo){};
+    virtual void refreshLcdControl(FacLcdControl){};
+    virtual void refreshPeriphData(FacGetPeriphState){};
+    virtual void refreshAmmeterData(QString){};
+    virtual void refreshDongleUartState(int){};
+    virtual void refreshUsbUartState(int){};
+    virtual void refreshJigUartState(int){};
+    virtual void refreshProductUartState(int){};
     virtual void processReceivedData(const QByteArray&){};
 
   signals:
-    void refreshDongleSerialPortState(int);
+    void send_dongle_serialPort_state(int);
     void refreshUsbSerialPortState(int);
     void refreshJigSerialPortState(int);
     void refreshProductSerialPortState(int);
-
     void sendProcessInspection(MesPacketData);
-    void sendTestPass(MesPacketData);
+    void send_end_testPass(MesPacketData);
     void getMesTestValue(MesPacketData);
 };
 

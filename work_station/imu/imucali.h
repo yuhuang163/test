@@ -19,7 +19,7 @@ class imucali : public test_base
 public:
     explicit imucali(int index, QWidget *parent = nullptr);
     ~imucali();
-    void start_task() override;
+    void startTask() override;
 
     Ui::imucali *ui;
     ImuDataT orgData;
@@ -28,7 +28,7 @@ public:
 
      void useMes() override;
 
-    void start_test()override;
+    void startTest()override;
 
     QComboBox *getComNameCombo() override
     {
@@ -42,7 +42,7 @@ public:
     QLineEdit *getMacLineEdit() override
     {
 
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -103,7 +103,7 @@ private:
     int imu_wait_time = 15000;
     int imu_compare_wait_time = 15000;
     int ImuCompareData = 15000;
-    void refresh_battary_data(FacDevInfo adc)override;
+    void refreshBattaryData(FacDevInfo adc)override;
     double standbattary = 0;
     double voltage=0;
     int is_battary_test = 0;
@@ -138,14 +138,14 @@ protected:
 
 private slots:
     void get_fix_action(int state);
-    void get_dongle_ver(QString data) override;
+    void getDongleVer(QString data) override;
 
     void print_fixture_log(QString data);
-    void refresh_base_data(FacGetDevBaseInfo data) override;
+    void refreshBaseData(FacGetDevBaseInfo data) override;
     void refreshMesState(int state);
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;
-    void update_IMU_CALIB_result(FacImuCalibResult x) override;
+    void refreshImuCaliResult(FacImuCalibResult x) override;
 
 
     void solveMesData(const int mechines, QString msg);
@@ -154,26 +154,26 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void refresh_dongle_uart_state(int state)override;
-    void refresh_ble_state(int state)override;
-    void refresh_sn(FacDevInfo data)override;
+    void refreshDongleUartState(int state)override;
+    void refreshBleState(int state)override;
+    void refreshSn(FacDevInfo data)override;
     void on_pushButton_clicked();
-    void refresh_imu_cali_msg(QString msg);
+    void refreshImuCaliMsg(QString msg);
     void refresh_imu_cali_reslt_msg(QString msg);
     void refresh_imu_data_to_csv(QString imutime, QString msg);
     void on_stopimuCaliButton_clicked();
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_pushButton_2_clicked();
-    void get_mac(QString sn_to_search);
-    void on_get_mac_returnPressed();
+    void getMac(QString sn_to_search);
+    void on_getMac_returnPressed();
     void refresh_imu_cali_position(int position);
     void processInspection(QString stringsn);
 signals:
-    void goNextTest(int data);
+    void send_go_next_test(int data);
 
     void endcali(int data);
-    void endTest(int data);
+    void send_end_test(int data);
     void stage1_ok(int data);
     void stage2_ok(int data);
     void stage3_ok(int data);
@@ -183,8 +183,8 @@ signals:
     void fixture_left(int data);
     void fixture_right(int data);
 
-    void goNextFocus();
-    void startTest(int data);
+    void send_go_next_focus();
+    void send_startTest(int data);
 };
 
 #endif   // IMUCALI_H

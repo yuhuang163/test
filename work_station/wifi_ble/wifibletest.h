@@ -18,7 +18,7 @@ public:
     explicit wifibletest(int index, QWidget *parent = nullptr);
     ~wifibletest();
     Ui::wifibletest *ui;
-    void start_task() override;
+    void startTask() override;
 private:
     QString nfcdataHeadText ="";
 
@@ -115,7 +115,7 @@ private slots:
     };   // usb口（治具）
     QLineEdit *getMacLineEdit() override
     {
-        return ui->get_mac;
+        return ui->getMac;
     };   // sn输入口
     QLineEdit *macInputLineEdit() override
     {
@@ -129,24 +129,24 @@ private slots:
     {
         return ui->msgEdit;
     };   // mac地址输入口
-    void refresh_ble_rssi(QString data) override;
-    void get_wifi_msg(QString data) override;
+    void refreshBleRssi(QString data) override;
+    void getWifiMsg(QString data) override;
 
-    void refresh_base_data(FacGetDevBaseInfo data) override;
-    void refresh_battary_data(FacDevInfo data) override;
-    void refresh_sn(FacDevInfo data) override;
-    void refresh_ble_state(int state) override;
+    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshBattaryData(FacDevInfo data) override;
+    void refreshSn(FacDevInfo data) override;
+    void refreshBleState(int state) override;
 
-    void get_dongle_ver(QString data) override;
-    void get_dongle_wifi(QString data) override;
+    void getDongleVer(QString data) override;
+    void getDongleWifi(QString data) override;
 
-    void refresh_dongle_uart_state(int state) override;
-    void refresh_usb_uart_state(int state) override;
+    void refreshDongleUartState(int state) override;
+    void refreshUsbUartState(int state) override;
 
-    void refresh_wifi_state(int state);
+    void refreshWifiState(int state);
 
-    void banding_mac_sn(QString bandingmac, QString bandingsn);
-    void banding_mac_sn_mes(QString bandingmac, QString bandingsn);
+    void bandingMacSn(QString bandingmac, QString bandingsn);
+    void bandingMacSn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox();
     void getmacadress(const QByteArray &byte);
     void processInspection(QString stringsn);
@@ -163,18 +163,18 @@ private slots:
     void on_pushButton_clicked();
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
-    void refresh_ammeter_data(QString data)override;
+    void refreshAmmeterData(QString data)override;
 
     // nfc部分
     void on_nfc_write_read_clicked();
     void on_clear_nfc_data_clicked();
     QString generateHexString(int productionNumber);
     QString generateDateCode();
-    void on_get_mac_returnPressed();
+    void on_getMac_returnPressed();
 
     void on_mac_combo_textActivated(const QString &arg1);
     void on_clear_scan_clicked();
-    void get_mac(QString sn_to_search);
+    void getMac(QString sn_to_search);
     void on_snbanding_returnPressed();
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
@@ -195,10 +195,10 @@ private slots:
     void on_get_battery_clicked();
 
 signals:
-    void endTest(int data);
-    void goNextFocus();
-    void startTest(int data);
-    void goNextTest(int data);
+    void send_end_test(int data);
+    void send_go_next_focus();
+    void send_startTest(int data);
+    void send_go_next_test(int data);
 
 };
 

@@ -18,7 +18,7 @@ screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest)
 
     ui->setupUi(this);
 
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     scanSerialPorts();   // 要搜索一下一开始
 
     ui->test_result->setText("WAIT");
@@ -42,13 +42,13 @@ screentest::screentest(int index, QWidget *parent) : ui(new Ui::screentest)
 }
 
 
-void screentest::refresh_Lcd_CONTROL(FacLcdControl style)
+void screentest::refreshLcdControl(FacLcdControl style)
 {
     qDebug() << getIndex() << style.result;
     is_lcd_control = 1;
 }
 
-void screentest::get_dongle_ver(QString data)
+void screentest::getDongleVer(QString data)
 {
     showlog("当前dongle的版本为：" + data);
 }
@@ -63,7 +63,7 @@ void screentest::on_disconnectButton_clicked()
     ui->connectButton->setEnabled(true);
     closeDongleSerialPort();
 }
-void screentest::refresh_ble_state(int state)
+void screentest::refreshBleState(int state)
 {
     if (state)
     {
@@ -79,7 +79,7 @@ void screentest::refresh_ble_state(int state)
     }
 }
 
-void screentest::refresh_dongle_uart_state(int state)
+void screentest::refreshDongleUartState(int state)
 {
     if (state)
         showlog("dongle串口连接成功");
@@ -121,7 +121,7 @@ void screentest::on_macInput_returnPressed()
         ui->macLabel->setText("蓝牙mac: " + macAddress);
         qDebug() << getIndex() << macAddress;
         isScreenContinue = true;
-        emit goNextFocus();
+        emit send_go_next_focus();
         state = STATE_IDLE;
     }
 }
@@ -144,16 +144,16 @@ void screentest::solveMesData(const int mechines, QString msg)
     {
         showlog("MES:报错信息:" + msg);
         ui->macInput->setDisabled(0);
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         isScreenContinue = false;
         showlog("停止运行");
 
         ui->mes_state->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit endTest(getIndex());
+        emit send_end_test(getIndex());
 
-        ui->get_mac->clear();
-        ui->get_mac->setFocus();
+        ui->getMac->clear();
+        ui->getMac->setFocus();
     }
 }
 
@@ -163,7 +163,7 @@ void screentest::closeEvent(QCloseEvent *)
 
     isScreenContinue = false;
 }
-void screentest::refresh_sn(FacDevInfo data)
+void screentest::refreshSn(FacDevInfo data)
 {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
@@ -185,9 +185,9 @@ void screentest::set_screen_color(int x)
     }
 }
 
-void screentest::can_go_next(int x)
+void screentest::canGoNextMechine(int x)
 {
-    is_can_go_next = 1;
+    is_canGoNext = 1;
 
     qDebug() << getIndex() << "得到信息" << getIndex();
 
@@ -234,7 +234,7 @@ void screentest::processInspection(QString stringsn)
     }
 }
 
-void screentest::start_task()   // 编写六轴校准的代码
+void screentest::startTask()   // 编写六轴校准的代码
 {
     if (isScreenContinue)
     {
@@ -245,11 +245,11 @@ void screentest::start_task()   // 编写六轴校准的代码
             showlog("开始测试");
             pb->reset_all_pb();
             at->resetConnected();
-            refresh_ble_state(0);
+            refreshBleState(0);
             ui->tail_sn->setText("存储尾盖sn:");
             stringsn = "";
             result = passValue;
-            is_can_go_next = 0;
+            is_canGoNext = 0;
             is_lcd_control = 0;
             TestTime.start();
             at->sendMac(ui->macInput->text());   // 发送mac地址
@@ -269,66 +269,66 @@ void screentest::start_task()   // 编写六轴校准的代码
                 showlog("已进入禁止休眠模式");
                 set_screen_color(0);
                 showlog("--------------当前是红色");
-                emit goNextTest(getIndex());
+                emit send_go_next_test(getIndex());
                 state = STATE_COLOR1;
             }
             break;
 
         case STATE_COLOR1:
-            if (is_lcd_control && is_can_go_next)
+            if (is_lcd_control && is_canGoNext)
             {
-                is_can_go_next = 0;
+                is_canGoNext = 0;
                 is_lcd_control = 0;
                 set_screen_color(1);
                 showlog("--------------当前是绿色");
-                emit goNextTest(getIndex());
+                emit send_go_next_test(getIndex());
 
                 state = STATE_COLOR2;
             }
             break;
         case STATE_COLOR2:
-            if (is_lcd_control && is_can_go_next)
+            if (is_lcd_control && is_canGoNext)
             {
-                is_can_go_next = 0;
+                is_canGoNext = 0;
                 is_lcd_control = 0;
                 set_screen_color(2);
                 showlog("--------------当前是蓝色");
 
-                emit goNextTest(getIndex());
+                emit send_go_next_test(getIndex());
 
                 state = STATE_COLOR3;
             }
             break;
         case STATE_COLOR3:
-            if (is_lcd_control && is_can_go_next)
+            if (is_lcd_control && is_canGoNext)
             {
-                is_can_go_next = 0;
+                is_canGoNext = 0;
                 is_lcd_control = 0;
                 set_screen_color(3);
                 showlog("--------------当前是白色");
 
-                emit goNextTest(getIndex());
+                emit send_go_next_test(getIndex());
 
                 state = STATE_COLOR4;
             }
             break;
         case STATE_COLOR4:
-            if (is_lcd_control && is_can_go_next)
+            if (is_lcd_control && is_canGoNext)
             {
-                is_can_go_next = 0;
+                is_canGoNext = 0;
                 is_lcd_control = 0;
                 set_screen_color(4);
                 showlog("--------------当前是黑色");
 
-                emit goNextTest(getIndex());
+                emit send_go_next_test(getIndex());
 
                 state = STATE_COLOR5;
             }
             break;
         case STATE_COLOR5:
-            if (is_lcd_control && is_can_go_next)
+            if (is_lcd_control && is_canGoNext)
             {
-                is_can_go_next = 0;
+                is_canGoNext = 0;
                 is_lcd_control = 0;
 
                 state = STATE_SAVE_RESULT;
@@ -345,11 +345,11 @@ void screentest::start_task()   // 编写六轴校准的代码
 
                 pack.itemvalue = QString("|SCREEN_TEST:PASS|");
 
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
 
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
 
                 ui->test_result->setText("PASS");
@@ -363,11 +363,11 @@ void screentest::start_task()   // 编写六轴校准的代码
 
                 pack.itemvalue = QString("|SCREEN_TEST:NG|");
 
-                pack.sn = ui->get_mac->text();
+                pack.sn = ui->getMac->text();
 
                 if (ui->isusemes->checkState())
                 {
-                    sendTestPass(pack);
+                    send_end_testPass(pack);
                 }
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
@@ -379,20 +379,20 @@ void screentest::start_task()   // 编写六轴校准的代码
             test.testResult = result;
             testItems.append(test);
 
-            log->saveTestCsv(SCREEN_VER, ui->get_mac->text(), ui->macInput->text(), testItems);
+            log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
             stringsn = "";
-            ui->get_mac->clear();
+            ui->getMac->clear();
             ui->macInput->clear();
             pb->set_dev_reset();
             ui->macInput->setDisabled(0);
-            ui->get_mac->setDisabled(0);
+            ui->getMac->setDisabled(0);
             at->sendMac("00:00:00:00:00:00");   // 发送mac地址
             waitWork(50);
             on_disconnectButton_clicked();
             showlog("测试结束");
             isScreenContinue = false;
-            emit endTest(getIndex());
+            emit send_end_test(getIndex());
 
             state = STATE_IDLE;
             break;
@@ -487,7 +487,7 @@ void screentest::getTestValue(const int mechines, const QString value)
         }
     }
 }
-void screentest::get_mac(QString sn_to_search)
+void screentest::getMac(QString sn_to_search)
 {
     QFile file("mac_sn.txt");   // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly))
@@ -519,11 +519,11 @@ void screentest::get_mac(QString sn_to_search)
         file.close();   // 关闭文件
     }
 }
-void screentest::on_get_mac_returnPressed()
+void screentest::on_getMac_returnPressed()
 {
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->get_mac->setDisabled(1);
+    ui->getMac->setDisabled(1);
     ui->macInput->setDisabled(1);
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet(
@@ -533,18 +533,18 @@ void screentest::on_get_mac_returnPressed()
     QRegularExpression snRegex(snPattern);
 
     // 使用正则表达式匹配
-    if (!snRegex.match(ui->get_mac->text()).hasMatch())
+    if (!snRegex.match(ui->getMac->text()).hasMatch())
     {
-        ui->get_mac->setDisabled(0);
+        ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
-        ui->get_mac->clear();
+        ui->getMac->clear();
         return;
     }
 
     showlog("正在查询mac地址");
-    get_mac(ui->get_mac->text());             // 文件获取
-    processInspection(ui->get_mac->text());   // 站前检测
+    getMac(ui->getMac->text());             // 文件获取
+    processInspection(ui->getMac->text());   // 站前检测
     processGetMesTestValue();                 // mes获取
 }
 
@@ -552,7 +552,7 @@ void screentest::processGetMesTestValue()
 {
     if (ui->isusemes->checkState())
     {
-        pack.sn = ui->get_mac->text();
+        pack.sn = ui->getMac->text();
 
         pack.is_hq_send_mac = 1;
 
@@ -568,10 +568,10 @@ void screentest::on_stopTest_clicked()
     at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
-    ui->get_mac->setDisabled(0);
+    ui->getMac->setDisabled(0);
 
     ui->macInput->clear();
-    ui->get_mac->clear();
-    ui->get_mac->setFocus();
+    ui->getMac->clear();
+    ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
