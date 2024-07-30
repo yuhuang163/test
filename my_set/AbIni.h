@@ -75,7 +75,7 @@
 // [QC_VER] 修改dongle波特率为921600
 // [SCREEN_VER] 修改dongle波特率为921600
 // [LIGHT_VER] 修改dongle波特率为921600
-// [SINGLE_VER] 修改dongle波特率为921600
+// [SINGLE_VER] 按照工厂要求将nfc口放到配置文件去选择
 // [FREE_VER] 修改dongle波特率为921600
 // [PCBA_VER] 修改dongle波特率为921600
 

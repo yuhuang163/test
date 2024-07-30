@@ -1,73 +1,57 @@
 ﻿#include "box_base.h"
-#include "qcombobox.h"
-#include "qstatusbar.h"
-#include "test_base.h"
+
 #include <QMessageBox>
 #include <QtGlobal>
 
+#include "qcombobox.h"
+#include "qstatusbar.h"
+#include "test_base.h"
+
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 
-box_base::box_base(QWidget *parent) : QMainWindow(parent)
-{
-    loginMes();
-}
-void box_base::signalAndslot()
-{
-    for (int i = 0; i < testList.size(); i++)
-    {
-        connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNext(int)));
+box_base::box_base(QWidget* parent) : QMainWindow(parent) { loginMes(); }
+void box_base::signalAndslot() {
+    for (int i = 0; i < testList.size(); i++) {
+        connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNextMechine(int)));
         // 最后一个回车会清空所有状态重新开始测试
 
         connect(testList[i], SIGNAL(send_go_next_test(int)), this, SLOT(checkAllTest(int)));
         connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(checkAllover(int)));
         // mes类
-        connect(testList[i], SIGNAL(send_end_testPass(MesPacketData)), MesManager,
-                SLOT(TestPassAll(MesPacketData)));
+        connect(testList[i], SIGNAL(send_end_testPass(MesPacketData)), MesManager, SLOT(TestPassAll(MesPacketData)));
         connect(testList[i], SIGNAL(sendProcessInspection(MesPacketData)), MesManager,
                 SLOT(ProcessInspectionAll(MesPacketData)));
-        connect(testList[i], SIGNAL(getMesTestValue(MesPacketData)), MesManager,
-                SLOT(GetTestDataAll(MesPacketData)));
+        connect(testList[i], SIGNAL(getMesTestValue(MesPacketData)), MesManager, SLOT(GetTestDataAll(MesPacketData)));
 
         connect(testList[i], SIGNAL(send_startTest(int)), this, SLOT(reset_vector(int)));
 
         // connect(MesManager, SIGNAL(MesState(const int)), testList[i],
         //         SLOT(solveMesSucess(const int)));
-        connect(MesManager, SIGNAL(MesError(const int, QString)), testList[i],
-                SLOT(solveMesData(const int, QString)));
-        connect(MesManager, SIGNAL(MesSucess(const int)), testList[i],
-                SLOT(solveMesSucess(const int)));
+        connect(MesManager, SIGNAL(MesError(const int, QString)), testList[i], SLOT(solveMesData(const int, QString)));
+        connect(MesManager, SIGNAL(MesSucess(const int)), testList[i], SLOT(solveMesSucess(const int)));
         connect(MesManager, SIGNAL(MesTestvalue(const int, const QString)), testList[i],
                 SLOT(getTestValue(const int, const QString)));
     }
 
-    for (int i = 0; i < testList.size() - 1; i++)
-    {
-        connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->getMacLineEdit(),
-                SLOT(setFocus()));
+    for (int i = 0; i < testList.size() - 1; i++) {
+        connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->getMacLineEdit(), SLOT(setFocus()));
     }
 
     connect(testList[testList.size() - 1], SIGNAL(send_go_next_focus()), testList[0]->getMacLineEdit(),
             SLOT(setFocus()));
-    connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this,
-            SLOT(resetall()));
+    connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this, SLOT(resetall()));
 
     initData();
 }
-void box_base::resetall()
-{
-    for (int i = 0; i < testList.size(); ++i)
-    {
+void box_base::resetall() {
+    for (int i = 0; i < testList.size(); ++i) {
         FixTureStates[i] = 0;
     }
 }
-void box_base::reset_vector(int i)
-{
-    FixTureStates[i - 1] = 0;
-}
-void box_base::initData()
-{
+void box_base::reset_vector(int i) { FixTureStates[i - 1] = 0; }
+void box_base::initData() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
     pack.Employee_ID = settings.value("Mes/mUserno").toString();
@@ -81,27 +65,21 @@ void box_base::initData()
     pack.userNo = settings.value("Mes/M_USERNO").toString();
     pack.error = "NULL";
 
-    for (int i = 0; i < testList.size(); i++)
-    {
-        FixTureStates.push_back(0);   // 添加0到vector中
+    for (int i = 0; i < testList.size(); i++) {
+        FixTureStates.push_back(0);  // 添加0到vector中
     }
 }
 // 辅助函数定义
-void setComboBoxValue(QSettings &settings, const QString &baseKey, const QString &key,
-                      QComboBox *comboBox)
-{
-    if (comboBox != nullptr && comboBox->currentText() != "")
-    {
+void setComboBoxValue(QSettings& settings, const QString& baseKey, const QString& key, QComboBox* comboBox) {
+    if (comboBox != nullptr && comboBox->currentText() != "") {
         settings.setValue(QString("%1/%2").arg(baseKey).arg(key), comboBox->currentText());
         qDebug() << comboBox->currentText();
     }
 }
-void box_base::saveCustom()
-{
+void box_base::saveCustom() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     settings.setValue("Window/Size", this->size());
-    for (int i = 0; i < testList.size(); i++)
-    {
+    for (int i = 0; i < testList.size(); i++) {
         qDebug() << "保存的串口号";
         QString baseKey = QString("mechine/%1").arg(i);
         // 保存COM口相关信息
@@ -109,39 +87,30 @@ void box_base::saveCustom()
 
         setComboBoxValue(settings, baseKey, "usbcomName", testList[i]->getUsbcomNameCombo());
         setComboBoxValue(settings, baseKey, "JigcomName", testList[i]->getJigcomNameCombo());
-        setComboBoxValue(settings, baseKey, "ProductcomName",
-                         testList[i]->getProductcomNameCombo());
+        setComboBoxValue(settings, baseKey, "ProductcomName", testList[i]->getProductcomNameCombo());
 
         if (testList[i]->getMotorCaliParam() != nullptr)
-            settings.setValue(QString("%1/MotorCaliParam").arg(baseKey),
-                              testList[i]->getMotorCaliParam()->text());
+            settings.setValue(QString("%1/MotorCaliParam").arg(baseKey), testList[i]->getMotorCaliParam()->text());
     }
 }
 
-void box_base::closeEvent(QCloseEvent *)
-{
+void box_base::closeEvent(QCloseEvent*) {
     isTestContinue = 0;
-    for (auto x : testList)
-    {
+    for (auto x : testList) {
         x->close();
     }
     saveCustom();
 }
-void box_base::startAllReturnPressed()
-{
-    for (int i = 0; i < testList.size(); i++)
-    {
+void box_base::startAllReturnPressed() {
+    for (int i = 0; i < testList.size(); i++) {
         qDebug() << "全部上位机敲回车";
         testList[i]->macInputLineEdit()->returnPressed();
     }
 }
 
-void box_base::TotallyTask()
-{
-    while (isTestContinue)
-    {
-        for (int i = 0; i < testList.size(); i++)
-        {
+void box_base::TotallyTask() {
+    while (isTestContinue) {
+        for (int i = 0; i < testList.size(); i++) {
             testList[i]->startTask();
         }
 
@@ -150,50 +119,50 @@ void box_base::TotallyTask()
 
     qDebug() << "已经退出主任务";
 }
-void setComboBoxEditText(QComboBox *comboBox, const QString &text)
-{
-    if (comboBox != nullptr)
-    {
-        comboBox->setCurrentText(text);
+void addComboBoxEditText(QComboBox* comboBox, const QString& text) {
+    if (comboBox != nullptr) {
+        comboBox->addItem(text);
+        qDebug() << "添加完毕" << text;
     }
 }
 
-void box_base::recoverCustom()
-{
+void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
+    if (comboBox != nullptr) {
+        comboBox->setCurrentText(text);
+        qDebug() << "设置完毕" << text;
+    }
+}
+
+void box_base::recoverCustom() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
-    for (int i = 0; i < testList.size(); ++i)
-    {
+    for (int i = 0; i < testList.size(); ++i) {
         QString baseKey = QString("mechine/%1").arg(i);
         // 从设置中读取串口相关信息
         QString comName = settings.value(QString("%1/comName").arg(baseKey)).toString();
         QString usbComName = settings.value(QString("%1/usbcomName").arg(baseKey)).toString();
         QString jigComomName = settings.value(QString("%1/JigcomName").arg(baseKey)).toString();
-        QString ProductComName =
-            settings.value(QString("%1/ProductcomName").arg(baseKey)).toString();
-
-        QString MotorCaliParam =
-            settings.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
+        QString nfcComName = settings.value(QString("%1/nfcComName").arg(baseKey)).toString();
+        QString ProductComName = settings.value(QString("%1/ProductcomName").arg(baseKey)).toString();
+        QString MotorCaliParam = settings.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
 
         setComboBoxEditText(testList[i]->getComNameCombo(), comName);
         setComboBoxEditText(testList[i]->getUsbcomNameCombo(), usbComName);
         setComboBoxEditText(testList[i]->getJigcomNameCombo(), jigComomName);
         setComboBoxEditText(testList[i]->getProductcomNameCombo(), ProductComName);
+        addComboBoxEditText(testList[i]->getNfcComboBox(), nfcComName);
+        setComboBoxEditText(testList[i]->getNfcComboBox(), nfcComName);
 
-        if (testList[i]->getMotorCaliParam() != nullptr)
-        {
+        if (testList[i]->getMotorCaliParam() != nullptr) {
             testList[i]->getMotorCaliParam()->setText(MotorCaliParam);
         }
-
         // qDebug() << "恢复的串口号" << comName << usbComName << jigComomName << ProductComName;
     }
 }
 
-void box_base::ShowData(QMainWindow *parent)
-{
+void box_base::ShowData(QMainWindow* parent) {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    if (parent)
-    {   // 确保 parent 指针不为空
+    if (parent) {  // 确保 parent 指针不为空
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
         else if (pack.factory == "lx")
@@ -203,19 +172,15 @@ void box_base::ShowData(QMainWindow *parent)
         else if (pack.factory == "jj")
             parent->statusBar()->addPermanentWidget(new QLabel("金进"));
         else
-            parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));   // 处理默认情况
-    }
-    else
-    {
+            parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
+    } else {
         qWarning() << "ShowData的parent指针为空";
     }
-   for (int i = 0; i < testList.size(); ++i)
-    testList[i]->msgEdit()->appendPlainText("当前产品为:"+pack.product);
-
+    for (int i = 0; i < testList.size(); ++i)
+        testList[i]->msgEdit()->appendPlainText("当前产品为:" + pack.product);
 }
 
-void box_base::loginMes()
-{
+void box_base::loginMes() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
     pack.machineNo = settings.value("Mes/M_MACHINENO").toString();
@@ -225,37 +190,29 @@ void box_base::loginMes()
     MesManager->loginAll(pack);
 }
 
-void box_base::checkAllover(int fixtureNumber)
-{
+void box_base::checkAllover(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;
-    if (fixtureNumber < 0 || fixtureNumber > testList.size())
-    {
+    if (fixtureNumber < 0 || fixtureNumber > testList.size()) {
         return;
     }
     FixTureStates[fixtureNumber] = 1;
-    if (checkStateReady(FixTureStates))
-    {
-        for (int i = 0; i < testList.size(); ++i)
-        {
+    if (checkStateReady(FixTureStates)) {
+        for (int i = 0; i < testList.size(); ++i) {
             FixTureStates[i] = 0;
         }
 
         testList[0]->getMacLineEdit()->setFocus();
     }
 }
-bool box_base::checkStateReady(std::vector<int> States)
-{
-    for (int i = 0; i < testList.size(); ++i)
-    {
-        if (States[i] != 1)
-        {
+bool box_base::checkStateReady(std::vector<int> States) {
+    for (int i = 0; i < testList.size(); ++i) {
+        if (States[i] != 1) {
             return false;
         }
     }
     return true;
 }
-void box_base::waitWork(int ms)
-{
+void box_base::waitWork(int ms) {
     QTime t;
     t.start();
     while (t.elapsed() < ms)

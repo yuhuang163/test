@@ -113,6 +113,7 @@ private slots:
     {
         return ui->usbcomNameCombo;
     };   // usb口（治具）
+
     QLineEdit *getMacLineEdit() override
     {
         return ui->getMac;
@@ -129,6 +130,11 @@ private slots:
     {
         return ui->msgEdit;
     };   // mac地址输入口
+
+
+
+
+
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
 
@@ -179,19 +185,11 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
-
     void on_stopTest_clicked();
-
     void on_nfc_read_clicked();
-
     void on_nfc_decode_clicked();
-
     void on_nfc_encode_clicked();
-
     void on_nfcComFresh_clicked();
-
-
-
     void on_get_battery_clicked();
 
 signals:

@@ -74,8 +74,8 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
         }
     }
     QString fileNumber;
-    QRegularExpression re("\\b\\d+\\b");
-    QRegularExpressionMatch match = re.match(msg);
+    QRegularExpression re("^\\d+");                           // ^ 表示匹配消息的开始
+    QRegularExpressionMatch match = re.match(msg.trimmed());  // 使用 trimmed() 去除字符串开头和结尾的空格
     if (match.hasMatch()) {
         fileNumber = match.captured(0);
     } else {

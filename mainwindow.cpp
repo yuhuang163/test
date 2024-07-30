@@ -193,6 +193,12 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->local_ota_result->setText("OTA");
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
+
+    // QAction* updata_mechines = ui->menubar->addAction("更新上位机");
+    // connect(updata_mechines, &QAction::triggered, [=]() {
+
+    // });
+
     scanSerialPorts();                  // 要搜索一下一开始
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
@@ -237,8 +243,7 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
-    connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this,
-            SLOT(updateLocalOtaResult(FacInternetOta)));
+    connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this, SLOT(updateLocalOtaResult(FacInternetOta)));
 
     connect(this, SIGNAL(send_camera_respone(FacErrorCode)), pb, SLOT(set_camera_data_respone(FacErrorCode)));
 
@@ -247,11 +252,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
 
-    connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(FacWifiDemand)), this,
-            SLOT(refreshWifiDemand(FacWifiDemand)));
+    connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(FacWifiDemand)), this, SLOT(refreshWifiDemand(FacWifiDemand)));
 
-    connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this,
-            SLOT(refreshImuCaliResult(FacImuCalibResult)));
+    connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this, SLOT(refreshImuCaliResult(FacImuCalibResult)));
 
     connect(pb, SIGNAL(send_servo_motor_info_msg(FacMotorCalibResult)), this,
             SLOT(getServoMotorInfoMsg(FacMotorCalibResult)));
@@ -2240,9 +2243,7 @@ void MainWindow::on_save_photo_clicked() {
 }
 
 void MainWindow::on_clean_mode_clicked() {
-    pb->set_motor_param(270, 60);
-    pb->set_motor_state(1);
-    waitWork(1000);
+
 
     pb->set_device_mode(3);
 }

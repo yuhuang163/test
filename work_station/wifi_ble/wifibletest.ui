@@ -228,10 +228,17 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QComboBox" name="NfcComboBox"/>
+            <widget class="QComboBox" name="NfcComboBox">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QPushButton" name="nfcComFresh">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>刷新nfc口</string>
              </property>
@@ -360,105 +367,6 @@
          </item>
         </layout>
        </item>
-       <item row="1" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_11">
-         <item>
-          <widget class="QLabel" name="usbuartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>usb串口连接：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="uartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>串口连接：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_9">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>输入  SN  检查：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="snInput">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="3" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>芯片存储的尾盖sn：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="macLabel">
-           <property name="text">
-            <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="4" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="BLE_RSSI">
-           <property name="text">
-            <string>BLE的RSSI：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="WIFI_RSSI">
-           <property name="text">
-            <string>wifi的RSSI：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="5" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <property name="topMargin">
@@ -510,6 +418,105 @@
           <widget class="QPushButton" name="start_wifible_test">
            <property name="text">
             <string>开始wifi蓝牙信号测试</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="tail_sn">
+           <property name="text">
+            <string>芯片存储的尾盖sn：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>输入  SN  检查：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="snInput">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="placeholderText">
+            <string>切换英文输入再扫码</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="BLE_RSSI">
+           <property name="text">
+            <string>BLE的RSSI：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="WIFI_RSSI">
+           <property name="text">
+            <string>wifi的RSSI：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QLabel" name="usbuartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>usb串口连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="uartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>串口连接：</string>
            </property>
           </widget>
          </item>
