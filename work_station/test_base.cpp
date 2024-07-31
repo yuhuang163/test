@@ -185,6 +185,7 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
                     newDevices << QString("%1:%2").arg(k).arg(buffStr);
                 }
                 ++k;
+ 
             }
         }
     }

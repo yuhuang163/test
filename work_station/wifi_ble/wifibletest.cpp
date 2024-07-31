@@ -98,7 +98,7 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
     }
 
     ui->tabWidget->setTabText(0, "信号测试");
-    on_nfcComFresh_clicked();
+    // on_nfcComFresh_clicked();
 }
 
 wifibletest::~wifibletest() { delete ui; }
@@ -107,14 +107,23 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
     showlog("当前产品名字为" + pack.product);
     if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
         showlog("开始写入nfc数据");
+        QString value = getValueBySN(ui->getMac->text()).toUtf8();
+
+        if ("SUBPID_ERRO" == value) {
+            TestResult = failValue;
+            iswifibleContinue = false;
+            showlog("停止运行");
+            showlog("没匹配到subpid");
+            return;
+            // QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
+        }
+
         if (QString(data.product_name).compare("U7P") == 0) {
-            nfcdataHeadText = "033BD2023668772001004800324F3130" + getValueBySN(ui->getMac->text()).toUtf8() +
-                              "810800272000141785911410";
+            nfcdataHeadText = "033BD2023668772001004800324F3130" + value + "810800272000141785911410";
             showlog("当前nfc写入的是U7P!");
         }
         if (QString(data.product_name).compare("U7") == 0) {
-            nfcdataHeadText = "033BD2023668772001004800324F3045" + getValueBySN(ui->getMac->text()).toUtf8() +
-                              "810800272000141785911410";
+            nfcdataHeadText = "033BD2023668772001004800324F3045" + value + "810800272000141785911410";
             showlog("当前nfc写入的是U7!");
         }
 
@@ -191,18 +200,15 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         showlog("软件版本正确");
 
     } else {
-        TestResult = failValue;
         showlog("状态错误");
         showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersions);
         showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersions);
-
         showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + ageStates);
-
         showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersions);
-
         showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" + pressVersions);
         showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersions);
 
+        TestResult = failValue;
         iswifibleContinue = false;
         showlog("停止运行");
 
@@ -1198,10 +1204,13 @@ void wifibletest::on_clear_nfc_data_clicked() {
     unsigned char rdatahex[100] = "\0";
 
     int nfcport = 100;
-    QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport = parts[0].toInt();
-    }
+    // QStringList parts = ui->NfcComboBox->currentText().split(":");
+    // if (parts.size() == 2) {
+    //     nfcport = parts[0].toInt();
+    // }
+    nfcport = findNfcDevicePort(ui->NfcComboBox->currentText());
+
+    showlog("nfc接口为：" + QString::number(nfcport));
     icdev = dc_init(nfcport, 115200);
 
     if ((intptr_t)icdev <= 0) {
@@ -1216,6 +1225,7 @@ void wifibletest::on_clear_nfc_data_clicked() {
     st = dc_card_n(icdev, 0, &SnrLen, _Snr);
     if (st != 0) {
         showlog("dc_card_n Error!");
+
         return;
     } else {
         showlog("dc_card_n Ok!");
@@ -1235,6 +1245,7 @@ void wifibletest::on_clear_nfc_data_clicked() {
     st = dc_read(icdev, 4, rdata);
     if (st != 0) {
         showlog("dc_read Error!");
+
         return;
     } else {
         memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1307,10 +1318,6 @@ QString wifibletest::getValueBySN(const QString& sn) {
     QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
-    if ("SUBPID_ERRO" == value) {
-        QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
-    }
-
     return value;
 }
 void wifibletest::on_nfc_write_read_clicked() {
@@ -1349,14 +1356,18 @@ void wifibletest::on_nfc_write_read_clicked() {
     unsigned char rdatahex[100] = "\0";
 
     int nfcport = 100;
-    QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport = parts[0].toInt();
-    }
+    // QStringList parts = ui->NfcComboBox->currentText().split(":");
+    // if (parts.size() == 2) {
+    //     nfcport = parts[0].toInt();
+    // }
+    nfcport = findNfcDevicePort(ui->NfcComboBox->currentText());
+
+    showlog("nfc接口为：" + QString::number(nfcport));
     icdev = dc_init(nfcport, 115200);
     if ((intptr_t)icdev <= 0) {
         showlog("初始化nfc接口失败!");
         TestResult = failValue;
+
         return;
     } else {
         showlog("初始化nfc接口成功");
@@ -1372,6 +1383,7 @@ void wifibletest::on_nfc_write_read_clicked() {
             showlog("nfc卡查询失败");
 
         TestResult = failValue;
+
         return;
     } else {
         showlog("nfc卡查询成功");
@@ -1402,6 +1414,7 @@ void wifibletest::on_nfc_write_read_clicked() {
             // showlog("dc_read Error!");
             showlog("nfc信息读取失败");
             TestResult = failValue;
+
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1417,6 +1430,7 @@ void wifibletest::on_nfc_write_read_clicked() {
             showlog("nfc信息读取失败");
             TestResult = failValue;
             //  showlog("dc_read Error!");
+
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1432,17 +1446,6 @@ void wifibletest::on_nfc_write_read_clicked() {
     } else {
         showlog("写入的与读取的比对失败");
         TestResult = failValue;
-    }
-    if ((intptr_t)icdev > 0) {
-        st = dc_exit(icdev);
-        if (st != 0) {
-            TestResult = failValue;
-            showlog("nfc退出失败");
-            return;
-        } else {
-            showlog("nfc退出成功!");
-            icdev = (HANDLE)-1;
-        }
     }
 }
 
@@ -1482,11 +1485,16 @@ void wifibletest::on_nfc_read_clicked() {
     unsigned char rdatahex[100] = "\0";
 
     int nfcport = 100;
-    QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport = parts[0].toInt();
-    }
+    // QStringList parts = ui->NfcComboBox->currentText().split(":");
+    // if (parts.size() == 2) {
+    //     nfcport = parts[0].toInt();
+    // }
+    nfcport = findNfcDevicePort(ui->NfcComboBox->currentText());
+
+    showlog("nfc接口为：" + QString::number(nfcport));
     icdev = dc_init(nfcport, 115200);
+    qDebug() << getIndex() << nfcport;
+
     if ((intptr_t)icdev <= 0) {
         showlog("初始化nfc接口失败!");
         TestResult = failValue;
@@ -1504,8 +1512,8 @@ void wifibletest::on_nfc_read_clicked() {
             showlog("nfc卡识别不到");
         if (st < 0)
             showlog("nfc卡查询失败");
-
         TestResult = failValue;
+
         return;
     } else {
         showlog("nfc卡查询成功");
@@ -1521,6 +1529,7 @@ void wifibletest::on_nfc_read_clicked() {
             // showlog("dc_read Error!");
             showlog("nfc信息读取失败");
             TestResult = failValue;
+
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1536,6 +1545,7 @@ void wifibletest::on_nfc_read_clicked() {
             showlog("nfc信息读取失败");
             TestResult = failValue;
             //  showlog("dc_read Error!");
+
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1545,19 +1555,47 @@ void wifibletest::on_nfc_read_clicked() {
             //  showlog(QString::fromStdString(str1));
         }
     }
+
     showlog("nfc信息读取结束");
     showlog("nfc内容为：" + ReadNfcData);
 }
 
+int wifibletest::findNfcDevicePort(QString name) {
+    int st = -1;
+    HANDLE icdev = (HANDLE)-1;
+    unsigned char buff_1[8];
+    int k = 100;
+
+    for (int i = 0; i < 10; i++) {
+        k = k + i;
+        icdev = dc_init(k, 115200);
+        st = dc_srd_eeprom(icdev, 0, 8, buff_1);
+        if (st != 0) {
+            qDebug() << "nfc烧录器读取失败";
+        } else {
+            qDebug() << "nfc烧录器读取成功";
+            QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
+            if (buffStr == name) {
+                showlog("找到设备端口号" + QString::number(k));
+                return k;
+            }
+        }
+    }
+    showlog("没找到设备端口号");
+    return 100;
+}
 //写入
 void wifibletest::on_nfc_encode_clicked() {
     int st = -1;
     HANDLE icdev = (HANDLE)-1;
     int nfcport = 100;
-    QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport = parts[0].toInt();
-    }
+    // QStringList parts = ui->NfcComboBox->currentText().split(":");
+    // if (parts.size() == 2) {
+    //     nfcport = parts[0].toInt();
+    // }
+    nfcport = findNfcDevicePort(ui->NfcComboBox->currentText());
+
+    showlog("nfc接口为：" + QString::number(nfcport));
     icdev = dc_init(nfcport, 115200);
     st = dc_swr_eeprom(icdev, 0, 8, (unsigned char*)"READER_A");
     if (st != 0) {
@@ -1573,10 +1611,14 @@ void wifibletest::on_nfc_decode_clicked() {
     HANDLE icdev = (HANDLE)-1;
     unsigned char buff_1[8];
     int nfcport = 100;
-    QStringList parts = ui->NfcComboBox->currentText().split(":");
-    if (parts.size() == 2) {
-        nfcport = parts[0].toInt();
-    }
+    // QStringList parts = ui->NfcComboBox->currentText().split(":");
+    // if (parts.size() == 2) {
+    //     nfcport = parts[0].toInt();
+    // }
+
+    nfcport = findNfcDevicePort(ui->NfcComboBox->currentText());
+
+    showlog("nfc接口为：" + QString::number(nfcport));
     icdev = dc_init(nfcport, 115200);
     st = dc_srd_eeprom(icdev, 0, 8, buff_1);
     if (st != 0) {

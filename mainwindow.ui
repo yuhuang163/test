@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>2</number>
+               <number>13</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3559,6 +3559,13 @@ border-color: rgb(255, 165, 0)</string>
                    <widget class="QPushButton" name="clear_nfc_data">
                     <property name="text">
                      <string>清空nfc数据</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="nfc_close">
+                    <property name="text">
+                     <string>关闭设备</string>
                     </property>
                    </widget>
                   </item>

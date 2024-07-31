@@ -6,23 +6,22 @@
 #include "test_base.h"
 #include "ui_wifibletest.h"
 
-namespace Ui
-{
+namespace Ui {
     class wifibletest;
 }
 
-class wifibletest : public test_base
-{
+class wifibletest : public test_base {
     Q_OBJECT
 public:
-    explicit wifibletest(int index, QWidget *parent = nullptr);
+    explicit wifibletest(int index, QWidget* parent = nullptr);
     ~wifibletest();
-    Ui::wifibletest *ui;
+    Ui::wifibletest* ui;
     void startTask() override;
-private:
-    QString nfcdataHeadText ="";
 
-    QString getValueBySN(const QString &sn ) ;
+private:
+    QString nfcdataHeadText = "";
+
+    QString getValueBySN(const QString& sn);
 
     QString receivedData = "";
     double voltage = 0;
@@ -44,14 +43,13 @@ private:
     QString tailsn = "";
     QString macAddress = "没有mac地址";
 
-
     QString wifiresult = "";
     double HighCurrent = 0;
     double LowCurrent = 0;
     int measure_wait_time = 15000;
     double measure_ammeter = 0;
     QString wifiMac = "";
-   
+
     QString voltageresult = "";
     QString currentresult = "";
     QString charageresult = "";
@@ -62,13 +60,13 @@ private:
     int wifistate = 0;
     bool iswifibleContinue = false;
     bool bandingresult = false;
-    bool isovertime = 0;          // 是否开始发送校验结果
-    bool iscompareovertime = 0;   // 是否开始发送校验结果
+    bool isovertime = 0;         // 是否开始发送校验结果
+    bool iscompareovertime = 0;  // 是否开始发送校验结果
     int intwifirssi = 0;
     int intblerssi = 0;
 
-    QTimer *waittime = new QTimer(this);
-    QTimer *comparewaittime = new QTimer(this);
+    QTimer* waittime = new QTimer(this);
+    QTimer* comparewaittime = new QTimer(this);
     QTime TestTime;
     QString productName;
     QString ReadNfcData = "";
@@ -76,64 +74,40 @@ private:
     QString TestResult = "";
     QString product = "";
 
-    typedef enum
-    {
-        STATE_IDLE = 0,   // 休眠状态
+    typedef enum {
+        STATE_IDLE = 0,  // 休眠状态
         STATE_WATI_CONNECT,
-        STATE_DISABLE_SLEEP_1,   // 进入禁止休眠
+        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
         STATE_WATI_BASE_INFO,
-        STATE_WATI_WIFI_CONNECT,           // 等待连接
-        STATE_WATI_GET_CORRECT_WIFIRSSI,   // 等待正确的wifi信号强度
-        STATE_WATI_GET_CORRECT_BLERSSI,    // 等待正确的蓝牙信号强度
-        STATE_WATI_CORRECT_BATTARY,        // 等待正确的蓝牙信号强度
+        STATE_WATI_WIFI_CONNECT,          // 等待连接
+        STATE_WATI_GET_CORRECT_WIFIRSSI,  // 等待正确的wifi信号强度
+        STATE_WATI_GET_CORRECT_BLERSSI,   // 等待正确的蓝牙信号强度
+        STATE_WATI_CORRECT_BATTARY,       // 等待正确的蓝牙信号强度
         STATE_WATI_CORRECT_CURRENT,
-        STATE_SAVE_RESULT   // 保存结果在本地
+        STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     State state = STATE_IDLE;
     State getNextState(State currentState);
-
-    QMap<QString, QMap<QString, QString>> deviceMap;   // 存储设备信息
+    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
+
 protected:
     // virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent *event) override;   // 添加 override 关键字
+    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
 private slots:
+    int findNfcDevicePort(QString name);
+
     void initDate();
 
-    QComboBox *getComNameCombo() override
-    {
-        return ui->comNameCombo;
-    };   // dongle口
-    QComboBox *getNfcComboBox() override
-    {
-        return ui->NfcComboBox;
-    };   // nfc的usb口
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };    // nfc的usb口
 
-    QComboBox *getUsbcomNameCombo() override
-    {
-        return ui->usbcomNameCombo;
-    };   // usb口（治具）
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口（治具）
 
-    QLineEdit *getMacLineEdit() override
-    {
-        return ui->getMac;
-    };   // sn输入口
-    QLineEdit *macInputLineEdit() override
-    {
-        return ui->macInput;
-    };   // mac地址输入口
-    QPlainTextEdit *logEdit() override
-    {
-        return ui->log;
-    };   // mac地址输入口
-    QPlainTextEdit *msgEdit() override
-    {
-        return ui->msgEdit;
-    };   // mac地址输入口
-
-
-
-
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };      // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };           // mac地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // mac地址输入口
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
@@ -154,11 +128,9 @@ private slots:
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox();
-    void getmacadress(const QByteArray &byte);
+    void getmacadress(const QByteArray& byte);
     void processInspection(QString stringsn);
     void processGetMesTestValue();
-
-
 
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);
@@ -169,7 +141,7 @@ private slots:
     void on_pushButton_clicked();
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
-    void refreshAmmeterData(QString data)override;
+    void refreshAmmeterData(QString data) override;
 
     // nfc部分
     void on_nfc_write_read_clicked();
@@ -178,7 +150,7 @@ private slots:
     QString generateDateCode();
     void on_getMac_returnPressed();
 
-    void on_mac_combo_textActivated(const QString &arg1);
+    void on_mac_combo_textActivated(const QString& arg1);
     void on_clear_scan_clicked();
     void getMac(QString sn_to_search);
     void on_snbanding_returnPressed();
@@ -197,7 +169,6 @@ signals:
     void send_go_next_focus();
     void send_startTest(int data);
     void send_go_next_test(int data);
-
 };
 
-#endif   // IMUCALI_H
+#endif  // IMUCALI_H

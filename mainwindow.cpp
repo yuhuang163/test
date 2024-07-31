@@ -2242,11 +2242,7 @@ void MainWindow::on_save_photo_clicked() {
     }
 }
 
-void MainWindow::on_clean_mode_clicked() {
-
-
-    pb->set_device_mode(3);
-}
+void MainWindow::on_clean_mode_clicked() { pb->set_device_mode(3); }
 
 void MainWindow::on_nfc_write_read_clicked() {
     // TODO: 在此添加控件通知处理程序代码
@@ -2309,6 +2305,16 @@ void MainWindow::on_nfc_write_read_clicked() {
             showlog("nfc卡识别不到");
         if (st < 0)
             showlog("nfc卡查询失败");
+        if ((intptr_t)icdev > 0) {
+            st = dc_exit(icdev);
+            if (st != 0) {
+                showlog("nfc退出失败");
+
+            } else {
+                showlog("nfc退出成功!");
+                icdev = (HANDLE)-1;
+            }
+        }
         return;
     } else {
         showlog("nfc卡查询成功");
@@ -2337,6 +2343,16 @@ void MainWindow::on_nfc_write_read_clicked() {
         st = dc_read(icdev, i, rdata);
         if (st != 0) {
             showlog("dc_read Error!");
+            if ((intptr_t)icdev > 0) {
+                st = dc_exit(icdev);
+                if (st != 0) {
+                    showlog("nfc退出失败");
+
+                } else {
+                    showlog("nfc退出成功!");
+                    icdev = (HANDLE)-1;
+                }
+            }
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -2349,6 +2365,16 @@ void MainWindow::on_nfc_write_read_clicked() {
         st = dc_read(icdev, 4 + (dataSize / 16) * 4, rdata);
         if (st != 0) {
             showlog("dc_read Error!");
+            if ((intptr_t)icdev > 0) {
+                st = dc_exit(icdev);
+                if (st != 0) {
+                    showlog("nfc退出失败");
+
+                } else {
+                    showlog("nfc退出成功!");
+                    icdev = (HANDLE)-1;
+                }
+            }
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -2399,7 +2425,16 @@ void MainWindow::on_clear_nfc_data_clicked() {
     st = dc_card_n(icdev, 0, &SnrLen, _Snr);
     if (st != 0) {
         showlog("dc_card_n Error!");
+        if ((intptr_t)icdev > 0) {
+            st = dc_exit(icdev);
+            if (st != 0) {
+                showlog("nfc退出失败");
 
+            } else {
+                showlog("nfc退出成功!");
+                icdev = (HANDLE)-1;
+            }
+        }
         return;
     } else {
         showlog("dc_card_n Ok!");
@@ -2419,6 +2454,16 @@ void MainWindow::on_clear_nfc_data_clicked() {
     st = dc_read(icdev, 4, rdata);
     if (st != 0) {
         showlog("dc_read Error!");
+        if ((intptr_t)icdev > 0) {
+            st = dc_exit(icdev);
+            if (st != 0) {
+                showlog("nfc退出失败");
+
+            } else {
+                showlog("nfc退出成功!");
+                icdev = (HANDLE)-1;
+            }
+        }
         return;
     } else {
         memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -2431,6 +2476,7 @@ void MainWindow::on_clear_nfc_data_clicked() {
         st = dc_exit(icdev);
         if (st != 0) {
             showlog("dc_exit Error!");
+
             return;
         } else {
             showlog("dc_exit OK!");
@@ -2497,7 +2543,16 @@ void MainWindow::on_nfc_read_clicked()
             showlog("nfc卡识别不到");
         if (st < 0)
             showlog("nfc卡查询失败");
+        if ((intptr_t)icdev > 0) {
+            st = dc_exit(icdev);
+            if (st != 0) {
+                showlog("nfc退出失败");
 
+            } else {
+                showlog("nfc退出成功!");
+                icdev = (HANDLE)-1;
+            }
+        }
         return;
     } else {
         showlog("nfc卡查询成功");
@@ -2512,6 +2567,16 @@ void MainWindow::on_nfc_read_clicked()
         if (st != 0) {
             // showlog("dc_read Error!");
             showlog("nfc信息读取失败");
+            if ((intptr_t)icdev > 0) {
+                st = dc_exit(icdev);
+                if (st != 0) {
+                    showlog("nfc退出失败");
+
+                } else {
+                    showlog("nfc退出成功!");
+                    icdev = (HANDLE)-1;
+                }
+            }
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -2526,6 +2591,16 @@ void MainWindow::on_nfc_read_clicked()
         if (st != 0) {
             showlog("nfc信息读取失败");
             //  showlog("dc_read Error!");
+            if ((intptr_t)icdev > 0) {
+                st = dc_exit(icdev);
+                if (st != 0) {
+                    showlog("nfc退出失败");
+
+                } else {
+                    showlog("nfc退出成功!");
+                    icdev = (HANDLE)-1;
+                }
+            }
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -2533,6 +2608,16 @@ void MainWindow::on_nfc_read_clicked()
             std::string str1 = (char*)rdatahex;
             ReadNfcData = ReadNfcData + QString::fromStdString(str1);
             //  showlog(QString::fromStdString(str1));
+        }
+    }
+    if ((intptr_t)icdev > 0) {
+        st = dc_exit(icdev);
+        if (st != 0) {
+            showlog("nfc退出失败");
+
+        } else {
+            showlog("nfc退出成功!");
+            icdev = (HANDLE)-1;
         }
     }
     showlog("nfc信息读取结束");
@@ -2845,4 +2930,20 @@ void MainWindow::on_transfer_xls_clicked() {
         QString("xx_%1_s1_t1_g1_people_F_30_160_R_%2.xls").arg(macAddress.remove(':').right(4)).arg(formattedDateTime);
 
     convertCsvToXls("6轴IMU性能验证.csv", newcsvFileName);
+}
+
+void MainWindow::on_nfc_close_clicked() {
+    int st = -1;
+    HANDLE icdev = (HANDLE)-1;
+    icdev = dc_init(100, 115200);
+
+    if ((intptr_t)icdev > 0) {
+        st = dc_exit(icdev);
+        if (st != 0) {
+            showlog("nfc退出失败");
+        } else {
+            showlog("nfc退出成功!");
+            icdev = (HANDLE)-1;
+        }
+    }
 }

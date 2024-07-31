@@ -419,6 +419,7 @@ private slots:
     void on_set_play_speed_clicked();
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
+    void on_nfc_close_clicked();
 
 signals:
     void send_uart_state(int data);

@@ -103,8 +103,10 @@ void MainWindow::updateHIDComboBox(QComboBox* comboBox) {
         QStringList parts = line.split(QRegExp("\\s{2,}"), Qt::SkipEmptyParts);
         if (parts.size() >= 2) {
             QString device = parts[1].trimmed();
+            //  qDebug() << "device:" << device;
             if (device.contains("VID_0471")) {
                 icdev = dc_init(k, 115200);
+                qDebug() << "使用的k为" << k;
                 st = dc_srd_eeprom(icdev, 0, 8, buff_1);
                 if (st != 0) {
                     qDebug() << "nfc烧录器读取失败";
@@ -783,7 +785,6 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
     }
 }
 void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName) {
-
     // 加载图片
     QImage image(imagePath);
     if (image.isNull()) {

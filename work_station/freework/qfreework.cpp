@@ -1596,21 +1596,7 @@ void QFreeWork::on_nfc_write_read_clicked()
     }
     showlog("nfc信息读取结束");
 
-    if ((intptr_t)icdev > 0)
-    {
-        st = dc_exit(icdev);
-        if (st != 0)
-        {
-            TestResult = failValue;
-            showlog("nfc退出失败");
-            return;
-        }
-        else
-        {
-            showlog("nfc退出成功!");
-            icdev = (HANDLE)-1;
-        }
-    }
+
 }
 void QFreeWork::on_nfc_sn_returnPressed()
 {

@@ -122,14 +122,14 @@ void box_base::TotallyTask() {
 void addComboBoxEditText(QComboBox* comboBox, const QString& text) {
     if (comboBox != nullptr) {
         comboBox->addItem(text);
-        qDebug() << "添加完毕" << text;
+      //  qDebug() << "添加完毕" << text;
     }
 }
 
 void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
     if (comboBox != nullptr) {
         comboBox->setCurrentText(text);
-        qDebug() << "设置完毕" << text;
+       // qDebug() << "设置完毕" << text;
     }
 }
 
