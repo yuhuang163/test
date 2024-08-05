@@ -17,7 +17,7 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 }
 class test_base : public QWidget {
     Q_OBJECT
-  public:
+public:
     test_base();
     virtual void startTest(){};
     virtual void overTask(){};
@@ -46,11 +46,11 @@ class test_base : public QWidget {
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc);
 
-  private:
+private:
     void initData();
 
     // 通用变量
-  public:
+public:
     QString macAddress = "没有mac地址";
     QString productName = "Y20";
     QVector<TestItem> testItems;
@@ -58,7 +58,7 @@ class test_base : public QWidget {
     QString snPattern;
     int testState = 0;
 
-  public:
+public:
     void signalAndslot();
     Qlog* log;
     QTimer* scanSerialPortsTimer = new QTimer(this);
@@ -88,13 +88,13 @@ class test_base : public QWidget {
     QTimer* productSerialPortTimer = new QTimer(this);
     QByteArray productSerialPortBuf = 0;
 
-    bool getRespone = false;
+    bool getRespone = 0;
     bool canGoNext = false;
     bool sendRetryOver = false;
 
     int m_index = 0;
 
-  public slots:
+public slots:
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
@@ -121,7 +121,7 @@ class test_base : public QWidget {
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
 
-  public slots:
+public slots:
     virtual void getTestValue(const int, const QString){};
     virtual void canGoNextMechine(int){};
     virtual void refreshCameraControl(FacCameraControl){};
@@ -149,7 +149,7 @@ class test_base : public QWidget {
     virtual void refreshProductUartState(int){};
     virtual void processReceivedData(const QByteArray&){};
 
-  signals:
+signals:
     void send_dongle_serialPort_state(int);
     void refreshUsbSerialPortState(int);
     void refreshJigSerialPortState(int);

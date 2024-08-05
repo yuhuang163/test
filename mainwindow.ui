@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>13</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2456,6 +2456,24 @@
                   </item>
                  </layout>
                 </item>
+                <item row="7" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_79">
+                  <item>
+                   <widget class="QPushButton" name="open_motor_adc_switch">
+                    <property name="text">
+                     <string>打开电机adc开关</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="close_motor_adc_switch">
+                    <property name="text">
+                     <string>关闭电机adc开关</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
                </layout>
               </widget>
               <widget class="QWidget" name="tab_7">
@@ -3636,6 +3654,45 @@ border-color: rgb(255, 165, 0)</string>
                 </property>
                 <property name="placeholderText">
                  <string>将六轴数据生成校准结果敲回车接口</string>
+                </property>
+               </widget>
+               <widget class="QPushButton" name="downloadapp">
+                <property name="geometry">
+                 <rect>
+                  <x>440</x>
+                  <y>340</y>
+                  <width>92</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>更新上位机</string>
+                </property>
+               </widget>
+               <widget class="QPushButton" name="uploadapp">
+                <property name="geometry">
+                 <rect>
+                  <x>360</x>
+                  <y>270</y>
+                  <width>171</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>上传今日固件文件</string>
+                </property>
+               </widget>
+               <widget class="QPushButton" name="delefile">
+                <property name="geometry">
+                 <rect>
+                  <x>450</x>
+                  <y>220</y>
+                  <width>92</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>删除文件</string>
                 </property>
                </widget>
               </widget>

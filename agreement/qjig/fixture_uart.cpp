@@ -628,7 +628,10 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error)
     {
         if (fixtureSerialPort->isOpen())
             fixtureSerialPort->close();
-        disconnect(fixtureSerialPort, SIGNAL(readyRead()), this, SLOT(FixturereadData()));
+
+        disconnect(fixtureSerialPortTimer, &QTimer::timeout, this,
+                   &Fixture_uart::readFixtureSerialPortData);   // timeout执行真正的读取操作
+
         ui->FixturerefreshCom->setEnabled(true);
         ui->FixturecomNameCombo->setEnabled(true);
         ui->FixtureconnectButton->setEnabled(true);

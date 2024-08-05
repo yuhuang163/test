@@ -236,6 +236,7 @@ protected:
     void closeEvent(QCloseEvent *) override;
 
 private slots:
+    void refreshBaseData(FacGetDevBaseInfo data) override;
     void checkMissingPackets();
     void addPacket(const QByteArray &packet);
     QByteArray reassembleData();

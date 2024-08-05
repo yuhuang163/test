@@ -17,7 +17,8 @@ quiescent_current_box::quiescent_current_box(QWidget *parent)
 
     ui->statusbar->addPermanentWidget(
         new QLabel(QC_VER + QString(__DATE__) + " " + QString(__TIME__)));
-
+    QAction* updata = ui->menubar->addAction("软件更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
     // QAction *jig_connectl_act = ui->menubar->addAction("连接治具串口");
     //  connect(jig_connectl_act, &QAction::triggered, [=]() {
 

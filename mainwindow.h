@@ -1,53 +1,59 @@
-﻿#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
-#include <QApplication>
-#include <QAudioDeviceInfo>
-#include <QAudioFormat>
-#include <QAudioInput>
-#include <QAudioRecorder>
-#include <QButtonGroup>
-#include <QByteArray>
-#include <QCoreApplication>
-#include <QDebug>
-#include <QFile>
-#include <QFileDialog>
-#include <QHttpMultiPart>
-#include <QHttpPart>
-#include <QImage>
-#include <QInputDialog>
-#include <QMap>
-#include <QMouseEvent>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QPixmap>
-#include <QQmlApplicationEngine>
-#include <QUdpSocket>
-#include <QVector>
-#include <QWebChannel>
-#include <QWebEnginePage>
-#include <QWebEngineProfile>
-#include <QWebEngineScript>
-#include <QWebEngineScriptCollection>
-#include <QWebEngineView>
-#include <algorithm>
+﻿void on_delefile_clicked();
+void on_downloadapp_clicked();
+void on_open_motor_adc_switch_clicked();
+#ifndef MAINWINDOW_H
+#    define MAINWINDOW_H
+#    include <QApplication>
+#    include <QAudioDeviceInfo>
+#    include <QAudioFormat>
+#    include <QAudioInput>
+#    include <QAudioRecorder>
+#    include <QAuthenticator>
+#    include <QButtonGroup>
+#    include <QByteArray>
+#    include <QCoreApplication>
+#    include <QDebug>
+#    include <QFile>
+#    include <QFileDialog>
+#    include <QHttpMultiPart>
+#    include <QHttpPart>
+#    include <QImage>
+#    include <QInputDialog>
+#    include <QMap>
+#    include <QMouseEvent>
+#    include <QNetworkAccessManager>
+#    include <QNetworkReply>
+#    include <QNetworkRequest>
+#    include <QPixmap>
+#    include <QQmlApplicationEngine>
+#    include <QUdpSocket>
+#    include <QUrl>
+#    include <QVector>
+#    include <QWebChannel>
+#    include <QWebEnginePage>
+#    include <QWebEngineProfile>
+#    include <QWebEngineScript>
+#    include <QWebEngineScriptCollection>
+#    include <QWebEngineView>
+#    include <algorithm>
 
-#include "Abini.h"
-#include "imu_calibrate.h"
-#include "qaudiorecorder.h"
-#include "quicklz_dec.h"
-#include "sensor_hub.h"
-#include "testmodel.h"
+#    include "Abini.h"
+#    include "imu_calibrate.h"
+#    include "qaudiorecorder.h"
+#    include "quicklz_dec.h"
+#    include "sensor_hub.h"
+#    include "testmodel.h"
 // #include <iomanip>
 // #include <iostream>
-#include <QApplication>
-#include <QGraphicsPixmapItem>
-#include <QGraphicsScene>
-#include <QGraphicsView>
-#include <QPixmap>
-#include <QWheelEvent>
+#    include <QApplication>
+#    include <QGraphicsPixmapItem>
+#    include <QGraphicsScene>
+#    include <QGraphicsView>
+#    include <QPixmap>
+#    include <QWheelEvent>
 
-#include "camerabox.h"
-#include "usmile_ring_buffer.h"
+#    include "camerabox.h"
+#    include "usmile_ring_buffer.h"
 Q_DECLARE_METATYPE(FacErrorCode)
 
 QT_BEGIN_NAMESPACE
@@ -64,16 +70,16 @@ public:
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;
     int dataNumber = 0;
-#define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
-#define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
-#define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
-#define UART_PHY_LAYER_CRC_SIZE 0
-#define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
+#    define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
+#    define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
+#    define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
+#    define UART_PHY_LAYER_CRC_SIZE 0
+#    define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
 
-#define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
-#define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
-#pragma pack(1)
+#    define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
+#    define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
+#    define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
+#    pragma pack(1)
 
     typedef struct video_frame_data_struct {
         uint64_t timestamp;
@@ -99,7 +105,7 @@ public:
         // uint8_t index;
         uint8_t data[0];
     } ext_uart_phy_layer_t;
-#pragma pack()
+#    pragma pack()
     ImageViewer* viewercamrea;
     QMutex mutex;
     usmile_ring_buffer_t p_dongleRingBuffer;  // 串口的队列指针
@@ -120,6 +126,7 @@ public:
     MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
     ImuDataT orgData;
+    QNetworkAccessManager* updatamanager;
 
 private:
     NewImuCalData calData;
@@ -212,6 +219,11 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void checkAndUpdateFile();
+    void deleteFile(const QString& remoteUrl);
+    void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
+    void downloadFile(const QString& urlStr, const QString& savePath);
+    void uploadFile(const QString& localFilePath, const QString& remoteUrl);
     void checkMissingPackets();
     void addPacket(const QByteArray& packet);
     void printSquareData(uint8_t* data, size_t data_size);
@@ -420,6 +432,16 @@ private slots:
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
     void on_nfc_close_clicked();
+
+    void on_close_motor_adc_switch_clicked();
+
+    void on_open_motor_adc_switch_clicked();
+
+    void on_downloadapp_clicked();
+
+    void on_uploadapp_clicked();
+
+    void on_delefile_clicked();
 
 signals:
     void send_uart_state(int data);

@@ -2464,3 +2464,209 @@ void MainWindow::getPictureSendOver(FacPictureDataAck x) {
     showlog("错误个数" + QString::number(faultData.size()));
     emit send_fault_data_packet(faultData.size(), faultData);
 }
+void MainWindow::downloadFile(const QString& urlStr, const QString& savePath) {
+    QUrl url(urlStr);
+    QNetworkRequest request(url);
+
+    QNetworkReply* reply = updatamanager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, savePath]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QFile file(savePath);
+            if (file.open(QIODevice::WriteOnly)) {
+                file.write(reply->readAll());
+                file.close();
+                qDebug() << "文件下载成功";
+            } else {
+                qDebug() << "无法保存文件";
+            }
+        } else {
+            qDebug() << "下载失败:" << reply->errorString();
+        }
+        reply->deleteLater();
+        // QCoreApplication::quit();
+    });
+}
+
+void MainWindow::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
+    authenticator->setUser("usmilejig");
+    authenticator->setPassword("Starspulse@123");
+}
+
+void MainWindow::uploadFile(const QString& localFilePath, const QString& remoteUrl) {
+    QFile file(localFilePath);
+    if (!file.exists()) {
+        showlog("文件不存在:" + localFilePath);
+        return;
+    }
+
+    QProcess process;
+    QStringList arguments;
+    arguments << "-u"
+              << "usmilejig:Starspulse@123"
+              << "-T" << localFilePath << remoteUrl;
+
+    process.start("curl", arguments);
+
+    if (!process.waitForStarted()) {
+        showlog("无法启动curl命令。");
+        return;
+    }
+
+    if (!process.waitForFinished()) {
+        showlog("curl命令执行失败。");
+        return;
+    }
+
+    QByteArray output = process.readAllStandardOutput();
+    QByteArray errorOutput = process.readAllStandardError();
+    showlog("标准输出：" + output);
+    qDebug() << "错误输出：" << errorOutput;
+}
+void MainWindow::deleteFile(const QString& remoteUrl) {
+    QProcess process;
+    QStringList arguments;
+    arguments << "-u"
+              << "usmilejig:Starspulse@123"
+              << "-X"
+              << "DELETE" << remoteUrl;
+
+    process.start("curl", arguments);
+
+    if (!process.waitForStarted()) {
+        showlog("无法启动curl命令。");
+
+        return;
+    }
+
+    if (!process.waitForFinished()) {
+        showlog("curl命令执行失败。");
+
+        return;
+    }
+
+    QByteArray output = process.readAllStandardOutput();
+    QByteArray errorOutput = process.readAllStandardError();
+
+    showlog("标准输出：" + output);
+    qDebug() << "错误输出：" << errorOutput;
+}
+
+void MainWindow::checkAndUpdateFile() {
+    QString remoteDirectoryUrl = "http://192.168.243.6:88/versions/";
+    QUrl qUrl(remoteDirectoryUrl);
+    QNetworkRequest request(qUrl);
+
+    // qDebug() << "远程目录 URL:" << qUrl;
+
+    QNetworkReply* reply = updatamanager->get(request);
+    connect(reply, &QNetworkReply::finished, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QString response = reply->readAll();
+            // qDebug() << "响应内容:" << response;
+
+            // 使用正则表达式从HTML中提取文件名
+            QRegularExpression re("<a href=\"([^\"]+\\.exe)\">");
+            QRegularExpressionMatchIterator i = re.globalMatch(response);
+
+            QStringList remoteFiles;
+            while (i.hasNext()) {
+                QRegularExpressionMatch match = i.next();
+                remoteFiles << match.captured(1);
+            }
+
+            // 查找本地符合条件的文件
+            QDir dir(".");
+            QFileInfoList localFiles = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name);
+            QString latestLocalFile;
+            QDateTime latestLocalDate;
+
+            for (const QFileInfo& fileInfo : localFiles) {
+                if (fileInfo.fileName().startsWith("new_production_") && fileInfo.fileName().endsWith(".exe")) {
+                    QString dateString = fileInfo.fileName().mid(15, 8);
+                    QDateTime fileDate = QDateTime::fromString(dateString, "yyyyMMdd");
+                    if (fileDate > latestLocalDate) {
+                        latestLocalDate = fileDate;
+                        latestLocalFile = fileInfo.fileName();
+                    }
+                }
+            }
+            showlog("本地最新的文件为:" + latestLocalFile);
+
+            QString latestRemoteFile;
+            QDateTime latestRemoteDate;
+
+            for (const QString& fileName : remoteFiles) {
+                // qDebug() << "文件名:" << fileName;
+
+                if (fileName.startsWith("new_production_") && fileName.endsWith(".exe")) {
+                    QString dateString = fileName.mid(15, 8);
+                    QDateTime remoteFileDate = QDateTime::fromString(dateString, "yyyyMMdd");
+                    if (remoteFileDate > latestRemoteDate) {
+                        latestRemoteDate = remoteFileDate;
+                        latestRemoteFile = fileName;
+                    }
+                }
+            }
+            showlog("远程最新的文件为:" + latestRemoteFile);
+            if (latestRemoteDate > latestLocalDate) {
+                QMessageBox::StandardButton reply;
+                reply = QMessageBox::question(this, "更新可用",
+                                              QString("发现新版本 %1 可用，是否更新？").arg(latestRemoteFile),
+                                              QMessageBox::Yes | QMessageBox::No);
+
+                if (reply == QMessageBox::Yes) {
+                    QString downloadUrl = "http://192.168.243.6:88/versions/" + latestRemoteFile;
+                    QString savePath = "./" + latestRemoteFile;
+                    QNetworkRequest downloadRequest((QUrl(downloadUrl)));
+
+                    QNetworkReply* downloadReply = updatamanager->get(downloadRequest);
+                    connect(downloadReply, &QNetworkReply::finished, [this, downloadReply, savePath]() {
+                        if (downloadReply->error() == QNetworkReply::NoError) {
+                            QFile file(savePath);
+                            if (file.open(QIODevice::WriteOnly)) {
+                                file.write(downloadReply->readAll());
+                                file.close();
+                                showlog("文件升级成功");
+                                QProcess::startDetached(savePath);
+                                QString batFileName = "./delete_self.bat";
+                                QFile batFile(batFileName);
+                                if (batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                                    QTextStream out(&batFile);
+                                    out << "@echo off\n";
+                                    out << "timeout /t 2 /nobreak\n";
+                                    out << "del \"" << QCoreApplication::applicationFilePath() << "\"\n";
+                                    out << "del \"" << batFileName << "\"\n";
+                                    batFile.close();
+
+                                    // 执行批处理文件
+                                    QProcess::startDetached(batFileName);
+                                }
+
+                                // 强制退出当前应用
+                                QTimer::singleShot(1000, []() {
+                                    qApp->quit();
+                                    QProcess::startDetached(
+                                        "cmd.exe", QStringList()
+                                                       << "/c"
+                                                       << "taskkill /f /pid " +
+                                                              QString::number(QCoreApplication::applicationPid()));
+                                });
+                            } else {
+                                qDebug() << "无法打开文件进行写入:" << savePath;
+                            }
+                        } else {
+                            showlog("下载失败:" + downloadReply->errorString());
+                        }
+                        downloadReply->deleteLater();
+                    });
+                }
+            } else {
+                showlog("本地文件已经是最新的");
+            }
+        } else {
+            showlog("获取远程文件列表失败");
+            qDebug() << "获取远程文件列表失败:" << reply->errorString();
+        }
+        reply->deleteLater();
+    });
+}

@@ -1,38 +1,36 @@
 ﻿#include "qpb.h"
+
+#include <QDebug>
+
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
 #include "qcoreapplication.h"
 #include "qdatetime.h"
-#include <QDebug>
 
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 
-#define PACKET_NUM_OFFSET     0
-#define APP_BLE_MAX_DATA_LEN  120
-#define PACKET_NUM_LENGTH     1
+#define PACKET_NUM_OFFSET 0
+#define APP_BLE_MAX_DATA_LEN 120
+#define PACKET_NUM_LENGTH 1
 #define PACKET_PAYLOAD_OFFSET 1
-#define PACKET_CRC_LENGTH     1
+#define PACKET_CRC_LENGTH 1
 
-#define MAX_PACKET_CNT         6
-#define MAX_DATA_CNT           (APP_BLE_MAX_DATA_LEN - PACKET_NUM_LENGTH)   // first byte is packet number
+#define MAX_PACKET_CNT 6
+#define MAX_DATA_CNT (APP_BLE_MAX_DATA_LEN - PACKET_NUM_LENGTH)  // first byte is packet number
 #define MAX_DATA_CNT_FOR_PHONE (20 - PACKET_NUM_LENGTH)
 
-Qpb::Qpb(QSerialPort *parent) : QSerialPort{parent}
-{
+Qpb::Qpb(QSerialPort* parent) : QSerialPort{parent} {
     serialPort = parent;
     registerCommand();
-
 }
 
-uint16_t Qpb::calCrc16(const std::vector<uint8_t> &d)
-{
+uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {
     unsigned short crc = 0xFFFF;
 
-    for (uint32_t i = 0; i < d.size(); i++)
-    {
+    for (uint32_t i = 0; i < d.size(); i++) {
         crc = (unsigned char)(crc >> 8) | (crc << 8);
         crc ^= d[i];
         crc ^= (unsigned char)(crc & 0xFF) >> 4;
@@ -43,10 +41,7 @@ uint16_t Qpb::calCrc16(const std::vector<uint8_t> &d)
     return crc;
 }
 
-
-
-void Qpb::parseCmd(const QByteArray &byte)
-{
+void Qpb::parseCmd(const QByteArray& byte) {
     std::vector<uint8_t> data(byte.begin(), byte.end());
 
     // const char *dataPtr = reinterpret_cast<const char *>(byte.data());
@@ -58,182 +53,141 @@ void Qpb::parseCmd(const QByteArray &byte)
     // }
     // qDebug() << "收到的pb码为" << output.trimmed();
 
-    for (auto x : data)
-    {
-        switch (state)
-        {
-        case STATE_IDLE:
-            hitTimes = 0;
-            if (x == 0xAA)
-            {
+    for (auto x : data) {
+        switch (state) {
+            case STATE_IDLE:
                 hitTimes = 0;
-                ibuffer.clear();
-                state = STATE_HEADER;
-            }
-            break;
-        case STATE_HEADER:
-            if (x == 0xAA)
-            {
-                hitTimes++;
-            }
-            else
-            {
-                state = STATE_IDLE;
-            }
-            if (hitTimes == 7)
-            {
-                state = STATE_LEN;
-            }
-            break;
+                if (x == 0xAA) {
+                    hitTimes = 0;
+                    ibuffer.clear();
+                    state = STATE_HEADER;
+                }
+                break;
+            case STATE_HEADER:
+                if (x == 0xAA) {
+                    hitTimes++;
+                } else {
+                    state = STATE_IDLE;
+                }
+                if (hitTimes == 7) {
+                    state = STATE_LEN;
+                }
+                break;
 
-        case STATE_LEN:
-            len = x - 1;
-            state = STATE_PB_HEADER;
-            break;
+            case STATE_LEN:
+                len = x - 1;
+                state = STATE_PB_HEADER;
+                break;
 
-        case STATE_PB_HEADER:
-            state = x ? STATE_STAGE : STATE_UNPACK;
-            break;
+            case STATE_PB_HEADER: state = x ? STATE_STAGE : STATE_UNPACK; break;
 
-        case STATE_STAGE:
-            ibuffer.push_back(x);
-            if (ibuffer.size() == len)
-            {
-                ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
-                state = STATE_IDLE;
-            }
-            break;
+            case STATE_STAGE:
+                ibuffer.push_back(x);
+                if (ibuffer.size() == len) {
+                    ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
+                    state = STATE_IDLE;
+                }
+                break;
 
-        case STATE_UNPACK:
+            case STATE_UNPACK:
 
-            if (ibuffer.size() == len - 1)
-            {
-                ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
-                uint8_t crc16 = calCrc16(ipack);
+                if (ibuffer.size() == len - 1) {
+                    ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
+                    uint8_t crc16 = calCrc16(ipack);
 
-                // qDebug() << "收到的crc16" << crc16 << x;
+                    // qDebug() << "收到的crc16" << crc16 << x;
 
-                if (crc16 == x)
-                {
-                    pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
-                    if (pb_mode == FACTORY)
-                    {
-                        if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack))
-                        {
-                            // qDebug() << "command_id" << recievePack.cmd_id;
+                    if (crc16 == x) {
+                        pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
+                        if (pb_mode == FACTORY) {
+                            if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack)) {
+                                // qDebug() << "command_id" << recievePack.cmd_id;
 
-
-                            auto it = factoryCommandList.find(recievePack.cmd_id);
-                            if (it != factoryCommandList.end())
-                            {
-                                it->second(recievePack);
-                            }
-                            else
-                            {
-                                qDebug()
-                                    << "factory event not found , cmd id: " << recievePack.cmd_id;
+                                auto it = factoryCommandList.find(recievePack.cmd_id);
+                                if (it != factoryCommandList.end()) {
+                                    it->second(recievePack);
+                                } else {
+                                    qDebug() << "factory event not found , cmd id: " << recievePack.cmd_id;
+                                }
+                            } else {
+                                qDebug() << "factory 解码失败原因：" << PB_GET_ERROR(&istream);
                             }
                         }
-                        else
-                        {
-                            qDebug() << "factory 解码失败原因：" << PB_GET_ERROR(&istream);
+
+                        if (pb_mode == CLIENT) {
+                            if (pb_decode(&istream, DataPackage_fields, &blePack)) {
+                                //   qDebug() << "command_id" << blePack.command_id;
+
+                                auto it = bleCommandList.find(blePack.command_id);
+                                if (it != bleCommandList.end()) {
+                                    it->second(blePack);
+                                } else {
+                                    qDebug() << "ble event not found , cmd id: " << blePack.command_id
+                                             << blePack.which_command_data;
+                                }
+                            }
+                            //                        {
+                            //                            qDebug() << " ble  解码失败原因：" <<
+                            //                            PB_GET_ERROR(&istream);
+                            //                        }
                         }
+                    } else {
+                        qDebug() << "pb协议的CRC校验失败";
                     }
 
-                    if (pb_mode == CLIENT)
-                    {
-                        if (pb_decode(&istream, DataPackage_fields, &blePack))
-                        {
-                            //   qDebug() << "command_id" << blePack.command_id;
-
-                            auto it = bleCommandList.find(blePack.command_id);
-                            if (it != bleCommandList.end())
-                            {
-                                it->second(blePack);
-                            }
-                            else
-                            {
-                                qDebug() << "ble event not found , cmd id: " << blePack.command_id
-                                         << blePack.which_command_data;
-                            }
-                        }
-                        //                        {
-                        //                            qDebug() << " ble  解码失败原因：" <<
-                        //                            PB_GET_ERROR(&istream);
-                        //                        }
-                    }
+                    ipack.clear();
+                    state = STATE_IDLE;
                 }
-                else
-                {
-                    qDebug() << "pb协议的CRC校验失败";
-                }
+                ibuffer.push_back(x);
+                break;
 
-                ipack.clear();
-                state = STATE_IDLE;
-            }
-            ibuffer.push_back(x);
-            break;
-
-        default:
-            break;
+            default: break;
         }
     }
 }
-void Qpb::sendShortPack(const DataPackage &pack)
-{
+void Qpb::sendShortPack(const DataPackage& pack) {
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
-    if (pb_encode(&o_stream, DataPackage_fields, &pack))
-    {
+    if (pb_encode(&o_stream, DataPackage_fields, &pack)) {
         size_t len = o_stream.bytes_written;
-        if (len > tx_buffer.size() - 2)
-        {
+        if (len > tx_buffer.size() - 2) {
             qDebug() << "编码长度超出";
             return;
         }
-        if (len == 0)
-        {
+        if (len == 0) {
             qDebug() << "编码长度等于0";
             return;
         }
         tx_buffer[0] = 0;
-        tx_buffer[len + 1] =
-            calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+        tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
         qDebug() << "encode len" << len + 2;
-        serialPort->write((char *)tx_buffer.data(), len + 2);
-    }
-    else
-    {
+        serialPort->write((char*)tx_buffer.data(), len + 2);
+    } else {
         qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 }
 
-void Qpb::sendShortPack(const FactoryDataPackage &pack)
-{
-   waitWork(20);
+void Qpb::sendShortPack(const FactoryDataPackage& pack) {
+    waitWork(20);
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
 
-    if (pb_encode(&o_stream, FactoryDataPackage_fields, &pack))
-    {
+    if (pb_encode(&o_stream, FactoryDataPackage_fields, &pack)) {
         size_t len = o_stream.bytes_written;
-        qDebug() << "编码长度为" << len<<"还需要加上2个字节";
-        if (len > APP_BLE_MAX_DATA_LEN)
-        {
+        qDebug() << "编码长度为" << len << "还需要加上2个字节";
+        if (len > APP_BLE_MAX_DATA_LEN) {
             qDebug() << "编码长度超出" << APP_BLE_MAX_DATA_LEN << "目前为" << len;
             sendlongPack(pack);
             return;
         }
-        if (len == 0)
-        {
+        if (len == 0) {
             qDebug() << "编码长度等于0";
             return;
         }
         tx_buffer[0] = 0;
-        tx_buffer[len + 1] =
-            calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+        tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
 
-        serialPort->write((char *)tx_buffer.data(), len + 2);
+        serialPort->write((char*)tx_buffer.data(), len + 2);
 
         /**************自我验证pb正常吗****************/
         /*   QByteArray dataToSend;
@@ -253,86 +207,70 @@ void Qpb::sendShortPack(const FactoryDataPackage &pack)
 
         */
 
-        const char *dataPtr = reinterpret_cast<const char *>(tx_buffer.data());
+        const char* dataPtr = reinterpret_cast<const char*>(tx_buffer.data());
         QString output;
-        for (int i = 0; i < len + 2; ++i)
-        {
-            output +=
-                QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
+        for (int i = 0; i < len + 2; ++i) {
+            output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
         }
         qDebug() << "发出去的pb码为" << output.trimmed();
-    }
-    else
-    {
+    } else {
         qDebug() << "短包工厂pb编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 }
 
-void Qpb::waitWork(int ms)
-{
+void Qpb::waitWork(int ms) {
     QTime t;
     t.start();
     while (t.elapsed() < ms)
         QCoreApplication::processEvents();
 }
 
-uint32_t Qpb::sendlongPack(const FactoryDataPackage &pack)
-{
+uint32_t Qpb::sendlongPack(const FactoryDataPackage& pack) {
     std::vector<uint8_t> tx_buffer(4096);
     std::vector<uint8_t> small_buffer(244);
 
-    uint32_t ret = 0;                  // 初始化返回值为0
-    int max_data_cnt = MAX_DATA_CNT;   // 定义每一包数据的最大长度
-    int pkt_payload_len;               // 每个数据包的负载长度
+    uint32_t ret = 0;                 // 初始化返回值为0
+    int max_data_cnt = MAX_DATA_CNT;  // 定义每一包数据的最大长度
+    int pkt_payload_len;              // 每个数据包的负载长度
 
     // 创建一个输出流用于protobuf编码
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
     size_t pkt_cnt;
 
     // 使用protobuf对pack进行编码
-    if (pb_encode(&o_stream, FactoryDataPackage_fields, &pack))
-    {
-        size_t length = o_stream.bytes_written;   // 获取编码后的数据长度
+    if (pb_encode(&o_stream, FactoryDataPackage_fields, &pack)) {
+        size_t length = o_stream.bytes_written;  // 获取编码后的数据长度
 
         // 计算数据包的数量
         pkt_cnt = length / max_data_cnt;
 
         // 将数据包的编号和CRC校验码放入tx_buffer
         tx_buffer[0] = pkt_cnt;
-        tx_buffer[length + 1] =
-            calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + length + 1));
+        tx_buffer[length + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + length + 1));
 
         // 计算最后一个数据包的负载长度
         pkt_payload_len = ((length % max_data_cnt) == 0) ? max_data_cnt : length % max_data_cnt;
         qDebug() << "包数量" << pkt_cnt << QString::number(tx_buffer[length + 1], 16);
 
         // 遍历每个数据包并发送
-        for (int i = pkt_cnt; i >= 0; i--)
-        {
+        for (int i = pkt_cnt; i >= 0; i--) {
             small_buffer[0] = i;
             qDebug() << "发送包头" << small_buffer[0];
             // 如果这是最后一个数据包并且还有剩余数据
-            if (i == 0 && length > 0)
-            {
+            if (i == 0 && length > 0) {
                 // 发送剩余的数据
-                memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt,
-                       pkt_payload_len + 1);
-                serialPort->write((char *)small_buffer.data(), pkt_payload_len + 2);
+                memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt, pkt_payload_len + 1);
+                serialPort->write((char*)small_buffer.data(), pkt_payload_len + 2);
                 qDebug() << "发送剩余包" << pkt_payload_len + 2;
 
-                QByteArray byteArray(reinterpret_cast<const char *>(small_buffer.data()),
-                                     pkt_payload_len + 2);
+                QByteArray byteArray(reinterpret_cast<const char*>(small_buffer.data()), pkt_payload_len + 2);
                 qDebug() << "Data in hex:" << byteArray.toHex();
-            }
-            else
-            {
-                memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt,
-                       max_data_cnt);
-                serialPort->write((char *)small_buffer.data(), max_data_cnt + 1);
+            } else {
+                memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt, max_data_cnt);
+                serialPort->write((char*)small_buffer.data(), max_data_cnt + 1);
                 qDebug() << "发送数据包" << max_data_cnt + 1;
 
-                QByteArray byteArray(reinterpret_cast<const char *>(small_buffer.data()),
-                                     max_data_cnt + 1);
+                QByteArray byteArray(reinterpret_cast<const char*>(small_buffer.data()), max_data_cnt + 1);
                 qDebug() << "Data in hex:" << byteArray.toHex();
             }
             waitWork(20);
@@ -340,17 +278,14 @@ uint32_t Qpb::sendlongPack(const FactoryDataPackage &pack)
             // 计算剩余的待发送数据长度
             length -= max_data_cnt;
         }
-    }
-    else
-    {
+    } else {
         qDebug() << "长包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
 
-    return ret;   // 如果成功则返回0
+    return ret;  // 如果成功则返回0
 }
 
-void Qpb::get_device_info()
-{
+void Qpb::get_device_info() {
     FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -360,48 +295,35 @@ void Qpb::get_device_info()
     sendShortPack(pack);
 }
 
-void Qpb::get_button_state(int state)
-{
+void Qpb::get_button_state(int state) {
     FactroyCmd cmd = FactroyCmd_GET_BUTTON_STATE;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_get_button_state_tag;
     pack.command_data.get_button_state.button_state_count = 2;
-    if (state)
-    {
+    if (state) {
         pack.command_data.get_button_state.button_state[0].type = FacButtonType_POWER_BUTTON;
-        pack.command_data.get_button_state.button_state[0].command_data.power_button.state =
-            FacSwitch_START;
-        pack.command_data.get_button_state.button_state[0].which_command_data =
-            FacButtonItem_power_button_tag;
+        pack.command_data.get_button_state.button_state[0].command_data.power_button.state = FacSwitch_START;
+        pack.command_data.get_button_state.button_state[0].which_command_data = FacButtonItem_power_button_tag;
 
         pack.command_data.get_button_state.button_state[1].type = FacButtonType_MODEL_BUTTON;
-        pack.command_data.get_button_state.button_state[1].command_data.power_button.state =
-            FacSwitch_START;
-        pack.command_data.get_button_state.button_state[1].which_command_data =
-            FacButtonItem_mode_button_tag;
-    }
-    else
-    {
+        pack.command_data.get_button_state.button_state[1].command_data.power_button.state = FacSwitch_START;
+        pack.command_data.get_button_state.button_state[1].which_command_data = FacButtonItem_mode_button_tag;
+    } else {
         pack.command_data.get_button_state.button_state[0].type = FacButtonType_POWER_BUTTON;
-        pack.command_data.get_button_state.button_state[0].command_data.power_button.state =
-            FacSwitch_STOP;
-        pack.command_data.get_button_state.button_state[0].which_command_data =
-            FacButtonItem_power_button_tag;
+        pack.command_data.get_button_state.button_state[0].command_data.power_button.state = FacSwitch_STOP;
+        pack.command_data.get_button_state.button_state[0].which_command_data = FacButtonItem_power_button_tag;
 
         pack.command_data.get_button_state.button_state[1].type = FacButtonType_MODEL_BUTTON;
-        pack.command_data.get_button_state.button_state[1].command_data.power_button.state =
-            FacSwitch_STOP;
-        pack.command_data.get_button_state.button_state[1].which_command_data =
-            FacButtonItem_mode_button_tag;
+        pack.command_data.get_button_state.button_state[1].command_data.power_button.state = FacSwitch_STOP;
+        pack.command_data.get_button_state.button_state[1].which_command_data = FacButtonItem_mode_button_tag;
     }
 
     sendShortPack(pack);
     qDebug() << "已设置按键状态" << state;
 }
-void Qpb::get_periph_state()
-{
+void Qpb::get_periph_state() {
     FactroyCmd cmd = FactroyCmd_GET_PERIPH_STATE;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -410,8 +332,7 @@ void Qpb::get_periph_state()
 
     sendShortPack(pack);
 }
-void Qpb::get_base_info()
-{
+void Qpb::get_base_info() {
     FactroyCmd cmd = FactroyCmd_GET_DEVICE_BASE_INFO;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -435,7 +356,7 @@ void Qpb::get_base_info()
 //     sendShortPack(pack);
 // }
 
-void Qpb::set_device_mode(int mode)   // 进入亮白模式
+void Qpb::set_device_mode(int mode)  // 进入亮白模式
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
     FactoryDataPackage pack;
@@ -451,7 +372,7 @@ void Qpb::set_device_mode(int mode)   // 进入亮白模式
     sendShortPack(pack);
 }
 
-void Qpb::set_camera_state(int state)   // 开启摄像头
+void Qpb::set_camera_state(int state)  // 开启摄像头
 {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -468,7 +389,7 @@ void Qpb::set_camera_state(int state)   // 开启摄像头
 
     sendShortPack(pack);
 }
-void Qpb::set_screen_camera_state(int state)   // 开启屏幕摄像头
+void Qpb::set_screen_camera_state(int state)  // 开启屏幕摄像头
 {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -486,7 +407,7 @@ void Qpb::set_screen_camera_state(int state)   // 开启屏幕摄像头
     sendShortPack(pack);
 }
 
-void Qpb::set_camera_support_state(int state)   // 开启补光灯
+void Qpb::set_camera_support_state(int state)  // 开启补光灯
 {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -502,8 +423,7 @@ void Qpb::set_camera_support_state(int state)   // 开启补光灯
 
     sendShortPack(pack);
 }
-void Qpb::set_camera_picture_state(int state)
-{
+void Qpb::set_camera_picture_state(int state) {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -519,7 +439,7 @@ void Qpb::set_camera_picture_state(int state)
     sendShortPack(pack);
     qDebug() << "已发送请求图片";
 }
-void Qpb::set_camera_light_state(int state)   // 开启补光灯
+void Qpb::set_camera_light_state(int state)  // 开启补光灯
 {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
@@ -535,8 +455,7 @@ void Qpb::set_camera_light_state(int state)   // 开启补光灯
 
     sendShortPack(pack);
 }
-void Qpb::set_camera_exposure_time(uint32_t time)
-{
+void Qpb::set_camera_exposure_time(uint32_t time) {
     FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -547,8 +466,7 @@ void Qpb::set_camera_exposure_time(uint32_t time)
     pack.command_data.camera_control.type = FacCameraControlType_camera_exposure_time;
     sendShortPack(pack);
 }
-void Qpb::set_motor_cali_result_param(uint32_t data)
-{
+void Qpb::set_motor_cali_result_param(uint32_t data) {
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -562,8 +480,7 @@ void Qpb::set_motor_cali_result_param(uint32_t data)
     sendShortPack(pack);
 }
 void Qpb::set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
-                                uint32_t vibrate_freq)
-{
+                                uint32_t vibrate_freq) {
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -576,20 +493,16 @@ void Qpb::set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, fl
     pack.command_data.moto_control.value_item.servoparam.sweeping_freq = sweeping_freq;
     pack.command_data.moto_control.value_item.servoparam.vibrate_angle = vibrate_angle;
     pack.command_data.moto_control.value_item.servoparam.vibrate_freq = vibrate_freq;
-    qDebug() << "发送的sweeping_angle"
-             << pack.command_data.moto_control.value_item.servoparam.sweeping_angle;
-    qDebug() << "发送的sweeping_freq"
-             << pack.command_data.moto_control.value_item.servoparam.sweeping_freq;
+    qDebug() << "发送的sweeping_angle" << pack.command_data.moto_control.value_item.servoparam.sweeping_angle;
+    qDebug() << "发送的sweeping_freq" << pack.command_data.moto_control.value_item.servoparam.sweeping_freq;
 
-    qDebug() << "发送的vibrate_angle"
-             << pack.command_data.moto_control.value_item.servoparam.vibrate_angle;
-    qDebug() << "发送的vibrate_freq"
-             << pack.command_data.moto_control.value_item.servoparam.vibrate_freq;
+    qDebug() << "发送的vibrate_angle" << pack.command_data.moto_control.value_item.servoparam.vibrate_angle;
+    qDebug() << "发送的vibrate_freq" << pack.command_data.moto_control.value_item.servoparam.vibrate_freq;
 
     sendShortPack(pack);
 }
 
-void Qpb::get_battery()   // 获取电量信息
+void Qpb::get_battery()  // 获取电量信息
 {
     FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
     FactoryDataPackage pack;
@@ -605,8 +518,7 @@ void Qpb::get_battery()   // 获取电量信息
     sendShortPack(pack);
 }
 
-void Qpb::set_motor_cali(int state)
-{
+void Qpb::set_motor_cali(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -622,8 +534,7 @@ void Qpb::set_motor_cali(int state)
     sendShortPack(pack);
     qDebug() << "已设置电机校准类型" << state;
 }
-void Qpb::set_motor_cali_state(int state)
-{
+void Qpb::set_motor_cali_state(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -640,8 +551,7 @@ void Qpb::set_motor_cali_state(int state)
     qDebug() << "已设置电机校准流程" << state;
 }
 
-void Qpb::set_motor_test_state(int state)
-{
+void Qpb::set_motor_test_state(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -657,8 +567,7 @@ void Qpb::set_motor_test_state(int state)
     sendShortPack(pack);
     qDebug() << "已设置电机测试状态" << state;
 }
-void Qpb::set_motor_damping_state(int state)
-{
+void Qpb::set_motor_damping_state(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -675,7 +584,7 @@ void Qpb::set_motor_damping_state(int state)
     qDebug() << "已设置电机阻尼状态" << state;
 }
 
-void Qpb::set_wifi_disconnect()   // 断开wifi
+void Qpb::set_wifi_disconnect()  // 断开wifi
 {
     FactroyCmd cmd = FactroyCmd_WIFI_DEMAND;
     FactoryDataPackage pack;
@@ -687,8 +596,8 @@ void Qpb::set_wifi_disconnect()   // 断开wifi
     sendShortPack(pack);
 }
 
-void Qpb::set_new_connect_wifi(const QByteArray &name, const QByteArray &password, const QString &ip,
-                       const QString &port)   // 新的连接wifi带返回结果
+void Qpb::set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
+                               const QString& port)  // 新的连接wifi带返回结果
 {
     FactroyCmd cmd = FactroyCmd_WIFI_DEMAND;
     FactoryDataPackage pack;
@@ -707,8 +616,7 @@ void Qpb::set_new_connect_wifi(const QByteArray &name, const QByteArray &passwor
     // 将QString类型的IP地址转换为FacWifiInfo_ip_address_t类型
     QStringList ipParts = ip.split(".");
 
-    if (ipParts.size() == 4)
-    {
+    if (ipParts.size() == 4) {
         ip_address.size = 4;
         ip_address.bytes[0] = ipParts[0].toInt();
         ip_address.bytes[1] = ipParts[1].toInt();
@@ -722,8 +630,7 @@ void Qpb::set_new_connect_wifi(const QByteArray &name, const QByteArray &passwor
     qDebug() << "已设置连接wifi";
 }
 
-void Qpb::get_servo_motor_info()
-{
+void Qpb::get_servo_motor_info() {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -735,9 +642,7 @@ void Qpb::get_servo_motor_info()
     qDebug() << "开始获取电机内容";
 }
 
-
-void Qpb::get_wifi_info()
-{
+void Qpb::get_wifi_info() {
     FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -751,14 +656,13 @@ void Qpb::get_wifi_info()
 
     sendShortPack(pack);
 }
-void Qpb::set_brush_control(int state)   // 开始暂停刷牙
+void Qpb::set_brush_control(int state)  // 开始暂停刷牙
 {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_BRUSH_CONTROL;
 
-    if (state)
-    {
+    if (state) {
         pack.cmd_id = cmd;
         pack.which_command_data = FactoryDataPackage_brush_control_tag;
         pack.command_data.brush_control.which_value_item = FacBrushControl_brush_start_tag;
@@ -766,8 +670,7 @@ void Qpb::set_brush_control(int state)   // 开始暂停刷牙
         pack.command_data.brush_control.type = FacBrushControlType_BRUSH_START;
     }
 
-    else
-    {
+    else {
         pack.cmd_id = cmd;
         pack.which_command_data = FactoryDataPackage_brush_control_tag;
         pack.command_data.brush_control.which_value_item = FacBrushControl_brush_start_tag;
@@ -777,7 +680,7 @@ void Qpb::set_brush_control(int state)   // 开始暂停刷牙
 
     sendShortPack(pack);
 }
-void Qpb::set_fac_mode(int state)   // 开始暂停工厂二维码
+void Qpb::set_fac_mode(int state)  // 开始暂停工厂二维码
 {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -785,14 +688,12 @@ void Qpb::set_fac_mode(int state)   // 开始暂停工厂二维码
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_state.dev_state_type = DevStateType_FACTORY_QRCORD;
         pack.command_data.set_dev_state.state = FacSwitch_OPEN;
     }
 
-    else
-    {
+    else {
         pack.command_data.set_dev_state.dev_state_type = DevStateType_FACTORY_QRCORD;
         pack.command_data.set_dev_state.state = FacSwitch_CLOSE;
     }
@@ -800,8 +701,7 @@ void Qpb::set_fac_mode(int state)   // 开始暂停工厂二维码
     sendShortPack(pack);
     qDebug() << "已发送工厂模式状态" << state;
 }
-void Qpb::set_fac_result(int state)
-{
+void Qpb::set_fac_result(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
@@ -811,12 +711,9 @@ void Qpb::set_fac_result(int state)
     pack.command_data.set_dev_info.dev_info[0].info_item = FacDevInfoType_IF_QUALIFIED;
     pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_if_qualified_tag;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_info.dev_info[0].value_item.if_qualified = FacSwitch_START;
-    }
-    else
-    {
+    } else {
         pack.command_data.set_dev_info.dev_info[0].value_item.if_qualified = FacSwitch_STOP;
     }
 
@@ -824,8 +721,7 @@ void Qpb::set_fac_result(int state)
     qDebug() << "已发送工厂测试状态" << state;
 }
 
-void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray &sn)
-{
+void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -834,41 +730,28 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray &sn)
     pack.which_command_data = FactoryDataPackage_set_dev_info_tag;
     pack.command_data.set_dev_info.dev_info_count = 1;
 
-    if (which_sn == FacDevInfoType_BOARD_SN)
-    {
+    if (which_sn == FacDevInfoType_BOARD_SN) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.board_sn, sn,
                  sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.board_sn) - 1);
         pack.command_data.set_dev_info.dev_info[0]
-            .value_item
-            .board_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.board_sn) - 1] =
-            '\0';
+            .value_item.board_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.board_sn) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_board_sn_tag;
-    }
-    else if (which_sn == FacDevInfoType_TAIL_SN)
-    {
+    } else if (which_sn == FacDevInfoType_TAIL_SN) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn, sn,
                  sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1);
         pack.command_data.set_dev_info.dev_info[0]
-            .value_item
-            .tail_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1] =
-            '\0';
+            .value_item.tail_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_tail_sn_tag;
-    }
-    else if (which_sn == FacDevInfoType_SUB_PID)
-    {
+    } else if (which_sn == FacDevInfoType_SUB_PID) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid, sn,
                  sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid) - 1);
         pack.command_data.set_dev_info.dev_info[0]
-            .value_item
-            .sub_pid[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid) - 1] =
-            '\0';
+            .value_item.sub_pid[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sub_pid_tag;
-    }
-    else
-    {
+    } else {
         // 处理未知的 which_sn 值，你可以抛出错误或者采取其他适当的措施
         qDebug() << "未知的 which_sn 值";
         return;
@@ -878,8 +761,7 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray &sn)
     qDebug() << "已发送sn码";
 }
 
-void Qpb::get_sn(FacDevInfoType which_sn)
-{
+void Qpb::get_sn(FacDevInfoType which_sn) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -887,23 +769,16 @@ void Qpb::get_sn(FacDevInfoType which_sn)
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_get_dev_info_tag;
     pack.command_data.set_dev_info.dev_info_count = 1;
-    if (which_sn == FacDevInfoType_BOARD_SN)
-    {
+    if (which_sn == FacDevInfoType_BOARD_SN) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_board_sn_tag;
-    }
-    else if (which_sn == FacDevInfoType_TAIL_SN)
-    {
+    } else if (which_sn == FacDevInfoType_TAIL_SN) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_tail_sn_tag;
-    }
-    else if (which_sn == FacDevInfoType_SUB_PID)
-    {
+    } else if (which_sn == FacDevInfoType_SUB_PID) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sub_pid_tag;
-    }
-    else
-    {
+    } else {
         // 处理未知的 which_sn 值，你可以抛出错误或者采取其他适当的措施
         qDebug() << "未知的 which_sn 值";
         return;
@@ -912,9 +787,7 @@ void Qpb::get_sn(FacDevInfoType which_sn)
     sendShortPack(pack);
 }
 
-
-void Qpb::set_press_sensor_temp(int state)
-{
+void Qpb::set_press_sensor_temp(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
@@ -922,12 +795,9 @@ void Qpb::set_press_sensor_temp(int state)
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
     pack.command_data.set_dev_state.dev_state_type = DevStateType_PRESS_SENSOR_TEMP;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_state.state = FacSwitch_START;
-    }
-    else
-    {
+    } else {
         pack.command_data.set_dev_state.state = FacSwitch_STOP;
     }
 
@@ -935,8 +805,7 @@ void Qpb::set_press_sensor_temp(int state)
     qDebug() << "已设置压感温度补偿状态";
 }
 
-void Qpb::set_uart_receive(int state)
-{
+void Qpb::set_uart_receive(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
@@ -944,20 +813,35 @@ void Qpb::set_uart_receive(int state)
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
     pack.command_data.set_dev_state.dev_state_type = DevStateType_UART_RECEIVE;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_state.state = FacSwitch_START;
-    }
-    else
-    {
+    } else {
         pack.command_data.set_dev_state.state = FacSwitch_STOP;
     }
 
     sendShortPack(pack);
     qDebug() << "已设置串口状态";
 }
-void Qpb::set_ship_mode(int state)
-{
+
+void Qpb::set_motor_adc_switch(int state) {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
+    pack.command_data.set_dev_state.dev_state_type = DevStateType_MOTOR_ADC_MOS;
+
+    if (state) {
+        pack.command_data.set_dev_state.state = FacSwitch_START;
+    } else {
+        pack.command_data.set_dev_state.state = FacSwitch_STOP;
+    }
+
+    sendShortPack(pack);
+    qDebug() << "已设置船运";
+}
+
+void Qpb::set_ship_mode(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
@@ -965,12 +849,9 @@ void Qpb::set_ship_mode(int state)
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
     pack.command_data.set_dev_state.dev_state_type = DevStateType_SHIP;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_state.state = FacSwitch_START;
-    }
-    else
-    {
+    } else {
         pack.command_data.set_dev_state.state = FacSwitch_STOP;
     }
 
@@ -978,8 +859,7 @@ void Qpb::set_ship_mode(int state)
     qDebug() << "已设置船运";
 }
 // 旧wifi接口
-void Qpb::set_connect_wifi(const QByteArray &name, const QByteArray &password)
-{
+void Qpb::set_connect_wifi(const QByteArray& name, const QByteArray& password) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -990,16 +870,14 @@ void Qpb::set_connect_wifi(const QByteArray &name, const QByteArray &password)
     pack.command_data.set_dev_info.dev_info[0].info_item = FacDevInfoType_WIFI_INFO;
     qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_name, name,
              sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_name));
-    qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_password,
-             password,
+    qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_password, password,
              sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_password));
     pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_wifi_info_tag;
     sendShortPack(pack);
     qDebug() << "已设置连接wifi";
 }
 
-void Qpb::set_local_ota(local_ota_data x[2])
-{
+void Qpb::set_local_ota(local_ota_data x[2]) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -1032,8 +910,7 @@ void Qpb::set_local_ota(local_ota_data x[2])
     qDebug() << "已设置本地ota";
 }
 
-void Qpb::set_music(const QByteArray &data)
-{
+void Qpb::set_music(const QByteArray& data) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -1049,8 +926,7 @@ void Qpb::set_music(const QByteArray &data)
     sendShortPack(pack);
     qDebug() << "已设置音乐" << data.constData();
 }
-void Qpb::set_motor_param(uint32_t fre, float duty)
-{
+void Qpb::set_motor_param(uint32_t fre, float duty) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -1064,8 +940,7 @@ void Qpb::set_motor_param(uint32_t fre, float duty)
     sendShortPack(pack);
     qDebug() << "已设置电机参数";
 }
-void Qpb::set_motor_state(int state)
-{
+void Qpb::set_motor_state(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_MOTO_CONTROL;
@@ -1082,41 +957,27 @@ void Qpb::set_motor_state(int state)
     qDebug() << "已设置电机状态";
 }
 
-void Qpb::set_burning_mode(int state, FacSwitch switchs)
-{
+void Qpb::set_burning_mode(int state, FacSwitch switchs) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_AGEING_TEST;
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_ageing_tag;
 
-    switch (state)
-    {
-    case 1:
-        pack.command_data.ageing.type = FacAgeingTestType_AGEING_1;
-        break;
-    case 2:
-        pack.command_data.ageing.type = FacAgeingTestType_AGEING_2;
-        break;
-    case 3:
-        pack.command_data.ageing.type = FacAgeingTestType_AGEING_3;
-        break;
-    case 4:
-        pack.command_data.ageing.type = FacAgeingTestType_AGEING_4;
-        break;
-    case 5:
-        pack.command_data.ageing.type = FacAgeingTestType_AGEING_PRODUCTION_1;
-        break;
-    default:
-        break;
+    switch (state) {
+        case 1: pack.command_data.ageing.type = FacAgeingTestType_AGEING_1; break;
+        case 2: pack.command_data.ageing.type = FacAgeingTestType_AGEING_2; break;
+        case 3: pack.command_data.ageing.type = FacAgeingTestType_AGEING_3; break;
+        case 4: pack.command_data.ageing.type = FacAgeingTestType_AGEING_4; break;
+        case 5: pack.command_data.ageing.type = FacAgeingTestType_AGEING_PRODUCTION_1; break;
+        default: break;
     }
     pack.command_data.ageing.switch_state = switchs;
 
     sendShortPack(pack);
     qDebug() << "已设置老化" << state;
 }
-void Qpb::set_brush_record(const FacSetBrushRecord &record)
-{
+void Qpb::set_brush_record(const FacSetBrushRecord& record) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_BRUSH_RECORD;
@@ -1126,8 +987,7 @@ void Qpb::set_brush_record(const FacSetBrushRecord &record)
     sendShortPack(pack);
 }
 
-void Qpb::set_brush_time(int timestamp)
-{
+void Qpb::set_brush_time(int timestamp) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_SET_TIME;
@@ -1139,21 +999,17 @@ void Qpb::set_brush_time(int timestamp)
 }
 
 // 开始灯颜色控制
-void Qpb::set_led_color(int state, int lednumber)
-{
+void Qpb::set_led_color(int state, int lednumber) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_LED_CONTROL;
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_led_control_tag;
     pack.command_data.led_control.which_led = lednumber;
-    if (state)
-    {
+    if (state) {
         pack.command_data.led_control.switch_state = FacSwitch_OPEN;
         qDebug() << "已设置led亮";
-    }
-    else
-    {
+    } else {
         pack.command_data.led_control.switch_state = FacSwitch_CLOSE;
         qDebug() << "已设置led灭";
     }
@@ -1162,8 +1018,7 @@ void Qpb::set_led_color(int state, int lednumber)
 }
 
 // 开始灯颜色控制
-void Qpb::set_rgb_color(FacLedControl data)
-{
+void Qpb::set_rgb_color(FacLedControl data) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     FactroyCmd cmd = FactroyCmd_LED_CONTROL;
@@ -1198,8 +1053,7 @@ void Qpb::set_rgb_color(FacLedControl data)
 }
 
 // 开始屏幕颜色
-void Qpb::set_screen_color(int state)
-{
+void Qpb::set_screen_color(int state) {
     FactoryDataPackage pack;
     int color[5] = {0xff, 0xff00, 0xff0000, 0xffffff, 0x000000};
     memset(&pack, 0, sizeof(pack));
@@ -1212,7 +1066,7 @@ void Qpb::set_screen_color(int state)
     sendShortPack(pack);
     qDebug() << "已设置屏幕颜色" << state;
 }
-void Qpb::set_forbid_sleep(FacSwitch state)   // 进入禁止休眠状态
+void Qpb::set_forbid_sleep(FacSwitch state)  // 进入禁止休眠状态
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
     FactoryDataPackage pack;
@@ -1223,7 +1077,7 @@ void Qpb::set_forbid_sleep(FacSwitch state)   // 进入禁止休眠状态
     pack.command_data.set_dev_state.state = state;
     sendShortPack(pack);
 }
-void Qpb::set_sleeep(FacSwitch state)   // 进入休眠状态
+void Qpb::set_sleeep(FacSwitch state)  // 进入休眠状态
 {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -1231,14 +1085,12 @@ void Qpb::set_sleeep(FacSwitch state)   // 进入休眠状态
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
 
-    if (state)
-    {
+    if (state) {
         pack.command_data.set_dev_state.dev_state_type = DevStateType_SLEEP;
         pack.command_data.set_dev_state.state = FacSwitch_OPEN;
     }
 
-    else
-    {
+    else {
         pack.command_data.set_dev_state.dev_state_type = DevStateType_SLEEP;
         pack.command_data.set_dev_state.state = FacSwitch_CLOSE;
     }
@@ -1246,7 +1098,7 @@ void Qpb::set_sleeep(FacSwitch state)   // 进入休眠状态
     sendShortPack(pack);
 }
 
-void Qpb::set_dev_reset()   // 复位牙刷
+void Qpb::set_dev_reset()  // 复位牙刷
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
     FactoryDataPackage pack;
@@ -1260,7 +1112,7 @@ void Qpb::set_dev_reset()   // 复位牙刷
     qDebug() << "已复位牙刷";
 }
 
-void Qpb::set_brush_reset()   // 复位牙刷
+void Qpb::set_brush_reset()  // 复位牙刷
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
     FactoryDataPackage pack;
@@ -1274,7 +1126,7 @@ void Qpb::set_brush_reset()   // 复位牙刷
     qDebug() << "已重置牙刷";
 }
 
-void Qpb::set_press_collect_param(FacSwitch sta)   // 设置压感采集开关
+void Qpb::set_press_collect_param(FacSwitch sta)  // 设置压感采集开关
 {
     FactroyCmd cmd = FactroyCmd_SET_COLLECT_PARAM;
     FactoryDataPackage pack;
@@ -1283,13 +1135,12 @@ void Qpb::set_press_collect_param(FacSwitch sta)   // 设置压感采集开关
     pack.which_command_data = FactoryDataPackage_set_collect_param_tag;
     pack.command_data.set_collect_param.param_count = 1;
     pack.command_data.set_collect_param.param[0].type = DataCollectType_PRESSURE_SENSOR;
-    pack.command_data.set_collect_param.param[0].which_command_data =
-        FacDataCollectItem_pressure_sensor_tag;
+    pack.command_data.set_collect_param.param[0].which_command_data = FacDataCollectItem_pressure_sensor_tag;
     pack.command_data.set_collect_param.param[0].command_data.pressure_sensor.state = sta;
     sendShortPack(pack);
     qDebug() << "设置压感采集" << sta;
 }
-void Qpb::set_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
+void Qpb::set_imu_collect_param(FacSwitch sta)  // 设置imu采集开关
 {
     FactroyCmd cmd = FactroyCmd_SET_COLLECT_PARAM;
     FactoryDataPackage pack;
@@ -1298,15 +1149,14 @@ void Qpb::set_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
     pack.which_command_data = FactoryDataPackage_set_collect_param_tag;
     pack.command_data.set_collect_param.param_count = 1;
     pack.command_data.set_collect_param.param[0].type = DataCollectType_NINE_AXLE;
-    pack.command_data.set_collect_param.param[0].which_command_data =
-        FacDataCollectItem_nine_axle_tag;
+    pack.command_data.set_collect_param.param[0].which_command_data = FacDataCollectItem_nine_axle_tag;
     pack.command_data.set_collect_param.param[0].command_data.nine_axle.state = sta;
     pack.command_data.set_collect_param.param[0].command_data.nine_axle.sampling_rate = 25;
 
     sendShortPack(pack);
     qDebug() << "设置imu采集开关" << sta;
 }
-void Qpb::set_solve_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
+void Qpb::set_solve_imu_collect_param(FacSwitch sta)  // 设置imu采集开关
 {
     FactroyCmd cmd = FactroyCmd_SET_COLLECT_PARAM;
     FactoryDataPackage pack;
@@ -1315,17 +1165,16 @@ void Qpb::set_solve_imu_collect_param(FacSwitch sta)   // 设置imu采集开关
     pack.which_command_data = FactoryDataPackage_set_collect_param_tag;
     pack.command_data.set_collect_param.param_count = 1;
     pack.command_data.set_collect_param.param[0].type = DataCollectType_NINE_AXLE_SOLVE;
-    pack.command_data.set_collect_param.param[0].which_command_data =
-        FacDataCollectItem_nine_axle_solve_tag;
+    pack.command_data.set_collect_param.param[0].which_command_data = FacDataCollectItem_nine_axle_solve_tag;
     pack.command_data.set_collect_param.param[0].command_data.nine_axle.state = sta;
     pack.command_data.set_collect_param.param[0].command_data.nine_axle.sampling_rate = 50;
 
     sendShortPack(pack);
     qDebug() << "设置处理后的imu采集开关" << sta;
 }
-void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
+void Qpb::set_camera_data_respone(FacErrorCode sta)  // 发送校准结果
 {
-  //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
     // FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
     // FactoryDataPackage pack;
@@ -1339,34 +1188,33 @@ void Qpb::set_camera_data_respone(FacErrorCode sta)   // 发送校准结果
     // //qDebug() << "发送摄像头数据包回应";
     // qDebug() << "pb2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-   // emit send_pb_date("发送摄像头数据包回应");
+    // emit send_pb_date("发送摄像头数据包回应");
 }
 void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 发送校准结果
 {
-    qDebug() << "错误个数"<<count;
+    qDebug() << "错误个数" << count;
     FactroyCmd cmd = FactroyCmd_UPLOAD_PICTURE_DATA;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
-    if(count>sizeof(pack.command_data.upload_picture_data.fault_data_packet)/sizeof(uint32_t)){
-        emit send_pb_date("丢包过多"+QString::number(count));
-        count=50;
-
+    if (count > sizeof(pack.command_data.upload_picture_data.fault_data_packet) / sizeof(uint32_t)) {
+        emit send_pb_date("丢包过多" + QString::number(count));
+        count = 50;
     }
 
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_upload_picture_data_tag;
     pack.command_data.upload_picture_data.fault_data_packet_count = count;
 
-    for(int i = 0; i < count && i < data.size(); i++) {
+    for (int i = 0; i < count && i < data.size(); i++) {
         pack.command_data.upload_picture_data.fault_data_packet[i] = data[i];
     }
 
     sendShortPack(pack);
 
-    emit send_pb_date("成功发送摄像头错误数据包个数"+QString::number(count));
+    emit send_pb_date("成功发送摄像头错误数据包个数" + QString::number(count));
 }
-void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果
+void Qpb::set_press_cali_result(unsigned short* cali_ok)  // 发送校准结果
 {
     FactroyCmd cmd = FactroyCmd_SET_PRESS_SENSOR_CALIB;
     FactoryDataPackage pack;
@@ -1378,7 +1226,7 @@ void Qpb::set_press_cali_result(unsigned short *cali_ok)   // 发送校准结果
     sendShortPack(pack);
     qDebug() << "已发送压感校准结果";
 }
-void Qpb::set_imu_cali_result(ImuCalData cali_ok)   // 发送校准结果
+void Qpb::set_imu_cali_result(ImuCalData cali_ok)  // 发送校准结果
 {
     FactroyCmd cmd = FactroyCmd_SET_IMU_CALIB;
     FactoryDataPackage pack;
@@ -1395,8 +1243,7 @@ void Qpb::set_imu_cali_result(ImuCalData cali_ok)   // 发送校准结果
     qDebug() << "已发送六轴校准结果" << pack.command_data.set_imu_calib.gyro_y;
     qDebug() << "已发送六轴校准结果" << pack.command_data.set_imu_calib.gyro_z;
 }
-void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok)
-{
+void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok) {
     FactroyCmd cmd = FactroyCmd_SET_IMU_CALIB;
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -1422,7 +1269,8 @@ void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok)
     sendShortPack(pack);
 
     // Debugging output
-    qDebug() << "已发送六轴校准结果: " << " kx:" << pack.command_data.set_imu_calib.new_cali.kx
+    qDebug() << "已发送六轴校准结果: "
+             << " kx:" << pack.command_data.set_imu_calib.new_cali.kx
              << " ky:" << pack.command_data.set_imu_calib.new_cali.ky
              << " kz:" << pack.command_data.set_imu_calib.new_cali.kz
              << " syx:" << pack.command_data.set_imu_calib.new_cali.syx
@@ -1432,7 +1280,7 @@ void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok)
              << " by:" << pack.command_data.set_imu_calib.new_cali.by
              << " bz:" << pack.command_data.set_imu_calib.new_cali.bz;
 }
-void Qpb::get_cali_result()   // 获取校准结果
+void Qpb::get_cali_result()  // 获取校准结果
 {
     FactroyCmd cmd = FactroyCmd_GET_PRESS_SENSOR_CALIB;
     FactoryDataPackage pack;
@@ -1442,7 +1290,7 @@ void Qpb::get_cali_result()   // 获取校准结果
     sendShortPack(pack);
     qDebug() << "已获取校准结果";
 }
-void Qpb::get_imu_cali_result()   // 获取校准结果
+void Qpb::get_imu_cali_result()  // 获取校准结果
 {
     FactroyCmd cmd = FactroyCmd_GET_IMU_CALIB;
     FactoryDataPackage pack;
@@ -1453,97 +1301,87 @@ void Qpb::get_imu_cali_result()   // 获取校准结果
     qDebug() << "已开始获取imu校准结果";
 }
 
-void Qpb::registerCommand()
-{
+void Qpb::registerCommand() {
     factoryCommandList[FactroyCmd_SET_COLLECT_PARAM] =
         std::bind(&Qpb::process_FactroyCmd_SET_COLLECT_PARAM, this, std::placeholders::_1);
     factoryCommandList[FactroyCmd_UPLOAD_PRESS_SENSOR] =
-        std::bind(&Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR, this, std::placeholders::_1);   // 获取压感数据
+        std::bind(&Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR, this, std::placeholders::_1);  // 获取压感数据
     factoryCommandList[FactroyCmd_UPLOAD_NINE_ALEX] =
-        std::bind(&Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX, this, std::placeholders::_1);   // 获取imu数据
+        std::bind(&Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX, this, std::placeholders::_1);  // 获取imu数据
 
     factoryCommandList[FactroyCmd_SET_DEVICE_STATE] =
-        std::bind(&Qpb::process_FactroyCmd_SET_DEVICE_STATE, this, std::placeholders::_1);   // 禁止休眠
+        std::bind(&Qpb::process_FactroyCmd_SET_DEVICE_STATE, this, std::placeholders::_1);  // 禁止休眠
     factoryCommandList[FactroyCmd_SET_DEVICE_INFO] =
-        std::bind(&Qpb::process_FactroyCmd_SET_DEVICE_INFO, this, std::placeholders::_1);   // 进入亮白模式
+        std::bind(&Qpb::process_FactroyCmd_SET_DEVICE_INFO, this, std::placeholders::_1);  // 进入亮白模式
 
     factoryCommandList[FactroyCmd_SET_PRESS_SENSOR_CALIB] =
-        std::bind(&Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB, this, std::placeholders::_1);   // 保存完成
+        std::bind(&Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB, this, std::placeholders::_1);  // 保存完成
     factoryCommandList[FactroyCmd_GET_PRESS_SENSOR_CALIB] =
-        std::bind(&Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB, this, std::placeholders::_1);   // 获取完成
+        std::bind(&Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB, this, std::placeholders::_1);  // 获取完成
 
     factoryCommandList[FactroyCmd_SET_IMU_CALIB] =
-        std::bind(&Qpb::process_FactroyCmd_SET_IMU_CALIB, this, std::placeholders::_1);   // 保存imu完成
+        std::bind(&Qpb::process_FactroyCmd_SET_IMU_CALIB, this, std::placeholders::_1);  // 保存imu完成
     factoryCommandList[FactroyCmd_GET_DEVICE_BASE_INFO] =
-        std::bind(&Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO, this, std::placeholders::_1);   // 获取设备信息
+        std::bind(&Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO, this, std::placeholders::_1);  // 获取设备信息
     factoryCommandList[FactroyCmd_GET_PERIPH_STATE] =
-        std::bind(&Qpb::process_FactroyCmd_GET_PERIPH_STATE, this, std::placeholders::_1);   // 获取设备信息
+        std::bind(&Qpb::process_FactroyCmd_GET_PERIPH_STATE, this, std::placeholders::_1);  // 获取设备信息
 
     factoryCommandList[FactroyCmd_GET_DEVICE_INFO] =
-        std::bind(&Qpb::process_FactroyCmd_GET_DEVICE_INFO, this, std::placeholders::_1);   // 获取电量信息
+        std::bind(&Qpb::process_FactroyCmd_GET_DEVICE_INFO, this, std::placeholders::_1);  // 获取电量信息
     factoryCommandList[FactroyCmd_UPLOAD_BUTTON_STATE] =
-        std::bind(&Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE, this, std::placeholders::_1);   // 获取电量信息
+        std::bind(&Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE, this, std::placeholders::_1);  // 获取电量信息
     factoryCommandList[FactroyCmd_BRUSH_CONTROL] =
-        std::bind(&Qpb::process_FactroyCmd_BRUSH_CONTROL, this, std::placeholders::_1);   // 获取电量信息
+        std::bind(&Qpb::process_FactroyCmd_BRUSH_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
     factoryCommandList[FactroyCmd_LED_CONTROL] =
-        std::bind(&Qpb::process_FactroyCmd_LED_CONTROL, this, std::placeholders::_1);   // 获取电量信息
+        std::bind(&Qpb::process_FactroyCmd_LED_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_GET_IMU_CALIB] = std::bind(
-        &Qpb::process_FactroyCmd_GET_IMU_CALIB, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_GET_IMU_CALIB] =
+        std::bind(&Qpb::process_FactroyCmd_GET_IMU_CALIB, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_SET_AGEING_TEST] = std::bind(
-        &Qpb::process_FactroyCmd_SET_AGEING_TEST, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_SET_AGEING_TEST] =
+        std::bind(&Qpb::process_FactroyCmd_SET_AGEING_TEST, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_LCD_CONTROL] = std::bind(
-        &Qpb::process_FactroyCmd_LCD_CONTROL, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_LCD_CONTROL] =
+        std::bind(&Qpb::process_FactroyCmd_LCD_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_MOTO_CONTROL] = std::bind(
-        &Qpb::process_FactroyCmd_MOTO_CONTROL, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_MOTO_CONTROL] =
+        std::bind(&Qpb::process_FactroyCmd_MOTO_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
     factoryCommandList[FactroyCmd_UPLOAD_MOTORCALI_DATA] =
         std::bind(&Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA, this,
-                  std::placeholders::_1);   // 获取电量信息
+                  std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_CAMERA_CONTROL] = std::bind(
-        &Qpb::process_FactroyCmd_CAMERA_CONTROL, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_CAMERA_CONTROL] =
+        std::bind(&Qpb::process_FactroyCmd_CAMERA_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_INTERNET_OTA] = std::bind(
-        &Qpb::process_FactroyCmd_INTERNET_OTA, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_INTERNET_OTA] =
+        std::bind(&Qpb::process_FactroyCmd_INTERNET_OTA, this, std::placeholders::_1);  // 获取电量信息
 
-    bleCommandList[CommandId_CONNECT_PRO] =
-        std::bind(&Qpb::process_CommandId_CONNECT_PRO, this, std::placeholders::_1);
+    bleCommandList[CommandId_CONNECT_PRO] = std::bind(&Qpb::process_CommandId_CONNECT_PRO, this, std::placeholders::_1);
     bleCommandList[CommandId_ROTAS_FILE_STATUS_RSP] =
         std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
-    bleCommandList[CommandId_ROTAS_DATA_RSP] =
-        std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
-    bleCommandList[CommandId_ROTAS_RESULT_REQ] =
-        std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
+    bleCommandList[CommandId_ROTAS_DATA_RSP] = std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
+    bleCommandList[CommandId_ROTAS_RESULT_REQ] = std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
 
-    factoryCommandList[FactroyCmd_WIFI_DEMAND] = std::bind(
-        &Qpb::process_FactroyCmd_WIFI_DEMAND, this, std::placeholders::_1);   // 获取电量信息
+    factoryCommandList[FactroyCmd_WIFI_DEMAND] =
+        std::bind(&Qpb::process_FactroyCmd_WIFI_DEMAND, this, std::placeholders::_1);  // 获取电量信息
 
-    factoryCommandList[FactroyCmd_UPLOAD_PICTURE_DATA] = std::bind(
-        &Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA, this, std::placeholders::_1);   // 获取电量信息
-
+    factoryCommandList[FactroyCmd_UPLOAD_PICTURE_DATA] =
+        std::bind(&Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA, this, std::placeholders::_1);  // 获取电量信息
 }
-void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     FacPictureDataAck x;
     memcpy(&x, &f.command_data, sizeof(x));
-    if( x.send_data_over==FacErrorCode_NO_ERROR){
-
-    emit send_get_picture_send_over(x);
-    emit sendGetBrushResponse(1);
-
+    if (x.send_data_over == FacErrorCode_NO_ERROR) {
+        emit send_get_picture_send_over(x);
+        emit sendGetBrushResponse(1);
     }
 
     qDebug() << "收到发送数据包结束回应" << x.send_data_over;
-
 }
 
-void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
     FacWifiDemand x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_FactroyCmd_WIFI_DEMAND(x);
@@ -1552,16 +1390,14 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage &f)
 
     is_wif_set = 1;
 }
-void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
     FacInternetOta x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_FactroyCmd_INTERNET_OTA(x);
     qDebug() << "收到本地ota控制回应:" << x.result;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     FacCameraControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_camera_CONTROL_state(x);
@@ -1569,17 +1405,14 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage &f)
     is_camera_control = true;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     FacMotorCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_pb_date("收到牙刷上报信息");
     if (x.which_value_item == FacMotorCalibResult_hall_calibration_data_tag &&
-        x.type == FacMotorUploadType_HALL_CALIBRATION_DATA)
-    {
+        x.type == FacMotorUploadType_HALL_CALIBRATION_DATA) {
         emit sendGetBrushResponse(1);
-        emit send_pb_date("hall_calibration_data" +
-                          QString::number(x.value_item.hall_calibration_data));
+        emit send_pb_date("hall_calibration_data" + QString::number(x.value_item.hall_calibration_data));
         qDebug() << "获取到霍尔校准结果" << x.value_item.hall_calibration_data;
         if (x.value_item.hall_calibration_data == 0)
             is_hall_cali = 1;
@@ -1587,11 +1420,9 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage &f)
             is_hall_cali = 2;
     }
     if (x.which_value_item == FacMotorCalibResult_zero_calibration_data_tag &&
-        x.type == FacMotorUploadType_ZERO_CALIBRATION_DATA)
-    {
+        x.type == FacMotorUploadType_ZERO_CALIBRATION_DATA) {
         emit sendGetBrushResponse(1);
-        emit send_pb_date("获取到0点校准结果" +
-                          QString::number(x.value_item.zero_calibration_data));
+        emit send_pb_date("获取到0点校准结果" + QString::number(x.value_item.zero_calibration_data));
         qDebug() << "获取到0点校准结果" << x.value_item.zero_calibration_data;
         if (x.value_item.zero_calibration_data == 0)
             is_zero_cali = 1;
@@ -1599,105 +1430,85 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage &f)
             is_zero_cali = 2;
     }
 
-    if (x.which_value_item == FacMotorCalibResult_servo_info_tag &&
-        x.type == FacMotorUploadType_SERVO_INFO)
-    {
-        qDebug() << "收到电机信息" ;
+    if (x.which_value_item == FacMotorCalibResult_servo_info_tag && x.type == FacMotorUploadType_SERVO_INFO) {
+        qDebug() << "收到电机信息";
         emit send_servo_motor_info_msg(x);
         emit sendGetBrushResponse(1);
     }
-    \
-    if (x.which_value_item == FacMotorCalibResult_motor_log_tag &&
-        x.type == FacMotorUploadType_MOTOR_LOG)
-    {
 
+    if (x.which_value_item == FacMotorCalibResult_motor_log_tag && x.type == FacMotorUploadType_MOTOR_LOG) {
         qDebug() << "收到电机日志" << x.value_item.motor_log;
         QString motorLogString = QString::fromLatin1(x.value_item.motor_log);
         emit send_motor_cali_msg(motorLogString);
         emit sendGetBrushResponse(1);
     }
 
-
     qDebug() << "收到电机校准回应:" << x.type;
 }
 
-void Qpb::process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage& f) {
     qDebug() << "收到电机控制回应:";
     FacMotoControl x;
     memcpy(&x, &f.command_data, sizeof(x));
 
-    if (x.type == FacMotoControlType_motor_param)
-    {
+    if (x.type == FacMotoControlType_motor_param) {
         is_motor_param_set = 1;
         qDebug() << "电机参数设置操作";
         emit sendGetBrushResponse(1);
     }
-    if (x.type == FacMotoControlType_motor_test)
-    {
+    if (x.type == FacMotoControlType_motor_test) {
         qDebug() << "电机测试操作";
         emit sendGetBrushResponse(1);
     }
-    if (x.type == FacMotoControlType_damping_state)
-    {
+    if (x.type == FacMotoControlType_damping_state) {
         qDebug() << "电机阻尼操作";
         emit sendGetBrushResponse(1);
         is_damping_state = 1;
     }
-    if (x.type == FacMotoControlType_servo_param)
-    {
+    if (x.type == FacMotoControlType_servo_param) {
         qDebug() << "电机参数设置成功";
         emit sendGetBrushResponse(1);
         is_motor_test_state = 1;
     }
-    if (x.type == FacMotoControlType_motor_cali_data)
-    {
+    if (x.type == FacMotoControlType_motor_cali_data) {
         qDebug() << "电机校准参数设置完成";
         emit sendGetBrushResponse(1);
         is_motor_cali_data_set = 1;
     }
-    if (x.type == FacMotoControlType_get_servo_info_data)
-    {
+    if (x.type == FacMotoControlType_get_servo_info_data) {
         qDebug() << "伺服电机信息获取成功";
         emit sendGetBrushResponse(1);
     }
 
-    if (x.type == FacMotoControlType_motor_cali &&
-        x.value_item.switch_cali == FacMotoCali_MOTOR_CALI_STOP)
-    {
+    if (x.type == FacMotoControlType_motor_cali && x.value_item.switch_cali == FacMotoCali_MOTOR_CALI_STOP) {
         qDebug() << "停止校准流程";
         emit sendGetBrushResponse(1);
         is_stop_motor_cali = 1;
     }
 
-    if (x.type == FacMotoControlType_motor_cali)
-    {
+    if (x.type == FacMotoControlType_motor_cali) {
         emit sendGetBrushResponse(1);
         qDebug() << "电机校准流程操作（0是霍尔校准1是零点校准）" << x.value_item.switch_cali;
     }
 }
-void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage& f) {
     FacLcdControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_Lcd_CONTROL_state(x);
     qDebug() << "收到屏幕控制回应:" << x.type;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_SET_AGEING_TEST(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_AGEING_TEST(FactoryDataPackage& f) {
     FacAgeingTest x;
     memcpy(&x, &f.command_data, sizeof(x));
 
-    if (x.switch_state == 1)
-    {
+    if (x.switch_state == 1) {
         emit sendGetBrushResponse(1);
         is_set_age_test = 1;
     }
 }
 
-void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     FacImuCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
 
@@ -1717,18 +1528,14 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage &f)
     qDebug().nospace().noquote() << "szy: " << x.new_cali.szy;
     is_get_imu_cali_data = 1;
     emit send_IMU_CALIB_result(x);
-    if (x.result)
-    {
+    if (x.result) {
         emit send_pb_date("牙刷六轴校准数据有问题,可能是初始值");
-    }
-    else
-    {
+    } else {
         emit send_pb_date("牙刷六轴校准数据是工厂值,是可靠的");
     }
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     FacLedControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_LED_CONTROL_state(x);
@@ -1737,90 +1544,77 @@ void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage &f)
     qDebug() << "收到灯光count:" << x.led_state_count;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     FacBrushControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_BrushControl_state(x);
     qDebug() << "收到牙刷控制回应:" << x.value_item.brush_start;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     FacButtonState x;
     memcpy(&x, &f.command_data, sizeof(x));
 
     qDebug() << "获取到模式按键状态" << x.button_state[1].command_data.mode_button.button_state_now;
-    qDebug() << "获取到开关按键状态"
-             << x.button_state[0].command_data.power_button.button_state_now;
+    qDebug() << "获取到开关按键状态" << x.button_state[0].command_data.power_button.button_state_now;
 
     emit send_button_state(x);
     emit sendGetBrushResponse(1);
 }
 
-void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     FacDevInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
 
-    if (x.dev_info[0].which_value_item == FacDevInfoValue_battery_tag)
-    {
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_battery_tag) {
         emit send_battary(x);
         qDebug() << "获取到电量信息";
         emit sendGetBrushResponse(1);
         is_get_battery_data = 1;
     }
-    if (x.dev_info[0].which_value_item == FacDevInfoValue_wifi_info_tag)
-    {
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_wifi_info_tag) {
         emit send_wifi_State(x);
         qDebug() << "获取到wifi信息";
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag)
-    {
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到板子的sn" << x.dev_info[0].value_item.board_sn;
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag)
-    {
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回应尾盖的sn" << x.dev_info[0].value_item.tail_sn;
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag)
-    {
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
         emit sendGetBrushResponse(1);
     }
 }
 
-void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     FacGetPeriphState x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_periph_data(x);
     qDebug() << "获取到外设状态";
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     FacGetDevBaseInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
+    qDebug() << "获取到设备信息";
     emit send_base_data(x);
     is_get_base_info = 1;
-    qDebug() << "获取到设备信息";
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
     qDebug() << "收到保存imu校准值回应" << f.command_data.set_imu_calib.result;
     is_save_imu_cali_ok = 1;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacPreSensorCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "获取牙刷校准的brush_head_adc=" << x.brush_head_adc;
@@ -1829,51 +1623,44 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage &f)
     is_save_press_cali_data = 1;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacDevInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
 
     qDebug() << "保存压感校准值成功";
     get_cali_result();
 }
-void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     FacDevState x;
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.dev_state_type == DevStateType_FORBID_SLEEP && x.state == FacSwitch_OPEN &&
-        x.result == FacErrorCode_NO_ERROR)
-    {
+        x.result == FacErrorCode_NO_ERROR) {
         qDebug() << "进入禁止休眠成功";
         is_disable_sleep = 1;
         emit sendGetBrushResponse(1);
     }
     if (x.dev_state_type == DevStateType_FORBID_SLEEP && x.state == FacSwitch_CLOSE &&
-        x.result == FacErrorCode_NO_ERROR)
-    {
+        x.result == FacErrorCode_NO_ERROR) {
         qDebug() << "取消禁止休眠成功";
         is_close_forbid_sleep = 1;
         emit sendGetBrushResponse(1);
     }
 
-    if (x.dev_state_type == DevStateType_SLEEP)
-    {
+    if (x.dev_state_type == DevStateType_SLEEP) {
         qDebug() << "设置休眠成功";
         is_open_sleep = 1;
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_state_type == DevStateType_SHIP)
-    {
+    if (x.dev_state_type == DevStateType_SHIP) {
         qDebug() << "设置船运成功";
         send_pb_date("设置船运成功");
         emit sendGetBrushResponse(1);
     }
 
-  //   emit sendGetBrushResponse(1);
+    //   emit sendGetBrushResponse(1);
 }
 
-void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
     FacDevInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
     //  qDebug() <<
@@ -1881,77 +1668,80 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage &f)
     //  x.dev_info[0].info_item<<"呵呵呵"<<x.dev_info[0].which_value_item;
 
     if (x.dev_info_count == 1 && x.dev_info[0].info_item == FacDevInfoType_BRUSH_MODE &&
-        x.dev_info[0].which_value_item == FacDevInfoValue_brush_mode_tag)
-    {
+        x.dev_info[0].which_value_item == FacDevInfoValue_brush_mode_tag) {
         qDebug() << "进入亮白模式成功";
         is_dev_into_white_mode = 1;
         emit sendGetBrushResponse(1);
     }
 
-    if (x.dev_info[0].info_item == FacDevInfoType_BOARD_SN)
-    {   //  qDebug() << "已经收到板子的sn";
+    if (x.dev_info[0].info_item == FacDevInfoType_BOARD_SN) {  //  qDebug() << "已经收到板子的sn";
         get_sn(FacDevInfoType_BOARD_SN);
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_info[0].info_item == FacDevInfoType_SUB_PID)
-    {    qDebug() << "已经收到板子的subpid设置回应";
+    if (x.dev_info[0].info_item == FacDevInfoType_SUB_PID) {
+        qDebug() << "已经收到板子的subpid设置回应";
         emit sendGetBrushResponse(1);
     }
 
-    if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN)
-    {
+    if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN) {
         is_banding_ok = 1;
         qDebug() << "已经收到尾盖的sn回应";
         emit sendGetBrushResponse(1);
     }
-    if (x.dev_info[0].info_item == FacDevInfoType_WIFI_INFO)
-    {
+    if (x.dev_info[0].info_item == FacDevInfoType_WIFI_INFO) {
         is_wifi_set_ok = 1;
         qDebug() << "wifi连接回应";
         emit sendGetBrushResponse(1);
     }
 }
-void Qpb::process_CommandId_CONNECT_PRO(DataPackage &f)
-{
+void Qpb::process_CommandId_CONNECT_PRO(DataPackage& f) {
     emit send_pb_info(QString("firmware version : %1").arg(f.command_data.connect_pro.firmware_id));
     qDebug() << "获取到版本号" << f.command_data.connect_pro.firmware_id;
     emit sendGetBrushResponse(1);
 }
 
-void Qpb::process_CommandId_ROTAS(DataPackage &f)
-{
+void Qpb::process_CommandId_ROTAS(DataPackage& f) {
     QStringList s;
-    s << "成功" << "GENERAL" << "低电量" << "已经在OTA中" << "文件过大" << "MD5错误" << "文件不支持"
-      << "FLASH错误" << "No Memory" << "TRANS_TIMEOUT" << "TRANS_OVER_RANGE" << " 下载成功"
-      << "下载失败" << "没有配网" << "网络连接失败" << "获取文件信息失败"
-      << "RotaErrorCode_DOWNLOAD_CHECKOUT" << "RotaErrorCode_INSTALL_FAIL";
+    s << "成功"
+      << "GENERAL"
+      << "低电量"
+      << "已经在OTA中"
+      << "文件过大"
+      << "MD5错误"
+      << "文件不支持"
+      << "FLASH错误"
+      << "No Memory"
+      << "TRANS_TIMEOUT"
+      << "TRANS_OVER_RANGE"
+      << " 下载成功"
+      << "下载失败"
+      << "没有配网"
+      << "网络连接失败"
+      << "获取文件信息失败"
+      << "RotaErrorCode_DOWNLOAD_CHECKOUT"
+      << "RotaErrorCode_INSTALL_FAIL";
 
-    switch (f.command_id)
-    {
-    case CommandId_ROTAS_FILE_STATUS_RSP:
-        emit send_pb_info("手柄收到指令,开始OTA...");
-        if (f.command_data.rota_file_status_rsp.result < s.size())
-            emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
-        else
-            emit send_pb_info(QString("%1").arg(f.command_data.rota_file_status_rsp.result));
-        emit send_ota_result(f.command_data.rota_file_status_rsp.result);
-        break;
+    switch (f.command_id) {
+        case CommandId_ROTAS_FILE_STATUS_RSP:
+            emit send_pb_info("手柄收到指令,开始OTA...");
+            if (f.command_data.rota_file_status_rsp.result < s.size())
+                emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
+            else
+                emit send_pb_info(QString("%1").arg(f.command_data.rota_file_status_rsp.result));
+            emit send_ota_result(f.command_data.rota_file_status_rsp.result);
+            break;
 
-    case CommandId_ROTAS_DATA_RSP:
-        emit send_ota_progress(f.command_data.rota_data_rsp.progress);
-        break;
+        case CommandId_ROTAS_DATA_RSP: emit send_ota_progress(f.command_data.rota_data_rsp.progress); break;
 
-    case CommandId_ROTAS_RESULT_REQ:
-        emit send_pb_info(s[f.command_data.rota_result_req.rotaResult]);
-        emit send_ota_result(f.command_data.rota_result_req.rotaResult);
-        break;
-    default:
-        break;
+        case CommandId_ROTAS_RESULT_REQ:
+            emit send_pb_info(s[f.command_data.rota_result_req.rotaResult]);
+            emit send_ota_result(f.command_data.rota_result_req.rotaResult);
+            break;
+        default: break;
     }
 }
 
-void Qpb::get_connect_info()
-{
+void Qpb::get_connect_info() {
     CommandId cmd = CommandId_CONNECT_PRO;
     DataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -1961,8 +1751,7 @@ void Qpb::get_connect_info()
     pb_mode = CLIENT;
 }
 
-void Qpb::set_start_ota_app()
-{
+void Qpb::set_start_ota_app() {
     CommandId cmd = CommandId_ROTAS_FILE_STATUS_REQ;
     DataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -1973,13 +1762,9 @@ void Qpb::set_start_ota_app()
     pb_mode = CLIENT;
 }
 
-DataPackage Qpb::getBlePack() const
-{
-    return blePack;
-}
+DataPackage Qpb::getBlePack() const { return blePack; }
 
-void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f) {
     FacCollectParam x;
     memcpy(&x, &f.command_data, sizeof(x));
     is_imu_set_sta = x.param[0].command_data.nine_axle.state;
@@ -1987,8 +1772,7 @@ void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage &f)
     qDebug() << "接收到imu状态设置为" << x.param[0].command_data.nine_axle.state;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     FacUploadPresSensor x;
     memcpy(&x, &f.command_data, sizeof(x));
     // qDebug () << "sensor data";
@@ -1996,18 +1780,16 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage &f)
     is_set_press_collect_param = 1;
     emit sendGetBrushResponse(1);
 }
-void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage &f)
-{
+void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
     FacUploadNineAlex x;
     memcpy(&x, &f.command_data, sizeof(x));
-    qDebug () << "收到imu数据包";
+    qDebug() << "收到imu数据包";
     emit send_imu_data(x);
     is_setimu_collect_param = 1;
     emit sendGetBrushResponse(1);
 }
 
-void Qpb::set_config_network_app(WifiInfo info)
-{
+void Qpb::set_config_network_app(WifiInfo info) {
     CommandId cmd = CommandId_WIFI_INFO;
     DataPackage pack;
     memset(&pack, 0, sizeof(pack));

@@ -1,24 +1,22 @@
 ﻿#include "wifibox.h"
+
 #include "ui_wifibox.h"
 #include "wifibletest.h"
 
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 
-wifibox::wifibox(QWidget *parent) : box_base(parent), ui(new Ui::wifibox)
-{
+wifibox::wifibox(QWidget* parent) : box_base(parent), ui(new Ui::wifibox) {
     ui->setupUi(this);
     CreatWindow<wifibletest>(this);
     signalAndslot();
     recoverCustom();
     ShowData(this);
     setWindowTitle("信号测试工站");
-    ui->statusbar->addPermanentWidget(
-        new QLabel(SINGLE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    ui->statusbar->addPermanentWidget(new QLabel(SINGLE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    QAction* updata = ui->menubar->addAction("软件更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 }
 
-wifibox::~wifibox()
-{
-    delete ui;
-}
+wifibox::~wifibox() { delete ui; }

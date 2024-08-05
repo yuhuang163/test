@@ -185,7 +185,6 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
                     newDevices << QString("%1:%2").arg(k).arg(buffStr);
                 }
                 ++k;
- 
             }
         }
     }
@@ -400,7 +399,6 @@ void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error) {
 }
 
 void test_base::openJigSerialPort() {
-
     if (jigSerialPort->isOpen()) {
         disconnect(jigSerialPortTimer, &QTimer::timeout, this,
                    &test_base::readJigSerialPortData);  // timeout执行真正的读取操作
@@ -571,7 +569,7 @@ void test_base::solveGetBrushResponse(int data) { getRespone = data; }
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
     canGoNext = false;
-    // sendRetryOver = false;
+    sendRetryOver = false;
     if (commandFunc != nullptr) {
         commandFunc();  // 重新发送指令
     }
@@ -588,10 +586,9 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
             } else {
                 getRespone = 0;
                 retryCount = 0;
-                // sendRetryOver=1;
+                sendRetryOver = 1;
                 timer->stop();  // 达到最大重试次数，停止定时器
-                msgEdit()->appendPlainText("达到最大重试次数，停止定时器");
-                qDebug() << "达到最大重试次数，停止定时器";
+                showlog("达到最大重试次数，停止定时器");
                 delete timer;
                 return 0;
             }

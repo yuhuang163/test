@@ -62,7 +62,8 @@ typedef enum _DevStateType {
     DevStateType_FACTORY_QRCORD = 4, 
     DevStateType_SHIP = 5, 
     DevStateType_UART_RECEIVE = 6, 
-    DevStateType_PRESS_SENSOR_TEMP = 7 
+    DevStateType_PRESS_SENSOR_TEMP = 7, 
+    DevStateType_MOTOR_ADC_MOS = 8 
 } DevStateType;
 
 typedef enum _FacSwitch { 
@@ -626,8 +627,8 @@ typedef struct _FactoryDataPackage {
 #define _FacProtoId_ARRAYSIZE ((FacProtoId)(FacProtoId_V1000+1))
 
 #define _DevStateType_MIN DevStateType_REBOOT
-#define _DevStateType_MAX DevStateType_PRESS_SENSOR_TEMP
-#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_PRESS_SENSOR_TEMP+1))
+#define _DevStateType_MAX DevStateType_MOTOR_ADC_MOS
+#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_MOTOR_ADC_MOS+1))
 
 #define _FacSwitch_MIN FacSwitch_CLOSE
 #define _FacSwitch_MAX FacSwitch_START

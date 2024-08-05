@@ -194,11 +194,6 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
 
-    // QAction* updata_mechines = ui->menubar->addAction("更新上位机");
-    // connect(updata_mechines, &QAction::triggered, [=]() {
-
-    // });
-
     scanSerialPorts();                  // 要搜索一下一开始
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
@@ -218,6 +213,23 @@ MainWindow::MainWindow(QWidget* parent) :
 
     otaSourceSet(1);  // 一开机锁住
     otaFwSet(1);      // 一开机锁住
+
+    QAction* updata = ui->menubar->addAction("软件更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+    // 设置菜单栏样式
+    ui->menubar->setStyleSheet("QMenuBar { "
+                               "    background-color: white; "  // 设置菜单栏背景颜色为白色
+                               "    color: black; "             // 设置菜单栏文字颜色为黑色
+                               "}"
+                               "QMenuBar::item { "
+                               "    background-color: white; "  // 设置菜单项背景颜色为白色
+                               "    color: black; "             // 设置菜单项文字颜色为黑色
+                               "}"
+                               "QMenuBar::item:selected { "
+                               "    background-color: lightgray; "  // 设置选中菜单项的背景颜色
+                               "    color: black; "                 // 设置选中菜单项的文字颜色
+                               "}");
+
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(tail_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
@@ -394,6 +406,9 @@ MainWindow::MainWindow(QWidget* parent) :
         }
     });
     running.store(true);
+
+    updatamanager = new QNetworkAccessManager(this);
+    connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 }
 
 void MainWindow::on_add_data_clicked() {
@@ -2947,3 +2962,25 @@ void MainWindow::on_nfc_close_clicked() {
         }
     }
 }
+
+void MainWindow::on_close_motor_adc_switch_clicked() { pb->set_motor_adc_switch(0); }
+
+void MainWindow::on_open_motor_adc_switch_clicked() { pb->set_motor_adc_switch(1); }
+
+void MainWindow::on_downloadapp_clicked() {
+    // QString url = "http://192.168.243.6:88/versions/Readme.md";  // 替换为实际文件的URL
+    // QString fileName = QFileInfo(url).fileName();
+    // QString savePath = "./" + fileName;
+    // downloadFile(url, savePath);
+
+    checkAndUpdateFile();
+}
+
+void MainWindow::on_uploadapp_clicked() {
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+
+    uploadFile("./new_production_" + currentDateTime.toString("yyyyMMdd") + ".exe",
+               "http://192.168.243.6:88/versions/");
+}
+
+void MainWindow::on_delefile_clicked() { deleteFile("http://192.168.243.6:88/Readme.md"); }

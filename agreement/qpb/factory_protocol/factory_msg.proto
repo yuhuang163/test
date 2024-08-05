@@ -56,6 +56,7 @@ enum FactroyCmd {
     SET_BRUSH_RECORD = 0x33;
     WIFI_DEMAND = 0x34;
 
+
     INTERNET_OTA = 0x40;
 }
 
@@ -135,6 +136,7 @@ enum DevStateType
     SHIP = 5;
     UART_RECEIVE = 6;
     PRESS_SENSOR_TEMP = 7;
+    MOTOR_ADC_MOS=8;
 
 }
 

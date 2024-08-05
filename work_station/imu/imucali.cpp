@@ -95,6 +95,7 @@ imucali::imucali(int index, QWidget* parent) :
         if (is_out_counts == 2) {
             showlog("跳过位置达到上限2个");
             isovertime = 1;
+            emit send_kill_test(getIndex());
         }
     });
 
@@ -362,7 +363,7 @@ void imucali::solveMesData(const int mechines, QString msg) {
         showlog("停止运行");
         ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FF0000; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit send_end_test(getIndex());
+        emit send_kill_test(getIndex());
 
         ui->getMac->clear();
         ui->getMac->setFocus();
@@ -469,7 +470,6 @@ void imucali::refresh_imu_cali_position(int position) {
 
     if (position != -1) {
         showlog("位置：" + QString::number(position + 1) + "已经标定好了");
-        qDebug() << getIndex() << "位置：" + QString::number(position + 1) + "已经标定好了";
     }
 
     int index = position + 1;
@@ -1157,6 +1157,10 @@ void imucali::startTask()  // 编写六轴校准的代码
                     showlog("可能还没进入船运");
                     waitWork(500);
                 }
+                if (sendRetryOver) {
+                    result = failValue;
+                    state = STATE_END;
+                }
 
                 break;
 
@@ -1240,6 +1244,8 @@ void imucali::startTask()  // 编写六轴校准的代码
 void imucali::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void imucali::on_stopimuCaliButton_clicked() {
+    emit send_end_test(getIndex());
+
     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);

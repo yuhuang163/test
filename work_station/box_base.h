@@ -59,8 +59,8 @@ public:
 public slots:
     virtual void checkAllover(int );
     virtual void checkAllTest(int ){};
-   virtual void resetall();
-
+    virtual void resetall();
+    void checkAndUpdateFile();
     void startAllReturnPressed();
 
 private slots:
@@ -68,8 +68,11 @@ private slots:
     void loginMes();
     void initData();
     void saveCustom();
+    void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
+
 private:
     QMesManager *MesManager = new QMesManager();
+    QNetworkAccessManager* updatamanager;
 
     int formRow = 1;      // 记录总共是几行几列的窗口
     int formColumn = 1;   // 记录总共是几行几列的窗口
@@ -78,6 +81,9 @@ protected:
     virtual void closeEvent(QCloseEvent *);
 signals:
     void go_screen_next(int);
+
+    void sendBoxLog(QString );
+
 };
 
 #endif   // BOX_BASE_H

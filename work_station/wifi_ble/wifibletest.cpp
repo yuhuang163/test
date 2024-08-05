@@ -19,13 +19,14 @@ void wifibletest::on_pushButton_clicked() {
     //   ui->macInput->setText("3C:84:27:07:A8:D2");
     // // ui->macInput->setText("3c:84:27:29:50:32");
     // ui->macInput->setText("B4:56:5D:BF:53:71");
+    ui->macInput->setText("b4:56:5d:bf:57:9d");
 
-    // on_macInput_returnPressed();
+    on_macInput_returnPressed();
     // // usb-> getlxMEASure();
     // // waitWork(1000);
 
     // showlog("正在获取牙刷电量");
-    ui->NfcComboBox->setCurrentText("COM134");
+    // ui->NfcComboBox->setCurrentText("COM134");
     // showlog("保存mac_sn文件成功");
 }
 
@@ -112,10 +113,11 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         if ("SUBPID_ERRO" == value) {
             TestResult = failValue;
             iswifibleContinue = false;
+            on_stopTest_clicked();
+
             showlog("停止运行");
             showlog("没匹配到subpid");
             return;
-            // QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
         }
 
         if (QString(data.product_name).compare("U7P") == 0) {
@@ -212,9 +214,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         iswifibleContinue = false;
         showlog("停止运行");
 
-        ui->macInput->clear();
-        ui->getMac->clear();
-        ui->getMac->setFocus();
+        on_stopTest_clicked();
     }
 }
 
@@ -437,10 +437,10 @@ void wifibletest::solveMesSucess(const int mechines) {
 void wifibletest::solveMesData(const int mechines, QString msg) {
     if (mechines == getIndex()) {
         showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
+
         iswifibleContinue = false;
         showlog("停止运行");
+        on_stopTest_clicked();
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
 
@@ -1462,7 +1462,7 @@ void wifibletest::on_disconnectButton_clicked() {
 }
 
 void wifibletest::on_stopTest_clicked() {
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

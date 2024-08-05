@@ -1,82 +1,83 @@
 ﻿
 
 #ifndef ABINI_H
-#define ABINI_H   // Qt库头文件
+#define ABINI_H  // Qt库头文件
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
-#include <QtConcurrent>
-#include "qcombobox.h"
-#include "qlineedit.h"
+#include <qserialport.h>      // 串口通信类
+#include <qserialportinfo.h>  // 串口信息类
+
 #include <QAuthenticator>
-#include <QDateTime>        // 日期和时间操作
-#include <QDebug>           // 调试输出
-#include <QDesktopWidget>   // 桌面信息
-#include <QDir>             // 目录操作
-#include <QFile>            // 文件操作
+#include <QDateTime>       // 日期和时间操作
+#include <QDebug>          // 调试输出
+#include <QDesktopWidget>  // 桌面信息
+#include <QDir>            // 目录操作
+#include <QFile>           // 文件操作
 #include <QFile>
-#include <QFileDialog>    // 文件对话框
-#include <QInputDialog>   // 用户输入对话框
-#include <QLibrary>       // 动态链接库加载
-#include <QMainWindow>    // 主窗口类
-#include <QMessageBox>    // 消息框
+#include <QFileDialog>   // 文件对话框
+#include <QInputDialog>  // 用户输入对话框
+#include <QLibrary>      // 动态链接库加载
+#include <QMainWindow>   // 主窗口类
+#include <QMessageBox>   // 消息框
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QObject>          // QObject基类
-#include <QSettings>        // 持久设置
-#include <QStandardPaths>   // 标准路径
-#include <QTextStream>      // 文本输入输出
-#include <QTimer>           // 定时器
-#include <QUrl>             // URL操作
+#include <QObject>         // QObject基类
+#include <QSettings>       // 持久设置
+#include <QStandardPaths>  // 标准路径
+#include <QTextStream>     // 文本输入输出
+#include <QTimer>          // 定时器
+#include <QUrl>            // URL操作
 #include <QUrl>
-#include <QWidget>             // QWidget基类
-#include <qserialport.h>       // 串口通信类
-#include <qserialportinfo.h>   // 串口信息类
+#include <QWidget>  // QWidget基类
+#include <QtConcurrent>
 
+#include "qcombobox.h"
+#include "qlineedit.h"
 
 // C标准库头文件
-#include <stdbool.h>   // 布尔类型
+#include <stdbool.h>  // 布尔类型
 
 // 个人头文件
-#include <hqmes.h>   // 华勤的mes头文件
-#include <jjmes.h>   // 金进的mes头文件
-#include <lxmes.h>   // 立讯的mes头文件
-#include <qat.h>     // 与esp32的at指令
+#include <hqmes.h>  // 华勤的mes头文件
+#include <jjmes.h>  // 金进的mes头文件
+#include <lxmes.h>  // 立讯的mes头文件
+#include <qat.h>    // 与esp32的at指令
 #include <qjig.h>
-#include <qpb.h>   // 与牙刷的pb协议
+#include <qpb.h>  // 与牙刷的pb协议
 #include <qproduct.h>
-#include <qusb.h>     // 与治具的测量协议
-#include <xwdmes.h>   // 欣旺达的mes头文件
+#include <qusb.h>    // 与治具的测量协议
+#include <xwdmes.h>  // 欣旺达的mes头文件
 
-#define WAITTIME 0   // 指令的300延时防止粘包
+#define WAITTIME 0  // 指令的300延时防止粘包
 #define NEW_XWD_QUIESCENT_CURRENT
 #define NEW_MUSIC_CURRENT
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER  "电刷产测工具   V1.2.3"        // 支持1拖多
-#define AGE_VER    "老化测试工站   V1.1.0"            // 支持1拖多
-#define MOTOR_VER  "电机校准工站   V1.1.0"            // 加定时器判断休
-#define QC_VER     "静态电流测试   V1.2.8"        // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.0.8"        // 加定时器判断休
-#define LIGHT_VER  "灯光测试工站   V1.0.8"        // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.2.5"        // 立讯bug
-#define FREE_VER   "自由测试工站   V1.0.1"        // 立讯bug
-#define PCBA_VER   "电刷板子测试   V1.2.4"      // 加定时器判断休
-#define CAMERA_VER "摄像测试工站   V1.0.8"      // 支持摄像头工站
-#define IMU_VER    "IMU校准工站    V1.3.2"         // 支持自动化治具
+#define DEBUG_VER "电刷产测工具   V1.2.3"   // 支持1拖多
+#define AGE_VER "老化测试工站   V1.1.0"     // 支持1拖多
+#define MOTOR_VER "电机校准工站   V1.1.0"   // 加定时器判断休
+#define QC_VER "静态电流测试   V1.2.8"      // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.0.8"  // 加定时器判断休
+#define LIGHT_VER "灯光测试工站   V1.0.8"   // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.2.6"  // 立讯bug
+#define FREE_VER "自由测试工站   V1.0.1"    // 立讯bug
+#define PCBA_VER "电刷板子测试   V1.2.4"    // 加定时器判断休
+#define CAMERA_VER "摄像测试工站   V1.0.8"  // 支持摄像头工站
+#define IMU_VER "IMU校准工站    V1.3.3"     // 支持自动化治具
 
-// [DEBUG_VER] 修改dongle波特率为921600
-// [IMU_VER] 添加船运回应限制
-// [CAMERA_VER] 导入算法的python脚本偏移测试
-// [AGE_VER] 修改dongle波特率为921600
-// [MOTOR_VER] 修改dongle波特率为921600
-// [QC_VER] 修改dongle波特率为921600
-// [SCREEN_VER] 修改dongle波特率为921600
-// [LIGHT_VER] 修改dongle波特率为921600
-// [SINGLE_VER] 修复nfc1拖多的bug（使用完设备不能关闭设备）
-// [FREE_VER] 修改dongle波特率为921600
-// [PCBA_VER] 修改dongle波特率为921600
+// [DEBUG_VER] 上位机远程升级功能
+// [IMU_VER] 修复兴旺达适配导致的立讯问题 上位机远程升级功能
+// [CAMERA_VER] 上位机远程升级功能
+// [AGE_VER] 上位机远程升级功能
+// [MOTOR_VER] 上位机远程升级功能
+// [QC_VER] 上位机远程升级功能
+// [SCREEN_VER] 上位机远程升级功能
+// [LIGHT_VER] 上位机远程升级功能
+// [SINGLE_VER] 上位机远程升级功能
+// [FREE_VER] 上位机远程升级功能
+// [PCBA_VER] 上位机远程升级功能
 
-#endif   // ABINI_H
+#endif  // ABINI_H

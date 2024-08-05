@@ -81,6 +81,9 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
                 testList[0]->getMacLineEdit()->setFocus();
 
             });
+
+    QAction* updata = ui->menubar->addAction("软件更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 }
 
 void pcbabox::startTest()

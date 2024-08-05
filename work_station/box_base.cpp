@@ -11,9 +11,141 @@
 #    pragma execution_character_set("utf-8")
 #endif
 
-box_base::box_base(QWidget* parent) : QMainWindow(parent) { loginMes(); }
+box_base::box_base(QWidget* parent) : QMainWindow(parent) {
+    loginMes();
+    updatamanager = new QNetworkAccessManager(this);
+    connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
+}
+void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
+    authenticator->setUser("usmilejig");
+    authenticator->setPassword("Starspulse@123");
+}
+
+void box_base::checkAndUpdateFile() {
+    QString remoteDirectoryUrl = "http://192.168.243.6:88/versions/";
+    QUrl qUrl(remoteDirectoryUrl);
+    QNetworkRequest request(qUrl);
+
+    // qDebug() << "远程目录 URL:" << qUrl;
+
+    QNetworkReply* reply = updatamanager->get(request);
+    connect(reply, &QNetworkReply::finished, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QString response = reply->readAll();
+            // qDebug() << "响应内容:" << response;
+
+            // 使用正则表达式从HTML中提取文件名
+            QRegularExpression re("<a href=\"([^\"]+\\.exe)\">");
+            QRegularExpressionMatchIterator i = re.globalMatch(response);
+
+            QStringList remoteFiles;
+            while (i.hasNext()) {
+                QRegularExpressionMatch match = i.next();
+                remoteFiles << match.captured(1);
+            }
+
+            // 查找本地符合条件的文件
+            QDir dir(".");
+            QFileInfoList localFiles = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name);
+            QString latestLocalFile;
+            QDateTime latestLocalDate;
+
+            for (const QFileInfo& fileInfo : localFiles) {
+                if (fileInfo.fileName().startsWith("new_production_") && fileInfo.fileName().endsWith(".exe")) {
+                    QString dateString = fileInfo.fileName().mid(15, 8);
+                    QDateTime fileDate = QDateTime::fromString(dateString, "yyyyMMdd");
+                    if (fileDate > latestLocalDate) {
+                        latestLocalDate = fileDate;
+                        latestLocalFile = fileInfo.fileName();
+                    }
+                }
+            }
+            sendBoxLog("本地最新的文件为:" + latestLocalFile);
+
+            QString latestRemoteFile;
+            QDateTime latestRemoteDate;
+
+            for (const QString& fileName : remoteFiles) {
+                // qDebug() << "文件名:" << fileName;
+
+                if (fileName.startsWith("new_production_") && fileName.endsWith(".exe")) {
+                    QString dateString = fileName.mid(15, 8);
+                    QDateTime remoteFileDate = QDateTime::fromString(dateString, "yyyyMMdd");
+                    if (remoteFileDate > latestRemoteDate) {
+                        latestRemoteDate = remoteFileDate;
+                        latestRemoteFile = fileName;
+                    }
+                }
+            }
+            sendBoxLog("远程最新的文件为:" + latestRemoteFile);
+            if (latestRemoteDate > latestLocalDate) {
+                QMessageBox::StandardButton reply;
+                reply = QMessageBox::question(this, "更新可用",
+                                              QString("发现新版本 %1 可用，是否更新？").arg(latestRemoteFile),
+                                              QMessageBox::Yes | QMessageBox::No);
+
+                if (reply == QMessageBox::Yes) {
+                    QString downloadUrl = "http://192.168.243.6:88/versions/" + latestRemoteFile;
+                    QString savePath = "./" + latestRemoteFile;
+                    QNetworkRequest downloadRequest((QUrl(downloadUrl)));
+
+                    QNetworkReply* downloadReply = updatamanager->get(downloadRequest);
+                    connect(downloadReply, &QNetworkReply::finished, [this, downloadReply, savePath]() {
+                        if (downloadReply->error() == QNetworkReply::NoError) {
+                            QFile file(savePath);
+                            if (file.open(QIODevice::WriteOnly)) {
+                                file.write(downloadReply->readAll());
+                                file.close();
+                                sendBoxLog("文件升级成功");
+                                QProcess::startDetached(savePath);
+                                QString batFileName = "./delete_self.bat";
+                                QFile batFile(batFileName);
+                                if (batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                                    QTextStream out(&batFile);
+                                    out << "@echo off\n";
+                                    out << "timeout /t 2 /nobreak\n";
+                                    out << "del \"" << QCoreApplication::applicationFilePath() << "\"\n";
+                                    out << "del \"" << batFileName << "\"\n";
+                                    batFile.close();
+
+                                    // 执行批处理文件
+                                    QProcess::startDetached(batFileName);
+                                }
+
+                                // 强制退出当前应用
+                                QTimer::singleShot(1000, []() {
+                                    qApp->quit();
+                                    QProcess::startDetached(
+                                        "cmd.exe", QStringList()
+                                                       << "/c"
+                                                       << "taskkill /f /pid " +
+                                                              QString::number(QCoreApplication::applicationPid()));
+                                });
+                            } else {
+                                qDebug() << "无法打开文件进行写入:" << savePath;
+                            }
+                        } else {
+                            sendBoxLog("下载失败:" + downloadReply->errorString());
+                        }
+                        downloadReply->deleteLater();
+                    });
+                }
+            } else {
+                sendBoxLog("本地文件已经是最新的");
+            }
+        } else {
+            sendBoxLog("获取远程文件列表失败");
+            qDebug() << "获取远程文件列表失败:" << reply->errorString();
+        }
+        reply->deleteLater();
+    });
+}
+
 void box_base::signalAndslot() {
     for (int i = 0; i < testList.size(); i++) {
+        connect(this, SIGNAL(sendBoxLog(QString)), testList[i], SLOT(showlog(QString)));
+        // 最后一个回车会清空所有状态重新开始测试
+
         connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNextMechine(int)));
         // 最后一个回车会清空所有状态重新开始测试
 
@@ -122,14 +254,14 @@ void box_base::TotallyTask() {
 void addComboBoxEditText(QComboBox* comboBox, const QString& text) {
     if (comboBox != nullptr) {
         comboBox->addItem(text);
-      //  qDebug() << "添加完毕" << text;
+        //  qDebug() << "添加完毕" << text;
     }
 }
 
 void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
     if (comboBox != nullptr) {
         comboBox->setCurrentText(text);
-       // qDebug() << "设置完毕" << text;
+        // qDebug() << "设置完毕" << text;
     }
 }
 

@@ -200,10 +200,13 @@ CONFIG += precompile_header
 #message($$PWD)
 PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 
-
 RC_ICONS = ./stytle/picture/usmile.ico
+# 获取当前时间（Windows）
+current_time = $$system(powershell -command "(Get-Date).ToString('yyyyMMdd')")
 
-TARGET = new_production
+# 设置TARGET名称
+TARGET = new_production_$$current_time
+
 # 将可执行文件放在项目目录的bin文件夹中
 DESTDIR = ./bin
 
