@@ -36,9 +36,7 @@ private:
     State state = STATE_IDLE;
 
     QTime TestTime;
-    QString result = "";
-    QString passValue = "通过";
-    QString failValue = "失败";
+
     bool is_canGoNext = 0;
     QString stringsn;
     QString macAddress = "没有mac地址";
@@ -73,6 +71,8 @@ private slots:
     {
         return ui->msgEdit;
     };   // msg输入口
+    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+
     void refreshLcdControl(FacLcdControl style) override;
     void refreshBleState(int state) override;
     void refreshSn(FacDevInfo data) override;

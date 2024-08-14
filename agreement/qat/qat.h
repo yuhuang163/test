@@ -6,62 +6,37 @@
 #include <QQueue>
 #include <QSerialPort>
 
-class Qat : public QSerialPort
-{
+class Qat : public QSerialPort {
     Q_OBJECT
-public :
-    explicit Qat(QSerialPort *parent = nullptr);
-    void parseCmd(const QByteArray &byte);
+public:
+    explicit Qat(QSerialPort* parent = nullptr);
+    void parseCmd(const QByteArray& byte);
 
-    bool getConnected()
-    {
-        return isConnected;
-    }
-    void resetConnected()
-    {
-        isConnected = false;
-    }
-    void setConnected()
-    {
-        isConnected = true;
-    }
+    bool getConnected() { return isConnected; }
+    void resetConnected() { isConnected = false; }
+    void setConnected() { isConnected = true; }
     void ask_mac();
-    bool getwifiConnected()
-    {
-        return iswifiConnected;
-    }
-    void resetwifiConnected()
-    {
-        iswifiConnected = false;
-    }
-    void setwifiConnected()
-    {
-        iswifiConnected = true;
-    }
+    bool getwifiConnected() { return iswifiConnected; }
+    void resetwifiConnected() { iswifiConnected = false; }
+    void setwifiConnected() { iswifiConnected = true; }
 
 signals:
     void command(QString cmd, QString parameter);
     void send_ble_state(int state);
     void send_rssi(QString state);
-       void send_dongle_ver(QString state);
+    void send_dongle_ver(QString state);
     void send_dongle_wifi(QString state);
-
 
     void send_wifi_rssi(QString state);
     void send_WIFI_state(int state);
     void sendwifimsg(QString data);
+
 private:
     void waitWork(int ms);
-    typedef enum
-    {
-        STATE_IDLE,
-        STATE_RECEIVING_T,
-        STATE_RECEIVING_COMMAND,
-        STATE_RECEIVING_PARAMETER
-    } State;
+    typedef enum { STATE_IDLE, STATE_RECEIVING_T, STATE_RECEIVING_COMMAND, STATE_RECEIVING_PARAMETER } State;
     State state = STATE_IDLE;
     QString cmd, parameter;
-    QSerialPort *serialPort;
+    QSerialPort* serialPort;
     QQueue<char> dataQueue;
     typedef std::function<void(QString)> callback;
     std::map<QString, callback> commandList;
@@ -88,10 +63,12 @@ public slots:
     void sendotaMac(QString mac);
     void sendMac(QString mac);
     void sendBLEDEVICELOG(int state);
-
-
+    void sendOTADATA(int state);
+    void sendMAIN(QString mac);
+    void sendMAINDATA(int state);
+    void sendBOMB(QString devicename,QString rssi, QString connectionInterval, QString command);
 private slots:
     void processCmd(QString cmd, QString parameter);
 };
 
-#endif   // QAT_H
+#endif  // QAT_H

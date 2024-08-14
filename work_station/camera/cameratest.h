@@ -195,9 +195,7 @@ private:
     QTime TestTime;
     State state = STATE_IDLE;
     QTimer *cameraSendTimer = new QTimer(this);
-    QString result = "";
-    QString passValue = "通过";
-    QString failValue = "失败";
+
     bool is_canGoNext = 0;
     QByteArray pictureByteArray = 0;
     QString stringsn;
@@ -230,6 +228,8 @@ private:
     {
         return ui->msgEdit;
     };   // msg输入口
+    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+
     bool displayRectangles;
     bool displayDirty;
 protected:

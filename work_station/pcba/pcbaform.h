@@ -64,6 +64,8 @@ public:
     {
         return ui->msgEdit;
     };   // msg输入口
+    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+
     explicit PcbaForm(int index, QWidget *parent = nullptr);
     ~PcbaForm();
     Ui::PcbaForm *ui;
@@ -225,9 +227,7 @@ private:
     int start_sleep = 0;
 
     QString totalresult = "";
-    // QString result="";
-    QString passValue = "通过";
-    QString failValue = "失败";
+ 
     QString testItem;
     QString testData;
     QString bleMac;
@@ -238,7 +238,6 @@ private:
     int LowRssi;
     int BleHighRssi;
     int BleLowRssi;
-    void borad_test_table_init();
     void borad_test_process();
     void clearDisplay();
     void pcba_test_data_update(const QString &item, const QString &data, const QString &result);

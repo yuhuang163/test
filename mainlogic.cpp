@@ -464,9 +464,9 @@ void MainWindow::solve_frame(void) {
             std::memset(frame_buf, 0, sizeof(frame_buf));
             qDebug() << "删除串口帧数据" << frame_size;
         } else {
-            qDebug() << "串口数据流错误寻找下一帧";
-            qDebug() << "串口数据包头为:"
-                     << QByteArray(reinterpret_cast<char*>(frame_buf), UART_PHY_LAYER_HEAD_SIZE).toHex();
+            // qDebug() << "串口数据流错误寻找下一帧";
+            // qDebug() << "串口数据包头为:"
+            //          << QByteArray(reinterpret_cast<char*>(frame_buf), UART_PHY_LAYER_HEAD_SIZE).toHex();
             // qDebug() << "串口数据为:"
             //          << QByteArray(reinterpret_cast<char *>(frame_buf), 50)
             //                 .toHex();
@@ -485,10 +485,25 @@ void MainWindow::solve_frame(void) {
     }
 }
 // int cameradatasize = 0;
+QString toHex(const QString& text) {
+    QString hexStr;
+    for (auto c : text.toUtf8()) {
+        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(c)));
+    }
+    return hexStr.trimmed();  // 去掉最后的空格
+}
+QString toHex(const QByteArray& data) {
+    QString hexStr;
+    for (auto byte : data) {
+        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(byte)));
+    }
+    return hexStr.trimmed();  // 去掉最后的空格
+}
 
 void MainWindow::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
+    dongleSerialPortBuf.clear();                // 清除缓冲区
 
     int write_len = 0;
     int len = dataTemp.size();
@@ -507,13 +522,20 @@ void MainWindow::readDongleSerialPortData() {
     at->parseCmd(dataTemp);  // at回应用
     pb->parseCmd(dataTemp);
     getmacadress(dataTemp);  // 搜索设备用
+
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
-
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-    QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
 
-    ui->log->appendPlainText(logEntry);
-    dongleSerialPortBuf.clear();  // 清除缓冲区
+    if (dataTemp.contains("内容为:")) {
+        int pos = dataTemp.indexOf("内容为:");
+        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QString hexContent = toHex(subsequentContent);
+        ui->log->appendPlainText(beforeContent + hexContent);
+    } else {
+        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
+        ui->log->appendPlainText(logEntry);
+    }
 }
 
 void MainWindow::refreshDongleUartState(int state) {
@@ -1049,7 +1071,7 @@ void MainWindow::refreshBleState(int state) {
         showlog("已发送禁止休眠");
     } else {
         bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        showlog("蓝牙连接断开");
+        qDebug() << "蓝牙连接断开";
     }
 }
 
@@ -1247,49 +1269,6 @@ void MainWindow::updateMainStyle(QString style) {
     }
 }
 
-void MainWindow::saveToExcel(const QString& filename, const FacUploadNineAlex& x) {
-    QXlsx::Document xlsx(filename);  // 尝试打开现有文件
-
-    // 检查是否已存在名为 "data" 的工作表
-    if (!xlsx.selectSheet("data")) {
-        // 如果不存在，创建新的工作表并写入标题行
-        xlsx.addSheet("data");
-        xlsx.write(1, 1, "timestamp");
-        xlsx.write(1, 2, "AccX");
-        xlsx.write(1, 3, "AccY");
-        xlsx.write(1, 4, "AccZ");
-        xlsx.write(1, 5, "GyroX");
-        xlsx.write(1, 6, "GyroY");
-        xlsx.write(1, 7, "GyroZ");
-    }
-
-    // 获取已存在的工作表中最后一行的行号
-    QXlsx::Worksheet* sheet = dynamic_cast<QXlsx::Worksheet*>(xlsx.currentSheet());
-    int lastRow = sheet ? sheet->dimension().lastRow() : 1;
-    int row = (lastRow == 0) ? 2 : lastRow + 1;  // 如果为空，则从第2行开始写入数据
-
-    // 将数据写入Excel文件
-    for (int i = 0; i < x.data_count; i++) {
-        xlsx.write(row, 1, x.data[i].timestamp);
-        xlsx.write(row, 2, x.data[i].solve_acc_x);
-        xlsx.write(row, 3, x.data[i].solve_acc_y);
-        xlsx.write(row, 4, x.data[i].solve_acc_z);
-        xlsx.write(row, 5, x.data[i].solve_gyro_x);
-        xlsx.write(row, 6, x.data[i].solve_gyro_y);
-        xlsx.write(row, 7, x.data[i].solve_gyro_z);
-        row++;
-
-        QCoreApplication::processEvents();
-    }
-
-    if (xlsx.saveAs(filename)) {
-        qDebug() << "文件保存成功：" << filename;
-        qDebug() << "保存数量为" << x.data_count;
-
-    } else {
-        qDebug() << "文件保存失败：" << filename;
-    }
-}
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {
     QFile csvFile(csvFilename);
     if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -1501,6 +1480,12 @@ void MainWindow::getMac(QString sn_to_search) {
                         ui->macInput_7->setText(mac);
                         on_macInput_7_returnPressed();
                         showlog("开始ota升级");
+                    } else if (ui->is_start_ota->checkState()) {
+                        ui->getMac->clear();
+                        ui->getMac->setFocus();
+                        ui->bleotamacInput->setText(mac);
+                        on_bleotamacInput_returnPressed();
+                        showlog("开始蓝牙ota升级");
                     } else {
                         ui->macInput->setText(mac);
                         on_macInput_returnPressed();
@@ -2552,7 +2537,7 @@ void MainWindow::deleteFile(const QString& remoteUrl) {
 }
 
 void MainWindow::checkAndUpdateFile() {
-    QString remoteDirectoryUrl = "http://192.168.243.6:88/versions/";
+    QString remoteDirectoryUrl = "http://163.177.79.53:16888/versions/";
     QUrl qUrl(remoteDirectoryUrl);
     QNetworkRequest request(qUrl);
 
@@ -2615,7 +2600,7 @@ void MainWindow::checkAndUpdateFile() {
                                               QMessageBox::Yes | QMessageBox::No);
 
                 if (reply == QMessageBox::Yes) {
-                    QString downloadUrl = "http://192.168.243.6:88/versions/" + latestRemoteFile;
+                    QString downloadUrl = "http://163.177.79.53:16888/versions/" + latestRemoteFile;
                     QString savePath = "./" + latestRemoteFile;
                     QNetworkRequest downloadRequest((QUrl(downloadUrl)));
 

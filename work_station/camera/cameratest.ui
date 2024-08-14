@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>804</width>
+    <width>1035</width>
     <height>455</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_5">
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
@@ -118,31 +118,19 @@
          </item>
         </layout>
        </item>
-       <item row="7" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
+       <item row="6" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
-          <widget class="QLabel" name="label_6">
+          <widget class="QLabel" name="tail_sn">
            <property name="text">
-            <string>输入SN 获取mac(mes)：</string>
+            <string>存储尾盖sn:</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="getMac">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
+          <widget class="QLabel" name="macLabel">
            <property name="text">
-            <string/>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
+            <string>蓝牙mac：</string>
            </property>
           </widget>
          </item>
@@ -172,49 +160,12 @@
          </item>
         </layout>
        </item>
-       <item row="3" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <property name="topMargin">
-          <number>0</number>
+       <item row="9" column="0">
+        <widget class="QPushButton" name="stopTest">
+         <property name="text">
+          <string>停止测试</string>
          </property>
-         <item>
-          <widget class="QPlainTextEdit" name="log"/>
-         </item>
-         <item>
-          <widget class="QPlainTextEdit" name="msgEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="focusPolicy">
-            <enum>Qt::NoFocus</enum>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="6" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>存储尾盖sn:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="macLabel">
-           <property name="text">
-            <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        </widget>
        </item>
        <item row="8" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -246,12 +197,71 @@
          </item>
         </layout>
        </item>
-       <item row="9" column="0">
-        <widget class="QPushButton" name="stopTest">
-         <property name="text">
-          <string>停止测试</string>
+       <item row="7" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <property name="leftMargin">
+          <number>0</number>
          </property>
-        </widget>
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>输入SN 获取mac(mes)：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="getMac">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="placeholderText">
+            <string>切换英文输入再扫码</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0">
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>日志</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPlainTextEdit" name="msgEdit">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPlainTextEdit" name="log"/>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

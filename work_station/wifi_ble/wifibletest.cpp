@@ -7,10 +7,6 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
 #endif
-// extern "C"   // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
-// {
-// #include "lib/nfc/dcrf32.h"
-// }
 
 void wifibletest::on_pushButton_clicked() {
     // ui->macInput->setText("f4:12:fa:c5:51:c6");
@@ -24,10 +20,6 @@ void wifibletest::on_pushButton_clicked() {
     on_macInput_returnPressed();
     // // usb-> getlxMEASure();
     // // waitWork(1000);
-
-    // showlog("正在获取牙刷电量");
-    // ui->NfcComboBox->setCurrentText("COM134");
-    // showlog("保存mac_sn文件成功");
 }
 
 wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
@@ -36,7 +28,6 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
     updateMainStyle("Ubuntu.qss");
     scanSerialPorts();  // 要搜索一下一开始
 
-    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -100,6 +91,7 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
 
     ui->tabWidget->setTabText(0, "信号测试");
     // on_nfcComFresh_clicked();
+    testResultTableInit();
 }
 
 wifibletest::~wifibletest() { delete ui; }
@@ -114,12 +106,28 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             TestResult = failValue;
             iswifibleContinue = false;
             on_stopTest_clicked();
-
+            TestItem test;
+            test.testItem = "subpid";
+            test.testData = value;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
             showlog("停止运行");
             showlog("没匹配到subpid");
             return;
         }
-
+        TestItem test;
+        test.testItem = "subpid";
+        test.testData = value;
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         if (QString(data.product_name).compare("U7P") == 0) {
             nfcdataHeadText = "033BD2023668772001004800324F3130" + value + "810800272000141785911410";
             showlog("当前nfc写入的是U7P!");
@@ -213,9 +221,53 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         TestResult = failValue;
         iswifibleContinue = false;
         showlog("停止运行");
+        // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+        waitWork(100);
+        ui->macInput->setDisabled(0);
+        ui->getMac->setDisabled(0);
 
-        on_stopTest_clicked();
+        ui->macInput->clear();
+        ui->getMac->clear();
+        // ui->getMac->setFocus();
+        on_disconnectButton_clicked();
+
+        ui->test_result->setText("FAIL");
+        ui->test_result->setStyleSheet(
+            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+            "border-radius: 10px; padding: 10px; text-align: center; ");
+
+        // on_stopTest_clicked();
     }
+
+    TestItem test;
+    test.testItem = "老化状态";
+    test.testData = QString::number(data.ageing_state);
+    test.ask = ageStates;
+    testItems.append(test);
+    test.testItem = "压感版本";
+    test.testData = QString::fromUtf8(data.presure_version);
+    test.ask = pressVersions;
+    testItems.append(test);
+    test.testItem = "蓝牙版本";
+    test.testData = QString::fromUtf8(data.ble_version);
+    test.ask = bleVersions;
+    testItems.append(test);
+    test.testItem = "电机版本";
+    test.testData = QString::fromUtf8(data.motor_version);
+    test.ask = motorVersions;
+    testItems.append(test);
+    test.testItem = "资源版本";
+    test.testData = QString::fromUtf8(data.res_version);
+    test.ask = resourceVersions;
+    testItems.append(test);
+    test.testItem = "软件版本";
+    test.testData = QString::fromUtf8(data.soft_version);
+    test.ask = softwareVersions;
+    testItems.append(test);
+
+    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    updateTestData(testItems);
+    testItems.clear();
 }
 
 void wifibletest::refreshBattaryData(FacDevInfo adc) {
@@ -262,11 +314,15 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
     is_battary_test = 1;
     if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "通过";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
 
         charageresult = "通过";
         voltageresult = "通过";
@@ -274,11 +330,15 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
     }
     if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "充电断开" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("充电状态不通过");
         charageresult = "失败";
         voltageresult = "通过";
@@ -288,11 +348,15 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary)
 
     {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("电量测试不通过");
         voltageresult = "失败";
         charageresult = "通过";
@@ -300,11 +364,15 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
     }
     if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("电量和充电测试都不通过");
         voltageresult = "失败";
         charageresult = "失败";
@@ -560,11 +628,15 @@ void wifibletest::startTask() {
                         rssitestcount++;
                         if (rssitestcount >= RssiTestTime)  // 蓝牙信号可以
                         {
-                            TestItem bleRssi;
-                            bleRssi.testItem = "蓝牙信号强度测试";
-                            bleRssi.testData = BLE_RSSI;
-                            bleRssi.testResult = "通过";
-                            testItems.append(bleRssi);
+                            TestItem test;
+                            test.testItem = "蓝牙信号强度测试";
+                            test.testData = BLE_RSSI;
+                            test.testResult = "通过";
+                            test.ask = "通过";
+                            testItems.append(test);
+                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                            testResultTableUpdate(testItems);
+                            testItems.clear();
                             showlog("蓝牙测试通过" + QString::number(intblerssi) + "测试次数为" +
                                     QString::number(rssitestcount));
 
@@ -584,12 +656,16 @@ void wifibletest::startTask() {
 
                         if (rssitestfailcount >= RssiTestTime)  // 蓝牙信号不可以
                         {
-                            TestItem bleRssi;
+                            TestItem test;
 
-                            bleRssi.testItem = "蓝牙信号强度测试";
-                            bleRssi.testData = BLE_RSSI;
-                            bleRssi.testResult = "失败";
-                            testItems.append(bleRssi);
+                            test.testItem = "蓝牙信号强度测试";
+                            test.testData = BLE_RSSI;
+                            test.testResult = "失败";
+                            test.ask = "通过";
+                            testItems.append(test);
+                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                            testResultTableUpdate(testItems);
+                            testItems.clear();
                             TestResult = failValue;
                             qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
                             qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
@@ -650,12 +726,16 @@ void wifibletest::startTask() {
                             pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
                             //   pb->set_wifi_disconnect();
                             wifiresult = "通过";
-                            TestItem wifiRssi;
+                            TestItem test;
 
-                            wifiRssi.testItem = "WIFI信号强度";
-                            wifiRssi.testData = WIFI_RSSI;
-                            wifiRssi.testResult = "通过";
-                            testItems.append(wifiRssi);
+                            test.testItem = "WIFI信号强度";
+                            test.testData = WIFI_RSSI;
+                            test.testResult = "通过";
+                            test.ask = "通过";
+                            testItems.append(test);
+                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                            testResultTableUpdate(testItems);
+                            testItems.clear();
                             sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                             state = STATE_WATI_CORRECT_BATTARY;
                             rssitestcount = 0;
@@ -672,12 +752,16 @@ void wifibletest::startTask() {
                             pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
                             //     pb->set_wifi_disconnect();
                             TestResult = failValue;
-                            TestItem wifiRssi;
+                            TestItem test;
 
-                            wifiRssi.testItem = "WIFI信号强度";
-                            wifiRssi.testData = WIFI_RSSI;
-                            wifiRssi.testResult = TestResult;
-                            testItems.append(wifiRssi);
+                            test.testItem = "WIFI信号强度";
+                            test.testData = WIFI_RSSI;
+                            test.testResult = TestResult;
+                            test.ask = "通过";
+                            testItems.append(test);
+                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                            testResultTableUpdate(testItems);
+                            testItems.clear();
                             qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                             showlog("wifi不合格信号强度" + WIFI_RSSI);
                             rssitestfailcount = 0;
@@ -713,12 +797,16 @@ void wifibletest::startTask() {
                     showlog("充电电流测试失败：超时");
                     showlog("电流测量值为" + QString::number(measure_ammeter));
                     currentresult = "失败";
-                    TestItem chargeAmmeter;
+                    TestItem test;
 
-                    chargeAmmeter.testItem = "充电电流";
-                    chargeAmmeter.testData = measure_ammeter;
-                    chargeAmmeter.testResult = currentresult;
-                    testItems.append(chargeAmmeter);
+                    test.testItem = "充电电流";
+                    test.testData = measure_ammeter;
+                    test.testResult = currentresult;
+                    test.ask = "通过";
+                    testItems.append(test);
+                    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
                     TestResult = failValue;
                     state = STATE_SAVE_RESULT;
 
@@ -730,11 +818,15 @@ void wifibletest::startTask() {
                     waittime->stop();
                     currentresult = "通过";
                     state = STATE_SAVE_RESULT;
-                    TestItem chargeAmmeter;
-                    chargeAmmeter.testItem = "充电电流";
-                    chargeAmmeter.testData = measure_ammeter;
-                    chargeAmmeter.testResult = currentresult;
-                    testItems.append(chargeAmmeter);
+                    TestItem test;
+                    test.testItem = "充电电流";
+                    test.testData = measure_ammeter;
+                    test.testResult = currentresult;
+                    test.ask = "通过";
+                    testItems.append(test);
+                    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
                 } else {
                     if (pack.factory == "lx" || pack.factory == "jj") {
                         usb->getlxMEASure(getIndex());
@@ -883,6 +975,8 @@ void wifibletest::on_pushButton_2_clicked() {
 }
 
 void wifibletest::on_getMac_returnPressed() {
+    testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);
@@ -1565,7 +1659,7 @@ int wifibletest::findNfcDevicePort(QString name) {
     HANDLE icdev = (HANDLE)-1;
     unsigned char buff_1[8];
     int k = 100;
-
+    qDebug() << "查询的设备名字为:" << name;
     for (int i = 0; i < 10; i++) {
         k = k + i;
         icdev = dc_init(k, 115200);

@@ -41,15 +41,15 @@ public:
     {
         return ui->msgEdit;
     };   // msg输入口
+    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+
 private:
 
     double voltage=0;
 
-    QString result = "";
     double standbattary = 0;
     int is_battary_test = 0;
-    QString passValue = "通过";
-    QString failValue = "失败";
+
     typedef enum
     {
         STATE_IDLE,           // 休眠状态

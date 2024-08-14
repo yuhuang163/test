@@ -35,8 +35,9 @@ screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
     showlog("model=" + pack.model);
     showlog("line=" + pack.line);
     showlog("action=" + pack.action);
-
     showlog("machineNo=" + pack.machineNo);
+    testResultTableInit();
+
 }
 
 void screentest::refreshLcdControl(FacLcdControl style) {
@@ -325,7 +326,11 @@ void screentest::startTask()  // 编写六轴校准的代码
                 test.testItem = "屏幕测试";
                 test.testData = "";
                 test.testResult = result;
-                testItems.append(test);
+                test.ask = "通过";
+                                          testItems.append(test);
+                    log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
 
                 log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
@@ -445,6 +450,8 @@ void screentest::getMac(QString sn_to_search) {
     }
 }
 void screentest::on_getMac_returnPressed() {
+       testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);

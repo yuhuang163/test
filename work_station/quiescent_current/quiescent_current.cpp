@@ -22,7 +22,7 @@ quiescent_current::quiescent_current(int index, QWidget *parent)
     ui->mes_state->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 
-    quiescent_current_test_table_init();
+    testResultTableInit();
 
     connect(waittime, &QTimer::timeout,
             [=]()
@@ -91,6 +91,7 @@ void quiescent_current::disconnect_dongle()
     on_disconnectButton_clicked();
 }
 
+
 void quiescent_current::refreshBaseData(FacGetDevBaseInfo data)
 {
     if (refresh_base_times)
@@ -120,6 +121,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data)
         QString pressureSenseVersion =
             settings.value("ProductInfo/Pressure_Sense_Version").toString();
         QString imuId = settings.value("ProductInfo/IMU_ID").toString();
+        QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
 
         if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
             data.presure_version == pressureSenseVersion && data.product_name == productName &&
@@ -137,141 +139,74 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data)
             base_state = 2;
         }
 
-        testItem = "产品名字";
-        testData = data.product_name;
-        if (testData == productName)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "算法版本号";
-        testData = data.algo_version;
-        if (testData == algorithmVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "硬件版本";
-        testData = data.hw_version;
-        if (testData == hardwareVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
 
-        testItem = "压感版本";
-        testData = data.presure_version;
-        if (testData == pressureSenseVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
+        TestItem test;
 
-        testItem = "APP的pb版本";
-        testData = QString("%1").arg(data.pb_phone_ver);
-        if (testData == appProtocolVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
+        test.testItem = "蓝牙版本";
+        test.testData = QString::fromUtf8(data.ble_version);
+        test.ask = ble_ver;
+        testItems.append(test);
 
-        testItem = "工厂的pb版本";
-        testData = QString("%1").arg(data.pb_factory_ver);
-        if (testData == factoryProtocolVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
+        test.testItem = "电机版本";
+        test.testData = QString::fromUtf8(data.motor_version);
+        test.ask = motorVersion;
+        testItems.append(test);
 
-        testItem = "软件版本";
-        testData = data.soft_version;
-        if (testData == softwareVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "资源版本";
-        testData = data.res_version;
-        if (testData == resourceVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "电机版本";
-        testData = data.motor_version;
-        if (testData == motorVersion)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
+        test.testItem = "资源版本";
+        test.testData = QString::fromUtf8(data.res_version);
+        test.ask = resourceVersion;
+        testItems.append(test);
+        test.testItem = "软件版本";
+        test.testData = QString::fromUtf8(data.soft_version);
+        test.ask = softwareVersion;
+        testItems.append(test);
+
+
+
+        test.testItem = "产品名字";
+        test.testData = QString::fromUtf8(data.product_name);
+        test.ask = productName;
+        testItems.append(test);
+        test.testItem = "硬件版本";
+        test.testData = QString::fromUtf8(data.hw_version);
+        test.ask = hardwareVersion;
+        testItems.append(test);
+
+        test.testItem = "算法版本号";
+        test.testData = QString::fromUtf8(data.algo_version);
+        test.ask = algorithmVersion;
+        testItems.append(test);
+
+        test.testItem = "压感版本";
+        test.testData = QString::fromUtf8(data.presure_version);
+        test.ask = pressureSenseVersion;
+        testItems.append(test);
+
+        test.testItem = "六轴id";
+        test.testData =  QString::number(data.imu_id);
+        test.ask = imuId;
+        testItems.append(test);
+
+        test.testItem = "APP的pb版本";
+        test.testData =   QString("%1").arg(data.pb_phone_ver);
+        test.ask = appProtocolVersion;
+        testItems.append(test);
+
+        test.testItem = "工厂的pb版本";
+        test.testData =   QString("%1").arg(data.pb_factory_ver);
+        test.ask = factoryProtocolVersion;
+        testItems.append(test);
+
+
+        log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+        updateTestData(testItems);
+        testItems.clear();
+
+
     }
 }
 
-void quiescent_current::pcba_test_data_update(const QString &item, const QString &data,
-                                              const QString &result)
-{
-    TestItem qc;
-    qc.testItem = item;
-    qc.testData = data;
-    qc.testResult = result;
-    testItems.append(qc);
 
-    // 获取当前时间戳
-    //  QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-
-    // 插入新的一行
-    int row = ui->show_quiescent_current_test_result->rowCount();
-    ui->show_quiescent_current_test_result->insertRow(row);
-
-    // 自动滚动到表格底部
-    ui->show_quiescent_current_test_result->scrollToBottom();
-
-    // 设置每列的数据
-    // ui->show_quiescent_current_test_result->setItem(row, 0, new QTableWidgetItem(timestamp));
-    ui->show_quiescent_current_test_result->setItem(row, 0, new QTableWidgetItem(item));
-    ui->show_quiescent_current_test_result->setItem(row, 1, new QTableWidgetItem(data));
-
-    // 设置结果列的数据，假设结果是一个字符串
-    QTableWidgetItem *resultItem = new QTableWidgetItem(result);
-
-    // 设置失败状态的背景颜色为红色
-    if (result == "失败")
-    {
-        resultItem->setBackground(QBrush(Qt::red));
-    }
-    if (result == "通过")
-    {
-        resultItem->setBackground(QBrush(Qt::green));
-    }
-    ui->show_quiescent_current_test_result->setItem(row, 2, resultItem);
-}
 
 void quiescent_current::refreshPeriphData(FacGetPeriphState data)
 {
@@ -288,6 +223,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data)
         bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
         bool magneticStatus = settings.value("PeripheralStatus/Magnetic_Status").toBool();
         bool pressureStatus = settings.value("PeripheralStatus/Pressure_Status").toBool();
+        bool audioState = settings.value("PeripheralStatus/Audio_Status").toBool();
 
         if (data.flash_state == flashStatus && data.imu_state == imuStatus &&
             data.press_state == pressureStatus && data.magnet_state == magneticStatus)
@@ -299,46 +235,43 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data)
             periph_state = 2;
         }
 
-        testItem = "内存状态";
-        testData = QString::number(data.flash_state);
-        if (data.flash_state == flashStatus)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
+
+        TestItem test;
+
+        test.testItem = "功放状态";
+        test.testData =  QString::number(data.audio_state);
+        test.ask =  QString::number(audioState);
+        testItems.append(test);
+
+        test.testItem = "内存状态";
+        test.testData =  QString::number(data.flash_state);
+        test.ask = QString::number(flashStatus);;
+        testItems.append(test);
+
+        test.testItem = "六轴状态";
+        test.testData =  QString::number(data.imu_state);
+        test.ask = QString::number(imuStatus);
+        testItems.append(test);
+
+        if (pack.product == "P20P")
+            test.testItem = "马达状态";
         else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "六轴状态";
-        testData = QString::number(data.imu_state);
-        if (data.imu_state == imuStatus)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "地磁状态";
-        testData = QString::number(data.magnet_state);
-        if (data.magnet_state == magneticStatus)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
-        testItem = "压感状态";
-        testData = QString::number(data.press_state);
-        if (data.press_state == pressureStatus)
-        {
-            pcba_test_data_update(testItem, testData, passValue);
-        }
-        else
-        {
-            pcba_test_data_update(testItem, testData, failValue);
-        }
+           test.testItem = "地磁状态";
+        test.testData =  QString::number(data.magnet_state);
+        test.ask = QString::number(magneticStatus);
+        testItems.append(test);
+
+
+        test.testItem = "压感状态";
+        test.testData =  QString::number(data.press_state);
+        test.ask = QString::number(pressureStatus);
+        testItems.append(test);
+        log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+
+        updateTestData(testItems);
+        testItems.clear();
+
+
     }
 }
 
@@ -504,26 +437,11 @@ void quiescent_current::on_macInput_returnPressed()
     }
 }
 
-void quiescent_current::quiescent_current_test_table_init()
-{
-    // 初始化表格
-    ui->show_quiescent_current_test_result->setColumnCount(
-        3);   // 三列，分别为Mac地址、SN码和时间戳
-    ui->show_quiescent_current_test_result->setRowCount(0);   // 初始行数为0，因为还没有数据
 
-    // 设置表格标题
-    QStringList headers;
-    headers << "项目" << "数据" << "结果";
-    ui->show_quiescent_current_test_result->setHorizontalHeaderLabels(headers);
-    // 设置表格自适应列宽
-    ui->show_quiescent_current_test_result->horizontalHeader()->setSectionResizeMode(
-        QHeaderView::ResizeToContents);
-}
 void quiescent_current::clearDisplay()
 {
     ui->msgEdit->clear();
-    ui->show_quiescent_current_test_result->clear();
-    quiescent_current_test_table_init();
+    testResultTableInit();
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet(
         "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -547,7 +465,9 @@ void quiescent_current::refreshBleState(int state)
     else
     {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        showlog("蓝牙连接断开");
+        qDebug() << "蓝牙连接断开";
+
+       // showlog("蓝牙连接断开");
     }
 }
 
@@ -935,9 +855,19 @@ void quiescent_current::startTask()
                 }
                 showlog("静态电流测试失败：超时");
                 showlog("电流测量值为" + QString::number(measure_ammeter));
-                testItem = "静态电流(ma)";
                 testData = QString::number(measure_ammeter);
-                pcba_test_data_update(testItem, testData, failValue);
+
+                TestItem test;
+                test.testItem = "静态电流(ma)";
+                test.testData =testData;
+                test.testResult = failValue;
+                test.ask = "通过";
+                testItems.append(test);
+                log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
+
+
                 state = STATE_SAVE_RESULT;
                 totalresult = failValue;
                 break;
@@ -959,9 +889,18 @@ void quiescent_current::startTask()
                     send_end_testPass(pack);
                 }
                 showlog("静态电流正常");
-                testItem = "静态电流(ma)";
                 testData = QString::number(measure_ammeter);
-                pcba_test_data_update(testItem, testData, passValue);
+
+                TestItem test;
+                test.testItem ="静态电流(ma)";
+                test.testData =testData;
+                test.testResult = passValue;
+                test.ask = "通过";
+                testItems.append(test);
+                log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
+
                 waittime->stop();
                 totalresult = passValue;
                 state = STATE_SAVE_RESULT;

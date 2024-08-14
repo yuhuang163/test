@@ -113,6 +113,10 @@ void Qat::sendMac(QString mac) {
     QString s = "AT+MAC=" + mac + "\r\n";
     sendCmd(s);
 }
+void Qat::sendMAIN(QString mac) {
+    QString s = "AT+MAIN=" + mac + "\r\n";
+    sendCmd(s);
+}
 void Qat::sendBLELOG(int state) {
     if (state > 1)
         state = 1;
@@ -123,7 +127,19 @@ void Qat::sendBLEDEVICELOG(int state) {
     QString s = "AT+BLEDEVICELOG=" + QString::number(state) + "\r\n";
     sendCmd(s);
 }
+void Qat::sendOTADATA(int state) {
+    QString s = "AT+OTADATA=" + QString::number(state) + "\r\n";
+    sendCmd(s);
+}
+void Qat::sendMAINDATA(int state) {
+    QString s = "AT+MAINDATA=" + QString::number(state) + "\r\n";
+    sendCmd(s);
+}
 
+void Qat::sendBOMB(QString devicename, QString rssi, QString connectionInterval, QString command) {
+    QString s = "AT+BOMB=" + devicename + "," + rssi + "," + connectionInterval + "," + command + "\r\n";
+    sendCmd(s);
+}
 void Qat::ask_mac() {
     QString s = "AT+GMAC\r\n";
     sendCmd(s);
@@ -134,10 +150,8 @@ void Qat::registerCommand() {
     commandList["AT+BLERSSI"] = std::bind(&Qat::rssi, this, std::placeholders::_1);
     commandList["AT+DONGLEVER"] = std::bind(&Qat::dongle_ver, this, std::placeholders::_1);
     commandList["AT+WIFINAME"] = std::bind(&Qat::dongle_wifi, this, std::placeholders::_1);
-
     commandList["AT+CONNECT_SUCCESS"] = std::bind(&Qat::connected, this, std::placeholders::_1);
     commandList["AT+DISCONNECT"] = std::bind(&Qat::disconnected, this, std::placeholders::_1);
-
     commandList["AT+WIFIRSSI"] = std::bind(&Qat::wifi_rssi, this, std::placeholders::_1);
     commandList["AT+WIFI_CONNECT_SUCCESS"] = std::bind(&Qat::WIFI_connected, this, std::placeholders::_1);
     commandList["AT+WIFI_DISCONNECT"] = std::bind(&Qat::WIFI_disconnected, this, std::placeholders::_1);
@@ -166,6 +180,8 @@ void Qat::WIFI_disconnected(QString p) {
 }
 
 void Qat::connected(QString p) {
+    qDebug() << "at蓝牙连接成功";
+
     emit send_ble_state(1);
     isConnected = true;
 }

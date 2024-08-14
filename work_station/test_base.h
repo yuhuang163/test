@@ -11,6 +11,8 @@
 #include <qlog.h>
 
 #include "Abini.h"
+#include "qheaderview.h"
+#include "qtablewidget.h"
 extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
 {
 #include "lib/nfc/dcrf32.h"
@@ -35,6 +37,8 @@ public:
     virtual QLineEdit* macInputLineEdit() { return nullptr; };        // mac地址输入口
     virtual QPlainTextEdit* logEdit() { return nullptr; };            // log输入口
     virtual QPlainTextEdit* msgEdit() { return nullptr; };            // msg输入口
+    virtual QTableWidget* testResultTable() { return nullptr; };      // 测试结果表格输入口
+
     int jigBaudRate = 115200;
     int productBaudRate = 1000000;
     int usbBaudRate = 115200;
@@ -45,14 +49,19 @@ public:
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc);
+    void testResultTableUpdate(const QVector<TestItem>& testItems);
+    void testResultTableInit();
+    void updateTestData(QVector<TestItem>& testItems);
 
-private:
+private:  // 通用变量
     void initData();
 
-    // 通用变量
 public:
     QString macAddress = "没有mac地址";
     QString productName = "Y20";
+    QString result = "";
+    QString passValue = "通过";
+    QString failValue = "失败";
     QVector<TestItem> testItems;
     MesPacketData pack;
     QString snPattern;

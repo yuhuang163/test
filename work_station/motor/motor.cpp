@@ -13,7 +13,16 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
 #endif
-
+void motor::on_pushButton_2_clicked() {
+    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    ui->macInput->setText("E1:51:07:34:0B:F8");
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    ui->macInput->setText("e2:66:07:34:2d:f7");
+    ui->macInput->setText("cb:32:09:30:95:f7");
+    ui->macInput->setText("b4:56:5d:bf:57:9d");
+    // ui->macInput->setText("74:4D:BD:95:80:7e");
+    on_macInput_returnPressed();
+}
 motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     m_index = index;
 
@@ -42,6 +51,7 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
         ui->nfc_sn->setDisabled(1);
     else
         ui->nfc_sn->setDisabled(0);
+    testResultTableInit();
 }
 
 void motor::refreshMotorCaliMsg(QString msg) {
@@ -156,6 +166,8 @@ void motor::refreshBleState(int state) {
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
+        qDebug() << "蓝牙连接断开";
+
         // showlog("蓝牙连接断开");
     }
 }
@@ -171,17 +183,6 @@ void motor::on_connectButton_clicked() {
     openDongleSerialPort();
     ui->comNameCombo->setEnabled(false);
     ui->connectButton->setEnabled(false);
-}
-
-void motor::on_pushButton_2_clicked() {
-    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    ui->macInput->setText("E1:51:07:34:0B:F8");
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    ui->macInput->setText("e2:66:07:34:2d:f7");
-    ui->macInput->setText("cb:32:09:30:95:f7");
-    ui->macInput->setText("c9:76:09:30:95:f6");
-    // ui->macInput->setText("74:4D:BD:95:80:7e");
-    on_macInput_returnPressed();
 }
 
 void motor::on_motor_cali_clicked() {
@@ -355,6 +356,27 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
         ui->getMac->setFocus();
 #endif
     }
+    TestItem test;
+    test.testItem = "蓝牙版本";
+    test.testData = QString::fromUtf8(data.ble_version);
+    test.ask = bleVersions;
+    testItems.append(test);
+    test.testItem = "电机版本";
+    test.testData = QString::fromUtf8(data.motor_version);
+    test.ask = motorVersions;
+    testItems.append(test);
+    test.testItem = "资源版本";
+    test.testData = QString::fromUtf8(data.res_version);
+    test.ask = resourceVersions;
+    testItems.append(test);
+    test.testItem = "软件版本";
+    test.testData = QString::fromUtf8(data.soft_version);
+    test.ask = softwareVersions;
+    testItems.append(test);
+
+    log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    updateTestData(testItems);
+    testItems.clear();
 }
 void motor::refreshBattaryData(FacDevInfo adc) {
     QString chargeStateStr;
@@ -383,18 +405,26 @@ void motor::refreshBattaryData(FacDevInfo adc) {
     // chargestate = match.captured(2);
     is_battary_test = 1;
     if (adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "通过";
-        testItems.append(charge);
-        showlog("电量通过");
+        TestItem test;
+        test.testItem = "电压测试";
+        test.testData = QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        showlog("电压通过");
     } else {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "当前电压为" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "电压测试";
+        test.testData = "当前电压为" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("电压太低" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
         result = failValue;
         state = STATE_SAVE_RESULT;
@@ -615,8 +645,11 @@ void motor::startTask() {
                 test.testItem = "电机校准";
                 test.testData = "";
                 test.testResult = result;
+                test.ask = "通过";
                 testItems.append(test);
-
+                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
                 log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 sn = "";
@@ -734,7 +767,11 @@ void motor::startTest_task() {
                 test.testItem = "电机测试";
                 test.testData = "";
                 test.testResult = result;
+                test.ask = "通过";
                 testItems.append(test);
+                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
                 log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 sn = "";
@@ -819,6 +856,8 @@ void motor::on_damping_open_clicked() { pb->set_motor_damping_state(1); }
 void motor::on_damping_close_clicked() { pb->set_motor_damping_state(0); }
 
 void motor::on_getMac_returnPressed() {
+    testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);
@@ -867,7 +906,6 @@ void motor::on_macInput_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    waitWork(WAITTIME);
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配

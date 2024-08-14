@@ -24,53 +24,6 @@
        <string>六轴校准</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="2" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QPlainTextEdit" name="log"/>
-         </item>
-         <item>
-          <widget class="QPlainTextEdit" name="msgEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="focusPolicy">
-            <enum>Qt::NoFocus</enum>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="10" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QComboBox" name="comNameCombo"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="connectButton">
-           <property name="text">
-            <string>连接串口</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="disconnectButton">
-           <property name="text">
-            <string>断开连接</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="1" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <item>
@@ -185,6 +138,27 @@
          </item>
         </layout>
        </item>
+       <item row="11" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QComboBox" name="comNameCombo"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="connectButton">
+           <property name="text">
+            <string>连接串口</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="disconnectButton">
+           <property name="text">
+            <string>断开连接</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="0" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <property name="topMargin">
@@ -225,7 +199,28 @@
          </item>
         </layout>
        </item>
-       <item row="3" column="0" colspan="2">
+       <item row="9" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_10">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="pushButton">
+           <property name="text">
+            <string>测试(开发用)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="stopimuCaliButton">
+           <property name="text">
+            <string>停止六轴校准</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="QLabel" name="test_result">
@@ -259,7 +254,7 @@
          </item>
         </layout>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_4">
          <property name="topMargin">
           <number>0</number>
@@ -327,22 +322,37 @@
          </item>
         </layout>
        </item>
-       <item row="8" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_10">
+       <item row="2" column="0" colspan="2">
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>日志</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout">
          <property name="topMargin">
           <number>0</number>
          </property>
          <item>
-          <widget class="QPushButton" name="pushButton">
-           <property name="text">
-            <string>测试(开发用)</string>
-           </property>
-          </widget>
+          <widget class="QPlainTextEdit" name="log"/>
          </item>
          <item>
-          <widget class="QPushButton" name="stopimuCaliButton">
-           <property name="text">
-            <string>停止六轴校准</string>
+          <widget class="QPlainTextEdit" name="msgEdit">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -355,6 +365,27 @@
        <string>待拓展</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_13">
+         <item>
+          <widget class="QLabel" name="bleStatusLabel">
+           <property name="text">
+            <string>蓝牙连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="p12">
+           <property name="text">
+            <string>12</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="7" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_9">
          <property name="leftMargin">
@@ -371,6 +402,24 @@
           <widget class="QPushButton" name="imuCaliButton">
            <property name="text">
             <string>六轴校准</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QLabel" name="tail_sn">
+           <property name="text">
+            <string>芯片存储的尾盖sn：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
            </property>
           </widget>
          </item>
@@ -462,45 +511,6 @@
           <widget class="QLabel" name="battary_value">
            <property name="text">
             <string>电量为：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="1" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>芯片存储的尾盖sn：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="macLabel">
-           <property name="text">
-            <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="4" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_13">
-         <item>
-          <widget class="QLabel" name="bleStatusLabel">
-           <property name="text">
-            <string>蓝牙连接：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="p12">
-           <property name="text">
-            <string>12</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
            </property>
           </widget>
          </item>

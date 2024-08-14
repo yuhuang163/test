@@ -35,6 +35,7 @@ ageing::ageing(int index, QWidget* parent) :
     showlog("line=" + pack.line);
     showlog("action=" + pack.action);
     showlog("model=" + pack.model);
+    testResultTableInit();
 }
 void ageing::refreshMesState(int state) {
     if (state)
@@ -54,6 +55,16 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         } else {
             flash_state = 2;
         }
+
+        TestItem test;
+        test.testItem = "内存状态";
+        test.testData =  QString::number(data.flash_state);
+        test.ask = flashStatus;
+        testItems.append(test);
+        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        updateTestData(testItems);
+        testItems.clear();
+
     }
 }
 void ageing::getTestValue(const int mechines, const QString value) {
@@ -412,9 +423,14 @@ void ageing::startTask() {
                         showlog("电量正常" + QString::number(voltage));
                         TestItem test;
                         test.testItem = "当前电压";
-                        test.testData = voltage;
+                        test.testData = QString::number(voltage);
                         test.testResult = "通过";
+
+                        test.ask = "通过";
                         testItems.append(test);
+                        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                         pb->get_periph_state();
                         state = STATE_CHECK_FLASH;
                     }
@@ -423,9 +439,13 @@ void ageing::startTask() {
                         showlog("当前电压低为" + QString::number(voltage));
                         TestItem test;
                         test.testItem = "当前电压";
-                        test.testData = voltage;
+                        test.testData = QString::number(voltage);
                         test.testResult = "失败";
+                        test.ask = "通过";
                         testItems.append(test);
+                        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                         result = failValue;
                         state = STATE_SAVE_RESULT;
                     }
@@ -496,7 +516,11 @@ void ageing::startTask() {
                 test.testItem = "老化测试";
                 test.testData = "";
                 test.testResult = result;
+                test.ask = "通过";
                 testItems.append(test);
+                log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
@@ -588,6 +612,8 @@ QString ageing::getValueBySN(const QString& sn) {
     return value;
 }
 void ageing::on_getMac_returnPressed() {
+    testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);

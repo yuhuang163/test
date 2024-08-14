@@ -289,7 +289,7 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
        <item row="0" column="0">
-        <widget class="QTableWidget" name="show_borad_test_result">
+        <widget class="QTableWidget" name="testResultTable">
          <property name="focusPolicy">
           <enum>Qt::NoFocus</enum>
          </property>

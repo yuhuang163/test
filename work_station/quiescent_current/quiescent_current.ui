@@ -15,7 +15,7 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <widget class="QTableWidget" name="show_quiescent_current_test_result">
+    <widget class="QTableWidget" name="testResultTable">
      <property name="enabled">
       <bool>true</bool>
      </property>

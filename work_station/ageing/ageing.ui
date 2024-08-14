@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>734</width>
+    <width>642</width>
     <height>434</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>老化工站</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_3">
+  <layout class="QGridLayout" name="gridLayout_5">
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
@@ -44,14 +44,31 @@
             <string/>
            </property>
            <layout class="QGridLayout" name="gridLayout">
-            <item row="8" column="0">
-             <widget class="QLabel" name="flash_state">
-              <property name="text">
-               <string>Flash State:</string>
+            <item row="3" column="0" colspan="2">
+             <layout class="QHBoxLayout" name="horizontalLayout_13">
+              <property name="topMargin">
+               <number>0</number>
               </property>
-             </widget>
+              <item>
+               <widget class="QLabel" name="label_5">
+                <property name="text">
+                 <string>输入SN获取mac:(文件||mes）</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="getMac">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="placeholderText">
+                 <string>切换英文输入再扫码</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
-            <item row="5" column="0" colspan="4">
+            <item row="5" column="0" colspan="2">
              <layout class="QHBoxLayout" name="horizontalLayout_2">
               <item>
                <widget class="QLabel" name="label_2">
@@ -81,30 +98,42 @@
               </item>
              </layout>
             </item>
-            <item row="2" column="0" colspan="4">
-             <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <item row="8" column="0">
+             <widget class="QLabel" name="flash_state">
+              <property name="text">
+               <string>Flash State:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="10" column="0" colspan="2">
+             <layout class="QHBoxLayout" name="horizontalLayout_6">
               <item>
-               <widget class="QPlainTextEdit" name="log"/>
+               <widget class="QPushButton" name="pushButton">
+                <property name="text">
+                 <string>测试(开发用)</string>
+                </property>
+               </widget>
               </item>
               <item>
-               <widget class="QPlainTextEdit" name="msgEdit">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
+               <widget class="QComboBox" name="comNameCombo"/>
+              </item>
+              <item>
+               <widget class="QPushButton" name="connectButton">
+                <property name="text">
+                 <string>连接串口</string>
                 </property>
-                <property name="focusPolicy">
-                 <enum>Qt::NoFocus</enum>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="disconnectButton">
+                <property name="text">
+                 <string>断开连接</string>
                 </property>
                </widget>
               </item>
              </layout>
             </item>
-            <item row="0" column="0" rowspan="2" colspan="4">
+            <item row="0" column="0" rowspan="2" colspan="2">
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <property name="topMargin">
                <number>0</number>
@@ -164,31 +193,7 @@
               </item>
              </layout>
             </item>
-            <item row="3" column="0" colspan="4">
-             <layout class="QHBoxLayout" name="horizontalLayout_13">
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="label_5">
-                <property name="text">
-                 <string>输入SN获取mac:(文件||mes）</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="getMac">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="placeholderText">
-                 <string>切换英文输入再扫码</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="6" column="0" rowspan="2" colspan="4">
+            <item row="6" column="0" rowspan="2" colspan="2">
              <layout class="QHBoxLayout" name="horizontalLayout_3">
               <item>
                <widget class="QLabel" name="test_result">
@@ -212,40 +217,15 @@
               </item>
              </layout>
             </item>
-            <item row="10" column="0" colspan="4">
-             <layout class="QHBoxLayout" name="horizontalLayout_6">
-              <item>
-               <widget class="QPushButton" name="pushButton">
-                <property name="text">
-                 <string>测试(开发用)</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="comNameCombo"/>
-              </item>
-              <item>
-               <widget class="QPushButton" name="connectButton">
-                <property name="text">
-                 <string>连接串口</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="disconnectButton">
-                <property name="text">
-                 <string>断开连接</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="9" column="0" colspan="4">
+            <item row="9" column="0" colspan="2">
              <widget class="QPushButton" name="stopTest">
               <property name="text">
                <string>停止测试</string>
               </property>
              </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QTableWidget" name="testResultTable"/>
             </item>
            </layout>
           </widget>
@@ -263,6 +243,36 @@
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>日志</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <item>
+          <widget class="QPlainTextEdit" name="log"/>
+         </item>
+         <item>
+          <widget class="QPlainTextEdit" name="msgEdit">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

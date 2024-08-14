@@ -53,6 +53,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
     connect(Fixture_connectl_act, &QAction::triggered, [=]() {
         if (Fixture_uart_ui == NULL) {
+            connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this, SLOT(startTest()));
             Fixture_uart_ui = new Fixture_uart;
             Fixture_uart_ui->fixBaudRate = 115200;
             for (int i = 0; i < testList.size(); i++) {
@@ -145,6 +146,21 @@ void imubox::startTest() {
         qDebug() << "开始测试";
         testList[i]->startTest();
     }
+
+    set_cylinder_state(STATE_RESET);
+    waitWork(500);
+
+    if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
+        if (pack.factory == "xwd") {
+            set_cylinder_state(STATE_BRUSH_RIGHT);
+        } else {
+            set_cylinder_state(STATE_BRUSH_LEFT);
+        }
+
+        waitWork(1500);
+    }
+
+    set_cylinder_state(STATE_BRUSH_UP);
 }
 
 imubox::~imubox() {
@@ -155,27 +171,7 @@ imubox::~imubox() {
     delete Fixture_uart_ui;
     delete ui;
 }
-void imubox::resetall() {
-    if (pack.factory == "lx") {
-        startTest();
-    }
-    if (pack.factory != "xwd") {
-        set_cylinder_state(STATE_RESET);
-        waitWork(500);
-
-        if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
-            if (pack.factory == "xwd") {
-                set_cylinder_state(STATE_BRUSH_RIGHT);
-            } else {
-                set_cylinder_state(STATE_BRUSH_LEFT);
-            }
-
-            waitWork(1500);
-        }
-
-        set_cylinder_state(STATE_BRUSH_UP);
-    }
-}
+void imubox::resetall() {}
 
 //把12个的其中1个杀死变成1，跟随测试
 void imubox::set_vector_state(int state) {

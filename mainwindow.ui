@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>10</number>
+               <number>5</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1215,7 +1215,7 @@
                   <item>
                    <widget class="QPushButton" name="light_test">
                     <property name="text">
-                     <string>灯光测试</string>
+                     <string>RGB灯光测试</string>
                     </property>
                    </widget>
                   </item>
@@ -2888,6 +2888,130 @@
                 </item>
                </layout>
               </widget>
+              <widget class="QWidget" name="tab_16">
+               <attribute name="title">
+                <string>蓝牙ota</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_14">
+                <item row="5" column="0" colspan="4">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                </item>
+                <item row="2" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                  <item>
+                   <widget class="QLabel" name="label_83">
+                    <property name="text">
+                     <string>发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="3" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_84">
+                  <item>
+                   <widget class="QLabel" name="label_84">
+                    <property name="text">
+                     <string>接收进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_receive_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_81">
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_80">
+                    <item>
+                     <widget class="QLabel" name="label_29">
+                      <property name="text">
+                       <string>输入MAC连接：</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLineEdit" name="bleotamacInput">
+                      <property name="text">
+                       <string>b4:56:5d:bf:57:9d</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="startBleOta">
+                    <property name="text">
+                     <string>开始蓝牙 ota</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="is_start_bleota">
+                    <property name="text">
+                     <string>是否开启OTA功能</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
+                  <item>
+                   <widget class="QPushButton" name="selectPath">
+                    <property name="text">
+                     <string>选择OTA文件路径</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="otaFilePath">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/upgrade.ota</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="3" rowspan="5">
+                 <widget class="QLabel" name="bleotaresult">
+                  <property name="text">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
               <widget class="QWidget" name="tab_9">
                <attribute name="title">
                 <string>压力测试</string>
@@ -3694,6 +3818,79 @@ border-color: rgb(255, 165, 0)</string>
                 <property name="text">
                  <string>删除文件</string>
                 </property>
+               </widget>
+               <widget class="QWidget" name="layoutWidget_3">
+                <property name="geometry">
+                 <rect>
+                  <x>90</x>
+                  <y>70</y>
+                  <width>736</width>
+                  <height>31</height>
+                 </rect>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_88">
+                 <item>
+                  <widget class="QPushButton" name="ship_bomb">
+                   <property name="text">
+                    <string>船运炸弹</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_87">
+                   <item>
+                    <widget class="QLabel" name="label_86">
+                     <property name="text">
+                      <string>信号强度</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="bombrssi">
+                     <property name="text">
+                      <string>-80</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_86">
+                   <item>
+                    <widget class="QLabel" name="label_85">
+                     <property name="text">
+                      <string>设备名字</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="bombname">
+                     <property name="text">
+                      <string>P20P</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_85">
+                   <item>
+                    <widget class="QLabel" name="label_87">
+                     <property name="text">
+                      <string>连接间隔</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="bombinterval">
+                     <property name="text">
+                      <string>10</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
                </widget>
               </widget>
              </widget>

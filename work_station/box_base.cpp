@@ -22,7 +22,7 @@ void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authe
 }
 
 void box_base::checkAndUpdateFile() {
-    QString remoteDirectoryUrl = "http://192.168.243.6:88/versions/";
+    QString remoteDirectoryUrl = "http://163.177.79.53:16888/versions/";
     QUrl qUrl(remoteDirectoryUrl);
     QNetworkRequest request(qUrl);
 
@@ -85,7 +85,7 @@ void box_base::checkAndUpdateFile() {
                                               QMessageBox::Yes | QMessageBox::No);
 
                 if (reply == QMessageBox::Yes) {
-                    QString downloadUrl = "http://192.168.243.6:88/versions/" + latestRemoteFile;
+                    QString downloadUrl = "http://163.177.79.53:16888/versions/" + latestRemoteFile;
                     QString savePath = "./" + latestRemoteFile;
                     QNetworkRequest downloadRequest((QUrl(downloadUrl)));
 

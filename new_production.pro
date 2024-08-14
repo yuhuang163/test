@@ -1,4 +1,4 @@
-QT       += core gui concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
+QT       += core gui axcontainer concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
 
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -70,6 +70,7 @@ SOURCES += \
     agreement/qmes/qmes.cpp \
     agreement/qmes/xwdmes.cpp \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.c \
+    agreement/qpb/ble_protocol/data_collection.pb.c \
     agreement/qpb/factory_protocol/factory_msg.pb.c \
     agreement/qpb/pb_common.c \
     agreement/qpb/pb_decode.c \
@@ -124,6 +125,7 @@ HEADERS += \
     agreement/qmes/qmes.h \
     agreement/qmes/xwdmes.h \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.h \
+    agreement/qpb/ble_protocol/data_collection.pb.h \
     agreement/qpb/factory_protocol/factory_msg.pb.h \
     agreement/qpb/pb.h \
     agreement/qpb/pb_common.h \
@@ -221,6 +223,7 @@ LIBS += -L$$PWD/lib/nfc/ -ldcrf32
 
 DISTFILES += \
     agreement/qpb/ble_protocol/fx_ble_msg.proto \
+    agreement/qpb/ble_protocol/data_collection.proto \
     agreement/qpb/ble_protocol/server_data.proto \
     agreement/qpb/factory_protocol/factory_msg.proto \
     lib/nfc/dcrf32.dll \

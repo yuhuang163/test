@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>414</width>
-    <height>488</height>
+    <height>427</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_3">
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
@@ -24,32 +24,6 @@
        <string>屏幕测试</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="3" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QPlainTextEdit" name="log"/>
-         </item>
-         <item>
-          <widget class="QPlainTextEdit" name="msgEdit">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="focusPolicy">
-            <enum>Qt::NoFocus</enum>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="5" column="3">
         <widget class="QLCDNumber" name="test_time">
          <property name="smallDecimalPoint">
@@ -57,6 +31,46 @@
          </property>
          <property name="segmentStyle">
           <enum>QLCDNumber::Flat</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1" colspan="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>输入MAC连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="macInput">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="inputMask">
+            <string/>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="placeholderText">
+            <string>切换英文输入再扫码</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="isformmes">
+         <property name="text">
+          <string>是否从mes获取mac</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -88,28 +102,22 @@
          </item>
         </layout>
        </item>
-       <item row="7" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>存储尾盖sn:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="macLabel">
-           <property name="text">
-            <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="10" column="1" colspan="3">
-        <widget class="QPushButton" name="stopTest">
+       <item row="5" column="2">
+        <widget class="QCheckBox" name="isusemes">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
-          <string>停止测试</string>
+          <string>是否过站</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -132,6 +140,24 @@
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="7" column="1" colspan="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
+          <widget class="QLabel" name="tail_sn">
+           <property name="text">
+            <string>存储尾盖sn:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
            </property>
           </widget>
          </item>
@@ -191,64 +217,48 @@
          </item>
         </layout>
        </item>
-       <item row="9" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item row="10" column="1" colspan="3">
+        <widget class="QPushButton" name="stopTest">
+         <property name="text">
+          <string>停止测试</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1" colspan="3">
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>日志</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
          <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>输入MAC连接：</string>
-           </property>
-          </widget>
+          <widget class="QPlainTextEdit" name="log"/>
          </item>
          <item>
-          <widget class="QLineEdit" name="macInput">
+          <widget class="QPlainTextEdit" name="msgEdit">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
-           <property name="inputMask">
-            <string/>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
            </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
+           <property name="readOnly">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
         </layout>
-       </item>
-       <item row="5" column="2">
-        <widget class="QCheckBox" name="isusemes">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>是否过站</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QCheckBox" name="isformmes">
-         <property name="text">
-          <string>是否从mes获取mac</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
        </item>
       </layout>
      </widget>

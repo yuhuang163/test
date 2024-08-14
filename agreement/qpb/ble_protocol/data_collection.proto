@@ -1,0 +1,27 @@
+syntax = "proto3";
+import "nanopb.proto";
+
+message DebugFileStatus {
+    FileStatus rotaStatus = 1;
+    DebugFileType fileType = 2;
+}
+
+message DebugDataReq {
+    DebugFileType fileType = 1;
+    uint32 index = 2;
+    bytes data = 3 [(nanopb).max_size= 240];
+}
+
+enum DebugFileType {
+    UNKNOWN_FILE_TYPE = 0;
+    DATA_LOG = 1;
+    DATA_CAMERA = 2;
+}
+
+enum FileStatus {
+    DATA_START = 0;
+    DATA_PAUSE = 1;
+    DATA_STOP = 2;
+    DATA_RESET = 3;
+    DATA_FORCE_START = 4;
+}

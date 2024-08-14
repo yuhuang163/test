@@ -211,7 +211,8 @@ public slots:
     void set_sn(FacDevInfoType which_sn, const QByteArray& sn);  // 绑定SN码
     void set_camera_picture_state(int state);                    // 设置摄像头图片状态
     void set_local_ota(local_ota_data x[2]);                     // 设置本地OTA
-    void set_start_ota_app();                                    // 启动OTA应用
+    void set_start_ota_app(RotasFileStatusReq RotasFiledata);    // 启动OTA应用
+    void set_i_am_app();                                         // 骗牙刷是app
     void set_config_network_app(WifiInfo info);                  // 配置网络应用
     void set_wifi_disconnect();                                  // 断开WiFi
     void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
@@ -235,6 +236,9 @@ public slots:
     void get_servo_motor_info();           // 获取电机信息
 
 private slots:
+
+    void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
+    void process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f);
     void process_CommandId_CONNECT_PRO(DataPackage& f);
     void process_CommandId_ROTAS(DataPackage& f);
     void process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f);
@@ -282,6 +286,8 @@ signals:
     void send_get_picture_send_over(FacPictureDataAck);
 
     void send_pb_date(QString data);
+    void send_ota_flow_control(int state);
+
     void send_motor_cali_msg(QString data);
     void send_pb_info(QString info);
     void send_ota_progress(int progress);

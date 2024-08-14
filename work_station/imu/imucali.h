@@ -15,7 +15,6 @@ namespace Ui {
 class imucali : public test_base {
     Q_OBJECT
 public:
-    explicit imucali(int index, QWidget* parent = nullptr);
     ~imucali();
     void startTask() override;
 
@@ -35,6 +34,9 @@ public:
     QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };           // log地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
+    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+    explicit imucali(int index, QWidget* parent = nullptr);
+
 private:
     void dataInit();
     QList<QLabel*> labelList;

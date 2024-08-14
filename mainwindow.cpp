@@ -31,9 +31,21 @@ void MainWindow::on_pushButton_clicked() {
     // emit send_camera_respone(FacErrorCode_NO_ERROR);
     // printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()),
     // pictureByteArray.size());
+    // 创建包含 GBK 编码的字节数组
+    QByteArray dataTemp = QByteArray::fromRawData("\xaa\xaa\xaa", 3);  // GBK 编码的字节 0xAA
 
-    QVector<int> faultData = {1, 2, 3, 4, 5};
-    emit send_fault_data_packet(faultData.size(), faultData);
+    // 使用 GBK 编码器进行解码
+    QTextCodec* codec = QTextCodec::codecForName("gbk");
+    QString utf8String = codec->toUnicode(dataTemp);
+    QString decodedString = QString::fromUtf8(QByteArray::fromPercentEncoding(dataTemp));
+    QString localString = QString::fromLocal8Bit(dataTemp);
+    // 输出结果
+    qDebug() << "Converted utf8String:" << utf8String;
+    qDebug() << "Converted decodedString:" << decodedString;
+    qDebug() << "Converted localString:" << localString;
+
+    // QVector<int> faultData = {1, 2, 3, 4, 5};
+    // emit send_fault_data_packet(faultData.size(), faultData);
 
     // for(int i=0;i<100;i++){
     //     pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
@@ -193,6 +205,9 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->local_ota_result->setText("OTA");
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
+    ui->bleotaresult->setText("WAIT");
+    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+                                    "border-radius: 10px; padding: 10px; text-align: center; ");
 
     scanSerialPorts();                  // 要搜索一下一开始
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
@@ -238,11 +253,57 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->statusbar->addPermanentWidget(WifiStatusLabel);
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    otaResults << "手柄收到指令,开始OTA..."
+               << "GENERAL"
+               << "低电量"
+               << "已经在OTA中"
+               << "文件过大"
+               << "MD5错误"
+               << "文件不支持"
+               << "FLASH错误"
+               << "No Memory"
+               << "TRANS_TIMEOUT"
+               << "TRANS_OVER_RANGE"
+               << "下载成功"
+               << "下载失败";
+
+    connect(pb, SIGNAL(send_ota_flow_control(int)), this, SLOT(setBleOtaState(int)));
+
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
+    connect(pb, &Qpb::send_pb_info, [&](QString s) {
+        ui->testMsg->appendPlainText(" ");
+        ui->testMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+        ui->testMsg->appendPlainText(s);
 
+        ui->bleOtaMsg->appendPlainText(" ");
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+        ui->bleOtaMsg->appendPlainText(s);
+    });
+
+    connect(pb, &Qpb::send_ota_result, [&](int r) {
+        ui->testMsg->appendPlainText("OTA 结果 : ");
+        ui->testMsg->appendPlainText(otaResults[r]);
+        ui->bleOtaMsg->appendPlainText("OTA 结果 : ");
+        ui->bleOtaMsg->appendPlainText(otaResults[r]);
+
+        otaFinish = true;
+        if (r == 11) {
+            ui->bleotaresult->setText("PASS");
+            ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
+                                            "black; border: 2px solid #00FF00; border-radius: "
+                                            "10px; padding: 10px; text-align: center;");
+        } else {
+            ui->bleotaresult->setText("FAIL");
+            ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+                                            "black; border: 2px solid #FF0000; border-radius: "
+                                            "10px; padding: 10px; text-align: center; ");
+        }
+    });
     connect(this, SIGNAL(sendPicture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
+    connect(this, SIGNAL(sendBelOtaSpeed(int)), ui->bel_ota_speed, SLOT(setValue(int)));
+    connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
 
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
@@ -538,9 +599,6 @@ void MainWindow::handleDongleSerialPortError(QSerialPort::SerialPortError error)
     qDebug() << "DongleSerialPort串口问题" << error;
     if (error == QSerialPort::PermissionError) {
         closeDongleSerialPort();
-        // QMessageBox::warning(NULL, "警告", " Dongle串口连接断开！\t\r\n");
-
-        // showlog("蓝牙连接断开");
     }
 }
 
@@ -1135,10 +1193,6 @@ void MainWindow::on_sendRandomData_clicked() { sendBrushData(true); }
 void MainWindow::on_clearDataPushButton_clicked() { ui->msgTest->clear(); }
 void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
 {
-    QString result = "";
-    QString passValue = "通过";
-    QString failValue = "失败";
-
     ui->imuCaliButton->setEnabled(false);
 
     typedef enum {
@@ -1173,7 +1227,6 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
 
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
-                    showlog("蓝牙连接成功");
                     refreshBleState(1);
                     state = STATE_DISABLE_SLEEP_1;
                 }
@@ -1448,6 +1501,17 @@ void MainWindow::on_otaTestPushButton_clicked() {
     waitWork(1000);
     ui->progressBar->show();
     ui->progressBar->setMaximum(100);
+
+    connect(pb, &Qpb::send_ota_progress, [&](int s) {
+        ui->progressBar->show();
+        ui->progressBar->setMaximum(100);
+        ui->progressBar->setValue(s);
+        refresh = true;
+        if (s == 100) {
+            ui->testMsg->appendPlainText(QString("ota time:%1s").arg(totalTime.elapsed() / 1000));
+            finish = true;
+        }
+    });
     connect(pb, SIGNAL(send_pb_info(QString)), ui->testMsg, SLOT(appendPlainText(QString)));
     connect(pb, &Qpb::send_ota_progress, [&](int s) {
         ui->progressBar->setValue(s);
@@ -1469,7 +1533,9 @@ void MainWindow::on_otaTestPushButton_clicked() {
             on_connectButton_clicked();
         }
         ui->progressBar->setValue(0);
-        pb->set_start_ota_app();
+        RotasFileStatusReq RotasFiledata;
+        RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
+        pb->set_start_ota_app(RotasFiledata);
         timeout.restart();
         isStart = false;
         ui->testMsg->appendPlainText("----------------");
@@ -1477,7 +1543,9 @@ void MainWindow::on_otaTestPushButton_clicked() {
         int counter = 0;
         while (timeout.elapsed() < 30 * 3000) {
             if (counter % 2 == 0) {
-                pb->set_start_ota_app();
+                RotasFileStatusReq RotasFiledata;
+                RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
+                pb->set_start_ota_app(RotasFiledata);
             }
             if (isStart == true) {
                 break;
@@ -1539,7 +1607,6 @@ void MainWindow::on_otaTestPushButton_clicked() {
             }
         }
     }
-    disconnect(pb, SIGNAL(send_pb_info(QString)), ui->testMsg, SLOT(appendPlainText(QString)));
     ui->otaTestPushButton_2->setEnabled(true);
     ui->progressBar->hide();
     ui->bleTestPushButton->setEnabled(true);
@@ -1599,25 +1666,9 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     ui->otaTestPushButton->setEnabled(false);
     ui->otaTestPushButton_2->setEnabled(false);
     int times = 1;
-    bool finish = false;
     QTime timeout;
     QTime totalTime;
     bool refresh = false;
-
-    QStringList s;
-    s << "成功"
-      << "GENERAL"
-      << "低电量"
-      << "已经在OTA中"
-      << "文件过大"
-      << "MD5错误"
-      << "文件不支持"
-      << "FLASH错误"
-      << "No Memory"
-      << "TRANS_TIMEOUT"
-      << "TRANS_OVER_RANGE"
-      << " 下载成功"
-      << "下载失败";
 
     // at->resetConnected();//注释
     // at->sendotaMac(ui->macInput_7->text());
@@ -1635,30 +1686,6 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     }
     waitWork(1000);
 
-    //    connect(pb, &Qpb::send_pb_info, [&](QString s) {
-    //        ui->testMsg->appendPlainText(" ");
-    //        ui->testMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-    //        ui->testMsg->appendPlainText(s);
-    //    });
-
-    //    connect(pb, &Qpb::send_ota_progress, [&](int s) {
-    //        ui->progressBar->show();
-    //        ui->progressBar->setMaximum(100);
-    //        ui->progressBar->setValue(s);
-    //        refresh = true;
-    //        if(s == 100)
-    //        {
-    //            //ui->testMsg->appendPlainText(QString("ota time:%1
-    //            s").arg(totalTime.elapsed()/1000)); finish = true;
-    //        }
-    //    });
-
-    //    connect(pb, &Qpb::send_ota_result, [&](int r) {
-    //        ui->testMsg->appendPlainText("OTA result : ");
-    //        ui->testMsg->appendPlainText(s[r]);
-    //        finish = true;
-    //    });
-
     waitWork(100);
     ui->macInput_7->clear();
     // ui->macInput_7->setFocus();
@@ -1667,20 +1694,22 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
             on_connectButton_clicked();
         }
         ui->progressBar->setValue(0);
-        pb->set_start_ota_app();
+        RotasFileStatusReq RotasFiledata;
+        RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
+        pb->set_start_ota_app(RotasFiledata);
         timeout.start();
         ui->testMsg->appendPlainText("----------------");
         ui->testMsg->appendPlainText("OTA启动，开始计时");
         totalTime.start();
-        finish = false;
-        while (finish == false) {
+        otaFinish = false;
+        while (otaFinish == false) {
             if (timeout.elapsed() > 3 * 60 * 1000) {
                 ui->testMsg->appendPlainText("下载超时");
-                finish = true;
+                otaFinish = true;
                 break;
             }
             if (at->getConnected() == false) {
-                finish = true;
+                otaFinish = true;
             }
             waitWork(200);
             if (isContinue == false)
@@ -2968,7 +2997,7 @@ void MainWindow::on_close_motor_adc_switch_clicked() { pb->set_motor_adc_switch(
 void MainWindow::on_open_motor_adc_switch_clicked() { pb->set_motor_adc_switch(1); }
 
 void MainWindow::on_downloadapp_clicked() {
-    // QString url = "http://192.168.243.6:88/versions/Readme.md";  // 替换为实际文件的URL
+    // QString url = "http://163.177.79.53:16888/versions/Readme.md";  // 替换为实际文件的URL
     // QString fileName = QFileInfo(url).fileName();
     // QString savePath = "./" + fileName;
     // downloadFile(url, savePath);
@@ -2980,7 +3009,148 @@ void MainWindow::on_uploadapp_clicked() {
     QDateTime currentDateTime = QDateTime::currentDateTime();
 
     uploadFile("./new_production_" + currentDateTime.toString("yyyyMMdd") + ".exe",
-               "http://192.168.243.6:88/versions/");
+               "http://163.177.79.53:16888/versions/");
 }
 
-void MainWindow::on_delefile_clicked() { deleteFile("http://192.168.243.6:88/Readme.md"); }
+void MainWindow::on_delefile_clicked() { deleteFile("http://163.177.79.53:16888/Readme.md"); }
+
+void MainWindow::on_bleotamacInput_returnPressed() {
+    clearDisplay();
+    ui->bleotaresult->setText("WAIT");
+    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+
+    // on_macInput_returnPressed();
+    // ui->testMsg->clear();
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+    // 检查是否是mac格式
+    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    } else {
+        waitWork(500);
+        at->sendMAINDATA(0);
+        waitWork(500);
+        at->sendOTADATA(0);
+        waitWork(100);
+        macAddress = ui->bleotamacInput->text();
+        macLabel->setText("蓝牙mac: " + macAddress);
+        pb->setPbMode(0);
+        at->sendotaMac(ui->bleotamacInput->text());
+        at->resetConnected();
+
+        QTime timeout;
+        while (at->getConnected() == false) {
+            waitWork(100);
+            if (timeout.elapsed() > 1000 * 30) {
+                ui->testMsg->appendPlainText("蓝牙连接超时");
+                break;
+            }
+        }
+        on_startBleOta_clicked();
+    }
+}
+#define OTATIMEINTERVAL 10
+void MainWindow::on_startBleOta_clicked() {
+    // 断开之前的定时器连接
+    if (bleotatimer->isActive()) {
+        bleotatimer->stop();
+    }
+    disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
+
+    // 初始化OTA过程
+    at->sendMAINDATA(1);
+    waitWork(500);
+    pb->set_i_am_app();
+    waitWork(500);
+    at->sendMAINDATA(0);
+    waitWork(500);
+    bleOtaTestTime.start();
+
+    QString filePath = ui->otaFilePath->text();
+    if (filePath.isEmpty()) {
+        QMessageBox::warning(this, "警告", "未选择OTA文件");
+        return;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, "错误", "无法打开OTA文件");
+        return;
+    }
+
+    QByteArray fileData = file.readAll();
+    file.close();
+    showlog("文件大小为：" + QString::number(fileData.size()));
+
+    RotasFileStatusReq RotasFiledata;
+    RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
+    RotasFiledata.fileUnzipSize = fileData.size();
+    RotasFiledata.fileSize = fileData.size();
+
+    pb->set_start_ota_app(RotasFiledata);
+    showlog("已发送开始OTA!");
+    waitWork(1000);
+    showlog("已设置OTA数据通道开启!");
+    at->sendOTADATA(1);
+
+    int chunkSize = 300;  // 每包244字节
+    int totalOtaSize = fileData.size();
+    int numChunks = (totalOtaSize + chunkSize - 1) / chunkSize;  // 计算总包数
+
+    // 设置定时器间隔
+    bleotatimer->setInterval(OTATIMEINTERVAL);
+
+    // 定义定时器超时处理函数
+    connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
+        // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+        // showlog("开始发送:" + timestamp);
+        ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+        static int currentChunk = 0;
+        if (currentChunk >= numChunks) {
+            showlog("文件发送完毕!");
+            bleotatimer->stop();
+            currentChunk = 0;
+            return;
+        }
+
+        int offset = currentChunk * chunkSize;
+        int size = qMin(chunkSize, totalOtaSize - offset);
+        QByteArray chunk = fileData.mid(offset, size);
+
+        dongleSerialPort->write(chunk);
+        // timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
+        // showlog("发送包:" + timestamp);
+
+        currentChunk++;
+
+        float progressValue = ((float)currentChunk / numChunks) * 100;
+        int progressInt = (int)progressValue;
+
+        emit sendBelOtaSpeed(progressInt);
+    });
+
+    // 启动定时器
+    QTimer::singleShot(100, this, [this]() { bleotatimer->start(); });
+}
+
+void MainWindow::setBleOtaState(int state) {
+    if (state)
+        bleotatimer->start(OTATIMEINTERVAL);
+    else
+        bleotatimer->stop();
+}
+void MainWindow::on_selectPath_clicked() {
+    QString path = QFileDialog::getOpenFileName(this, "选择文件路径");
+    if (!path.isEmpty()) {
+        ui->otaFilePath->setText(path);
+    }
+}
+
+void MainWindow::on_ship_bomb_clicked() {
+    at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
+}

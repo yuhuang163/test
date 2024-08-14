@@ -24,9 +24,7 @@ void imucali::on_pushButton_clicked() {
     // {
     //     ui->log->appendPlainText("当前次数为：" + QString::number(i));
     //         at->sendMac(ui->macInput->text());   // 开始连接
-
     //     waitWork(5000);
-
     // }
 }
 imucali::imucali(int index, QWidget* parent) :
@@ -128,6 +126,8 @@ imucali::imucali(int index, QWidget* parent) :
     ui->acc_x->setFont(font);
     ui->acc_y->setFont(font);
     ui->acc_z->setFont(font);
+
+    testResultTableInit();
 }
 void imucali::refreshImuCaliResult(FacImuCalibResult x) {
     showlog("以下为收到牙刷的imu校准数据");
@@ -313,7 +313,7 @@ void imucali::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-    showlog("蓝牙连接断开");
+    //showlog("蓝牙连接断开");
 }
 void imucali::refreshBleState(int state) {
     if (state) {
@@ -328,6 +328,8 @@ void imucali::refreshBleState(int state) {
         //     on_macInput_returnPressed();
     }
 }
+
+
 void imucali::refreshDongleUartState(int state) {
     if (state)
         showlog("dongle串口连接成功");
@@ -938,6 +940,7 @@ void imucali::endTask() {
     emit send_end_test(getIndex());
 }
 void imucali::startTest() { on_macInput_returnPressed(); };
+
 void imucali::startTask()  // 编写六轴校准的代码
 {
     if (isimuCaliContinue) {
@@ -985,12 +988,15 @@ void imucali::startTask()  // 编写六轴校准的代码
                 if (is_battary_test != 0) {
                     if (is_battary_test == 1) {
                         showlog("出厂电压正常");
-
                         TestItem test;
                         test.testItem = "出厂电压";
-                        test.testData = voltage;
+                        test.testData = QString::number(voltage);
                         test.testResult = "通过";
+                        test.ask = "通过";
                         testItems.append(test);
+                        log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                     }
 
                     if (is_battary_test == 2) {
@@ -1000,7 +1006,11 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testItem = "出厂电压";
                         test.testData = voltage;
                         test.testResult = "失败";
+                        test.ask = "通过";
                         testItems.append(test);
+                        log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                     }
 
                     state = STATE_CAIL;
@@ -1097,8 +1107,11 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testItem = "IMU校准测试";
                     test.testData = qimuc->imureason + nqimuc->imureason;
                     test.testResult = "失败";
+                    test.ask = "通过";
                     testItems.append(test);
-
+                    log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
                     showlog("六轴校准结束");
                     emit endcali(getIndex());
                     state = STATE_END;
@@ -1125,8 +1138,11 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testItem = "IMU校准测试";
                     test.testData = data;
                     test.testResult = "通过";
-
+                    test.ask = "通过";
                     testItems.append(test);
+                    log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
                     showlog(data);
 
                     showlog("六轴校准结束");
@@ -1151,6 +1167,16 @@ void imucali::startTask()  // 编写六轴校准的代码
                 if (!at->getConnected() && canGoNext) {
                     showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
                     showlog("说明已经成功进入船运模式");
+                    TestItem test;
+                    test.testItem = "船运测试";
+                    test.testData = QString::number(voltage);
+                    test.testResult = "通过";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
+
                     state = STATE_END;
                 } else {
                     showlog("蓝牙还没断开");
@@ -1211,6 +1237,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     }
                 }
                 log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
 
                 waitWork(WAITTIME);
                 pb->set_imu_collect_param(FacSwitch_STOP);
@@ -1324,6 +1351,7 @@ void imucali::on_macInput_returnPressed() {
 }
 
 void imucali::on_getMac_returnPressed() {
+       testResultTableInit();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);

@@ -20,7 +20,7 @@ pcbabox::pcbabox(QWidget *parent) : box_base(parent), ui(new Ui::pcbabox)
     recoverCustom();
     ShowData(this);
     ui->statusbar->addPermanentWidget(new QLabel(
-        "电刷 PCBA 测试 V1.2.3 " + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss")));
+        PCBA_VER + QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss")));
 
     QAction *Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
     connect(Fixture_connectl_act, &QAction::triggered,

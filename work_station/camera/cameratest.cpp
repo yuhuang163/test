@@ -166,6 +166,8 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     // QObject::connect(cameratimer, &QTimer::timeout, this, &cameratest::solve_frame);
     // //启动定时器
     // cameratimer->start(10);
+    testResultTableInit();
+
 }
 void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
     int surpluse_space = 0;
@@ -781,7 +783,11 @@ void cameratest::startTask() {
                 test.testItem = "摄像头测试";
                 test.testData = "";
                 test.testResult = result;
-                testItems.append(test);
+                test.ask = "通过";
+                                          testItems.append(test);
+                    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
                 log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 pb->set_camera_state(0);
@@ -909,6 +915,8 @@ void cameratest::getMac(QString sn_to_search) {
     }
 }
 void cameratest::on_getMac_returnPressed() {
+       testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->mes_state->setText("MES");
@@ -1020,6 +1028,8 @@ void cameratest::on_save_photo_clicked() {
 void cameratest::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
+    dongleSerialPortBuf.clear();  // 清除缓冲区
+
     int write_len = 0;
     int len = dataTemp.size();
     write_len = dongleRingBuf->usmile_ring_buffer_write(&p_dongleRingBuffer,
@@ -1043,7 +1053,6 @@ void cameratest::readDongleSerialPortData() {
     QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
     // 将最终字符串追加到日志编辑器中
     logEdit()->appendPlainText(logEntry);
-    dongleSerialPortBuf.clear();  // 清除缓冲区
 }
 
 void cameratest::readPendingDatagrams() {

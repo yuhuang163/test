@@ -213,6 +213,7 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
 void test_base::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
+    dongleSerialPortBuf.clear();  // 清除缓冲区
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
@@ -226,7 +227,6 @@ void test_base::readDongleSerialPortData() {
     // 将最终字符串追加到日志编辑器中
     logEdit()->appendPlainText(logEntry);
 
-    dongleSerialPortBuf.clear();  // 清除缓冲区
 }
 void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
     qDebug() << "DongleSerialPort串口问题" << error;
@@ -599,7 +599,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
             getRespone = 0;
             canGoNext = 1;
             testState++;
-            qDebug() << "sendCommandWithRetry完成";
+            showlog("sendCommandWithRetry完成，收到牙刷响应");
             return 1;
         }
         return 0;
@@ -607,4 +607,74 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
 
     timer->start(1000);  // 启动定时器
     return 0;
+}
+void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
+    if (testResultTable() == nullptr) {
+        showlog("不存在表格");
+        return;
+    }
+
+    for (const auto& item : testItems) {
+        // 获取当前时间戳
+        // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+
+        // 插入新的一行
+        int row = testResultTable()->rowCount();
+        testResultTable()->insertRow(row);
+
+        // 自动滚动到表格底部
+        testResultTable()->scrollToBottom();
+
+        // 设置每列的数据
+        // testResultTable()->setItem(row, 0, new QTableWidgetItem(timestamp));
+        testResultTable()->setItem(row, 0, new QTableWidgetItem(item.testItem));
+        testResultTable()->setItem(row, 1, new QTableWidgetItem(item.testData));
+
+        // 设置结果列的数据，假设结果是一个字符串
+        QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
+        QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
+
+        // 设置失败状态的背景颜色为红色
+        if (item.testResult == "失败") {
+            resultItem->setBackground(QBrush(Qt::red));
+        } else if (item.testResult == "通过") {
+            resultItem->setBackground(QBrush(Qt::green));
+        }
+
+        testResultTable()->setItem(row, 2, resultItem);
+        testResultTable()->setItem(row, 3, askItem);
+    }
+}
+void test_base::updateTestData(QVector<TestItem>& testItems) {
+    for (auto& item : testItems) {
+        QStringList expectedValueList = item.ask.split('=');
+        if (expectedValueList.contains(item.testData)) {
+            item.testResult = passValue;
+        } else {
+            item.testResult = failValue;
+        }
+    }
+    testResultTableUpdate(testItems);
+}
+
+void test_base::testResultTableInit() {
+    if (testResultTable() == nullptr) {
+        showlog("不存在表格");
+        return;
+    }
+    testResultTable()->clear();
+    // 初始化表格
+    testResultTable()->setColumnCount(4);  // 三列，分别为Mac地址、SN码和时间戳
+
+    testResultTable()->setRowCount(0);  // 初始行数为0，因为还没有数据
+
+    // 设置表格标题
+    QStringList headers;
+    headers << "项目"
+            << "数据"
+            << "结果"
+            << "要求";
+    testResultTable()->setHorizontalHeaderLabels(headers);
+    // 设置表格自适应列宽
+    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 }

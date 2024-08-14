@@ -6,7 +6,7 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(DataPackage, DataPackage, 2)
+PB_BIND(DataPackage, DataPackage, 4)
 
 
 PB_BIND(ConnectPro, ConnectPro, AUTO)
@@ -30,7 +30,7 @@ PB_BIND(DeviceInfo, DeviceInfo, 2)
 PB_BIND(DebugInfo, DebugInfo, AUTO)
 
 
-PB_BIND(DeviceInfoValue, DeviceInfoValue, AUTO)
+PB_BIND(DeviceInfoValue, DeviceInfoValue, 2)
 
 
 PB_BIND(DebugInfoValue, DebugInfoValue, AUTO)
@@ -45,16 +45,43 @@ PB_BIND(SnInfo, SnInfo, AUTO)
 PB_BIND(DeviceRemind, DeviceRemind, AUTO)
 
 
-PB_BIND(BrushingReport, BrushingReport, 2)
+PB_BIND(NoBrushingRemindInfo, NoBrushingRemindInfo, AUTO)
+
+
+PB_BIND(BrushingReport, BrushingReport, 4)
 
 
 PB_BIND(ReportData, ReportData, 2)
+
+
+PB_BIND(AlgoResultFusion, AlgoResultFusion, 2)
+
+
+PB_BIND(AlgoOtherData, AlgoOtherData, 2)
+
+
+PB_BIND(AlgoOtherDataResult, AlgoOtherDataResult, AUTO)
 
 
 PB_BIND(UserInfo, UserInfo, AUTO)
 
 
 PB_BIND(UserThemeInfo, UserThemeInfo, 2)
+
+
+PB_BIND(LightCustomInfo, LightCustomInfo, 2)
+
+
+PB_BIND(LightRGBInfo, LightRGBInfo, AUTO)
+
+
+PB_BIND(OralArchivesData, OralArchivesData, 4)
+
+
+PB_BIND(ProblemTeethData, ProblemTeethData, AUTO)
+
+
+PB_BIND(ProblemTeethInfo, ProblemTeethInfo, AUTO)
 
 
 PB_BIND(AlgorithmPro, AlgorithmPro, AUTO)
@@ -81,10 +108,13 @@ PB_BIND(RemindSingleResult, RemindSingleResult, AUTO)
 PB_BIND(AlgorithmRemind, AlgorithmRemind, 2)
 
 
+PB_BIND(AlgorithmCollectList, AlgorithmCollectList, 2)
+
+
 PB_BIND(AlgorithmCollect, AlgorithmCollect, AUTO)
 
 
-PB_BIND(WifiInfo, WifiInfo, AUTO)
+PB_BIND(WifiInfo, WifiInfo, 2)
 
 
 PB_BIND(DeviceStateInfo, DeviceStateInfo, AUTO)
@@ -94,6 +124,12 @@ PB_BIND(CustomButtonInfo, CustomButtonInfo, 2)
 
 
 PB_BIND(CustomButtonContent, CustomButtonContent, AUTO)
+
+
+PB_BIND(ProfessionalModelInfo, ProfessionalModelInfo, 2)
+
+
+PB_BIND(ProfessionalInfo, ProfessionalInfo, AUTO)
 
 
 PB_BIND(DeviceState, DeviceState, AUTO)
@@ -121,6 +157,15 @@ PB_BIND(VideoReportData, VideoReportData, AUTO)
 
 
 PB_BIND(AudioDataInfo, AudioDataInfo, 2)
+
+
+PB_BIND(AudioRemindData, AudioRemindData, 2)
+
+
+PB_BIND(AudioRemindState, AudioRemindState, AUTO)
+
+
+PB_BIND(MultiFileStatusReq, MultiFileStatusReq, 2)
 
 
 PB_BIND(RotasFileStatusReq, RotasFileStatusReq, AUTO)
@@ -151,6 +196,21 @@ PB_BIND(PlanModelInfo, PlanModelInfo, AUTO)
 
 
 PB_BIND(CustomPlanGroupInfo, CustomPlanGroupInfo, 2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>838</width>
-    <height>476</height>
+    <width>454</width>
+    <height>455</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout_7">
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
@@ -21,7 +21,7 @@
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
-       <string>WIFI蓝牙测试</string>
+       <string>自由工站</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="1" column="0">
@@ -31,43 +31,40 @@
            <property name="topMargin">
             <number>0</number>
            </property>
-          </layout>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="isformmes">
-           <property name="text">
-            <string>是否从mes获取mac</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
            <item>
-            <widget class="QPlainTextEdit" name="log"/>
-           </item>
-           <item>
-            <widget class="QPlainTextEdit" name="msgEdit">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <widget class="QCheckBox" name="isformmes">
+             <property name="text">
+              <string>是否从mes获取mac</string>
              </property>
-             <property name="focusPolicy">
-              <enum>Qt::NoFocus</enum>
-             </property>
-             <property name="readOnly">
+             <property name="checked">
               <bool>true</bool>
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="isusemes">
+             <property name="text">
+              <string>是否过站</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="bleStatusLabel">
+             <property name="text">
+              <string>蓝牙连接：</string>
+             </property>
+            </widget>
+           </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="testResultTable"/>
          </item>
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -607,19 +604,6 @@ QGroupBox {
          </layout>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QCheckBox" name="isusemes">
-         <property name="text">
-          <string>是否过站</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="tab_5">
@@ -627,13 +611,6 @@ QGroupBox {
        <string>设备信息页</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
-       <item row="0" column="0">
-        <widget class="QLabel" name="bleStatusLabel">
-         <property name="text">
-          <string>蓝牙连接：</string>
-         </property>
-        </widget>
-       </item>
        <item row="1" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_14">
          <property name="topMargin">
@@ -667,6 +644,39 @@ QGroupBox {
            </property>
            <property name="segmentStyle">
             <enum>QLCDNumber::Flat</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_6">
+      <attribute name="title">
+       <string>日志</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QPlainTextEdit" name="log"/>
+         </item>
+         <item>
+          <widget class="QPlainTextEdit" name="msgEdit">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="readOnly">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

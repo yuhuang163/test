@@ -3,23 +3,22 @@
 #include "Abini.h"
 #include "qplaintextedit.h"
 
-struct TestItem
-{
+struct TestItem {
     QString testItem;
     QString testData;
     QString testResult;
+    QString ask;
 };
 
-class Qlog
-{
+class Qlog {
 public:
     Qlog();
-    void saveTestCsv(const QString &ver, const QString &sn, const QString &macAddress,
-                     const QVector<TestItem> &testItems);
+    void saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,
+                     const QVector<TestItem>& testItems);
     void save_brush_log(QString macAddress, QString data);
-    void showlog(QString msg, int mechine, QPlainTextEdit *msgEdit);
-    void writeRow(QTextStream &stream, const QStringList &rowData);
+    void showlog(QString msg, int mechine, QPlainTextEdit* msgEdit);
+    void writeRow(QTextStream& stream, const QStringList& rowData);
     void save_quiescent_current_test_data_to_csv();
 };
 
-#endif   // QLOG_H
+#endif  // QLOG_H

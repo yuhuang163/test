@@ -103,6 +103,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
     }
 
     setAcceptDrops(true);  // 允许接收拖放操作
+    testResultTableInit();
 }
 
 void QFreeWork::dragEnterEvent(QDragEnterEvent* event) {
@@ -346,8 +347,19 @@ void QFreeWork::startTask() {
                         showlog("正在测试内容：" + checkBox->text());
                         qDebug() << "正在测试内容：" << checkBox->text();
                         ++teststate;
+
+                        TestItem test;
+                        test.testItem = checkBox->text();
+                        test.testData = "";
+                        test.testResult = "通过";
+                        test.ask = "通过";
+                        testItems.append(test);
+                        log->saveTestCsv(FREE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                     }
                 }
+
                 break;
             }
         }
@@ -385,6 +397,8 @@ void QFreeWork::startTask() {
             ui->nfc_sn->clear();
             ui->macInput->setDisabled(0);
             ui->getMac->setDisabled(0);
+            waitWork(50);
+            on_disconnectButton_clicked();
             emit send_end_test(getIndex());
             ui->getMac->clear();
             iswifibleContinue = false;
@@ -480,11 +494,15 @@ void QFreeWork::refreshBattaryData(FacDevInfo adc) {
     is_battary_test = 1;
     if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "通过";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(FREE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
 
         charageresult = "通过";
         voltageresult = "通过";
@@ -492,11 +510,15 @@ void QFreeWork::refreshBattaryData(FacDevInfo adc) {
     }
     if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(FREE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("充电状态不通过");
         charageresult = "失败";
         voltageresult = "通过";
@@ -506,11 +528,15 @@ void QFreeWork::refreshBattaryData(FacDevInfo adc) {
         adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary)
 
     {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(FREE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("电量测试不通过");
         voltageresult = "失败";
         charageresult = "通过";
@@ -518,11 +544,15 @@ void QFreeWork::refreshBattaryData(FacDevInfo adc) {
     }
     if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
-        TestItem charge;
-        charge.testItem = "充电测试";
-        charge.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
-        charge.testResult = "失败";
-        testItems.append(charge);
+        TestItem test;
+        test.testItem = "充电测试";
+        test.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(FREE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
         showlog("电量和充电测试都不通过");
         voltageresult = "失败";
         charageresult = "失败";
@@ -825,6 +855,8 @@ void QFreeWork::on_pushButton_2_clicked() {
 }
 
 void QFreeWork::on_getMac_returnPressed() {
+    testResultTableInit();
+
     ui->log->clear();
     ui->msgEdit->clear();
     ui->mes_state->setText("MES");
@@ -903,7 +935,12 @@ void QFreeWork::getMac(QString sn_to_search) {
                 }
             }
         }
+
         file.close();  // 关闭文件
+    }
+    if (!ui->isusemes->isChecked() && ui->macInput->text().isEmpty()) {
+        ui->getMac->clear();
+        showlog("找不到mac地址，清空当前输入的sn");
     }
 }
 void QFreeWork::getmacadress(const QByteArray& byte) {

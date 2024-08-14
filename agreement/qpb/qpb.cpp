@@ -1361,8 +1361,14 @@ void Qpb::registerCommand() {
     bleCommandList[CommandId_CONNECT_PRO] = std::bind(&Qpb::process_CommandId_CONNECT_PRO, this, std::placeholders::_1);
     bleCommandList[CommandId_ROTAS_FILE_STATUS_RSP] =
         std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
+
+    bleCommandList[CommandId_ROTAS_RESULT_RSP] =
+        std::bind(&Qpb::process_CommandId_ROTAS_RESULT_RSP, this, std::placeholders::_1);
+
     bleCommandList[CommandId_ROTAS_DATA_RSP] = std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
     bleCommandList[CommandId_ROTAS_RESULT_REQ] = std::bind(&Qpb::process_CommandId_ROTAS, this, std::placeholders::_1);
+    bleCommandList[CommandId_ROTAS_FILE_STATUS_REQ] =
+        std::bind(&Qpb::process_CommandId_ROTAS_FILE_STATUS_REQ, this, std::placeholders::_1);
 
     factoryCommandList[FactroyCmd_WIFI_DEMAND] =
         std::bind(&Qpb::process_FactroyCmd_WIFI_DEMAND, this, std::placeholders::_1);  // 获取电量信息
@@ -1694,15 +1700,39 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
         emit sendGetBrushResponse(1);
     }
 }
+void Qpb::process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f) {
+    RotasFileStatusReq x;
+    memcpy(&x, &f.command_data, sizeof(x));
+    if (x.fileType == RotasUpdateFile_BLE_FIRMWARE) {
+        emit send_pb_date("成功发送开始ota指令");
+
+        emit sendGetBrushResponse(1);
+    }
+}
+
 void Qpb::process_CommandId_CONNECT_PRO(DataPackage& f) {
     emit send_pb_info(QString("firmware version : %1").arg(f.command_data.connect_pro.firmware_id));
     qDebug() << "获取到版本号" << f.command_data.connect_pro.firmware_id;
     emit sendGetBrushResponse(1);
 }
 
+void Qpb::process_CommandId_ROTAS_RESULT_RSP(DataPackage& f) {
+    RotasResultRsp x;
+    memcpy(&x, &f.command_data, sizeof(x));
+    if (x.rotaStatus == RotaFileStatus_ROTA_PAUSE) {
+        emit send_pb_date("流控停止");
+        emit send_ota_flow_control(0);
+        emit sendGetBrushResponse(1);
+    }
+    if (x.rotaStatus == RotaFileStatus_ROTA_START) {
+        emit send_pb_date("流控开始");
+        emit send_ota_flow_control(1);
+        emit sendGetBrushResponse(1);
+    }
+}
 void Qpb::process_CommandId_ROTAS(DataPackage& f) {
     QStringList s;
-    s << "成功"
+    s << "手柄收到指令,开始OTA..."
       << "GENERAL"
       << "低电量"
       << "已经在OTA中"
@@ -1723,18 +1753,21 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
 
     switch (f.command_id) {
         case CommandId_ROTAS_FILE_STATUS_RSP:
-            emit send_pb_info("手柄收到指令,开始OTA...");
+
             if (f.command_data.rota_file_status_rsp.result < s.size())
                 emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
             else
                 emit send_pb_info(QString("%1").arg(f.command_data.rota_file_status_rsp.result));
-            emit send_ota_result(f.command_data.rota_file_status_rsp.result);
+            // emit send_ota_result(f.command_data.rota_file_status_rsp.result);
             break;
 
-        case CommandId_ROTAS_DATA_RSP: emit send_ota_progress(f.command_data.rota_data_rsp.progress); break;
+        case CommandId_ROTAS_DATA_RSP:
+            if (f.command_data.rota_data_rsp.progress)
+                emit send_ota_progress(f.command_data.rota_data_rsp.progress);
+            break;
 
         case CommandId_ROTAS_RESULT_REQ:
-            emit send_pb_info(s[f.command_data.rota_result_req.rotaResult]);
+            emit send_pb_date(s[f.command_data.rota_result_req.rotaResult]);
             emit send_ota_result(f.command_data.rota_result_req.rotaResult);
             break;
         default: break;
@@ -1751,13 +1784,37 @@ void Qpb::get_connect_info() {
     pb_mode = CLIENT;
 }
 
-void Qpb::set_start_ota_app() {
+void Qpb::set_i_am_app() {
+    CommandId cmd = CommandId_GET_USER_INFO;
+    DataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.command_id = cmd;
+    pack.which_command_data = DataPackage_get_user_info_tag;
+
+    sendShortPack(pack);
+    pb_mode = CLIENT;
+}
+
+void Qpb::set_start_ota_app(RotasFileStatusReq RotasFiledata) {
     CommandId cmd = CommandId_ROTAS_FILE_STATUS_REQ;
     DataPackage pack;
     memset(&pack, 0, sizeof(pack));
     pack.command_id = cmd;
     pack.which_command_data = DataPackage_rota_file_status_req_tag;
-    pack.command_data.rota_file_status_req.fileType = RotasUpdateFile_WIFI_FIRMWARE;
+
+    switch (RotasFiledata.fileType) {
+        case RotasUpdateFile_BLE_FIRMWARE:
+            pack.command_data.rota_file_status_req.fileType = RotasFiledata.fileType;
+            pack.command_data.rota_file_status_req.fileSize = RotasFiledata.fileSize;
+            pack.command_data.rota_file_status_req.fileUnzipSize = RotasFiledata.fileSize;
+
+            break;
+
+        case RotasUpdateFile_WIFI_FIRMWARE:
+            pack.command_data.rota_file_status_req.fileType = RotasFiledata.fileType;
+            break;
+    }
+
     sendShortPack(pack);
     pb_mode = CLIENT;
 }
