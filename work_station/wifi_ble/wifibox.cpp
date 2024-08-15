@@ -15,8 +15,6 @@ wifibox::wifibox(QWidget* parent) : box_base(parent), ui(new Ui::wifibox) {
     ShowData(this);
     setWindowTitle("信号测试工站");
     ui->statusbar->addPermanentWidget(new QLabel(SINGLE_VER + QString(__DATE__) + " " + QString(__TIME__)));
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 }
 
 wifibox::~wifibox() { delete ui; }

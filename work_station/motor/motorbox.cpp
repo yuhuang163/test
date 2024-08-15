@@ -20,8 +20,7 @@ motorbox::motorbox(QWidget *parent) : box_base(parent), ui(new Ui::motorbox)
     ShowData(this);
 
     ui->statusbar->addPermanentWidget(new QLabel(MOTOR_VER));
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+
     // QAction *Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
     //  connect(Fixture_connectl_act, &QAction::triggered, [=]() {
 

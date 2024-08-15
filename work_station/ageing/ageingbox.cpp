@@ -18,8 +18,7 @@ ageingbox::ageingbox(QWidget* parent) : box_base(parent), ui(new Ui::ageingbox) 
     signalAndslot();
     recoverCustom();
     ShowData(this);
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+
     ui->statusbar->addPermanentWidget(new QLabel(AGE_VER + QString(__DATE__) + " " + QString(__TIME__)));
 }
 

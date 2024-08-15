@@ -3,7 +3,9 @@
 #include <QMessageBox>
 #include <QtGlobal>
 
+#include "qaction.h"
 #include "qcombobox.h"
+#include "qmenubar.h"
 #include "qstatusbar.h"
 #include "test_base.h"
 
@@ -310,6 +312,12 @@ void box_base::ShowData(QMainWindow* parent) {
     }
     for (int i = 0; i < testList.size(); ++i)
         testList[i]->msgEdit()->appendPlainText("当前产品为:" + pack.product);
+
+    QAction* updata = parent->menuBar()->addAction("软件更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+    if (!settings.value("SYSTEM/system_ota").toInt()) {
+        updata->setVisible(false);
+    }
 }
 
 void box_base::loginMes() {

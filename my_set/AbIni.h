@@ -56,29 +56,29 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.2.4"   // 支持1拖多
-#define AGE_VER "老化测试工站   V1.1.1"     // 支持1拖多
-#define MOTOR_VER "电机校准工站   V1.1.1"   // 加定时器判断休
-#define QC_VER "静态电流测试   V1.2.9"      // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.0.9"  // 加定时器判断休
-#define LIGHT_VER "灯光测试工站   V1.0.9"   // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.2.7"  // 立讯bug
-#define FREE_VER "自由测试工站   V1.0.2"    // 立讯bug
-#define CAMERA_VER "摄像测试工站   V1.0.9"  // 支持摄像头工站
-#define IMU_VER "IMU校准工站    V1.3.5"     // 支持自动化治具
-#define PCBA_VER "电刷板子测试   V1.2.5"    // 加定时器判断休
+#define DEBUG_VER "电刷产测工具   V1.2.5"   // 支持1拖多
+#define AGE_VER "老化测试工站   V1.1.2"     // 支持1拖多
+#define MOTOR_VER "电机校准工站   V1.1.2"   // 加定时器判断休
+#define QC_VER "静态电流测试   V1.3.0"      // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.1.0"  // 加定时器判断休
+#define LIGHT_VER "灯光测试工站   V1.1.0"   // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.2.8"  // 立讯bug
+#define FREE_VER "自由测试工站   V1.0.3"    // 立讯bug
+#define CAMERA_VER "摄像测试工站   V1.1.0"  // 支持摄像头工站
+#define IMU_VER "IMU校准工站    V1.3.6"     // 支持自动化治具
+#define PCBA_VER "电刷板子测试   V1.2.6"    // 加定时器判断休
 
-// [DEBUG_VER] 调整了打印日志串口可以看到pb码回应，修改上位机升级的连接，添加蓝牙ota手柄功能，增加船运炸弹功能
-// [IMU_VER] 调整界面清晰显示测试项目
-// [CAMERA_VER] 调整界面清晰显示测试项目
-// [AGE_VER] 调整界面清晰显示测试项目
-// [MOTOR_VER] 调整界面清晰显示测试项目
-// [QC_VER] 调整界面清晰显示测试项目
-// [SCREEN_VER] 调整界面清晰显示测试项目
-// [LIGHT_VER] 调整界面清晰显示测试项目
-// [SINGLE_VER] 调整界面清晰显示测试项目
-// [FREE_VER] 调整界面清晰显示测试项目
-// [PCBA_VER] 调整界面清晰显示测试项目
+// [DEBUG_VER] 修改上位机升级功能通过配置文件隐藏，六轴数据采集给测试的10s暂停
+// [IMU_VER] 修改上位机升级功能通过配置文件隐藏，适配p20p立讯的工厂回车启动
+// [CAMERA_VER] 修改上位机升级功能通过配置文件隐藏，修复摄像头id测试项目显示
+// [AGE_VER] 修改上位机升级功能通过配置文件隐藏
+// [MOTOR_VER] 修改上位机升级功能通过配置文件隐藏
+// [QC_VER] 修改上位机升级功能通过配置文件隐藏
+// [SCREEN_VER] 修改上位机升级功能通过配置文件隐藏
+// [LIGHT_VER] 修改上位机升级功能通过配置文件隐藏
+// [SINGLE_VER] 修改上位机升级功能通过配置文件隐藏
+// [FREE_VER] 修改上位机升级功能通过配置文件隐藏
+// [PCBA_VER] 修改上位机升级功能通过配置文件隐藏
 //
 
 #endif  // ABINI_H

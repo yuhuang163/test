@@ -230,6 +230,7 @@ MainWindow::MainWindow(QWidget* parent) :
     otaFwSet(1);      // 一开机锁住
 
     QAction* updata = ui->menubar->addAction("软件更新");
+
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
     // 设置菜单栏样式
     ui->menubar->setStyleSheet("QMenuBar { "
@@ -417,8 +418,11 @@ MainWindow::MainWindow(QWidget* parent) :
 
     ui->progressBar->hide();
 
-    if (!settings.value("SYSTEM/local_ota").toInt())
+    if (!settings.value("SYSTEM/brush_local_ota").toInt())
         ui->tabWidget->setTabVisible(8, false);
+
+    if (!settings.value("SYSTEM/system_ota").toInt())
+        updata->setVisible(false);
 
     ui->high_speed_tp->installEventFilter(this);
     ui->high_speed_tp->setAcceptDrops(true);
@@ -2878,6 +2882,28 @@ void MainWindow::on_play_picture_clicked() {
 void MainWindow::on_open_imu_collect_solve_clicked() {
     pb->set_solve_imu_collect_param(FacSwitch_START);
     deleteCsvFile("6轴IMU性能验证.csv");
+    static QTimer* imu_collect_timer;  // 定时器指针作为类成员变量
+    // 如果定时器已经存在且正在运行，则断开连接并停止
+    if (imu_collect_timer) {
+        disconnect(imu_collect_timer, &QTimer::timeout, nullptr, nullptr);
+        imu_collect_timer->stop();
+        imu_collect_timer->deleteLater();
+    }
+
+    // 创建并启动一个新的定时器
+    imu_collect_timer = new QTimer(this);
+    connect(imu_collect_timer, &QTimer::timeout, this, [=]() {
+        // 定时器超时后执行的操作
+        pb->set_solve_imu_collect_param(FacSwitch_STOP);  // 停止IMU采集
+        showlog("10秒已到，停止IMU采集");
+
+        // 关闭并释放定时器
+        imu_collect_timer->stop();
+        imu_collect_timer->deleteLater();
+        imu_collect_timer = nullptr;  // 释放后将指针置为空
+    });
+
+    imu_collect_timer->start(10000);  // 10000 毫秒 = 10 秒
 }
 
 void MainWindow::on_py_test_clicked() {

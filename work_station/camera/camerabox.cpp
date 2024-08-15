@@ -22,8 +22,7 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
     for (int i = 0; i < testList.size(); i++) {
         connect(this, SIGNAL(go_camera_next(int)), testList[i], SLOT(canGoNextMechine(int)));
     }
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+
     ui->statusbar->addPermanentWidget(new QLabel(CAMERA_VER + QString(__DATE__) + " " + QString(__TIME__)));
 }
 

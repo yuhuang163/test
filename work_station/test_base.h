@@ -52,6 +52,7 @@ public:
     void testResultTableUpdate(const QVector<TestItem>& testItems);
     void testResultTableInit();
     void updateTestData(QVector<TestItem>& testItems);
+    QString toHex(const QByteArray& data);
 
 private:  // 通用变量
     void initData();

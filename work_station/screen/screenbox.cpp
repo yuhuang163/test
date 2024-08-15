@@ -24,8 +24,6 @@ screenbox::screenbox(QWidget* parent) : box_base(parent), ui(new Ui::screenbox) 
     ShowData(this);
 
     ui->statusbar->addPermanentWidget(new QLabel(SCREEN_VER + QString(__DATE__) + " " + QString(__TIME__)));
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 }
 
 screenbox::~screenbox() { delete ui; }

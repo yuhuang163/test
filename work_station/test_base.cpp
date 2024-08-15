@@ -209,11 +209,17 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
 
     qDebug() << "设备个数" << currentItems.size();
 }
-
+QString test_base::toHex(const QByteArray& data) {
+    QString hexStr;
+    for (auto byte : data) {
+        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(byte)));
+    }
+    return hexStr.trimmed();  // 去掉最后的空格
+}
 void test_base::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
-    dongleSerialPortBuf.clear();  // 清除缓冲区
+    dongleSerialPortBuf.clear();                // 清除缓冲区
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
@@ -223,10 +229,17 @@ void test_base::readDongleSerialPortData() {
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     // 获取当前时间
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-    QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
-    // 将最终字符串追加到日志编辑器中
-    logEdit()->appendPlainText(logEntry);
 
+    if (dataTemp.contains("内容为:")) {
+        int pos = dataTemp.indexOf("内容为:");
+        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QString hexContent = toHex(subsequentContent);
+        logEdit()->appendPlainText(beforeContent + hexContent);
+    } else {
+        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
+        logEdit()->appendPlainText(logEntry);
+    }
 }
 void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
     qDebug() << "DongleSerialPort串口问题" << error;

@@ -167,7 +167,6 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     // //启动定时器
     // cameratimer->start(10);
     testResultTableInit();
-
 }
 void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
     int surpluse_space = 0;
@@ -621,10 +620,32 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
     // 检查软件版本、资源版本和老化状态是否匹配
     if (Camera_Id_List.contains(data.camera_version)) {
         showlog("摄像头id正确" + QString::fromUtf8(data.camera_version));
+
+        TestItem test;
+        test.testItem = "摄像头id";
+        test.testData = QString::fromUtf8(data.camera_version);
+        test.testResult = "通过";
+        test.ask = Camera_Id;
+        testItems.append(test);
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
     } else {
+        TestItem test;
+        test.testItem = "摄像头id";
+        test.testData = QString::fromUtf8(data.camera_version);
+        test.testResult = "失败";
+        test.ask = Camera_Id;
+        testItems.append(test);
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         showlog("状态错误");
         showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
-
         result = failValue;
         isScreenContinue = false;
         showlog("停止运行");
@@ -784,10 +805,10 @@ void cameratest::startTask() {
                 test.testData = "";
                 test.testResult = result;
                 test.ask = "通过";
-                                          testItems.append(test);
-                    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
-                    testResultTableUpdate(testItems);
-                    testItems.clear();
+                testItems.append(test);
+                log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
                 log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 pb->set_camera_state(0);
@@ -915,7 +936,7 @@ void cameratest::getMac(QString sn_to_search) {
     }
 }
 void cameratest::on_getMac_returnPressed() {
-       testResultTableInit();
+    testResultTableInit();
 
     ui->log->clear();
     ui->msgEdit->clear();
@@ -1028,7 +1049,7 @@ void cameratest::on_save_photo_clicked() {
 void cameratest::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
-    dongleSerialPortBuf.clear();  // 清除缓冲区
+    dongleSerialPortBuf.clear();                // 清除缓冲区
 
     int write_len = 0;
     int len = dataTemp.size();
@@ -1050,9 +1071,16 @@ void cameratest::readDongleSerialPortData() {
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-    QString logEntry = QString("[%1] %2").arg(timestamp, dataTemp);
-    // 将最终字符串追加到日志编辑器中
-    logEdit()->appendPlainText(logEntry);
+    if (dataTemp.contains("内容为:")) {
+        int pos = dataTemp.indexOf("内容为:");
+        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
+        QString hexContent = toHex(subsequentContent);
+        logEdit()->appendPlainText(beforeContent + hexContent);
+    } else {
+        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
+        logEdit()->appendPlainText(logEntry);
+    }
 }
 
 void cameratest::readPendingDatagrams() {

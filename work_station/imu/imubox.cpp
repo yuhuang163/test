@@ -39,11 +39,8 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
         connect(testList[i], SIGNAL(stage3_ok(int)), this, SLOT(check_all_over_stage3(int)));
         connect(testList[i], SIGNAL(fixture_up(int)), this, SLOT(check_all_over_fixture_up(int)));
         connect(testList[i], SIGNAL(fixture_down(int)), this, SLOT(check_all_over_fixture_down(int)));
-
         connect(testList[i], SIGNAL(fixture_right(int)), this, SLOT(check_all_over_fixture_right(int)));
-
         connect(testList[i], SIGNAL(fixture_left(int)), this, SLOT(check_all_over_fixture_left(int)));
-
         connect(this, SIGNAL(send_fixture_log(QString)), testList[i], SLOT(print_fixture_log(QString)));
     }
 
@@ -58,7 +55,6 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
             Fixture_uart_ui->fixBaudRate = 115200;
             for (int i = 0; i < testList.size(); i++) {
                 connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_imu(int)), testList[i], SLOT(set_fix_result(int)));
-
                 connect(Fixture_uart_ui, SIGNAL(start_fix_action(int)), testList[i], SLOT(get_fix_action(int)));
             }
 
@@ -138,8 +134,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     });
 
     setWindowTitle("IMU校准上位机");
-    QAction* updata = ui->menubar->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+
 }
 void imubox::startTest() {
     for (int i = 0; i < testList.size(); i++) {
@@ -171,8 +166,28 @@ imubox::~imubox() {
     delete Fixture_uart_ui;
     delete ui;
 }
-void imubox::resetall() {}
+void imubox::resetall() {
+    //立讯的p20p要回车开始，木星是按键开始
+    if (pack.factory == "lx" && pack.product == "P20P") {
+        startTest();
+    }
+    // if (pack.factory != "xwd") {
+    //     set_cylinder_state(STATE_RESET);
+    //     waitWork(500);
 
+    //     if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
+    //         if (pack.factory == "xwd") {
+    //             set_cylinder_state(STATE_BRUSH_RIGHT);
+    //         } else {
+    //             set_cylinder_state(STATE_BRUSH_LEFT);
+    //         }
+
+    //         waitWork(1500);
+    //     }
+
+    //     set_cylinder_state(STATE_BRUSH_UP);
+    // }
+}
 //把12个的其中1个杀死变成1，跟随测试
 void imubox::set_vector_state(int state) {
     state = state - 1;
