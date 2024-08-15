@@ -1480,7 +1480,7 @@ void MainWindow::getMac(QString sn_to_search) {
                         ui->macInput_7->setText(mac);
                         on_macInput_7_returnPressed();
                         showlog("开始ota升级");
-                    } else if (ui->is_start_ota->checkState()) {
+                    } else if (ui->is_start_bleota->checkState()) {
                         ui->getMac->clear();
                         ui->getMac->setFocus();
                         ui->bleotamacInput->setText(mac);

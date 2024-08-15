@@ -15,9 +15,9 @@ void imucali::on_pushButton_clicked() {
     // ui->macInput->setText("e2:66:07:34:2d:f7");
     // ui->macInput->setText("74:4D:BD:95:80:7e");
     // ui->macInput->setText("b4:56:5d:bf:57:9d");//E4:08:09:30:7E:FB
-    ui->macInput->setText("b4:56:5d:bf:54:4e");  // wd牙刷
-    ui->macInput->setText("ca:5b:09:30:ca:fb");
-    ui->macInput->setText("b4:56:5d:bf:57:9d");
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");  // wd牙刷
+    // ui->macInput->setText("ca:5b:09:30:ca:fb");
+    // ui->macInput->setText("b4:56:5d:bf:57:9d");
     on_macInput_returnPressed();
 
     // for(int i=0 ;i<500;i++)
@@ -313,7 +313,7 @@ void imucali::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-    //showlog("蓝牙连接断开");
+    // showlog("蓝牙连接断开");
 }
 void imucali::refreshBleState(int state) {
     if (state) {
@@ -328,7 +328,6 @@ void imucali::refreshBleState(int state) {
         //     on_macInput_returnPressed();
     }
 }
-
 
 void imucali::refreshDongleUartState(int state) {
     if (state)
@@ -1004,7 +1003,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         result = failValue;
                         TestItem test;
                         test.testItem = "出厂电压";
-                        test.testData = voltage;
+                        test.testData = QString::number(voltage);
                         test.testResult = "失败";
                         test.ask = "通过";
                         testItems.append(test);
@@ -1351,7 +1350,7 @@ void imucali::on_macInput_returnPressed() {
 }
 
 void imucali::on_getMac_returnPressed() {
-       testResultTableInit();
+    testResultTableInit();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);

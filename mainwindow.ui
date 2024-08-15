@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>5</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2976,7 +2976,14 @@
                   <item>
                    <widget class="QCheckBox" name="is_start_bleota">
                     <property name="text">
-                     <string>是否开启OTA功能</string>
+                     <string>开启文件OTA功能</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="is_bleota_press">
+                    <property name="text">
+                     <string>OTA压测</string>
                     </property>
                    </widget>
                   </item>

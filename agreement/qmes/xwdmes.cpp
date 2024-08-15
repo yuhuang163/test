@@ -397,7 +397,7 @@ void xwdmes::GetTestData(MesPacketData pack)
         }
         if (pack.product == "Y20")
         {
-            pack.machineNo = "Y20_CURRENT1_TEST";
+            pack.machineNo = "Y20-CURRENT1-TEST";
             pack.itemvalue = "BTMAC";
         }
 

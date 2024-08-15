@@ -81,9 +81,11 @@ bool new_imu_calibrate::add_CalibData(float *data, CalibDatasets *add_calib_data
             {-0.643, 0, -0.766},   // Position 7 	d     d
             {-0.643, -0.766, 0},   // Position 5 	d     r
             {0.643, 0, 0.766},     // Position 2 	u     u
-            {0.643, -0.766, 0},    // Position 1 	u     l
+            {0.643, 0.766, 0},     // Position 0 	u     r
+
             {0.643, 0, -0.766},     // Position 3 	u     d
-            {0.643, 0.766, 0}     // Position 0 	u     r
+            {0.643, -0.766, 0},    // Position 1 	u     l
+
 
 
         };

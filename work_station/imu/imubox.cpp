@@ -50,8 +50,8 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
     connect(Fixture_connectl_act, &QAction::triggered, [=]() {
         if (Fixture_uart_ui == NULL) {
-            connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this, SLOT(startTest()));
             Fixture_uart_ui = new Fixture_uart;
+            connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this, SLOT(startTest()));
             Fixture_uart_ui->fixBaudRate = 115200;
             for (int i = 0; i < testList.size(); i++) {
                 connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_imu(int)), testList[i], SLOT(set_fix_result(int)));
@@ -134,11 +134,10 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     });
 
     setWindowTitle("IMU校准上位机");
-
 }
 void imubox::startTest() {
     for (int i = 0; i < testList.size(); i++) {
-        qDebug() << "开始测试";
+        qDebug() << "开始测试IMU校准上位机";
         testList[i]->startTest();
     }
 

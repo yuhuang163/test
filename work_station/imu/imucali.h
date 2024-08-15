@@ -30,11 +30,11 @@ public:
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };     // dongle口
     QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };  // usb口（治具）
 
-    QLineEdit* getMacLineEdit() override { return ui->getMac; };      // sn输入口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };           // log地址输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
-    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };                    // log地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
+    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
     explicit imucali(int index, QWidget* parent = nullptr);
 
 private:
@@ -116,6 +116,7 @@ protected:
     void closeEvent(QCloseEvent*) override;
 
 private slots:
+
     void get_fix_action(int state);
     void getDongleVer(QString data) override;
 
