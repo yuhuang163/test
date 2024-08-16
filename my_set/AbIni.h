@@ -56,8 +56,8 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.2.6"   // 支持1拖多
-#define AGE_VER "老化测试工站   V1.1.3"     // 支持1拖多
+#define DEBUG_VER "电刷产测工具   V1.2.8"   // 支持1拖多
+#define AGE_VER "老化测试工站   V1.1.4"     // 支持1拖多
 #define MOTOR_VER "电机校准工站   V1.1.3"   // 加定时器判断休
 #define QC_VER "静态电流测试   V1.3.1"      // 增加定时器判断休眠
 #define SCREEN_VER "屏幕测试工站   V1.1.1"  // 加定时器判断休
@@ -65,13 +65,14 @@
 #define SINGLE_VER "信号测试工站   V1.2.9"  // 立讯bug
 #define FREE_VER "自由测试工站   V1.0.4"    // 立讯bug
 #define CAMERA_VER "摄像测试工站   V1.1.1"  // 支持摄像头工站
-#define IMU_VER "IMU校准工站    V1.3.7"     // 支持自动化治具
+#define IMU_VER "IMU校准工站    V1.3.8"     // 支持自动化治具
 #define PCBA_VER "电刷板子测试   V1.2.7"    // 加定时器判断休
 
-// [DEBUG_VER] 添加ota压测功能
+// [DEBUG_VER] 修复压测显示的bug
+// [AGE_VER] 修复老化工站的bug以及之前的产品显示的笨重问题
+//
 // [IMU_VER] 欣旺达的y20mes获取mac地址bug修复，立讯指令开始测试的bug修复
 // [CAMERA_VER] 修改上位机升级功能通过配置文件隐藏，修复摄像头id测试项目显示
-// [AGE_VER] 修改上位机升级功能通过配置文件隐藏
 // [MOTOR_VER] 修改上位机升级功能通过配置文件隐藏
 // [QC_VER] 修改上位机升级功能通过配置文件隐藏
 // [SCREEN_VER] 修改上位机升级功能通过配置文件隐藏

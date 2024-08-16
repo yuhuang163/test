@@ -58,13 +58,13 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
 
         TestItem test;
         test.testItem = "内存状态";
-        test.testData =  QString::number(data.flash_state);
-        test.ask = flashStatus;
+        test.testData = QString::number(data.flash_state);
+        test.ask = QString::number(flashStatus);
+        ;
         testItems.append(test);
         log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
         updateTestData(testItems);
         testItems.clear();
-
     }
 }
 void ageing::getTestValue(const int mechines, const QString value) {
@@ -649,6 +649,7 @@ void ageing::on_getMac_returnPressed() {
     processInspection(ui->getMac->text());
     processGetMesTestValue();  // mes获取
 }
+#include <QGraphicsPixmapItem>
 
 void ageing::show_product(QString name) {
     QString imagePath = "产品照片/" + name + ".png";
@@ -668,18 +669,27 @@ void ageing::show_product(QString name) {
         return;
     }
 
-    // 获取 QLabel 的尺寸
-    QSize labelSize = ui->product->size();
-    qDebug() << getIndex() << "labelSize" << labelSize;
+    // 获取 QGraphicsView 的尺寸
+    QSize viewSize = ui->graphicsView->size();
+    qDebug() << getIndex() << "viewSize" << viewSize;
 
-    // 按 QLabel 的尺寸缩放图片，同时保持纵横比
-    QPixmap scaledPixmap = pixmap.scaled(labelSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    // 创建 QGraphicsScene 并设置到 QGraphicsView
+    QGraphicsScene* scene = new QGraphicsScene(ui->graphicsView);
+    ui->graphicsView->setScene(scene);
 
-    // 设置缩放后的图片到 QLabel，并确保尺寸合适
-    ui->product->setPixmap(scaledPixmap);
-    ui->product->setFixedSize(labelSize);  // 这一行确保 QLabel 的尺寸固定
+    // 按 QGraphicsView 的尺寸缩放图片，同时保持纵横比
+    QPixmap scaledPixmap = pixmap.scaled(viewSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    // 创建 QGraphicsPixmapItem 并将缩放后的 QPixmap 设置到它
+    QGraphicsPixmapItem* pixmapItem = new QGraphicsPixmapItem(scaledPixmap);
+
+    // 将 QGraphicsPixmapItem 添加到场景中
+    scene->addItem(pixmapItem);
+
+    // 调整 QGraphicsView 的视图设置
+    ui->graphicsView->setSceneRect(scaledPixmap.rect());
+    ui->graphicsView->fitInView(scaledPixmap.rect(), Qt::KeepAspectRatio);  // 确保视图中的图像按比例适应
 }
-
 void ageing::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();

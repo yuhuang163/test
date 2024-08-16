@@ -291,21 +291,21 @@ MainWindow::MainWindow(QWidget* parent) :
 
         otaFinish = true;
         if (r == 11) {
-            if (ui->is_bleota_press->checkState()) {
-                on_bleotamacInput_returnPressed();
-            }
             ui->bleotaresult->setText("PASS");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                             "black; border: 2px solid #00FF00; border-radius: "
                                             "10px; padding: 10px; text-align: center;");
-        } else {
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
             }
+        } else {
             ui->bleotaresult->setText("FAIL");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
                                             "black; border: 2px solid #FF0000; border-radius: "
                                             "10px; padding: 10px; text-align: center; ");
+            if (ui->is_bleota_press->checkState()) {
+                on_bleotamacInput_returnPressed();
+            }
         }
     });
     connect(this, SIGNAL(sendPicture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
