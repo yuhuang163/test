@@ -99,7 +99,7 @@ void checkTaskStatus(TaskHandle_t taskHandle, const char *taskName)
 }
 void setup()
 {
-  Serial.setRxBufferSize(UART_RX_BUFFER_SIZE); // 将缓冲区大小设置为1024字节
+  Serial.setRxBufferSize(UART_RX_BUFFER_SIZE); // 设置缓存
   Serial.begin(921600);
 
   // Serial.setTimeout(5); // 设置超时
