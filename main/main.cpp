@@ -112,8 +112,6 @@ void setup()
   strip.show();            // 显示初始化状态（全部关灯）
   strip.setBrightness(10); // 设置亮度为50% （取值范围为0-255）
 
-  Serial.print("dongle固件版本");
-  Serial.println(version);
 
   Serial.print("AT+DONGLEVER=");
   Serial.println(version);
