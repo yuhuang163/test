@@ -126,6 +126,7 @@ public:
     QNetworkAccessManager* updatamanager;
 
 private:
+    void saveDongleUartLog( QString data) ;
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
     QByteArray subpid;

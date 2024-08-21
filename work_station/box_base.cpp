@@ -253,6 +253,36 @@ void box_base::TotallyTask() {
 
     qDebug() << "已经退出主任务";
 }
+// void box_base::TotallyTask() {
+//     QList<QThread*> threads;
+
+//     // 创建线程并分配任务
+//     for (int i = 0; i < testList.size(); i++) {
+//         QThread* thread = QThread::create([this, i]() {
+//             while (isTestContinue) {
+//                 testList[i]->startTask();
+//                 QThread::msleep(100);  // 根据需要调整任务执行间隔
+//             }
+//         });
+
+//         threads.append(thread);
+//         thread->start();
+//     }
+
+//     // 主线程继续运行其他任务
+//     while (isTestContinue) {
+//         QCoreApplication::processEvents();
+//     }
+
+//     // 停止所有线程并清理
+//     for (QThread* thread : threads) {
+//         thread->quit();
+//         thread->wait();  // 等待线程安全退出
+//         delete thread;   // 删除线程对象，避免内存泄漏
+//     }
+
+//     qDebug() << "已经退出主任务";
+// }
 void addComboBoxEditText(QComboBox* comboBox, const QString& text) {
     if (comboBox != nullptr) {
         comboBox->addItem(text);

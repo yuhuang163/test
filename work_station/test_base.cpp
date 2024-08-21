@@ -216,6 +216,36 @@ QString test_base::toHex(const QByteArray& data) {
     }
     return hexStr.trimmed();  // 去掉最后的空格
 }
+void test_base::saveDongleUartLog(QString data) {
+    QString folderName = "dongle的log";
+    QDir dir;
+
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+            return;
+        }
+    }
+    // 获取当前时间并格式化为字符串
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
+
+    // 生成文件路径
+    QString fileName = "dongle日志" + timestamp + ".log";
+    QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile logFile(filePath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
+        // 获取当前时间的详细时间戳
+        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        out << detailedTimestamp << data << "\n";
+        logFile.close();
+    } else {
+        qDebug() << "无法打开dongle日志文件：" << fileName;
+    }
+}
 void test_base::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
@@ -229,6 +259,7 @@ void test_base::readDongleSerialPortData() {
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     // 获取当前时间
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
 
     if (dataTemp.contains("内容为:")) {
         int pos = dataTemp.indexOf("内容为:");
@@ -237,9 +268,9 @@ void test_base::readDongleSerialPortData() {
         QString hexContent = toHex(subsequentContent);
         logEdit()->appendPlainText(beforeContent + hexContent);
     } else {
-        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
         logEdit()->appendPlainText(logEntry);
     }
+    saveDongleUartLog(logEntry);
 }
 void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
     qDebug() << "DongleSerialPort串口问题" << error;
@@ -590,8 +621,8 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     // 启动定时器
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [=]() {
-        if (!getRespone) {         // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 3) {  // 如果还有重试次数
+        if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
+            if (retryCount < 10) {  // 如果还有重试次数
                 if (commandFunc != nullptr) {
                     commandFunc();  // 重新发送指令
                 }
@@ -618,9 +649,11 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         return 0;
     });
 
-    timer->start(1000);  // 启动定时器
+    timer->start(100);  // 启动定时器
     return 0;
 }
+
+
 void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
     if (testResultTable() == nullptr) {
         showlog("不存在表格");

@@ -499,7 +499,36 @@ QString toHex(const QByteArray& data) {
     }
     return hexStr.trimmed();  // 去掉最后的空格
 }
+void MainWindow::saveDongleUartLog(QString data) {
+    QString folderName = "dongle的log";
+    QDir dir;
 
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+            return;
+        }
+    }
+    // 获取当前时间并格式化为字符串
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
+
+    // 生成文件路径
+    QString fileName = "dongle日志" + timestamp + ".log";
+    QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile logFile(filePath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
+        // 获取当前时间的详细时间戳
+        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        out << detailedTimestamp << data << "\n";
+        logFile.close();
+    } else {
+        qDebug() << "无法打开dongle日志文件：" << fileName;
+    }
+}
 void MainWindow::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
@@ -525,6 +554,7 @@ void MainWindow::readDongleSerialPortData() {
 
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
 
     if (dataTemp.contains("内容为:")) {
         int pos = dataTemp.indexOf("内容为:");
@@ -533,9 +563,9 @@ void MainWindow::readDongleSerialPortData() {
         QString hexContent = toHex(subsequentContent);
         ui->log->appendPlainText(beforeContent + hexContent);
     } else {
-        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
         ui->log->appendPlainText(logEntry);
     }
+    saveDongleUartLog(logEntry);
 }
 
 void MainWindow::refreshDongleUartState(int state) {

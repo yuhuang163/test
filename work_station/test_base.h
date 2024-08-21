@@ -56,6 +56,7 @@ public:
 
 private:  // 通用变量
     void initData();
+    void saveDongleUartLog( QString data);
 
 public:
     QString macAddress = "没有mac地址";

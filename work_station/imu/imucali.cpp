@@ -956,29 +956,21 @@ void imucali::startTask()  // 编写六轴校准的代码
 
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
                     state = STATE_DISABLE_SLEEP_1;
                 }
                 break;
 
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
-                if (pb->getDisableSleep()) {
+                if (canGoNext) {
                     showlog("已进入禁止休眠");
                     sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
-
                     state = STATE_GETBASEDATA;
-                } else {
-                    waitWork(500);
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
-                    showlog("正在重发禁止休眠");
                 }
                 break;
             case STATE_GETBASEDATA:
-
                 if (canGoNext) {
-                    pb->set_imu_collect_param(FacSwitch_START);
-                    pb->get_sn(FacDevInfoType_TAIL_SN);
-                    showlog("正在查询SN");
+                    sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                     state = STATE_GETBATTERY;
                 }
                 break;
@@ -1011,17 +1003,14 @@ void imucali::startTask()  // 编写六轴校准的代码
                         testResultTableUpdate(testItems);
                         testItems.clear();
                     }
+                    sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
 
                     state = STATE_CAIL;
-                } else {
-                    waitWork(500);
-                    showlog("正在重发获取电量信息");
-                    pb->get_battery();
                 }
                 break;
 
             case STATE_CAIL:  // 开始校准
-                if (pb->get_isSetimuCollectParam()) {
+                if (canGoNext) {
                     showlog("已设置imu采集参数");
 
                     qimuc->imu_calib_init();
@@ -1035,9 +1024,6 @@ void imucali::startTask()  // 编写六轴校准的代码
                     waittime->start(imu_wait_time);
                     caliwaittime->start(imu_cali_wait_time);
                     state = STATE_SEND_CAIL_RESULT;
-                } else {
-                    pb->set_imu_collect_param(FacSwitch_START);
-                    waitWork(500);
                 }
                 break;
 
@@ -1226,11 +1212,8 @@ void imucali::startTask()  // 编写六轴校准的代码
                     QString itemvalue = QString("|outvoltage:%1").arg(voltage) + QString("|IMU_CALI_RESULT:NG|") +
                                         QString("IMU_TEST_RESULT:NG|");
                     pack.result = mesresult;
-
                     pack.itemvalue = itemvalue;
-
                     pack.sn = ui->getMac->text();
-
                     if (ui->isusemes->checkState()) {
                         send_end_testPass(pack);
                     }

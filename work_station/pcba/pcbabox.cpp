@@ -17,7 +17,6 @@ pcbabox::pcbabox(QWidget* parent) :
 
 {
     ui->setupUi(this);
-
     CreatWindow<PcbaForm>(this);
     signalAndslot();
     recoverCustom();

@@ -60,7 +60,6 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
         test.ask = QString::number(flashStatus);
-        ;
         testItems.append(test);
         log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
         updateTestData(testItems);

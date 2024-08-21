@@ -101,6 +101,9 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     HighmusicCurrent = settings.value("Current/HighmusicCurrent").toDouble();
     LowmusicCurrent = settings.value("Current/LowmusicCurrent").toDouble();
 
+    HighshipCurrent = settings.value("Current/HighshipCurrent").toDouble();
+    LowshipCurrent = settings.value("Current/LowshipCurrent").toDouble();
+
     HighstaticCurrent = settings.value("Current/HighstaticCurrent").toDouble();
     LowstaticCurrent = settings.value("Current/LowstaticCurrent").toDouble();
     music_state = settings.value("FIXTEST/MusicState").toInt();
@@ -137,10 +140,10 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     showlog("LowCharCurrent=" + QString::number(LowCharCurrent));
     showlog("HighworkCurrent=" + QString::number(HighworkCurrent));
     showlog("LowworkCurrent=" + QString::number(LowworkCurrent));
-
     showlog("HighmusicCurrent=" + QString::number(HighmusicCurrent));
     showlog("LowmusicCurrent=" + QString::number(LowmusicCurrent));
-
+    showlog("HighshipCurrent=" + QString::number(HighshipCurrent));
+    showlog("LowshipCurrent=" + QString::number(LowshipCurrent));
     showlog("HighstaticCurrent=" + QString::number(HighstaticCurrent));
     showlog("LowstaticCurrent=" + QString::number(LowstaticCurrent));
     showlog("RssiTestTime=" + QString::number(RssiTestTime));
@@ -597,48 +600,6 @@ void PcbaForm::connectwifi() {
     }
 }
 
-void PcbaForm::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
-    // 获取桌面路径
-    QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-
-    // 构建 "测试结果" 文件夹的完整路径
-    QString folderPath = QDir(desktopPath).filePath("测试结果");
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 构建完整的文件路径
-    QString filePath = QDir(folderPath).filePath("绑定文件.csv");
-
-    QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
-        QTextStream stream(&file);
-        // 检查是否是文件的开头，如果是，则写入表头
-        if (file.pos() == 0) {
-            QStringList headers;
-            headers << "时间"
-                    << "mac地址"
-                    << "sn码";
-            stream << headers.join(",") << "\n";
-        }
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-        // 写入数据
-        QStringList rowData;
-        rowData << timestamp;
-        rowData << macAddress;
-        rowData << sn;
-        stream << rowData.join(",") << "\n";
-        file.close();
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "文件保存到" << filePath;
-    } else {
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "文件没关或者其他问题";
-    }
-}
-
 void PcbaForm::clearDisplay() {
     ui->msgEdit->clear();
     testResultTableInit();
@@ -707,201 +668,119 @@ void PcbaForm::get_remain_data_sleep(const FixturePacketData packetData) {
 }
 
 void PcbaForm::get_remain_data(const FixturePacketData packetData) {
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "收到" << getIndex();
-    //   showlog("已收到治具请求休眠命令" );
-    if (packetData.machineNumber == getIndex()) {
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "机号:" << packetData.machineNumber;
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "静态电流值:" << packetData.staticCurrent << "ua";
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "工作电流:" << packetData.workingCurrent << "ma";
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "过压灯正常:" << packetData.overVoltageLight;
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "按键1:" << packetData.button1;
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "按键2:" << packetData.button2;
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "充电电流:" << packetData.chargingCurrent << "ma";
-        TestItem test;
+    // 验证收到的数据是否属于当前 PCBA
+    if (packetData.machineNumber != getIndex())
+        return;
 
-#ifdef NEW_MUSIC_CURRENT
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "音频电流:" << packetData.musicCurrent;
+    logPacketData(packetData);  // 记录收到的数据
 
-        if (packetData.musicCurrent < HighmusicCurrent && packetData.musicCurrent > LowmusicCurrent)
+    QList<TestItem> testItems;
 
-        {
-            testData = QString::number(packetData.musicCurrent);
-            TestItem test;
-            test.testItem = "音频电流";
-            test.testData = testData;
-            test.testResult = passValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        } else {
-            totalresult = failValue;
-            testData = QString::number(packetData.musicCurrent);
-
-            TestItem test;
-            test.testItem = "音频电流";
-            test.testData = testData;
-            test.testResult = failValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        }
-
-#else
-        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                 << "音频情况:" << packetData.music_state;
-
-        test.testItem = "音频测试";
-        test.testData = QString::number(packetData.music_state);
-        test.ask = QString::number(music_state);
-        testItems.append(test);
-
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-        updateTestData(testItems);
-        testItems.clear();
-        if (packetData.music_state != music_state) {
-            totalresult = failValue;
-        }
-
-#endif
-
-        if (packetData.overVoltageLight != overVoltageLight || packetData.button1 != button1 ||
-            packetData.button2 != button2) {
-            totalresult = failValue;
-        }
-
-        if (pack.product == "P20P" || pack.product == "Q20")
-            test.testItem = "灯光测试";
-        else
-            test.testItem = "过压灯测试";
-        test.testData = QString::number(packetData.overVoltageLight);
-        test.ask = QString::number(overVoltageLight);
-        testItems.append(test);
-
-        test.testItem = "按键1";
-        test.testData = QString::number(packetData.button1);
-        test.ask = QString::number(button1);
-        testItems.append(test);
-
-        test.testItem = "按键2";
-        test.testData = QString::number(packetData.button2);
-        test.ask = QString::number(button2);
-        testItems.append(test);
-
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-        updateTestData(testItems);
-        testItems.clear();
-
-        if (packetData.staticCurrent < HighstaticCurrent && packetData.staticCurrent > LowstaticCurrent) {
-            testData = QString::number(packetData.staticCurrent);
-            TestItem test;
-            test.testItem = "静态电流测试";
-            test.testData = testData;
-            test.testResult = passValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-
-        } else {
-            totalresult = failValue;
-            testData = QString::number(packetData.staticCurrent);
-
-            TestItem test;
-            test.testItem = "静态电流测试";
-            test.testData = testData;
-            test.testResult = failValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        }
-
-        if (packetData.workingCurrent < HighworkCurrent && packetData.workingCurrent > LowworkCurrent) {
-            testData = QString::number(packetData.workingCurrent);
-            TestItem test;
-            test.testItem = "工作电流测试";
-            test.testData = testData;
-            test.testResult = passValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        } else {
-            totalresult = failValue;
-            testData = QString::number(packetData.workingCurrent);
-            TestItem test;
-            test.testItem = "工作电流测试";
-            test.testData = testData;
-            test.testResult = failValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        }
-
-        if (packetData.chargingCurrent < HighCharCurrent && packetData.chargingCurrent > LowCharCurrent) {
-            testData = QString::number(packetData.chargingCurrent);
-            TestItem test;
-            test.testItem = "充电电流测试";
-            test.testData = testData;
-            test.testResult = passValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        } else {
-            totalresult = failValue;
-            testData = QString::number(packetData.chargingCurrent);
-            TestItem test;
-            test.testItem = "充电电流测试";
-            test.testData = testData;
-            test.testResult = failValue;
-            test.ask = "通过";
-            testItems.append(test);
-            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
-            testResultTableUpdate(testItems);
-            testItems.clear();
-        }
-
-        if (totalresult == failValue) {
-            remain_ok = 2;
-            ui->ng_number->setText("NG:" + QString::number(ngnumber));
-            ui->ng_number->setStyleSheet("font-size: 16px; background-color: #ff557f; color: black; border: 2px solid "
-                                         "#FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
-
-            ui->test_result->setText("FAIL");
-            ui->test_result->setStyleSheet("font-size: 66px; background-color: #FF0000; color: black; border: 2px "
-                                           "solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-
-            state = STATE_SAVE_RESULT;
-            // isPcbaTestContinue = false;
-            showlog("流程结束");
-        } else
-            remain_ok = 1;
-
-        showlog("remain_ok=" + QString::number(remain_ok));
-
-        //    startTask();
+    // 根据产品类型进行特定测试
+    if (pack.product == "U7") {
+        processTestItem("船运电流", packetData.shipCurrent, LowshipCurrent, HighshipCurrent, testItems);
     }
-};
+
+    if (pack.product == "Q20" || pack.product == "U7") {
+        processTestItem("音频电流", packetData.musicCurrent, LowmusicCurrent, HighmusicCurrent, testItems);
+    } else {
+        processSimpleTestItem("音频测试", packetData.music_state, music_state, testItems);
+    }
+
+    // 处理过压灯和按键测试
+    processSimpleTestItem("过压灯测试", packetData.overVoltageLight, overVoltageLight, testItems);
+    processSimpleTestItem("按键1", packetData.button1, button1, testItems);
+    processSimpleTestItem("按键2", packetData.button2, button2, testItems);
+
+    // 处理静态电流和工作电流测试
+    processTestItem("静态电流测试", packetData.staticCurrent, LowstaticCurrent, HighstaticCurrent, testItems);
+    processTestItem("工作电流测试", packetData.workingCurrent, LowworkCurrent, HighworkCurrent, testItems);
+    processTestItem("充电电流测试", packetData.chargingCurrent, LowCharCurrent, HighCharCurrent, testItems);
+
+    // 保存测试结果并更新UI
+    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems.toVector());
+    testResultTableUpdate(testItems.toVector());
+
+    // 根据测试结果更新UI状态
+    updateTestResultUI();
+    testItems.clear();
+
+    showlog("流程结束");
+}
+
+void PcbaForm::processTestItem(const QString& testItem, int currentValue, int lowValue, int highValue,
+                               QList<TestItem>& testItems) {
+    TestItem test;
+    test.testItem = testItem;
+    test.testData = QString::number(currentValue);
+    test.ask = "通过";
+
+    if (currentValue >= lowValue && currentValue <= highValue) {
+        test.testResult = "通过";
+    } else {
+        test.testResult = "失败";
+        totalresult = failValue;
+    }
+
+    testItems.append(test);
+}
+
+void PcbaForm::processSimpleTestItem(const QString& testItem, int currentValue, int expectedValue,
+                                     QList<TestItem>& testItems) {
+    TestItem test;
+    test.testItem = testItem;
+    test.testData = QString::number(currentValue);
+    test.ask = QString::number(expectedValue);
+
+    if (currentValue != expectedValue) {
+        test.testResult = "失败";
+        totalresult = failValue;
+    } else {
+        test.testResult = "通过";
+    }
+
+    testItems.append(test);
+}
+
+void PcbaForm::updateTestResultUI() {
+    if (totalresult == failValue) {
+        remain_ok = 2;
+        ui->ng_number->setText("NG:" + QString::number(ngnumber));
+        ui->ng_number->setStyleSheet("font-size: 16px; background-color: #ff557f; color: black; border: 2px solid "
+                                     "#FF0000; border-radius: 10px; padding: 1px; text-align: center;");
+        ui->test_result->setText("FAIL");
+        ui->test_result->setStyleSheet("font-size: 66px; background-color: #FF0000; color: black; border: 2px solid "
+                                       "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
+    } else {
+        remain_ok = 1;
+    }
+
+    showlog("remain_ok=" + QString::number(remain_ok));
+}
+
+void PcbaForm::logPacketData(const FixturePacketData& packetData) {
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "机号:" << packetData.machineNumber;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "静态电流值:" << packetData.staticCurrent << "ua";
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "工作电流:" << packetData.workingCurrent << "ma";
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "过压灯正常:" << packetData.overVoltageLight;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "按键1:" << packetData.button1;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "按键2:" << packetData.button2;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "充电电流:" << packetData.chargingCurrent << "ma";
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "船运电流:" << packetData.shipCurrent << "ua";
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "音频电流:" << packetData.musicCurrent << "ma";
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "产品为" << pack.product;
+}
+
 void PcbaForm::getimuData(FacUploadNineAlex x) {
     for (int i = 0; i < x.data_count; i++) {
         // 处理 IMU 数据
@@ -1016,8 +895,8 @@ void PcbaForm::startTask() {
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠");
                     pb->set_fac_mode(1);
-                    waitWork(WAITTIME);
-                    pb->set_imu_collect_param(FacSwitch_START);
+                    sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
+
                     state = STATE_WATI_CORRECT_IMU_DATA;
                 } else {
                     waitWork(500);
@@ -1043,14 +922,8 @@ void PcbaForm::startTask() {
                     log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
                     testResultTableUpdate(testItems);
                     testItems.clear();
-
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
                     state = STATE_WATI_STOP_IMU_DATA;
-                } else {
-                    waitWork(500);
-                    pb->set_imu_collect_param(FacSwitch_START);
-                    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-                             << "重发六轴参数开";
                 }
 
                 break;

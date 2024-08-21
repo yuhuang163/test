@@ -635,11 +635,25 @@ void MainWindow::openDongleSerialPort() {
     dongleSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
 
     if (dongleSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        dongleSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        dongleSerialPort->setDataTerminalReady(true);
-
+        if (ui->is_reset_dongle->checkState()) {
+            // 启用RTS信号
+            dongleSerialPort->setRequestToSend(true);
+            // 启用DTR信号
+            dongleSerialPort->setDataTerminalReady(true);
+            // 启用RTS信号
+            dongleSerialPort->setRequestToSend(false);
+            // 启用DTR信号
+            dongleSerialPort->setDataTerminalReady(false);
+            // 启用RTS信号
+            dongleSerialPort->setRequestToSend(true);
+            // 启用DTR信号
+            dongleSerialPort->setDataTerminalReady(true);
+        } else {
+            // 启用RTS信号
+            dongleSerialPort->setRequestToSend(true);
+            // 启用DTR信号
+            dongleSerialPort->setDataTerminalReady(true);
+        }
         // showlog("串口连接成功");
         emit send_dongle_serialPort_state(1);
 
@@ -1466,12 +1480,28 @@ void MainWindow::on_bleTestPushButton_clicked() {
     int times = 0;
 
     while (isContinue) {
-        on_macInput_7_returnPressed();
+        if (!dongleSerialPort->isOpen()) {
+            on_connectButton_clicked();
+        }
+        // 检查是否是mac格式
+        QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+        // 使用正则表达式匹配
+        if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
+            QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+            return;
+        } else {
+            at->sendotaMac(ui->bleotamacInput->text());
+        }
+
+        waitWork(ui->testPeriodSpin->value() * 1000 / 2);
+
+        at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+
         waitWork(ui->testPeriodSpin->value() * 1000);
+
         ui->testMsg->appendPlainText(QString(""));
         ui->testMsg->appendPlainText(QString("%1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
         ui->testMsg->appendPlainText(QString("test times:%1").arg(times++));
-        // on_getBasicInfoButton_clicked();
     }
 
     ui->bleTestPushButton->setEnabled(true);
@@ -1479,7 +1509,12 @@ void MainWindow::on_bleTestPushButton_clicked() {
     ui->otaTestPushButton->setEnabled(true);
 }
 
-void MainWindow::on_stopTestPushButton_clicked() { isContinue = false; }
+void MainWindow::on_stopTestPushButton_clicked() {
+    isContinue = false;
+    ui->bleTestPushButton->setEnabled(true);
+    ui->configWifiPushButton->setEnabled(true);
+    ui->otaTestPushButton->setEnabled(true);
+}
 
 void MainWindow::on_otaTestPushButton_clicked() {
     isContinue = true;
@@ -3047,6 +3082,8 @@ void MainWindow::on_uploadapp_clicked() {
 void MainWindow::on_delefile_clicked() { deleteFile("http://163.177.79.53:16888/Readme.md"); }
 
 void MainWindow::on_bleotamacInput_returnPressed() {
+    on_disconnectButton_clicked();
+
     if (!ui->is_bleota_press->checkState()) {
         clearDisplay();
     }
@@ -3149,6 +3186,7 @@ void MainWindow::on_startBleOta_clicked() {
             showlog("文件发送完毕!");
             bleotatimer->stop();
             currentChunk = 0;
+
             return;
         }
 

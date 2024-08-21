@@ -34,6 +34,9 @@ Fixture_uart::Fixture_uart(QWidget* parent) :
         }
     });
     running.store(true);
+
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    pack.product = settings.value("Mes/Product_Name").toString();
 }
 
 Fixture_uart::~Fixture_uart() {
@@ -140,8 +143,8 @@ void Fixture_uart::readFixtureSerialPortData() {
 void Fixture_uart::solve_frame(void) {
     while (true) {
         // 从环形缓冲区中读取帧头
-        fixRingBuf->usmile_ring_buffer_pick(
-            &p_fixRingBuffer, frame_buf, FIX_PHY_LAYER_HEAD_SIZE + FIX_PHY_LAYER_FRAME_SIZE + FIX_PHY_LAYER_FRAME_SIZE);
+        fixRingBuf->usmile_ring_buffer_pick(&p_fixRingBuffer, frame_buf,
+                                            FIX_PHY_LAYER_HEAD_SIZE + FIX_PHY_LAYER_FRAME_SIZE);
         int ring_size = fixRingBuf->usmile_ring_buffer_items_count_get(&p_fixRingBuffer);
         if (ring_size <= FIX_PHY_LAYER_HEADER_ADN_CRC) {
             // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
@@ -349,7 +352,6 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
         }
     }
 
-    qDebug() << receivebuf.at(0) << receivebuf.at(receivebuf.size() - 1);
     // 验证数据包的起始和结束标志
     if (static_cast<int>(receivebuf.at(0)) != 85 || static_cast<int>(receivebuf.at(receivebuf.size() - 1)) != -86) {
         qDebug() << "接收到的数据包开头或结尾格式不正确";
@@ -366,13 +368,15 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     // uint chargingCurrent;
     datapack.chargingCurrent = (static_cast<uint8_t>(receivebuf.at(10)) << 8) | static_cast<uint8_t>(receivebuf.at(11));
 
-#ifdef NEW_MUSIC_CURRENT
-    datapack.musicCurrent = (static_cast<uint8_t>(receivebuf.at(12)) << 8) | static_cast<uint8_t>(receivebuf.at(13));
-
-#else
-    datapack.music_state = receivebuf.at(12);
-
-#endif
+    if (pack.product == "Q20" || pack.product == "U7") {
+        datapack.musicCurrent =
+            (static_cast<uint8_t>(receivebuf.at(12)) << 8) | static_cast<uint8_t>(receivebuf.at(13));
+    } else {
+        datapack.music_state = receivebuf.at(12);
+    }
+    if (pack.product == "U7") {
+        datapack.shipCurrent = (static_cast<uint8_t>(receivebuf.at(14)) << 8) | static_cast<uint8_t>(receivebuf.at(15));
+    }
 
     // 在这里使用提取出的字段进行后续处理
     qDebug() << "机号:" << datapack.machineNumber;
@@ -383,11 +387,12 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     qDebug() << "按键2:" << datapack.button2;
     qDebug() << "充电电流:" << datapack.chargingCurrent << "ma";
 
-#ifdef NEW_MUSIC_CURRENT
-    qDebug() << "音频电流:" << datapack.musicCurrent;
-#else
-    qDebug() << "音频情况:" << datapack.music_state;
-#endif
+    if (pack.product == "Q20" || pack.product == "U7") {
+        qDebug() << "音频电流:" << datapack.musicCurrent;
+    } else {
+        qDebug() << "音频情况:" << datapack.music_state;
+    }
+
     emit send_data_to_mechine(datapack);
 
     receivebuf.clear();

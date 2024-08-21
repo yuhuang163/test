@@ -113,6 +113,7 @@ int main(int argc, char* argv[]) {
     qDebug() << "工站为：" + station;
 
     qRegisterMetaType<FacErrorCode>("FacErrorCode");
+
     // #QUIESCENT_CURRENT
     // #MOTOR_TEST
     // #IMU_CALI

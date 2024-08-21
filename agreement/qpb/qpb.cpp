@@ -44,12 +44,10 @@ uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {
 void Qpb::parseCmd(const QByteArray& byte) {
     std::vector<uint8_t> data(byte.begin(), byte.end());
 
-    // const char *dataPtr = reinterpret_cast<const char *>(byte.data());
+    // const char* dataPtr = reinterpret_cast<const char*>(byte.data());
     // QString output;
-    // for (int i = 0; i < byte.size(); ++i)
-    // {
-    //     output +=
-    //         QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
+    // for (int i = 0; i < byte.size(); ++i) {
+    //     output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
     // }
     // qDebug() << "收到的pb码为" << output.trimmed();
 
@@ -116,7 +114,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
 
                         if (pb_mode == CLIENT) {
                             if (pb_decode(&istream, DataPackage_fields, &blePack)) {
-                                //   qDebug() << "command_id" << blePack.command_id;
+                                qDebug() << "command_id" << blePack.command_id;
 
                                 auto it = bleCommandList.find(blePack.command_id);
                                 if (it != bleCommandList.end()) {
@@ -125,11 +123,9 @@ void Qpb::parseCmd(const QByteArray& byte) {
                                     qDebug() << "ble event not found , cmd id: " << blePack.command_id
                                              << blePack.which_command_data;
                                 }
+                            } else {
+                                qDebug() << "ble 解码失败原因：" << PB_GET_ERROR(&istream);
                             }
-                            //                        {
-                            //                            qDebug() << " ble  解码失败原因：" <<
-                            //                            PB_GET_ERROR(&istream);
-                            //                        }
                         }
                     } else {
                         qDebug() << "pb协议的CRC校验失败";
@@ -1764,6 +1760,8 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
         case CommandId_ROTAS_DATA_RSP:
             if (f.command_data.rota_data_rsp.progress)
                 emit send_ota_progress(f.command_data.rota_data_rsp.progress);
+            else
+                qDebug() << "是0的进度已经省略显示";
             break;
 
         case CommandId_ROTAS_RESULT_REQ:
