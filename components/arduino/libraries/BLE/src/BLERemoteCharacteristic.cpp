@@ -555,14 +555,14 @@ void BLERemoteCharacteristic::writeValue(uint8_t newValue, bool response) {
  * @param [in] response Whether we require a response from the write.
  */
 
-void BLERemoteCharacteristic::writeValue(uint8_t *data, size_t length, bool response) {
+int BLERemoteCharacteristic::writeValue(uint8_t *data, size_t length, bool response) {
   // writeValue(String((char*)data, length), response);
   log_v(">> writeValue(), length: %d", length);
 
   // Check to see that we are connected.
   if (!getRemoteService()->getClient()->isConnected()) {
     log_e("Disconnected");
-    return ;
+    return 0;
   }
 
   m_semaphoreWriteCharEvt.take("writeValue");
@@ -574,13 +574,13 @@ void BLERemoteCharacteristic::writeValue(uint8_t *data, size_t length, bool resp
 
   if (errRc != ESP_OK) {
     log_e("esp_ble_gattc_write_char: rc=%d %s", errRc, GeneralUtils::errorToString(errRc));
-    return ;
+    return 0;
   }
 
   m_semaphoreWriteCharEvt.wait("writeValue");
 
   log_v("<< writeValue");
-    return ;
+    return 1;
 }  // writeValue
 
 /**

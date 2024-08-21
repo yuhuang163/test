@@ -4,13 +4,13 @@
  * 更新时间2023/11/10/22：12
  * C:\Users\heyj\.espressif\tools\xtensa-esp32s3-elf\esp-12.2.0_20230208\xtensa-esp32s3-elf\bin\xtensa-esp32s3-elf-addr2line.exe -pfiaC -e newdongle.elf ADDRESS  0x42013334:0x3fcb1d40 0x420167ae:0x3fcb1d60 0x4200c51d:0x3fcb1dd0 0x4200b457:0x3fcb1df0 0x420110f0:0x3fcb1ed0 0x40383bb6:0x3fcb1ef0
  * ~/.espressif/tools/xtensa-esp32s3-elf/esp-12.2.0_20230208/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-addr2line -pfiaC -e build/newdongle.elf ADDRESS  0x42016642:0x3fcb1dd0 0x42016882:0x3fcb1df0 0x42016a9a:0x3fcb1ed0 0x4200c73d:0x3fcb1f40 0x4200b4de:0x3fcb1f60 0x420113d0:0x3fcb2040 0x40383bb6:0x3fcb2060
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
  */
 
 // AT+MAC=B4:56:5D:BF:53:71
@@ -45,7 +45,7 @@
 #define wifiuse 1
 int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
-String version = "1.2.4"; // 默认的版本号
+String version = "1.2.5"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 
@@ -102,7 +102,6 @@ void setup()
   Serial.setRxBufferSize(UART_RX_BUFFER_SIZE); // 设置缓存
   Serial.begin(921600);
 
-  // Serial.setTimeout(5); // 设置超时
   Serial.println("");
 
 #if wifiuse == 1
@@ -111,7 +110,6 @@ void setup()
   strip.begin();           // 初始化WS2812B
   strip.show();            // 显示初始化状态（全部关灯）
   strip.setBrightness(10); // 设置亮度为50% （取值范围为0-255）
-
 
   Serial.print("AT+DONGLEVER=");
   Serial.println(version);
@@ -171,7 +169,7 @@ void loop()
   // LOG_DEBUG(ble_connected);
   // LOG_DEBUG(ble_scan_over);
   // LOG_DEBUG(doConnect);
- // vTaskDelay(1000); // 循环之间延迟一秒。
+  // vTaskDelay(1000); // 循环之间延迟一秒。
 
   //  checkTaskStatus(serialEventTaskHandle, "串口事件任务");
   //   checkTaskStatus(processDataTaskHandle, "数据处理任务");

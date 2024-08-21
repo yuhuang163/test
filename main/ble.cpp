@@ -10,9 +10,7 @@ boolean ble_connected = false; // 是否是连接的状态
 boolean ble_scan_over = false; // 是否scan完成
 boolean StartSendOtaData = false;
 boolean StartSendmainData = false;
-
 boolean StartBombState = false;
-
 boolean candeleteble = true; // 是否可以销毁蓝牙实例
 
 static BLEScan *pBLEScan;
@@ -22,9 +20,7 @@ static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
 static BLERemoteCharacteristic *mainNotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *mainWriteCharacteristic = nullptr;
-
 static BLERemoteCharacteristic *DataCharacteristic = nullptr;
-
 static BLERemoteService *pRemoteService = nullptr;
 static BLERemoteService *mainRemoteService = nullptr;
 
@@ -271,7 +267,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     0x09, // 9 * 1.25ms = 11.25ms
                     0x0c, // 12 * 1.25ms = 15ms
                     0,    // 从机延迟// 从机延迟 (单位: 连接事件数)
-                    2000   // 400 * 10ms = 4000ms
+                    2000  // 400 * 10ms = 4000ms
                 );
 
                 if (status == ESP_OK)
@@ -297,7 +293,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
     }
 };
 #define scantime 1
-
 
 void ble_init()
 {
@@ -347,7 +342,7 @@ void send_ble_data(uint8_t *data, size_t length)
 {
     const size_t MAX_PACKET_SIZE = MY_MTU - 3; // 最大每包大小
     size_t offset = 0;                         // 当前数据的偏移量
-    size_t packetCount = 0;                    // 记录当前包数
+   // size_t packetCount = 0;                    // 记录当前包数
 
     while (offset < length)
     {
@@ -357,8 +352,8 @@ void send_ble_data(uint8_t *data, size_t length)
         // 提取当前包的数据
         uint8_t packet[MAX_PACKET_SIZE];
         memcpy(packet, data + offset, packetSize);
-        packetCount++;
-        Serial.printf("开始发送第%d包\r\n", packetCount);
+        // packetCount++;
+        // Serial.printf("开始发送第%d包\r\n", packetCount);
 
         // 发送数据
         if (StartSendOtaData)
@@ -370,8 +365,13 @@ void send_ble_data(uint8_t *data, size_t length)
                     int free_buff_num = esp_ble_get_cur_sendable_packets_num(conn_id);
                     if (free_buff_num > 0)
                     {
-                        DataCharacteristic->writeValue(packet, packetSize);
-                        break;
+                        if (DataCharacteristic->writeValue(packet, packetSize))
+                            break;
+                        else
+                        {
+                            Serial.println("发送失败");
+                            continue;
+                        }
                     }
                     vTaskDelay(10);
                 }
