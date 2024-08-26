@@ -541,17 +541,16 @@ void wifibletest::getWifiMsg(QString data) {
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
             refreshWifiState(1);
             WIFI_RSSI = rssi;
+            bool ok;
+            WIFI_RSSI.toInt(&ok);
+
+            if (!ok) {
+                qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
+            } else {
+                //  showlog("转换成功");
+                intwifirssi = WIFI_RSSI.toInt(&ok);
+            }
         }
-    }
-
-    bool ok;
-    WIFI_RSSI.toInt(&ok);
-
-    if (!ok) {
-        qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
-    } else {
-        //  showlog("转换成功");
-        intwifirssi = WIFI_RSSI.toInt(&ok);
     }
 }
 void wifibletest::initDate() {
@@ -912,7 +911,7 @@ void wifibletest::startTask() {
 void wifibletest::on_disconnectwifi_clicked() {
     if (at->getConnected()) {
         pb->set_wifi_disconnect();
-        showlog("已设置断开wifi");
+        showlog("已发送断开wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -930,7 +929,7 @@ void wifibletest::on_connectwifi_clicked() {
 
     if (at->getConnected()) {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }

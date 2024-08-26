@@ -430,6 +430,31 @@ void Fixture_uart::sendimuData(imuFixtureState fixstate) {
         start_fix_action(1);
     }
 }
+void Fixture_uart::set_camera_action(camreaFixtureState fixstate) {
+    if (!fixtureSerialPort->isOpen()) {
+        qDebug() << "带页面的治具串口未打开，无法发送数据";
+
+        // QMessageBox::warning(NULL, "警告", " 未打开串口\t\r\n  无法发送数据！\r\n");
+        return;
+    }
+
+    QByteArray dataToSend;
+
+    switch (fixstate) {
+        case STATE_THOROUGHFARE1_IN: dataToSend = QByteArray("CTL_IN1\r\n"); break;
+        case STATE_THOROUGHFARE1_OUT: dataToSend = QByteArray("CTL_OUT1\r\n"); break;
+        case STATE_THOROUGHFARE2_IN: dataToSend = QByteArray("CTL_IN2\r\n"); break;
+        case STATE_THOROUGHFARE2_OUT: dataToSend = QByteArray("CTL_OUT2\r\n"); break;
+
+        default: break;
+    }
+
+    if (!dataToSend.isEmpty()) {
+        fixtureSerialPort->write(dataToSend);
+        save_Fixture_uart_log(1, dataToSend);
+        start_fix_action(1);
+    }
+}
 
 void Fixture_uart::sendFixtureData(FixtureState fixstate) {
     if (!fixtureSerialPort->isOpen()) {

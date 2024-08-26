@@ -126,7 +126,6 @@ private slots:
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;
     void refreshImuCaliResult(FacImuCalibResult x) override;
-
     void solveMesData(const int mechines, QString msg);
     void solveMesSucess(const int mechines);
 

@@ -52,7 +52,6 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 #define NEW_XWD_QUIESCENT_CURRENT
-#define NEW_MUSIC_CURRENT
 
 #define SETTING_NAME "上位机设置.ini"
 
@@ -64,14 +63,15 @@
 #define LIGHT_VER "灯光测试工站   V1.1.2"   // 加定时器判断休
 #define SINGLE_VER "信号测试工站   V1.3.0"  // 立讯bug
 #define FREE_VER "自由测试工站   V1.0.5"    // 立讯bug
-#define CAMERA_VER "摄像测试工站   V1.1.2"  // 支持摄像头工站
+#define CAMERA_VER "摄像测试工站   V1.1.3"  // 支持摄像头工站
 #define IMU_VER "IMU校准工站    V1.3.9"     // 支持自动化治具
-#define PCBA_VER "电刷板子测试   V1.2.8"    // 加定时器判断休
+#define PCBA_VER "电刷板子测试   V1.2.9"    // 加定时器判断休
 
 // [DEBUG_VER] dongle日志保存，串口选择是否复位dongle，蓝牙连接压测功能
+// [CAMERA_VER] 增加对治具的控制
+// [IMU_VER] 适配不带回应的船运回应
+//
 // [AGE_VER] 添加dongle日志保存后台
-// [IMU_VER] 添加dongle日志保存后台
-// [CAMERA_VER] 添加dongle日志保存后台
 // [MOTOR_VER] 添加dongle日志保存后台
 // [QC_VER] 添加dongle日志保存后台
 // [SCREEN_VER] 添加dongle日志保存后台

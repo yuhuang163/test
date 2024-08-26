@@ -226,7 +226,7 @@ void ageing::on_enterBurningMode_clicked() {
             pb->set_burning_mode(3, FacSwitch_OPEN);
         if (ui->burningModeCombo->currentText() == "老化4")
             pb->set_burning_mode(4, FacSwitch_OPEN);
-        showlog("已设置老化");
+        showlog("已发送老化");
     } else {
         showlog("请等待连接牙刷后再试");
     }

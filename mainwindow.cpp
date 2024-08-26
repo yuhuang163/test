@@ -760,7 +760,7 @@ void MainWindow::on_enterShipModeButton_clicked() {
     if (1)  //(at->getConnected())
     {
         pb->set_ship_mode(1);
-        showlog("已设置进入船运");
+        showlog("已发送进入船运");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -797,7 +797,7 @@ void MainWindow::on_lcdTestButton_clicked() {
 
     if (at->getConnected()) {
         pb->set_screen_color(state);
-        showlog("已设置屏幕颜色");
+        showlog("已发送屏幕颜色");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -859,7 +859,7 @@ void MainWindow::on_enterBurningMode_clicked() {
             pb->set_burning_mode(3, FacSwitch_OPEN);
         if (ui->burningModeCombo->currentText() == "老化4")
             pb->set_burning_mode(4, FacSwitch_OPEN);
-        showlog("已设置老化");
+        showlog("已发送老化");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -982,7 +982,7 @@ void MainWindow::on_entersleep_clicked() {
         // on_disconnectButton_clicked();
         // 3C:84:27:07:A8:D2
 
-        showlog("已设置休眠");
+        showlog("已发送休眠");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -1018,7 +1018,7 @@ void MainWindow::on_getwifi_clicked() {
 void MainWindow::on_disconnectwifi_clicked() {
     if (at->getConnected()) {
         pb->set_wifi_disconnect();
-        showlog("已设置断开wifi");
+        showlog("已发送断开wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -1033,7 +1033,7 @@ void MainWindow::on_connectwifi_clicked() {
 
     if (at->getConnected()) {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -1264,7 +1264,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
                 }
             case STATE_CAIL:  // 开始校准
                 if (pb->get_isSetimuCollectParam()) {
-                    showlog("已设置imu采集参数");
+                    showlog("已发送imu采集参数");
                     qimuc->imu_calib_init();
                     is_start_ium_cali = 1;
                     qDebug() << "开始校准";
@@ -1972,7 +1972,7 @@ void MainWindow::on_new_connectwifi_clicked() {
 
     if (at->getConnected()) {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, wifiPasswordBytes, wifiPassword);
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -2288,7 +2288,7 @@ void MainWindow::on_distribution_network_clicked() {
 
     if (at->getConnected()) {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -3166,7 +3166,7 @@ void MainWindow::on_startBleOta_clicked() {
     pb->set_start_ota_app(RotasFiledata);
     showlog("已发送开始OTA!");
     waitWork(1000);
-    showlog("已设置OTA数据通道开启!");
+    showlog("已发送OTA数据通道开启!");
     at->sendOTADATA(1);
 
     int chunkSize = 300;  // 每包244字节

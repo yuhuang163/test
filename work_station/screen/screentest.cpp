@@ -146,7 +146,7 @@ void screentest::refreshSn(FacDevInfo data) {
 void screentest::set_screen_color(int x) {
     if (at->getConnected()) {
         pb->set_screen_color(x);
-        showlog("已设置屏幕颜色" + QString::number(x));
+        showlog("已发送屏幕颜色" + QString::number(x));
 
     } else {
         showlog("请等待连接牙刷后再试");

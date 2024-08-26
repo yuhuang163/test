@@ -1,19 +1,18 @@
 ﻿#include "xwdmes.h"
+
 #include "qeventloop.h"
 
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 xwdmes::xwdmes() {}
 // 标签不存在，表示sn有问题
 // QString M_USERNO, QString M_PASSWORD, QString M_MACHINENO
 
-void xwdmes::LogIn(MesPacketData pack)
-{
-    if (pack.factory == "xwd")
-    {
+void xwdmes::LogIn(MesPacketData pack) {
+    if (pack.factory == "xwd") {
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/checkUserDo";
-        QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+        QNetworkAccessManager* manager = new QNetworkAccessManager(this);
         QNetworkRequest request((QUrl(url)));
         // 设置请求头，使用 setHeader 方法
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -25,16 +24,14 @@ void xwdmes::LogIn(MesPacketData pack)
         QJsonDocument jsonDoc(requestData);
         QByteArray jsonData = jsonDoc.toJson();
         // 发送 POST 请求
-        QNetworkReply *reply = manager->post(request, jsonData);
+        QNetworkReply* reply = manager->post(request, jsonData);
         connect(reply, SIGNAL(finished()), this, SLOT(onNetworkReplyFinished()));
     }
 }
-void xwdmes::onNetworkReplyFinished()
-{
-    QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
+void xwdmes::onNetworkReplyFinished() {
+    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
 
-    if (reply && reply->error() == QNetworkReply::NoError)
-    {
+    if (reply && reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
 
         // 解析 JSON 数据
@@ -44,25 +41,19 @@ void xwdmes::onNetworkReplyFinished()
         // 获取返回的结果
         QString resultCode = jsonObj.value("resultCode").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             // 登录成功
             qDebug() << "LogIn successful";
             emit sendMesState(1);
-        }
-        else
-        {
+        } else {
             emit sendMesState(0);
             qDebug() << resultCode;
             // 登录失败，处理错误信息
-            if (jsonObj.contains("resultMsg"))
-            {
+            if (jsonObj.contains("resultMsg")) {
                 QString resultMsg = jsonObj.value("resultMsg").toString();
                 qDebug() << "LogIn failed. Error: " << resultMsg;
                 emit operateMesError(0, "登陆失败：" + resultMsg);
-            }
-            else
-            {
+            } else {
                 emit operateMesError(0, "登陆失败，没有报错信息");
             }
             // 打印整个 JSON 对象的字符串表示形式
@@ -70,9 +61,7 @@ void xwdmes::onNetworkReplyFinished()
         }
 
         reply->deleteLater();
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(0, "Network request error");
         qDebug() << "Network request error:" << reply->errorString();
@@ -81,10 +70,8 @@ void xwdmes::onNetworkReplyFinished()
 
 // const int mechines, const QString &sn, const QString &emp, const QString &machineNo
 
-void xwdmes::ProcessInspection(MesPacketData pack)
-{
-    if (pack.factory == "xwd")
-    {
+void xwdmes::ProcessInspection(MesPacketData pack) {
+    if (pack.factory == "xwd") {
         // 接口地址
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/groupTest";
 
@@ -102,13 +89,12 @@ void xwdmes::ProcessInspection(MesPacketData pack)
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
         // 发送POST请求
-        QNetworkReply *reply = manager.post(request, jsonData);
+        QNetworkReply* reply = manager.post(request, jsonData);
         QEventLoop loop;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         loop.exec();
 
-        if (reply->error() == QNetworkReply::NoError)
-        {
+        if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
@@ -116,23 +102,18 @@ void xwdmes::ProcessInspection(MesPacketData pack)
             QString resultCode = jsonObj.value("resultCode").toString();
             QString resultMsg = jsonObj.value("resultMsg").toString();
 
-            if (resultCode == "0000")
-            {
+            if (resultCode == "0000") {
                 // 工序检验成功
                 qDebug() << "工序检验成功";
                 emit operateMesSucess(pack.mechines);
 
                 // 进行其他操作...
-            }
-            else
-            {
+            } else {
                 // 工序检验失败
                 emit operateMesError(pack.mechines, "工序检验失败：" + resultMsg);
                 // 进行其他操作...
             }
-        }
-        else
-        {
+        } else {
             // 处理网络请求错误
             emit operateMesError(pack.mechines, "网络请求错误：" + reply->errorString());
         }
@@ -141,10 +122,8 @@ void xwdmes::ProcessInspection(MesPacketData pack)
     }
 }
 
-void xwdmes::collectPass(const int mechines, const QString &sn, const QString &mo,
-                         const QString &userno, const QString &machineno, const QString &result,
-                         const QString &itemvalue)
-{
+void xwdmes::collectPass(const int mechines, const QString& sn, const QString& mo, const QString& userno,
+                         const QString& machineno, const QString& result, const QString& itemvalue) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/weldInputTest";
 
@@ -165,13 +144,12 @@ void xwdmes::collectPass(const int mechines, const QString &sn, const QString &m
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -179,21 +157,16 @@ void xwdmes::collectPass(const int mechines, const QString &sn, const QString &m
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             // 过站成功
             qDebug() << "过站成功";
             emit operateMesSucess(mechines);
             // 进行其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "过站失败：" + resultMsg);
             // 进行其他操作...
         }
-    }
-    else
-    {
+    } else {
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
 
@@ -203,10 +176,8 @@ void xwdmes::collectPass(const int mechines, const QString &sn, const QString &m
 // const int mechines, const QString &sn, const QString &result,
 //     const QString &userno, const QString &machineno, const QString &error,
 //     const QString &itemvalue
-void xwdmes::TestPass(MesPacketData pack)
-{
-    if (pack.factory == "xwd")
-    {
+void xwdmes::TestPass(MesPacketData pack) {
+    if (pack.factory == "xwd") {
         // 接口地址
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/wipTest";
 
@@ -227,13 +198,12 @@ void xwdmes::TestPass(MesPacketData pack)
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
         // 发送POST请求
-        QNetworkReply *reply = manager.post(request, jsonData);
+        QNetworkReply* reply = manager.post(request, jsonData);
         QEventLoop loop;
         QObject::connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
         loop.exec();
 
-        if (reply->error() == QNetworkReply::NoError)
-        {
+        if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
@@ -241,32 +211,26 @@ void xwdmes::TestPass(MesPacketData pack)
             QString resultCode = jsonObj.value("resultCode").toString();
             QString resultMsg = jsonObj.value("resultMsg").toString();
 
-            if (resultCode == "0000")
-            {
+            if (resultCode == "0000") {
                 // 过站成功
                 qDebug() << "过站成功";
                 emit operateMesSucess(pack.mechines);
                 // 进行其他操作...
-            }
-            else
-            {
+            } else {
                 // 过站失败
                 qDebug() << "过站失败：" << resultMsg;
                 emit operateMesError(pack.mechines, resultMsg);
                 // 进行其他操作...
             }
-        }
-        else
-        {
+        } else {
             emit operateMesError(pack.mechines, "网络请求错误：" + reply->errorString());
         }
 
         reply->deleteLater();
     }
 }
-void xwdmes::assemblePass(const int mechines, const QString &machineNo, const QString &productSN,
-                          const QString &mo, const QString &emp, const QString &kpItemSnAll)
-{
+void xwdmes::assemblePass(const int mechines, const QString& machineNo, const QString& productSN, const QString& mo,
+                          const QString& emp, const QString& kpItemSnAll) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/hwInterface";
 
@@ -286,13 +250,12 @@ void xwdmes::assemblePass(const int mechines, const QString &machineNo, const QS
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -300,32 +263,25 @@ void xwdmes::assemblePass(const int mechines, const QString &machineNo, const QS
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             // 过站成功
             qDebug() << "过站成功";
             emit operateMesSucess(mechines);
             // 进行其他操作...
-        }
-        else
-        {
+        } else {
             // 过站失败
             qDebug() << "过站失败：" << resultMsg;
             emit operateMesError(mechines, resultMsg);
             // 进行其他操作...
         }
-    }
-    else
-    {
+    } else {
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
 
     reply->deleteLater();
 }
-void xwdmes::uploadOfflineData(const int mechines, const QString &mSn, const QString &mResult,
-                               const QString &mUserno, const QString &mMachineno,
-                               const QString &mError, const QString &mItemvalue)
-{
+void xwdmes::uploadOfflineData(const int mechines, const QString& mSn, const QString& mResult, const QString& mUserno,
+                               const QString& mMachineno, const QString& mError, const QString& mItemvalue) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/offlineData";
 
@@ -346,13 +302,12 @@ void xwdmes::uploadOfflineData(const int mechines, const QString &mSn, const QSt
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -360,23 +315,18 @@ void xwdmes::uploadOfflineData(const int mechines, const QString &mSn, const QSt
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             // 上传成功
             qDebug() << "上传成功";
             emit operateMesSucess(mechines);
             // 进行其他操作...
-        }
-        else
-        {
+        } else {
             // 上传失败
             qDebug() << "上传失败：" << resultMsg;
             emit operateMesError(mechines, "上传失败：" + resultMsg);
             // 进行其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
@@ -386,18 +336,18 @@ void xwdmes::uploadOfflineData(const int mechines, const QString &mSn, const QSt
 // (const int mechines, const QString &sn, const QString &wpCode,
 //  const QString &testItemName)
 
-void xwdmes::GetTestData(MesPacketData pack)
-{
-    if (pack.factory == "xwd")
-    {
-        if (pack.product == "Q20")
-        {
+void xwdmes::GetTestData(MesPacketData pack) {
+    if (pack.factory == "xwd") {
+        if (pack.product == "Q20") {
             pack.machineNo = "Q20-JTDLTEST";
             pack.itemvalue = "BTMAC";
         }
-        if (pack.product == "Y20")
-        {
+        if (pack.product == "Y20") {
             pack.machineNo = "Y20-CURRENT1-TEST";
+            pack.itemvalue = "BTMAC";
+        }
+        if (pack.product == "Y20P") {
+            pack.machineNo = "Y20Pro-CURRENT1-TEST";
             pack.itemvalue = "BTMAC";
         }
 
@@ -417,13 +367,12 @@ void xwdmes::GetTestData(MesPacketData pack)
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
         // 发送POST请求
-        QNetworkReply *reply = manager.post(request, jsonData);
+        QNetworkReply* reply = manager.post(request, jsonData);
         QEventLoop loop;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         loop.exec();
 
-        if (reply->error() == QNetworkReply::NoError)
-        {
+        if (reply->error() == QNetworkReply::NoError) {
             QByteArray responseData = reply->readAll();
             QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
             QJsonObject jsonObj = jsonDoc.object();
@@ -431,11 +380,9 @@ void xwdmes::GetTestData(MesPacketData pack)
             QString resultCode = jsonObj.value("resultCode").toString();
             QString resultMsg = jsonObj.value("resultMsg").toString();
 
-            if (resultCode == "0000")
-            {
+            if (resultCode == "0000") {
                 QJsonArray dataArray = jsonObj.value("data").toArray();
-                foreach(const QJsonValue &value, dataArray)
-                {
+                foreach (const QJsonValue& value, dataArray) {
                     QJsonObject itemObj = value.toObject();
                     QString moCode = itemObj.value("moCode").toString();
                     QString mtrlCode = itemObj.value("mtrlCode").toString();
@@ -463,15 +410,11 @@ void xwdmes::GetTestData(MesPacketData pack)
                 }
                 qDebug() << "mes内容:" << resultMsg;
                 // 其他操作...
-            }
-            else
-            {
+            } else {
                 emit operateMesError(pack.mechines, "请求失败：" + resultMsg);
                 // 其他操作...
             }
-        }
-        else
-        {
+        } else {
             // 处理网络请求错误
             emit operateMesError(pack.mechines, "网络请求错误：" + reply->errorString());
         }
@@ -480,8 +423,7 @@ void xwdmes::GetTestData(MesPacketData pack)
     }
 }
 
-void xwdmes::getSoftwareVersionBySn(const int mechines, const QString &sn)
-{
+void xwdmes::getSoftwareVersionBySn(const int mechines, const QString& sn) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getSoftwareVersionBySn";
 
@@ -497,13 +439,12 @@ void xwdmes::getSoftwareVersionBySn(const int mechines, const QString &sn)
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -511,12 +452,10 @@ void xwdmes::getSoftwareVersionBySn(const int mechines, const QString &sn)
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             QJsonObject dataObj = jsonObj.value("data").toObject();
             QStringList testItems = dataObj.keys();
-            foreach(const QString &testItem, testItems)
-            {
+            foreach (const QString& testItem, testItems) {
                 QString testValue = dataObj.value(testItem).toString();
 
                 qDebug() << "testValue: " << testValue;
@@ -526,15 +465,11 @@ void xwdmes::getSoftwareVersionBySn(const int mechines, const QString &sn)
             }
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
@@ -542,8 +477,7 @@ void xwdmes::getSoftwareVersionBySn(const int mechines, const QString &sn)
     reply->deleteLater();
 }
 
-void xwdmes::getKeyToProduct(const int mechines, const QString &productKey, const QString &itemCode)
-{
+void xwdmes::getKeyToProduct(const int mechines, const QString& productKey, const QString& itemCode) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getKeyToProduct";
 
@@ -560,13 +494,12 @@ void xwdmes::getKeyToProduct(const int mechines, const QString &productKey, cons
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -574,8 +507,7 @@ void xwdmes::getKeyToProduct(const int mechines, const QString &productKey, cons
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             QString data = jsonObj.value("data").toString();
 
             qDebug() << "data: " << data;
@@ -584,23 +516,18 @@ void xwdmes::getKeyToProduct(const int mechines, const QString &productKey, cons
             // 可以将数据存储到数据结构中，或进行其他操作
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
 
     reply->deleteLater();
 }
-void xwdmes::getBindTable(const int mechines, const QString &productSN)
-{
+void xwdmes::getBindTable(const int mechines, const QString& productSN) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getBindTable";
 
@@ -616,13 +543,12 @@ void xwdmes::getBindTable(const int mechines, const QString &productSN)
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -630,12 +556,10 @@ void xwdmes::getBindTable(const int mechines, const QString &productSN)
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             emit operateMesSucess(mechines);
             QJsonArray dataArray = jsonObj.value("data").toArray();
-            foreach(const QJsonValue &dataValue, dataArray)
-            {
+            foreach (const QJsonValue& dataValue, dataArray) {
                 QJsonObject dataObj = dataValue.toObject();
                 QString productSN = dataObj.value("productSN").toString();
                 QString itemCode = dataObj.value("itemCode").toString();
@@ -649,15 +573,11 @@ void xwdmes::getBindTable(const int mechines, const QString &productSN)
             }
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
@@ -665,8 +585,7 @@ void xwdmes::getBindTable(const int mechines, const QString &productSN)
     reply->deleteLater();
 }
 
-void xwdmes::replaceSN(const int mechines, const QString &mo, const QString &itemSN)
-{
+void xwdmes::replaceSN(const int mechines, const QString& mo, const QString& itemSN) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/replaceSN";
 
@@ -683,13 +602,12 @@ void xwdmes::replaceSN(const int mechines, const QString &mo, const QString &ite
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -697,8 +615,7 @@ void xwdmes::replaceSN(const int mechines, const QString &mo, const QString &ite
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             emit operateMesSucess(mechines);
             QString data = jsonObj.value("data").toString();
 
@@ -707,23 +624,18 @@ void xwdmes::replaceSN(const int mechines, const QString &mo, const QString &ite
             // 可以将数据存储到数据结构中，或进行其他操作
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
 
     reply->deleteLater();
 }
-void xwdmes::getMaterialAndMoBySN(const int mechines, const QString &SN)
-{
+void xwdmes::getMaterialAndMoBySN(const int mechines, const QString& SN) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getMaterialAndMoBySN";
 
@@ -739,13 +651,12 @@ void xwdmes::getMaterialAndMoBySN(const int mechines, const QString &SN)
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -753,8 +664,7 @@ void xwdmes::getMaterialAndMoBySN(const int mechines, const QString &SN)
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             emit operateMesSucess(mechines);
             QJsonObject dataObj = jsonObj.value("data").toObject();
             QString itemCode = dataObj.value("itemCode").toString();
@@ -766,23 +676,18 @@ void xwdmes::getMaterialAndMoBySN(const int mechines, const QString &SN)
             // 可以将数据存储到数据结构中，或进行其他操作
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }
 
     reply->deleteLater();
 }
-void xwdmes::getGroupItem(const int mechines, const QString &mo, const QString &machineNo)
-{
+void xwdmes::getGroupItem(const int mechines, const QString& mo, const QString& machineNo) {
     // 接口地址
     QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getGroupItem";
 
@@ -799,13 +704,12 @@ void xwdmes::getGroupItem(const int mechines, const QString &mo, const QString &
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     // 发送POST请求
-    QNetworkReply *reply = manager.post(request, jsonData);
+    QNetworkReply* reply = manager.post(request, jsonData);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    if (reply->error() == QNetworkReply::NoError)
-    {
+    if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
         QJsonObject jsonObj = jsonDoc.object();
@@ -813,8 +717,7 @@ void xwdmes::getGroupItem(const int mechines, const QString &mo, const QString &
         QString resultCode = jsonObj.value("resultCode").toString();
         QString resultMsg = jsonObj.value("resultMsg").toString();
 
-        if (resultCode == "0000")
-        {
+        if (resultCode == "0000") {
             emit operateMesSucess(mechines);
             QJsonObject dataObj = jsonObj.value("data").toObject();
             QString itemCode = dataObj.value("itemCode").toString();
@@ -830,15 +733,11 @@ void xwdmes::getGroupItem(const int mechines, const QString &mo, const QString &
             // 可以将数据存储到数据结构中，或进行其他操作
 
             // 其他操作...
-        }
-        else
-        {
+        } else {
             emit operateMesError(mechines, "请求失败：" + resultMsg);
             // 其他操作...
         }
-    }
-    else
-    {
+    } else {
         // 处理网络请求错误
         emit operateMesError(mechines, "网络请求错误：" + reply->errorString());
     }

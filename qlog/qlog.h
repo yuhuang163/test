@@ -15,7 +15,7 @@ public:
     Qlog();
     void saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,
                      const QVector<TestItem>& testItems);
-    void save_brush_log(QString macAddress, QString data);
+    void save_brush_log(int m_index, QString macAddress, QString data);
     void showlog(QString msg, int mechine, QPlainTextEdit* msgEdit);
     void writeRow(QTextStream& stream, const QStringList& rowData);
     void save_quiescent_current_test_data_to_csv();

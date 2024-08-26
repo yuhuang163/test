@@ -20,6 +20,7 @@ void PcbaForm::on_pushButton_clicked() {
     // ui->macInput->setText("e2:66:07:34:2d:f7");
     // ui->macInput->setText("3c:84:27:29:50:32");
     ui->macInput->setText("b4:56:5d:bf:54:4e");
+    ui->macInput->setText("3C:84:27:07:A8:D2");
 
     on_macInput_returnPressed();
     at->sendMac(ui->macInput->text());  // 发送mac地址
@@ -27,7 +28,9 @@ void PcbaForm::on_pushButton_clicked() {
 
 PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     m_index = index;
-    dongleBaudRate = 115200;
+    //  dongleBaudRate = 115200;
+    dongleOutTime = 1;  // 太快会死锁
+
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     scanSerialPorts();  // 要搜索一下一开始
@@ -256,17 +259,17 @@ void PcbaForm::getWifiMsg(QString data) {
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
             refreshWifiState(1);
             WIFI_RSSI = rssi;
+
+            bool ok;
+            WIFI_RSSI.toInt(&ok);
+
+            if (!ok) {
+                qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束" << data;
+            } else {
+                //  showlog("转换成功");
+                intwifirssi = WIFI_RSSI.toInt(&ok);
+            }
         }
-    }
-
-    bool ok;
-    WIFI_RSSI.toInt(&ok);
-
-    if (!ok) {
-        qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
-    } else {
-        //  showlog("转换成功");
-        intwifirssi = WIFI_RSSI.toInt(&ok);
     }
 }
 void PcbaForm::refreshUsbUartState(int state) {
@@ -594,7 +597,7 @@ void PcbaForm::connectwifi() {
 
     if (at->getConnected()) {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -626,7 +629,6 @@ void PcbaForm::solveMesSucess(const int mechines) {
         // ui->mes_state->setStyleSheet(
         //     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00;
         //     border-radius: 10px; padding: 10px; text-align: center;");
-
         // mes_set_ok = 1;
     }
 }
@@ -1451,7 +1453,7 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     // on_disconnectButton_clicked();
     // // 3C:84:27:07:A8:D2
 
-    // showlog("已设置休眠");
+    // showlog("已发送休眠");
 
     // ui->ng_number->setText("NG:"+QString::number(ngnumber));
     // ui->ng_number->setStyleSheet("font-size: 16px; background-color: #FF0000; color: black;
@@ -1561,7 +1563,7 @@ void PcbaForm::on_macInput_returnPressed() {
 void PcbaForm::startTest() {
     ui->test_time->display(0);
     ui->macInput->clear();
-    usblogwaittime->setInterval(5000);
+    usblogwaittime->setInterval(10000);
     usblogwaittime->start();
     firstconnectbrush = 1;
     ui->test_result->setText("WAIT");

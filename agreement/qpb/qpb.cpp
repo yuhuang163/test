@@ -129,6 +129,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                         }
                     } else {
                         qDebug() << "pb协议的CRC校验失败";
+                        qDebug() << "收到的crc16" << crc16 << x;
                     }
 
                     ipack.clear();
@@ -317,7 +318,7 @@ void Qpb::get_button_state(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已设置按键状态" << state;
+    qDebug() << "已发送按键状态" << state;
 }
 void Qpb::get_periph_state() {
     FactroyCmd cmd = FactroyCmd_GET_PERIPH_STATE;
@@ -528,7 +529,7 @@ void Qpb::set_motor_cali(int state) {
         pack.command_data.moto_control.value_item.switch_cali = FacMotoCali_ZERO_CALIBRATION;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机校准类型" << state;
+    qDebug() << "已发送电机校准类型" << state;
 }
 void Qpb::set_motor_cali_state(int state) {
     FactoryDataPackage pack;
@@ -544,7 +545,7 @@ void Qpb::set_motor_cali_state(int state) {
         pack.command_data.moto_control.value_item.switch_cali = FacMotoCali_MOTOR_CALI_STOP;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机校准流程" << state;
+    qDebug() << "已发送电机校准流程" << state;
 }
 
 void Qpb::set_motor_test_state(int state) {
@@ -561,7 +562,7 @@ void Qpb::set_motor_test_state(int state) {
         pack.command_data.moto_control.value_item.motor_testing = FacSwitch_CLOSE;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机测试状态" << state;
+    qDebug() << "已发送电机测试状态" << state;
 }
 void Qpb::set_motor_damping_state(int state) {
     FactoryDataPackage pack;
@@ -577,7 +578,7 @@ void Qpb::set_motor_damping_state(int state) {
         pack.command_data.moto_control.value_item.damping_switch = FacSwitch_CLOSE;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机阻尼状态" << state;
+    qDebug() << "已发送电机阻尼状态" << state;
 }
 
 void Qpb::set_wifi_disconnect()  // 断开wifi
@@ -623,7 +624,7 @@ void Qpb::set_new_connect_wifi(const QByteArray& name, const QByteArray& passwor
     pack.command_data.wifi_demand.wifi_info.ip_address = ip_address;
     pack.command_data.wifi_demand.wifi_info.port = port.toUInt();
     sendShortPack(pack);
-    qDebug() << "已设置连接wifi";
+    qDebug() << "已发送连接wifi";
 }
 
 void Qpb::get_servo_motor_info() {
@@ -798,7 +799,7 @@ void Qpb::set_press_sensor_temp(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已设置压感温度补偿状态";
+    qDebug() << "已发送压感温度补偿状态";
 }
 
 void Qpb::set_uart_receive(int state) {
@@ -816,7 +817,7 @@ void Qpb::set_uart_receive(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已设置串口状态";
+    qDebug() << "已发送串口状态";
 }
 
 void Qpb::set_motor_adc_switch(int state) {
@@ -834,7 +835,7 @@ void Qpb::set_motor_adc_switch(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已设置船运";
+    qDebug() << "已发送船运";
 }
 
 void Qpb::set_ship_mode(int state) {
@@ -852,7 +853,7 @@ void Qpb::set_ship_mode(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已设置船运";
+    qDebug() << "已发送船运";
 }
 // 旧wifi接口
 void Qpb::set_connect_wifi(const QByteArray& name, const QByteArray& password) {
@@ -870,7 +871,7 @@ void Qpb::set_connect_wifi(const QByteArray& name, const QByteArray& password) {
              sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.wifi_info.wifi_password));
     pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_wifi_info_tag;
     sendShortPack(pack);
-    qDebug() << "已设置连接wifi";
+    qDebug() << "已发送连接wifi";
 }
 
 void Qpb::set_local_ota(local_ota_data x[2]) {
@@ -903,7 +904,7 @@ void Qpb::set_local_ota(local_ota_data x[2]) {
              sizeof(pack.command_data.internet_ota.file_info[1].url));
 
     sendShortPack(pack);
-    qDebug() << "已设置本地ota";
+    qDebug() << "已发送本地ota";
 }
 
 void Qpb::set_music(const QByteArray& data) {
@@ -920,7 +921,7 @@ void Qpb::set_music(const QByteArray& data) {
              sizeof(pack.command_data.moto_control.value_item.file_name));
 
     sendShortPack(pack);
-    qDebug() << "已设置音乐" << data.constData();
+    qDebug() << "已发送音乐" << data.constData();
 }
 void Qpb::set_motor_param(uint32_t fre, float duty) {
     FactoryDataPackage pack;
@@ -934,7 +935,7 @@ void Qpb::set_motor_param(uint32_t fre, float duty) {
     pack.command_data.moto_control.value_item.param.gain_or_duty = duty;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机参数";
+    qDebug() << "已发送电机参数";
 }
 void Qpb::set_motor_state(int state) {
     FactoryDataPackage pack;
@@ -950,7 +951,7 @@ void Qpb::set_motor_state(int state) {
         pack.command_data.moto_control.value_item.switch_state = FacSwitch_CLOSE;
 
     sendShortPack(pack);
-    qDebug() << "已设置电机状态";
+    qDebug() << "已发送电机状态";
 }
 
 void Qpb::set_burning_mode(int state, FacSwitch switchs) {
@@ -971,7 +972,7 @@ void Qpb::set_burning_mode(int state, FacSwitch switchs) {
     pack.command_data.ageing.switch_state = switchs;
 
     sendShortPack(pack);
-    qDebug() << "已设置老化" << state;
+    qDebug() << "已发送老化" << state;
 }
 void Qpb::set_brush_record(const FacSetBrushRecord& record) {
     FactoryDataPackage pack;
@@ -1004,10 +1005,10 @@ void Qpb::set_led_color(int state, int lednumber) {
     pack.command_data.led_control.which_led = lednumber;
     if (state) {
         pack.command_data.led_control.switch_state = FacSwitch_OPEN;
-        qDebug() << "已设置led亮";
+        qDebug() << "已发送led亮";
     } else {
         pack.command_data.led_control.switch_state = FacSwitch_CLOSE;
-        qDebug() << "已设置led灭";
+        qDebug() << "已发送led灭";
     }
 
     sendShortPack(pack);
@@ -1045,7 +1046,7 @@ void Qpb::set_rgb_color(FacLedControl data) {
 
     sendShortPack(pack);
 
-    qDebug() << "已设置灯光个数" << pack.command_data.led_control.led_state_count;
+    qDebug() << "已发送灯光个数" << pack.command_data.led_control.led_state_count;
 }
 
 // 开始屏幕颜色
@@ -1060,7 +1061,7 @@ void Qpb::set_screen_color(int state) {
     pack.command_data.lcd_control.which_value_item = FacLcdControl_color_tag;
     pack.command_data.lcd_control.value_item.color = color[state];
     sendShortPack(pack);
-    qDebug() << "已设置屏幕颜色" << state;
+    qDebug() << "已发送屏幕颜色" << state;
 }
 void Qpb::set_forbid_sleep(FacSwitch state)  // 进入禁止休眠状态
 {

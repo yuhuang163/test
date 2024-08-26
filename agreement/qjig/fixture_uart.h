@@ -19,6 +19,16 @@ typedef enum {
     STATE_RELAY4_OPEN,     // 继电器4吸合
     STATE_RELAY4_RESET,    // 继电器4复位
 } FixtureState;
+
+// 定义数据包结构体
+typedef enum {
+    STATE_THOROUGHFARE1_IN,   // 通道1进入
+    STATE_THOROUGHFARE1_OUT,  // 通道1出去
+    STATE_THOROUGHFARE2_IN,   // 通道2进入
+    STATE_THOROUGHFARE2_OUT,  // 通道2出去
+
+} camreaFixtureState;
+
 typedef enum {
     STATE_START,        // 开始
     STATE_END,          // 结束
@@ -129,6 +139,7 @@ signals:
 
 private slots:
     void readFixtureSerialPortData();
+    void set_camera_action(camreaFixtureState fixstate);
 
     void save_Fixture_uart_log(int txrx, QByteArray data);
 

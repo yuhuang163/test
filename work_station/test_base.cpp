@@ -53,9 +53,7 @@ void test_base::signalAndslot() {
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
-
     connect(pb, SIGNAL(sendGetBrushResponse(int)), this, SLOT(solveGetBrushResponse(int)));
-
     connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
     connect(pb, SIGNAL(send_BrushControl_state(FacBrushControl)), this, SLOT(checkBrushControlState(FacBrushControl)));
     connect(pb, SIGNAL(send_LED_CONTROL_state(FacLedControl)), this, SLOT(checkLedControlState(FacLedControl)));
@@ -500,7 +498,7 @@ void test_base::readProductSerialPortData() {
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
 
-    log->save_brush_log(macAddress, dataTemp);
+    log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
     logEdit()->appendPlainText("收到牙刷日志");
     // getmacadress(dataTemp);
@@ -549,7 +547,7 @@ void test_base::openProductSerialPort() {
 
         // showlog("串口连接成功");
         emit refreshProductSerialPortState(1);
-        at->ask_mac();
+        //  at->ask_mac();//连接串口过程，复位牙刷写入资源复位损坏
         connect(productSerialPortTimer, &QTimer::timeout, this,
                 &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
     } else {
@@ -622,7 +620,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [=]() {
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 10) {  // 如果还有重试次数
+            if (retryCount < 20) {  // 如果还有重试次数
                 if (commandFunc != nullptr) {
                     commandFunc();  // 重新发送指令
                 }
@@ -652,7 +650,6 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     timer->start(100);  // 启动定时器
     return 0;
 }
-
 
 void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
     if (testResultTable() == nullptr) {

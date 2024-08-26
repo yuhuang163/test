@@ -18,7 +18,24 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
     signalAndslot();
     recoverCustom();
     ShowData(this);
+    QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
+    connect(Fixture_connectl_act, &QAction::triggered, [=]() {
+        if (Fixture_uart_ui == NULL) {
+            Fixture_uart_ui = new Fixture_uart;
+            Fixture_uart_ui->fixBaudRate = 115200;
+            for (int i = 0; i < testList.size(); i++) {
+                connect(testList[i], SIGNAL(send_set_camera_action(camreaFixtureState)), Fixture_uart_ui,
+                        SLOT(set_camera_action(camreaFixtureState)));
+            }
 
+            QSettings settings(SETTING_NAME, QSettings::IniFormat);
+            QString masterFixturecomName = settings.value(QString("0/masterFixturecomName")).toString();
+            Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
+        }
+
+        Fixture_uart_ui->show();
+        Fixture_uart_ui->activateWindow();
+    });
     for (int i = 0; i < testList.size(); i++) {
         connect(this, SIGNAL(go_camera_next(int)), testList[i], SLOT(canGoNextMechine(int)));
     }

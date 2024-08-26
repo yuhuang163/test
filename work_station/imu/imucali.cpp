@@ -1011,7 +1011,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
             case STATE_CAIL:  // 开始校准
                 if (canGoNext) {
-                    showlog("已设置imu采集参数");
+                    showlog("已发送imu采集参数");
 
                     qimuc->imu_calib_init();
                     nqimuc->acccalib_sensors_init();
@@ -1148,27 +1148,48 @@ void imucali::startTask()  // 编写六轴校准的代码
                 break;
 
             case STATE_SHIP_MODE_CHECK:
+                if (pack.product == "Y20" || pack.product == "Y20P") {
+                    if (!at->getConnected()) {
+                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
+                        showlog("说明已经成功进入船运模式");
+                        TestItem test;
+                        test.testItem = "船运测试";
+                        test.testData = "收到回应";
+                        test.testResult = "通过";
+                        test.ask = "通过";
+                        testItems.append(test);
+                        log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
 
-                if (!at->getConnected() && canGoNext) {
-                    showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
-                    showlog("说明已经成功进入船运模式");
+                        state = STATE_END;
+                    }
+                } else {
+                    if (!at->getConnected() && canGoNext) {
+                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
+                        showlog("说明已经成功进入船运模式");
+                        TestItem test;
+                        test.testItem = "船运测试";
+                        test.testData = "收到回应";
+                        test.testResult = "通过";
+                        test.ask = "通过";
+                        testItems.append(test);
+                        log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
+                        state = STATE_END;
+                    }
+                }
+                if (sendRetryOver) {
                     TestItem test;
                     test.testItem = "船运测试";
-                    test.testData = QString::number(voltage);
-                    test.testResult = "通过";
+                    test.testData = "等待超时";
+                    test.testResult = "失败";
                     test.ask = "通过";
                     testItems.append(test);
                     log->saveTestCsv(IMU_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                     testResultTableUpdate(testItems);
                     testItems.clear();
-
-                    state = STATE_END;
-                } else {
-                    showlog("蓝牙还没断开");
-                    showlog("可能还没进入船运");
-                    waitWork(500);
-                }
-                if (sendRetryOver) {
                     result = failValue;
                     state = STATE_END;
                 }

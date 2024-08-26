@@ -34,7 +34,6 @@ INCLUDEPATH += lib/imu
 INCLUDEPATH += lib/nfc
 INCLUDEPATH += lib/productlicense
 INCLUDEPATH += lib/quicklz
-
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
 INCLUDEPATH += work_station/imu

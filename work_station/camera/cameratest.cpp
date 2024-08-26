@@ -123,7 +123,7 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
     settings.setValue("Window/Size", this->size());
-
+    CameraGetTime = settings.value("CAMERA/CameraGetTime", 6000).toInt();
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
     showlog("action=" + pack.action);
@@ -707,7 +707,7 @@ void cameratest::startTask() {
                     showlog("已进入禁止休眠模式");
                     if (pack.product == "U7P") {
                         // 设置定时器的超时时间为6000毫秒（6秒）
-                        cameraSendTimer->setInterval(6000);
+                        cameraSendTimer->setInterval(CameraGetTime);
                         // 启动定时器
                         cameraSendTimer->start();
                         dataNumber = 0;
@@ -759,12 +759,17 @@ void cameratest::startTask() {
                     showlog("摄像头测试通过");
                     is_canGoNext = 0;
                     is_camera_control = 0;
-
                     state = STATE_SAVE_RESULT;
                 }
                 break;
 
             case STATE_SAVE_RESULT:
+
+                switch (getIndex()) {
+                    case 1: send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
+                    case 2: send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
+                    default: break;
+                }
 
                 if (result == passValue) {
                     QString mesresult = "PASS";
@@ -786,9 +791,7 @@ void cameratest::startTask() {
                 } else if ((result == failValue)) {
                     QString mesresult = "NG";
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|CAMERA_TEST:NG|");
-
                     pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {
@@ -800,16 +803,6 @@ void cameratest::startTask() {
                         "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
-                TestItem test;
-                test.testItem = "摄像头测试";
-                test.testData = "";
-                test.testResult = result;
-                test.ask = "通过";
-                testItems.append(test);
-                log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
-                testResultTableUpdate(testItems);
-                testItems.clear();
-                log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
                 pb->set_camera_state(0);
                 pb->set_camera_light_state(0);
@@ -1003,7 +996,7 @@ void cameratest::on_distribution_network_clicked() {
 
     if (at->getConnected()) {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
-        showlog("已设置连接wifi");
+        showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
@@ -1299,6 +1292,17 @@ void cameratest::on_jxl_abnormal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
+
+    TestItem test;
+    test.testItem = "解析力测试";
+    test.testData = "异常";
+    test.testResult = "失败";
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 }
 
 void cameratest::on_jxl_normal_clicked() {
@@ -1327,6 +1331,16 @@ void cameratest::on_jxl_normal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
+    TestItem test;
+    test.testItem = "解析力测试";
+    test.testData = "正常";
+    test.testResult = "通过";
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 }
 
 void cameratest::on_zw_normal_clicked() {
@@ -1355,6 +1369,16 @@ void cameratest::on_zw_normal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
+    TestItem test;
+    test.testItem = "脏污测试";
+    test.testData = "无脏污";
+    test.testResult = "通过";
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 }
 
 void cameratest::on_zw_abnormal_clicked() {
@@ -1383,6 +1407,16 @@ void cameratest::on_zw_abnormal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
+    TestItem test;
+    test.testItem = "脏污测试";
+    test.testData = "存在脏污";
+    test.testResult = "失败";
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+    log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 }
 
 void cameratest::on_py_normal_clicked() {
@@ -1411,7 +1445,6 @@ void cameratest::on_py_normal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
-    on_normal_clicked();
 }
 
 void cameratest::on_py_abnormal_clicked() {
@@ -1440,7 +1473,6 @@ void cameratest::on_py_abnormal_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
-    on_abnormal_clicked();
 }
 
 void cameratest::on_OffsetTest_clicked() {
@@ -1466,7 +1498,7 @@ void cameratest::on_OffsetTest_clicked() {
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试原图";
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1529,7 +1561,7 @@ void cameratest::on_OffsetTest_clicked() {
     int w = parts[2].toInt(&ok);
     int h = parts[3].toInt(&ok);
     int flag = parts[4].toInt(&ok);
-
+    QString pyTestResult;
     if (!ok) {
         qDebug() << "Error parsing integers";
     }
@@ -1541,12 +1573,52 @@ void cameratest::on_OffsetTest_clicked() {
     qDebug() << "w:" << w;
     qDebug() << "h:" << h;
     qDebug() << "flag:" << flag;
-    if (flag == 1)
+    if (flag == 1) {
+        TestItem test;
+        test.testItem = "偏位测试";
+        test.testData = "通过";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+        pyTestResult = "偏位测试通过";
         showlog("偏位测试通过");
-    if (flag == 0)
+    }
+
+    if (flag == 0) {
+        TestItem test;
+        test.testItem = "偏位测试";
+        test.testData = "刷头偏位";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+        pyTestResult = "刷头偏位";
         showlog("刷头偏位");
-    if (flag == -1)
+    }
+    if (flag == -1) {
+        TestItem test;
+        test.testItem = "偏位测试";
+        test.testData = "算法计算失败";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+        pyTestResult = "算法计算失败";
         showlog("算法计算失败");
+    }
 
     QImage image;
     image.load(filePath);  // 加载图像文件
@@ -1565,6 +1637,37 @@ void cameratest::on_OffsetTest_clicked() {
     painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);  // 绘制第一个矩形
     painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);  // 绘制第二个矩形
     viewercamrea_py->updateImage();                                 // 更新视图
+
+    if (!viewercamrea_py->pixmap.isNull()) {
+        // 获取当前日期时间
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+
+        // 生成文件名
+        QString fileName = pyTestResult + "_" + ui->getMac->text() + "_" + timestamp + ".png";
+
+        // 指定保存目录并检查是否存在，不存在则创建
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试结果图";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+
+        // 完整的保存路径
+        filePath = saveDir + "/" + fileName;
+
+        // 保存图片
+        if (!viewercamrea_py->pixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+    switch (getIndex()) {
+        case 1: send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
+        case 2: send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
+        default: break;
+    }
 }
 
 // 添加数据包到容器
