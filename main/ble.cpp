@@ -314,13 +314,44 @@ void start_ble_scan()
     pBLEScan->clearResults();         // memory，释放扫描缓存消耗
     pBLEScan->start(scantime, false); // 设置太久在很多设备的情况下会崩溃
 }
+
+const int numReadings = 100; // 设置读取的数量
+int readings[numReadings];
+
+int blemedianFilter()
+{
+    // 对数组排序
+    for (int i = 0; i < numReadings - 1; i++)
+    {
+        for (int j = i + 1; j < numReadings; j++)
+        {
+            if (readings[i] > readings[j])
+            {
+                int temp = readings[i];
+                readings[i] = readings[j];
+                readings[j] = temp;
+            }
+        }
+    }
+
+    // 返回中位数
+    return readings[numReadings / 2];
+}
+
+int numberBleRssi = 0;
 void print_ble_rssi()
 {
-    int ble_rssi = pClient->getRssi();
     if (blelogs)
     {
-        Serial.print("AT+BLERSSI=");
-        Serial.println(ble_rssi);
+        if (numberBleRssi >= numReadings)
+        {
+            numberBleRssi = 0;
+            int stableStrength = blemedianFilter();
+            Serial.print("AT+BLERSSI=");
+            Serial.println(stableStrength);
+        }
+        readings[numberBleRssi] = pClient->getRssi(); // 获取蓝牙信号强度
+        numberBleRssi++;
     }
 }
 
@@ -342,7 +373,7 @@ void send_ble_data(uint8_t *data, size_t length)
 {
     const size_t MAX_PACKET_SIZE = MY_MTU - 3; // 最大每包大小
     size_t offset = 0;                         // 当前数据的偏移量
-   // size_t packetCount = 0;                    // 记录当前包数
+                                               // size_t packetCount = 0;                    // 记录当前包数
 
     while (offset < length)
     {
@@ -362,16 +393,25 @@ void send_ble_data(uint8_t *data, size_t length)
             {
                 while (1)
                 {
-                    int free_buff_num = esp_ble_get_cur_sendable_packets_num(conn_id);
-                    if (free_buff_num > 0)
+                    if (pClient->isConnected())
                     {
-                        if (DataCharacteristic->writeValue(packet, packetSize))
-                            break;
-                        else
+
+                        int free_buff_num = esp_ble_get_cur_sendable_packets_num(conn_id);
+                        if (free_buff_num > 0)
                         {
-                            Serial.println("发送失败");
-                            continue;
+                            if (DataCharacteristic->writeValue(packet, packetSize))
+                                break;
+                            else
+                            {
+                                Serial.println("发送失败");
+                                continue;
+                            }
                         }
+                    }
+                    else
+                    {
+                        Serial.println("蓝牙未连接取消发送");
+                        break;
                     }
                     vTaskDelay(10);
                 }

@@ -13,11 +13,11 @@
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 #define D2_PIN 2
 #define RST_PIN 10
-#define UART_RX_BUFFER_SIZE (2* 1024)       // 串口接收setRxBufferSize
-#define UART_SOLVE_BUFFER_SIZE (8* 1024)       // 串口读取处理一口气最多
+#define UART_RX_BUFFER_SIZE (2 * 1024)    // 串口接收setRxBufferSize
+#define UART_SOLVE_BUFFER_SIZE (8 * 1024) // 串口读取处理一口气最多
 
-#define UART_RING_BUFFER_SIZE (16* 1024)       // 环形队列缓冲区大小
-#define MAX_RECEIVE_BUFFER_SIZE 8192 // 设置一个合理的最大缓冲区大小
+#define UART_RING_BUFFER_SIZE (16 * 1024) // 环形队列缓冲区大小
+#define MAX_RECEIVE_BUFFER_SIZE 8192      // 设置一个合理的最大缓冲区大小
 #define LOG_LEVEL_NONE 0
 #define LOG_LEVEL_ERROR 1
 #define LOG_LEVEL_WARN 2
@@ -52,8 +52,7 @@
     }
 #define RGB_PIN 48  // WS2812B数据引脚
 #define LED_COUNT 1 // LED数量
-#define MY_MTU 247 // LED数量
-
+#define MY_MTU 247  // LED数量
 
 extern int blelogs;        // 蓝牙信号日志1表示默认开
 extern int finddevicelogs; // 蓝牙扫描日志1表示默认开
@@ -74,8 +73,8 @@ extern String sendCommand;        // 提取发送指令
 extern boolean send_img_flag;
 extern boolean send_video_flag;
 extern boolean doConnect;            // 是否可以开始连接
-extern boolean ble_connected;            // 是否是连接的状态
-extern boolean ble_scan_over;               // 是否scan完成
+extern boolean ble_connected;        // 是否是连接的状态
+extern boolean ble_scan_over;        // 是否scan完成
 extern char targetDeviceAddress[18]; // 历程的地址
 extern bool is_need_reset_adress;
 extern RingbufHandle_t ringBuffer;
@@ -118,3 +117,6 @@ void print_ble_rssi();
 void deinit_ble();
 void colorWipe(uint32_t color);
 void send_ble_data(uint8_t *data, size_t length);
+void print_wifi_rssi(int numClients);
+
+

@@ -147,7 +147,7 @@ void cmd_data()
     }
     for (int i = 0; i < data_n - 2; i++)
     {
-        imagedata[image_get_n * maxWifiData + i] = u_data[2 + i];   // 将收到的数据读取到imagedata
+        imagedata[image_get_n * maxWifiData + i] = u_data[2 + i]; // 将收到的数据读取到imagedata
     }
 
     image_get_n++;
@@ -174,7 +174,7 @@ void cmd_data()
         Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
         Udp.print("finished");
         Udp.endPacket();
-        getImage();   // 继续读取图片
+        getImage(); // 继续读取图片
         return;
     }
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
@@ -182,4 +182,55 @@ void cmd_data()
     Udp.print(image_get_n);
     Udp.endPacket();
     receive_data(2 + minimum(image_len - image_get_n * maxWifiData, maxWifiData), cmd_data, getImage);
+}
+
+const int numReadings = 100; // 设置读取的数量
+int WifiReadings[numReadings];
+
+int wifimedianFilter()
+{
+    // 对数组排序
+    for (int i = 0; i < numReadings - 1; i++)
+    {
+        for (int j = i + 1; j < numReadings; j++)
+        {
+            if (WifiReadings[i] > WifiReadings[j])
+            {
+                int temp = WifiReadings[i];
+                WifiReadings[i] = WifiReadings[j];
+                WifiReadings[j] = temp;
+            }
+        }
+    }
+
+    // 返回中位数
+    return WifiReadings[numReadings / 2];
+}
+
+int numberWifiRssi = 0;
+void print_wifi_rssi(int numClients)
+{
+    for (int i = 0; i < numClients; i++)
+    {
+        wifi_sta_list_t stationList;
+        esp_wifi_ap_get_sta_list(&stationList);
+        if (numberWifiRssi >= numReadings)
+        {
+            Serial.print("AT+WIFI_DATA=");
+
+            numberWifiRssi = 0;
+            int stableStrength = wifimedianFilter();
+            uint8_t mac[6];
+            memcpy(mac, stationList.sta[i].mac, 6);
+            for (int i = 0; i < 6; i++)
+            {
+                Serial.print(mac[i], HEX);
+                if (i < 5)
+                    Serial.print(":");
+            }
+            Serial.println(stableStrength);
+        }
+        WifiReadings[numberWifiRssi] = stationList.sta[i].rssi; // 获取蓝牙信号强度
+        numberWifiRssi++;
+    }
 }

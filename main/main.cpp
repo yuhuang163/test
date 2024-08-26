@@ -101,8 +101,9 @@ void setup()
 {
   Serial.setRxBufferSize(UART_RX_BUFFER_SIZE); // 设置缓存
   Serial.begin(921600);
-
-  Serial.println("");
+  delay(10); // 等待100毫秒，确保串口初始化完成
+   Serial.print("wifi设置");
+  Serial.println(wifiuse);
 
 #if wifiuse == 1
   wifi_init();
@@ -219,22 +220,7 @@ void loop()
       wifistate = 0;
     }
 
-    for (int i = 0; i < numClients; i++)
-    {
-      Serial.print("AT+WIFI_DATA=");
-      wifi_sta_list_t stationList;
-      esp_wifi_ap_get_sta_list(&stationList);
-      int WIFI_rssi = stationList.sta[i].rssi;
-      uint8_t mac[6];
-      memcpy(mac, stationList.sta[i].mac, 6);
-      for (int i = 0; i < 6; i++)
-      {
-        Serial.print(mac[i], HEX);
-        if (i < 5)
-          Serial.print(":");
-      }
-      Serial.println(WIFI_rssi);
-    }
+      print_wifi_rssi(numClients);
   }
   else
   {
