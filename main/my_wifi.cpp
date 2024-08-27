@@ -1,4 +1,5 @@
 #include "config.h"
+#include "esp_mac.h"
 
 boolean send_img_flag = false;
 boolean send_video_flag = false;
@@ -15,9 +16,22 @@ WiFiServer server(80);
 
 void wifi_init()
 {
+
     // 获取MAC地址
     uint8_t mac[6];
-    WiFi.macAddress(mac);
+    // WiFi.macAddress(mac);
+    // WiFi.softAPmacAddress(mac);
+    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP); // 获取Wi-Fi STA接口的MAC地址
+
+    // 将MAC地址打印到串口
+    Serial.print("MAC Address: ");
+    for (int i = 0; i < 6; i++)
+    {
+        Serial.print(mac[i], HEX);
+        if (i < 5)
+            Serial.print(":");
+    }
+    Serial.println();
 
     // 将MAC地址转换为字符串
     char macStr[18];
