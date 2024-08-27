@@ -45,7 +45,7 @@
 #define wifiuse 1
 int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
-String version = "1.2.7"; // 默认的版本号
+String version = "1.2.8"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 

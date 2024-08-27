@@ -74,13 +74,13 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify)
 {
-    unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
-    String timestamp = String(currentMillis); // 将时间戳转换为字符串
-    Serial.println();
-    Serial.print("摄像头数据包的时间戳:"); // 打印带有时间戳的消息
-    Serial.print(timestamp);
-    Serial.print("长度为:"); // 打印带有时间戳的消息
-    Serial.print(length);
+    // unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
+    // String timestamp = String(currentMillis); // 将时间戳转换为字符串
+    // Serial.println();
+    // Serial.print("摄像头数据包的时间戳:"); // 打印带有时间戳的消息
+    // Serial.print(timestamp);
+    // Serial.print("长度为:"); // 打印带有时间戳的消息
+    // Serial.print(length);
 
     const int additionalBytes = 9;
     uint8_t modifiedData[length + additionalBytes];
@@ -88,9 +88,9 @@ void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uin
     modifiedData[8] = length;
     memcpy(modifiedData + 9, pData, length);
 
-    Serial.print("内容为:"); // 打印带有时间戳的消息
+    //Serial.print("内容为:"); // 打印带有时间戳的消息
     Serial.write(modifiedData, length + additionalBytes);
-    Serial.println();
+    //Serial.println();
 }
 // 连接状态函数
 class MyClientCallback : public BLEClientCallbacks
