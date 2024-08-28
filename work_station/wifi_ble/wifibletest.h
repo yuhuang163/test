@@ -54,10 +54,9 @@ private:
     QString bleresult = "";
     int rssitestcount = 0;
     int rssitestfailcount = 0;
-    bool mes_set_ok = 0;
+    
     int wifistate = 0;
-    bool iswifibleContinue = false;
-    bool bandingresult = false;
+ 
     bool isovertime = 0;         // 是否开始发送校验结果
     bool iscompareovertime = 0;  // 是否开始发送校验结果
     int intwifirssi = 0;
@@ -105,6 +104,8 @@ private slots:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // mac地址输入口
     QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
@@ -129,8 +130,7 @@ private slots:
     void processInspection(QString stringsn);
     void processGetMesTestValue();
 
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
     void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
 
@@ -162,7 +162,6 @@ private slots:
     void on_get_battery_clicked();
 
 signals:
-    void send_end_test(int data);
     void send_go_next_focus();
     void send_startTest(int data);
     void send_go_next_test(int data);

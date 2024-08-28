@@ -43,7 +43,14 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
     ui->statusbar->addPermanentWidget(new QLabel(CAMERA_VER + QString(__DATE__) + " " + QString(__TIME__)));
 }
 
-camerabox::~camerabox() { delete ui; }
+camerabox::~camerabox() {
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+
+    if (Fixture_uart_ui != NULL)
+        settings.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+    delete Fixture_uart_ui;
+    delete ui;
+}
 
 void camerabox::checkAllTest(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;

@@ -42,6 +42,8 @@ public:
         return ui->msgEdit;
     };   // msg输入口
     QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
 
 private:
 
@@ -74,7 +76,6 @@ private:
     QString stringSubpid;
 
     QString macAddress = "没有mac地址";
-    bool isAgeContinue = 0;
 
 
     QByteArray sn;
@@ -88,7 +89,7 @@ private:
 int subpidCompareOk = 0;
 
 
-    bool mes_set_ok = 0;
+    
     int flash_state = 0;
     int refresh_periph_times;
     QTime TestTime;
@@ -103,8 +104,7 @@ private slots:
     void refreshBattaryData(FacDevInfo adc)override;
 
     void processGetMesTestValue();
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void refreshMesState(int state);
@@ -123,7 +123,6 @@ private slots:
 
 signals:
 
-    void send_end_test(int data);
     void send_go_next_test(int data);
 
     void send_go_next_focus();

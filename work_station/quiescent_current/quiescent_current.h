@@ -39,12 +39,15 @@ public:
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };          // usb口（治具）
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };          // 治具口（治具）
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
-    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
 
     QLineEdit* getMacLineEdit() override { return ui->snInput; };     // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };           // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };   // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+
     void disconnect_dongle();
 
 private:
@@ -61,7 +64,7 @@ private:
     QLabel* board_sn;
     QLabel* tail_sn;
     int periph_state = 0;
-    bool mes_set_ok = 0;
+
     int base_state = 0;
 
     double measure_ammeter = 0;
@@ -116,7 +119,6 @@ private:
 
 signals:
     void send_go_next_focus();
-    void send_end_test(int data);
     void send_startTest(int data);
     void send_go_next_test(int data);
 
@@ -126,8 +128,7 @@ private slots:
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+
     void refreshMesState(int state);
     void on_usbconnectButton_clicked();
     void on_usbdisconnectButton_clicked();
@@ -139,9 +140,9 @@ private slots:
     void on_snInput_returnPressed();
     void on_pushButton_clicked();
     void on_macInput_returnPressed();
-    void on_pushButton_2_clicked();
     void on_pushButton_3_clicked();
     void on_pushButton_4_clicked();
+    void on_stopTest_clicked();
 };
 
 #endif  // QUIESCENT_CURRENT_H

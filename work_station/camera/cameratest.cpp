@@ -104,8 +104,9 @@ void cameratest::on_pushButton_clicked() {
     // }
 }
 cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
-    m_index = index;
-
+    m_index = index;pack.mechines = getIndex();
+    dongleOutTime = 5;  // 太快会死锁
+    upperComputerVer=CAMERA_VER;    
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
@@ -281,9 +282,7 @@ void cameratest::solve_picture_frame(QByteArray picturedata) {
             if (crc16 == crc_cali) {
                 qDebug() << "图片数据包够了，开始显示" << ring_size;
                 QByteArray byteArray(reinterpret_cast<const char*>(head), frame_size);
-                pictureByteArray =
-
-                    byteArray;
+                pictureByteArray = byteArray;
                 emit send_image_processed();
 
             } else {
@@ -304,6 +303,7 @@ void cameratest::solve_picture_frame(QByteArray picturedata) {
             }
             packetMap.clear();
             picturedata.clear();
+            memset(&head, 0, PICTURE_PHY_LAYER_HEAD_SIZE);
 
         } else {
             qDebug() << "数据流错误寻找下一帧";
@@ -355,7 +355,7 @@ void cameratest::solve_frame(void) {
 
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
             if (1) {
-                qDebug() << "图片数据包的第一字节为2" << head->data[0];
+                qDebug() << "图片数据包的第一字节为" << head->data[0];
 
                 //  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
                 cameradatasize = cameradatasize + head->length - 1;
@@ -369,13 +369,8 @@ void cameratest::solve_frame(void) {
                 QByteArray byteArray(reinterpret_cast<const char*>(head->data), head->length);
                 addPacket(byteArray);
 
-                QByteArray completeData = reassembleData();
-                solve_picture_frame(completeData);
+                solve_picture_frame(reassembleData());
 
-                // // 处理帧数据
-                // write_camera_data(head->data+1, head->length-1);
-
-                // solve_picture_frame();
             } else {
                 qDebug() << "head content:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
 
@@ -391,9 +386,7 @@ void cameratest::solve_frame(void) {
             qDebug() << "串口数据流错误寻找下一帧";
             qDebug() << "串口数据包头为:"
                      << QByteArray(reinterpret_cast<char*>(frame_buf), UART_PHY_LAYER_HEAD_SIZE).toHex();
-            // qDebug() << "串口数据为:"
-            //          << QByteArray(reinterpret_cast<char *>(frame_buf), 50)
-            //                 .toHex();
+            qDebug() << "串口数据为:" << QByteArray(reinterpret_cast<char*>(frame_buf), 50).toHex();
 
             if (ext_ble_find_next_frame()) {
                 continue;
@@ -474,38 +467,15 @@ void cameratest::on_macInput_returnPressed() {
         macAddress = ui->macInput->text();
         ui->macLabel->setText("蓝牙mac: " + macAddress);
 
-        isScreenContinue = true;
+        isTestContinue = true;
         emit send_go_next_focus();
 
         state = STATE_IDLE;
     }
 }
 
-void cameratest::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
-        mes_set_ok = 1;
-    }
-}
-void cameratest::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        isScreenContinue = false;
-        showlog("停止运行");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit send_end_test(getIndex());
 
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
 
 void cameratest::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
     QString folderPath = "D:/测试结果";
@@ -548,7 +518,7 @@ void cameratest::closeEvent(QCloseEvent*) {
     // 等待线程结束
     future.waitForFinished();
     qDebug() << getIndex() << "开始关闭";
-    isScreenContinue = false;
+    isTestContinue = false;
 }
 void cameratest::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
@@ -647,7 +617,7 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
         showlog("状态错误");
         showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
         result = failValue;
-        isScreenContinue = false;
+        isTestContinue = false;
         showlog("停止运行");
 
         on_stopTest_clicked();
@@ -655,7 +625,7 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
 }
 
 void cameratest::startTask() {
-    if (isScreenContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -673,7 +643,6 @@ void cameratest::startTask() {
                 is_canGoNext = 0;
                 is_camera_control = 0;
                 TestTime.start();
-                dongleOutTime = 10;                 // 太快会死锁
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 qDebug() << getIndex() << macAddress;
                 state = STATE_WATI_CONNECT;
@@ -821,7 +790,7 @@ void cameratest::startTask() {
                 waitWork(150);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
-                isScreenContinue = false;
+                isTestContinue = false;
                 state = STATE_IDLE;
                 break;
         }
@@ -1064,16 +1033,20 @@ void cameratest::readDongleSerialPortData() {
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-    if (dataTemp.contains("内容为:")) {
-        int pos = dataTemp.indexOf("内容为:");
-        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QString hexContent = toHex(subsequentContent);
-        logEdit()->appendPlainText(beforeContent + hexContent);
-    } else {
-        QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
-        logEdit()->appendPlainText(logEntry);
-    }
+
+    // if (dataTemp.contains("内容为:")) {
+    //     int pos = dataTemp.indexOf("内容为:");
+    //     QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
+    //     QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
+    //     QString hexContent = toHex(subsequentContent);
+    //     logEdit()->appendPlainText(beforeContent + hexContent);
+    // } else {
+    //     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
+    //     logEdit()->appendPlainText(logEntry);
+    // }
+
+    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
+    logEdit()->appendPlainText(logEntry);
 }
 
 void cameratest::readPendingDatagrams() {

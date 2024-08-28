@@ -29,8 +29,8 @@ void imucali::on_pushButton_clicked() {
 }
 imucali::imucali(int index, QWidget* parent) :
     ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
-    m_index = index;
-
+    m_index = index;pack.mechines = getIndex();
+upperComputerVer=IMU_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
@@ -324,7 +324,7 @@ void imucali::refreshBleState(int state) {
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         showlog("蓝牙连接断开");
-        // if (isimuCaliContinue == true)
+        // if (isTestContinue == true)
         //     on_macInput_returnPressed();
     }
 }
@@ -345,35 +345,11 @@ void imucali::on_connectButton_clicked() {
     openDongleSerialPort();
 }
 
-void imucali::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 20px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
-        mes_set_ok = 1;
-    }
-}
-void imucali::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        isimuCaliContinue = false;  // 结束
-        showlog("停止运行");
-        ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit send_kill_test(getIndex());
-
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
 
 void imucali::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
-    isAgeContinue = false;
+    isTestContinue = false;
 }
 void imucali::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
@@ -931,7 +907,7 @@ void imucali::useMes() {
 }
 void imucali::endTask() {
     dataInit();
-    on_stopimuCaliButton_clicked();
+    on_stopTest_clicked();
     caliwaittime->stop();
     waittime->stop();
     comparewaittime->stop();
@@ -942,7 +918,7 @@ void imucali::startTest() { on_macInput_returnPressed(); };
 
 void imucali::startTask()  // 编写六轴校准的代码
 {
-    if (isimuCaliContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -1260,7 +1236,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
                 showlog("流程结束");
                 caliwaittime->stop();
-                isimuCaliContinue = false;  // 结束
+                isTestContinue = false;  // 结束
                 waitWork(100);
                 on_disconnectButton_clicked();
                 state = STATE_IDLE;
@@ -1273,20 +1249,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 }
 void imucali::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
-void imucali::on_stopimuCaliButton_clicked() {
-    emit send_end_test(getIndex());
 
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
-    waitWork(100);
-    ui->macInput->setDisabled(0);
-    ui->getMac->setDisabled(0);
-    isimuCaliContinue = false;
-    showlog("停止运行");
-    ui->macInput->clear();
-    ui->getMac->clear();
-    ui->getMac->setFocus();
-    on_disconnectButton_clicked();
-}
 
 void imucali::on_pushButton_2_clicked() {
     // pb->set_forbid_sleep(FacSwitch_OPEN);
@@ -1345,7 +1308,7 @@ void imucali::on_macInput_returnPressed() {
         macAddress = ui->macInput->text();
 
         // 主状态机流程
-        isimuCaliContinue = true;
+        isTestContinue = true;
         state = STATE_IDLE;
         if (pack.factory != "lx") {
             emit send_go_next_focus();
@@ -1394,3 +1357,20 @@ void imucali::processGetMesTestValue() {
         emit getMesTestValue(pack);
     }
 }
+
+void imucali::on_stopTest_clicked()
+{
+    emit send_end_test(getIndex());
+
+    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    waitWork(100);
+    ui->macInput->setDisabled(0);
+    ui->getMac->setDisabled(0);
+    isTestContinue = false;
+    showlog("停止运行");
+    ui->macInput->clear();
+    ui->getMac->clear();
+    ui->getMac->setFocus();
+    on_disconnectButton_clicked();
+}
+

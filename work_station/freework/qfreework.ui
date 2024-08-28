@@ -108,56 +108,63 @@
           </widget>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_13">
+          <layout class="QHBoxLayout" name="horizontalLayout_17">
            <property name="topMargin">
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>输入SN获取mac（文件查询或mes查询）：</string>
+            <layout class="QHBoxLayout" name="horizontalLayout_13">
+             <property name="topMargin">
+              <number>0</number>
              </property>
-            </widget>
+             <item>
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>输入SN获取mac：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="getMac">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="placeholderText">
+                <string>切换英文输入再扫码</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
-            <widget class="QLineEdit" name="getMac">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>输入MAC连接：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="macInput">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="inputMask">
-              <string/>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>输入MAC连接：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="macInput">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="inputMask">
+                <string/>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="placeholderText">
+                <string>切换英文输入再扫码</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </item>

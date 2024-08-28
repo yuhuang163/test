@@ -6,13 +6,11 @@
 #    pragma execution_character_set("utf-8")
 #endif
 
-ageing::ageing(int index, QWidget* parent) :
-    ui(new Ui::ageing)
-
-{
-    m_index = index;
+ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
+    m_index = index;pack.mechines = getIndex();
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
+            upperComputerVer=AGE_VER;
 
     scanSerialPorts();  // 要搜索一下一开始
 
@@ -48,9 +46,9 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
     if (refresh_periph_times) {
         refresh_periph_times = 0;
         QSettings settings(SETTING_NAME, QSettings::IniFormat);
-        bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
+        QString flashStatus = settings.value("PeripheralStatus/Flash_Status").toString();
 
-        if (data.flash_state == flashStatus) {
+        if (data.flash_state == flashStatus.toInt() || flashStatus == "null") {
             flash_state = 1;
         } else {
             flash_state = 2;
@@ -59,8 +57,9 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         TestItem test;
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
-        test.ask = QString::number(flashStatus);
+        test.ask = flashStatus;
         testItems.append(test);
+
         log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
         updateTestData(testItems);
         testItems.clear();
@@ -206,7 +205,7 @@ void ageing::on_macInput_returnPressed() {
 
         qDebug() << getIndex() << macAddress;
         // 主状态机流程
-        isAgeContinue = true;
+        isTestContinue = true;
         emit send_go_next_focus();
 
         state = STATE_IDLE;
@@ -241,38 +240,14 @@ void ageing::on_exitBurningMode_clicked() {
     }
 }
 
-void ageing::solveMesSucess(const int mechines) {
-    // qDebug() << getIndex()<< mechines;
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        mes_set_ok = 1;
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
-    }
-}
+
 void ageing::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
-void ageing::solveMesData(const int mechines, QString msg) {
-    //  qDebug() << getIndex()<< mechines;
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        isAgeContinue = 0;
-        showlog("停止运行");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
 
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-        emit send_end_test(getIndex());
-    }
-}
 
 void ageing::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
-    isAgeContinue = false;
+    isTestContinue = false;
 }
 void ageing::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
@@ -325,7 +300,7 @@ void ageing::processInspection(QString stringsn) {
 }
 
 void ageing::startTask() {
-    if (isAgeContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -528,7 +503,7 @@ void ageing::startTask() {
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
                 on_disconnectButton_clicked();
-                isAgeContinue = false;
+                isTestContinue = false;
                 break;
         }
         QCoreApplication::processEvents();
@@ -692,12 +667,9 @@ void ageing::show_product(QString name) {
 void ageing::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
-
         pack.is_hq_send_mac = 1;
-
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-
         emit getMesTestValue(pack);
     }
 }

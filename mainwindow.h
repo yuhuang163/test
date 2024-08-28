@@ -126,7 +126,7 @@ public:
     QNetworkAccessManager* updatamanager;
 
 private:
-    void saveDongleUartLog( QString data) ;
+    void saveDongleUartLog(QString data);
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
     QByteArray subpid;
@@ -264,6 +264,8 @@ private slots:
     void refreshSn(FacDevInfo data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
+    void getDongleVer(QString data);
+    void getDongleWifi(QString data);
     void stopRecording();
     void closeDongleSerialPort(void);
     void refreshDongleUartState(int state);
@@ -444,6 +446,7 @@ private slots:
     void on_bleotamacInput_returnPressed();
     void on_selectPath_clicked();
     void on_ship_bomb_clicked();
+    void on_get_noisy_clicked();
 
 signals:
     void send_uart_state(int data);

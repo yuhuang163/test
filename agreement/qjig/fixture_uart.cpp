@@ -210,9 +210,7 @@ int Fixture_uart::ext_ble_find_next_frame(void) {
             head = (ext_uart_phy_layer_t*)&frame_buf[i];
             if (head->magic == EXT_UART_PHY_LAYER_MAGIC) {
                 qDebug() << "匹配到了串口数据包头";
-
                 fixRingBuf->usmile_ring_buffer_delete(&p_fixRingBuffer, i);
-
                 return 1;
             }
         }

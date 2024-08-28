@@ -555,7 +555,6 @@ void MainWindow::readDongleSerialPortData() {
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
-
     if (dataTemp.contains("内容为:")) {
         int pos = dataTemp.indexOf("内容为:");
         QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
@@ -819,7 +818,7 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
             }
             packetMap.clear();
             picturedata.clear();
-
+            memset(&head, 0, PICTURE_PHY_LAYER_HEAD_SIZE);
         } else {
             qDebug() << "数据流错误寻找下一帧";
 
@@ -1268,7 +1267,21 @@ void MainWindow::getWifiMsg(QString data) {
         ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
     }
 }
+void MainWindow::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
+void MainWindow::getDongleWifi(QString data) {
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    showlog("获取到了wifi名字" + data);
+
+    // 保存密码
+    settings.setValue("WIFI/Password", "usmile123");
+    // 保存名称，带有索引
+    settings.setValue(QString("WIFI/Name%1").arg(0), data);
+
+    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
+
+    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+}
 void MainWindow::updateWifi(FacDevInfo wifi) {
     QString wifiName = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_name);
     showlog(wifiName);
@@ -1359,7 +1372,6 @@ void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) 
             << x.data[i].solve_gyro_z << '\n';
 
         // 如果需要防止UI冻结，调用processEvents()
-        QCoreApplication::processEvents();
     }
 
     file.close();
@@ -1369,9 +1381,12 @@ void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) 
 }
 void MainWindow::getimuData(FacUploadNineAlex x) {
     qDebug() << "开始保存";
+    showlog("收到的个数=" + QString::number(x.data_count));
 
     saveToCsv("6轴IMU性能验证.csv", x);
     for (int i = 0; i < x.data_count; i++) {
+        //   showlog("时间为=" + QString::number(x.data[i].timestamp));
+
         orgData.acc[0] = x.data[i].acc_x;
         orgData.acc[1] = x.data[i].acc_y;
         orgData.acc[2] = x.data[i].acc_z;
@@ -1379,6 +1394,7 @@ void MainWindow::getimuData(FacUploadNineAlex x) {
         orgData.gyro[1] = x.data[i].gyro_y;
         orgData.gyro[2] = x.data[i].gyro_z;
 
+        ui->imutimestamp->setText("timestamp=" + QString::number(x.data[i].timestamp));
         ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
         ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
         ui->gyro_z->setText("gyro_z=" + QString::number(orgData.gyro[2]));

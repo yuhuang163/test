@@ -186,9 +186,8 @@ private:
     QUdpSocket* udpSocket;
     QByteArray sn;
     QString macAddress = "没有mac地址";
-    bool isScreenContinue = 0;
 
-    bool mes_set_ok = 0;
+    
     bool is_camera_control = 0;
 
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
@@ -198,6 +197,8 @@ private:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
 
     bool displayRectangles;
     bool displayDirty;
@@ -221,8 +222,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(FacDevInfo data) override;
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
@@ -258,7 +258,6 @@ private slots:
 signals:
     void send_go_next_focus();
     void send_go_next_test(int data);
-    void send_end_test(int data);
     void send_startTest(int data);
     void send_image_processed();
     void send_fault_data_packet(int, const QVector<int>&);

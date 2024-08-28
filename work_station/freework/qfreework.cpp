@@ -11,8 +11,8 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 }
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
-    m_index = index;
-
+    m_index = index;pack.mechines = getIndex();
+upperComputerVer=FREE_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     scanSerialPorts();  // 要搜索一下一开始
@@ -328,7 +328,7 @@ void QFreeWork::executeFunctionByName(const QString functionName) {
 }
 
 void QFreeWork::startTask() {
-    if (iswifibleContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         if (teststate == -1) {
             showlog("开始测试");
@@ -401,7 +401,7 @@ void QFreeWork::startTask() {
             on_disconnectButton_clicked();
             emit send_end_test(getIndex());
             ui->getMac->clear();
-            iswifibleContinue = false;
+            isTestContinue = false;
         }
     }
 }
@@ -441,7 +441,7 @@ void QFreeWork::refreshBaseData(FacGetDevBaseInfo data) {
         showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件版本" + resourceVersion);
         showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + Age_State);
 
-        // iswifibleContinue = false;
+        // isTestContinue = false;
         // showlog("停止运行");
 
         // ui->macInput->clear();
@@ -672,36 +672,11 @@ void QFreeWork::refreshAmmeterData(QString data) {
     }
 }
 
-void QFreeWork::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
-        mes_set_ok = 1;
-    }
-}
-void QFreeWork::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        iswifibleContinue = false;
-        showlog("停止运行");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-
-        bandingresult = false;
-
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
 
 void QFreeWork::closeEvent(QCloseEvent* event) {
     // qDebug() << getIndex() << "开始关闭";
-    iswifibleContinue = false;
+    isTestContinue = false;
 }
 
 void QFreeWork::getWifiMsg(QString data) {
@@ -840,7 +815,7 @@ void QFreeWork::on_macInput_returnPressed() {
 
         ui->start_wifible_test->setEnabled(false);
         // 主状态机流程
-        iswifibleContinue = true;
+        isTestContinue = true;
         teststate = -1;
 
         emit send_go_next_focus();

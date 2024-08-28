@@ -74,7 +74,8 @@ void xwdmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory == "xwd") {
         // 接口地址
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/groupTest";
-
+        QString logMsg = QString("发送网络请求，URL：%1").arg(url);
+        qDebug() << logMsg;
         // 构建请求参数
         QJsonObject requestData;
         requestData["sn"] = pack.sn;

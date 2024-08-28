@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>414</width>
+    <width>628</width>
     <height>427</height>
    </rect>
   </property>
@@ -24,84 +24,6 @@
        <string>屏幕测试</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="5" column="3">
-        <widget class="QLCDNumber" name="test_time">
-         <property name="smallDecimalPoint">
-          <bool>false</bool>
-         </property>
-         <property name="segmentStyle">
-          <enum>QLCDNumber::Flat</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>输入MAC连接：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="macInput">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="inputMask">
-            <string/>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="5" column="1">
-        <widget class="QCheckBox" name="isformmes">
-         <property name="text">
-          <string>是否从mes获取mac</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="11" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QPushButton" name="pushButton">
-           <property name="text">
-            <string>测试(开发用)</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="comNameCombo"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="connectButton">
-           <property name="text">
-            <string>连接串口</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="disconnectButton">
-           <property name="text">
-            <string>断开连接</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="5" column="2">
         <widget class="QCheckBox" name="isusemes">
          <property name="sizePolicy">
@@ -145,6 +67,57 @@
          </item>
         </layout>
        </item>
+       <item row="5" column="1">
+        <widget class="QCheckBox" name="isformmes">
+         <property name="text">
+          <string>是否从mes获取mac</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1" colspan="3">
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+       <item row="12" column="1" colspan="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QPushButton" name="pushButton">
+           <property name="text">
+            <string>测试(开发用)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comNameCombo"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="connectButton">
+           <property name="text">
+            <string>连接串口</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="disconnectButton">
+           <property name="text">
+            <string>断开连接</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="5" column="3">
+        <widget class="QLCDNumber" name="test_time">
+         <property name="smallDecimalPoint">
+          <bool>false</bool>
+         </property>
+         <property name="segmentStyle">
+          <enum>QLCDNumber::Flat</enum>
+         </property>
+        </widget>
+       </item>
        <item row="7" column="1" colspan="3">
         <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
@@ -158,33 +131,6 @@
           <widget class="QLabel" name="macLabel">
            <property name="text">
             <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="8" column="1" colspan="3">
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>输入SN 获取mac(mes|文件)：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="getMac">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="placeholderText">
-            <string>切换英文输入再扫码</string>
            </property>
           </widget>
          </item>
@@ -217,15 +163,76 @@
          </item>
         </layout>
        </item>
-       <item row="10" column="1" colspan="3">
+       <item row="11" column="1" colspan="3">
         <widget class="QPushButton" name="stopTest">
          <property name="text">
           <string>停止测试</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1" colspan="3">
-        <widget class="QTableWidget" name="testResultTable"/>
+       <item row="8" column="1" colspan="3">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_6">
+             <property name="text">
+              <string>输入SN 获取mac：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="getMac">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="placeholderText">
+              <string>切换英文输入再扫码</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>输入MAC连接：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="macInput">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="inputMask">
+              <string/>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="placeholderText">
+              <string>切换英文输入再扫码</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

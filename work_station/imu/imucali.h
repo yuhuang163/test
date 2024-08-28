@@ -35,6 +35,9 @@ public:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // log地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+
     explicit imucali(int index, QWidget* parent = nullptr);
 
 private:
@@ -51,13 +54,11 @@ private:
 
     QString stringsn;
     QString macAddress = "没有mac地址";
-    bool isAgeContinue = 0;
 
     int upPositionIndex = 0;  //上一个位置的索引
     bool isNeedNewCali = 0;
 
-    bool mes_set_ok = 0;
-    bool isimuCaliContinue = false;
+    
     bool isovertime = 0;             // 是否开始发送校验结果
     bool iscompareovertime = 0;      // 是否开始发送校验结果
     bool isimuCaliOk = 0;            // 是否校准完成
@@ -126,8 +127,7 @@ private slots:
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;
     void refreshImuCaliResult(FacImuCalibResult x) override;
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
 
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
@@ -139,7 +139,6 @@ private slots:
     void refreshImuCaliMsg(QString msg);
     void refresh_imu_cali_reslt_msg(QString msg);
     void refresh_imu_data_to_csv(QString imutime, QString msg);
-    void on_stopimuCaliButton_clicked();
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_pushButton_2_clicked();
@@ -147,12 +146,12 @@ private slots:
     void on_getMac_returnPressed();
     void refresh_imu_cali_position(int position);
     void processInspection(QString stringsn);
+    void on_stopTest_clicked();
+
 signals:
     void send_go_next_test(int data);
 
     void endcali(int data);
-    void send_end_test(int data);
-    void send_kill_test(int data);
 
     void stage1_ok(int data);
     void stage2_ok(int data);

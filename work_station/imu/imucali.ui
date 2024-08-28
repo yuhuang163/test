@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>411</width>
+    <width>551</width>
     <height>501</height>
    </rect>
   </property>
@@ -24,6 +24,67 @@
        <string>六轴校准</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QCheckBox" name="isformmes">
+           <property name="text">
+            <string>是否从mes获取mac</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="isusemes">
+           <property name="text">
+            <string>是否使用mes</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLCDNumber" name="test_time">
+           <property name="smallDecimalPoint">
+            <bool>false</bool>
+           </property>
+           <property name="segmentStyle">
+            <enum>QLCDNumber::Flat</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="11" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QComboBox" name="comNameCombo"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="connectButton">
+           <property name="text">
+            <string>连接串口</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="disconnectButton">
+           <property name="text">
+            <string>断开连接</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="1" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <item>
@@ -138,67 +199,6 @@
          </item>
         </layout>
        </item>
-       <item row="11" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QComboBox" name="comNameCombo"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="connectButton">
-           <property name="text">
-            <string>连接串口</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="disconnectButton">
-           <property name="text">
-            <string>断开连接</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="0" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QCheckBox" name="isformmes">
-           <property name="text">
-            <string>是否从mes获取mac</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="isusemes">
-           <property name="text">
-            <string>是否使用mes</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLCDNumber" name="test_time">
-           <property name="smallDecimalPoint">
-            <bool>false</bool>
-           </property>
-           <property name="segmentStyle">
-            <enum>QLCDNumber::Flat</enum>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="9" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_10">
          <property name="topMargin">
@@ -212,13 +212,16 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="stopimuCaliButton">
+          <widget class="QPushButton" name="stopTest">
            <property name="text">
             <string>停止六轴校准</string>
            </property>
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <widget class="QTableWidget" name="testResultTable"/>
        </item>
        <item row="4" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -256,11 +259,8 @@
        </item>
        <item row="5" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_2">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_7">
              <property name="leftMargin">
@@ -269,7 +269,7 @@
              <item>
               <widget class="QLabel" name="label_6">
                <property name="text">
-                <string>输入SN 获取mac(mes)：</string>
+                <string>输入SN 获取mac：</string>
                </property>
               </widget>
              </item>
@@ -289,41 +289,34 @@
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>输入MAC连接：</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="macInput">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="inputMask">
-                <string/>
-               </property>
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>输入MAC连接：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="macInput">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="inputMask">
+              <string/>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="placeholderText">
+              <string>切换英文输入再扫码</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </item>
         </layout>
-       </item>
-       <item row="2" column="0" colspan="2">
-        <widget class="QTableWidget" name="testResultTable"/>
        </item>
       </layout>
      </widget>

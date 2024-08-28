@@ -208,7 +208,7 @@
             </widget>
            </item>
            <item row="2" column="0" colspan="2">
-            <widget class="QPushButton" name="pushButton_2">
+            <widget class="QPushButton" name="stopTest">
              <property name="enabled">
               <bool>true</bool>
              </property>

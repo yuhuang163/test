@@ -25,6 +25,8 @@ public:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
 
 private slots:
     void getDongleVer(QString data) override;
@@ -33,8 +35,7 @@ private slots:
     void processInspection(QString stringsn);
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
     void refreshMesState(int state);
     void refreshSn(FacDevInfo data) override;
 
@@ -83,10 +84,9 @@ private:
     int is_battary_test = 0;
     double standbattary = 0;
 
-    bool is_motor_continue = 0;
     bool is_motor_test_continue = 0;
 
-    bool mes_set_ok = 0;
+    
 
     // 动作
 
@@ -97,7 +97,6 @@ private:
 
 signals:
     void send_go_next_focus();
-    void send_end_test(int data);
     void send_startTest(int data);
     void send_go_next_test(int data);
 };

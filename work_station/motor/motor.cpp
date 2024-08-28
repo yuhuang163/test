@@ -24,7 +24,8 @@ void motor::on_pushButton_2_clicked() {
     on_macInput_returnPressed();
 }
 motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
-    m_index = index;
+    m_index = index;pack.mechines = getIndex();
+upperComputerVer=MOTOR_VER;
 
     ui->setupUi(this);
     scanSerialPorts();  // 要搜索一下一开始
@@ -106,7 +107,6 @@ void motor::refreshMotorCaliMsg(QString msg) {
         QTextStream stream(&file);
         // 获取当前时间戳
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-
         // 写入数据
         QStringList rowData;
         rowData << stringsn << MOTOR_VER << macAddress << timestamp << msg;
@@ -223,31 +223,8 @@ void motor::on_motor_cali_clicked() {
     }
 }
 
-void motor::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
-        mes_set_ok = 1;
-    }
-}
-void motor::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        is_motor_continue = false;
-        showlog("停止运行");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit send_end_test(getIndex());
 
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
 void motor::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void motor::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
@@ -343,7 +320,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
         showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机版本" + motorVersions);
         showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersions);
 
-        is_motor_continue = false;
+        isTestContinue = false;
         showlog("停止运行");
 
         ui->macInput->clear();
@@ -431,7 +408,7 @@ void motor::refreshBattaryData(FacDevInfo adc) {
     }
 }
 void motor::startTask() {
-    if (is_motor_continue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -669,7 +646,7 @@ void motor::startTask() {
                 on_disconnectButton_clicked();
                 // showlog("测试结束");
                 refreshMotorCaliMsg("测试结束");
-                is_motor_continue = false;
+                isTestContinue = false;
                 emit send_end_test(getIndex());
 
                 state = STATE_IDLE;
@@ -918,10 +895,10 @@ void motor::on_macInput_returnPressed() {
 
         if (ui->ismotortest->isChecked()) {
             is_motor_test_continue = true;
-            is_motor_continue = false;
+            isTestContinue = false;
         } else {
             is_motor_test_continue = false;
-            is_motor_continue = true;
+            isTestContinue = true;
         }
 
         emit send_go_next_focus();
@@ -964,7 +941,7 @@ void motor::on_end_cali_clicked() {
     ui->getMac->clear();
     ui->getMac->setFocus();
     showlog("测试结束");
-    is_motor_continue = false;
+    isTestContinue = false;
     state = STATE_IDLE;
 }
 

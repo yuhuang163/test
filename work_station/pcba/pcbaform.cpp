@@ -27,9 +27,10 @@ void PcbaForm::on_pushButton_clicked() {
 }
 
 PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
-    m_index = index;
+    m_index = index;pack.mechines = getIndex();
     //  dongleBaudRate = 115200;
     dongleOutTime = 1;  // 太快会死锁
+upperComputerVer=PCBA_VER;
 
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
@@ -622,26 +623,8 @@ void PcbaForm::on_productDisconnectButton_clicked() {
 }
 
 void PcbaForm::overTask() { on_end_clicked(); }
-void PcbaForm::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        // ui->mes_state->setText("MES");
-        // ui->mes_state->setStyleSheet(
-        //     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00;
-        //     border-radius: 10px; padding: 10px; text-align: center;");
-        // mes_set_ok = 1;
-    }
-}
-void PcbaForm::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        // is_motor_continue = false;
-        // showlog("停止运行");
-        // ui->mes_state->setStyleSheet(
-        //     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000;
-        //     border-radius: 10px; padding: 10px; text-align: center; ");
-    }
-}
+
+
 
 void PcbaForm::on_connectButton_clicked() {
     openDongleSerialPort();

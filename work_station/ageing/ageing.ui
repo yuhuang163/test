@@ -43,61 +43,7 @@
            <string/>
           </property>
           <layout class="QGridLayout" name="gridLayout">
-           <item row="3" column="0" colspan="2">
-            <layout class="QHBoxLayout" name="horizontalLayout_13">
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>输入SN获取mac:(文件||mes）</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="getMac">
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="5" column="0" colspan="2">
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>输入MAC连接：</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="macInput">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="inputMask">
-                <string/>
-               </property>
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="8" column="0">
+           <item row="9" column="0">
             <widget class="QLabel" name="flash_state">
              <property name="text">
               <string>Flash State:</string>
@@ -105,28 +51,31 @@
             </widget>
            </item>
            <item row="10" column="0" colspan="2">
-            <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <widget class="QPushButton" name="stopTest">
+             <property name="text">
+              <string>停止测试</string>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="0" rowspan="2" colspan="2">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
-              <widget class="QPushButton" name="pushButton">
+              <widget class="QLabel" name="test_result">
                <property name="text">
-                <string>测试(开发用)</string>
+                <string>TextLabel</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QComboBox" name="comNameCombo"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="connectButton">
+              <widget class="QLabel" name="mes_state">
                <property name="text">
-                <string>连接串口</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;TextLabel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="disconnectButton">
-               <property name="text">
-                <string>断开连接</string>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
                </property>
               </widget>
              </item>
@@ -170,61 +119,99 @@
                </property>
               </widget>
              </item>
+            </layout>
+           </item>
+           <item row="11" column="0" colspan="2">
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
              <item>
-              <widget class="QLabel" name="uartstate">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
+              <widget class="QPushButton" name="pushButton">
                <property name="text">
-                <string>串口连接：</string>
+                <string>测试(开发用)</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="bleStatusLabel">
+              <widget class="QComboBox" name="comNameCombo"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="connectButton">
                <property name="text">
-                <string>蓝牙连接：</string>
+                <string>连接串口</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="disconnectButton">
+               <property name="text">
+                <string>断开连接</string>
                </property>
               </widget>
              </item>
             </layout>
-           </item>
-           <item row="6" column="0" rowspan="2" colspan="2">
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="test_result">
-               <property name="text">
-                <string>TextLabel</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignCenter</set>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="mes_state">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;TextLabel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignCenter</set>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="9" column="0" colspan="2">
-            <widget class="QPushButton" name="stopTest">
-             <property name="text">
-              <string>停止测试</string>
-             </property>
-            </widget>
            </item>
            <item row="2" column="0">
             <widget class="QTableWidget" name="testResultTable"/>
+           </item>
+           <item row="3" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_13">
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="text">
+                  <string>输入SN获取mac:(文件||mes）</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="getMac">
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="placeholderText">
+                  <string>切换英文输入再扫码</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="label_2">
+                 <property name="text">
+                  <string>输入MAC连接：</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="macInput">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="inputMask">
+                  <string/>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="placeholderText">
+                  <string>切换英文输入再扫码</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>
@@ -268,14 +255,7 @@
        <string>待拓展</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="4" column="0">
-        <widget class="QLabel" name="tail_sn">
-         <property name="text">
-          <string>存储的尾盖sn：</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
+       <item row="8" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_10">
          <property name="leftMargin">
           <number>0</number>
@@ -298,6 +278,20 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="macLabel">
+         <property name="text">
+          <string>蓝牙mac：</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="tail_sn">
+         <property name="text">
+          <string>存储的尾盖sn：</string>
+         </property>
+        </widget>
        </item>
        <item row="1" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout">
@@ -376,13 +370,6 @@
          </item>
         </layout>
        </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="macLabel">
-         <property name="text">
-          <string>蓝牙mac：</string>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_14">
          <property name="topMargin">
@@ -406,6 +393,30 @@
           <widget class="QLabel" name="battary_value">
            <property name="text">
             <string>电量为：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <item>
+          <widget class="QLabel" name="bleStatusLabel">
+           <property name="text">
+            <string>蓝牙连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="uartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>串口连接：</string>
            </property>
           </widget>
          </item>

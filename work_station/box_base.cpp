@@ -179,11 +179,14 @@ void box_base::signalAndslot() {
 
     initData();
 }
-void box_base::resetall() {
-    for (int i = 0; i < testList.size(); ++i) {
-        FixTureStates[i] = 0;
-    }
-}
+
+//第一个开始了会导致清空
+// void box_base::resetall() {
+//     for (int i = 0; i < testList.size(); ++i) {
+//         FixTureStates[i] = 0;
+//     }
+// }
+//每一路开始测试都会清除掉自己的那个变量
 void box_base::reset_vector(int i) { FixTureStates[i - 1] = 0; }
 void box_base::initData() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);

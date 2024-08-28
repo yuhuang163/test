@@ -12,6 +12,8 @@
 
 #include "Abini.h"
 #include "qheaderview.h"
+#include "qlabel.h"
+#include "qpushbutton.h"
 #include "qtablewidget.h"
 extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
 {
@@ -38,6 +40,8 @@ public:
     virtual QPlainTextEdit* logEdit() { return nullptr; };            // log输入口
     virtual QPlainTextEdit* msgEdit() { return nullptr; };            // msg输入口
     virtual QTableWidget* testResultTable() { return nullptr; };      // 测试结果表格输入口
+    virtual QPushButton* getEndTestButton() { return nullptr; };      // 结束测试按钮
+    virtual QLabel* getMesStateQlabel() { return nullptr; };          // mes状态的qlab
 
     int jigBaudRate = 115200;
     int productBaudRate = 1000000;
@@ -56,7 +60,7 @@ public:
 
 private:  // 通用变量
     void initData();
-    void saveDongleUartLog( QString data);
+    void saveDongleUartLog(QString data);
 
 public:
     QString macAddress = "没有mac地址";
@@ -64,6 +68,8 @@ public:
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
+    QString upperComputerVer;
+
     QVector<TestItem> testItems;
     MesPacketData pack;
     QString snPattern;
@@ -103,13 +109,16 @@ public:
     bool canGoNext = false;
     bool sendRetryOver = false;
 
+    bool isTestContinue = false;  //测试是否继续
+    bool bandingresult = false;   // mes绑定结果
     int m_index = 0;
 
 public slots:
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
-
+    void solveMesSucess(const int mechines);
+    void solveMesData(const int mechines, QString msg);
     virtual void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
     void openDongleSerialPort(void);
@@ -168,6 +177,8 @@ signals:
     void sendProcessInspection(MesPacketData);
     void send_end_testPass(MesPacketData);
     void getMesTestValue(MesPacketData);
+    void send_kill_test(int data);
+    void send_end_test(int data);
 };
 
 #endif  // TEST_BASE_H

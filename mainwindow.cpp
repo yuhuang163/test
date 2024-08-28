@@ -269,6 +269,8 @@ MainWindow::MainWindow(QWidget* parent) :
                << "下载失败";
 
     connect(pb, SIGNAL(send_ota_flow_control(int)), this, SLOT(setBleOtaState(int)));
+    connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
+    connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
 
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
@@ -3226,3 +3228,5 @@ void MainWindow::on_selectPath_clicked() {
 void MainWindow::on_ship_bomb_clicked() {
     at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
 }
+
+void MainWindow::on_get_noisy_clicked() {}

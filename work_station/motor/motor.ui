@@ -123,60 +123,6 @@
           <number>0</number>
          </property>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>输入SN 获取mac(mes|文件)：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="getMac">
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_5">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>输入MAC连接：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="macInput">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="inputMask">
-              <string/>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="readOnly">
-              <bool>false</bool>
-             </property>
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
           <widget class="QLineEdit" name="nfc_sn">
            <property name="text">
             <string>5504867023111111</string>
@@ -257,6 +203,67 @@
             <string>蓝牙连接：</string>
            </property>
           </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="7" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_9">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>输入SN 获取mac：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="getMac">
+             <property name="placeholderText">
+              <string>切换英文输入再扫码</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>输入MAC连接：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="macInput">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="inputMask">
+              <string/>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="readOnly">
+              <bool>false</bool>
+             </property>
+             <property name="placeholderText">
+              <string>切换英文输入再扫码</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>

@@ -613,6 +613,8 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     canGoNext = false;
     sendRetryOver = false;
     if (commandFunc != nullptr) {
+        showlog("发送pb初始指令");
+
         commandFunc();  // 重新发送指令
     }
 
@@ -621,7 +623,8 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     connect(timer, &QTimer::timeout, this, [=]() {
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr) {
+                if (commandFunc != nullptr&&!retryCount%5) {
+                    showlog("重新发送指令发送pb指令");
                     commandFunc();  // 重新发送指令
                 }
                 retryCount++;
@@ -699,7 +702,55 @@ void test_base::updateTestData(QVector<TestItem>& testItems) {
     }
     testResultTableUpdate(testItems);
 }
+void test_base::solveMesSucess(const int mechines) {
+    if (mechines == getIndex()) {
+        TestItem test;
+        test.testItem = "mes操作";
+        test.testData = "";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
 
+        showlog("mes操作成功");
+        getMesStateQlabel()->setText("MES");
+        getMesStateQlabel()->setStyleSheet(
+            "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
+            "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+    }
+}
+
+void test_base::solveMesData(const int mechines, QString msg) {
+    if (mechines == getIndex()) {
+        TestItem test;
+        test.testItem = "mes报错";
+        test.testData = msg;
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        showlog("MES:报错信息:" + msg);
+        isTestContinue = false;
+        showlog("停止运行");
+        getEndTestButton()->click();
+        getMesStateQlabel()->setStyleSheet(
+            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
+            "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+
+        bandingresult = false;
+
+        getMacLineEdit()->setDisabled(0);
+        macInputLineEdit()->setDisabled(0);
+
+        getMacLineEdit()->clear();
+        getMacLineEdit()->setFocus();
+        emit send_end_test(getIndex());
+    }
+}
 void test_base::testResultTableInit() {
     if (testResultTable() == nullptr) {
         showlog("不存在表格");

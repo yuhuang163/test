@@ -40,11 +40,10 @@ private:
     bool is_canGoNext = 0;
     QString stringsn;
     QString macAddress = "没有mac地址";
-    bool isScreenContinue = 0;
     bool is_lcd_control = 0;
 
     QString product = "";
-    bool mes_set_ok = 0;
+    
 protected:
     //  virtual void closeEvent(QCloseEvent *);
     void closeEvent(QCloseEvent *event) override;   // 添加 override 关键字
@@ -72,6 +71,8 @@ private slots:
         return ui->msgEdit;
     };   // msg输入口
     QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
+     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
 
     void refreshLcdControl(FacLcdControl style) override;
     void refreshBleState(int state) override;
@@ -82,8 +83,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshMesState(int state);
     void set_screen_color(int x);
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
+    
     void processGetMesTestValue();
     void getTestValue(const int mechines, const QString value) override;
     void on_pushButton_clicked();
@@ -96,7 +96,6 @@ private slots:
     void on_stopTest_clicked();
 
 signals:
-    void send_end_test(int data);
     void send_go_next_test(int data);
     void send_go_next_focus();
     void send_startTest(int data);

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>454</width>
+    <width>826</width>
     <height>483</height>
    </rect>
   </property>
@@ -51,41 +51,6 @@
              </property>
              <property name="checked">
               <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="bleStatusLabel">
-             <property name="text">
-              <string>蓝牙连接：</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_14">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="battary_state">
-             <property name="text">
-              <string>充电状态：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="battary_voltage">
-             <property name="text">
-              <string>电压为:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="battary_value">
-             <property name="text">
-              <string>电量为：</string>
              </property>
             </widget>
            </item>
@@ -139,56 +104,63 @@
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_13">
+          <layout class="QHBoxLayout" name="horizontalLayout_18">
            <property name="topMargin">
             <number>0</number>
            </property>
            <item>
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>输入SN获取mac（文件查询或mes查询）：</string>
+            <layout class="QHBoxLayout" name="horizontalLayout_13">
+             <property name="topMargin">
+              <number>0</number>
              </property>
-            </widget>
+             <item>
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>输入SN获取mac：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="getMac">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="placeholderText">
+                <string>切换英文输入再扫码</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
-            <widget class="QLineEdit" name="getMac">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>输入MAC连接：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="macInput">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="inputMask">
-              <string/>
-             </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="placeholderText">
-              <string>切换英文输入再扫码</string>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>输入MAC连接：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="macInput">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="inputMask">
+                <string/>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="placeholderText">
+                <string>切换英文输入再扫码</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </item>
@@ -198,30 +170,6 @@
             <string>停止测试</string>
            </property>
           </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_17">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QComboBox" name="NfcComboBox">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="nfcComFresh">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>刷新nfc口</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_6">
@@ -334,6 +282,71 @@
        <string>待拓展</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
+       <item row="1" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_11">
+         <item>
+          <widget class="QLabel" name="bleStatusLabel">
+           <property name="text">
+            <string>蓝牙连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="usbuartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>usb串口连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="uartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>串口连接：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_14">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="battary_state">
+           <property name="text">
+            <string>充电状态：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="battary_voltage">
+           <property name="text">
+            <string>电压为:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="battary_value">
+           <property name="text">
+            <string>电量为：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="0" column="0">
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
@@ -377,7 +390,7 @@
          </item>
         </layout>
        </item>
-       <item row="5" column="0">
+       <item row="8" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_8">
          <property name="topMargin">
           <number>0</number>
@@ -415,46 +428,7 @@
          </item>
         </layout>
        </item>
-       <item row="6" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_22">
-         <item>
-          <widget class="QPushButton" name="get_battery">
-           <property name="text">
-            <string>显示充电情况</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="start_wifible_test">
-           <property name="text">
-            <string>开始wifi蓝牙信号测试</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="3" column="0">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="tail_sn">
-           <property name="text">
-            <string>芯片存储的尾盖sn：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="macLabel">
-           <property name="text">
-            <string>蓝牙mac：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="2" column="0">
+       <item row="5" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_9">
          <property name="topMargin">
           <number>0</number>
@@ -481,7 +455,7 @@
          </item>
         </layout>
        </item>
-       <item row="4" column="0">
+       <item row="7" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
          <property name="topMargin">
           <number>0</number>
@@ -502,31 +476,64 @@
          </item>
         </layout>
        </item>
-       <item row="1" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_11">
+       <item row="9" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_22">
          <item>
-          <widget class="QLabel" name="usbuartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
+          <widget class="QPushButton" name="get_battery">
            <property name="text">
-            <string>usb串口连接：</string>
+            <string>显示充电情况</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="uartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
+          <widget class="QPushButton" name="start_wifible_test">
+           <property name="text">
+            <string>开始wifi蓝牙信号测试</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="6" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="tail_sn">
+           <property name="text">
+            <string>芯片存储的尾盖sn：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="macLabel">
+           <property name="text">
+            <string>蓝牙mac：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_17">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QComboBox" name="NfcComboBox">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="nfcComFresh">
+           <property name="enabled">
+            <bool>false</bool>
            </property>
            <property name="text">
-            <string>串口连接：</string>
+            <string>刷新nfc口</string>
            </property>
           </widget>
          </item>

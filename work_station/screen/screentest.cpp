@@ -14,7 +14,8 @@ void screentest::on_pushButton_clicked() {
     on_macInput_returnPressed();
 }
 screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
-    m_index = index;
+    m_index = index;pack.mechines = getIndex();
+upperComputerVer=SCREEN_VER;
 
     ui->setupUi(this);
 
@@ -98,43 +99,19 @@ void screentest::on_macInput_returnPressed() {
         macAddress = ui->macInput->text();
         ui->macLabel->setText("蓝牙mac: " + macAddress);
         qDebug() << getIndex() << macAddress;
-        isScreenContinue = true;
+        isTestContinue = true;
         emit send_go_next_focus();
         state = STATE_IDLE;
     }
 }
 
-void screentest::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
 
-        mes_set_ok = 1;
-    }
-}
-void screentest::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-        isScreenContinue = false;
-        showlog("停止运行");
 
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-        emit send_end_test(getIndex());
-
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
 
 void screentest::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
 
-    isScreenContinue = false;
+    isTestContinue = false;
 }
 void screentest::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
@@ -197,7 +174,7 @@ void screentest::processInspection(QString stringsn) {
 
 void screentest::startTask()  // 编写六轴校准的代码
 {
-    if (isScreenContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -344,7 +321,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 waitWork(50);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
-                isScreenContinue = false;
+                isTestContinue = false;
                 emit send_end_test(getIndex());
 
                 state = STATE_IDLE;

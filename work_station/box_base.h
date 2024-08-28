@@ -59,7 +59,7 @@ public:
 public slots:
     virtual void checkAllover(int );
     virtual void checkAllTest(int ){};
-    virtual void resetall();
+    virtual void resetall(){};
     void checkAndUpdateFile();
     void startAllReturnPressed();
 

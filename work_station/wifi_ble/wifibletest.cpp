@@ -12,18 +12,21 @@ void wifibletest::on_pushButton_clicked() {
     // ui->macInput->setText("f4:12:fa:c5:51:c6");
     // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
     // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    //   ui->macInput->setText("3C:84:27:07:A8:D2");
     // // ui->macInput->setText("3c:84:27:29:50:32");
     // ui->macInput->setText("B4:56:5D:BF:53:71");
     ui->macInput->setText("b4:56:5d:bf:57:9d");
-
+    ui->macInput->setText("3C:84:27:07:A8:D2");
+    ui->macInput->setText("3c:84:27:29:50:32");
     on_macInput_returnPressed();
     // // usb-> getlxMEASure();
     // // waitWork(1000);
 }
 
 wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
-    m_index = index;
+    m_index = index;pack.mechines = getIndex();
+    upperComputerVer = SINGLE_VER;
+
+
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     scanSerialPorts();  // 要搜索一下一开始
@@ -104,7 +107,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
 
         if ("SUBPID_ERRO" == value) {
             TestResult = failValue;
-            iswifibleContinue = false;
+            isTestContinue = false;
             on_stopTest_clicked();
             TestItem test;
             test.testItem = "subpid";
@@ -196,11 +199,8 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
 
     // 检查软件版本、资源版本和老化状态是否匹配
     if (softwareVersionList.contains(data.soft_version) && resourceVersionList.contains(data.res_version) &&
-        bleVersionList.contains(data.ble_version) &&
-
-        pressVersionList.contains(data.presure_version) && motorVersionList.contains(data.motor_version) &&
-
-        ageStateList.contains(QString::number(data.ageing_state))) {
+        bleVersionList.contains(data.ble_version) && pressVersionList.contains(data.presure_version) &&
+        motorVersionList.contains(data.motor_version) && ageStateList.contains(QString::number(data.ageing_state))) {
         showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
         showlog("资源版本正确" + QString::fromUtf8(data.res_version));
         showlog("老化状态正确" + QString::number(data.ageing_state));
@@ -219,7 +219,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersions);
 
         TestResult = failValue;
-        iswifibleContinue = false;
+        isTestContinue = false;
         showlog("停止运行");
         // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
         waitWork(100);
@@ -323,7 +323,6 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
         testResultTableUpdate(testItems);
         testItems.clear();
-
         charageresult = "通过";
         voltageresult = "通过";
         showlog("电量和充电测试通过");
@@ -492,37 +491,9 @@ void wifibletest::refreshAmmeterData(QString data) {
     }
 }
 
-void wifibletest::solveMesSucess(const int mechines) {
-    if (mechines == getIndex()) {
-        showlog("mes操作成功");
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                     "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
-
-        mes_set_ok = 1;
-    }
-}
-void wifibletest::solveMesData(const int mechines, QString msg) {
-    if (mechines == getIndex()) {
-        showlog("MES:报错信息:" + msg);
-
-        iswifibleContinue = false;
-        showlog("停止运行");
-        on_stopTest_clicked();
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-
-        bandingresult = false;
-        emit send_end_test(getIndex());
-
-        ui->getMac->clear();
-        ui->getMac->setFocus();
-    }
-}
-
 void wifibletest::closeEvent(QCloseEvent* event) {
     qDebug() << getIndex() << "开始关闭";
-    iswifibleContinue = false;
+    isTestContinue = false;
 }
 
 void wifibletest::getWifiMsg(QString data) {
@@ -584,7 +555,7 @@ wifibletest::State wifibletest::getNextState(State currentState) {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
 }
 void wifibletest::startTask() {
-    if (iswifibleContinue) {
+    if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
         switch (state) {
             case STATE_IDLE:  // 复位一切
@@ -592,6 +563,7 @@ void wifibletest::startTask() {
                 at->sendMac(macAddress);  // 开始连接
                 showlog("开始测试");
                 state = getNextState(state);
+
                 break;
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
@@ -850,7 +822,6 @@ void wifibletest::startTask() {
                     pack.result = "NG";
 
                     pack.sn = ui->getMac->text();
-
                     pack.instruct_num = "079";
                     if (ui->isusemes->checkState()) {
                         send_end_testPass(pack);
@@ -892,7 +863,7 @@ void wifibletest::startTask() {
 
                 log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                 state = STATE_IDLE;
-                iswifibleContinue = false;
+                isTestContinue = false;
                 ui->macInput->clear();
                 ui->snInput->clear();
 
@@ -962,7 +933,7 @@ void wifibletest::on_macInput_returnPressed() {
 
         ui->start_wifible_test->setEnabled(false);
         // 主状态机流程
-        iswifibleContinue = true;
+        isTestContinue = true;
         state = STATE_IDLE;
 
         emit send_go_next_focus();
@@ -1006,9 +977,7 @@ void wifibletest::processInspection(QString stringsn) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
             pack.sn = stringsn;
-
             pack.mechines = getIndex();
-
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
             emit sendProcessInspection(pack);
@@ -1028,9 +997,7 @@ void wifibletest::processInspection(QString stringsn) {
 void wifibletest::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
-
         pack.is_hq_send_mac = 1;
-
         pack.mechines = getIndex();
         pack.instruct_num = "079";
         emit getMesTestValue(pack);

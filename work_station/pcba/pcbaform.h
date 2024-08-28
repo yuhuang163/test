@@ -25,23 +25,17 @@ signals:
     void start_sleep_command(int);
     void start_white_modle_command(int);
     void send_go_next_focus();
-    void send_end_test(int data);
     void send_go_next_test(int data);
 
     void send_startTest(int data);
 
 public:
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QLineEdit* getMotorCaliParam() override { return ui->pcba_motor_cali_param; };     // 电机校准参数
-
     QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
-
     QLineEdit* getMacLineEdit() override { return ui->macInput; };  // sn输入口
-
     QPlainTextEdit* logEdit() override { return ui->log; };  // log输入口
-
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
 
@@ -60,8 +54,6 @@ public:
 private slots:
     void getDongleVer(QString data) override;
 
-    void solveMesData(const int mechines, QString msg);
-    void solveMesSucess(const int mechines);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
     void getimuData(FacUploadNineAlex x) override;
     void get_remain_data(const FixturePacketData packetData);
@@ -201,7 +193,6 @@ private:
     int overVoltageLight;
     int button1;
     int button2;
-    //  bool isTestContinue = true;
     bool isledcontrol = 0;
     bool isbrushcontrol = 0;
     bool isbuttonTest = 0;

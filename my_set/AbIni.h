@@ -55,30 +55,29 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.2.9"   // 支持1拖多
-#define AGE_VER "老化测试工站   V1.1.5"     // 支持1拖多
-#define MOTOR_VER "电机校准工站   V1.1.4"   // 加定时器判断休
-#define QC_VER "静态电流测试   V1.3.2"      // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.1.2"  // 加定时器判断休
-#define LIGHT_VER "灯光测试工站   V1.1.2"   // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.3.0"  // 立讯bug
-#define FREE_VER "自由测试工站   V1.0.5"    // 立讯bug
-#define CAMERA_VER "摄像测试工站   V1.1.3"  // 支持摄像头工站
-#define IMU_VER "IMU校准工站    V1.3.9"     // 支持自动化治具
-#define PCBA_VER "电刷板子测试   V1.2.9"    // 加定时器判断休
+#define DEBUG_VER "电刷产测工具   V1.3.0"   // 支持1拖多
+#define AGE_VER "老化测试工站   V1.1.6"     // 支持1拖多
+#define MOTOR_VER "电机校准工站   V1.1.5"   // 加定时器判断休
+#define QC_VER "静态电流测试   V1.3.3"      // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.1.3"  // 加定时器判断休
+#define LIGHT_VER "灯光测试工站   V1.1.3"   // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.3.1"  // 立讯bug
+#define FREE_VER "自由测试工站   V1.0.6"    // 立讯bug
+#define CAMERA_VER "摄像测试工站   V1.1.4"  // 支持摄像头工站
+#define IMU_VER "IMU校准工站    V1.4.1"     // 支持自动化治具
+#define PCBA_VER "电刷板子测试   V1.3.0"    // 加定时器判断休
 
-// [DEBUG_VER] dongle日志保存，串口选择是否复位dongle，蓝牙连接压测功能
-// [CAMERA_VER] 增加对治具的控制
-// [IMU_VER] 适配不带回应的船运回应
-//
-// [AGE_VER] 添加dongle日志保存后台
-// [MOTOR_VER] 添加dongle日志保存后台
-// [QC_VER] 添加dongle日志保存后台
-// [SCREEN_VER] 添加dongle日志保存后台
-// [LIGHT_VER] 添加dongle日志保存后台
-// [SINGLE_VER] 添加dongle日志保存后台
-// [FREE_VER] 添加dongle日志保存后台
-// [PCBA_VER] 添加dongle日志保存后台，板厂测试取消宏定义，增加船运电流测试的适配
+// [DEBUG_VER] 显示dongle的信息
+// [CAMERA_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [IMU_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [AGE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [MOTOR_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [QC_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [SCREEN_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数，调整修复第一个跑起来了，最后开始回车导致无法弹窗问题
+// [LIGHT_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [SINGLE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [FREE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
+// [PCBA_VER] 
 //
 
 #endif  // ABINI_H
