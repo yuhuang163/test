@@ -23,9 +23,9 @@ void wifibletest::on_pushButton_clicked() {
 }
 
 wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
-    m_index = index;pack.mechines = getIndex();
+    m_index = index;
+    pack.mechines = getIndex();
     upperComputerVer = SINGLE_VER;
-
 
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");

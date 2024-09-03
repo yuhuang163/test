@@ -1,7 +1,9 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "xlsxdocument.h"
-
+#if _MSC_VER >= 1600
+#    pragma execution_character_set("utf-8")
+#endif
 QString MainWindow::getMotorStateString(FacMotoState state) {
     switch (state) {
         case FacMotoState_UGT_E_SS_IDLE_A: return "空闲任务A";
@@ -565,8 +567,56 @@ void MainWindow::readDongleSerialPortData() {
         ui->log->appendPlainText(logEntry);
     }
     saveDongleUartLog(logEntry);
+    if (is_need_noisy_data)
+        solveNosiyData(dataTemp);
 }
+void MainWindow::solveNosiyData(QByteArray dataTemp) {
+    // 假设你已经正确配置了串口并连接了 readyRead 信号到这个槽函数
+    QByteArray receivedData = dataTemp;  // 读取串口所有可用的数据
 
+    // 检查接收到的数据长度是否足够
+    if (receivedData.size() < 6) {
+        qDebug() << "接收到的数据长度不足";
+        return;
+    }
+
+    // 提取第4和第5个字节
+    unsigned char byte4 = static_cast<unsigned char>(receivedData[3]);
+    unsigned char byte5 = static_cast<unsigned char>(receivedData[4]);
+
+    // 将两个字节组合成一个16位整数
+    int combinedValue = (byte4 << 8) | byte5;
+
+    // 将该值转换为十进制并除以10
+    double finalValue = combinedValue / 10.0;
+
+    // 获取当前时间戳
+    QString Nosiytimestamp = QDateTime::currentDateTime().toString("HH:mm:ss:zzz");
+
+    // 打开CSV文件（追加模式），如果不存在则创建
+    QFile file("噪音采集.csv");
+    bool fileExists = file.exists();
+    if (!file.open(QIODevice::Append | QIODevice::Text)) {
+        showlog("无法打开噪音采集文件");
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // 如果文件刚创建（不存在则新建），写入标题行
+    if (!fileExists) {
+        QTextCodec* codec = QTextCodec::codecForName("UTF-8");
+        out << codec->toUnicode("时间戳,噪声值（dB）\n");
+    }
+
+    // 写入时间戳和噪声值
+    out << Nosiytimestamp << "," << finalValue << "\n";
+
+    file.close();  // 关闭文件
+
+    // 输出处理后的值（可选）
+    showlog("噪音值：" + QString::number(finalValue));
+}
 void MainWindow::refreshDongleUartState(int state) {
     if (state) {
         showlog("dongle串口连接成功");

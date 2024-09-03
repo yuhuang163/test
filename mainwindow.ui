@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>15</number>
+               <number>5</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3909,14 +3909,27 @@ border-color: rgb(255, 165, 0)</string>
                <widget class="QPushButton" name="get_noisy">
                 <property name="geometry">
                  <rect>
-                  <x>700</x>
-                  <y>340</y>
-                  <width>92</width>
+                  <x>41</x>
+                  <y>320</y>
+                  <width>121</width>
                   <height>28</height>
                  </rect>
                 </property>
                 <property name="text">
                  <string>开始采集噪声</string>
+                </property>
+               </widget>
+               <widget class="QPushButton" name="stop_noisy">
+                <property name="geometry">
+                 <rect>
+                  <x>170</x>
+                  <y>320</y>
+                  <width>111</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>停止采集噪声</string>
                 </property>
                </widget>
               </widget>

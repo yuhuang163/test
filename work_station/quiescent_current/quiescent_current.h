@@ -41,12 +41,12 @@ public:
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
 
-    QLineEdit* getMacLineEdit() override { return ui->snInput; };     // sn输入口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };           // mac地址输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
-    QLabel* getMesStateQlabel() override { return ui->mes_state; };   // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QLineEdit* getMacLineEdit() override { return ui->snInput; };       // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };    // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };             // mac地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };         // msg输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };     // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };  // 结束测试按钮
 
     void disconnect_dongle();
 

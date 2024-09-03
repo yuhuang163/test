@@ -29,8 +29,9 @@ void imucali::on_pushButton_clicked() {
 }
 imucali::imucali(int index, QWidget* parent) :
     ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
-    m_index = index;pack.mechines = getIndex();
-upperComputerVer=IMU_VER;
+    m_index = index;
+    pack.mechines = getIndex();
+    upperComputerVer = IMU_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
@@ -344,8 +345,6 @@ void imucali::on_connectButton_clicked() {
     ui->connectButton->setEnabled(false);
     openDongleSerialPort();
 }
-
-
 
 void imucali::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
@@ -1249,8 +1248,6 @@ void imucali::startTask()  // 编写六轴校准的代码
 }
 void imucali::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
-
-
 void imucali::on_pushButton_2_clicked() {
     // pb->set_forbid_sleep(FacSwitch_OPEN);
     at->sendBLEDEVICELOG(0);
@@ -1358,8 +1355,7 @@ void imucali::processGetMesTestValue() {
     }
 }
 
-void imucali::on_stopTest_clicked()
-{
+void imucali::on_stopTest_clicked() {
     emit send_end_test(getIndex());
 
     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -1373,4 +1369,3 @@ void imucali::on_stopTest_clicked()
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-

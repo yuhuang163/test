@@ -17,27 +17,21 @@ class imucali : public test_base {
 public:
     ~imucali();
     void startTask() override;
-
     Ui::imucali* ui;
     ImuDataT orgData;
     void endTask() override;
     bool turn = true;
-
     void useMes() override;
-
     void startTest() override;
-
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };     // dongle口
     QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };  // usb口（治具）
-
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // log地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
-
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
     explicit imucali(int index, QWidget* parent = nullptr);
 
 private:
@@ -58,7 +52,6 @@ private:
     int upPositionIndex = 0;  //上一个位置的索引
     bool isNeedNewCali = 0;
 
-    
     bool isovertime = 0;             // 是否开始发送校验结果
     bool iscompareovertime = 0;      // 是否开始发送校验结果
     bool isimuCaliOk = 0;            // 是否校准完成
@@ -127,7 +120,6 @@ private slots:
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;
     void refreshImuCaliResult(FacImuCalibResult x) override;
-    
 
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();

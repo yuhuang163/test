@@ -20,9 +20,7 @@ public:
 
 private:
     QString nfcdataHeadText = "";
-
     QString getValueBySN(const QString& sn);
-
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";
@@ -36,7 +34,6 @@ private:
     int RssiTestTime = 0;
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
-   
     QString stringsn = "";
     QString tailsn = "";
     QString macAddress = "没有mac地址";
@@ -54,9 +51,9 @@ private:
     QString bleresult = "";
     int rssitestcount = 0;
     int rssitestfailcount = 0;
-    
+
     int wifistate = 0;
- 
+
     bool isovertime = 0;         // 是否开始发送校验结果
     bool iscompareovertime = 0;  // 是否开始发送校验结果
     int intwifirssi = 0;
@@ -103,9 +100,9 @@ private slots:
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // mac地址输入口
-    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
@@ -130,7 +127,6 @@ private slots:
     void processInspection(QString stringsn);
     void processGetMesTestValue();
 
-    
     void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
 

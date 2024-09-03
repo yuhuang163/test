@@ -6,32 +6,30 @@
 #include "test_base.h"
 #include "ui_screentest.h"
 
-namespace Ui
-{
+namespace Ui {
     class screentest;
 }
-class screentest : public test_base
-{
+class screentest : public test_base {
     Q_OBJECT
 public:
-    explicit screentest(int index, QWidget *parent = nullptr);
+    explicit screentest(int index, QWidget* parent = nullptr);
     ~screentest();
-    Ui::screentest *ui;
+    Ui::screentest* ui;
     void startTask() override;
-private:
 
-    typedef enum
-    {
-        STATE_IDLE,                // 休眠状态
-        STATE_WATI_CONNECT,        // 等待连接
+private:
+    typedef enum {
+        STATE_IDLE,          // 休眠状态
+        STATE_WATI_CONNECT,  // 等待连接
+        STATE_WAIT_CORRECT_BANDING,
         STATE_DISABLE_SLEEP_1,     // 进入禁止休眠
-        STATE_PROCESS_INSPECTION,   // 工序核对检查
+        STATE_PROCESS_INSPECTION,  // 工序核对检查
         STATE_COLOR1,
         STATE_COLOR2,
         STATE_COLOR3,
         STATE_COLOR4,
         STATE_COLOR5,
-        STATE_SAVE_RESULT   // 保存结果在本地
+        STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     State state = STATE_IDLE;
 
@@ -41,38 +39,28 @@ private:
     QString stringsn;
     QString macAddress = "没有mac地址";
     bool is_lcd_control = 0;
+    int snCompareOk = 0;
+    QString stringSubpid;
+    QByteArray subpid;
+    int subpidCompareOk = 0;
+    QByteArray sn;
 
     QString product = "";
-    
+
 protected:
     //  virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent *event) override;   // 添加 override 关键字
+    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
 
 private slots:
 
-    QComboBox *getComNameCombo() override
-    {
-        return ui->comNameCombo;
-    };   // dongle口
-    QLineEdit *getMacLineEdit() override
-    {
-        return ui->getMac;
-    };   // sn输入口
-    QLineEdit *macInputLineEdit() override
-    {
-        return ui->macInput;
-    };   // mac地址输入口
-    QPlainTextEdit *logEdit() override
-    {
-        return ui->log;
-    };   // mac地址输入口
-    QPlainTextEdit *msgEdit() override
-    {
-        return ui->msgEdit;
-    };   // msg输入口
-    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
+    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
     void refreshLcdControl(FacLcdControl style) override;
     void refreshBleState(int state) override;
@@ -83,7 +71,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshMesState(int state);
     void set_screen_color(int x);
-    
+
     void processGetMesTestValue();
     void getTestValue(const int mechines, const QString value) override;
     void on_pushButton_clicked();
@@ -101,4 +89,4 @@ signals:
     void send_startTest(int data);
 };
 
-#endif   // SCREENTEST_H
+#endif  // SCREENTEST_H

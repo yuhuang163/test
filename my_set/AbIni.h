@@ -67,17 +67,17 @@
 #define IMU_VER "IMU校准工站    V1.4.1"     // 支持自动化治具
 #define PCBA_VER "电刷板子测试   V1.3.0"    // 加定时器判断休
 
-// [DEBUG_VER] 显示dongle的信息
-// [CAMERA_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [IMU_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [AGE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [MOTOR_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [QC_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [SCREEN_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数，调整修复第一个跑起来了，最后开始回车导致无法弹窗问题
-// [LIGHT_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [SINGLE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [FREE_VER] 添加mes报错以及mes正常上报，以及ui界面调整，调整重发pb次数
-// [PCBA_VER] 
+// [DEBUG_VER] 加入噪音采集的功能
+// [CAMERA_VER] 格式化代码
+// [IMU_VER] 格式化代码
+// [AGE_VER] 格式化代码
+// [MOTOR_VER] 格式化代码
+// [QC_VER] 格式化代码
+// [SCREEN_VER] 格式化代码
+// [LIGHT_VER] 格式化代码
+// [SINGLE_VER] 格式化代码
+// [FREE_VER] 格式化代码
+// [PCBA_VER] 格式化代码
 //
 
 #endif  // ABINI_H

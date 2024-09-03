@@ -607,6 +607,7 @@ void test_base::updateMainStyle(QString style) {
 }
 
 void test_base::solveGetBrushResponse(int data) { getRespone = data; }
+
 // condition=1是成功
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
@@ -614,7 +615,6 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     sendRetryOver = false;
     if (commandFunc != nullptr) {
         showlog("发送pb初始指令");
-
         commandFunc();  // 重新发送指令
     }
 
@@ -623,7 +623,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     connect(timer, &QTimer::timeout, this, [=]() {
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr&&!retryCount%5) {
+                if (commandFunc != nullptr && !retryCount % 5) {
                     showlog("重新发送指令发送pb指令");
                     commandFunc();  // 重新发送指令
                 }

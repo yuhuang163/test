@@ -180,6 +180,7 @@ private:
     } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
     bool is_motor_continue = false;
+    bool is_need_noisy_data=false;
     motorState motorstate = STATE_IDLE;
     imu_calibrate* qimuc = nullptr;
     TestModel* basicInfoModel = nullptr;
@@ -194,6 +195,9 @@ private:
     bool is_start_ium_cali = 0;  // 是否开始六轴校准
     void updateMainStyle(QString style);
     QTimer* waittime = new QTimer(this);
+    QTimer* noisytimer =nullptr;
+
+
     QTimer* cameratimer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
     QTimer* dongleSerialPortTimer = new QTimer(this);
@@ -222,6 +226,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void sendNoisyData();
     void setBleOtaState(int);
     void checkAndUpdateFile();
     void deleteFile(const QString& remoteUrl);
@@ -246,6 +251,7 @@ private slots:
     void writeDataToCSVFile();
     void clearDisplay();
     void SendRadomDataPushButton();
+    void solveNosiyData(QByteArray dataTemp);
     void waitWork(int ms);
     void sendBrushData(bool is_random);
     void sendRecord();
@@ -447,6 +453,8 @@ private slots:
     void on_selectPath_clicked();
     void on_ship_bomb_clicked();
     void on_get_noisy_clicked();
+
+    void on_stop_noisy_clicked();
 
 signals:
     void send_uart_state(int data);

@@ -104,13 +104,14 @@ void cameratest::on_pushButton_clicked() {
     // }
 }
 cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
-    m_index = index;pack.mechines = getIndex();
+    m_index = index;
+    pack.mechines = getIndex();
     dongleOutTime = 5;  // 太快会死锁
-    upperComputerVer=CAMERA_VER;    
+    upperComputerVer = CAMERA_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts();  // 要搜索 一下一开始
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -342,8 +343,8 @@ void cameratest::solve_frame(void) {
 
             int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
             if (frame_size > ring_size) {
-                qDebug() << "串口帧数据不完整"
-                         << "需要" << frame_size << "实际为" << ring_size;
+                // qDebug() << "串口帧数据不完整"
+                //          << "需要" << frame_size << "实际为" << ring_size;
                 break;
             }
 
@@ -383,10 +384,10 @@ void cameratest::solve_frame(void) {
             std::memset(frame_buf, 0, sizeof(frame_buf));
             qDebug() << "删除串口帧数据" << frame_size;
         } else {
-            qDebug() << "串口数据流错误寻找下一帧";
-            qDebug() << "串口数据包头为:"
-                     << QByteArray(reinterpret_cast<char*>(frame_buf), UART_PHY_LAYER_HEAD_SIZE).toHex();
-            qDebug() << "串口数据为:" << QByteArray(reinterpret_cast<char*>(frame_buf), 50).toHex();
+            // qDebug() << "串口数据流错误寻找下一帧";
+            // qDebug() << "串口数据包头为:"
+            //          << QByteArray(reinterpret_cast<char*>(frame_buf), UART_PHY_LAYER_HEAD_SIZE).toHex();
+            // qDebug() << "串口数据为:" << QByteArray(reinterpret_cast<char*>(frame_buf), 50).toHex();
 
             if (ext_ble_find_next_frame()) {
                 continue;
@@ -474,9 +475,6 @@ void cameratest::on_macInput_returnPressed() {
     }
 }
 
-
-
-
 void cameratest::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
     QString folderPath = "D:/测试结果";
 
@@ -532,12 +530,8 @@ void cameratest::canGoNextMechine(int x) {
     qDebug() << getIndex() << "得到信息" << getIndex();
     if (x == getIndex()) {
         result = failValue;
-        showlog("停止运行");
         state = STATE_SAVE_RESULT;
         showlog("摄像头测试失败");
-        ui->test_result->setText("FAIL");
-        ui->test_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                       "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
 void cameratest::processInspection(QString stringsn) {
@@ -733,10 +727,10 @@ void cameratest::startTask() {
                 break;
 
             case STATE_SAVE_RESULT:
-
+                showlog("开始保存结果" + QString::number(getIndex()));
                 switch (getIndex()) {
-                    case 1: send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
-                    case 2: send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
+                    case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
+                    case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
                     default: break;
                 }
 
@@ -781,9 +775,9 @@ void cameratest::startTask() {
                 ui->getMac->clear();
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                waitWork(WAITTIME);
-                pb->set_dev_reset();
-                waitWork(WAITTIME);
+                // waitWork(WAITTIME);
+                // pb->set_dev_reset();
+                // waitWork(WAITTIME);
                 emit send_end_test(getIndex());
 
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -1276,6 +1270,8 @@ void cameratest::on_jxl_abnormal_clicked() {
     testResultTableUpdate(testItems);
     testItems.clear();
     log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+    on_abnormal_clicked();
 }
 
 void cameratest::on_jxl_normal_clicked() {
@@ -1390,6 +1386,8 @@ void cameratest::on_zw_abnormal_clicked() {
     testResultTableUpdate(testItems);
     testItems.clear();
     log->saveTestCsv(CAMERA_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+    on_abnormal_clicked();
 }
 
 void cameratest::on_py_normal_clicked() {
@@ -1560,6 +1558,11 @@ void cameratest::on_OffsetTest_clicked() {
 
         pyTestResult = "偏位测试通过";
         showlog("偏位测试通过");
+        switch (getIndex()) {
+            case 1: send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
+            case 2: send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
+            default: break;
+        }
     }
 
     if (flag == 0) {
@@ -1576,6 +1579,8 @@ void cameratest::on_OffsetTest_clicked() {
 
         pyTestResult = "刷头偏位";
         showlog("刷头偏位");
+
+        on_abnormal_clicked();
     }
     if (flag == -1) {
         TestItem test;
@@ -1591,6 +1596,7 @@ void cameratest::on_OffsetTest_clicked() {
 
         pyTestResult = "算法计算失败";
         showlog("算法计算失败");
+        on_abnormal_clicked();
     }
 
     QImage image;
@@ -1635,11 +1641,6 @@ void cameratest::on_OffsetTest_clicked() {
         } else {
             qDebug() << "Image saved successfully to:" << filePath;
         }
-    }
-    switch (getIndex()) {
-        case 1: send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
-        case 2: send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
-        default: break;
     }
 }
 

@@ -14,8 +14,9 @@ void screentest::on_pushButton_clicked() {
     on_macInput_returnPressed();
 }
 screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
-    m_index = index;pack.mechines = getIndex();
-upperComputerVer=SCREEN_VER;
+    m_index = index;
+    pack.mechines = getIndex();
+    upperComputerVer = SCREEN_VER;
 
     ui->setupUi(this);
 
@@ -38,7 +39,6 @@ upperComputerVer=SCREEN_VER;
     showlog("action=" + pack.action);
     showlog("machineNo=" + pack.machineNo);
     testResultTableInit();
-
 }
 
 void screentest::refreshLcdControl(FacLcdControl style) {
@@ -105,19 +105,10 @@ void screentest::on_macInput_returnPressed() {
     }
 }
 
-
-
-
 void screentest::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
 
     isTestContinue = false;
-}
-void screentest::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
-    qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("存储尾盖sn:" + stringsn);
 }
 
 void screentest::set_screen_color(int x) {
@@ -171,7 +162,33 @@ void screentest::processInspection(QString stringsn) {
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
+void screentest::refreshSn(FacDevInfo data) {
+    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
 
+    stringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
+    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+    qDebug() << getIndex() << "stringsn" << stringsn;
+    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+
+    if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
+        showlog("读取的subpid为" + stringSubpid);
+        showlog("写入的subpid为" + subpid);
+
+        if (subpid == stringSubpid)
+            subpidCompareOk = 1;
+        else
+            subpidCompareOk = 2;
+    }
+
+    if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
+        showlog("读取的sn为" + stringsn);
+        showlog("写入的sn为" + sn);
+        if (stringsn == sn)
+            snCompareOk = 1;
+        else
+            snCompareOk = 2;
+    }
+}
 void screentest::startTask()  // 编写六轴校准的代码
 {
     if (isTestContinue) {
@@ -189,15 +206,52 @@ void screentest::startTask()  // 编写六轴校准的代码
                 is_lcd_control = 0;
                 TestTime.start();
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-
+                snCompareOk = 0;
+                subpidCompareOk = 0;
                 state = STATE_WATI_CONNECT;
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    state = STATE_DISABLE_SLEEP_1;
+                    stringsn = ui->getMac->text();
+                    sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN));
+
+                    state = STATE_WAIT_CORRECT_BANDING;
                 }
                 break;
+            case STATE_WAIT_CORRECT_BANDING:
+                if (canGoNext) {
+                    if (snCompareOk == 1) {
+                        TestItem test;
+                        test.testItem = "sn比对";
+                        test.testData = QString::number(snCompareOk);
+                        test.testResult = "通过";
+                        test.ask = "1";
+                        testItems.append(test);
+                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
+                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
+                        showlog("sn已比对成功");
+                        state = STATE_DISABLE_SLEEP_1;
+                    } else if (snCompareOk == 2) {
+                        TestItem test;
+                        test.testItem = "sn比对";
+                        test.testData = QString::number(snCompareOk);
+                        test.testResult = "失败";
+                        test.ask = "1";
+                        testItems.append(test);
+                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
+                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+                        showlog("sn比对失败");
+                        result = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                }
+                break;
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
@@ -304,10 +358,10 @@ void screentest::startTask()  // 编写六轴校准的代码
                 test.testData = "";
                 test.testResult = result;
                 test.ask = "通过";
-                                          testItems.append(test);
-                    log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
-                    testResultTableUpdate(testItems);
-                    testItems.clear();
+                testItems.append(test);
+                log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+                testItems.clear();
 
                 log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
 
@@ -427,7 +481,7 @@ void screentest::getMac(QString sn_to_search) {
     }
 }
 void screentest::on_getMac_returnPressed() {
-       testResultTableInit();
+    testResultTableInit();
 
     ui->log->clear();
     ui->msgEdit->clear();
@@ -448,6 +502,7 @@ void screentest::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
+    sn = ui->getMac->text().toUtf8();
 
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取

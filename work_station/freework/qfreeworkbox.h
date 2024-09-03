@@ -4,21 +4,16 @@
 #include "box_base.h"
 
 namespace Ui {
-class QFreeWorkBox;
+    class QFreeWorkBox;
 }
 
-class QFreeWorkBox : public box_base
-{
+class QFreeWorkBox : public box_base {
     Q_OBJECT
 
 public:
-    explicit QFreeWorkBox(QWidget *parent = nullptr);
+    explicit QFreeWorkBox(QWidget* parent = nullptr);
     ~QFreeWorkBox();
-  Ui::QFreeWorkBox *ui;
-
-
+    Ui::QFreeWorkBox* ui;
 };
 
-
-
-#endif // QFREEWORKBOX_H
+#endif  // QFREEWORKBOX_H

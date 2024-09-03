@@ -7,7 +7,8 @@
 #endif
 quiescent_current::quiescent_current(int index, QWidget* parent) :
     ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
-    m_index = index;pack.mechines = getIndex();
+    m_index = index;
+    pack.mechines = getIndex();
     upperComputerVer = QC_VER;
 
     ui->setupUi(this);
@@ -485,7 +486,6 @@ void quiescent_current::on_jigDisconnectButton_clicked() {
     ui->jigComNameCombo->setEnabled(true);
     ui->jigConnectButton->setEnabled(true);
 }
-
 
 void quiescent_current::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 

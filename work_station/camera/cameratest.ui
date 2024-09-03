@@ -700,6 +700,9 @@
          </item>
          <item>
           <widget class="QPushButton" name="abnormal">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>结果不正常</string>
            </property>

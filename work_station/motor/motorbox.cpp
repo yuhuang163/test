@@ -1,18 +1,19 @@
 ﻿
 #include "motorbox.h"
-#include "QDesktopWidget"
-#include "ui_motorbox.h"
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSettings>
 #include <QVBoxLayout>
 
+#include "QDesktopWidget"
+#include "ui_motorbox.h"
+
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 
-motorbox::motorbox(QWidget *parent) : box_base(parent), ui(new Ui::motorbox)
-{
+motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
     ui->setupUi(this);
     CreatWindow<motor>(this);
     signalAndslot();
@@ -36,9 +37,8 @@ motorbox::motorbox(QWidget *parent) : box_base(parent), ui(new Ui::motorbox)
             SLOT(startAllReturnPressed()));
 }
 
-motorbox::~motorbox()
-{
-   // delete Fixture_uart_ui;
+motorbox::~motorbox() {
+    // delete Fixture_uart_ui;
 
     delete ui;
 }

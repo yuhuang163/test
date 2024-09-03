@@ -11,8 +11,9 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 }
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
-    m_index = index;pack.mechines = getIndex();
-upperComputerVer=FREE_VER;
+    m_index = index;
+    pack.mechines = getIndex();
+    upperComputerVer = FREE_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     scanSerialPorts();  // 要搜索一下一开始
@@ -671,8 +672,6 @@ void QFreeWork::refreshAmmeterData(QString data) {
         qDebug() << getIndex() << "无法将字符串转换为 double 类型";
     }
 }
-
-
 
 void QFreeWork::closeEvent(QCloseEvent* event) {
     // qDebug() << getIndex() << "开始关闭";

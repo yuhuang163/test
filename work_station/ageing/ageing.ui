@@ -165,7 +165,7 @@
                <item>
                 <widget class="QLabel" name="label_5">
                  <property name="text">
-                  <string>输入SN获取mac:(文件||mes）</string>
+                  <string>输入SN获取mac:</string>
                  </property>
                 </widget>
                </item>

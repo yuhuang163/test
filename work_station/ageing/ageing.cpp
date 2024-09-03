@@ -7,10 +7,11 @@
 #endif
 
 ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
-    m_index = index;pack.mechines = getIndex();
+    m_index = index;
+    pack.mechines = getIndex();
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
-            upperComputerVer=AGE_VER;
+    upperComputerVer = AGE_VER;
 
     scanSerialPorts();  // 要搜索一下一开始
 
@@ -240,10 +241,7 @@ void ageing::on_exitBurningMode_clicked() {
     }
 }
 
-
 void ageing::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
-
-
 
 void ageing::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
@@ -252,28 +250,68 @@ void ageing::closeEvent(QCloseEvent*) {
 void ageing::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
 
-    stringSubpid = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+    stringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
     qDebug() << getIndex() << "stringsn" << stringsn;
     ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        showlog("读取的subpid为" + stringsn);
-        showlog("写入的subpid为" + sn);
+        showlog("读取的subpid为" + stringSubpid);
+        showlog("写入的subpid为" + subpid);
 
-        if (subpid == stringSubpid)
+        if (subpid == stringSubpid) {
+            TestItem test;
+            test.testItem = "suipid测试";
+            test.testData = stringSubpid;
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
             subpidCompareOk = 1;
-        else
+
+        } else {
+            TestItem test;
+            test.testItem = "suipid测试";
+            test.testData = stringSubpid;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
             subpidCompareOk = 2;
+        }
     }
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
         showlog("读取的sn为" + stringsn);
         showlog("写入的sn为" + sn);
-        if (stringsn == sn)
+        if (stringsn == sn) {
+            TestItem test;
+            test.testItem = "sn测试";
+            test.testData = stringsn;
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
             snCompareOk = 1;
-        else
+
+        } else {
+            TestItem test;
+            test.testItem = "sn测试";
+            test.testData = stringsn;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
             snCompareOk = 2;
+        }
     }
 }
 
@@ -488,7 +526,7 @@ void ageing::startTask() {
                 stringsn = "";
                 TestItem test;
                 test.testItem = "老化测试";
-                test.testData = "";
+                test.testData = "已进入";
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);

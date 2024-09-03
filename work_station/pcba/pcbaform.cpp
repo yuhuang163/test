@@ -27,10 +27,11 @@ void PcbaForm::on_pushButton_clicked() {
 }
 
 PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
-    m_index = index;pack.mechines = getIndex();
+    m_index = index;
+    pack.mechines = getIndex();
     //  dongleBaudRate = 115200;
     dongleOutTime = 1;  // 太快会死锁
-upperComputerVer=PCBA_VER;
+    upperComputerVer = PCBA_VER;
 
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
@@ -623,8 +624,6 @@ void PcbaForm::on_productDisconnectButton_clicked() {
 }
 
 void PcbaForm::overTask() { on_end_clicked(); }
-
-
 
 void PcbaForm::on_connectButton_clicked() {
     openDongleSerialPort();

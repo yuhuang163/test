@@ -25,7 +25,7 @@ class ImageViewer : public QGraphicsView {
 public:
     // 加载和显示图片
     QPixmap pixmap;
-    QPixmap temporarypixmap;//原图
+    QPixmap temporarypixmap;  //原图
 
     // 构造函数
     ImageViewer(const QString& filePath = "", QWidget* parent = nullptr) : QGraphicsView(parent) {
@@ -83,7 +83,7 @@ public:
     int cameradatasize = 0;
     QTimer* cameratimer = new QTimer(this);
     int dataNumber = 0;
-    int CameraGetTime=6000;
+    int CameraGetTime = 6000;
     /*摄像头传图部分*/
 
     std::atomic<bool> running;
@@ -187,7 +187,6 @@ private:
     QByteArray sn;
     QString macAddress = "没有mac地址";
 
-    
     bool is_camera_control = 0;
 
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
@@ -197,8 +196,8 @@ private:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
     bool displayRectangles;
     bool displayDirty;
@@ -222,7 +221,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(FacDevInfo data) override;
-    
+
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;

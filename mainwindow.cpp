@@ -3229,4 +3229,41 @@ void MainWindow::on_ship_bomb_clicked() {
     at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
 }
 
-void MainWindow::on_get_noisy_clicked() {}
+void MainWindow::on_get_noisy_clicked() {
+    showlog("开启采集噪音");
+    // 如果已经存在定时器，则不创建新的定时器
+    if (!noisytimer) {
+        noisytimer = new QTimer(this);
+
+        dongleSerialPort->setBaudRate(9600);
+
+        // 定义要发送的数据缓冲区
+        static const unsigned char tx_buffer[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x0a};
+
+        // 连接定时器的timeout信号到发送数据的lambda函数
+        // 在构造函数或初始化函数中
+        connect(noisytimer, &QTimer::timeout, this, &MainWindow::sendNoisyData);
+
+        // 启动定时器，每秒触发一次
+        noisytimer->start(1000);
+
+        is_need_noisy_data = true;
+    }
+}
+void MainWindow::sendNoisyData() {
+    static const unsigned char tx_buffer[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x0a};
+    dongleSerialPort->write(reinterpret_cast<const char*>(tx_buffer), sizeof(tx_buffer));
+}
+void MainWindow::on_stop_noisy_clicked() {
+    disconnect(noisytimer, &QTimer::timeout, this, &MainWindow::sendNoisyData);
+
+    dongleSerialPort->setBaudRate(921600);
+
+    showlog("停止采集噪音");
+    if (noisytimer) {
+        noisytimer->stop();
+        delete noisytimer;
+        noisytimer = nullptr;
+    }
+    is_need_noisy_data = false;
+}

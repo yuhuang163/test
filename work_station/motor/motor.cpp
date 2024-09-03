@@ -24,8 +24,9 @@ void motor::on_pushButton_2_clicked() {
     on_macInput_returnPressed();
 }
 motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
-    m_index = index;pack.mechines = getIndex();
-upperComputerVer=MOTOR_VER;
+    m_index = index;
+    pack.mechines = getIndex();
+    upperComputerVer = MOTOR_VER;
 
     ui->setupUi(this);
     scanSerialPorts();  // 要搜索一下一开始
@@ -222,8 +223,6 @@ void motor::on_motor_cali_clicked() {
         caliStep = 1;
     }
 }
-
-
 
 void motor::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void motor::refreshSn(FacDevInfo data) {

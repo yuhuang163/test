@@ -2,26 +2,27 @@
 #define QFREEWORK_H
 
 #include <QWidget>
+
 #include "Abini.h"
-#include "test_base.h"
-#include "ui_qfreework.h"
 #include "draggablecheckbox.h"
 #include "qapplication.h"
+#include "test_base.h"
+#include "ui_qfreework.h"
 
 namespace Ui {
-class QFreeWork;
+    class QFreeWork;
 }
 
-class QFreeWork : public test_base
-{
+class QFreeWork : public test_base {
     Q_OBJECT
 public:
-    explicit QFreeWork(int index, QWidget *parent = nullptr);
+    explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
-    Ui::QFreeWork *ui;
+    Ui::QFreeWork* ui;
     void startTask() override;
+
 private:
-    int teststate=-1;
+    int teststate = -1;
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";
@@ -40,57 +41,55 @@ private:
     QString tailsn = "";
     QString macAddress = "没有mac地址";
 
-
     QString wifiresult = "";
     double HighCurrent = 0;
     double LowCurrent = 0;
     int measure_wait_time = 15000;
     double measure_ammeter = 0;
     QString wifiMac = "";
-   
+
     QString voltageresult = "";
     QString currentresult = "";
     QString charageresult = "";
     QString bleresult = "";
     int rssitestcount = 0;
     int rssitestfailcount = 0;
-    
+
     int wifistate = 0;
 
-    bool isovertime = 0;          // 是否开始发送校验结果
-    bool iscompareovertime = 0;   // 是否开始发送校验结果
+    bool isovertime = 0;         // 是否开始发送校验结果
+    bool iscompareovertime = 0;  // 是否开始发送校验结果
     int intwifirssi = 0;
     int intblerssi = 0;
 
-    QTimer *waittime = new QTimer(this);
-    QTimer *comparewaittime = new QTimer(this);
+    QTimer* waittime = new QTimer(this);
+    QTimer* comparewaittime = new QTimer(this);
     QTime TestTime;
     QString productName;
     QString ReadNfcData = "";
     QString TestResult = "";
     QString product = "";
 
-    typedef enum
-    {
-        STATE_IDLE = 0,   // 休眠状态
+    typedef enum {
+        STATE_IDLE = 0,  // 休眠状态
         STATE_WATI_CONNECT,
-        STATE_DISABLE_SLEEP_1,   // 进入禁止休眠
+        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
         STATE_WATI_BASE_INFO,
-        STATE_WATI_WIFI_CONNECT,           // 等待连接
-        STATE_WATI_GET_CORRECT_WIFIRSSI,   // 等待正确的wifi信号强度
-        STATE_WATI_GET_CORRECT_BLERSSI,    // 等待正确的蓝牙信号强度
-        STATE_WATI_CORRECT_BATTARY,        // 等待正确的蓝牙信号强度
+        STATE_WATI_WIFI_CONNECT,          // 等待连接
+        STATE_WATI_GET_CORRECT_WIFIRSSI,  // 等待正确的wifi信号强度
+        STATE_WATI_GET_CORRECT_BLERSSI,   // 等待正确的蓝牙信号强度
+        STATE_WATI_CORRECT_BATTARY,       // 等待正确的蓝牙信号强度
         STATE_WATI_CORRECT_CURRENT,
-        STATE_SAVE_RESULT   // 保存结果在本地
+        STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     State state = STATE_IDLE;
     State getNextState(State currentState);
-    QMap<QString, QMap<QString, QString>> deviceMap;   // 存储设备信息
+    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
-
 
 public:
     QVector<DraggableCheckBox*> checkBoxes;
+
 protected:
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
@@ -102,58 +101,40 @@ private:
     DraggableCheckBox* getCheckBoxByIndex(int index);
     DraggableCheckBox* getCanUseCheckBoxByIndex(int index);
 
-
     int getIndexAt(const QPoint& pos);
     void showTestIndexes();
-     QVector<int> testIndexes; // 存储索引的容器
+    QVector<int> testIndexes;  // 存储索引的容器
     void saveIndexesToFile(const QVector<int>& indexes);
     QVBoxLayout* conFiglayout;
-     QGridLayout * canUselayout;
+    QGridLayout* canUselayout;
 
     QByteArray sn;
-       void paintEvent(QPaintEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
     void showInsertIndicator(const QPoint& pos);
-       void executeFunctionByName(const QString functionName);
-   QPoint dragPos; // 存储拖动位置
-       struct NamedFunction {
-           QString name;
-           std::function<void()> function;
-       };
-       void createTestFunctions();
-       std::vector<NamedFunction> testFunctions;
+    void executeFunctionByName(const QString functionName);
+    QPoint dragPos;  // 存储拖动位置
+    struct NamedFunction {
+        QString name;
+        std::function<void()> function;
+    };
+    void createTestFunctions();
+    std::vector<NamedFunction> testFunctions;
+
 protected:
     // virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent *event) override;   // 添加 override 关键字
+    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
 private slots:
     void initDate();
 
-    QComboBox *getComNameCombo() override
-    {
-        return ui->comNameCombo;
-    };   // dongle口
-    QComboBox *getUsbcomNameCombo() override
-    {
-        return ui->usbcomNameCombo;
-    };   // usb口（治具）
-    QLineEdit *getMacLineEdit() override
-    {
-        return ui->getMac;
-    };   // sn输入口
-    QLineEdit *macInputLineEdit() override
-    {
-        return ui->macInput;
-    };   // mac地址输入口
-    QPlainTextEdit *logEdit() override
-    {
-        return ui->log;
-    };   // mac地址输入口
-    QPlainTextEdit *msgEdit() override
-    {
-        return ui->msgEdit;
-    };   // msg输入口
-    QTableWidget* testResultTable()override { return ui->testResultTable; };      // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口（治具）
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
+    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
@@ -174,12 +155,10 @@ private slots:
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox();
-    void getmacadress(const QByteArray &byte);
+    void getmacadress(const QByteArray& byte);
     void processInspection(QString stringsn);
     void processGetMesTestValue();
 
-
-    
     void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
 
@@ -198,7 +177,7 @@ private slots:
     void on_nfc_sn_returnPressed();
     void on_getMac_returnPressed();
 
-    void on_mac_combo_textActivated(const QString &arg1);
+    void on_mac_combo_textActivated(const QString& arg1);
     void on_clear_scan_clicked();
     void getMac(QString sn_to_search);
     void on_snbanding_returnPressed();
@@ -212,9 +191,6 @@ signals:
     void send_go_next_focus();
     void send_startTest(int data);
     void send_go_next_test(int data);
-
 };
 
-
-
-#endif // QFREEWORK_H
+#endif  // QFREEWORK_H
