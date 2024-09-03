@@ -74,6 +74,7 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify)
 {
+    
     // unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
     // String timestamp = String(currentMillis); // 将时间戳转换为字符串
     // Serial.println();
@@ -87,10 +88,8 @@ void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uin
     memset(modifiedData, 0xcc, 8);
     modifiedData[8] = length;
     memcpy(modifiedData + 9, pData, length);
-
-    //Serial.print("内容为:"); // 打印带有时间戳的消息
     Serial.write(modifiedData, length + additionalBytes);
-    //Serial.println();
+
 }
 // 连接状态函数
 class MyClientCallback : public BLEClientCallbacks
@@ -348,7 +347,7 @@ void print_ble_rssi()
             numberBleRssi = 0;
             int stableStrength = blemedianFilter();
             Serial.print("AT+BLERSSI=");
-            Serial.println(stableStrength);
+            Serial.println(stableStrength+10);//与之前的idf进行修正
         }
         readings[numberBleRssi] = pClient->getRssi(); // 获取蓝牙信号强度
         numberBleRssi++;

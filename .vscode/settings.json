@@ -21,7 +21,10 @@
     "complex": "c",
     "array": "cpp",
     "string_view": "cpp",
-    "span": "cpp"
+    "span": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "initializer_list": "cpp"
   },
   "idf.portWin": "COM56"
 }
