@@ -366,30 +366,50 @@ void MainWindow::readPendingDatagrams() {
         processTheDatagram(datagram);
     }
 }
+void MainWindow::saveblackbox(QString data) {
+    QString folderName = "牙刷黑盒的log";
+    QDir dir;
 
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+            return;
+        }
+    }
+    // 获取当前时间并格式化为字符串
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
+
+    // 生成文件路径
+    QString fileName = "黑盒日志" + timestamp + ".log";
+    QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile logFile(filePath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
+        // 获取当前时间的详细时间戳
+        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        out << detailedTimestamp << "\n" << data << "\n";
+        logFile.close();
+    } else {
+        qDebug() << "无法打开黑盒日志文件：" << fileName;
+    }
+}
 void MainWindow::solve_frame(void) {
     while (true) {
         // 从环形缓冲区中读取帧头
-
         dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, UART_PHY_LAYER_HEAD_SIZE);
-
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
         if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC) {
             // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" <<
             // ring_size;
             break;
         }
-        // qDebug() << "ring_size" << ring_size;
-        // qDebug() << "frame_buf:"
-        //          << QByteArray(reinterpret_cast<char *>(frame_buf), 500)
-        //          .toHex();
+
         ext_uart_phy_layer_t* head = (ext_uart_phy_layer_t*)frame_buf;
 
         if (head->magic == EXT_UART_MAGIC) {
-            // qDebug() << "now content:"
-            //          << QByteArray(reinterpret_cast<char *>(head),
-            //          280).toHex();
-
             int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
             if (frame_size > ring_size) {
                 qDebug() << "串口帧数据不完整"
@@ -397,66 +417,22 @@ void MainWindow::solve_frame(void) {
                 break;
             }
 
-            // 从环形缓冲区中读取整个帧的数据
             dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, frame_size);
-            // qDebug() << "head content:"
-            //          << QByteArray(reinterpret_cast<char *>(head),
-            //          280).toHex();
-            // qDebug() << "2串口帧数据大小"<<frame_size<<
-            // "2数据大小"<<head->length;
-
-            // if (head->data[head->length]==0x0d&&head->data[head->length+1] ==
-            // 0x0A)
-            if (1) {
-                // if(head->data[0]!=dataNumber){
-                //     qDebug() << "丢包号码" << dataNumber;
-                //     faultData.append(dataNumber);
-                //   //  qDebug() << "solve1响应" <<
-                //   QDateTime::currentDateTime().toString("yyyy-MM-dd
-                //   HH:mm:ss.zzz");
-
-                //  //  //  QMetaObject::invokeMethod(pb,
-                //  "set_camera_data_respone", Qt::DirectConnection,
-                //  Q_ARG(FacErrorCode, FacErrorCode_NO_ERROR));
-                //  //    emit send_camera_respone(FacErrorCode_NO_ERROR);
-
-                //  //  //  qDebug() << "solve2响应" <<
-                //  QDateTime::currentDateTime().toString("yyyy-MM-dd
-                //  HH:mm:ss.zzz");
-
-                //  //   // 强制事件循环处理，确保立即响应
-                //  //   QCoreApplication::processEvents(QEventLoop::AllEvents);
-                //  // //  qDebug() << "solve3响应" <<
-                //  QDateTime::currentDateTime().toString("yyyy-MM-dd
-                //  HH:mm:ss.zzz");
-
-                // }
-
+            if (head->channel == PHY_CHANNEL_CAMREA) {
                 qDebug() << "图片数据包的第一字节为2" << head->data[0];
-
                 emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
-                // emit send_thread_date("图片数据包总数" +
-                // QString::number(dataNumber));
-                // emit send_thread_date("图片数据包总字节数" +
-                // QString::number(cameradatasize=cameradatasize+head->length-1));
                 ++dataNumber;
-
-                //  qDebug() << "1串口帧数据大小"<<frame_size<<
-                //  "1数据大小"<<head->length;
-
                 QByteArray byteArray(reinterpret_cast<const char*>(head->data), head->length);
                 addPacket(byteArray);
-
                 QByteArray completeData = reassembleData();
                 solve_picture_frame(completeData);
 
-                // // 处理帧数据
-                // write_camera_data(head->data+1, head->length-1);
+            } else if (head->channel == PHY_CHANNEL_LOG) {
+                QByteArray byteArray(reinterpret_cast<const char*>(head->data), head->length);
+                saveblackbox(byteArray);
 
-                // solve_picture_frame();
             } else {
                 qDebug() << "head content:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
-
                 qDebug() << "尾巴校验失败" << QString("%1").arg(head->data[head->length], 2, 16, QChar('0'))
                          << QString("%1").arg(head->data[head->length + 1], 2, 16, QChar('0'));
             }

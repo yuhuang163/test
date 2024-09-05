@@ -52,53 +52,39 @@ public:
     void parseCmd(const QByteArray& byte);
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
+
+    void sendMainPack(const DataPackage& pack);
     uint32_t sendlongPack(const FactoryDataPackage& pack);
     void waitWork(int ms);
     void setPbMode(int p) { pb_mode = (PB_MODE)p; }
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
+    bool getisDevintowhitemode() { return is_dev_into_white_mode; }
 
     int getisHallCali() { return is_hall_cali; }
     int getis_camera_control() { return is_camera_control; }
-
     int get_is_damping_state() { return is_damping_state; }
     int get_is_wif_set() { return is_wif_set; }
-
     int get_is_motor_test_state() { return is_motor_test_state; }
     int get_is_motor_cali_data_set() { return is_motor_cali_data_set; }
     int get_is_get_battery_data() { return is_get_battery_data; }
     int get_is_stop_motor_cali() { return is_stop_motor_cali; }
-
     int getisZeroCali() { return is_zero_cali; }
     bool getDisableSleep() { return is_disable_sleep; }
-    bool get_is_set_age_test() { return is_set_age_test; }
     bool getCollectParam() { return is_set_press_collect_param; }
-
     bool getis_imu_set_sta() { return is_imu_set_sta; }
-
-    bool getisDevintowhitemode() { return is_dev_into_white_mode; }
-    bool getisGetBaseInfo() { return is_get_base_info; }
-
-    bool get_is_save_press_cali_data() { return is_save_press_cali_data; }
-
-    bool get_is_open_sleep() { return is_open_sleep; }
     bool get_is_close_forbid_sleep() { return is_close_forbid_sleep; }
-
     bool get_is_banding_ok() { return is_banding_ok; }
-    bool get_is_wifi_set_ok() { return is_wifi_set_ok; }
-
     bool get_is_motor_param_set() { return is_motor_param_set; }
-
     int get_is_get_imu_cali_data() {
         return is_get_imu_cali_data;  // get的返回成功
-    }
-    bool get_is_save_imu_cali_ok() {
-        return is_save_imu_cali_ok;  // save的返回成功
     }
 
     bool get_isSetimuCollectParam() { return is_setimu_collect_param; }
 
     void reset_all_pb() {
+        is_dev_into_white_mode = 0;
+
         is_wif_set = 0;
         is_damping_state = 0;
         is_motor_test_state = 0;
@@ -109,20 +95,13 @@ public:
         is_camera_control = 0;
         is_zero_cali = 0;
         is_banding_ok = 0;
-        is_wifi_set_ok = 0;
-        is_set_age_test = 0;
         is_disable_sleep = 0;
         is_set_press_collect_param = 0;
         is_imu_set_sta = 0;
         is_setimu_collect_param = 0;
-        is_dev_into_white_mode = 0;
-        is_get_base_info = 0;
-        is_save_press_cali_data = 0;
         is_close_forbid_sleep = 0;
         is_motor_param_set = 0;
-        is_open_sleep = 0;
         is_get_imu_cali_data = 0;
-        is_save_imu_cali_ok = 0;
     }  // 复位参数
 private:
     typedef enum { STATE_IDLE, STATE_HEADER, STATE_LEN, STATE_STAGE, STATE_PB_HEADER, STATE_UNPACK } State;
@@ -130,7 +109,12 @@ private:
         CLIENT,
         FACTORY,
     } pb_mode = FACTORY;
-
+    typedef enum {
+        PHY_CHANNEL_INVALID = 0,  // 无效值
+        PHY_CHANNEL_FAC,          // 工厂命令通道
+        PHY_CHANNEL_APP,          // app数据通道
+        PHY_CHANNEL_MAIN,         // main数据通道
+    } ext_ble_phy_channel_e;
     State state = STATE_IDLE;
     int hitTimes = 0;
     int len = 1;
@@ -145,14 +129,12 @@ private:
     uint16_t calCrc16(const std::vector<uint8_t>& d);
     void registerCommand();
     bool is_close_forbid_sleep = 0;
-    bool is_open_sleep = 0;
     bool is_motor_param_set = 0;
-    bool is_save_press_cali_data = 0;
     int is_get_imu_cali_data = 0;
     bool is_save_imu_cali_ok = 0;
-    bool is_set_age_test = 0;
     bool is_banding_ok = 0;
-    bool is_wifi_set_ok = 0;
+    bool is_dev_into_white_mode = 0;
+
     bool is_disable_sleep = 0;
     int is_hall_cali = 0;
     int is_camera_control = 0;
@@ -166,8 +148,6 @@ private:
     bool is_imu_set_sta = 0;
     bool is_set_press_collect_param = 0;
     bool is_setimu_collect_param = 0;
-    bool is_dev_into_white_mode = 0;
-    bool is_get_base_info = 0;
 
 public slots:
     void set_press_sensor_temp(int state);
@@ -234,7 +214,7 @@ public slots:
     void get_connect_info();               // 获取连接信息
     void get_wifi_info();                  // 获取WiFi信息
     void get_servo_motor_info();           // 获取电机信息
-
+    void get_bursh_backlog(int state);
 private slots:
 
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
@@ -264,7 +244,7 @@ private slots:
     void process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f);
     void process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f);
     void process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f);
-
+    void process_FactroyCmd_FAC_LOG(FactoryDataPackage& f);
 signals:
     void send_press_data(FacUploadPresSensor);
     void send_base_data(FacGetDevBaseInfo get_dev_base_info);

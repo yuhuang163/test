@@ -130,7 +130,7 @@ public:
     typedef struct {
         uint64_t magic;
         uint8_t length;
-        // uint8_t channel;
+        uint8_t channel;
         // uint8_t index;
         uint8_t data[0];
     } ext_uart_phy_layer_t;
@@ -138,7 +138,16 @@ public:
     void printSquareData(uint8_t* data, size_t data_size);
     ImageViewer* viewercamrea;
     ImageViewer* viewercamrea_py;
+    typedef enum {
+        PHY_CHANNEL_INVALID = 0,  //无效值
+        PHY_CHANNEL_CAMREA,       //控制命令通道
+        PHY_CHANNEL_LOG,          // ota数据通道
 
+        PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
+        PHY_CHANNEL_FACTORY,      //厂测通道
+        PHY_CHANNEL_USMILE_APP,   //笑容加app通道
+        PHY_CHANNEL_USMILE_ROTA,  //笑容加ota通道
+    } ext_ble_phy_channel_e;
     QMutex mutex;
     usmile_ring_buffer_t p_dongleRingBuffer;  // 串口的队列指针
     usmile_ring_buffer_t p_cameraRingBuffer;  // 摄像头的队列指针

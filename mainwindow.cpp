@@ -53,137 +53,14 @@ void MainWindow::on_pushButton_clicked() {
     // }
 }
 void MainWindow::on_pushButton_3_clicked() {
-    qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-    allPackets.clear();
-    const int width = 180;
-    const int height = 200;
-    const int half_width = width / 2;
-    // 图像数据（每个像素一个字节，灰度值）
-    QByteArray imageData;
+    pb->set_i_am_app();
+    RotasFileStatusReq RotasFiledata;
+    RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
 
-    // 填充图像数据
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (x < half_width) {
-                // 左半边白色（灰度值 255）
-                imageData[y * width + x] = 0;
-            } else {
-                // 右半边黑色（灰度值 0）
-                imageData[y * width + x] = 244;
-            }
-        }
-    }
-    char byte = imageData[37];  // 获取第37个字节
-    qDebug() << "imageData[37]:"
-             << QString::number(static_cast<unsigned char>(byte), 16).toUpper();  // 打印为十六进制字符串
-
-    // 十六进制字符串
-    QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a5514200"
-                        "00a08c00007801640578";
-
-    // 将十六进制字符串转换为 QByteArray
-    QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
-
-    // 将 hexData 添加到 padding 的开头
-    QByteArray finalData = padding + imageData;
-
-    const int headerSize = 8;
-    QByteArray header(headerSize, 0xcc);
-    header.append(static_cast<char>(244));
-
-    int dataSize = finalData.size();
-    qDebug() << "dataSize:" << dataSize;
-
-    int numberOfPackets = (dataSize / 243) + 1;  // 计算需要的包数量
-    qDebug() << "有这么多包" << numberOfPackets;
-    for (int i = 0; i < numberOfPackets; ++i) {
-        int offset = i * 243;
-
-        if (i == (numberOfPackets - 1)) {
-            header[8] = 1 + (static_cast<char>(dataSize % 243));
-        }
-        QByteArray packet = header;
-        // 添加包的索引
-        QByteArray index(1, static_cast<char>(i));
-        packet.append(index);
-
-        packet.append(finalData.mid(offset, 243));
-        allPackets.append(packet);
-    }
-    finalData.clear();
-
-    qDebug() << "allPacketssize:" << allPackets.size();
-
-    int write_len = 0;
-    int len = allPackets.size();
-    // printSquareData(reinterpret_cast<uint8_t*>(allPackets.data()),
-    // allPackets.size());
-
-    write_len = dongleRingBuf->usmile_ring_buffer_write(
-        &p_dongleRingBuffer, reinterpret_cast<uint8_t*>(allPackets.data()), allPackets.size());
-    qDebug() << "写完了:" << allPackets.size();
-
-    if (write_len < len) {
-        qDebug() << "write_len:" << write_len << "len:" << allPackets.size();
-    }
-
-    // processTheDatagram(finalData);
-
-    // pb->get_battery();
-    // pb->get_battery();
-    // pb->get_battery();
-    // pb->get_battery();
-    // pb->get_battery();
-    // pb->get_battery();
-
-    // const int bufferSize = 50 * 1024;  // 数组大小
-    // QString hexDump;  // 用于存储十六进制字符串
-
-    // // 遍历 camera_ring_buf 数组
-    // for (int i = 0; i < bufferSize; ++i) {
-    //     // 将 uint8_t 类型的数组元素转换为十六进制字符串，并拼接到 hexDump
-    //     字符串中
-    //     hexDump += QString("%1 ").arg(camera_ring_buf[i], 2, 16,
-    //     QChar('0')).toUpper();
-
-    //     // 每 243 个元素打印一行
-    //     if ((i + 1) % 243 == 0) {
-    //         qDebug().noquote() << hexDump;  // 打印一行十六进制内容
-    //         hexDump.clear();  // 清空 hexDump 字符串，准备下一行打印
-    //     }
-    // }
-
-    // // 打印剩余内容（不足一行的部分）
-    // if (!hexDump.isEmpty()) {
-    //     qDebug().noquote() << hexDump;
-    // }
-
-    // qDebug() << "接下来是串口的数据";
-    // const int bufferSize1 = 50 * 1024;   // 数组大小
-    // QString hexDump1;                    // 用于存储十六进制字符串
-
-    // // 遍历 dongle_ring_buffer 数组
-    // for (int i = 0; i < bufferSize1; ++i)
-    // {
-    //     // 将 uint8_t 类型的数组元素转换为十六进制字符串，并拼接到 hexDump
-    //     字符串中
-    //     hexDump1 += QString("%1 ").arg(dongle_ring_buffer[i], 2, 16,
-    //     QChar('0')).toUpper();
-
-    //     // 每 243 个元素打印一行
-    //     if ((i + 1) % 243 == 0)
-    //     {
-    //         qDebug().noquote() << hexDump1;   // 打印一行十六进制内容
-    //         hexDump1.clear();                 // 清空 hexDump
-    //         字符串，准备下一行打印
-    //     }
-    // }
-
-    // // 打印剩余内容（不足一行的部分）
-    // if (!hexDump1.isEmpty())
-    // {
-    //     qDebug().noquote() << hexDump1;
-    // }
+    pb->set_start_ota_app(RotasFiledata);
+    waitWork(1000);
+    showlog("已发送OTA数据通道开启!");
+    at->sendOTADATA(1);
 }
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
@@ -1455,7 +1332,10 @@ void MainWindow::on_motor_cali_clicked() {
                                                    "border: 2px solid #FF0000; border-radius: 10px; padding: "
                                                    "10px; text-align: center; ");
                 }
+                waitWork(500);
                 pb->set_sevor_motor_param(0, 0, 0, 0);
+                waitWork(500);
+                pb->set_sleeep(FacSwitch_OPEN);
                 stringsn = "";
                 ui->macInput->clear();
                 // ui->macInput->setFocus();
@@ -3106,13 +2986,10 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         return;
     } else {
         waitWork(500);
-        at->sendMAINDATA(0);
-        waitWork(500);
         at->sendOTADATA(0);
-        waitWork(100);
         macAddress = ui->bleotamacInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
-        pb->setPbMode(0);
+        pb->setPbMode(0);  //为了区分收到的解包是app接口
         at->sendotaMac(ui->bleotamacInput->text());
         at->resetConnected();
 
@@ -3135,15 +3012,6 @@ void MainWindow::on_startBleOta_clicked() {
     }
     disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
 
-    // 初始化OTA过程
-    at->sendMAINDATA(1);
-    waitWork(500);
-    pb->set_i_am_app();
-    waitWork(500);
-    at->sendMAINDATA(0);
-    waitWork(500);
-    bleOtaTestTime.start();
-
     QString filePath = ui->otaFilePath->text();
     if (filePath.isEmpty()) {
         QMessageBox::warning(this, "警告", "未选择OTA文件");
@@ -3159,6 +3027,7 @@ void MainWindow::on_startBleOta_clicked() {
     QByteArray fileData = file.readAll();
     file.close();
     showlog("文件大小为：" + QString::number(fileData.size()));
+    pb->set_i_am_app();  //假装是app
 
     RotasFileStatusReq RotasFiledata;
     RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
@@ -3177,6 +3046,7 @@ void MainWindow::on_startBleOta_clicked() {
 
     // 设置定时器间隔
     bleotatimer->setInterval(OTATIMEINTERVAL);
+    bleOtaTestTime.start();
 
     // 定义定时器超时处理函数
     connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
@@ -3267,3 +3137,5 @@ void MainWindow::on_stop_noisy_clicked() {
     }
     is_need_noisy_data = false;
 }
+
+void MainWindow::on_getBackLog_clicked() { pb->get_bursh_backlog(1); }

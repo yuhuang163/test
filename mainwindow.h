@@ -69,6 +69,7 @@ public:
     int dataNumber = 0;
 #define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
+
 #define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
 #define UART_PHY_LAYER_CRC_SIZE 0
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
@@ -76,6 +77,18 @@ public:
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
 #define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
 #define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
+
+    typedef enum {
+        PHY_CHANNEL_INVALID = 0,  //无效值
+        PHY_CHANNEL_CAMREA,       //控制命令通道
+        PHY_CHANNEL_LOG,          // ota数据通道
+
+        PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
+        PHY_CHANNEL_FACTORY,      //厂测通道
+        PHY_CHANNEL_USMILE_APP,   //笑容加app通道
+        PHY_CHANNEL_USMILE_ROTA,  //笑容加ota通道
+    } ext_ble_phy_channel_e;
+
 #pragma pack(1)
 
     typedef struct video_frame_data_struct {
@@ -98,7 +111,7 @@ public:
     typedef struct {
         uint64_t magic;
         uint8_t length;
-        // uint8_t channel;
+        uint8_t channel;
         // uint8_t index;
         uint8_t data[0];
     } ext_uart_phy_layer_t;
@@ -180,7 +193,7 @@ private:
     } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
     bool is_motor_continue = false;
-    bool is_need_noisy_data=false;
+    bool is_need_noisy_data = false;
     motorState motorstate = STATE_IDLE;
     imu_calibrate* qimuc = nullptr;
     TestModel* basicInfoModel = nullptr;
@@ -195,8 +208,7 @@ private:
     bool is_start_ium_cali = 0;  // 是否开始六轴校准
     void updateMainStyle(QString style);
     QTimer* waittime = new QTimer(this);
-    QTimer* noisytimer =nullptr;
-
+    QTimer* noisytimer = nullptr;
 
     QTimer* cameratimer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
@@ -226,6 +238,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void saveblackbox(QString data);
     void sendNoisyData();
     void setBleOtaState(int);
     void checkAndUpdateFile();
@@ -455,6 +468,8 @@ private slots:
     void on_get_noisy_clicked();
 
     void on_stop_noisy_clicked();
+
+    void on_getBackLog_clicked();
 
 signals:
     void send_uart_state(int data);

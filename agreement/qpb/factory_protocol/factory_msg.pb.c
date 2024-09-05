@@ -27,6 +27,12 @@ PB_BIND(FacDevInfoValue, FacDevInfoValue, AUTO)
 PB_BIND(FacDevInfo, FacDevInfo, 2)
 
 
+PB_BIND(FacWifiDemand, FacWifiDemand, 2)
+
+
+PB_BIND(FacBrushLog, FacBrushLog, 2)
+
+
 PB_BIND(FacGetPeriphState, FacGetPeriphState, 2)
 
 
@@ -85,9 +91,6 @@ PB_BIND(FacButtonItem, FacButtonItem, AUTO)
 
 
 PB_BIND(FacButtonState, FacButtonState, 2)
-
-
-PB_BIND(FacWifiDemand, FacWifiDemand, 2)
 
 
 PB_BIND(NineAlexData, NineAlexData, AUTO)

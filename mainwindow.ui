@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>5</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -587,6 +587,13 @@
                      <property name="topMargin">
                       <number>0</number>
                      </property>
+                     <item>
+                      <widget class="QPushButton" name="getBackLog">
+                       <property name="text">
+                        <string>牙刷黑盒获取</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item>
                       <widget class="QPushButton" name="enterwhitemode">
                        <property name="text">

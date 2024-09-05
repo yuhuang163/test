@@ -355,7 +355,7 @@ void cameratest::solve_frame(void) {
             // qDebug() << "2串口帧数据大小"<<frame_size<< "2数据大小"<<head->length;
 
             // if (head->data[head->length]==0x0d&&head->data[head->length+1] == 0x0A)
-            if (1) {
+            if (head->channel == PHY_CHANNEL_CAMREA) {
                 qDebug() << "图片数据包的第一字节为" << head->data[0];
 
                 //  emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));

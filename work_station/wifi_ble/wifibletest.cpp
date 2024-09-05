@@ -671,13 +671,6 @@ void wifibletest::startTask() {
                     state = STATE_WATI_GET_CORRECT_WIFIRSSI;
                 }
 
-                // waitWork(1500);//防止重发
-                // if (!pb->get_is_wifi_set_ok())   // wifi
-                // {
-                //      showlog("正在重连wifi");
-                //      on_connectwifi_clicked();
-                // }
-
                 break;
 
             case STATE_WATI_GET_CORRECT_WIFIRSSI:

@@ -3,14 +3,15 @@
  ** VENDOR_EDIT
  ** FileName: factory_msg.proto
  ** Description:
- ** Version: 1.0.1
+ ** Version: 1.0.2
  ** Date: 2023/11/14
  ** Author: jinpeng.chen
 
  ** ---------------------Revision History: ----------------------
  **  <author>     	  <data>       <version >           <desc>
  **  jinpeng.chen     2023/11/14    1.0.1               create 
- 
+ **  yujie.he         2024/9/2      1.0.2               update 
+
  ***************************************************************/
 syntax = "proto3";
 import "nanopb.proto";
@@ -55,7 +56,7 @@ enum FactroyCmd {
     SET_AGEING_TEST = 0x32;
     SET_BRUSH_RECORD = 0x33;
     WIFI_DEMAND = 0x34;
-
+    FAC_LOG = 0x35;
 
     INTERNET_OTA = 0x40;
 }
@@ -95,15 +96,27 @@ message FactoryDataPackage {
         FacAgeingTest ageing = 0x32;
         FacSetBrushRecord set_brush_record = 0x33;
         FacWifiDemand wifi_demand = 0x34;
+        FacBrushLog fac_log = 0x35;
 
         //ota
         FacInternetOta internet_ota = 0x40;
     }
 }
 
+
+
+
+
+/*********************设备基础信息区域******************/
 enum FacProtoId {
     PROTOCOL_NONE = 0;
-    V1000 = 1000;
+    V100 = 100;
+    V101 = 101;
+    V102 = 102;
+    V103 = 103;
+    V104 = 104;
+    V105 = 105;
+    V106 = 106;
 }
 
 message FacGetDevBaseInfo
@@ -125,18 +138,28 @@ message FacGetDevBaseInfo
     string camera_version = 15 [(nanopb).max_size= 24];	//string
     FacErrorCode result = 100;
 }
+/*********************设备基础信息区域******************/
 
+
+
+
+
+
+
+
+
+/*********************设备状态设置区域******************/
 enum DevStateType
 {
-    REBOOT = 0;
-    RESET = 1;
-    SLEEP = 2;
-    FORBID_SLEEP = 3;
-    FACTORY_QRCORD = 4;
-    SHIP = 5;
-    UART_RECEIVE = 6;
-    PRESS_SENSOR_TEMP = 7;
-    MOTOR_ADC_MOS=8;
+    REBOOT = 0; //系统重启
+    RESET = 1; //重置
+    SLEEP = 2; //进入休眠
+    FORBID_SLEEP = 3;//禁止休眠
+    FACTORY_QRCORD = 4;//工厂模式
+    SHIP = 5;//船运模式
+    UART_RECEIVE = 6;//串口接收
+    PRESS_SENSOR_TEMP = 7;//压感温度补偿开关
+    MOTOR_ADC_MOS=8;//电机adc采集的mos
 
 }
 
@@ -155,7 +178,16 @@ message FacDevState
     FacSwitch state = 2;
     FacErrorCode result = 100;
 }
+/*********************设备状态设置区域******************/
 
+
+
+
+
+
+
+
+/*********************设备自定义信息区域******************/
 enum FacDevInfoType
 {
     WIFI_INFO = 0;
@@ -163,7 +195,7 @@ enum FacDevInfoType
     BOARD_SN = 2;
     BRUSH_MODE = 3;
     BATTERY_INFO = 4;
-    IF_QUALIFIED = 5;
+    IF_QUALIFIED = 5;//工厂测试结果
     SUB_PID = 6;
 
 }
@@ -202,7 +234,6 @@ message FacDevInfoValue {
         FacSwitch if_qualified = 7;
         string sub_pid = 8 [(nanopb).max_size = 64];
 
-        
     }
 }
 
@@ -211,7 +242,50 @@ message FacDevInfo
     repeated FacDevInfoValue dev_info = 1 [(nanopb).max_count = 5];
     FacErrorCode result = 100;
 }
+/*********************设备自定义信息区域******************/
 
+
+
+
+
+
+/*********************wifi相关区域******************/
+message FacWifiDemand
+{
+    float wifi_speed = 1;
+    uint32 connect_command = 2;
+    uint32 connect_result = 3;
+    string ota_data = 4 [(nanopb).max_size= 50];
+    FacWifiInfo wifi_info = 5;
+    uint32 ota_result = 6;                  //没有用
+    FacErrorCode result = 100;
+}
+/*********************wifi相关区域******************/
+
+
+
+
+
+
+/*********************牙刷日志相关区域******************/
+message FacBrushLog
+{
+    FacSwitch switch_send_log = 1;
+
+    FacErrorCode result = 100;
+}
+/*********************牙刷日志相关区域******************/
+
+
+
+
+
+
+
+
+
+
+/*********************设备状态区域******************/
 message FacGetPeriphState
 {
     bool imu_state = 1;	
@@ -221,14 +295,22 @@ message FacGetPeriphState
     bool audio_state = 5;
     FacErrorCode result = 100;
 }
+/*********************设备状态区域******************/
 
+
+
+
+
+
+
+/*********************老化类区域******************/
 enum FacAgeingTestType
 {
     AGEING_1 = 0;
     AGEING_2 = 1;
     AGEING_3 = 2;
     AGEING_4 = 3;
-    AGEING_PRODUCTION_1 = 4;
+    AGEING_PRODUCTION_1 = 4;//弃用
 }
 
 message FacAgeingTest
@@ -241,7 +323,15 @@ message FacAgeingTest
     uint32 cycle_count = 6;
     FacErrorCode result = 100;
 }
+/*********************老化类区域******************/
 
+
+
+
+
+
+
+/*********************屏幕测试类区域******************/
 enum FacLcdControlType
 {
     color = 0;
@@ -264,8 +354,14 @@ message FacLcdControl
 
     FacErrorCode result = 100;
 }
+/*********************屏幕测试类区域******************/
 
 
+
+
+
+
+/*********************电机类区域******************/
 enum FacMotoControlType
 {
     motor_state = 0;
@@ -294,17 +390,16 @@ enum FacMotoState
 	UGT_E_SS_INIT_B				= 1;//空闲任务B
 	UGT_E_SS_STOP_C				= 2; 	//
 	UGT_E_SS_START_D			= 3;//开始任务D
-	UGT_E_SS_PRECHARGE_E 	= 4; //预充任务E
+	UGT_E_SS_PRECHARGE_E 	    = 4; //预充任务E
 	UGT_E_SS_TRACK_F			= 5;//追踪任务F
-	UGT_E_SS_IDENTIFY_G		= 6; 	//识别任务G
-	UGT_E_SS_ALIGNMENT_H	=	7; //定位任务H
-	UGT_E_SS_OPENLOOP_I		=	8;//开环任务I
-	UGT_E_SS_CLOSEDLOOP_J	= 9; //闭环任务J
+	UGT_E_SS_IDENTIFY_G		    = 6; 	//识别任务G
+	UGT_E_SS_ALIGNMENT_H	    =	7; //定位任务H
+	UGT_E_SS_OPENLOOP_I		    =	8;//开环任务I
+	UGT_E_SS_CLOSEDLOOP_J	    = 9; //闭环任务J
 	UGT_E_SS_BRAKE_K			= 10; //打断任务K
 	UGT_E_SS_FAULT_L			= 11;//故障任务L
 	UGT_E_SS_WAIT_M				= 12;//等待任务M
-	UGT_E_SS_WRITE_FLASH	= 13;//写入任务N
-
+	UGT_E_SS_WRITE_FLASH	    = 13;//写入任务N
 
 }
 enum FacMotorFaultCode
@@ -405,7 +500,15 @@ message FacMotorCalibResult
 
     FacErrorCode result = 100;
 }
+/*********************电机类区域******************/
 
+
+
+
+
+
+
+/*********************摄像头类区域******************/
 enum FacCameraControlType
 {
     camera_state = 0;
@@ -440,10 +543,17 @@ message FacPictureDataAck
     FacErrorCode send_data_over = 1;
     repeated uint32 fault_data_packet = 2[(nanopb).max_count = 50];
 
-    
     FacErrorCode result = 100;
 }
+/*********************摄像头类区域******************/
 
+
+
+
+
+
+
+/*********************灯光类区域******************/
 enum LedPosition
 {
     led_left_up = 0;
@@ -467,7 +577,16 @@ message FacLedControl
     repeated FacLedColor led_state = 3 [(nanopb).max_count = 8];
     FacErrorCode result = 100;
 }
+/*********************灯光类区域******************/
 
+
+
+
+
+
+
+
+/*********************采集类区域******************/
 enum DataCollectType
 {
     BATTERY = 0;
@@ -518,7 +637,13 @@ message FacCollectParam
     repeated FacDataCollectItem param = 2 [(nanopb).max_count = 8];
     FacErrorCode result = 100;
 }
+/*********************采集类区域******************/
 
+
+
+
+
+/*********************按键类区域******************/
 enum FacButtonType
 {
     POWER_BUTTON = 0;
@@ -554,18 +679,19 @@ message FacButtonState
     repeated FacButtonItem  button_state = 2 [(nanopb).max_count = 8];
     FacErrorCode result = 100;
 }
+/*********************按键类区域******************/
 
-message FacWifiDemand
-{
-    float wifi_speed = 1;
-    uint32 connect_command = 2;
-    uint32 connect_result = 3;
-    string ota_data = 4 [(nanopb).max_size= 50];
-    FacWifiInfo wifi_info = 5;
-    uint32 ota_result = 6;
-    FacErrorCode result = 100;
-}
 
+
+
+
+
+
+
+
+
+
+/*********************六轴数据采集区域******************/
 message NineAlexData
 {
     uint32 timestamp = 1;
@@ -596,6 +722,7 @@ message FacUploadNineAlex
     repeated NineAlexData data = 2 [(nanopb).max_count = 15];
     FacErrorCode result = 100;
 }
+/*********************六轴数据采集区域******************/
 
 
 
@@ -603,6 +730,8 @@ message FacUploadNineAlex
 
 
 
+
+/*********************压感的pb区域******************/
 message PresurceSensorItem
 {
     uint32 adc = 1;
@@ -633,7 +762,16 @@ message FacPreSensorCalibResult
 
     FacErrorCode result = 100;
 }
+/*********************压感的pb区域******************/
 
+
+
+
+
+
+
+
+/*********************六轴校准结果上报区域******************/
 message AccCaliData
 {
     float kx = 1;
@@ -655,18 +793,30 @@ message FacImuCalibResult
     uint32 gyro_z = 3;
     uint32 acc_x = 4;
     uint32 acc_y = 5;
-    uint32 acc_z = 6;   
-    AccCaliData  new_cali=7;
+    uint32 acc_z = 6;   //原先静态的六轴校准
+    AccCaliData  new_cali=7;//现在9个位置的六轴校准
 
     FacErrorCode result = 100;
 }
+/*********************六轴校准结果上报区域******************/
 
+
+
+
+/*********************设置刷牙时间区域******************/
 message FacSetTime
 {
     uint32 timestamp = 1;
     uint32 timezone = 2;
 }
+/*********************设置刷牙时间区域******************/
 
+
+
+
+
+
+/*********************设置刷牙结果区域******************/
 message FacSetBrushRecord
 {
     uint32 timestamp = 1;
@@ -675,7 +825,13 @@ message FacSetBrushRecord
     bytes pressure_time = 4 [(nanopb).max_size= 12];
     bytes horizon_brush = 5 [(nanopb).max_size= 12];
 }
+/*********************设置刷牙结果区域******************/
 
+
+
+
+
+/*********************配置wifi远程ota区域******************/
 message FacOtaFileInfo 
 {
     uint32 file_size = 1;
@@ -690,3 +846,4 @@ message FacInternetOta
     repeated FacOtaFileInfo file_info = 1 [(nanopb).max_count = 2];    
     FacErrorCode result = 100;
 }
+/*********************配置wifi远程ota区域******************/

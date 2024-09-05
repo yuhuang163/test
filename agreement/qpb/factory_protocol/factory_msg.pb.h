@@ -46,24 +46,33 @@ typedef enum _FactroyCmd {
     FactroyCmd_SET_AGEING_TEST = 50, 
     FactroyCmd_SET_BRUSH_RECORD = 51, 
     FactroyCmd_WIFI_DEMAND = 52, 
+    FactroyCmd_FAC_LOG = 53, 
     FactroyCmd_INTERNET_OTA = 64 
 } FactroyCmd;
 
+/* ********************设备基础信息区域***************** */
 typedef enum _FacProtoId { 
     FacProtoId_PROTOCOL_NONE = 0, 
-    FacProtoId_V1000 = 1000 
+    FacProtoId_V100 = 100, 
+    FacProtoId_V101 = 101, 
+    FacProtoId_V102 = 102, 
+    FacProtoId_V103 = 103, 
+    FacProtoId_V104 = 104, 
+    FacProtoId_V105 = 105, 
+    FacProtoId_V106 = 106 
 } FacProtoId;
 
+/* ********************设备状态设置区域***************** */
 typedef enum _DevStateType { 
-    DevStateType_REBOOT = 0, 
-    DevStateType_RESET = 1, 
-    DevStateType_SLEEP = 2, 
-    DevStateType_FORBID_SLEEP = 3, 
-    DevStateType_FACTORY_QRCORD = 4, 
-    DevStateType_SHIP = 5, 
-    DevStateType_UART_RECEIVE = 6, 
-    DevStateType_PRESS_SENSOR_TEMP = 7, 
-    DevStateType_MOTOR_ADC_MOS = 8 
+    DevStateType_REBOOT = 0, /* 系统重启 */
+    DevStateType_RESET = 1, /* 重置 */
+    DevStateType_SLEEP = 2, /* 进入休眠 */
+    DevStateType_FORBID_SLEEP = 3, /* 禁止休眠 */
+    DevStateType_FACTORY_QRCORD = 4, /* 工厂模式 */
+    DevStateType_SHIP = 5, /* 船运模式 */
+    DevStateType_UART_RECEIVE = 6, /* 串口接收 */
+    DevStateType_PRESS_SENSOR_TEMP = 7, /* 压感温度补偿开关 */
+    DevStateType_MOTOR_ADC_MOS = 8 /* 电机adc采集的mos */
 } DevStateType;
 
 typedef enum _FacSwitch { 
@@ -73,13 +82,14 @@ typedef enum _FacSwitch {
     FacSwitch_OPEN = 1 
 } FacSwitch;
 
+/* ********************设备自定义信息区域***************** */
 typedef enum _FacDevInfoType { 
     FacDevInfoType_WIFI_INFO = 0, 
     FacDevInfoType_TAIL_SN = 1, 
     FacDevInfoType_BOARD_SN = 2, 
     FacDevInfoType_BRUSH_MODE = 3, 
     FacDevInfoType_BATTERY_INFO = 4, 
-    FacDevInfoType_IF_QUALIFIED = 5, 
+    FacDevInfoType_IF_QUALIFIED = 5, /* 工厂测试结果 */
     FacDevInfoType_SUB_PID = 6 
 } FacDevInfoType;
 
@@ -91,19 +101,22 @@ typedef enum _FacChargeStateType {
     FacChargeStateType_NO_BATT = 4 
 } FacChargeStateType;
 
+/* ********************老化类区域***************** */
 typedef enum _FacAgeingTestType { 
     FacAgeingTestType_AGEING_1 = 0, 
     FacAgeingTestType_AGEING_2 = 1, 
     FacAgeingTestType_AGEING_3 = 2, 
     FacAgeingTestType_AGEING_4 = 3, 
-    FacAgeingTestType_AGEING_PRODUCTION_1 = 4 
+    FacAgeingTestType_AGEING_PRODUCTION_1 = 4 /* 弃用 */
 } FacAgeingTestType;
 
+/* ********************屏幕测试类区域***************** */
 typedef enum _FacLcdControlType { 
     FacLcdControlType_color = 0, 
     FacLcdControlType_reg = 1 
 } FacLcdControlType;
 
+/* ********************电机类区域***************** */
 typedef enum _FacMotoControlType { 
     FacMotoControlType_motor_state = 0, 
     FacMotoControlType_motor_param = 1, 
@@ -176,6 +189,7 @@ typedef enum _FacMotorUploadType {
     FacMotorUploadType_SERVO_INFO = 3 
 } FacMotorUploadType;
 
+/* ********************摄像头类区域***************** */
 typedef enum _FacCameraControlType { 
     FacCameraControlType_camera_state = 0, 
     FacCameraControlType_camera_light = 1, 
@@ -185,6 +199,7 @@ typedef enum _FacCameraControlType {
     FacCameraControlType_camera_get_picture = 5 
 } FacCameraControlType;
 
+/* ********************灯光类区域***************** */
 typedef enum _LedPosition { 
     LedPosition_led_left_up = 0, 
     LedPosition_led_left_down = 1, 
@@ -192,6 +207,7 @@ typedef enum _LedPosition {
     LedPosition_led_right_down = 3 
 } LedPosition;
 
+/* ********************采集类区域***************** */
 typedef enum _DataCollectType { 
     DataCollectType_BATTERY = 0, 
     DataCollectType_PRESSURE_SENSOR = 1, 
@@ -204,6 +220,7 @@ typedef enum _FacBrushControlType {
     FacBrushControlType_CHANGE_MODE = 1 
 } FacBrushControlType;
 
+/* ********************按键类区域***************** */
 typedef enum _FacButtonType { 
     FacButtonType_POWER_BUTTON = 0, 
     FacButtonType_MODEL_BUTTON = 1, 
@@ -218,6 +235,7 @@ typedef enum _ButtonState {
 } ButtonState;
 
 /* Struct definitions */
+/* ********************六轴校准结果上报区域***************** */
 typedef struct _AccCaliData { 
     float kx; 
     float ky; 
@@ -268,6 +286,12 @@ typedef struct _FacBrushControl {
     FacErrorCode result; 
 } FacBrushControl;
 
+/* ********************牙刷日志相关区域***************** */
+typedef struct _FacBrushLog { 
+    FacSwitch switch_send_log; 
+    FacErrorCode result; 
+} FacBrushLog;
+
 typedef struct _FacCameraControl { 
     FacCameraControlType type; 
     pb_size_t which_value_item;
@@ -309,6 +333,7 @@ typedef struct _FacGetDevBaseInfo {
     FacErrorCode result; 
 } FacGetDevBaseInfo;
 
+/* ********************设备状态区域***************** */
 typedef struct _FacGetPeriphState { 
     bool imu_state; 
     bool flash_state; 
@@ -362,6 +387,7 @@ typedef struct _FacRegisterConfig {
 typedef PB_BYTES_ARRAY_T(24) FacSetBrushRecord_work_time_t;
 typedef PB_BYTES_ARRAY_T(12) FacSetBrushRecord_pressure_time_t;
 typedef PB_BYTES_ARRAY_T(12) FacSetBrushRecord_horizon_brush_t;
+/* ********************设置刷牙结果区域***************** */
 typedef struct _FacSetBrushRecord { 
     uint32_t timestamp; 
     uint32_t plaque; /* 菌斑 */
@@ -383,6 +409,7 @@ typedef struct _FacWifiInfo {
     uint32_t port; 
 } FacWifiInfo;
 
+/* ********************六轴数据采集区域***************** */
 typedef struct _NineAlexData { 
     uint32_t timestamp; 
     uint32_t acc_x; 
@@ -405,6 +432,7 @@ typedef struct _NineAlexData {
     float solve_magn_z; 
 } NineAlexData;
 
+/* ********************压感的pb区域***************** */
 typedef struct _PresurceSensorItem { 
     uint32_t adc; 
     uint32_t value; 
@@ -466,9 +494,9 @@ typedef struct _FacImuCalibResult {
     uint32_t gyro_z; 
     uint32_t acc_x; 
     uint32_t acc_y; 
-    uint32_t acc_z; 
+    uint32_t acc_z; /* 原先静态的六轴校准 */
     bool has_new_cali;
-    AccCaliData new_cali; 
+    AccCaliData new_cali; /* 现在9个位置的六轴校准 */
     FacErrorCode result; 
 } FacImuCalibResult;
 
@@ -531,6 +559,7 @@ typedef struct _FacUploadNineAlex {
     FacErrorCode result; 
 } FacUploadNineAlex;
 
+/* ********************wifi相关区域***************** */
 typedef struct _FacWifiDemand { 
     float wifi_speed; 
     uint32_t connect_command; 
@@ -538,7 +567,7 @@ typedef struct _FacWifiDemand {
     char ota_data[50]; 
     bool has_wifi_info;
     FacWifiInfo wifi_info; 
-    uint32_t ota_result; 
+    uint32_t ota_result; /* 没有用 */
     FacErrorCode result; 
 } FacWifiDemand;
 
@@ -608,6 +637,7 @@ typedef struct _FactoryDataPackage {
         FacAgeingTest ageing;
         FacSetBrushRecord set_brush_record;
         FacWifiDemand wifi_demand;
+        FacBrushLog fac_log;
         FacInternetOta internet_ota;
     } command_data; 
 } FactoryDataPackage;
@@ -623,8 +653,8 @@ typedef struct _FactoryDataPackage {
 #define _FactroyCmd_ARRAYSIZE ((FactroyCmd)(FactroyCmd_INTERNET_OTA+1))
 
 #define _FacProtoId_MIN FacProtoId_PROTOCOL_NONE
-#define _FacProtoId_MAX FacProtoId_V1000
-#define _FacProtoId_ARRAYSIZE ((FacProtoId)(FacProtoId_V1000+1))
+#define _FacProtoId_MAX FacProtoId_V106
+#define _FacProtoId_ARRAYSIZE ((FacProtoId)(FacProtoId_V106+1))
 
 #define _DevStateType_MIN DevStateType_REBOOT
 #define _DevStateType_MAX DevStateType_MOTOR_ADC_MOS
@@ -711,6 +741,8 @@ extern "C" {
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
 #define FacDevInfoValue_init_default             {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_default}}
 #define FacDevInfo_init_default                  {0, {FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default}, _FacErrorCode_MIN}
+#define FacWifiDemand_init_default               {0, 0, 0, "", false, FacWifiInfo_init_default, 0, _FacErrorCode_MIN}
+#define FacBrushLog_init_default                 {_FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacGetPeriphState_init_default           {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacAgeingTest_init_default               {_FacAgeingTestType_MIN, _FacSwitch_MIN, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacRegisterConfig_init_default           {0, 0}
@@ -731,7 +763,6 @@ extern "C" {
 #define DataButtonParam_init_default             {_FacSwitch_MIN, _ButtonState_MIN}
 #define FacButtonItem_init_default               {_FacButtonType_MIN, 0, {DataButtonParam_init_default}}
 #define FacButtonState_init_default              {0, {FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default, FacButtonItem_init_default}, _FacErrorCode_MIN}
-#define FacWifiDemand_init_default               {0, 0, 0, "", false, FacWifiInfo_init_default, 0, _FacErrorCode_MIN}
 #define NineAlexData_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_default           {0, {NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_default          {0, 0}
@@ -751,6 +782,8 @@ extern "C" {
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
 #define FacDevInfoValue_init_zero                {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_zero}}
 #define FacDevInfo_init_zero                     {0, {FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero}, _FacErrorCode_MIN}
+#define FacWifiDemand_init_zero                  {0, 0, 0, "", false, FacWifiInfo_init_zero, 0, _FacErrorCode_MIN}
+#define FacBrushLog_init_zero                    {_FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacGetPeriphState_init_zero              {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacAgeingTest_init_zero                  {_FacAgeingTestType_MIN, _FacSwitch_MIN, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacRegisterConfig_init_zero              {0, 0}
@@ -771,7 +804,6 @@ extern "C" {
 #define DataButtonParam_init_zero                {_FacSwitch_MIN, _ButtonState_MIN}
 #define FacButtonItem_init_zero                  {_FacButtonType_MIN, 0, {DataButtonParam_init_zero}}
 #define FacButtonState_init_zero                 {0, {FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero, FacButtonItem_init_zero}, _FacErrorCode_MIN}
-#define FacWifiDemand_init_zero                  {0, 0, 0, "", false, FacWifiInfo_init_zero, 0, _FacErrorCode_MIN}
 #define NineAlexData_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_zero              {0, {NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_zero             {0, 0}
@@ -815,6 +847,8 @@ extern "C" {
 #define FacBrushControl_brush_start_tag          2
 #define FacBrushControl_change_mode_tag          3
 #define FacBrushControl_result_tag               100
+#define FacBrushLog_switch_send_log_tag          1
+#define FacBrushLog_result_tag                   100
 #define FacCameraControl_type_tag                1
 #define FacCameraControl_camera_switch_tag       2
 #define FacCameraControl_light_switch_tag        3
@@ -1013,6 +1047,7 @@ extern "C" {
 #define FactoryDataPackage_ageing_tag            50
 #define FactoryDataPackage_set_brush_record_tag  51
 #define FactoryDataPackage_wifi_demand_tag       52
+#define FactoryDataPackage_fac_log_tag           53
 #define FactoryDataPackage_internet_ota_tag      64
 
 /* Struct field encoding specification for nanopb */
@@ -1045,6 +1080,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,camera_control,command_data.cam
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,ageing,command_data.ageing),  50) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_brush_record,command_data.set_brush_record),  51) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,wifi_demand,command_data.wifi_demand),  52) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,fac_log,command_data.fac_log),  53) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.internet_ota),  64)
 #define FactoryDataPackage_CALLBACK NULL
 #define FactoryDataPackage_DEFAULT NULL
@@ -1075,6 +1111,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.inter
 #define FactoryDataPackage_command_data_ageing_MSGTYPE FacAgeingTest
 #define FactoryDataPackage_command_data_set_brush_record_MSGTYPE FacSetBrushRecord
 #define FactoryDataPackage_command_data_wifi_demand_MSGTYPE FacWifiDemand
+#define FactoryDataPackage_command_data_fac_log_MSGTYPE FacBrushLog
 #define FactoryDataPackage_command_data_internet_ota_MSGTYPE FacInternetOta
 
 #define FacGetDevBaseInfo_FIELDLIST(X, a) \
@@ -1139,6 +1176,24 @@ X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacDevInfo_CALLBACK NULL
 #define FacDevInfo_DEFAULT NULL
 #define FacDevInfo_dev_info_MSGTYPE FacDevInfoValue
+
+#define FacWifiDemand_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, FLOAT,    wifi_speed,        1) \
+X(a, STATIC,   SINGULAR, UINT32,   connect_command,   2) \
+X(a, STATIC,   SINGULAR, UINT32,   connect_result,    3) \
+X(a, STATIC,   SINGULAR, STRING,   ota_data,          4) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  wifi_info,         5) \
+X(a, STATIC,   SINGULAR, UINT32,   ota_result,        6) \
+X(a, STATIC,   SINGULAR, UENUM,    result,          100)
+#define FacWifiDemand_CALLBACK NULL
+#define FacWifiDemand_DEFAULT NULL
+#define FacWifiDemand_wifi_info_MSGTYPE FacWifiInfo
+
+#define FacBrushLog_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    switch_send_log,   1) \
+X(a, STATIC,   SINGULAR, UENUM,    result,          100)
+#define FacBrushLog_CALLBACK NULL
+#define FacBrushLog_DEFAULT NULL
 
 #define FacGetPeriphState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BOOL,     imu_state,         1) \
@@ -1324,18 +1379,6 @@ X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacButtonState_DEFAULT NULL
 #define FacButtonState_button_state_MSGTYPE FacButtonItem
 
-#define FacWifiDemand_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FLOAT,    wifi_speed,        1) \
-X(a, STATIC,   SINGULAR, UINT32,   connect_command,   2) \
-X(a, STATIC,   SINGULAR, UINT32,   connect_result,    3) \
-X(a, STATIC,   SINGULAR, STRING,   ota_data,          4) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  wifi_info,         5) \
-X(a, STATIC,   SINGULAR, UINT32,   ota_result,        6) \
-X(a, STATIC,   SINGULAR, UENUM,    result,          100)
-#define FacWifiDemand_CALLBACK NULL
-#define FacWifiDemand_DEFAULT NULL
-#define FacWifiDemand_wifi_info_MSGTYPE FacWifiInfo
-
 #define NineAlexData_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   timestamp,         1) \
 X(a, STATIC,   SINGULAR, UINT32,   acc_x,             2) \
@@ -1464,6 +1507,8 @@ extern const pb_msgdesc_t FacBatteryInfo_msg;
 extern const pb_msgdesc_t FacWifiInfo_msg;
 extern const pb_msgdesc_t FacDevInfoValue_msg;
 extern const pb_msgdesc_t FacDevInfo_msg;
+extern const pb_msgdesc_t FacWifiDemand_msg;
+extern const pb_msgdesc_t FacBrushLog_msg;
 extern const pb_msgdesc_t FacGetPeriphState_msg;
 extern const pb_msgdesc_t FacAgeingTest_msg;
 extern const pb_msgdesc_t FacRegisterConfig_msg;
@@ -1484,7 +1529,6 @@ extern const pb_msgdesc_t FacCollectParam_msg;
 extern const pb_msgdesc_t DataButtonParam_msg;
 extern const pb_msgdesc_t FacButtonItem_msg;
 extern const pb_msgdesc_t FacButtonState_msg;
-extern const pb_msgdesc_t FacWifiDemand_msg;
 extern const pb_msgdesc_t NineAlexData_msg;
 extern const pb_msgdesc_t FacUploadNineAlex_msg;
 extern const pb_msgdesc_t PresurceSensorItem_msg;
@@ -1506,6 +1550,8 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacWifiInfo_fields &FacWifiInfo_msg
 #define FacDevInfoValue_fields &FacDevInfoValue_msg
 #define FacDevInfo_fields &FacDevInfo_msg
+#define FacWifiDemand_fields &FacWifiDemand_msg
+#define FacBrushLog_fields &FacBrushLog_msg
 #define FacGetPeriphState_fields &FacGetPeriphState_msg
 #define FacAgeingTest_fields &FacAgeingTest_msg
 #define FacRegisterConfig_fields &FacRegisterConfig_msg
@@ -1526,7 +1572,6 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define DataButtonParam_fields &DataButtonParam_msg
 #define FacButtonItem_fields &FacButtonItem_msg
 #define FacButtonState_fields &FacButtonState_msg
-#define FacWifiDemand_fields &FacWifiDemand_msg
 #define NineAlexData_fields &NineAlexData_msg
 #define FacUploadNineAlex_fields &FacUploadNineAlex_msg
 #define PresurceSensorItem_fields &PresurceSensorItem_msg
@@ -1547,6 +1592,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacAgeingTest_size                       31
 #define FacBatteryInfo_size                      14
 #define FacBrushControl_size                     11
+#define FacBrushLog_size                         5
 #define FacButtonItem_size                       8
 #define FacButtonState_size                      83
 #define FacCameraControl_size                    11
@@ -1555,7 +1601,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacDevInfoValue_size                     114
 #define FacDevInfo_size                          583
 #define FacDevState_size                         7
-#define FacGetDevBaseInfo_size                   245
+#define FacGetDevBaseInfo_size                   244
 #define FacGetPeriphState_size                   13
 #define FacImuCalibResult_size                   86
 #define FacInternetOta_size                      691

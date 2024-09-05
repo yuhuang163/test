@@ -142,6 +142,37 @@ void Qpb::parseCmd(const QByteArray& byte) {
         }
     }
 }
+
+void Qpb::sendMainPack(const DataPackage& pack) {
+    std::vector<uint8_t> tx_buffer(1024);
+    pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
+    if (pb_encode(&o_stream, DataPackage_fields, &pack)) {
+        size_t len = o_stream.bytes_written;
+        if (len > tx_buffer.size() - 2) {
+            qDebug() << "编码长度超出";
+            return;
+        }
+        if (len == 0) {
+            qDebug() << "编码长度等于0";
+            return;
+        }
+        tx_buffer[0] = 0;
+        tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+
+        std::vector<uint8_t> new_buffer;
+        new_buffer.reserve(8 + 1 + 1 + len + 2);
+        new_buffer.insert(new_buffer.begin(), 8, 0xcc);       //包头
+        new_buffer.push_back(static_cast<uint8_t>(len + 2));  //长度
+        new_buffer.push_back(PHY_CHANNEL_MAIN);               //通道
+        new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
+
+        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+
+    } else {
+        qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
+    }
+}
+
 void Qpb::sendShortPack(const DataPackage& pack) {
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
@@ -157,8 +188,16 @@ void Qpb::sendShortPack(const DataPackage& pack) {
         }
         tx_buffer[0] = 0;
         tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
-        qDebug() << "encode len" << len + 2;
-        serialPort->write((char*)tx_buffer.data(), len + 2);
+
+        std::vector<uint8_t> new_buffer;
+        new_buffer.reserve(8 + 1 + 1 + len + 2);
+        new_buffer.insert(new_buffer.begin(), 8, 0xcc);       //包头
+        new_buffer.push_back(static_cast<uint8_t>(len + 2));  //长度
+        new_buffer.push_back(PHY_CHANNEL_APP);                //通道
+        new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
+
+        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+
     } else {
         qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
@@ -184,7 +223,14 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
         tx_buffer[0] = 0;
         tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
 
-        serialPort->write((char*)tx_buffer.data(), len + 2);
+        std::vector<uint8_t> new_buffer;
+        new_buffer.reserve(8 + 1 + 1 + len + 2);
+        new_buffer.insert(new_buffer.begin(), 8, 0xcc);       //包头
+        new_buffer.push_back(static_cast<uint8_t>(len + 2));  //长度
+        new_buffer.push_back(PHY_CHANNEL_FAC);                //通道
+        new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
+
+        serialPort->write((char*)new_buffer.data(), new_buffer.size());
 
         /**************自我验证pb正常吗****************/
         /*   QByteArray dataToSend;
@@ -677,6 +723,7 @@ void Qpb::set_brush_control(int state)  // 开始暂停刷牙
 
     sendShortPack(pack);
 }
+
 void Qpb::set_fac_mode(int state)  // 开始暂停工厂二维码
 {
     FactoryDataPackage pack;
@@ -837,7 +884,22 @@ void Qpb::set_motor_adc_switch(int state) {
     sendShortPack(pack);
     qDebug() << "已发送船运";
 }
+void Qpb::get_bursh_backlog(int state) {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    FactroyCmd cmd = FactroyCmd_FAC_LOG;
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_fac_log_tag;
 
+    if (state) {
+        pack.command_data.fac_log.switch_send_log = FacSwitch_START;
+    } else {
+        pack.command_data.fac_log.switch_send_log = FacSwitch_STOP;
+    }
+
+    sendShortPack(pack);
+    qDebug() << "已发送获取牙刷黑盒日志";
+}
 void Qpb::set_ship_mode(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -1306,6 +1368,9 @@ void Qpb::registerCommand() {
     factoryCommandList[FactroyCmd_UPLOAD_NINE_ALEX] =
         std::bind(&Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX, this, std::placeholders::_1);  // 获取imu数据
 
+    factoryCommandList[FactroyCmd_FAC_LOG] =
+        std::bind(&Qpb::process_FactroyCmd_FAC_LOG, this, std::placeholders::_1);  // 获取imu数据
+
     factoryCommandList[FactroyCmd_SET_DEVICE_STATE] =
         std::bind(&Qpb::process_FactroyCmd_SET_DEVICE_STATE, this, std::placeholders::_1);  // 禁止休眠
     factoryCommandList[FactroyCmd_SET_DEVICE_INFO] =
@@ -1507,7 +1572,6 @@ void Qpb::process_FactroyCmd_SET_AGEING_TEST(FactoryDataPackage& f) {
 
     if (x.switch_state == 1) {
         emit sendGetBrushResponse(1);
-        is_set_age_test = 1;
     }
 }
 
@@ -1609,12 +1673,10 @@ void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "获取到设备信息";
     emit send_base_data(x);
-    is_get_base_info = 1;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
     qDebug() << "收到保存imu校准值回应" << f.command_data.set_imu_calib.result;
-    is_save_imu_cali_ok = 1;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
@@ -1623,7 +1685,6 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     qDebug() << "获取牙刷校准的brush_head_adc=" << x.brush_head_adc;
     qDebug() << "获取牙刷校准的mode_button_adc=" << x.mode_button_adc;
 
-    is_save_press_cali_data = 1;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
@@ -1651,7 +1712,6 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
 
     if (x.dev_state_type == DevStateType_SLEEP) {
         qDebug() << "设置休眠成功";
-        is_open_sleep = 1;
         emit sendGetBrushResponse(1);
     }
     if (x.dev_state_type == DevStateType_SHIP) {
@@ -1659,8 +1719,6 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
         send_pb_date("设置船运成功");
         emit sendGetBrushResponse(1);
     }
-
-    //   emit sendGetBrushResponse(1);
 }
 
 void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
@@ -1674,6 +1732,7 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
         x.dev_info[0].which_value_item == FacDevInfoValue_brush_mode_tag) {
         qDebug() << "进入亮白模式成功";
         is_dev_into_white_mode = 1;
+
         emit sendGetBrushResponse(1);
     }
 
@@ -1692,7 +1751,6 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
         emit sendGetBrushResponse(1);
     }
     if (x.dev_info[0].info_item == FacDevInfoType_WIFI_INFO) {
-        is_wifi_set_ok = 1;
         qDebug() << "wifi连接回应";
         emit sendGetBrushResponse(1);
     }
@@ -1790,7 +1848,7 @@ void Qpb::set_i_am_app() {
     pack.command_id = cmd;
     pack.which_command_data = DataPackage_get_user_info_tag;
 
-    sendShortPack(pack);
+    sendMainPack(pack);
     pb_mode = CLIENT;
 }
 
@@ -1834,6 +1892,14 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     // qDebug () << "sensor data";
     emit send_press_data(x);
     is_set_press_collect_param = 1;
+    emit sendGetBrushResponse(1);
+}
+
+void Qpb::process_FactroyCmd_FAC_LOG(FactoryDataPackage& f) {
+    FacUploadNineAlex x;
+    memcpy(&x, &f.command_data, sizeof(x));
+    qDebug() << "收到牙刷黑盒日志回应";
+
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {

@@ -67,8 +67,8 @@
 #define IMU_VER "IMU校准工站    V1.4.1"     // 支持自动化治具
 #define PCBA_VER "电刷板子测试   V1.3.0"    // 加定时器判断休
 
-// [DEBUG_VER] 加入噪音采集的功能
-// [CAMERA_VER] 格式化代码
+// [DEBUG_VER] 增加上位机获取黑盒日志，增加板厂简易治具的休眠命令，提高ota的效率，修改通道接收图片数据
+// [CAMERA_VER] 格式化代码，修改通道接收图片数据
 // [IMU_VER] 格式化代码
 // [AGE_VER] 格式化代码
 // [MOTOR_VER] 格式化代码
