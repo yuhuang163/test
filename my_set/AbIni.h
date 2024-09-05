@@ -55,29 +55,29 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.0"   // 支持1拖多
-#define AGE_VER "老化测试工站   V1.1.6"     // 支持1拖多
-#define MOTOR_VER "电机校准工站   V1.1.5"   // 加定时器判断休
-#define QC_VER "静态电流测试   V1.3.3"      // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.1.3"  // 加定时器判断休
-#define LIGHT_VER "灯光测试工站   V1.1.3"   // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.3.1"  // 立讯bug
-#define FREE_VER "自由测试工站   V1.0.6"    // 立讯bug
-#define CAMERA_VER "摄像测试工站   V1.1.4"  // 支持摄像头工站
-#define IMU_VER "IMU校准工站    V1.4.1"     // 支持自动化治具
-#define PCBA_VER "电刷板子测试   V1.3.0"    // 加定时器判断休
+#define DEBUG_VER "电刷产测工具   V1.3.1"   // 支持1拖多
+#define AGE_VER "老化测试工站   V1.1.7"     // 支持1拖多
+#define MOTOR_VER "电机校准工站   V1.1.6"   // 加定时器判断休
+#define QC_VER "静态电流测试   V1.3.4"      // 增加定时器判断休眠
+#define SCREEN_VER "屏幕测试工站   V1.1.4"  // 加定时器判断休
+#define LIGHT_VER "灯光测试工站   V1.1.4"   // 加定时器判断休
+#define SINGLE_VER "信号测试工站   V1.3.2"  // 立讯bug
+#define FREE_VER "自由测试工站   V1.0.7"    // 立讯bug
+#define CAMERA_VER "摄像测试工站   V1.1.5"  // 支持摄像头工站
+#define IMU_VER "IMU校准工站    V1.4.2"     // 支持自动化治具
+#define PCBA_VER "电刷板子测试   V1.3.1"    // 加定时器判断休
 
 // [DEBUG_VER] 增加上位机获取黑盒日志，增加板厂简易治具的休眠命令，提高ota的效率，修改通道接收图片数据
-// [CAMERA_VER] 格式化代码，修改通道接收图片数据
-// [IMU_VER] 格式化代码
-// [AGE_VER] 格式化代码
-// [MOTOR_VER] 格式化代码
-// [QC_VER] 格式化代码
-// [SCREEN_VER] 格式化代码
-// [LIGHT_VER] 格式化代码
-// [SINGLE_VER] 格式化代码
-// [FREE_VER] 格式化代码
-// [PCBA_VER] 格式化代码
+// [CAMERA_VER] 修改上位机与dongle通信协议，修改通道接收图片数据
+// [IMU_VER] 修改上位机与dongle通信协议
+// [AGE_VER] 修改上位机与dongle通信协议
+// [MOTOR_VER] 修改上位机与dongle通信协议
+// [QC_VER] 修改上位机与dongle通信协议
+// [SCREEN_VER] 修改上位机与dongle通信协议
+// [LIGHT_VER] 修改上位机与dongle通信协议
+// [SINGLE_VER] 修改上位机与dongle通信协议
+// [FREE_VER] 修改上位机与dongle通信协议
+// [PCBA_VER] 修改上位机与dongle通信协议
 //
 
 #endif  // ABINI_H
