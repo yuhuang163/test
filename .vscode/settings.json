@@ -24,7 +24,20 @@
     "span": "cpp",
     "unordered_map": "cpp",
     "unordered_set": "cpp",
-    "initializer_list": "cpp"
+    "initializer_list": "cpp",
+    "ringbuf.h": "c",
+    "compare": "cpp",
+    "*.tcc": "cpp",
+    "optional": "cpp",
+    "ratio": "cpp",
+    "system_error": "cpp",
+    "functional": "cpp",
+    "regex": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp",
+    "bitset": "cpp"
   },
-  "idf.portWin": "COM56"
+  "idf.portWin": "COM56",
+  "C_Cpp.errorSquiggles": "disabled"
 }

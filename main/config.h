@@ -92,7 +92,14 @@ enum ServiceType
     MAIN
 
 };
+typedef enum
+{
+    PHY_CHANNEL_INVALID_SEND = 0, // 无效值
+    PHY_CHANNEL_FAC,         // 工厂命令通道
+    PHY_CHANNEL_APP,         // ota数据通道
+    PHY_CHANNEL_MAIN,        // main数据通道
 
+} ext_ble_phy_channel_send_e;
 // 声明全局变量
 extern ServiceType use_normal_service;
 bool ServerStateCheck();
@@ -116,7 +123,7 @@ void start_ble_scan();
 void print_ble_rssi();
 void deinit_ble();
 void colorWipe(uint32_t color);
-void send_ble_data(uint8_t *data, size_t length);
+void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length);
 void print_wifi_rssi(int numClients);
 
 

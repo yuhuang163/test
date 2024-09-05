@@ -338,50 +338,106 @@ void serialEventTask(void *pvParameters)
     }
     Serial.print("serialEventTask线程退出");
 }
-// Serial.print("availableBytes");
-// Serial.print(availableBytes);
-// Serial.print("bufferSize");
-// Serial.print(bufferSize);
-// Serial.print("bytesRead");
-// Serial.println(bytesRead);
-// unsigned long currentMillis = millis();
-// String timestamp = String(currentMillis);
-// Serial.println("  接收到时间: " + timestamp);
-// if (bytesRead != bufferSize)
-// {
-//     Serial.print("异常实际读取的");
-//     Serial.println(bytesRead);
-//     Serial.print("异常需要读取的");
-//     Serial.println(bufferSize);
-// }
-// if (availableBytes > MAX_RECEIVE_BUFFER_SIZE)  //  打印接收大小过大的警告
-// {
-//     Serial.print("接收大小过大: ");
-//     Serial.println(availableBytes);
-//     continue;
-// }
-// if (packetSize != sizeof(packet))
-// {
-//     Serial.print("异常实际读取的");
-//     Serial.println(packetSize);
-//     Serial.print("异常需要读取的");
-//     Serial.println(sizeof(packet));
-// }
+#define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC // 0xAAAAAAAAAAAAAAAA
+#define UART_PHY_LAYER_HEAD_SIZE 10       // 头大小
+#define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE)
+
+typedef struct
+{
+    uint64_t magic;
+    uint8_t length;
+    uint8_t channel;
+    // uint8_t index;
+    uint8_t data[0];
+} ext_uart_phy_layer_t;
+
+int ext_ble_find_next_frame(uint8_t *data, size_t *dataSize)
+{
+
+    // 包头的64位值
+    const uint64_t header = 0xCCCCCCCCCCCCCCCC;
+
+    // 遍历数据流以查找包头
+    for (size_t i = 0; i <= *dataSize - 8; ++i)
+    {
+        uint64_t currentHeader;
+        memcpy(&currentHeader, &data[i], 8);
+
+        if (currentHeader == header)
+        {
+            // 找到包头，移除包头前的数据
+            size_t remainingSize = *dataSize - i;
+            memmove(data, &data[i], remainingSize);
+            *dataSize = remainingSize;
+            return 1; // 返回去除包头后的数据长度
+        }
+    }
+
+    return 0; // 没有找到包头
+}
 void processDataTask(void *pvParameters)
 {
     byte packet[UART_SOLVE_BUFFER_SIZE];
-
+    byte pbpacket[1024];
+    size_t pboffset = 0;
+    int uartsolvesize = 0;
     while (1)
     {
         size_t packetSize = bufferRead(packet, sizeof(packet)); // 从环形缓冲区读取数据
 
         if (packetSize > 0)
         {
-            if (ble_connected)
+            if (StartSendOtaData)
             {
-                send_ble_data(packet, packetSize);
+                send_ble_data(PHY_CHANNEL_INVALID_SEND, packet, packetSize); // 发送ota数据包
+                uartsolvesize = uartsolvesize + packetSize;
+                Serial.print("处理总数");
+                Serial.println(uartsolvesize);
+            }else
+            {
+                memcpy(pbpacket + pboffset, packet, packetSize);
+                pboffset += packetSize;
+                while (1) // 处理各种pb命令
+                {
+
+                    if (pboffset <= UART_PHY_LAYER_HEADER_ADN_CRC)
+                    {
+                        break;
+                    }
+
+                    ext_uart_phy_layer_t *head = (ext_uart_phy_layer_t *)pbpacket;
+
+                    if (head->magic == EXT_UART_MAGIC)
+                    {
+                        int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
+                        if (frame_size > pboffset)
+                        {
+                            break;
+                        }
+                        ext_ble_phy_channel_send_e channel = (ext_ble_phy_channel_send_e)head->channel;
+
+                        send_ble_data(channel, pbpacket + UART_PHY_LAYER_HEAD_SIZE, head->length);
+                        pboffset = pboffset - frame_size;
+                        memmove(pbpacket, &pbpacket[frame_size], pboffset);
+                        Serial.print("偏移为");
+                        Serial.println(pboffset);
+                        continue;
+                    }
+                    else
+                    {
+                        if (ext_ble_find_next_frame(pbpacket, &pboffset))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            Serial.println("找不到帧头");
+                            break;
+                        }
+                    }
+                }
             }
-            for (size_t i = 0; i < packetSize; ++i)
+      for (size_t i = 0; i < packetSize; ++i)
             {
                 processATChar((char)packet[i]);
             }

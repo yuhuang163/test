@@ -15,34 +15,50 @@ boolean candeleteble = true; // 是否可以销毁蓝牙实例
 
 static BLEScan *pBLEScan;
 
-static BLERemoteCharacteristic *CAMERAUUIDCharacteristic = nullptr;
-static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
-static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
-static BLERemoteCharacteristic *mainNotifyCharacteristic = nullptr;
-static BLERemoteCharacteristic *mainWriteCharacteristic = nullptr;
-static BLERemoteCharacteristic *DataCharacteristic = nullptr;
-static BLERemoteService *pRemoteService = nullptr;
+static BLERemoteService *facRemoteService = nullptr;
+static BLERemoteService *appRemoteService = nullptr;
 static BLERemoteService *mainRemoteService = nullptr;
+static BLERemoteService *normolRemoteService = nullptr;
 
 static BLEAdvertisedDevice *myDevice = nullptr; // 这个设备要反初始化
 
-static BLEUUID mainserviceUUID("a6ed0301-d344-460a-8075-b9e8ec90d71b");
+static BLEUUID mainserviceUUID("a6ed0301-d344-460a-8075-b9e8ec90d71b"); // main
 static BLEUUID mainWriteUUID("a6ed0302-d344-460a-8075-b9e8ec90d71b");
 static BLEUUID mainNotifyUUID("a6ed0302-d344-460a-8075-b9e8ec90d71b");
+static BLERemoteCharacteristic *mainNotifyCharacteristic = nullptr;
+static BLERemoteCharacteristic *mainWriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b");
-static BLEUUID NotifyUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b");
-static BLEUUID WriteUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b");
-static BLEUUID CameraUUID("a6ed0204-d344-460a-8075-b9e8ec90d71b");
+static BLEUUID serviceUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b"); // fac
+static BLEUUID NotifyUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b");  // 收产测指令
+static BLEUUID WriteUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b");   // 写产测指令
+static BLEUUID CameraUUID("a6ed0204-d344-460a-8075-b9e8ec90d71b");  // 摄像头传图
+static BLEUUID LogUUID("a6ed0205-d344-460a-8075-b9e8ec90d71b");     // 传输日志
+static BLERemoteCharacteristic *LOGUUIDCharacteristic = nullptr;
+static BLERemoteCharacteristic *CAMERAUUIDCharacteristic = nullptr;
+static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
+static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUIDOTA("a6ed0101-d344-460a-8075-b9e8ec90d71b");
-static BLEUUID WriteUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b");  // 发ota数据包的服务
-static BLEUUID NotifyUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b"); // 收发指令的服务
-static BLEUUID WriteOTADATA("a6ed0102-d344-460a-8075-b9e8ec90d71b");  // 发ota数据包的服务
+static BLEUUID serviceUUIDOTA("a6ed0101-d344-460a-8075-b9e8ec90d71b"); // app
+static BLEUUID WriteUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b");   // 收发指令的服务
+static BLEUUID NotifyUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b");  // 收发指令的服务
+static BLEUUID WriteOTADATA("a6ed0102-d344-460a-8075-b9e8ec90d71b");   // 发ota数据包的服务
+static BLERemoteCharacteristic *AppDataCharacteristic = nullptr;       // 发送ota数据的特征
+static BLERemoteCharacteristic *AppNotifyCharacteristic = nullptr;
+static BLERemoteCharacteristic *AppWriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUIDNormal("1828");
+static BLEUUID serviceUUIDNormal("1828"); // normol
 static BLEUUID WriteUUIDNormal("2ACA");
 static BLEUUID NotifyUUIDNormal("2ACA");
+static BLERemoteCharacteristic *normolNotifyCharacteristic = nullptr;
+static BLERemoteCharacteristic *normolWriteCharacteristic = nullptr;
+
+typedef enum
+{
+    PHY_CHANNEL_INVALID = 0, // 无效值
+    PHY_CHANNEL_CAMREA,      // 控制命令通道
+    PHY_CHANNEL_LOG,         // ota数据通道
+
+} ext_ble_phy_send_channel_e;
 
 // 消息提醒函数
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
@@ -74,22 +90,27 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify)
 {
-    
-    // unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
-    // String timestamp = String(currentMillis); // 将时间戳转换为字符串
-    // Serial.println();
-    // Serial.print("摄像头数据包的时间戳:"); // 打印带有时间戳的消息
-    // Serial.print(timestamp);
-    // Serial.print("长度为:"); // 打印带有时间戳的消息
-    // Serial.print(length);
 
-    const int additionalBytes = 9;
+    const int additionalBytes = 10;
     uint8_t modifiedData[length + additionalBytes];
     memset(modifiedData, 0xcc, 8);
     modifiedData[8] = length;
-    memcpy(modifiedData + 9, pData, length);
+    modifiedData[9] = PHY_CHANNEL_CAMREA;
+    memcpy(modifiedData + additionalBytes, pData, length);
     Serial.write(modifiedData, length + additionalBytes);
+}
+// 消息提醒函数
+void brushLogNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
+                            size_t length, bool isNotify)
+{
 
+    const int additionalBytes = 10;
+    uint8_t modifiedData[length + additionalBytes];
+    memset(modifiedData, 0xcc, 8);
+    modifiedData[8] = length;
+    modifiedData[9] = PHY_CHANNEL_LOG;
+    memcpy(modifiedData + additionalBytes, pData, length);
+    Serial.write(modifiedData, length + additionalBytes);
 }
 // 连接状态函数
 class MyClientCallback : public BLEClientCallbacks
@@ -347,7 +368,7 @@ void print_ble_rssi()
             numberBleRssi = 0;
             int stableStrength = blemedianFilter();
             Serial.print("AT+BLERSSI=");
-            Serial.println(stableStrength+10);//与之前的idf进行修正
+            Serial.println(stableStrength + 10); // 与之前的idf进行修正
         }
         readings[numberBleRssi] = pClient->getRssi(); // 获取蓝牙信号强度
         numberBleRssi++;
@@ -368,7 +389,7 @@ void deinit_ble()
     }
 }
 
-void send_ble_data(uint8_t *data, size_t length)
+void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length)
 {
     const size_t MAX_PACKET_SIZE = MY_MTU - 3; // 最大每包大小
     size_t offset = 0;                         // 当前数据的偏移量
@@ -384,11 +405,10 @@ void send_ble_data(uint8_t *data, size_t length)
         memcpy(packet, data + offset, packetSize);
         // packetCount++;
         // Serial.printf("开始发送第%d包\r\n", packetCount);
-
         // 发送数据
         if (StartSendOtaData)
         {
-            if (DataCharacteristic != nullptr)
+            if (AppDataCharacteristic != nullptr)
             {
                 while (1)
                 {
@@ -398,8 +418,10 @@ void send_ble_data(uint8_t *data, size_t length)
                         int free_buff_num = esp_ble_get_cur_sendable_packets_num(conn_id);
                         if (free_buff_num > 0)
                         {
-                            if (DataCharacteristic->writeValue(packet, packetSize))
+                            if (AppDataCharacteristic->writeValue(packet, packetSize))
+                            {
                                 break;
+                            }
                             else
                             {
                                 Serial.println("发送失败");
@@ -416,15 +438,28 @@ void send_ble_data(uint8_t *data, size_t length)
                 }
             }
         }
-        else if (StartSendmainData)
+        else if (channel == PHY_CHANNEL_MAIN)
         {
             if (mainWriteCharacteristic != nullptr)
                 mainWriteCharacteristic->writeValue(packet, packetSize);
+            Serial.println("main通道");
         }
-        else
+        else if (channel == PHY_CHANNEL_APP)
+        {
+            if (AppWriteCharacteristic != nullptr)
+                AppWriteCharacteristic->writeValue(packet, packetSize);
+            Serial.println("app通道");
+        }
+        else if (channel == PHY_CHANNEL_FAC)
         {
             if (WriteCharacteristic != nullptr)
                 WriteCharacteristic->writeValue(packet, packetSize);
+            Serial.println("fac通道");
+        }
+        else
+        {
+            Serial.print("未知蓝牙传输通道为：");
+            Serial.println(channel);
         }
 
         // 更新偏移量
@@ -446,7 +481,13 @@ bool connectToServer()
         mainWriteCharacteristic = nullptr;
         NotifyCharacteristic = nullptr;
         CAMERAUUIDCharacteristic = nullptr;
-        DataCharacteristic = nullptr;
+        LOGUUIDCharacteristic = nullptr;
+        AppDataCharacteristic = nullptr;
+        AppNotifyCharacteristic = nullptr;
+        AppWriteCharacteristic = nullptr;
+        normolNotifyCharacteristic = nullptr;
+        normolWriteCharacteristic = nullptr;
+
         Serial.println("已释放pClient和WriteCharacteristic");
     }
     pClient = BLEDevice::createClient(); // 需要反初始化
@@ -460,24 +501,10 @@ bool connectToServer()
         Serial.println(use_normal_service);
         if (pClient != nullptr)
         {
-            if (use_normal_service == FAC)
-            {
-
-                pRemoteService = pClient->getService(serviceUUID);
-                mainRemoteService = nullptr;
-            }
-            else if (use_normal_service == CLIENT)
-            {
-
-                pRemoteService = pClient->getService(serviceUUIDNormal);
-                mainRemoteService = nullptr;
-            }
-
-            else if (use_normal_service == OTA)
-            {
-                pRemoteService = pClient->getService(serviceUUIDOTA);
-                mainRemoteService = pClient->getService(mainserviceUUID);
-            }
+            facRemoteService = pClient->getService(serviceUUID);
+            appRemoteService = pClient->getService(serviceUUIDOTA);
+            mainRemoteService = pClient->getService(mainserviceUUID);
+            normolRemoteService = pClient->getService(serviceUUIDNormal);
         }
         else
         {
@@ -486,10 +513,31 @@ bool connectToServer()
             return false;
         }
 
+        if (facRemoteService != nullptr)
+        {
+            CAMERAUUIDCharacteristic = facRemoteService->getCharacteristic(CameraUUID);
+            NotifyCharacteristic = facRemoteService->getCharacteristic(NotifyUUID);
+            WriteCharacteristic = facRemoteService->getCharacteristic(WriteUUID);
+            LOGUUIDCharacteristic = facRemoteService->getCharacteristic(LogUUID);
+        }
+        else
+        {
+            Serial.println("facRemoteService为空");
+        }
+        if (appRemoteService != nullptr)
+        {
+            Serial.println("找到appRemoteService服务");
+            AppDataCharacteristic = appRemoteService->getCharacteristic(WriteOTADATA);
+            AppNotifyCharacteristic = appRemoteService->getCharacteristic(NotifyUUIDOTA);
+            AppWriteCharacteristic = appRemoteService->getCharacteristic(WriteUUIDOTA);
+        }
+        else
+        {
+            Serial.println("appRemoteService为空");
+        }
         if (mainRemoteService != nullptr)
         {
             Serial.println("找到mainRemoteService服务");
-
             mainNotifyCharacteristic = mainRemoteService->getCharacteristic(mainNotifyUUID);
             mainWriteCharacteristic = mainRemoteService->getCharacteristic(mainWriteUUID);
         }
@@ -498,36 +546,18 @@ bool connectToServer()
             Serial.println("mainRemoteService为空");
         }
 
-        if (pRemoteService != nullptr)
+        if (normolRemoteService != nullptr)
         {
-            Serial.println("找到我们的pRemoteService服务");
-
-            if (use_normal_service == FAC)
-            {
-                CAMERAUUIDCharacteristic = pRemoteService->getCharacteristic(CameraUUID);
-                NotifyCharacteristic = pRemoteService->getCharacteristic(NotifyUUID);
-                WriteCharacteristic = pRemoteService->getCharacteristic(WriteUUID);
-            }
-            else if (use_normal_service == CLIENT)
-            {
-                CAMERAUUIDCharacteristic = pRemoteService->getCharacteristic(CameraUUID);
-                NotifyCharacteristic = pRemoteService->getCharacteristic(NotifyUUIDNormal);
-                WriteCharacteristic = pRemoteService->getCharacteristic(WriteUUIDNormal);
-            }
-            else if (use_normal_service == OTA)
-            {
-                CAMERAUUIDCharacteristic = pRemoteService->getCharacteristic(CameraUUID);
-                NotifyCharacteristic = pRemoteService->getCharacteristic(NotifyUUIDOTA);
-                WriteCharacteristic = pRemoteService->getCharacteristic(WriteUUIDOTA);
-                DataCharacteristic = pRemoteService->getCharacteristic(WriteOTADATA);
-            }
-
-            return ServerStateCheck();
+            Serial.println("找到normolRemoteService服务");
+            normolNotifyCharacteristic = normolRemoteService->getCharacteristic(NotifyUUIDNormal);
+            normolWriteCharacteristic = normolRemoteService->getCharacteristic(WriteUUIDNormal);
         }
         else
         {
-            Serial.print("pRemoteService为空");
+            Serial.println("normolRemoteService为空");
         }
+
+        return ServerStateCheck();
     }
     else
     {
@@ -539,6 +569,30 @@ bool connectToServer()
 
 bool ServerStateCheck()
 {
+
+    if (LOGUUIDCharacteristic != nullptr)
+    {
+        Serial.println("找到我们的日志传输特征");
+        if (LOGUUIDCharacteristic->canNotify()) // 注册特征通知回调
+        {
+            Serial.println("注册日志特征通知回调");
+            if (pClient->isConnected())
+            {
+                LOGUUIDCharacteristic->registerForNotify(brushLogNotifyCallback);
+            }
+            else
+            {
+                Serial.println("蓝牙还没有连接");
+                candeleteble = true;
+                return false;
+            }
+        }
+    }
+    else
+    {
+        Serial.print("找不到log消息提醒UUID：");
+        Serial.println(LogUUID.toString().c_str());
+    }
 
     if (CAMERAUUIDCharacteristic != nullptr)
     {
@@ -588,13 +642,28 @@ bool ServerStateCheck()
         Serial.println(NotifyUUID.toString().c_str());
     }
 
-    if (DataCharacteristic != nullptr)
+    if (AppNotifyCharacteristic != nullptr)
     {
+        if (AppNotifyCharacteristic->canNotify()) // 注册特征通知回调
+        {
+            Serial.println("注册特征通知回调");
+
+            if (pClient->isConnected())
+            {
+                AppNotifyCharacteristic->registerForNotify(notifyCallback);
+            }
+            else
+            {
+                Serial.println("蓝牙没有连接");
+                candeleteble = true;
+                return false;
+            }
+        }
         Serial.println("找到我们的DataCharacteristic写入特征");
     }
     else
     {
-        Serial.println("找不到ota的数据传输特征");
+        Serial.println("找不到AppDataCharacteristic的数据传输特征");
     }
 
     if (WriteCharacteristic != nullptr)
