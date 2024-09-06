@@ -366,13 +366,13 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     // uint chargingCurrent;
     datapack.chargingCurrent = (static_cast<uint8_t>(receivebuf.at(10)) << 8) | static_cast<uint8_t>(receivebuf.at(11));
 
-    if (pack.product == "Q20" || pack.product == "U7") {
+    if (pack.product == "Q20" || pack.product == "U7"||pack.product == "U7P") {
         datapack.musicCurrent =
             (static_cast<uint8_t>(receivebuf.at(12)) << 8) | static_cast<uint8_t>(receivebuf.at(13));
     } else {
         datapack.music_state = receivebuf.at(12);
     }
-    if (pack.product == "U7") {
+    if (pack.product == "U7"||pack.product == "U7P") {
         datapack.shipCurrent = (static_cast<uint8_t>(receivebuf.at(14)) << 8) | static_cast<uint8_t>(receivebuf.at(15));
     }
 
@@ -385,7 +385,7 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     qDebug() << "按键2:" << datapack.button2;
     qDebug() << "充电电流:" << datapack.chargingCurrent << "ma";
 
-    if (pack.product == "Q20" || pack.product == "U7") {
+    if (pack.product == "Q20" || pack.product == "U7"||pack.product == "U7P") {
         qDebug() << "音频电流:" << datapack.musicCurrent;
     } else {
         qDebug() << "音频情况:" << datapack.music_state;

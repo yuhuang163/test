@@ -394,6 +394,8 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
                  << "res_version" << data.res_version;
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "imu_id" << data.imu_id;
+        // qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+        //          << "imu_id" << data.imu_id;
 
         QString mac;
         mac.clear();
@@ -433,13 +435,15 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         QString imuId = settings.value("ProductInfo/IMU_ID").toString();
         QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
         QString motorVersion = settings.value("ProductInfo/Motor_Ver").toString();
+        QString camera_id = settings.value("ProductInfo/Camera_Id").toString();
 
         if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
             data.ble_version == ble_ver && data.motor_version == motorVersion &&
             data.presure_version == pressureSenseVersion && data.product_name == productName &&
             QString("%1").arg(data.pb_phone_ver) == appProtocolVersion &&
             QString("%1").arg(data.pb_factory_ver) == factoryProtocolVersion && data.soft_version == softwareVersion &&
-            data.res_version == resourceVersion && QString::number(data.imu_id) == imuId)
+            data.res_version == resourceVersion && QString::number(data.imu_id) == imuId &&
+            data.camera_version == camera_id)
 
         {
             base_state = 1;
@@ -500,6 +504,11 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         test.testItem = "工厂的pb版本";
         test.testData = QString("%1").arg(data.pb_factory_ver);
         test.ask = factoryProtocolVersion;
+        testItems.append(test);
+
+        test.testItem = "摄像头id";
+        test.testData = QString::fromUtf8(data.camera_version);
+        test.ask = camera_id;
         testItems.append(test);
 
         log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
@@ -661,11 +670,11 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData) {
     QList<TestItem> testItems;
 
     // 根据产品类型进行特定测试
-    if (pack.product == "U7") {
+    if (pack.product == "U7" || pack.product == "U7P") {
         processTestItem("船运电流", packetData.shipCurrent, LowshipCurrent, HighshipCurrent, testItems);
     }
 
-    if (pack.product == "Q20" || pack.product == "U7") {
+    if (pack.product == "Q20" || pack.product == "U7" || pack.product == "U7P") {
         processTestItem("音频电流", packetData.musicCurrent, LowmusicCurrent, HighmusicCurrent, testItems);
     } else {
         processSimpleTestItem("音频测试", packetData.music_state, music_state, testItems);
