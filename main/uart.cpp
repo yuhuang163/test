@@ -334,7 +334,7 @@ void serialEventTask(void *pvParameters)
             }
             delete[] tempBuffer; // 释放动态分配的内存
         }
-        vTaskDelay(4); // 让出处理器
+        vTaskDelay(1); // 让出处理器
     }
     Serial.print("serialEventTask线程退出");
 }
@@ -443,7 +443,9 @@ void processDataTask(void *pvParameters)
             }
             Serial.print("处理掉数据大小1：");
             Serial.println(packetSize);
+            packetSize=0;
         }
+
         vTaskDelay(1); // 延时一段时间，避免空转
     }
     Serial.print("processDataTask线程退出");
