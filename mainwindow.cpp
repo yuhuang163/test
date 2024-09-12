@@ -102,6 +102,7 @@ MainWindow::MainWindow(QWidget* parent) :
     board_sn = new QLabel("板子sn:                        ");
     tail_sn = new QLabel("尾盖sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
+    sku_id = new QLabel("sku_id:        ");
 
     otaSourceSet(1);  // 一开机锁住
     otaFwSet(1);      // 一开机锁住
@@ -126,6 +127,8 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(tail_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
+    ui->statusbar->addPermanentWidget(sku_id);
+
     ui->statusbar->addPermanentWidget(macLabel);
     ui->statusbar->addPermanentWidget(bleStatusLabel);
     ui->statusbar->addPermanentWidget(WifiStatusLabel);
@@ -142,8 +145,19 @@ MainWindow::MainWindow(QWidget* parent) :
                << "No Memory"
                << "TRANS_TIMEOUT"
                << "TRANS_OVER_RANGE"
-               << "下载成功"
-               << "下载失败";
+               << " 下载成功"
+               << "下载失败"
+               << "没有配网"
+               << "网络连接失败"
+               << "获取文件URL失败"
+               << "文件下载校验失败"
+               << "文件下载安装失败"
+               << "找不到网络"
+               << "密码错误"
+               << "正在下载文件中"
+               << "WIFI已禁用"
+               << "资源更新中"
+               << "存储空间不足";
 
     connect(pb, SIGNAL(send_ota_flow_control(int)), this, SLOT(setBleOtaState(int)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
@@ -170,6 +184,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
         otaFinish = true;
         if (r == 11) {
+            on_disconnectButton_clicked();
+            ui->bleotamacInput->clear();
+            ui->bleotamacInput->setFocus();
             ui->bleotaresult->setText("PASS");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                             "black; border: 2px solid #00FF00; border-radius: "
@@ -178,6 +195,9 @@ MainWindow::MainWindow(QWidget* parent) :
                 on_bleotamacInput_returnPressed();
             }
         } else {
+            on_disconnectButton_clicked();
+            ui->bleotamacInput->clear();
+            ui->bleotamacInput->setFocus();
             ui->bleotaresult->setText("FAIL");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
                                             "black; border: 2px solid #FF0000; border-radius: "
@@ -3058,7 +3078,6 @@ void MainWindow::on_startBleOta_clicked() {
             showlog("文件发送完毕!");
             bleotatimer->stop();
             currentChunk = 0;
-
             return;
         }
 
@@ -3139,3 +3158,15 @@ void MainWindow::on_stop_noisy_clicked() {
 }
 
 void MainWindow::on_getBackLog_clicked() { pb->get_bursh_backlog(1); }
+
+void MainWindow::on_write_device_skuid_clicked() {
+    QByteArray skuid = getValueBySN(ui->snInput->text()).toUtf8();
+
+    pb->set_sn(FacDevInfoType_SKUID, skuid);
+    showlog("已绑定skuid到牙刷");
+}
+
+void MainWindow::on_get_device_skuid_clicked() {
+    pb->get_sn(FacDevInfoType_SKUID);
+    showlog("开始获取skuid");
+}

@@ -26,7 +26,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
         QTextStream stream(&file);
 
         // 写入表头
-        QStringList headers = {"sn", "上位机版本", "mac地址", "时间戳", "测试项", "测试数据", "测试结果"};
+        QStringList headers = {"sn", "上位机版本", "mac地址", "时间戳", "测试项", "测试数据", "测试结果", "测试要求"};
 
         // 获取当前时间戳
         QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
@@ -63,7 +63,7 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
 
     // 生成文件路径
     QString fileNamemacAddress = macAddress;
-    //QString fileName = QString::number(m_index) + ".log";
+    // QString fileName = QString::number(m_index) + ".log";
     QString fileName = fileNamemacAddress.remove(":") + ".log";
     QString filePath = dir.filePath(folderName + "/" + fileName);
 

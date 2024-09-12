@@ -657,6 +657,13 @@
                        </property>
                       </widget>
                      </item>
+                     <item>
+                      <widget class="QPushButton" name="get_device_skuid">
+                       <property name="text">
+                        <string>获取skuid</string>
+                       </property>
+                      </widget>
+                     </item>
                     </layout>
                    </item>
                    <item>
@@ -682,6 +689,13 @@
                       <widget class="QPushButton" name="write_device_subpid">
                        <property name="text">
                         <string>写入设备sbupid</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="write_device_skuid">
+                       <property name="text">
+                        <string>写入skuid</string>
                        </property>
                       </widget>
                      </item>

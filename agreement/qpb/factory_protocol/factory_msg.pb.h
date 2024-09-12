@@ -90,7 +90,8 @@ typedef enum _FacDevInfoType {
     FacDevInfoType_BRUSH_MODE = 3, 
     FacDevInfoType_BATTERY_INFO = 4, 
     FacDevInfoType_IF_QUALIFIED = 5, /* 工厂测试结果 */
-    FacDevInfoType_SUB_PID = 6 
+    FacDevInfoType_SUB_PID = 6, 
+    FacDevInfoType_SKUID = 7 
 } FacDevInfoType;
 
 typedef enum _FacChargeStateType { 
@@ -485,6 +486,7 @@ typedef struct _FacDevInfoValue {
         FacBatteryInfo battery;
         FacSwitch if_qualified;
         char sub_pid[64];
+        char sku_id[64];
     } value_item; 
 } FacDevInfoValue;
 
@@ -665,8 +667,8 @@ typedef struct _FactoryDataPackage {
 #define _FacSwitch_ARRAYSIZE ((FacSwitch)(FacSwitch_START+1))
 
 #define _FacDevInfoType_MIN FacDevInfoType_WIFI_INFO
-#define _FacDevInfoType_MAX FacDevInfoType_SUB_PID
-#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_SUB_PID+1))
+#define _FacDevInfoType_MAX FacDevInfoType_SKUID
+#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_SKUID+1))
 
 #define _FacChargeStateType_MIN FacChargeStateType_ERROR
 #define _FacChargeStateType_MAX FacChargeStateType_NO_BATT
@@ -962,6 +964,7 @@ extern "C" {
 #define FacDevInfoValue_battery_tag              6
 #define FacDevInfoValue_if_qualified_tag         7
 #define FacDevInfoValue_sub_pid_tag              8
+#define FacDevInfoValue_sku_id_tag               9
 #define FacImuCalibResult_gyro_x_tag             1
 #define FacImuCalibResult_gyro_y_tag             2
 #define FacImuCalibResult_gyro_z_tag             3
@@ -1164,7 +1167,8 @@ X(a, STATIC,   ONEOF,    STRING,   (value_item,board_sn,value_item.board_sn),   
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,brush_mode,value_item.brush_mode),   5) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,battery,value_item.battery),   6) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualified),   7) \
-X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8)
+X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,sku_id,value_item.sku_id),   9)
 #define FacDevInfoValue_CALLBACK NULL
 #define FacDevInfoValue_DEFAULT NULL
 #define FacDevInfoValue_value_item_wifi_info_MSGTYPE FacWifiInfo

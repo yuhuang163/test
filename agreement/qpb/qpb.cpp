@@ -1802,31 +1802,42 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
       << "下载失败"
       << "没有配网"
       << "网络连接失败"
-      << "获取文件信息失败"
-      << "RotaErrorCode_DOWNLOAD_CHECKOUT"
-      << "RotaErrorCode_INSTALL_FAIL";
+      << "获取文件URL失败"
+      << "文件下载校验失败"
+      << "文件下载安装失败"
+      << "找不到网络"
+      << "密码错误"
+      << "正在下载文件中"
+      << "WIFI已禁用"
+      << "资源更新中"
+      << "存储空间不足";
 
     switch (f.command_id) {
         case CommandId_ROTAS_FILE_STATUS_RSP:
-
-            if (f.command_data.rota_file_status_rsp.result < s.size())
+            if (f.command_data.rota_file_status_rsp.result < s.size()) {
                 emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
-            else
-                emit send_pb_info(QString("%1").arg(f.command_data.rota_file_status_rsp.result));
-            // emit send_ota_result(f.command_data.rota_file_status_rsp.result);
+            } else {
+                emit send_pb_date(QString("未知错误码: %1").arg(f.command_data.rota_file_status_rsp.result));
+            }
             break;
 
         case CommandId_ROTAS_DATA_RSP:
-            if (f.command_data.rota_data_rsp.progress)
+            if (f.command_data.rota_data_rsp.progress) {
                 emit send_ota_progress(f.command_data.rota_data_rsp.progress);
-            else
+            } else {
                 qDebug() << "是0的进度已经省略显示";
+            }
             break;
 
         case CommandId_ROTAS_RESULT_REQ:
-            emit send_pb_date(s[f.command_data.rota_result_req.rotaResult]);
-            emit send_ota_result(f.command_data.rota_result_req.rotaResult);
+            if (f.command_data.rota_result_req.rotaResult < s.size()) {
+                emit send_pb_date(s[f.command_data.rota_result_req.rotaResult]);
+                emit send_ota_result(f.command_data.rota_result_req.rotaResult);
+            } else {
+                emit send_pb_date(QString("未知结果码: %1").arg(f.command_data.rota_result_req.rotaResult));
+            }
             break;
+
         default: break;
     }
 }

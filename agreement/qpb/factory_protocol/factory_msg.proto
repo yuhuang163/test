@@ -197,7 +197,7 @@ enum FacDevInfoType
     BATTERY_INFO = 4;
     IF_QUALIFIED = 5;//工厂测试结果
     SUB_PID = 6;
-
+    SKUID = 7;
 }
 
 enum FacChargeStateType
@@ -233,6 +233,7 @@ message FacDevInfoValue {
         FacBatteryInfo battery = 6;
         FacSwitch if_qualified = 7;
         string sub_pid = 8 [(nanopb).max_size = 64];
+         string sku_id = 9 [(nanopb).max_size = 64];
 
     }
 }
@@ -804,11 +805,13 @@ message FacImuCalibResult
 
 
 /*********************设置刷牙时间区域******************/
+
 message FacSetTime
 {
     uint32 timestamp = 1;
     uint32 timezone = 2;
 }
+
 /*********************设置刷牙时间区域******************/
 
 
@@ -832,6 +835,7 @@ message FacSetBrushRecord
 
 
 /*********************配置wifi远程ota区域******************/
+
 message FacOtaFileInfo 
 {
     uint32 file_size = 1;

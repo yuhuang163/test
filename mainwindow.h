@@ -175,6 +175,9 @@ private:
     QLabel* board_sn = nullptr;
     QLabel* tail_sn = nullptr;
     QLabel* sub_pid = nullptr;
+    QLabel* sku_id = nullptr;
+
+
 
     std::atomic<bool> running;
     QFuture<void> future;
@@ -470,6 +473,9 @@ private slots:
     void on_stop_noisy_clicked();
 
     void on_getBackLog_clicked();
+    void on_write_device_skuid_clicked();
+
+    void on_get_device_skuid_clicked();
 
 signals:
     void send_uart_state(int data);

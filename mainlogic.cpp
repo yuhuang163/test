@@ -1260,6 +1260,11 @@ void MainWindow::refreshSn(FacDevInfo data) {
         QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
         tail_sn->setText("尾盖sn:" + tail_sn_string);
     }
+    if (data.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
+        qDebug() << "原始的skuid：" << data.dev_info[0].value_item.sku_id;
+        QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.sku_id);
+        sku_id->setText("sku:" + tail_sn_string);
+    }
 }
 void MainWindow::refreshBleRssi(QString data) {
     // qDebug() << "rssi = " << data;

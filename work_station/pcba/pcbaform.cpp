@@ -810,8 +810,11 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
 
         TestItem test;
         test.testItem = "六轴数据";
-        test.testData =
-            QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]").arg(axis).arg(value).arg(lower).arg(upper);
+        test.testData = QString("六轴数据异常: %1 超出范围. 实际值: %2， 范围: [%3， %4]")
+                            .arg(axis)
+                            .arg(value)
+                            .arg(lower)
+                            .arg(upper);
         test.testResult = failValue;
         test.ask = "通过";
         testItems.append(test);
@@ -821,7 +824,7 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
 
         is_imu_correct_data = 2;
 
-        showlog(QString("六轴数据异常: %1 超出范围. 实际值: %2, 范围: [%3, %4]")
+        showlog(QString("六轴数据异常: %1 超出范围. 实际值: %2，范围: [%3， %4]")
                     .arg(axis)
                     .arg(value)
                     .arg(lower)
