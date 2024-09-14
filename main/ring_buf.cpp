@@ -32,28 +32,39 @@ void bufferWrite(const byte *data, size_t length)
 
 size_t bufferRead(byte *data, size_t length)
 {
-    // 确保长度不超过缓冲区大小
-    size_t readLength = length;
+
+    size_t readLength = length; // 确保长度不超过缓冲区大小
     if (readLength > UART_RING_BUFFER_SIZE)
     {
+        Serial.print("读取失败，需要读取的太多");
+        Serial.println(readLength);
         readLength = UART_RING_BUFFER_SIZE;
     }
 
     size_t bytesRead = 0;
-    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, pdMS_TO_TICKS(500));
+    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, pdMS_TO_TICKS(50));
     if (temp != NULL)
     {
-        size_t copyLength = (bytesRead < readLength) ? bytesRead : readLength;
+        size_t copyLength = 0;
+        if (bytesRead < readLength)
+        {
+            copyLength = bytesRead;
+        }
+        else
+        {
+            Serial.print("失败，实际读取的大于需要的");
+            copyLength = readLength;
+        }
+
         memcpy(data, temp, copyLength);
-        vRingbufferReturnItem(ringBuffer, temp);
+        vRingbufferReturnItem(ringBuffer, temp); // 清空已经使用的缓存区
         return copyLength;
     }
-    // else
-    // {
-    //     Serial.println("读取环形队列数据失败");
-    // }
+    else
+    {
 
-    return 0;
+        return 0;
+    }
 }
 
 void cleanupRingBuffer()

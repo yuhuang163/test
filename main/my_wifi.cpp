@@ -199,52 +199,54 @@ void cmd_data()
 }
 
 const int numReadings = 100; // 设置读取的数量
-int WifiReadings[numReadings];
 
-int wifimedianFilter()
+// 创建二维数组，每个设备维护一个RSSI数组
+int WifiReadings[10][numReadings]; // 假设最多有10个设备连接
+int numberWifiRssi[10] = {0};      // 记录每个设备当前的读取数量
+
+int wifimedianFilter(int deviceIndex)
 {
     // 对数组排序
     for (int i = 0; i < numReadings - 1; i++)
     {
         for (int j = i + 1; j < numReadings; j++)
         {
-            if (WifiReadings[i] > WifiReadings[j])
+            if (WifiReadings[deviceIndex][i] > WifiReadings[deviceIndex][j])
             {
-                int temp = WifiReadings[i];
-                WifiReadings[i] = WifiReadings[j];
-                WifiReadings[j] = temp;
+                int temp = WifiReadings[deviceIndex][i];
+                WifiReadings[deviceIndex][i] = WifiReadings[deviceIndex][j];
+                WifiReadings[deviceIndex][j] = temp;
             }
         }
     }
 
     // 返回中位数
-    return WifiReadings[numReadings / 2];
+    return WifiReadings[deviceIndex][numReadings / 2];
 }
 
-int numberWifiRssi = 0;
 void print_wifi_rssi(int numClients)
 {
+    wifi_sta_list_t stationList;
+    esp_wifi_ap_get_sta_list(&stationList);
     for (int i = 0; i < numClients; i++)
     {
-        wifi_sta_list_t stationList;
-        esp_wifi_ap_get_sta_list(&stationList);
-        if (numberWifiRssi >= numReadings)
+        if (numberWifiRssi[i] >= numReadings)
         {
             Serial.print("AT+WIFI_DATA=");
 
-            numberWifiRssi = 0;
-            int stableStrength = wifimedianFilter();
+            numberWifiRssi[i] = 0;
+            int stableStrength = wifimedianFilter(i);
             uint8_t mac[6];
             memcpy(mac, stationList.sta[i].mac, 6);
-            for (int i = 0; i < 6; i++)
+            for (int j = 0; j < 6; j++)
             {
-                Serial.print(mac[i], HEX);
-                if (i < 5)
+                Serial.print(mac[j], HEX);
+                if (j < 5)
                     Serial.print(":");
             }
             Serial.println(stableStrength);
         }
-        WifiReadings[numberWifiRssi] = stationList.sta[i].rssi; // 获取蓝牙信号强度
-        numberWifiRssi++;
+        WifiReadings[i][numberWifiRssi[i]] = stationList.sta[i].rssi; // 获取WiFi信号强度
+        numberWifiRssi[i]++;
     }
 }

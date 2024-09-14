@@ -334,7 +334,11 @@ void serialEventTask(void *pvParameters)
             }
             delete[] tempBuffer; // 释放动态分配的内存
         }
-        vTaskDelay(1); // 让出处理器
+        else
+        {
+            Serial.println("wait receive");
+        }
+        vTaskDelay(10); // 让出处理器
     }
     Serial.print("serialEventTask线程退出");
 }
@@ -393,7 +397,8 @@ void processDataTask(void *pvParameters)
                 uartsolvesize = uartsolvesize + packetSize;
                 Serial.print("处理总数");
                 Serial.println(uartsolvesize);
-            }else
+            }
+            else
             {
                 memcpy(pbpacket + pboffset, packet, packetSize);
                 pboffset += packetSize;
@@ -437,13 +442,13 @@ void processDataTask(void *pvParameters)
                     }
                 }
             }
-      for (size_t i = 0; i < packetSize; ++i)
+            for (size_t i = 0; i < packetSize; ++i)
             {
                 processATChar((char)packet[i]);
             }
             Serial.print("处理掉数据大小1：");
             Serial.println(packetSize);
-            packetSize=0;
+            packetSize = 0;
         }
 
         vTaskDelay(1); // 延时一段时间，避免空转
