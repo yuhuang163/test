@@ -25,6 +25,7 @@ typedef enum _FactroyCmd {
     FactroyCmd_GET_PERIPH_STATE = 4, 
     FactroyCmd_SET_DEVICE_INFO = 5, 
     FactroyCmd_GET_DEVICE_INFO = 6, 
+    FactroyCmd_SET_DEVICE_BASE_INFO = 7, 
     FactroyCmd_SET_COLLECT_PARAM = 16, 
     FactroyCmd_GET_COLLECT_PARAM = 17, 
     FactroyCmd_UPLOAD_PRESS_SENSOR = 19, 
@@ -61,6 +62,24 @@ typedef enum _FacProtoId {
     FacProtoId_V105 = 105, 
     FacProtoId_V106 = 106 
 } FacProtoId;
+
+typedef enum _FacBasInfoType { 
+    FacBasInfoType_PRODUCT_NAME = 0, 
+    FacBasInfoType_PB_PHONE_VER = 1, 
+    FacBasInfoType_PB_FACTORY_VER = 2, 
+    FacBasInfoType_HW_VERSION = 3, 
+    FacBasInfoType_SOFT_VERSION = 4, 
+    FacBasInfoType_RES_VERSION = 5, 
+    FacBasInfoType_ALGO_VERSION = 6, 
+    FacBasInfoType_PRESURE_VERSION = 7, 
+    FacBasInfoType_BLE_MAC = 8, 
+    FacBasInfoType_WIFI_MAC = 9, 
+    FacBasInfoType_IMU_ID = 10, 
+    FacBasInfoType_AGEING_STATE = 11, 
+    FacBasInfoType_MOTOR_VERSION = 12, 
+    FacBasInfoType_BLE_VERSION = 13, 
+    FacBasInfoType_CAMERA_VERSION = 14 
+} FacBasInfoType;
 
 /* ********************设备状态设置区域***************** */
 typedef enum _DevStateType { 
@@ -397,6 +416,30 @@ typedef struct _FacSetBrushRecord {
     FacSetBrushRecord_horizon_brush_t horizon_brush; 
 } FacSetBrushRecord;
 
+typedef PB_BYTES_ARRAY_T(6) FacSetDevBaseInfo_ble_mac_t;
+typedef PB_BYTES_ARRAY_T(6) FacSetDevBaseInfo_wifi_mac_t;
+typedef struct _FacSetDevBaseInfo { 
+    FacBasInfoType basinfo_item; 
+    pb_size_t which_value_item;
+    union {
+        char product_name[8];
+        uint32_t pb_phone_ver;
+        FacProtoId pb_factory_ver;
+        char hw_version[24];
+        char soft_version[24];
+        char res_version[24];
+        char algo_version[24];
+        char presure_version[24];
+        FacSetDevBaseInfo_ble_mac_t ble_mac;
+        FacSetDevBaseInfo_wifi_mac_t wifi_mac;
+        uint32_t imu_id;
+        bool ageing_state;
+        char motor_version[24];
+        char ble_version[24];
+        char camera_version[24];
+    } value_item; /* string */
+} FacSetDevBaseInfo;
+
 typedef struct _FacSetTime { 
     uint32_t timestamp; 
     uint32_t timezone; 
@@ -618,6 +661,7 @@ typedef struct _FactoryDataPackage {
         FacGetPeriphState get_periph_state;
         FacDevInfo get_dev_info;
         FacDevInfo set_dev_info;
+        FacSetDevBaseInfo set_dev_base_info;
         FacCollectParam set_collect_param;
         FacCollectParam get_collect_param;
         FacUploadPresSensor press_sensor;
@@ -657,6 +701,10 @@ typedef struct _FactoryDataPackage {
 #define _FacProtoId_MIN FacProtoId_PROTOCOL_NONE
 #define _FacProtoId_MAX FacProtoId_V106
 #define _FacProtoId_ARRAYSIZE ((FacProtoId)(FacProtoId_V106+1))
+
+#define _FacBasInfoType_MIN FacBasInfoType_PRODUCT_NAME
+#define _FacBasInfoType_MAX FacBasInfoType_CAMERA_VERSION
+#define _FacBasInfoType_ARRAYSIZE ((FacBasInfoType)(FacBasInfoType_CAMERA_VERSION+1))
 
 #define _DevStateType_MIN DevStateType_REBOOT
 #define _DevStateType_MAX DevStateType_MOTOR_ADC_MOS
@@ -738,6 +786,7 @@ extern "C" {
 /* Initializer values for message structs */
 #define FactoryDataPackage_init_default          {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_default}}
 #define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
+#define FacSetDevBaseInfo_init_default           {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0}
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
@@ -779,6 +828,7 @@ extern "C" {
 #define FacInternetOta_init_default              {0, {FacOtaFileInfo_init_default, FacOtaFileInfo_init_default}, _FacErrorCode_MIN}
 #define FactoryDataPackage_init_zero             {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_zero}}
 #define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
+#define FacSetDevBaseInfo_init_zero              {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0}
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
@@ -911,6 +961,22 @@ extern "C" {
 #define FacSetBrushRecord_work_time_tag          3
 #define FacSetBrushRecord_pressure_time_tag      4
 #define FacSetBrushRecord_horizon_brush_tag      5
+#define FacSetDevBaseInfo_basinfo_item_tag       1
+#define FacSetDevBaseInfo_product_name_tag       2
+#define FacSetDevBaseInfo_pb_phone_ver_tag       3
+#define FacSetDevBaseInfo_pb_factory_ver_tag     4
+#define FacSetDevBaseInfo_hw_version_tag         5
+#define FacSetDevBaseInfo_soft_version_tag       6
+#define FacSetDevBaseInfo_res_version_tag        7
+#define FacSetDevBaseInfo_algo_version_tag       8
+#define FacSetDevBaseInfo_presure_version_tag    9
+#define FacSetDevBaseInfo_ble_mac_tag            10
+#define FacSetDevBaseInfo_wifi_mac_tag           11
+#define FacSetDevBaseInfo_imu_id_tag             12
+#define FacSetDevBaseInfo_ageing_state_tag       13
+#define FacSetDevBaseInfo_motor_version_tag      14
+#define FacSetDevBaseInfo_ble_version_tag        15
+#define FacSetDevBaseInfo_camera_version_tag     16
 #define FacSetTime_timestamp_tag                 1
 #define FacSetTime_timezone_tag                  2
 #define FacWifiInfo_wifi_name_tag                1
@@ -1029,6 +1095,7 @@ extern "C" {
 #define FactoryDataPackage_get_periph_state_tag  5
 #define FactoryDataPackage_get_dev_info_tag      6
 #define FactoryDataPackage_set_dev_info_tag      7
+#define FactoryDataPackage_set_dev_base_info_tag 8
 #define FactoryDataPackage_set_collect_param_tag 16
 #define FactoryDataPackage_get_collect_param_tag 17
 #define FactoryDataPackage_press_sensor_tag      19
@@ -1062,6 +1129,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_dev_state,command_data.get_
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_periph_state,command_data.get_periph_state),   5) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_dev_info,command_data.get_dev_info),   6) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_dev_info,command_data.set_dev_info),   7) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_dev_base_info,command_data.set_dev_base_info),   8) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_collect_param,command_data.set_collect_param),  16) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_collect_param,command_data.get_collect_param),  17) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,press_sensor,command_data.press_sensor),  19) \
@@ -1093,6 +1161,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.inter
 #define FactoryDataPackage_command_data_get_periph_state_MSGTYPE FacGetPeriphState
 #define FactoryDataPackage_command_data_get_dev_info_MSGTYPE FacDevInfo
 #define FactoryDataPackage_command_data_set_dev_info_MSGTYPE FacDevInfo
+#define FactoryDataPackage_command_data_set_dev_base_info_MSGTYPE FacSetDevBaseInfo
 #define FactoryDataPackage_command_data_set_collect_param_MSGTYPE FacCollectParam
 #define FactoryDataPackage_command_data_get_collect_param_MSGTYPE FacCollectParam
 #define FactoryDataPackage_command_data_press_sensor_MSGTYPE FacUploadPresSensor
@@ -1136,6 +1205,26 @@ X(a, STATIC,   SINGULAR, STRING,   camera_version,   15) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacGetDevBaseInfo_CALLBACK NULL
 #define FacGetDevBaseInfo_DEFAULT NULL
+
+#define FacSetDevBaseInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    basinfo_item,      1) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,product_name,value_item.product_name),   2) \
+X(a, STATIC,   ONEOF,    UINT32,   (value_item,pb_phone_ver,value_item.pb_phone_ver),   3) \
+X(a, STATIC,   ONEOF,    UENUM,    (value_item,pb_factory_ver,value_item.pb_factory_ver),   4) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,hw_version,value_item.hw_version),   5) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,soft_version,value_item.soft_version),   6) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,res_version,value_item.res_version),   7) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,algo_version,value_item.algo_version),   8) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,presure_version,value_item.presure_version),   9) \
+X(a, STATIC,   ONEOF,    BYTES,    (value_item,ble_mac,value_item.ble_mac),  10) \
+X(a, STATIC,   ONEOF,    BYTES,    (value_item,wifi_mac,value_item.wifi_mac),  11) \
+X(a, STATIC,   ONEOF,    UINT32,   (value_item,imu_id,value_item.imu_id),  12) \
+X(a, STATIC,   ONEOF,    BOOL,     (value_item,ageing_state,value_item.ageing_state),  13) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,motor_version,value_item.motor_version),  14) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,ble_version,value_item.ble_version),  15) \
+X(a, STATIC,   ONEOF,    STRING,   (value_item,camera_version,value_item.camera_version),  16)
+#define FacSetDevBaseInfo_CALLBACK NULL
+#define FacSetDevBaseInfo_DEFAULT NULL
 
 #define FacDevState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    dev_state_type,    1) \
@@ -1506,6 +1595,7 @@ X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 
 extern const pb_msgdesc_t FactoryDataPackage_msg;
 extern const pb_msgdesc_t FacGetDevBaseInfo_msg;
+extern const pb_msgdesc_t FacSetDevBaseInfo_msg;
 extern const pb_msgdesc_t FacDevState_msg;
 extern const pb_msgdesc_t FacBatteryInfo_msg;
 extern const pb_msgdesc_t FacWifiInfo_msg;
@@ -1549,6 +1639,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define FactoryDataPackage_fields &FactoryDataPackage_msg
 #define FacGetDevBaseInfo_fields &FacGetDevBaseInfo_msg
+#define FacSetDevBaseInfo_fields &FacSetDevBaseInfo_msg
 #define FacDevState_fields &FacDevState_msg
 #define FacBatteryInfo_fields &FacBatteryInfo_msg
 #define FacWifiInfo_fields &FacWifiInfo_msg
@@ -1620,6 +1711,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacPreSensorCalibResult_size             27
 #define FacRegisterConfig_size                   12
 #define FacSetBrushRecord_size                   66
+#define FacSetDevBaseInfo_size                   28
 #define FacSetTime_size                          12
 #define FacUploadNineAlex_size                   1683
 #define FacUploadPresSensor_size                 843

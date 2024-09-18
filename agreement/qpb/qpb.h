@@ -189,12 +189,13 @@ public slots:
     void set_brush_control(int state);                           // 设置刷牙控制状态
     void set_fac_mode(int state);                                // 设置工厂模式
     void set_sn(FacDevInfoType which_sn, const QByteArray& sn);  // 绑定SN码
-    void set_camera_picture_state(int state);                    // 设置摄像头图片状态
-    void set_local_ota(local_ota_data x[2]);                     // 设置本地OTA
-    void set_start_ota_app(RotasFileStatusReq RotasFiledata);    // 启动OTA应用
-    void set_i_am_app();                                         // 骗牙刷是app
-    void set_config_network_app(WifiInfo info);                  // 配置网络应用
-    void set_wifi_disconnect();                                  // 断开WiFi
+    void set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data);
+    void set_camera_picture_state(int state);                  // 设置摄像头图片状态
+    void set_local_ota(local_ota_data x[2]);                   // 设置本地OTA
+    void set_start_ota_app(RotasFileStatusReq RotasFiledata);  // 启动OTA应用
+    void set_i_am_app();                                       // 骗牙刷是app
+    void set_config_network_app(WifiInfo info);                // 配置网络应用
+    void set_wifi_disconnect();                                // 断开WiFi
     void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
                               const QString& port);  // 设置新的WiFi连接
     void set_press_collect_param(FacSwitch sta);     // 设置压力采集参数

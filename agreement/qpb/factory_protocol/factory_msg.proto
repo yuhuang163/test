@@ -32,6 +32,7 @@ enum FactroyCmd {
     GET_PERIPH_STATE = 0x04;
     SET_DEVICE_INFO = 0x05;
     GET_DEVICE_INFO = 0x06;
+    SET_DEVICE_BASE_INFO = 0x07;
 
     SET_COLLECT_PARAM = 0x10;
     GET_COLLECT_PARAM = 0x11;
@@ -70,6 +71,7 @@ message FactoryDataPackage {
         FacGetPeriphState get_periph_state = 5;
         FacDevInfo get_dev_info = 6;
         FacDevInfo set_dev_info = 7;
+        FacSetDevBaseInfo set_dev_base_info = 0x08;
 
         FacCollectParam set_collect_param = 0x10;
         FacCollectParam get_collect_param = 0x11;
@@ -138,6 +140,49 @@ message FacGetDevBaseInfo
     string camera_version = 15 [(nanopb).max_size= 24];	//string
     FacErrorCode result = 100;
 }
+
+
+enum FacBasInfoType
+{
+    PRODUCT_NAME = 0;
+    PB_PHONE_VER = 1;
+    PB_FACTORY_VER = 2;
+    HW_VERSION = 3;
+    SOFT_VERSION = 4;
+    RES_VERSION = 5;
+    ALGO_VERSION = 6;
+    PRESURE_VERSION = 7;
+    BLE_MAC = 8;
+    WIFI_MAC = 9;
+    IMU_ID = 10;
+    AGEING_STATE = 11;
+    MOTOR_VERSION = 12;
+    BLE_VERSION = 13;
+    CAMERA_VERSION = 14;
+}
+
+message FacSetDevBaseInfo {
+    FacBasInfoType basinfo_item = 1;
+    oneof value_item {
+        string product_name = 2 [(nanopb).max_size= 8];	 //string
+        uint32 pb_phone_ver = 3;	 //string	
+        FacProtoId pb_factory_ver = 4; //string
+        string hw_version = 5 [(nanopb).max_size= 24];	//string	
+        string soft_version = 6 [(nanopb).max_size= 24];	//string
+        string res_version = 7 [(nanopb).max_size= 24];	//string
+        string algo_version = 8 [(nanopb).max_size= 24];  //string
+        string presure_version = 9 [(nanopb).max_size= 24];
+        bytes ble_mac = 10 [(nanopb).max_size= 6];
+        bytes wifi_mac = 11 [(nanopb).max_size= 6];
+        uint32 imu_id = 12[(nanopb).max_size= 6];
+        bool ageing_state = 13;
+        string motor_version = 14 [(nanopb).max_size= 24];
+        string ble_version = 15 [(nanopb).max_size= 24];	//string
+        string camera_version = 16 [(nanopb).max_size= 24];	//string
+
+    }
+}
+
 /*********************设备基础信息区域******************/
 
 

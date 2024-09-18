@@ -12,6 +12,9 @@ PB_BIND(FactoryDataPackage, FactoryDataPackage, 2)
 PB_BIND(FacGetDevBaseInfo, FacGetDevBaseInfo, 2)
 
 
+PB_BIND(FacSetDevBaseInfo, FacSetDevBaseInfo, AUTO)
+
+
 PB_BIND(FacDevState, FacDevState, 2)
 
 
@@ -127,6 +130,7 @@ PB_BIND(FacOtaFileInfo, FacOtaFileInfo, 2)
 
 
 PB_BIND(FacInternetOta, FacInternetOta, 2)
+
 
 
 

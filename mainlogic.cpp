@@ -523,7 +523,8 @@ void MainWindow::readDongleSerialPortData() {
     // qDebug() << "cameradatasize:" << cameradatasize;
 
     if (write_len < len) {
-        qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();
+        qDebug() << "dongle"
+                 << "write_len:" << write_len << "len:" << dataTemp.size();
     }
 
     at->parseCmd(dataTemp);  // at回应用
@@ -2215,7 +2216,7 @@ void MainWindow::updateComboBox() {
 
                 if (ui->is_scan_connect->checkState())
                     at->sendMac(deviceAddress);  // 发送mac地址
-                qDebug() << "有新增" << deviceAddress;
+                // qDebug() << "有新增" << deviceAddress;
             }
             index = ui->pick_device->findText(deviceAddress);
 
@@ -2223,7 +2224,7 @@ void MainWindow::updateComboBox() {
                 ui->pick_device->addItem(deviceAddress);
                 if (ui->is_scan_connect->checkState())
                     at->sendMac(deviceAddress);  // 发送mac地址
-                qDebug() << "有新增" << deviceAddress;
+                //qDebug() << "有新增" << deviceAddress;
             }
         }
     }

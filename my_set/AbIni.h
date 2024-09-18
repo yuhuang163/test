@@ -55,8 +55,8 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.2"   // 增加sku读写功能
-#define CAMERA_VER "摄像测试工站   V1.1.6"  // 支持脏污自动化测试
+#define DEBUG_VER "电刷产测工具   V1.3.3"   // 增加sku读写功能
+#define CAMERA_VER "摄像测试工站   V1.1.7"  // 支持脏污自动化测试
 #define AGE_VER "老化测试工站   V1.1.8"     // 支持1拖多
 #define MOTOR_VER "电机校准工站   V1.1.7"   // 加定时器判断休
 #define QC_VER "静态电流测试   V1.3.5"      // 增加定时器判断休眠
@@ -67,8 +67,9 @@
 #define IMU_VER "IMU校准工站    V1.4.3"     // 支持自动化治具
 #define PCBA_VER "电刷板子测试   V1.3.3"    // 加定时器判断休
 
-// [DEBUG_VER] 增加sku读写功能，增加测试要求的日志保存，修复ota闪退问题
-// [CAMERA_VER] 支持脏污自动化测试，增加测试要求的日志保存
+// [DEBUG_VER] 增加写入pcbaver的版本功能,ota压测功能微调，取消打印设备名字就断开蓝牙
+// [CAMERA_VER] 增加wifi获取功能
+//
 // [IMU_VER] 增加测试要求的日志保存
 // [AGE_VER] 增加测试要求的日志保存
 // [MOTOR_VER] 增加测试要求的日志保存

@@ -183,27 +183,31 @@ MainWindow::MainWindow(QWidget* parent) :
         ui->bleOtaMsg->appendPlainText(otaResults[r]);
 
         otaFinish = true;
+
         if (r == 11) {
-            on_disconnectButton_clicked();
-            ui->bleotamacInput->clear();
-            ui->bleotamacInput->setFocus();
             ui->bleotaresult->setText("PASS");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                             "black; border: 2px solid #00FF00; border-radius: "
                                             "10px; padding: 10px; text-align: center;");
+            on_disconnectButton_clicked();
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
+            } else {
+                ui->bleotamacInput->clear();
+                ui->bleotamacInput->setFocus();
             }
+
         } else {
             on_disconnectButton_clicked();
-            ui->bleotamacInput->clear();
-            ui->bleotamacInput->setFocus();
             ui->bleotaresult->setText("FAIL");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
                                             "black; border: 2px solid #FF0000; border-radius: "
                                             "10px; padding: 10px; text-align: center; ");
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
+            } else {
+                ui->bleotamacInput->clear();
+                ui->bleotamacInput->setFocus();
             }
         }
     });
@@ -372,7 +376,7 @@ MainWindow::MainWindow(QWidget* parent) :
             solve_frame();
             // QCoreApplication::processEvents();
 
-            QThread::msleep(10);  // 等待10毫秒
+            QThread::msleep(5);  // 等待10毫秒
         }
     });
     running.store(true);
@@ -3160,7 +3164,7 @@ void MainWindow::on_stop_noisy_clicked() {
 void MainWindow::on_getBackLog_clicked() { pb->get_bursh_backlog(1); }
 
 void MainWindow::on_write_device_skuid_clicked() {
-    QByteArray skuid = getValueBySN(ui->snInput->text()).toUtf8();
+    QByteArray skuid = ui->snInput->text().toUtf8();
 
     pb->set_sn(FacDevInfoType_SKUID, skuid);
     showlog("已绑定skuid到牙刷");
@@ -3169,4 +3173,14 @@ void MainWindow::on_write_device_skuid_clicked() {
 void MainWindow::on_get_device_skuid_clicked() {
     pb->get_sn(FacDevInfoType_SKUID);
     showlog("开始获取skuid");
+}
+
+void MainWindow::on_set_hw_ver_clicked() {
+    QByteArray hwver = ui->hw_ver->text().toUtf8();
+    FacGetDevBaseInfo data;
+    // 使用 strncpy 复制字符数组
+    qstrncpy(data.hw_version, hwver, sizeof(data.hw_version) - 1);
+    // 确保目标数组以 null 终止
+    data.hw_version[sizeof(data.hw_version) - 1] = '\0';
+    pb->set_base_info(FacBasInfoType_HW_VERSION, data);
 }

@@ -153,7 +153,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     showlog("LowstaticCurrent=" + QString::number(LowstaticCurrent));
     showlog("RssiTestTime=" + QString::number(RssiTestTime));
 
-    if (pack.product == "P20P" || pack.product == "Q20") {
+    if (pack.product == "P20P" || pack.product == "Q20" || pack.product == "U7" || pack.product == "U7P") {
         ui->productDisconnectButton->setEnabled(1);
         ui->productConnectButton->setEnabled(1);
         ui->productComNameCombo->setEnabled(1);
@@ -1260,7 +1260,7 @@ void PcbaForm::startTask() {
                         //   waitWork(1500);
                         //   pb->set_device_mode(3);
                         //       pb->set_brush_control(1);
-                    } else if (pack.product == "P20P") {
+                    } else if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
                     } else {
@@ -1295,7 +1295,7 @@ void PcbaForm::startTask() {
                         pb->set_motor_state(1);
                         // waitWork(1500);
                         // pb->set_brush_control(1);
-                    } else if (pack.product == "P20P") {
+                    } else if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
                     } else {

@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>10</number>
+               <number>4</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3952,6 +3952,28 @@ border-color: rgb(255, 165, 0)</string>
                 <property name="text">
                  <string>停止采集噪声</string>
                 </property>
+               </widget>
+               <widget class="QWidget" name="layoutWidget">
+                <property name="geometry">
+                 <rect>
+                  <x>61</x>
+                  <y>120</y>
+                  <width>265</width>
+                  <height>30</height>
+                 </rect>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_90">
+                 <item>
+                  <widget class="QPushButton" name="set_hw_ver">
+                   <property name="text">
+                    <string>设置硬件版本号</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="hw_ver"/>
+                 </item>
+                </layout>
                </widget>
               </widget>
              </widget>

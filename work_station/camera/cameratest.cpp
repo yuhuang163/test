@@ -461,7 +461,19 @@ cameratest::~cameratest() {
     //
     delete ui;
 }
+void cameratest::getDongleWifi(QString data) {
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    showlog("获取到了wifi名字" + data);
 
+    // 保存密码
+    settings.setValue("WIFI/Password", "usmile123");
+    // 保存名称，带有索引
+    settings.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
+
+    ui->ssid_lineEdit->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+
+    ui->password_lineEdit->setText(settings.value("WIFI/Password", "123445566").toString());
+}
 void cameratest::on_disconnectButton_clicked() {
     closeDongleSerialPort();
     ui->comNameCombo->setEnabled(true);

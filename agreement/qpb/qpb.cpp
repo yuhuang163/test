@@ -114,7 +114,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
 
                         if (pb_mode == CLIENT) {
                             if (pb_decode(&istream, DataPackage_fields, &blePack)) {
-                                qDebug() << "command_id" << blePack.command_id;
+                                qDebug() << "blecommand_id" << blePack.command_id;
 
                                 auto it = bleCommandList.find(blePack.command_id);
                                 if (it != bleCommandList.end()) {
@@ -765,6 +765,26 @@ void Qpb::set_fac_result(int state) {
     qDebug() << "已发送工厂测试状态" << state;
 }
 
+void Qpb::set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data) {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+
+    FactroyCmd cmd = FactroyCmd_SET_DEVICE_BASE_INFO;
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_set_dev_base_info_tag;
+    if (which_info == FacBasInfoType_HW_VERSION) {
+        pack.command_data.set_dev_base_info.basinfo_item = which_info;
+
+        pack.command_data.set_dev_base_info.which_value_item = FacSetDevBaseInfo_hw_version_tag;
+        // 假设 hw_version 是一个字符数组，并且 data.hw_version 是以 null 终止的字符串
+        qstrncpy(pack.command_data.set_dev_base_info.value_item.hw_version, data.hw_version,
+                sizeof(pack.command_data.set_dev_base_info.value_item.hw_version) - 1);
+        // 确保目标数组以 null 终止
+        pack.command_data.set_dev_base_info.value_item
+            .hw_version[sizeof(pack.command_data.set_dev_base_info.value_item.hw_version) - 1] = '\0';
+    }
+}
+
 void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -795,6 +815,13 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
         pack.command_data.set_dev_info.dev_info[0]
             .value_item.sub_pid[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sub_pid_tag;
+    } else if (which_sn == FacDevInfoType_SKUID) {
+        pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
+        qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.sku_id, sn,
+                 sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sku_id) - 1);
+        pack.command_data.set_dev_info.dev_info[0]
+            .value_item.sub_pid[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.sku_id) - 1] = '\0';
+        pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sku_id_tag;
     } else {
         // 处理未知的 which_sn 值，你可以抛出错误或者采取其他适当的措施
         qDebug() << "未知的 which_sn 值";
@@ -822,6 +849,9 @@ void Qpb::get_sn(FacDevInfoType which_sn) {
     } else if (which_sn == FacDevInfoType_SUB_PID) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sub_pid_tag;
+    } else if (which_sn == FacDevInfoType_SKUID) {
+        pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
+        pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sku_id_tag;
     } else {
         // 处理未知的 which_sn 值，你可以抛出错误或者采取其他适当的措施
         qDebug() << "未知的 which_sn 值";
@@ -1659,6 +1689,11 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
         emit sendGetBrushResponse(1);
     }
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
+        emit send_sn_data(x);
+        qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
+        emit sendGetBrushResponse(1);
+    }
 }
 
 void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
@@ -1748,6 +1783,11 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
     if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN) {
         is_banding_ok = 1;
         qDebug() << "已经收到尾盖的sn回应";
+        emit sendGetBrushResponse(1);
+    }
+
+    if (x.dev_info[0].info_item == FacDevInfoType_SKUID) {
+        qDebug() << "已经收到skuid回应";
         emit sendGetBrushResponse(1);
     }
     if (x.dev_info[0].info_item == FacDevInfoType_WIFI_INFO) {

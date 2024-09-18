@@ -22,10 +22,12 @@ Qat::Qat(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {
 void Qat::parseCmd(const QByteArray& byte) {
     int cangonext = 0;
     foreach (char c, byte) { dataQueue.push_back((uint8_t)c); }
-    QString data = byte;
-    if (data.contains("deviceName")) {
-        disconnected(data);
-    }
+
+    // QString data = byte;
+    // if (data.contains("deviceName")) {
+    //     disconnected(data);
+    // }
+
     while (dataQueue.isEmpty() == false) {
         char c = dataQueue.dequeue();
 
