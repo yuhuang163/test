@@ -49,7 +49,7 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         QSettings settings(SETTING_NAME, QSettings::IniFormat);
         QString flashStatus = settings.value("PeripheralStatus/Flash_Status").toString();
 
-        if (data.flash_state == flashStatus.toInt() || flashStatus == "null") {
+        if (static_cast<int>(data.flash_state) == flashStatus.toInt() || flashStatus == "null") {
             flash_state = 1;
         } else {
             flash_state = 2;

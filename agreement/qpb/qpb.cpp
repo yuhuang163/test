@@ -1261,24 +1261,7 @@ void Qpb::set_solve_imu_collect_param(FacSwitch sta)  // 设置imu采集开关
     sendShortPack(pack);
     qDebug() << "设置处理后的imu采集开关" << sta;
 }
-void Qpb::set_camera_data_respone(FacErrorCode sta)  // 发送校准结果
-{
-    //  qDebug() << "pb1响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
 
-    // FactroyCmd cmd = FactroyCmd_CAMERA_CONTROL;
-    // FactoryDataPackage pack;
-    // memset(&pack, 0, sizeof(pack));
-    // pack.cmd_id = cmd;
-    // pack.which_command_data = FactoryDataPackage_camera_control_tag;
-    // pack.command_data.camera_control.which_value_item = FacCameraControl_respond_data_packet_tag;
-    // pack.command_data.camera_control.value_item.respond_data_packet = sta;
-    // pack.command_data.camera_control.type = FacCameraControlType_camera_respond_data_packet;
-    // sendShortPack(pack);
-    // //qDebug() << "发送摄像头数据包回应";
-    // qDebug() << "pb2响应" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-    // emit send_pb_date("发送摄像头数据包回应");
-}
 void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 发送校准结果
 {
     qDebug() << "错误个数" << count;

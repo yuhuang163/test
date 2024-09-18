@@ -200,7 +200,6 @@ public slots:
                               const QString& port);  // 设置新的WiFi连接
     void set_press_collect_param(FacSwitch sta);     // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);       // 设置IMU采集参数
-    void set_camera_data_respone(FacErrorCode sta);  // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
 
 public slots:

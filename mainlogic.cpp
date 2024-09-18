@@ -344,7 +344,7 @@ int MainWindow::ext_ble_find_next_picture_frame(QByteArray& picturedata) {
     return 0;
 }
 
-void MainWindow::printSquareData(uint8_t* data, size_t data_size) {
+void MainWindow::printSquareData(uint8_t* data, int data_size) {
     const int dimension = 180;         // 每行的列数
     const int totalItems = data_size;  // 数据总量
     for (int i = 0; i < totalItems; i += dimension) {
@@ -2527,7 +2527,7 @@ void MainWindow::getPictureSendOver(FacPictureDataAck x) {
     showlog("错误个数" + QString::number(faultData.size()));
     emit send_fault_data_packet(faultData.size(), faultData);
 }
-void MainWindow::downloadFile(const QString& urlStr, const QString& savePath) {
+void MainWindow::downloadMyApp(const QString& urlStr, const QString& savePath) {
     QUrl url(urlStr);
     QNetworkRequest request(url);
 

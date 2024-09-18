@@ -135,7 +135,7 @@ public:
         uint8_t data[0];
     } ext_uart_phy_layer_t;
 #pragma pack()
-    void printSquareData(uint8_t* data, size_t data_size);
+    void printSquareData(uint8_t* data, int data_size);
     ImageViewer* viewercamrea;
     ImageViewer* viewercamrea_py;
     typedef enum {

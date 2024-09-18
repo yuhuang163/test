@@ -1362,23 +1362,56 @@
                    </property>
                    <item row="0" column="0">
                     <layout class="QGridLayout" name="gridLayout_20">
-                     <item row="7" column="0">
-                      <widget class="QPushButton" name="open_support_camera">
-                       <property name="text">
-                        <string>摄像头支持开</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="6" column="0">
-                      <widget class="QPushButton" name="open_screen_show_camera">
+                     <item row="7" column="1">
+                      <widget class="QPushButton" name="close_screen_show_camera">
                        <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                          <horstretch>0</horstretch>
                          <verstretch>0</verstretch>
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>摄像头屏显开</string>
+                        <string>屏显关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="11" column="0">
+                      <widget class="QPushButton" name="close_camear_light">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>补光灯关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="9" column="1">
+                      <widget class="QPushButton" name="close_support_camera">
+                       <property name="text">
+                        <string>摄像头支持关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="7" column="0">
+                      <widget class="QPushButton" name="open_screen_show_camera">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>屏显开</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="9" column="0">
+                      <widget class="QPushButton" name="open_support_camera">
+                       <property name="text">
+                        <string>摄像头支持开</string>
                        </property>
                       </widget>
                      </item>
@@ -1399,6 +1432,33 @@
                         </widget>
                        </item>
                       </layout>
+                     </item>
+                     <item row="11" column="1">
+                      <widget class="QPushButton" name="open_camear_light">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>补光灯开</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="10" column="0">
+                      <widget class="QPushButton" name="open_camera_picture">
+                       <property name="text">
+                        <string>开启视频流</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="10" column="1">
+                      <widget class="QPushButton" name="close_camera_picture">
+                       <property name="text">
+                        <string>关闭视频流</string>
+                       </property>
+                      </widget>
                      </item>
                      <item row="5" column="0" colspan="2">
                       <layout class="QHBoxLayout" name="horizontalLayout_20">
@@ -1432,73 +1492,6 @@
                         </widget>
                        </item>
                       </layout>
-                     </item>
-                     <item row="9" column="0" colspan="2">
-                      <layout class="QHBoxLayout" name="horizontalLayout_72">
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QPushButton" name="close_camear_light">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>补光灯关</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="open_camear_light">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>补光灯开</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item row="6" column="1">
-                      <widget class="QPushButton" name="close_screen_show_camera">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>摄像头屏显关</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="7" column="1">
-                      <widget class="QPushButton" name="close_support_camera">
-                       <property name="text">
-                        <string>摄像头支持关</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="8" column="0">
-                      <widget class="QPushButton" name="open_camera_picture">
-                       <property name="text">
-                        <string>开启视频流</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="8" column="1">
-                      <widget class="QPushButton" name="close_camera_picture">
-                       <property name="text">
-                        <string>关闭视频流</string>
-                       </property>
-                      </widget>
                      </item>
                     </layout>
                    </item>

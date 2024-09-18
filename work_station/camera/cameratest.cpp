@@ -191,7 +191,6 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     // 将定时器的timeout信号连接到槽函数onTimeout
     connect(cameraSendTimer, &QTimer::timeout, this, &cameratest::onTimeout);
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
-    connect(this, SIGNAL(send_camera_respone(FacErrorCode)), pb, SLOT(set_camera_data_respone(FacErrorCode)));
     connect(this, &cameratest::send_image_processed, this, &cameratest::updateImageOnMainThread);
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
@@ -232,7 +231,9 @@ void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
         }
 
         int write_len = cameraRingBuf->usmile_ring_buffer_write(&p_cameraRingBuffer, p_data, data_len);
-        // qDebug() << "写入摄像头数据包长度"<<write_len;
+           if (write_len < data_len) {
+            qDebug() << "write_len:" << write_len << "len:" << data_len;
+        }
     } else {
         qDebug() << "通道不是摄像头";
     }
@@ -286,7 +287,7 @@ int cameratest::ext_ble_find_next_picture_frame(QByteArray& picturedata) {
     return 0;
 }
 
-void cameratest::printSquareData(uint8_t* data, size_t data_size) {
+void cameratest::printSquareData(uint8_t* data, int data_size) {
     if (data_size < 36000)
         return;
     const int dimension = 32;          // 每行的列数

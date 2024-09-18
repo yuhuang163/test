@@ -245,11 +245,11 @@ private slots:
     void checkAndUpdateFile();
     void deleteFile(const QString& remoteUrl);
     void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
-    void downloadFile(const QString& urlStr, const QString& savePath);
+    void downloadMyApp(const QString& urlStr, const QString& savePath);
     void uploadFile(const QString& localFilePath, const QString& remoteUrl);
     void checkMissingPackets();
     void addPacket(const QByteArray& packet);
-    void printSquareData(uint8_t* data, size_t data_size);
+    void printSquareData(uint8_t* data, int data_size);
     bool deleteCsvFile(const QString& filePath);
     void saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres);
     bool eventFilter(QObject* watched, QEvent* event);

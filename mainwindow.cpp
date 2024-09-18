@@ -44,13 +44,7 @@ void MainWindow::on_pushButton_clicked() {
     qDebug() << "Converted decodedString:" << decodedString;
     qDebug() << "Converted localString:" << localString;
 
-    // QVector<int> faultData = {1, 2, 3, 4, 5};
-    // emit send_fault_data_packet(faultData.size(), faultData);
 
-    // for(int i=0;i<100;i++){
-    //     pb->set_camera_data_respone(FacErrorCode_NO_ERROR);
-    //     waitWork(10);
-    // }
 }
 void MainWindow::on_pushButton_3_clicked() {
     pb->set_i_am_app();
@@ -228,7 +222,6 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this, SLOT(updateLocalOtaResult(FacInternetOta)));
 
-    connect(this, SIGNAL(send_camera_respone(FacErrorCode)), pb, SLOT(set_camera_data_respone(FacErrorCode)));
 
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
@@ -381,6 +374,8 @@ MainWindow::MainWindow(QWidget* parent) :
     });
     running.store(true);
 
+
+//上位机ota使用的
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 }
@@ -2973,7 +2968,7 @@ void MainWindow::on_downloadapp_clicked() {
     // QString url = "http://163.177.79.53:16888/versions/Readme.md";  // 替换为实际文件的URL
     // QString fileName = QFileInfo(url).fileName();
     // QString savePath = "./" + fileName;
-    // downloadFile(url, savePath);
+    // downloadMyApp(url, savePath);
 
     checkAndUpdateFile();
 }
