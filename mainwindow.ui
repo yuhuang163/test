@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>4</number>
+               <number>15</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -449,7 +449,7 @@
                 <string>成品测试</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_4">
-                <item row="3" column="1">
+                <item row="4" column="1">
                  <widget class="QGroupBox" name="verticalGroupBox">
                   <property name="title">
                    <string>音乐测试</string>
@@ -481,46 +481,6 @@
                    </item>
                    <item>
                     <widget class="QComboBox" name="music_combo"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="2" column="1">
-                 <widget class="QGroupBox" name="groupBox_102">
-                  <property name="title">
-                   <string>充电测试</string>
-                  </property>
-                  <layout class="QHBoxLayout" name="horizontalLayout_14">
-                   <property name="topMargin">
-                    <number>1</number>
-                   </property>
-                   <item>
-                    <widget class="QPushButton" name="get_battery">
-                     <property name="text">
-                      <string>显示充电情况</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="battary_voltage">
-                     <property name="text">
-                      <string>电压为:</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="battary_state">
-                     <property name="text">
-                      <string>充电状态：</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="battary_value">
-                     <property name="text">
-                      <string>电量为：</string>
-                     </property>
-                    </widget>
                    </item>
                   </layout>
                  </widget>
@@ -709,6 +669,82 @@
                      <property name="checked">
                       <bool>true</bool>
                      </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QGroupBox" name="verticalGroupBox">
+                  <property name="title">
+                   <string>电池测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_34">
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <widget class="QWidget" name="widget_102" native="true">
+                     <layout class="QHBoxLayout" name="horizontalLayout_14">
+                      <item>
+                       <widget class="QPushButton" name="get_battery">
+                        <property name="text">
+                         <string>显示充电情况</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_voltage">
+                        <property name="text">
+                         <string>电压为:</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_state">
+                        <property name="text">
+                         <string>充电状态：</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_value">
+                        <property name="text">
+                         <string>电量为：</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battery_type">
+                        <property name="text">
+                         <string>电池类型：</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="horizontalWidget" native="true">
+                     <layout class="QHBoxLayout" name="horizontalLayout_72">
+                      <item>
+                       <widget class="QPushButton" name="set_battery">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>设置电池类型</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QComboBox" name="battery_type_combox">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                   </layout>
@@ -1248,110 +1284,177 @@
                <attribute name="title">
                 <string>摄像头测试</string>
                </attribute>
-               <layout class="QGridLayout" name="gridLayout_30">
+               <layout class="QGridLayout" name="gridLayout_22">
                 <item row="0" column="0">
-                 <widget class="QGroupBox" name="verticalGroupBox_9">
-                  <layout class="QVBoxLayout" name="verticalLayout_64">
-                   <item>
-                    <widget class="QGroupBox" name="verticalGroupBox_10">
-                     <property name="title">
-                      <string>WIFI配网</string>
-                     </property>
-                     <layout class="QGridLayout" name="gridLayout_21">
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="port_set_label">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>15</height>
-                         </size>
-                        </property>
+                 <widget class="QSplitter" name="splitter_4">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <widget class="QGroupBox" name="verticalGroupBox_9">
+                   <layout class="QVBoxLayout" name="verticalLayout_64">
+                    <item>
+                     <widget class="QGroupBox" name="verticalGroupBox_10">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="title">
+                       <string>WIFI配网</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_21">
+                       <item row="2" column="1">
+                        <widget class="QComboBox" name="ip_comboBox">
+                         <property name="editable">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLineEdit" name="password_lineEdit">
+                         <property name="text">
+                          <string>usmile123</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QLabel" name="port_set_label">
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>15</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>设置端口号：</string>
+                         </property>
+                         <property name="alignment">
+                          <set>Qt::AlignCenter</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLineEdit" name="ssid_lineEdit">
+                         <property name="text">
+                          <string>WIFI_TEST_8F28</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QPushButton" name="distribution_network">
+                         <property name="text">
+                          <string>配网</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QPushButton" name="py_test">
+                         <property name="text">
+                          <string>脚本测试</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QLabel" name="IP_TEXT">
+                         <property name="maximumSize">
+                          <size>
+                           <width>16777215</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>本机IP地址：</string>
+                         </property>
+                         <property name="alignment">
+                          <set>Qt::AlignCenter</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLineEdit" name="port_num">
+                         <property name="text">
+                          <string>3333</string>
+                         </property>
+                         <property name="alignment">
+                          <set>Qt::AlignCenter</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QLabel" name="password_label">
+                         <property name="text">
+                          <string>PASSWORD:</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QLabel" name="ssid_label">
+                         <property name="text">
+                          <string>SSID:</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                  <widget class="QGroupBox" name="horizontalGroupBox_5">
+                   <property name="minimumSize">
+                    <size>
+                     <width>250</width>
+                     <height>250</height>
+                    </size>
+                   </property>
+                   <property name="title">
+                    <string>摄像头实时画面</string>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_15">
+                    <item row="2" column="0">
+                     <layout class="QHBoxLayout" name="horizontalLayout_77">
+                      <item>
+                       <widget class="QCheckBox" name="quicklz_picture">
                         <property name="text">
-                         <string>设置端口号：</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
+                         <string>压缩</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLineEdit" name="client_ip_label"/>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLineEdit" name="ssid_lineEdit">
+                      <item>
+                       <widget class="QPushButton" name="add_data">
                         <property name="text">
-                         <string>WIFI_TEST_8F28</string>
+                         <string>补数据</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
-                       <widget class="QPushButton" name="distribution_network">
+                      <item>
+                       <widget class="QPushButton" name="save_photo">
                         <property name="text">
-                         <string>配网</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="ssid_label">
-                        <property name="text">
-                         <string>SSID:</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLineEdit" name="port_num">
-                        <property name="text">
-                         <string>3333</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLineEdit" name="password_lineEdit">
-                        <property name="text">
-                         <string>usmile123</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="password_label">
-                        <property name="text">
-                         <string>PASSWORD:</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="IP_TEXT">
-                        <property name="maximumSize">
-                         <size>
-                          <width>16777215</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                        <property name="text">
-                         <string>本机IP地址：</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QPushButton" name="py_test">
-                        <property name="text">
-                         <string>脚本测试</string>
+                         <string>保存图片</string>
                         </property>
                        </widget>
                       </item>
                      </layout>
-                    </widget>
-                   </item>
-                  </layout>
+                    </item>
+                    <item row="0" column="0">
+                     <layout class="QVBoxLayout" name="verticalLayout_31">
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                     </layout>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QProgressBar" name="picture_speed">
+                      <property name="value">
+                       <number>24</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
                  </widget>
                 </item>
-                <item row="0" column="2">
+                <item row="0" column="1">
                  <widget class="QGroupBox" name="groupBox_21">
                   <property name="title">
                    <string>相机参数设置</string>
@@ -1550,60 +1653,6 @@
                        </widget>
                       </item>
                      </layout>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QGroupBox" name="horizontalGroupBox_5">
-                  <property name="minimumSize">
-                   <size>
-                    <width>250</width>
-                    <height>250</height>
-                   </size>
-                  </property>
-                  <property name="title">
-                   <string>摄像头实时画面</string>
-                  </property>
-                  <layout class="QGridLayout" name="gridLayout_15">
-                   <item row="2" column="0">
-                    <layout class="QHBoxLayout" name="horizontalLayout_77">
-                     <item>
-                      <widget class="QCheckBox" name="quicklz_picture">
-                       <property name="text">
-                        <string>压缩</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="add_data">
-                       <property name="text">
-                        <string>补数据</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="save_photo">
-                       <property name="text">
-                        <string>保存图片</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item row="0" column="0">
-                    <layout class="QVBoxLayout" name="verticalLayout_31">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                    </layout>
-                   </item>
-                   <item row="1" column="0">
-                    <widget class="QProgressBar" name="picture_speed">
-                     <property name="value">
-                      <number>24</number>
-                     </property>
                     </widget>
                    </item>
                   </layout>

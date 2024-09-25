@@ -243,6 +243,7 @@ enum FacDevInfoType
     IF_QUALIFIED = 5;//工厂测试结果
     SUB_PID = 6;
     SKUID = 7;
+ 
 }
 
 enum FacChargeStateType
@@ -254,10 +255,20 @@ enum FacChargeStateType
     NO_BATT = 4;
 }
 
+
+
+enum FacBatteryType
+{
+    TWO_BATTERY = 0;
+    ONE_BATTERY = 1;
+}
+
+
 message FacBatteryInfo {
     FacChargeStateType charge_state = 1;
     uint32 voltage = 2;
     uint32 percent = 3;
+    FacBatteryType  battery_type =4;
 
 }
 

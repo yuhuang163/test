@@ -55,30 +55,35 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.3"   // 增加sku读写功能
-#define CAMERA_VER "摄像测试工站   V1.1.7"  // 支持脏污自动化测试
-#define AGE_VER "老化测试工站   V1.1.8"     // 支持1拖多
-#define MOTOR_VER "电机校准工站   V1.1.7"   // 加定时器判断休
-#define QC_VER "静态电流测试   V1.3.5"      // 增加定时器判断休眠
-#define SCREEN_VER "屏幕测试工站   V1.1.5"  // 加定时器判断休
-#define LIGHT_VER "灯光测试工站   V1.1.5"   // 加定时器判断休
-#define SINGLE_VER "信号测试工站   V1.3.3"  // 立讯bug
-#define FREE_VER "自由测试工站   V1.0.8"    // 立讯bug
-#define IMU_VER "IMU校准工站    V1.4.3"     // 支持自动化治具
-#define PCBA_VER "电刷板子测试   V1.3.3"    // 加定时器判断休
+#define DEBUG_VER "电刷产测工具   V1.3.5"
+#define CAMERA_VER "摄像测试工站   V1.1.9"
+#define AGE_VER "老化测试工站   V1.1.8"
+#define MOTOR_VER "电机校准工站   V1.1.8"
+#define QC_VER "静态电流测试   V1.3.6"
+#define SCREEN_VER "屏幕测试工站   V1.1.5"
+#define LIGHT_VER "灯光测试工站   V1.1.5"
+#define SINGLE_VER "信号测试工站   V1.3.3"
+#define FREE_VER "自由测试工站   V1.0.8"
+#define IMU_VER "IMU校准工站    V1.4.5"
+#define PCBA_VER "电刷板子测试   V1.3.4"
 
-// [DEBUG_VER] 增加写入pcbaver的版本功能,ota压测功能微调，取消打印设备名字就断开蓝牙
-// [CAMERA_VER] 增加wifi获取功能
-//
+// [DEBUG_VER] f20摄像头支持ip自动搜索选择
+// [QC_VER] 支持多牙刷版本测试
+// [PCBA_VER] 支持木星复位牙刷
+// [MOTOR_VER] 取消mac地址错误弹窗
+// [IMU_VER] 支持适配博士的imu芯片
+// [CAMERA_VER] 摄像头测试黑点bug解决
+// 
+
 // [IMU_VER] 增加测试要求的日志保存
 // [AGE_VER] 增加测试要求的日志保存
-// [MOTOR_VER] 增加测试要求的日志保存
-// [QC_VER] 增加测试要求的日志保存
+
+
 // [SCREEN_VER] 增加测试要求的日志保存
 // [LIGHT_VER] 增加测试要求的日志保存
 // [SINGLE_VER] 增加测试要求的日志保存
 // [FREE_VER] 增加测试要求的日志保存
-// [PCBA_VER] 增加测试要求的日志保存
+
 //
 
 #endif  // ABINI_H

@@ -231,7 +231,7 @@ void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
         }
 
         int write_len = cameraRingBuf->usmile_ring_buffer_write(&p_cameraRingBuffer, p_data, data_len);
-           if (write_len < data_len) {
+        if (write_len < data_len) {
             qDebug() << "write_len:" << write_len << "len:" << data_len;
         }
     } else {
@@ -246,7 +246,8 @@ int cameratest::ext_ble_find_next_frame(void) {
     // qDebug() << "查找下一帧，剩下：" << len;
 
     for (i = 0; i < len; i++) {
-        if (frame_buf[i] == 0xCC && frame_buf[i + 1] == 0xCC && frame_buf[i + 2] == 0xCC && frame_buf[i + 3] == 0xCC) {
+        if (frame_buf[i] == 0xCC && frame_buf[i + 1] == 0xCC && frame_buf[i + 2] == 0xCC && frame_buf[i + 3] == 0xCC &&
+            frame_buf[i + 8] != 0xCC) {
             head = (ext_uart_phy_layer_t*)&frame_buf[i];
             if (head->magic == EXT_UART_MAGIC) {
                 qDebug() << "匹配到了串口帧头";
@@ -340,7 +341,7 @@ void cameratest::solve_picture_frame(QByteArray picturedata) {
 
             } else {
                 qDebug() << "哈哈哈2" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
+                showlog("图片的crc校验失败");
                 qDebug() << "head content:"
                          << QByteArray(reinterpret_cast<char*>(head), PICTURE_PHY_LAYER_HEAD_SIZE).toHex();
 
@@ -425,9 +426,9 @@ void cameratest::solve_frame(void) {
                 solve_picture_frame(reassembleData());
 
             } else {
-                qDebug() << "head content:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
-
-                qDebug() << "尾巴校验失败" << QString("%1").arg(head->data[head->length], 2, 16, QChar('0'))
+                qDebug() << "串口数据通道不符:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
+                showlog("串口数据通道不符");
+                qDebug() << "串口数据通道不符" << QString("%1").arg(head->data[head->length], 2, 16, QChar('0'))
                          << QString("%1").arg(head->data[head->length + 1], 2, 16, QChar('0'));
             }
 
@@ -701,6 +702,7 @@ void cameratest::startTask() {
                 is_canGoNext = 0;
                 is_camera_control = 0;
                 TestTime.start();
+                waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 qDebug() << getIndex() << macAddress;
                 state = STATE_WATI_CONNECT;
@@ -839,6 +841,8 @@ void cameratest::startTask() {
                 ui->getMac->clear();
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
+                ui->jxl_normal->setDisabled(0);
+                ui->jxl_abnormal->setDisabled(0);
                 // waitWork(WAITTIME);
                 // pb->set_dev_reset();
                 // waitWork(WAITTIME);
@@ -1240,6 +1244,7 @@ void cameratest::on_exposure_time_edit_returnPressed() {
     pb->set_camera_exposure_time(ui->exposure_time_edit->text().toUInt());
 }
 void cameratest::on_DirtyTestButton_clicked() {
+    ui->DirtyTestButton->setDisabled(1);
     QString filePath;
     if (!viewercamrea->temporarypixmap.isNull()) {
         QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1386,6 +1391,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
+    ui->jxl_normal->setDisabled(0);
+    ui->jxl_abnormal->setDisabled(0);
+    ui->DirtyTestButton->setDisabled(0);
 }
 
 void cameratest::on_stopTest_clicked() {
@@ -1393,6 +1401,9 @@ void cameratest::on_stopTest_clicked() {
     // waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
+    ui->jxl_normal->setDisabled(0);
+    ui->jxl_abnormal->setDisabled(0);
+    ui->DirtyTestButton->setDisabled(0);
     cameraSendTimer->stop();
     ui->macInput->clear();
     ui->getMac->clear();
@@ -1401,6 +1412,9 @@ void cameratest::on_stopTest_clicked() {
 }
 
 void cameratest::on_jxl_abnormal_clicked() {
+    ui->jxl_normal->setDisabled(1);
+    ui->jxl_abnormal->setDisabled(1);
+
     if (!viewercamrea->temporarypixmap.isNull()) {
         // 获取当前日期时间
         QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1442,6 +1456,9 @@ void cameratest::on_jxl_abnormal_clicked() {
 }
 
 void cameratest::on_jxl_normal_clicked() {
+    ui->jxl_normal->setDisabled(1);
+    ui->jxl_abnormal->setDisabled(1);
+
     if (!viewercamrea->temporarypixmap.isNull()) {
         // 获取当前日期时间
         QDateTime currentDateTime = QDateTime::currentDateTime();

@@ -43,8 +43,6 @@ void MainWindow::on_pushButton_clicked() {
     qDebug() << "Converted utf8String:" << utf8String;
     qDebug() << "Converted decodedString:" << decodedString;
     qDebug() << "Converted localString:" << localString;
-
-
 }
 void MainWindow::on_pushButton_3_clicked() {
     pb->set_i_am_app();
@@ -83,6 +81,7 @@ MainWindow::MainWindow(QWidget* parent) :
     scanSerialPorts();                  // 要搜索一下一开始
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
+    connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanIpPorts()));
 
     initBasicInfo();
     initPeriphState();
@@ -97,6 +96,9 @@ MainWindow::MainWindow(QWidget* parent) :
     tail_sn = new QLabel("尾盖sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
     sku_id = new QLabel("sku_id:        ");
+    // 添加用户友好的字符串到下拉框
+    // ui->battery_type_combox->addItem("两节电池", FacBatteryType_TWO_BATTERY);
+    // ui->battery_type_combox->addItem("单节电池",FacBatteryType_ONE_BATTERY);
 
     otaSourceSet(1);  // 一开机锁住
     otaFwSet(1);      // 一开机锁住
@@ -221,7 +223,6 @@ MainWindow::MainWindow(QWidget* parent) :
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this, SLOT(updateLocalOtaResult(FacInternetOta)));
-
 
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
@@ -374,8 +375,7 @@ MainWindow::MainWindow(QWidget* parent) :
     });
     running.store(true);
 
-
-//上位机ota使用的
+    //上位机ota使用的
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 }
@@ -1351,8 +1351,13 @@ void MainWindow::on_motor_cali_clicked() {
                                                    "border: 2px solid #FF0000; border-radius: 10px; padding: "
                                                    "10px; text-align: center; ");
                 }
+
                 waitWork(500);
                 pb->set_sevor_motor_param(0, 0, 0, 0);
+                waitWork(500);
+                pb->set_sleeep(FacSwitch_OPEN);
+                waitWork(500);
+                pb->set_sleeep(FacSwitch_OPEN);
                 waitWork(500);
                 pb->set_sleeep(FacSwitch_OPEN);
                 stringsn = "";
@@ -2165,20 +2170,9 @@ void MainWindow::on_calculate_returnPressed() {
 
 void MainWindow::on_distribution_network_clicked() {
     // 获取IP地址
-    QString ipString = "0.0.0.0";
+    QString ipString = ui->ip_comboBox->currentText();
     QString localHostName = QHostInfo::localHostName();
     QHostInfo hostInfo = QHostInfo::fromName(localHostName);
-    qDebug() << "Local IP addresses:";
-
-    for (QHostAddress address : hostInfo.addresses()) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol) {
-            qDebug() << address.toString();
-            ipString = address.toString();
-            break;
-        }
-    }
-
-    ui->client_ip_label->setText(ipString);
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
     QString wifiName = ui->ssid_lineEdit->text();
@@ -2194,27 +2188,30 @@ void MainWindow::on_distribution_network_clicked() {
         showlog("请等待连接牙刷后再试");
     }
 
-    static bool isExecuted = false;
-    if (!isExecuted) {
-        // 获取QLineEdit中的端口号文本
-        QString portText = ui->port_num->text();
-        bool conversionOk;
-        int port = portText.toInt(&conversionOk);
-
-        udpSocket = new QUdpSocket(this);
-        QHostAddress ipAddress(ipString);
-        bool bindResult = udpSocket->bind(ipAddress, port);
-        qDebug() << "connect_udp,localhost: " << ipString << ":" << port;
-        qDebug() << "Bind result: " << bindResult;
-
-        if (!bindResult) {
-            showlog("ip绑定失败");
-        }
-
-        connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
-
-        isExecuted = true;
+    // static bool isExecuted = false;
+    // if (!isExecuted) {
+    // 获取QLineEdit中的端口号文本
+    QString portText = ui->port_num->text();
+    bool conversionOk;
+    int port = portText.toInt(&conversionOk);
+    if (udpSocket) {
+        udpSocket->close();
+        delete udpSocket;
     }
+    udpSocket = new QUdpSocket(this);
+    QHostAddress ipAddress(ipString);
+    bool bindResult = udpSocket->bind(ipAddress, port);
+    qDebug() << "connect_udp,localhost: " << ipString << ":" << port;
+    qDebug() << "Bind result: " << bindResult;
+
+    if (!bindResult) {
+        showlog("ip绑定失败");
+    }
+
+    connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
+
+    //     isExecuted = true;
+    // }
 }
 
 void MainWindow::on_save_photo_clicked() {
@@ -3178,4 +3175,21 @@ void MainWindow::on_set_hw_ver_clicked() {
     // 确保目标数组以 null 终止
     data.hw_version[sizeof(data.hw_version) - 1] = '\0';
     pb->set_base_info(FacBasInfoType_HW_VERSION, data);
+
 }
+
+// void MainWindow::on_set_battery_clicked() {
+//     // 枚举定义
+//     // typedef enum _FacBatteryType {
+//     //     FacBatteryType_TWO_BATTERY = 0,
+//     //     FacBatteryType_ONE_BATTERY = 1
+//     // } FacBatteryType;
+
+//     // 获取当前选中的枚举值并设置
+//     int currentIndex = ui->battery_type_combox->currentIndex();
+//     if (currentIndex >= 0) {
+//         FacBatteryType selectedType =
+//         static_cast<FacBatteryType>(ui->battery_type_combox->itemData(currentIndex).toInt());
+//         pb->set_battery(selectedType);
+//     }
+// }

@@ -303,12 +303,17 @@ int MainWindow::ext_ble_find_next_frame(void) {
     // qDebug() << "查找下一帧，剩下：" << len;
 
     for (i = 0; i < len; i++) {
-        if (frame_buf[i] == 0xCC && frame_buf[i + 1] == 0xCC && frame_buf[i + 2] == 0xCC && frame_buf[i + 3] == 0xCC) {
+        if (frame_buf[i] == 0xCC && frame_buf[i + 1] == 0xCC && frame_buf[i + 2] == 0xCC && frame_buf[i + 3] == 0xCC &&
+            frame_buf[i + 8] != 0xCC) {
             head = (ext_uart_phy_layer_t*)&frame_buf[i];
             if (head->magic == EXT_UART_MAGIC) {
                 qDebug() << "匹配到了串口数据包头";
-
+                int end = i;
                 dongleRingBuf->usmile_ring_buffer_delete(&p_dongleRingBuffer, i);
+                for (int i = end; i >= 0; --i) {
+                    qDebug() << "删除多余内容" << end
+                             << QString::number(static_cast<unsigned char>(frame_buf[i]), 16).rightJustified(2, '0');
+                }
 
                 return 1;
             }
@@ -419,11 +424,11 @@ void MainWindow::solve_frame(void) {
 
             dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, frame_size);
             if (head->channel == PHY_CHANNEL_CAMREA) {
-                qDebug() << "图片数据包的第一字节为2" << head->data[0];
+                qDebug() << "图片数据包的第一字节为" << head->data[0];
                 emit send_thread_date("图片数据包的第一字节为" + QString::number(head->data[0]));
                 ++dataNumber;
                 QByteArray byteArray(reinterpret_cast<const char*>(head->data), head->length);
-                addPacket(byteArray);
+                addPacket(byteArray);  //有删除包头内容
                 QByteArray completeData = reassembleData();
                 solve_picture_frame(completeData);
 
@@ -432,8 +437,9 @@ void MainWindow::solve_frame(void) {
                 saveblackbox(byteArray);
 
             } else {
-                qDebug() << "head content:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
-                qDebug() << "尾巴校验失败" << QString("%1").arg(head->data[head->length], 2, 16, QChar('0'))
+                showlog("串口数据通道不符");
+                qDebug() << "串口数据通道不符:" << QByteArray(reinterpret_cast<char*>(head), 280).toHex();
+                qDebug() << "串口数据通道不符" << QString("%1").arg(head->data[head->length], 2, 16, QChar('0'))
                          << QString("%1").arg(head->data[head->length + 1], 2, 16, QChar('0'));
             }
 
@@ -802,6 +808,8 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
         ext_picture_layer_t* head = (ext_picture_layer_t*)picturedata.data();
 
         if (head->reserved == EXT_PICTURE_PHY_LAYER_MAGIC) {
+            // qDebug() << "head picturedata:" << picturedata.toHex();
+
             int frame_size = head->data_size + PICTURE_PHY_LAYER_HEAD_SIZE;
             float progressValue = ((float)ring_size / frame_size) * 100;
             // 如果需要整数，可以转换为 int
@@ -828,8 +836,8 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
                 emit send_image_processed();
 
             } else {
-                qDebug() << "哈哈哈2" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
+                // qDebug() << "哈哈哈2" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+                showlog("图片的crc校验失败");
                 qDebug() << "head content:"
                          << QByteArray(reinterpret_cast<char*>(head), PICTURE_PHY_LAYER_HEAD_SIZE).toHex();
 
@@ -845,7 +853,10 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
             }
             packetMap.clear();
             picturedata.clear();
-            memset(&head, 0, PICTURE_PHY_LAYER_HEAD_SIZE);
+            memset(&head, 0, sizeof(ext_picture_layer_t));
+            qDebug() << "Size of ext_picture_layer_t:" << sizeof(ext_picture_layer_t);
+            qDebug() << "PICTURE_PHY_LAYER_HEAD_SIZE:" << PICTURE_PHY_LAYER_HEAD_SIZE;
+
         } else {
             qDebug() << "数据流错误寻找下一帧";
 
@@ -1147,16 +1158,25 @@ void MainWindow::refreshBattaryData(FacDevInfo adc) {
         "电量为：<span style='color:blue'>" + QString::number(adc.dev_info[0].value_item.battery.percent) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
 
+    // QString battery_type;
+    // if (adc.dev_info[0].value_item.battery.battery_type)
+    //     battery_type = "电池类型为：<span style='color:blue'>单节电池</span>";
+    // else
+    //     battery_type = "电池类型为：<span style='color:blue'>两节电池</span>";
+
+    // ui->battery_type->setText(battery_type);
+
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
                                 QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0, 'f', 3) +
                                 "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
+
     voltage = adc.dev_info[0].value_item.battery.voltage / 1000.0;
     QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     QRegularExpressionMatch match = regex.match(chargeStateStr);
     chargestate = match.captured(2);
-    ;
+
     if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
         adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
         is_battary_test = 1;
@@ -1311,6 +1331,8 @@ void MainWindow::getDongleWifi(QString data) {
     settings.setValue(QString("WIFI/Name%1").arg(0), data);
 
     ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
+
+    ui->ssid_lineEdit->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
 
     ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
 }
@@ -2224,10 +2246,48 @@ void MainWindow::updateComboBox() {
                 ui->pick_device->addItem(deviceAddress);
                 if (ui->is_scan_connect->checkState())
                     at->sendMac(deviceAddress);  // 发送mac地址
-                //qDebug() << "有新增" << deviceAddress;
+                pb->setPbMode(1);
+                // qDebug() << "有新增" << deviceAddress;
             }
         }
     }
+}
+void MainWindow::scanIpPorts() {
+    // 获取所有网络接口的地址
+    QList<QHostAddress> ips = QNetworkInterface::allAddresses();
+
+    auto updateipComboBox = [](QComboBox* comboBox, const QList<QHostAddress>& ips) {
+        if (!comboBox) {
+            return;
+        }
+
+        // 获取当前的项目列表
+        QSet<QString> currentItems;
+        for (int i = 0; i < comboBox->count(); ++i) {
+            currentItems.insert(comboBox->itemText(i));
+        }
+
+        // 添加新的项目
+        for (const QHostAddress& address : ips) {
+            if (address.protocol() == QAbstractSocket::IPv4Protocol) {
+                QString ipString = address.toString();
+                if (!currentItems.contains(ipString)) {
+                    comboBox->addItem(ipString);
+                }
+                currentItems.remove(ipString);  // 移除已存在的项目
+            }
+        }
+
+        // 移除不存在的项目
+        for (const QString& item : currentItems) {
+            int index = comboBox->findText(item);
+            if (index != -1) {
+                comboBox->removeItem(index);
+            }
+        }
+    };
+
+    updateipComboBox(ui->ip_comboBox, ips);
 }
 
 void MainWindow::scanSerialPorts() {

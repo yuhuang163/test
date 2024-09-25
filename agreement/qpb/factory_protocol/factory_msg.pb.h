@@ -121,6 +121,11 @@ typedef enum _FacChargeStateType {
     FacChargeStateType_NO_BATT = 4 
 } FacChargeStateType;
 
+typedef enum _FacBatteryType { 
+    FacBatteryType_TWO_BATTERY = 0, 
+    FacBatteryType_ONE_BATTERY = 1 
+} FacBatteryType;
+
 /* ********************老化类区域***************** */
 typedef enum _FacAgeingTestType { 
     FacAgeingTestType_AGEING_1 = 0, 
@@ -294,6 +299,7 @@ typedef struct _FacBatteryInfo {
     FacChargeStateType charge_state; 
     uint32_t voltage; 
     uint32_t percent; 
+    FacBatteryType battery_type; 
 } FacBatteryInfo;
 
 typedef struct _FacBrushControl { 
@@ -722,6 +728,10 @@ typedef struct _FactoryDataPackage {
 #define _FacChargeStateType_MAX FacChargeStateType_NO_BATT
 #define _FacChargeStateType_ARRAYSIZE ((FacChargeStateType)(FacChargeStateType_NO_BATT+1))
 
+#define _FacBatteryType_MIN FacBatteryType_TWO_BATTERY
+#define _FacBatteryType_MAX FacBatteryType_ONE_BATTERY
+#define _FacBatteryType_ARRAYSIZE ((FacBatteryType)(FacBatteryType_ONE_BATTERY+1))
+
 #define _FacAgeingTestType_MIN FacAgeingTestType_AGEING_1
 #define _FacAgeingTestType_MAX FacAgeingTestType_AGEING_PRODUCTION_1
 #define _FacAgeingTestType_ARRAYSIZE ((FacAgeingTestType)(FacAgeingTestType_AGEING_PRODUCTION_1+1))
@@ -788,7 +798,7 @@ extern "C" {
 #define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
 #define FacSetDevBaseInfo_init_default           {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
-#define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0}
+#define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
 #define FacDevInfoValue_init_default             {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_default}}
 #define FacDevInfo_init_default                  {0, {FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default}, _FacErrorCode_MIN}
@@ -830,7 +840,7 @@ extern "C" {
 #define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
 #define FacSetDevBaseInfo_init_zero              {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
-#define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0}
+#define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
 #define FacDevInfoValue_init_zero                {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_zero}}
 #define FacDevInfo_init_zero                     {0, {FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero}, _FacErrorCode_MIN}
@@ -895,6 +905,7 @@ extern "C" {
 #define FacBatteryInfo_charge_state_tag          1
 #define FacBatteryInfo_voltage_tag               2
 #define FacBatteryInfo_percent_tag               3
+#define FacBatteryInfo_battery_type_tag          4
 #define FacBrushControl_type_tag                 1
 #define FacBrushControl_brush_start_tag          2
 #define FacBrushControl_change_mode_tag          3
@@ -1236,7 +1247,8 @@ X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacBatteryInfo_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    charge_state,      1) \
 X(a, STATIC,   SINGULAR, UINT32,   voltage,           2) \
-X(a, STATIC,   SINGULAR, UINT32,   percent,           3)
+X(a, STATIC,   SINGULAR, UINT32,   percent,           3) \
+X(a, STATIC,   SINGULAR, UENUM,    battery_type,      4)
 #define FacBatteryInfo_CALLBACK NULL
 #define FacBatteryInfo_DEFAULT NULL
 
@@ -1685,7 +1697,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define DataButtonParam_size                     4
 #define DataCollectParam_size                    20
 #define FacAgeingTest_size                       31
-#define FacBatteryInfo_size                      14
+#define FacBatteryInfo_size                      16
 #define FacBrushControl_size                     11
 #define FacBrushLog_size                         5
 #define FacButtonItem_size                       8

@@ -4,7 +4,7 @@
 #include "us_eigen_nonsymmsquare.h"
 
 #ifdef USMILE_Q10
-    #define SENSOR_CONFIG = A
+#    define SENSOR_CONFIG = A
 #endif
 
 #define SENSOR_DATA_SIZE 3
@@ -14,42 +14,39 @@
 // #define STATIC_CONV_VAR 200
 // #define STATIC_CONV_COUNT 45
 
-#define MAX_ITERATIONS     100
+#define MAX_ITERATIONS 100
 #define ACC_CALIB_ACCURACY 0.008
-#define MAX_POSE_ERROR     0.3
+#define MAX_POSE_ERROR 0.3
 
 #define ACC_CALIB_DATASIZE 12
-#define FACTORY_POSE_NUM   9
-#define EXTRA_POSE_NUM     1  
+#define FACTORY_POSE_NUM 9
+#define EXTRA_POSE_NUM 1
 
-#define CALIB_SUCCESS      0
-#define CALIB_FAIL         1
-#define CALIB_NOT_START    2
+#define CALIB_SUCCESS 0
+#define CALIB_FAIL 1
+#define CALIB_NOT_START 2
 
-#define THETA_ACC(n)       us_matrix_float_get(theta, n, 0)
-#define DATA_ACC(n)        us_matrix_float_get(acc_data, n, 0)
-typedef struct
-{
+#define THETA_ACC(n) us_matrix_float_get(theta, n, 0)
+#define DATA_ACC(n) us_matrix_float_get(acc_data, n, 0)
+typedef struct {
     float data[3];
 } CalibData;
-class new_imu_calibrate : public QObject
-{
+class new_imu_calibrate : public QObject {
     Q_OBJECT
 signals:
     void send_imu_cali_msg(QString msg);
     void send_imu_cali_reslt_msg(QString msg);
     void send_imu_data_to_csv(QString time, QString msg);
     void send_imu_cali_position(int position);
-public:
 
-    int LSB = 8192;
+public:
+    float LSB = 1;
     int imu_static_state = 1;
     int cali_loop = 0;
     QString imureason = "";
     QString imu_time;
     NewImuCalData calData;
-    typedef struct sensordata_q
-    {
+    typedef struct sensordata_q {
         // sensor data queue
         SENSOR_DATA_TYPE (*data)[SENSOR_DATA_SIZE];
         int head;
@@ -66,67 +63,63 @@ public:
         SENSOR_DATA_TYPE (*sum)[SENSOR_DATA_SIZE];
         SENSOR_DATA_TYPE (*mean)[SENSOR_DATA_SIZE];
         SENSOR_DATA_TYPE (*var)[SENSOR_DATA_SIZE];
-        void (*enqueue)(struct sensordata_q *, SENSOR_DATA_TYPE *);
-        void (*free)(struct sensordata_q *);
-        int (*static_detector)(struct sensordata_q *q, int kernel[8]);
+        void (*enqueue)(struct sensordata_q*, SENSOR_DATA_TYPE*);
+        void (*free)(struct sensordata_q*);
+        int (*static_detector)(struct sensordata_q* q, int kernel[8]);
     } sensordata_q;
 
-
-
-    typedef struct CalibDatasets
-    {
+    typedef struct CalibDatasets {
         CalibData data[FACTORY_POSE_NUM];
         int size;
-        bool (new_imu_calibrate::*add)(float *data, struct CalibDatasets *calib_data);
+        bool (new_imu_calibrate::*add)(float* data, struct CalibDatasets* calib_data);
     } CalibDatasets;
 
-    typedef struct imu_calib_parameters
-    {
-        us_matrix_float *acc_calib;
+    typedef struct imu_calib_parameters {
+        us_matrix_float* acc_calib;
         // todo: add gyro and mag calib struct
     } imu_calib_parameters;
 
-    sensordata_q *init_int_3(int n);
+    sensordata_q* init_int_3(int n);
 
     void acccalib_task_init(void);
     int acccalib_sensors_task();
-    void sensorhub_timer_callback(ImuDataT *imu_in);
+    void sensorhub_timer_callback(ImuDataT* imu_in);
     void acccalib_sensors_init();
 
-    void acccalib_jacobian(us_matrix_float *J, CalibDatasets *acc_raw, us_matrix_float *theta);
+    void acccalib_jacobian(us_matrix_float* J, CalibDatasets* acc_raw, us_matrix_float* theta);
 
-    CalibDatasets *init_CalibData();
-    CalibDatasets *init_ExtraCalibData();
-    float acccalib_vl(us_matrix_float *v, us_matrix_float *acc_data);
-    imu_calib_parameters *imu_calib_parameters_alloc();
-    void acc_update(us_matrix_float *acc_data, CalibDatasets *acc_raw, us_matrix_float *theta);
+    CalibDatasets* init_CalibData();
+    CalibDatasets* init_ExtraCalibData();
+    float acccalib_vl(us_matrix_float* v, us_matrix_float* acc_data);
+    imu_calib_parameters* imu_calib_parameters_alloc();
+    void acc_update(us_matrix_float* acc_data, CalibDatasets* acc_raw, us_matrix_float* theta);
 
-    sensordata_q *q= nullptr;
-    CalibDatasets *calib_datasets= nullptr;
-    CalibDatasets *extra_calib_datasets= nullptr;
-    us_matrix_float *acccalib_datasets_matrix= nullptr;
-    us_matrix_float *acccalib_value_matrix= nullptr;
-    us_matrix_float *acccalib_jacobian_matrix= nullptr;
-    us_matrix_float *acccalib_gradient_matrix= nullptr;
-    us_matrix_float *acccalib_delta_matrix= nullptr;
-    imu_calib_parameters *imu_calib= nullptr;
+    sensordata_q* q = nullptr;
+    CalibDatasets* calib_datasets = nullptr;
+    CalibDatasets* extra_calib_datasets = nullptr;
+    us_matrix_float* acccalib_datasets_matrix = nullptr;
+    us_matrix_float* acccalib_value_matrix = nullptr;
+    us_matrix_float* acccalib_jacobian_matrix = nullptr;
+    us_matrix_float* acccalib_gradient_matrix = nullptr;
+    us_matrix_float* acccalib_delta_matrix = nullptr;
+    imu_calib_parameters* imu_calib = nullptr;
     float lambda_LM = 100;
     float loss = 0, last_loss = 0;
     int signum;
-    us_matrix_float *jtj= nullptr;
-    us_matrix_float *inv= nullptr;
-    us_permutation *p= nullptr;
-    int  qconv = 0;
+    us_matrix_float* jtj = nullptr;
+    us_matrix_float* inv = nullptr;
+    us_permutation* p = nullptr;
+    int qconv = 0;
 
-    bool add_CalibData(float *data, new_imu_calibrate::CalibDatasets *add_calib_data);
-    CalibDatasets *calib_data= nullptr;
-    CalibDatasets *extra_calib_data= nullptr;
-    CalibDatasets *temp_calib_datasets= nullptr;
+    bool add_CalibData(float* data, new_imu_calibrate::CalibDatasets* add_calib_data);
+    CalibDatasets* calib_data = nullptr;
+    CalibDatasets* extra_calib_data = nullptr;
+    CalibDatasets* temp_calib_datasets = nullptr;
 
     int STATIC_CONV_VAR = 200;
-    int STATIC_CONV_COUNT = 45; 
-    int STATIC_CONV_DELAY = 15; //延迟取数据
+    int STATIC_CONV_COUNT = 45;
+    int STATIC_CONV_DELAY = 15;  //延迟取数据
 public:
-    void add_csvdata( CalibData*csv_data);
+    void add_csvdata(CalibData* csv_data);
 };
 #endif

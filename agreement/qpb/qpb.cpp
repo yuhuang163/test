@@ -560,7 +560,20 @@ void Qpb::get_battery()  // 获取电量信息
 
     sendShortPack(pack);
 }
+void Qpb::set_battery(FacBatteryType type)  // 设置电量信息
+{
+    FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_set_dev_info_tag;
+    pack.command_data.get_dev_info.dev_info_count = 1;
+    pack.command_data.get_dev_info.dev_info[0].info_item = FacDevInfoType_BATTERY_INFO;
+    pack.command_data.get_dev_info.dev_info[0].which_value_item = FacDevInfoValue_battery_tag;
+    pack.command_data.get_dev_info.dev_info[0].value_item.battery.battery_type = type;
 
+    sendShortPack(pack);
+}
 void Qpb::set_motor_cali(int state) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -778,11 +791,13 @@ void Qpb::set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data
         pack.command_data.set_dev_base_info.which_value_item = FacSetDevBaseInfo_hw_version_tag;
         // 假设 hw_version 是一个字符数组，并且 data.hw_version 是以 null 终止的字符串
         qstrncpy(pack.command_data.set_dev_base_info.value_item.hw_version, data.hw_version,
-                sizeof(pack.command_data.set_dev_base_info.value_item.hw_version) - 1);
+                 sizeof(pack.command_data.set_dev_base_info.value_item.hw_version) - 1);
         // 确保目标数组以 null 终止
         pack.command_data.set_dev_base_info.value_item
             .hw_version[sizeof(pack.command_data.set_dev_base_info.value_item.hw_version) - 1] = '\0';
     }
+    sendShortPack(pack);
+    qDebug() << "已发送固件版本号" << data.hw_version;
 }
 
 void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {

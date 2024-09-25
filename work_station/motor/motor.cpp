@@ -886,7 +886,7 @@ void motor::on_macInput_returnPressed() {
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
-        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        // QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
         macAddress = ui->macInput->text();

@@ -71,7 +71,7 @@ public:
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
 
 #define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
-#define UART_PHY_LAYER_CRC_SIZE 0
+#define UART_PHY_LAYER_CRC_SIZE 1
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
@@ -105,7 +105,8 @@ public:
         uint8_t exposure_time_rate_of_change;  // 最大曝光时间变化
         uint8_t brightness_target;             // 目标亮度 范围：0~255
         uint8_t data[0];                       // 图像帧内容.
-
+        // 20 12 00 00 00 00 00 00 b4000000 c8000000 00000000 a5a5a5a5 53040000
+        // data_size开始 :a08c0000 78 01 3c 05 78
     } ext_picture_layer_t;
 
     typedef struct {
@@ -322,7 +323,7 @@ private slots:
     QString getMotorStateString(FacMotoState state);
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
-
+    void scanIpPorts();
 private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
@@ -476,6 +477,8 @@ private slots:
     void on_get_device_skuid_clicked();
 
     void on_set_hw_ver_clicked();
+
+    // void on_set_battery_clicked();
 
 signals:
     void send_uart_state(int data);

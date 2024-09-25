@@ -760,9 +760,16 @@ void imucali::refreshBaseData(FacGetDevBaseInfo data) {
     product_name = QString(data.product_name);
 
     if (QString(data.product_name).compare("P20P") == 0 || QString(data.product_name).compare("Q20") == 0) {
-        nqimuc->LSB = 1;
-        isNeedNewCali = 1;
-        showlog("LSB改为" + QString::number(nqimuc->LSB));
+        if (data.imu_id == 144) {
+            nqimuc->LSB = 1;
+            isNeedNewCali = 1;
+            showlog("LSB改为" + QString::number(nqimuc->LSB));
+        } else if (data.imu_id == 250) {  //博士的imu
+            nqimuc->LSB = 0.25;
+            isNeedNewCali = 1;
+            showlog("LSB改为" + QString::number(nqimuc->LSB));
+        }
+
     } else {
         nqimuc->LSB = 4;
         isNeedNewCali = 1;

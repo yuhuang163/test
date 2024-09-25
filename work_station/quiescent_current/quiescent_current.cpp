@@ -104,13 +104,13 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         QString imuId = settings.value("ProductInfo/IMU_ID").toString();
         QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
 
-        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
-            data.presure_version == pressureSenseVersion && data.product_name == productName &&
-            QString("%1").arg(data.pb_phone_ver) == appProtocolVersion &&
-            QString("%1").arg(data.pb_factory_ver) == factoryProtocolVersion && data.soft_version == softwareVersion &&
-            data.res_version == resourceVersion && data.res_version == motorVersion)
-
-        {
+        if (algorithmVersion.contains(data.algo_version) && hardwareVersion.contains(data.hw_version) &&
+            pressureSenseVersion.contains(data.presure_version) && productName.contains(data.product_name) &&
+            appProtocolVersion.contains(QString::number(data.pb_phone_ver)) &&
+            factoryProtocolVersion.contains(QString::number(data.pb_factory_ver)) &&
+            softwareVersion.contains(data.soft_version) && resourceVersion.contains(data.res_version) &&
+            motorVersion.contains(data.motor_version) && imuId.contains(QString::number(data.imu_id)) &&
+            ble_ver.contains(data.ble_version)) {
             base_state = 1;
         } else {
             base_state = 2;

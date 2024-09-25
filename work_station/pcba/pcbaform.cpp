@@ -55,7 +55,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
                                    "padding: 10px; text-align: center; ");
 
     connect(usblogwaittime, &QTimer::timeout, [=]() {
-        if (pack.product == "P20P" || pack.product == "Q20") {
+        if (pack.product == "P20P" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
             at->ask_mac();
             showlog("正在定时器复位牙刷");
         }
@@ -744,6 +744,9 @@ void PcbaForm::updateTestResultUI() {
         ui->test_result->setText("FAIL");
         ui->test_result->setStyleSheet("font-size: 66px; background-color: #FF0000; color: black; border: 2px solid "
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
+
+        isPcbaTestContinue = false;  // 结束
+
     } else {
         remain_ok = 1;
     }
@@ -1123,6 +1126,8 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_GET_CORRECT_MOTOR:
                 if (canGoNext) {
+                    pb->set_sevor_motor_param(14, 12, 5.2, 190);
+
                     showlog("已收到电机校准参数");
                     showlog("5、蓝牙强度测试");
                     at->sendBLELOG(1);  // 日志开

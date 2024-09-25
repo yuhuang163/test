@@ -63,8 +63,8 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
 
     // 生成文件路径
     QString fileNamemacAddress = macAddress;
-    // QString fileName = QString::number(m_index) + ".log";
-    QString fileName = fileNamemacAddress.remove(":") + ".log";
+    QString fileName = QString::number(m_index) + ".log";
+    // QString fileName = fileNamemacAddress.remove(":") + ".log";
     QString filePath = dir.filePath(folderName + "/" + fileName);
 
     QFile logFile(filePath);
