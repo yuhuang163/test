@@ -264,6 +264,8 @@ private slots:
     void on_py_normal_clicked();
     void on_py_abnormal_clicked();
 
+    void on_ResolutionTestButton_clicked();
+
 signals:
     void send_go_next_focus();
     void send_go_next_test(int data);

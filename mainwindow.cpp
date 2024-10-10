@@ -872,7 +872,7 @@ void MainWindow::on_just_music_clicked() {
 
 void MainWindow::on_entersleep_clicked() {
     if (at->getConnected()) {
-        //  pb->set_forbid_sleep(FacSwitch_CLOSE);
+        // pb->set_forbid_sleep(FacSwitch_CLOSE);
         pb->set_sleeep(FacSwitch_OPEN);
         // waitWork(100);
         // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
@@ -1695,8 +1695,8 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     LicensePair pair = license.getLicense();
     LicensePair testpair = Testlicense.getTestLicense();
     WifiInfo info;
-    QString name = ui->wifiUserName->text();
-    QString password = ui->wifiPassword->text();
+    QString name = ui->wifiUserName_2->text();
+    QString password = ui->wifiPassword_2->text();
     QString deviceSecret;
     QString deviceName;
     QString productName;
@@ -2820,7 +2820,7 @@ void MainWindow::on_play_picture_clicked() {
 
 void MainWindow::on_open_imu_collect_solve_clicked() {
     pb->set_solve_imu_collect_param(FacSwitch_START);
-    deleteCsvFile("6轴IMU性能验证.csv");
+    deleteCsvFile("处理后的6轴IMU性能验证.csv");
     static QTimer* imu_collect_timer;  // 定时器指针作为类成员变量
     // 如果定时器已经存在且正在运行，则断开连接并停止
     if (imu_collect_timer) {
@@ -2938,7 +2938,7 @@ void MainWindow::on_transfer_xls_clicked() {
     QString newcsvFileName =
         QString("xx_%1_s1_t1_g1_people_F_30_160_R_%2.xls").arg(macAddress.remove(':').right(4)).arg(formattedDateTime);
 
-    convertCsvToXls("6轴IMU性能验证.csv", newcsvFileName);
+    convertCsvToXls("处理后的6轴IMU性能验证.csv", newcsvFileName);
 }
 
 void MainWindow::on_nfc_close_clicked() {
@@ -3175,7 +3175,6 @@ void MainWindow::on_set_hw_ver_clicked() {
     // 确保目标数组以 null 终止
     data.hw_version[sizeof(data.hw_version) - 1] = '\0';
     pb->set_base_info(FacBasInfoType_HW_VERSION, data);
-
 }
 
 // void MainWindow::on_set_battery_clicked() {

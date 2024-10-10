@@ -172,87 +172,31 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="0" colspan="2">
+         <item row="4" column="0">
           <widget class="QLineEdit" name="nfc_sn">
            <property name="text">
             <string>5504070123111111</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QPushButton" name="clear_nfc_data">
+         <item row="1" column="0">
+          <widget class="QLabel" name="bleStatusLabel">
            <property name="text">
-            <string>清空nfc数据</string>
+            <string>蓝牙连接：</string>
            </property>
           </widget>
          </item>
-         <item row="2" column="1">
+         <item row="7" column="0">
+          <widget class="QPushButton" name="nfc_write_read">
+           <property name="text">
+            <string>nfc读写</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
           <widget class="QLineEdit" name="nfc_count">
            <property name="text">
             <string>0</string>
-           </property>
-          </widget>
-         </item>
-         <item row="7" column="1">
-          <widget class="QLabel" name="uartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>串口连接：</string>
-           </property>
-          </widget>
-         </item>
-         <item row="9" column="0" colspan="3">
-          <widget class="QGroupBox" name="verticalLayout_py_2">
-           <property name="title">
-            <string>算法脚本结果图</string>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_py">
-            <property name="topMargin">
-             <number>1</number>
-            </property>
-           </layout>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_7">
-           <item>
-            <widget class="QPushButton" name="save_photo">
-             <property name="text">
-              <string>保存图片</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="normal">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>结果正常</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="abnormal">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>结果不正常</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="5" column="1">
-          <widget class="QLineEdit" name="nfc_mac">
-           <property name="text">
-            <string>3C:84:27:07:A8:D2</string>
            </property>
           </widget>
          </item>
@@ -261,7 +205,7 @@
            <item>
             <widget class="QPushButton" name="OffsetTest">
              <property name="enabled">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -296,17 +240,125 @@
            </item>
           </layout>
          </item>
-         <item row="8" column="1">
-          <widget class="QLabel" name="bleStatusLabel">
+         <item row="2" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_12">
+           <item>
+            <widget class="QPushButton" name="DirtyTestButton">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>脏污测试</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="zw_normal">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>正常</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="zw_abnormal">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>不正常</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="clear_nfc_data">
            <property name="text">
-            <string>蓝牙连接：</string>
+            <string>清空nfc数据</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
-          <widget class="QPushButton" name="nfc_write_read">
+         <item row="11" column="0" colspan="3">
+          <widget class="QGroupBox" name="verticalLayout_py_2">
+           <property name="title">
+            <string>算法脚本结果图</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_py">
+            <property name="topMargin">
+             <number>1</number>
+            </property>
+           </layout>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="uartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
-            <string>nfc读写</string>
+            <string>串口连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <item>
+            <widget class="QPushButton" name="save_photo">
+             <property name="text">
+              <string>保存图片</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="normal">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>结果正常</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="abnormal">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
+             <property name="text">
+              <string>结果不正常</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="7" column="1">
+          <widget class="QLineEdit" name="nfc_mac">
+           <property name="text">
+            <string>3C:84:27:07:A8:D2</string>
            </property>
           </widget>
          </item>
@@ -646,7 +698,7 @@
             <item>
              <widget class="QPushButton" name="ResolutionTestButton">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -655,12 +707,15 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>解析测试</string>
+               <string>图片测试</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QPushButton" name="jxl_normal">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -674,55 +729,6 @@
             </item>
             <item>
              <widget class="QPushButton" name="jxl_abnormal">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>不正常</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_12">
-            <item>
-             <widget class="QPushButton" name="DirtyTestButton">
-              <property name="enabled">
-               <bool>true</bool>
-              </property>
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>脏污测试</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="zw_normal">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>正常</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="zw_abnormal">
               <property name="enabled">
                <bool>false</bool>
               </property>

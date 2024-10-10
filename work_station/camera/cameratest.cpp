@@ -22,8 +22,8 @@ void cameratest::on_pushButton_clicked() {
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     // ui->macInput->setText("F8:8F:C8:57:73:E9");
 
-    QVector<int> faultData = {1, 2, 3, 4, 5};
-    emit send_fault_data_packet(faultData.size(), faultData);
+    // QVector<int> faultData = {1, 2, 3, 4, 5};
+    // emit send_fault_data_packet(faultData.size(), faultData);
 
     // on_macInput_returnPressed();
     // QByteArray allPackets;
@@ -104,7 +104,7 @@ void cameratest::on_pushButton_clicked() {
     // }
 
     // 假设 imagePath 是您的绝对路径
-    QString imagePath = "./u7p_camera_defect_detect_env/code/ng3.png";
+    QString imagePath = "./u7p_camera_defect_detect_env/code/clear_test.png";
     ;
 
     // 尝试加载图像
@@ -841,8 +841,8 @@ void cameratest::startTask() {
                 ui->getMac->clear();
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                ui->jxl_normal->setDisabled(0);
-                ui->jxl_abnormal->setDisabled(0);
+                // ui->jxl_normal->setDisabled(0);
+                // ui->jxl_abnormal->setDisabled(0);
                 // waitWork(WAITTIME);
                 // pb->set_dev_reset();
                 // waitWork(WAITTIME);
@@ -1300,6 +1300,8 @@ void cameratest::on_DirtyTestButton_clicked() {
         int w = values[2].toInt(&ok);
         int h = values[3].toInt(&ok);
         int flag = values[4].toInt(&ok);
+
+        qDebug() << "坐标" << x1 << y1 << w << h << flag;
         if (!ok) {
             qDebug() << "Error parsing integers";
             continue;
@@ -1365,14 +1367,18 @@ void cameratest::on_DirtyTestButton_clicked() {
         qWarning() << "Failed to load image from file path:" << filePath;
         return;
     }
-    QPixmap pixmap = QPixmap::fromImage(image);
-    QPainter painter(&pixmap);
+    QPixmap pixmapzw = QPixmap::fromImage(image);
+    QPainter painter(&pixmapzw);
     QPen pen(Qt::red);
     painter.setPen(pen);
+
     for (const QRect& rect : rectangles) {
+        //    qDebug() << "开始画矩形";
         painter.drawRect(rect);
     }
-    viewercamrea_py->pixmap = pixmap;
+    painter.end();
+    viewercamrea_py->pixmap = pixmapzw;
+    // qDebug() << "开始更新";
     viewercamrea_py->updateImage();
 
     if (!viewercamrea_py->pixmap.isNull()) {
@@ -1391,9 +1397,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
-    ui->jxl_normal->setDisabled(0);
-    ui->jxl_abnormal->setDisabled(0);
-    ui->DirtyTestButton->setDisabled(0);
+    // ui->jxl_normal->setDisabled(0);
+    // ui->jxl_abnormal->setDisabled(0);
+    // ui->DirtyTestButton->setDisabled(0);
 }
 
 void cameratest::on_stopTest_clicked() {
@@ -1401,9 +1407,9 @@ void cameratest::on_stopTest_clicked() {
     // waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
-    ui->jxl_normal->setDisabled(0);
-    ui->jxl_abnormal->setDisabled(0);
-    ui->DirtyTestButton->setDisabled(0);
+    // ui->jxl_normal->setDisabled(0);
+    // ui->jxl_abnormal->setDisabled(0);
+    // ui->DirtyTestButton->setDisabled(0);
     cameraSendTimer->stop();
     ui->macInput->clear();
     ui->getMac->clear();
@@ -1412,8 +1418,8 @@ void cameratest::on_stopTest_clicked() {
 }
 
 void cameratest::on_jxl_abnormal_clicked() {
-    ui->jxl_normal->setDisabled(1);
-    ui->jxl_abnormal->setDisabled(1);
+    // ui->jxl_normal->setDisabled(1);
+    // ui->jxl_abnormal->setDisabled(1);
 
     if (!viewercamrea->temporarypixmap.isNull()) {
         // 获取当前日期时间
@@ -1456,8 +1462,8 @@ void cameratest::on_jxl_abnormal_clicked() {
 }
 
 void cameratest::on_jxl_normal_clicked() {
-    ui->jxl_normal->setDisabled(1);
-    ui->jxl_abnormal->setDisabled(1);
+    // ui->jxl_normal->setDisabled(1);
+    // ui->jxl_abnormal->setDisabled(1);
 
     if (!viewercamrea->temporarypixmap.isNull()) {
         // 获取当前日期时间
@@ -1708,7 +1714,7 @@ void cameratest::on_OffsetTest_clicked() {
 
     qDebug() << "Output:" << output;
     qDebug() << "Error Output:" << errorOutput;
-
+    int flag;
     // 解析输出字符串
     QStringList parts = output.trimmed().split(' ');
     if (parts.size() != 5) {
@@ -1720,7 +1726,7 @@ void cameratest::on_OffsetTest_clicked() {
     int y1 = parts[1].toInt(&ok);
     int w = parts[2].toInt(&ok);
     int h = parts[3].toInt(&ok);
-    int flag = parts[4].toInt(&ok);
+    flag = parts[4].toInt(&ok);
     QString pyTestResult;
     if (!ok) {
         qDebug() << "Error parsing integers";
@@ -1747,11 +1753,6 @@ void cameratest::on_OffsetTest_clicked() {
 
         pyTestResult = "偏位测试通过";
         showlog("偏位测试通过");
-        switch (getIndex()) {
-            case 1: send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
-            case 2: send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
-            default: break;
-        }
     }
 
     if (flag == 0) {
@@ -1805,7 +1806,7 @@ void cameratest::on_OffsetTest_clicked() {
     painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);  // 绘制第一个矩形
     painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);  // 绘制第二个矩形
     viewercamrea_py->updateImage();                                 // 更新视图
-
+    painter.end();                                                  // 明确结束绘图操作
     if (!viewercamrea_py->pixmap.isNull()) {
         // 获取当前日期时间
         QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1830,6 +1831,16 @@ void cameratest::on_OffsetTest_clicked() {
         } else {
             qDebug() << "Image saved successfully to:" << filePath;
         }
+    }
+
+    if (flag == 1) {
+        switch (getIndex()) {
+            case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
+            case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
+            default: break;
+        }
+        waitWork(2000);
+        on_DirtyTestButton_clicked();
     }
 }
 
@@ -1880,4 +1891,177 @@ void cameratest::getPictureSendOver(FacPictureDataAck x) {
     qDebug() << "错误个数" + QString::number(faultData.size());
     //   showlog("错误个数"+QString::number(faultData.size()));
     emit send_fault_data_packet(faultData.size(), faultData);
+}
+
+void cameratest::on_ResolutionTestButton_clicked() {
+    //  ui->ResolutionTestButton->setDisabled(1);
+    QString filePath;
+    if (!viewercamrea->temporarypixmap.isNull()) {
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力测试原图";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+        filePath = saveDir + "/" + fileName;
+        if (!viewercamrea->temporarypixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    } else {
+        showlog("未识别到图片");
+        return;
+    }
+    // python.exe ./code/blur_detect_out.py --img "./code/blur_test.png"
+    // python.exe ./code/blur_detect_out.py --img
+    // "D:/new_production/build-new_production-Desktop_Qt_5_15_2_MSVC2019_64bit-Debug/bin/_20241010_134321.png"
+    // python.exe ./code/blur_detect_out.py --img "./code/blur_test.png"
+    QProcess process;
+    QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
+    QString scriptPath = "./code/blur_detect_out.py";
+    QStringList arguments;
+    arguments << "--img" << filePath;
+    process.setWorkingDirectory("./u7p_camera_defect_detect_env");
+    qDebug() << "指令内容为:" << scriptPath << arguments;
+    process.start(pythonPath, QStringList() << scriptPath << arguments);
+    if (!process.waitForStarted()) {
+        qDebug() << "Failed to start process";
+    }
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput();
+    QString errorOutput = process.readAllStandardError();
+    qDebug() << "Output:" << output;
+    qDebug() << "Error Output:" << errorOutput;
+    if (output == "") {
+        TestItem test;
+        test.testItem = "解析力测试";
+        test.testData = "图片违规";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
+        on_abnormal_clicked();
+        return;
+    }
+    QString jxlTestResult;
+    int flag = -1;
+    QList<QRect> rectangles;
+    QStringList parts = output.trimmed().split('\n');
+    for (const QString& part : parts) {
+        QStringList values = part.trimmed().split(' ');
+        if (values.size() != 3) {
+            qDebug() << "Unexpected output format";
+            continue;
+        }
+        bool ok;
+        flag = values[0].toInt(&ok);
+        float mid_clearness = values[1].toFloat(&ok);
+        float boundary_clearness = values[2].toFloat(&ok);
+
+        if (!ok) {
+            qDebug() << "Error parsing integers";
+            continue;
+        }
+        // rectangles.append(QRect(x1, y1, w, h));
+        // flag = 1 OK图片
+        //     flag = 0 NG图片有脏污
+        //     flag = -1 NG图片出现裂缝（画面撕裂）
+        if (flag == 1) {
+            TestItem test;
+            test.testItem = "解析力测试";
+            test.testData =
+                "中间清晰度:" + QString::number(mid_clearness) + "边缘清晰度:" + QString::number(boundary_clearness);
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
+            jxlTestResult = "解析力测试通过";
+            showlog("解析力测试通过");
+            on_normal_clicked();
+        }
+
+        if (flag == 0) {
+            TestItem test;
+            test.testItem = "解析力测试";
+            test.testData =
+                "中间清晰度:" + QString::number(mid_clearness) + "边缘清晰度:" + QString::number(boundary_clearness);
+            ;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
+            jxlTestResult = "解析力测试失败";
+            showlog("解析力测试失败");
+
+            on_abnormal_clicked();
+        }
+        if (flag == -1) {
+            TestItem test;
+            test.testItem = "解析力测试";
+            test.testData = "无法测试";
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
+            jxlTestResult = "解析度盘歪";
+            showlog("图片算法处理不了，大概率是解析度盘太歪了");
+            on_abnormal_clicked();
+        }
+    }
+
+    QImage image;
+    if (!image.load(filePath)) {
+        qWarning() << "Failed to load image from file path:" << filePath;
+        return;
+    }
+    QPixmap pixmap = QPixmap::fromImage(image);
+    QPainter painter(&pixmap);
+    QPen pen(Qt::red);
+    painter.setPen(pen);
+    for (const QRect& rect : rectangles) {
+        painter.drawRect(rect);
+    }
+    viewercamrea_py->pixmap = pixmap;
+    viewercamrea_py->updateImage();
+
+    if (!viewercamrea_py->pixmap.isNull()) {
+        QDateTime currentDateTime = QDateTime::currentDateTime();
+        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
+        QString fileName = jxlTestResult + "_" + ui->getMac->text() + "_" + timestamp + ".png";
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力自动化测试结果图";
+        QDir dir(saveDir);
+        if (!dir.exists()) {
+            dir.mkpath(".");
+        }
+        filePath = saveDir + "/" + fileName;
+        if (!viewercamrea_py->pixmap.save(filePath)) {
+            qDebug() << "Failed to save image:" << fileName;
+        } else {
+            qDebug() << "Image saved successfully to:" << filePath;
+        }
+    }
+    // ui->jxl_normal->setDisabled(0);
+    // ui->jxl_abnormal->setDisabled(0);
+    // ui->DirtyTestButton->setDisabled(0);
+    if (flag == 1)
+        on_OffsetTest_clicked();
 }

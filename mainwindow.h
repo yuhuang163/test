@@ -274,6 +274,7 @@ private slots:
     void updateImageOnMainThread();
     void refreshLogData(QString data);
     void saveToCsv(const QString& filename, const FacUploadNineAlex& x);
+    void imu_normol_saveToCsv(const QString& filename, const FacUploadNineAlex& x);
     void showlog(QString msg);
     void refreshImuCaliMsg(QString msg);
     void sendPicture(const QString& url, const QString& filePath);

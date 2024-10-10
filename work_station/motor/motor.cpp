@@ -464,7 +464,6 @@ void motor::startTask() {
             case STATE_SN_CHECK:
                 if (pb->get_is_banding_ok()) {
                     showlog("sn已成功绑定保存");
-
                     stringsn = ui->getMac->text();
                     showlog(stringsn);
                     waitWork(WAITTIME);
@@ -476,12 +475,10 @@ void motor::startTask() {
                     waitWork(WAITTIME);
                     refreshMotorCaliMsg("解除阻尼");
                     // showlog("解除阻尼");
-
                     // #ifdef LXSET
                     //                      waitWork(1000);
                     //                      control_motor_cmd("/c:-90");
                     //                         waitWork(1000);
-
                     // #else
                     //                      QMessageBox::warning(NULL, "警告", "
                     //                      请把刷头置于非0位\t\r\n");
@@ -588,9 +585,7 @@ void motor::startTask() {
                 if (result == passValue) {
                     QString mesresult = "PASS";
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|MOTOR_TEST:PASS|");
-
                     if (ui->isusemes->checkState()) {
                         send_end_testPass(pack);
                     }
@@ -602,9 +597,7 @@ void motor::startTask() {
                 } else if ((result == failValue)) {
                     QString mesresult = "NG";
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|MOTOR_TEST:NG|");
-
                     pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {

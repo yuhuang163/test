@@ -19,6 +19,7 @@ public:
     void startTask() override;
 
 private:
+    int measure_ammeter_counts;
     QString nfcdataHeadText = "";
     QString getValueBySN(const QString& sn);
     QString receivedData = "";
@@ -72,6 +73,7 @@ private:
         STATE_IDLE = 0,  // 休眠状态
         STATE_WATI_CONNECT,
         STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
+        STATE_FAC_MODE,
         STATE_WATI_BASE_INFO,
         STATE_WATI_WIFI_CONNECT,          // 等待连接
         STATE_WATI_GET_CORRECT_WIFIRSSI,  // 等待正确的wifi信号强度
