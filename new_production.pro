@@ -67,6 +67,7 @@ SOURCES += \
     agreement/qmes/lxmes.cpp \
     agreement/qmes/mesmanager.cpp \
     agreement/qmes/qmes.cpp \
+    agreement/qmes/wksmes.cpp \
     agreement/qmes/xwdmes.cpp \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/qpb/ble_protocol/data_collection.pb.c \
@@ -122,6 +123,7 @@ HEADERS += \
     agreement/qmes/lxmes.h \
     agreement/qmes/mesmanager.h \
     agreement/qmes/qmes.h \
+    agreement/qmes/wksmes.h \
     agreement/qmes/xwdmes.h \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/qpb/ble_protocol/data_collection.pb.h \

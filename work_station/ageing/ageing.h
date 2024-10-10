@@ -17,7 +17,7 @@ public:
     void startTask() override;
     void refreshBleState(int state) override;
     void show_product(QString name);
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -56,9 +56,11 @@ private:
     QString macAddress = "没有mac地址";
 
     QByteArray sn;
+    QByteArray last_sn = QByteArray::number(22);
+
     QByteArray subpid;
 
-    QString getValueBySN(const QString& sn);
+    QString getValueBySN(const QString& mysn);
 
     int snCompareOk = 0;
     int subpidCompareOk = 0;

@@ -62,7 +62,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         ui->jigDisconnectButton->setEnabled(false);
     }
 
-    if (pack.product == "P20PRO" || pack.product == "Q20") {
+    if (pack.product == "P20P" || pack.product == "Q20") {
         ui->productComNameCombo->setEnabled(true);
         ui->productConnectButton->setEnabled(true);
         ui->productDisconnectButton->setEnabled(true);
@@ -326,7 +326,7 @@ void quiescent_current::on_snInput_returnPressed() {
 
     emit send_go_next_focus();
     processInspection(ui->snInput->text());
-    if (pack.product == "P20PRO" || pack.product == "Q20") {
+    if (pack.product == "P20P" || pack.product == "Q20") {
         if (!productSerialPort->isOpen()) {
             openProductSerialPort();
         } else {

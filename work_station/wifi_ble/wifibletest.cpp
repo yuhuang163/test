@@ -525,6 +525,7 @@ void wifibletest::getWifiMsg(QString data) {
     }
 }
 void wifibletest::initDate() {
+    measure_ammeter_counts = 0;
     ui->tail_sn->setText("芯片存储的尾盖sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
@@ -552,8 +553,9 @@ void wifibletest::initDate() {
 }
 // 获取下一个状态的函数
 wifibletest::State wifibletest::getNextState(State currentState) {
-    return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
+    return static_cast<State>((static_cast<int>(currentState) + 1) % 12);
 }
+
 void wifibletest::startTask() {
     if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
@@ -572,11 +574,19 @@ void wifibletest::startTask() {
                     state = getNextState(state);
                 }
                 break;
-
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
                 if (canGoNext) {
-                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                    sendCommandWithRetry(std::bind(&Qpb::set_fac_mode, pb, 1));
+
                     showlog("已进入禁止休眠");
+                    state = getNextState(state);
+                }
+                break;
+
+            case STATE_FAC_MODE:  // 设置设备采集
+                if (canGoNext) {
+                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                    showlog("已进入工厂模式");
                     state = getNextState(state);
                 }
                 break;
@@ -778,25 +788,30 @@ void wifibletest::startTask() {
                 }
                 if (measure_ammeter > LowCurrent && measure_ammeter < HighCurrent)  // 成功
                 {
-                    showlog("充电电流正常");
-                    waittime->stop();
-                    currentresult = "通过";
-                    state = STATE_SAVE_RESULT;
-                    TestItem test;
-                    test.testItem = "充电电流";
-                    test.testData = measure_ammeter;
-                    test.testResult = currentresult;
-                    test.ask = "通过";
-                    testItems.append(test);
-                    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
-                    testResultTableUpdate(testItems);
-                    testItems.clear();
-                } else {
-                    if (pack.factory == "lx" || pack.factory == "jj") {
-                        usb->getlxMEASure(getIndex());
-                        showlog("等待治具测量充电电流");
-                        waitWork(1000);
+                    measure_ammeter_counts++;
+                    if (measure_ammeter_counts > 5) {
+                        showlog("充电电流正常");
+                        waittime->stop();
+                        currentresult = "通过";
+                        state = STATE_SAVE_RESULT;
+                        TestItem test;
+                        test.testItem = "充电电流";
+                        test.testData = measure_ammeter;
+                        test.testResult = currentresult;
+                        test.ask = "通过";
+                        testItems.append(test);
+                        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                        testResultTableUpdate(testItems);
+                        testItems.clear();
                     }
+                } else {
+                    showlog("充电电流异常重新测试5次");
+                    measure_ammeter_counts = 0;
+                }
+                if (pack.factory == "lx" || pack.factory == "jj") {
+                    usb->getlxMEASure(getIndex());
+                    showlog("等待治具测量充电电流");
+                    waitWork(500);
                 }
                 break;
 

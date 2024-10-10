@@ -200,6 +200,28 @@ void PcbaForm::processReceivedData(const QByteArray& data) {
             qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                      << "提取到的MAC地址：" << macAddress;
 
+            // 去掉 MAC 地址中的冒号
+            QString macWithoutColons = macAddress;
+            macWithoutColons.remove(':');
+
+            // 检查除冒号外的所有字符是否为 '0'
+            bool isAllZero = true;
+            for (QChar ch : macWithoutColons) {
+                if (ch != '0') {
+                    isAllZero = false;
+                    break;
+                }
+            }
+
+            // 如果 MAC 地址不全为 '0'，继续后续处理逻辑
+            if (isAllZero) {
+                // 后续处理逻辑
+                showlog("日志数据中MAC地址全0,取消本数据");
+                logString = "";
+
+                return;
+            }
+
             // 清空日志字符串
             logString = "";
 
@@ -747,6 +769,11 @@ void PcbaForm::updateTestResultUI() {
 
         isPcbaTestContinue = false;  // 结束
 
+        ui->macInput->setDisabled(0);
+        on_disconnectButton_clicked();
+
+        emit send_end_test(getIndex());
+
     } else {
         remain_ok = 1;
     }
@@ -844,6 +871,7 @@ void PcbaForm::startTask() {
         //   "状态机"<<getIndex();
         switch (state) {
             case STATE_IDLE:  // 复位一切
+
                 showlog("状态机" + QString::number(getIndex()));
                 ui->test_result->setText("WAIT");
                 ui->test_result->setStyleSheet("font-size: 66px; background-color: #808080; color: black;  "
@@ -1312,7 +1340,7 @@ void PcbaForm::startTask() {
             case STATE_WATI_RETURN_TEST:
                 if (start_sleep) {
                     start_sleep = 0;
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    pb->set_forbid_sleep(FacSwitch_CLOSE);
                     showlog("已发送取消禁止休眠");
                     state = STATE_CLOSE_FORBID_SLEEP;
                 }
@@ -1330,9 +1358,12 @@ void PcbaForm::startTask() {
                     // else
                     // {
                     pb->set_sleeep(FacSwitch_OPEN);
+
+                    // if (pack.product != "U7P" && pack.product != "U7") {
                     waitWork(100);
                     at->sendMac("00:00:00:00:00:00");
                     waitWork(100);
+                    // }
                     showlog("已经发送请求牙刷休眠");
                     state = STATE_SLEEP_OPEN;
                     // }
@@ -1350,7 +1381,9 @@ void PcbaForm::startTask() {
                 } else {
                     pb->set_sleeep(FacSwitch_OPEN);
                     showlog("正在重发开始休眠");
+                    // if (pack.product != "U7P" && pack.product != "U7") {
                     at->sendMac("00:00:00:00:00:00");
+                    // }
                     waitWork(500);
                 }
 
@@ -1553,6 +1586,7 @@ void PcbaForm::on_macInput_returnPressed() {
 
         isPcbaTestContinue = true;
         state = STATE_IDLE;
+
         emit send_go_next_focus();
         ui->macInput->setDisabled(1);
 

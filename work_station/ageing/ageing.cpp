@@ -613,8 +613,8 @@ void ageing::on_pushButton_clicked()
     //         clickStep = 1;
     //     }
 }
-QString ageing::getValueBySN(const QString& sn) {
-    QString truncatedSN = sn.left(8);
+QString ageing::getValueBySN(const QString& mysn) {
+    QString truncatedSN = mysn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
@@ -625,7 +625,7 @@ QString ageing::getValueBySN(const QString& sn) {
 }
 void ageing::on_getMac_returnPressed() {
     testResultTableInit();
-
+    sn.clear();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);
@@ -647,6 +647,14 @@ void ageing::on_getMac_returnPressed() {
 
     showlog("正在查询mac地址");
     sn = ui->getMac->text().toUtf8();
+
+    if (sn != last_sn) {
+        last_sn = sn;
+
+    } else {
+        showlog("sn与上一台机器重复,机子异常");
+        return;
+    }
 
     if (pack.product == "U7" || pack.product == "U7P") {
         subpid = getValueBySN(ui->getMac->text()).toUtf8();

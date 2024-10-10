@@ -14,7 +14,11 @@
 #endif
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
-    loginMes();
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QString station = settings.value("SYSTEM/station").toString();  // 工站
+    if (station != "PCBA_TEST") {
+        loginMes();
+    }
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 }

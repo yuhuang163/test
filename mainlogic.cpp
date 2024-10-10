@@ -1331,9 +1331,7 @@ void MainWindow::getDongleWifi(QString data) {
     settings.setValue(QString("WIFI/Name%1").arg(0), data);
 
     ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
-
     ui->ssid_lineEdit->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
-
     ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
 }
 void MainWindow::updateWifi(FacDevInfo wifi) {
@@ -1403,6 +1401,36 @@ void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsF
         qDebug() << "文件转换失败：" << xlsFilename;
     }
 }
+void MainWindow::imu_normol_saveToCsv(const QString& filename, const FacUploadNineAlex& x) {
+    QFile file(filename);
+    bool fileExists = file.exists();
+
+    if (!file.open(QIODevice::Append | QIODevice::Text)) {
+        qDebug() << "无法打开文件进行写入：" << filename;
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // 如果文件不存在，写入标题行
+    if (!fileExists) {
+        out << "timestamp,AccX,AccY,AccZ,GyroX,GyroY,GyroZ\n";
+    }
+
+    // 写入数据行
+    for (int i = 0; i < x.data_count; i++) {
+        out << x.data[i].timestamp << ',' << x.data[i].acc_x << ',' << x.data[i].acc_y << ',' << x.data[i].acc_z << ','
+            << x.data[i].gyro_x << ',' << x.data[i].gyro_y << ',' << x.data[i].gyro_z << '\n';
+
+        // 如果需要防止UI冻结，调用processEvents()
+    }
+
+    file.close();
+
+    qDebug() << "文件保存成功：" << filename;
+    qDebug() << "保存数量为" << x.data_count;
+}
+
 void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) {
     QFile file(filename);
     bool fileExists = file.exists();
@@ -1437,7 +1465,8 @@ void MainWindow::getimuData(FacUploadNineAlex x) {
     qDebug() << "开始保存";
     showlog("收到的个数=" + QString::number(x.data_count));
 
-    saveToCsv("6轴IMU性能验证.csv", x);
+    saveToCsv("处理后的6轴IMU性能验证.csv", x);
+    imu_normol_saveToCsv("未处理6轴IMU性能验证.csv", x);
     for (int i = 0; i < x.data_count; i++) {
         //   showlog("时间为=" + QString::number(x.data[i].timestamp));
 

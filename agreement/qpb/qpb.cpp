@@ -1752,6 +1752,11 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
         send_pb_date("设置船运成功");
         emit sendGetBrushResponse(1);
     }
+    if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
+        qDebug() << "设置工厂模式成功";
+        send_pb_date("设置工厂模式成功");
+        emit sendGetBrushResponse(1);
+    }
 }
 
 void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {

@@ -55,33 +55,39 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.5"
+#define DEBUG_VER "电刷产测工具   V1.3.6"
 #define CAMERA_VER "摄像测试工站   V1.1.9"
-#define AGE_VER "老化测试工站   V1.1.8"
+#define AGE_VER "老化测试工站   V1.1.9"
 #define MOTOR_VER "电机校准工站   V1.1.8"
-#define QC_VER "静态电流测试   V1.3.6"
+#define QC_VER "静态电流测试   V1.3.7"
 #define SCREEN_VER "屏幕测试工站   V1.1.5"
 #define LIGHT_VER "灯光测试工站   V1.1.5"
-#define SINGLE_VER "信号测试工站   V1.3.3"
+#define SINGLE_VER "信号测试工站   V1.3.4"
 #define FREE_VER "自由测试工站   V1.0.8"
 #define IMU_VER "IMU校准工站    V1.4.5"
-#define PCBA_VER "电刷板子测试   V1.3.4"
+#define PCBA_VER "电刷板子测试   V1.3.5"
 
-// [DEBUG_VER] f20摄像头支持ip自动搜索选择
-// [QC_VER] 支持多牙刷版本测试
-// [PCBA_VER] 支持木星复位牙刷
+
+// [PCBA_VER] 维克森mes，基本文件添加，取消板厂的mes登陆（会闪退），板厂跳过00的mac地址
+// [DEBUG_VER] imu数据保存功能，ota修改配网地方
+// [AGE_VER] 添加老化sn写入重复拦截
+// [CAMERA_VER] 增加解析力测试，一键测试完成
+// [QC_VER] 修复p20p无法测试问题
+// [SINGLE_VER] 充电电流平稳拦截，以及工厂模式发送
+//
+
 // [MOTOR_VER] 取消mac地址错误弹窗
 // [IMU_VER] 支持适配博士的imu芯片
-// [CAMERA_VER] 摄像头测试黑点bug解决
+
 // 
 
 // [IMU_VER] 增加测试要求的日志保存
-// [AGE_VER] 增加测试要求的日志保存
+
 
 
 // [SCREEN_VER] 增加测试要求的日志保存
 // [LIGHT_VER] 增加测试要求的日志保存
-// [SINGLE_VER] 增加测试要求的日志保存
+
 // [FREE_VER] 增加测试要求的日志保存
 
 //
