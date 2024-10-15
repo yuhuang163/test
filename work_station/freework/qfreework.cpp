@@ -40,7 +40,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
         comparewaittime->stop();
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     HighRssi = settings.value("WIFI/HighRssi").toDouble();
     LowRssi = settings.value("WIFI/LowRssi").toDouble();
@@ -410,7 +410,7 @@ void QFreeWork::startTask() {
 QFreeWork::~QFreeWork() { delete ui; }
 
 void QFreeWork::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString softwareVersion = settings.value("ProductInfo/Software_Version").toString();
     QString resourceVersion = settings.value("ProductInfo/Resource_Version").toString();
     QString Age_State = settings.value("ProductInfo/Age_State").toString();
@@ -592,7 +592,7 @@ void QFreeWork::refreshMesState(int state) {
 }
 
 void QFreeWork::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     // 保存密码
     settings.setValue("WIFI/Password", "usmile123");
@@ -769,7 +769,7 @@ void QFreeWork::on_disconnectwifi_clicked() {
     }
 }
 void QFreeWork::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
     QString wifiPassword = settings.value("WIFI/Password").toString();

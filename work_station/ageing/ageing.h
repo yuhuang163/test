@@ -51,14 +51,14 @@ private:
     State state = STATE_IDLE;
 
     QString stringsn;
-    QString stringSubpid;
+  QString stringsubpid;
 
     QString macAddress = "没有mac地址";
 
-    QByteArray sn;
+    QByteArray writesn;
     QByteArray last_sn = QByteArray::number(22);
 
-    QByteArray subpid;
+    QByteArray writesubpid;
 
     QString getValueBySN(const QString& mysn);
 

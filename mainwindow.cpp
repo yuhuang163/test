@@ -294,7 +294,8 @@ MainWindow::MainWindow(QWidget* parent) :
         ui->version_type_2->addItem(item);
     }
     ui->version_type_1->setCurrentIndex(1);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     HighRssi = settings.value("WIFI/HighRssi").toDouble();
     LowRssi = settings.value("WIFI/LowRssi").toDouble();
     BleHighRssi = settings.value("BLE/HighRssi").toDouble();
@@ -707,7 +708,8 @@ void MainWindow::on_lcdTestButton_clicked() {
 
 void MainWindow::on_snInput_returnPressed() {
     // 检查是否是序列号格式
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString snPattern = settings.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
@@ -922,7 +924,8 @@ void MainWindow::on_disconnectwifi_clicked() {
     }
 }
 void MainWindow::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString wifiName = settings.value("WIFI/Name").toString();
     QString wifiPassword = settings.value("WIFI/Password").toString();
 
@@ -1869,7 +1872,8 @@ void MainWindow::on_start_local_ota_clicked() {
 }
 
 void MainWindow::on_new_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString wifiName = settings.value("WIFI/Name").toString();
     QString wifiPassword = settings.value("WIFI/Password").toString();
 
@@ -2174,7 +2178,8 @@ void MainWindow::on_distribution_network_clicked() {
     QString localHostName = QHostInfo::localHostName();
     QHostInfo hostInfo = QHostInfo::fromName(localHostName);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 

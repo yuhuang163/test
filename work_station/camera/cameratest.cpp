@@ -134,7 +134,7 @@ void cameratest::on_pushButton_clicked() {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
@@ -173,7 +173,7 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     settings.setValue("Window/Size", this->size());
     CameraGetTime = settings.value("CAMERA/CameraGetTime", 6000).toInt();
@@ -192,6 +192,8 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     connect(cameraSendTimer, &QTimer::timeout, this, &cameratest::onTimeout);
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, &cameratest::send_image_processed, this, &cameratest::updateImageOnMainThread);
+    connect(this, &cameratest::send_image_processed, this, &cameratest::start_dirty_test);
+
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
     viewercamrea = new ImageViewer("image_markings.png", this);
@@ -464,7 +466,7 @@ cameratest::~cameratest() {
     delete ui;
 }
 void cameratest::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -635,7 +637,7 @@ void cameratest::onTimeout() {
 }
 
 void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     // 读取软件版本字符串
     QString Camera_Id = settings.value("ProductInfo/Camera_Id").toString();
     qDebug() << "Read Camera_Id:" << Camera_Id;
@@ -701,6 +703,7 @@ void cameratest::startTask() {
                 result = passValue;
                 is_canGoNext = 0;
                 is_camera_control = 0;
+                can_start_dirty_test = 0;
                 TestTime.start();
                 waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
@@ -713,24 +716,28 @@ void cameratest::startTask() {
                     qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                     waitWork(WAITTIME);
                     showlog("蓝牙连接成功");
-                    pb->set_sn(FacDevInfoType_TAIL_SN, sn);
+                    // pb->set_sn(FacDevInfoType_TAIL_SN, sn);
                     bandSnMacToCsv(macAddress, sn);
-                    state = STATE_BANDING;
-                }
-                break;
+                    // state = STATE_BANDING;
 
-            case STATE_BANDING:
-                if (pb->get_is_banding_ok()) {
                     pb->get_base_info();
-                    showlog("sn已成功绑定保存");
+                    // showlog("sn已成功绑定保存");
                     state = STATE_DISABLE_SLEEP_1;
-                } else {
-                    waitWork(500);
-                    pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                    showlog("正在重试sn绑定");
                 }
-
                 break;
+
+            // case STATE_BANDING:
+            //     if (pb->get_is_banding_ok()) {
+            //         pb->get_base_info();
+            //         showlog("sn已成功绑定保存");
+            //         state = STATE_DISABLE_SLEEP_1;
+            //     } else {
+            //         waitWork(500);
+            //         pb->set_sn(FacDevInfoType_TAIL_SN, sn);
+            //         showlog("正在重试sn绑定");
+            //     }
+
+            //     break;
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
@@ -802,13 +809,9 @@ void cameratest::startTask() {
 
                 if (result == passValue) {
                     QString mesresult = "PASS";
-
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|CAMERA_TEST:PASS|");
-
                     pack.sn = ui->getMac->text();
-
                     if (ui->isusemes->checkState()) {
                         send_end_testPass(pack);
                     }
@@ -977,6 +980,7 @@ void cameratest::on_getMac_returnPressed() {
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
         ui->getMac->clear();
+        ui->getMac->setFocus();
         return;
     }
     sn = ui->getMac->text().toUtf8();
@@ -1018,7 +1022,7 @@ void cameratest::on_distribution_network_clicked() {
     ipString = ui->client_ip_label->text();
     ui->client_ip_label->setText(ipString);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 
@@ -1208,7 +1212,7 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
@@ -1230,6 +1234,18 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
 void cameratest::updateImageOnMainThread() {
     processTheDatagram(pictureByteArray);  // 显示图片
 }
+void cameratest::start_dirty_test() {
+    if (can_start_dirty_test) {
+        picutre_times++;
+        if (picutre_times == 2) {
+            picutre_times = 0;
+            can_start_dirty_test = 0;
+            // waitWork(2000);
+            on_DirtyTestButton_clicked();
+        }
+    }
+}
+
 void cameratest::on_normal_clicked() {
     canGoNextMechine(0);
     cameraSendTimer->stop();
@@ -1250,7 +1266,8 @@ void cameratest::on_DirtyTestButton_clicked() {
         QDateTime currentDateTime = QDateTime::currentDateTime();
         QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污自动化测试原图";
+        QString date = currentDateTime.toString("yyyyMMdd");
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污自动化测试原图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1385,7 +1402,9 @@ void cameratest::on_DirtyTestButton_clicked() {
         QDateTime currentDateTime = QDateTime::currentDateTime();
         QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
         QString fileName = zwTestResult + "_" + ui->getMac->text() + "_" + timestamp + ".png";
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污自动化测试结果图";
+        QString date = currentDateTime.toString("yyyyMMdd");
+
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污自动化测试结果图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1415,6 +1434,11 @@ void cameratest::on_stopTest_clicked() {
     ui->getMac->clear();
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
+    switch (getIndex()) {
+        case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
+        case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
+        default: break;
+    }
 }
 
 void cameratest::on_jxl_abnormal_clicked() {
@@ -1428,9 +1452,10 @@ void cameratest::on_jxl_abnormal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力不正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力不正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1472,9 +1497,10 @@ void cameratest::on_jxl_normal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1512,9 +1538,10 @@ void cameratest::on_zw_normal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1550,9 +1577,10 @@ void cameratest::on_zw_abnormal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污不正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/脏污不正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1590,9 +1618,10 @@ void cameratest::on_py_normal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1618,9 +1647,10 @@ void cameratest::on_py_abnormal_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移不正常";
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移不正常/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1644,7 +1674,7 @@ void cameratest::on_OffsetTest_clicked() {
     // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
     //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
     // python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
@@ -1659,9 +1689,10 @@ void cameratest::on_OffsetTest_clicked() {
 
         // 生成文件名
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试原图";
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试原图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1814,9 +1845,10 @@ void cameratest::on_OffsetTest_clicked() {
 
         // 生成文件名
         QString fileName = pyTestResult + "_" + ui->getMac->text() + "_" + timestamp + ".png";
+        QString date = currentDateTime.toString("yyyyMMdd");
 
         // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试结果图";
+        QString saveDir = QDir::currentPath() + "/图片存储/偏移自动化测试结果图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1839,8 +1871,8 @@ void cameratest::on_OffsetTest_clicked() {
             case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
             default: break;
         }
-        waitWork(2000);
-        on_DirtyTestButton_clicked();
+        can_start_dirty_test = 1;
+        showlog("可以开始赃污测试");
     }
 }
 
@@ -1900,7 +1932,9 @@ void cameratest::on_ResolutionTestButton_clicked() {
         QDateTime currentDateTime = QDateTime::currentDateTime();
         QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
         QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力测试原图";
+        QString date = currentDateTime.toString("yyyyMMdd");
+
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力测试原图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");
@@ -1988,7 +2022,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
 
             jxlTestResult = "解析力测试通过";
             showlog("解析力测试通过");
-            on_normal_clicked();
+            // on_normal_clicked();
         }
 
         if (flag == 0) {
@@ -2047,7 +2081,8 @@ void cameratest::on_ResolutionTestButton_clicked() {
         QDateTime currentDateTime = QDateTime::currentDateTime();
         QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
         QString fileName = jxlTestResult + "_" + ui->getMac->text() + "_" + timestamp + ".png";
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力自动化测试结果图";
+        QString date = currentDateTime.toString("yyyyMMdd");
+        QString saveDir = QDir::currentPath() + "/图片存储/解析力自动化测试结果图/" + date;
         QDir dir(saveDir);
         if (!dir.exists()) {
             dir.mkpath(".");

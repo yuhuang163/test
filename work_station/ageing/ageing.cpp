@@ -24,7 +24,7 @@ ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     settings.setValue("Window/Size", this->size());
     standbattary = settings.value("BATTARY/standbattary").toDouble();
@@ -46,7 +46,7 @@ void ageing::refreshMesState(int state) {
 void ageing::refreshPeriphData(FacGetPeriphState data) {
     if (refresh_periph_times) {
         refresh_periph_times = 0;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
         QString flashStatus = settings.value("PeripheralStatus/Flash_Status").toString();
 
         if (static_cast<int>(data.flash_state) == flashStatus.toInt() || flashStatus == "null") {
@@ -115,7 +115,7 @@ void ageing::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
 }
 ageing::~ageing() { delete ui; }
 void ageing::refreshBattaryData(FacDevInfo adc) {
@@ -248,21 +248,21 @@ void ageing::closeEvent(QCloseEvent*) {
     isTestContinue = false;
 }
 void ageing::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-
-    stringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
+    QString brushstringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+    QString brushstringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
-    qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+    qDebug() << getIndex() << "brushstringsn" << brushstringsn;
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        showlog("读取的subpid为" + stringSubpid);
-        showlog("写入的subpid为" + subpid);
+        ui->brush_subpid->setText("存储的subpid:" + brushstringSubpid);
 
-        if (subpid == stringSubpid) {
+        showlog("读取的subpid为" + brushstringSubpid);
+        showlog("写入的subpid为" + stringsubpid);
+
+        if (brushstringSubpid == stringsubpid) {
             TestItem test;
-            test.testItem = "suipid测试";
-            test.testData = stringSubpid;
+            test.testItem = "读取的suipid";
+            test.testData = brushstringSubpid;
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
@@ -273,8 +273,8 @@ void ageing::refreshSn(FacDevInfo data) {
 
         } else {
             TestItem test;
-            test.testItem = "suipid测试";
-            test.testData = stringSubpid;
+            test.testItem = "读取的suipid";
+            test.testData = brushstringSubpid;
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
@@ -286,12 +286,14 @@ void ageing::refreshSn(FacDevInfo data) {
     }
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        showlog("读取的sn为" + stringsn);
-        showlog("写入的sn为" + sn);
-        if (stringsn == sn) {
+        ui->tail_sn->setText("存储的尾盖sn:" + brushstringsn);
+
+        showlog("读取的sn为" + brushstringsn);
+        showlog("写入的sn为" + stringsn);
+        if (brushstringsn == stringsn) {
             TestItem test;
-            test.testItem = "sn测试";
-            test.testData = stringsn;
+            test.testItem = "读取的sn";
+            test.testData = brushstringsn;
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
@@ -302,8 +304,8 @@ void ageing::refreshSn(FacDevInfo data) {
 
         } else {
             TestItem test;
-            test.testItem = "sn测试";
-            test.testData = stringsn;
+            test.testItem = "读取的sn";
+            test.testData = brushstringsn;
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
@@ -347,8 +349,9 @@ void ageing::startTask() {
                 showlog("开始测试");
                 pb->reset_all_pb();
                 at->resetConnected();
-                ui->tail_sn->setText("芯片存储的尾盖sn:");
-                stringsn = "";
+                ui->tail_sn->setText("存储的尾盖sn:");
+                ui->brush_subpid->setText("存储的subpid:");
+
                 snCompareOk = 0;
                 result = "";
                 TestTime.start();
@@ -360,7 +363,8 @@ void ageing::startTask() {
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_TAIL_SN, sn));
+                    sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_TAIL_SN, writesn));
+                    showlog("sn绑定保存内容为：" + stringsn);
                     state = STATE_WAIT_BANDING;
                 }
                 break;
@@ -368,9 +372,7 @@ void ageing::startTask() {
             case STATE_WAIT_BANDING:
 
                 if (canGoNext) {
-                    stringsn = ui->getMac->text();
                     sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN));
-                    showlog("sn已成功绑定保存" + stringsn);
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
 
@@ -382,7 +384,7 @@ void ageing::startTask() {
                     if (snCompareOk == 1) {
                         if (pack.product == "U7" || pack.product == "U7P") {
                             showlog("已发送subpid");
-                            sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, subpid));
+                            sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, writesubpid));
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
                             state = STATE_DISABLE_SLEEP_1;
@@ -523,7 +525,7 @@ void ageing::startTask() {
 
                 ui->getMac->clear();
                 ui->macInput->clear();
-                stringsn = "";
+
                 TestItem test;
                 test.testItem = "老化测试";
                 test.testData = "已进入";
@@ -617,7 +619,7 @@ QString ageing::getValueBySN(const QString& mysn) {
     QString truncatedSN = mysn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
@@ -625,7 +627,8 @@ QString ageing::getValueBySN(const QString& mysn) {
 }
 void ageing::on_getMac_returnPressed() {
     testResultTableInit();
-    sn.clear();
+    writesn.clear();
+    writesubpid.clear();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);
@@ -642,14 +645,15 @@ void ageing::on_getMac_returnPressed() {
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
         ui->getMac->clear();
+        ui->getMac->setFocus();
         return;
     }
 
     showlog("正在查询mac地址");
-    sn = ui->getMac->text().toUtf8();
-
-    if (sn != last_sn) {
-        last_sn = sn;
+    writesn = ui->getMac->text().toUtf8();
+    stringsn = ui->getMac->text();
+    if (writesn != last_sn) {
+        last_sn = writesn;
 
     } else {
         showlog("sn与上一台机器重复,机子异常");
@@ -657,12 +661,14 @@ void ageing::on_getMac_returnPressed() {
     }
 
     if (pack.product == "U7" || pack.product == "U7P") {
-        subpid = getValueBySN(ui->getMac->text()).toUtf8();
-        if ("SUBPID_ERRO" == subpid) {
+        writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
+
+        if ("SUBPID_ERRO" == writesubpid) {
             QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
             return;
         }
-        show_product(subpid);
+        stringsubpid = writesubpid;
+        show_product(writesubpid);
     }
 
     getMac(ui->getMac->text());  // 文件获取
@@ -759,8 +765,8 @@ void ageing::on_snInput_returnPressed() {
 
     // 编写SN绑定的代码
     // 先判断蓝牙是否连接上，如果没连接上，不能绑定
-    stringsn = ui->snInput->text();
-    //  sn = ui->snInput->text().toUtf8();
+    //  stringsn = ui->snInput->text();
+    // writesn = ui->snInput->text().toUtf8();
 
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();

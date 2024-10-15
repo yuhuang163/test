@@ -42,3 +42,41 @@ motorbox::~motorbox() {
 
     delete ui;
 }
+void motorbox::checkAllTest(int fixtureNumber) {
+    fixtureNumber = fixtureNumber - 1;
+    if (fixtureNumber < 0 || fixtureNumber > testList.size()) {
+        return;
+    }
+    FixTureStates[fixtureNumber] = 1;
+    if (checkStateReady(FixTureStates)) {
+        for (int i = 0; i < testList.size(); ++i) {
+            FixTureStates[i] = 0;
+        }
+
+        if (motor_cali_stage == 1) {
+            motor_cali_stage = 2;
+            QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
+            return;
+        }
+
+        if (motor_cali_stage == 2) {
+            motor_cali_stage = 1;
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(this, "电机测试", "电机是否都震动吗？", QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::No) {
+                bool ok;
+                QString text =
+                    QInputDialog::getText(nullptr, "电机测试", "请输入不良机号", QLineEdit::Normal, QString(), &ok);
+
+                if (ok && !text.isEmpty()) {
+                    emit go_screen_next(text.toInt());
+                } else {
+                    QMessageBox::warning(nullptr, "警告", "没有输入不良机号");
+                }
+            } else {
+                emit go_screen_next(0);  // 没问题
+            }
+            return;
+        }
+    }
+}

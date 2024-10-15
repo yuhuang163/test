@@ -1,11 +1,11 @@
 ﻿#include "mesmanager.h"
 
-QMesManager::QMesManager()
-{
+QMesManager::QMesManager() {
     MesSystems.push_back(&JjMes);
     MesSystems.push_back(&XwdMes);
     MesSystems.push_back(&LxMes);
     MesSystems.push_back(&HqMes);
+    MesSystems.push_back(&WksMes);
 
     connect(&JjMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
     connect(&JjMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
@@ -26,52 +26,37 @@ QMesManager::QMesManager()
     connect(&LxMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
     connect(&LxMes, &Qmes::operateMesError, this, &QMesManager::handleMesError);
     connect(&LxMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
+
+    connect(&WksMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
+    connect(&WksMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
+    connect(&WksMes, &Qmes::operateMesError, this, &QMesManager::handleMesError);
+    connect(&WksMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
 }
 
-void QMesManager::handleMesState(int state)
-{
-    emit MesState(state);
-}
-void QMesManager::handleMesSucess(const int mechines)
-{
-    emit MesSucess(mechines);
-}
-void QMesManager::handleMesError(const int mechines, QString resultMsg)
-{
-    emit MesError(mechines, resultMsg);
-}
-void QMesManager::handleMesTestvalue(const int mechines, QString resultMsg)
-{
-    emit MesTestvalue(mechines, resultMsg);
-}
+void QMesManager::handleMesState(int state) { emit MesState(state); }
+void QMesManager::handleMesSucess(const int mechines) { emit MesSucess(mechines); }
+void QMesManager::handleMesError(const int mechines, QString resultMsg) { emit MesError(mechines, resultMsg); }
+void QMesManager::handleMesTestvalue(const int mechines, QString resultMsg) { emit MesTestvalue(mechines, resultMsg); }
 
-void QMesManager::loginAll(MesPacketData pack)
-{
-    for (auto mes : MesSystems)
-    {
+void QMesManager::loginAll(MesPacketData pack) {
+    for (auto mes : MesSystems) {
         mes->LogIn(pack);
     }
 }
 
-void QMesManager::GetTestDataAll(MesPacketData pack)
-{
-    for (auto mes : MesSystems)
-    {
+void QMesManager::GetTestDataAll(MesPacketData pack) {
+    for (auto mes : MesSystems) {
         mes->GetTestData(pack);
     }
 }
-void QMesManager::ProcessInspectionAll(MesPacketData pack)
-{
-    for (auto mes : MesSystems)
-    {
+void QMesManager::ProcessInspectionAll(MesPacketData pack) {
+    for (auto mes : MesSystems) {
         mes->ProcessInspection(pack);
     }
 }
 
-void QMesManager::TestPassAll(MesPacketData pack)
-{
-    for (auto mes : MesSystems)
-    {
+void QMesManager::TestPassAll(MesPacketData pack) {
+    for (auto mes : MesSystems) {
         mes->TestPass(pack);
     }
 }

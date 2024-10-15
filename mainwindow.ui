@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>2</number>
+               <number>6</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2116,7 +2116,7 @@
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>单步测试校准</string>
+                        <string>霍尔和零点校准</string>
                        </property>
                       </widget>
                      </item>

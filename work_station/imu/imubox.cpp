@@ -58,7 +58,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
                 connect(Fixture_uart_ui, SIGNAL(start_fix_action(int)), testList[i], SLOT(get_fix_action(int)));
             }
 
-            QSettings settings(SETTING_NAME, QSettings::IniFormat);
+            QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
             QString masterFixturecomName = settings.value(QString("0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
@@ -158,7 +158,7 @@ void imubox::startTest() {
 }
 
 imubox::~imubox() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     if (Fixture_uart_ui != NULL)
         settings.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());

@@ -17,8 +17,9 @@
 #endif
 wksmes::wksmes() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
-
-    url = settings.value("Mes/NET", "http://IP/WIP/").toString();
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    url = settings.value("Mes/NET", "http://218.14.127.107:8880/WIP/").toString();
     field = settings.value("Mes/FIELD", "BT_MAC").toString();
 }
 // sn和工站，站前检测
@@ -26,9 +27,11 @@ void wksmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory == "wks") {
         // 构建JSON请求体
         QJsonObject json;
+
+        json["lotName"] = pack.lotName;
         json["station_name"] = pack.machineNo;
         json["userID"] = pack.userNo;
-        json["stepName"] = "SMT测试";
+        json["stepName"] = pack.test_station;  //工序名称
         json["SCAN_TYPE"] = 22;
 
         QJsonArray inputSerials;
@@ -134,15 +137,70 @@ void wksmes::TestPass(MesPacketData pack) {
         // 构建JSON请求体
         QJsonObject json;
 
-        json["station_name"] = pack.test_station;
-        json["userID"] = pack.userNo;     // 添加用户ID
-        json["stepName"] = "SMT-贴条码";  // 可以根据需要更改
-        json["SCAN_TYPE"] = 22;           // 根据需要设置
+        json["station_name"] = pack.machineNo;
+        json["userID"] = pack.userNo;          // 添加用户ID
+        json["stepName"] = pack.test_station;  // 可以根据需要更改
+        json["SCAN_TYPE"] = 22;                // 根据需要设置
 
         QJsonArray inputSerials;
         QJsonObject serial;
         serial["serialNumber"] = pack.sn;
         inputSerials.append(serial);
+
+        QJsonArray testdatasArray;
+        QString inputString = pack.itemvalue.mid(1, pack.itemvalue.length() - 2);  // 移除起始和结束的'|'
+
+        // 分割字符串成键值对
+        QStringList keyValuePairs = inputString.split("|");  // 跳过空部分
+
+        // 遍历键值对并添加到 JSON 对象
+        for (const QString& keyValue : keyValuePairs) {
+            int index = keyValue.indexOf(":");
+            if (index != -1) {
+                QString key = keyValue.left(index).trimmed();
+                QString value = keyValue.mid(index + 1).trimmed();
+                QJsonObject interTestdata;
+                interTestdata["key"] = key;
+                interTestdata["value"] = value;
+                testdatasArray.append(interTestdata);
+                qDebug() << "解析的键值对：" << keyValue;
+            } else {
+                qDebug() << "无法解析的键值对：" << keyValue;
+            }
+        }
+
+        qDebug() << "测试结果" << testdatasArray;
+        QJsonObject testdatas;
+        testdatas["testdatas"] = testdatasArray;
+        inputSerials.append(testdatas);
+
+        qDebug() << "pack.error" << pack.error;
+
+        QJsonArray defectsArray;
+        QString errorinputString = pack.error.mid(1, pack.error.length() - 2);
+        // 分割字符串成键值对
+        QStringList defectsPairs = errorinputString.split("|");
+        // 遍历键值对并添加到 JSON 对象
+        for (const QString& Defects : defectsPairs) {
+            int index = Defects.indexOf(":");
+            if (index != -1) {
+                QJsonObject interDefects;
+                QString key = Defects.left(index).trimmed();
+                QString value = Defects.mid(index + 1).trimmed();
+                interDefects["defectType"] = key;
+                interDefects["defectCode"] = value;
+                defectsArray.append(interDefects);
+                qDebug() << "解析的键值对：" << Defects;
+            } else {
+                qDebug() << "无法解析的键值对：" << Defects;
+            }
+        }
+        QJsonObject defects;
+        qDebug() << "不良信息" << defectsArray;
+
+        defects["defects"] = defectsArray;
+        inputSerials.append(defects);
+
         json["inputSerials"] = inputSerials;
 
         // 将JSON对象转换为字符串
@@ -150,11 +208,11 @@ void wksmes::TestPass(MesPacketData pack) {
         QByteArray postDataByteArray = doc.toJson(QJsonDocument::Compact);
 
         // 输出请求内容到日志
-        QString logMsg = QString("发送网络请求，URL：%1，参数：%2").arg(url).arg(QString(postDataByteArray));
+        QString logMsg = QString("发送网络请求，URL：%1Complete2，参数：%2").arg(url).arg(QString(postDataByteArray));
         qDebug() << logMsg;
 
         QNetworkAccessManager manager;
-        QNetworkRequest request(url);
+        QNetworkRequest request(url + "Complete2");
 
         // 设置请求头
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");

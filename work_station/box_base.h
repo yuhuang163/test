@@ -18,7 +18,7 @@ public:
 
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
         QVariant windowSize(availableSize / 4 * 3);
         this->resize(settings.value("Window/Size", windowSize).toSize());

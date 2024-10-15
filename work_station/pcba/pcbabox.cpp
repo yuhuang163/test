@@ -40,7 +40,7 @@ pcbabox::pcbabox(QWidget* parent) :
                 connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_sleep(const FixturePacketData)), testList[i],
                         SLOT(get_remain_data_sleep(const FixturePacketData)));
             }
-            QSettings settings(SETTING_NAME, QSettings::IniFormat);
+            QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
             QString masterFixturecomName = settings.value(QString("0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
 
@@ -75,7 +75,7 @@ void pcbabox::startTest() {
 }
 
 pcbabox::~pcbabox() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     if (Fixture_uart_ui != NULL)
         settings.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());

@@ -14,7 +14,7 @@
 #endif
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString station = settings.value("SYSTEM/station").toString();  // 工站
     if (station != "PCBA_TEST") {
         loginMes();
@@ -193,7 +193,8 @@ void box_base::signalAndslot() {
 //每一路开始测试都会清除掉自己的那个变量
 void box_base::reset_vector(int i) { FixTureStates[i - 1] = 0; }
 void box_base::initData() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
     pack.Employee_ID = settings.value("Mes/mUserno").toString();
     pack.action = settings.value("Mes/Action").toString();
@@ -204,6 +205,7 @@ void box_base::initData() {
     pack.test_station = settings.value("Mes/test_station").toString();
     pack.password = settings.value("Mes/M_PASSWORD").toString();
     pack.userNo = settings.value("Mes/M_USERNO").toString();
+    pack.lotName = settings.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
     for (int i = 0; i < testList.size(); i++) {
@@ -218,7 +220,7 @@ void setComboBoxValue(QSettings& settings, const QString& baseKey, const QString
     }
 }
 void box_base::saveCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     settings.setValue("Window/Size", this->size());
     for (int i = 0; i < testList.size(); i++) {
         qDebug() << "保存的串口号";
@@ -305,7 +307,7 @@ void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
 }
 
 void box_base::recoverCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     for (int i = 0; i < testList.size(); ++i) {
         QString baseKey = QString("mechine/%1").arg(i);
@@ -332,7 +334,7 @@ void box_base::recoverCustom() {
 }
 
 void box_base::ShowData(QMainWindow* parent) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     if (parent) {  // 确保 parent 指针不为空
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
@@ -342,6 +344,8 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("华勤"));
         else if (pack.factory == "jj")
             parent->statusBar()->addPermanentWidget(new QLabel("金进"));
+        else if (pack.factory == "wks")
+            parent->statusBar()->addPermanentWidget(new QLabel("伟克森"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
     } else {
@@ -358,7 +362,7 @@ void box_base::ShowData(QMainWindow* parent) {
 }
 
 void box_base::loginMes() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
     pack.machineNo = settings.value("Mes/M_MACHINENO").toString();
     pack.password = settings.value("Mes/M_PASSWORD").toString();

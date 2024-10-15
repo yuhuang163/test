@@ -55,41 +55,29 @@
 
 #define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.6"
-#define CAMERA_VER "摄像测试工站   V1.1.9"
-#define AGE_VER "老化测试工站   V1.1.9"
-#define MOTOR_VER "电机校准工站   V1.1.8"
-#define QC_VER "静态电流测试   V1.3.7"
-#define SCREEN_VER "屏幕测试工站   V1.1.5"
-#define LIGHT_VER "灯光测试工站   V1.1.5"
-#define SINGLE_VER "信号测试工站   V1.3.4"
-#define FREE_VER "自由测试工站   V1.0.8"
-#define IMU_VER "IMU校准工站    V1.4.5"
-#define PCBA_VER "电刷板子测试   V1.3.5"
+#define DEBUG_VER "电刷产测工具   V1.3.7"
+#define CAMERA_VER "摄像测试工站   V1.2.2"
+#define AGE_VER "老化测试工站   V1.2.1"
+#define MOTOR_VER "电机校准工站   V1.2.1"
+#define QC_VER "静态电流测试   V1.3.8"
+#define SCREEN_VER "屏幕测试工站   V1.1.6"
+#define LIGHT_VER "灯光测试工站   V1.1.6"
+#define SINGLE_VER "信号测试工站   V1.3.5"
+#define FREE_VER "自由测试工站   V1.0.9"
+#define IMU_VER "IMU校准工站    V1.4.6"
+#define PCBA_VER "电刷板子测试   V1.3.6"
 
-
-// [PCBA_VER] 维克森mes，基本文件添加，取消板厂的mes登陆（会闪退），板厂跳过00的mac地址
-// [DEBUG_VER] imu数据保存功能，ota修改配网地方
-// [AGE_VER] 添加老化sn写入重复拦截
-// [CAMERA_VER] 增加解析力测试，一键测试完成
-// [QC_VER] 修复p20p无法测试问题
-// [SINGLE_VER] 充电电流平稳拦截，以及工厂模式发送
-//
-
-// [MOTOR_VER] 取消mac地址错误弹窗
-// [IMU_VER] 支持适配博士的imu芯片
-
-// 
-
-// [IMU_VER] 增加测试要求的日志保存
-
-
-
-// [SCREEN_VER] 增加测试要求的日志保存
-// [LIGHT_VER] 增加测试要求的日志保存
-
-// [FREE_VER] 增加测试要求的日志保存
-
+// [PCBA_VER] 做了配置文件中文编码，添加了伟克森的mes，添加mes的界面内容
+// [DEBUG_VER] 做了配置文件中文编码
+// [AGE_VER] 做了配置文件中文编码，老化sn写入优化
+// [CAMERA_VER] 做了配置文件中文编码，增加日期保存文件，实现自动化测试图片，删除写入sn
+// [QC_VER] 做了配置文件中文编码
+// [SINGLE_VER] 做了配置文件中文编码，nfc测试加入表格
+// [MOTOR_VER] 做了配置文件中文编码，电机校准1拖多，删除写入过程条码
+// [IMU_VER] 做了配置文件中文编码，做了p30p的适配，
+// [SCREEN_VER] 做了配置文件中文编码
+// [LIGHT_VER] 做了配置文件中文编码
+// [FREE_VER] 做了配置文件中文编码
 //
 
 #endif  // ABINI_H

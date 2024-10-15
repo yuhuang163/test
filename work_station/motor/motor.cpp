@@ -37,7 +37,7 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     updateMainStyle("Ubuntu.qss");
     standbattary = settings.value("BATTARY/standbattary").toDouble();
@@ -258,7 +258,7 @@ void motor::processInspection(QString stringsn) {
 }
 
 void motor::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     // 读取软件版本字符串
     QString softwareVersions = settings.value("ProductInfo/Software_Version").toString();
@@ -406,6 +406,23 @@ void motor::refreshBattaryData(FacDevInfo adc) {
         state = STATE_SAVE_RESULT;
     }
 }
+
+void motor::canGoNextMechine(int x) {
+    qDebug() << getIndex() << "得到信息" << getIndex();
+
+    if (x == getIndex()) {
+        result = failValue;
+        showlog("停止运行");
+        ui->test_result->setText("FAIL");
+        ui->test_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
+                                       "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+        refreshMotorCaliMsg("电机测试失败");
+        state = STATE_SAVE_RESULT;
+        showlog("电机测试失败");
+    }
+    state = STATE_SAVE_RESULT;
+}
+
 void motor::startTask() {
     if (isTestContinue) {
         ui->test_time->display(TestTime.elapsed() / 1000);
@@ -451,9 +468,25 @@ void motor::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
-                    pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                    showlog("已发送sn绑定");
-                    state = STATE_SN_CHECK;
+                    pb->set_motor_test_state(0);
+                    waitWork(100);
+                    pb->set_motor_cali_state(1);
+                    waitWork(100);
+                    pb->set_motor_damping_state(0);
+                    waitWork(100);
+                    refreshMotorCaliMsg("解除阻尼");
+                    // showlog("解除阻尼");
+                    // #ifdef LXSET
+                    //                      waitWork(1000);
+                    //                      control_motor_cmd("/c:-90");
+                    //                         waitWork(1000);
+                    // #endif
+
+                    state = UNLOCK_DAMPING;
+
+                    // pb->set_sn(FacDevInfoType_TAIL_SN, sn);
+                    // showlog("已发送sn绑定");
+                    // state = STATE_SN_CHECK;
                 } else {
                     waitWork(500);
                     showlog("正在重发进入禁止休眠");
@@ -461,36 +494,18 @@ void motor::startTask() {
                 }
                 break;
 
-            case STATE_SN_CHECK:
-                if (pb->get_is_banding_ok()) {
-                    showlog("sn已成功绑定保存");
-                    stringsn = ui->getMac->text();
-                    showlog(stringsn);
-                    waitWork(WAITTIME);
-                    pb->set_motor_test_state(0);
-                    waitWork(WAITTIME);
-                    pb->set_motor_cali_state(1);
-                    waitWork(WAITTIME);
-                    pb->set_motor_damping_state(0);
-                    waitWork(WAITTIME);
-                    refreshMotorCaliMsg("解除阻尼");
-                    // showlog("解除阻尼");
-                    // #ifdef LXSET
-                    //                      waitWork(1000);
-                    //                      control_motor_cmd("/c:-90");
-                    //                         waitWork(1000);
-                    // #else
-                    //                      QMessageBox::warning(NULL, "警告", "
-                    //                      请把刷头置于非0位\t\r\n");
-                    // #endif
+                //         case STATE_SN_CHECK:
+                //             if (pb->get_is_banding_ok()) {
+                //                 showlog("sn已成功绑定保存");
+                //                 stringsn = ui->getMac->text();
+                //                 showlog(stringsn);
 
-                    state = UNLOCK_DAMPING;
-                } else {
-                    waitWork(500);
-                    pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-                    showlog("重发sn绑定");
-                }
-                break;
+                //             } else {
+                //                 waitWork(500);
+                //                 pb->set_sn(FacDevInfoType_TAIL_SN, sn);
+                //                 showlog("重发sn绑定");
+                //             }
+                //             break;
 
             case UNLOCK_DAMPING:
 
@@ -520,7 +535,9 @@ void motor::startTask() {
                     // #else
                     //                 QMessageBox::warning(NULL, "警告", " 请把刷头置于0位\t\r\n");
                     // #endif
-                    QMessageBox::warning(NULL, "警告", " 请把刷头置于0位\t\r\n");
+
+                    emit send_go_next_test(getIndex());
+
                     waitWork(WAITTIME);
                     pb->set_motor_cali(2);
                     waitWork(WAITTIME);
@@ -538,8 +555,8 @@ void motor::startTask() {
                 if (pb->getisZeroCali() == 1) {
                     refreshMotorCaliMsg("零点校准完成");
                     // showlog("零点校准完成");
-                    if (pack.factory == "lx")
-                        QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
+                    // if (pack.factory == "lx")
+                    //     QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
 
                     pb->set_motor_cali_state(0);
 
@@ -566,13 +583,8 @@ void motor::startTask() {
 
             case MOTOR_TESTING:
                 if (pb->get_is_motor_test_state()) {
-                    QMessageBox::StandardButton reply;
-                    reply = QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
-                    if (reply == QMessageBox::No) {
-                        refreshMotorCaliMsg("电机测试失败");
-                        result = failValue;
-                    }
-                    state = STATE_SAVE_RESULT;
+                    emit send_go_next_test(getIndex());
+
                 } else {
                     pb->set_sevor_motor_param(14, 12, 5.2, 190);
                     refreshMotorCaliMsg("重发电机测试");
@@ -847,6 +859,7 @@ void motor::on_getMac_returnPressed() {
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
         ui->getMac->clear();
+           ui->getMac->setFocus();
         return;
     }
 

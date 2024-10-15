@@ -256,8 +256,8 @@ void MainWindow::processTheDatagram(QByteArray& datagram) {
 
     QPainter painter(&viewercamrea->pixmap);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-
+    QSettings settings(SETTING_NAME, QSettings::IniFormat); 
+  settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
     int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
@@ -1322,7 +1322,8 @@ void MainWindow::getWifiMsg(QString data) {
 void MainWindow::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void MainWindow::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -1565,7 +1566,8 @@ void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
     }
 }
 void MainWindow::getMac(QString sn_to_search) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
 
@@ -1916,7 +1918,8 @@ void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifi
     }
 
     // 构建完整的文件路径
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString filePath =
         QDir(folderPath).filePath(settings.value("ProductInfo/Product_Name").toString() + "wifi蓝牙报告.csv");
     QFile file(filePath);
@@ -2176,7 +2179,8 @@ QString MainWindow::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
@@ -2382,7 +2386,8 @@ void MainWindow::getmacadress(const QByteArray& byte) {
     }
 }
 void MainWindow::saveCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     settings.setValue("Window/Size", this->size());
 
     QString baseKey = QString("mechine/%1").arg(0);
@@ -2393,7 +2398,8 @@ void MainWindow::saveCustom() {
 }
 
 void MainWindow::recoverCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
     QVariant windowSize(availableSize / 4 * 3);
     this->resize(settings.value("Window/Size", windowSize).toSize());
@@ -2412,7 +2418,8 @@ void MainWindow::initBasicInfo() {
         QString displayName;
         QString settings;
     };
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     // 读取 ProductInfo 节下的键值对
     productName = "=" + settings.value("ProductInfo/Product_Name").toString();
@@ -2519,7 +2526,8 @@ void MainWindow::initPeriphState() {
         QString displayName;
         QString settings;
     };
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     // 读取 PeripheralStatus 节下的键值对
     QString imuStatus = "=" + settings.value("PeripheralStatus/IMU_Status").toString();

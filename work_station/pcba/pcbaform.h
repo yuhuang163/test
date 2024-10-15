@@ -33,11 +33,12 @@ public:
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QLineEdit* getMotorCaliParam() override { return ui->pcba_motor_cali_param; };     // 电机校准参数
     QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口
-    QLineEdit* getMacLineEdit() override { return ui->macInput; };                     // sn输入口
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };                       // sn输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                            // log输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                        // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
-
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };
+     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
     explicit PcbaForm(int index, QWidget* parent = nullptr);
     ~PcbaForm();
     Ui::PcbaForm* ui;
@@ -52,12 +53,12 @@ public:
 
 private slots:
     void getDongleVer(QString data) override;
-
+    void processInspection(QString stringsn);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
     void getimuData(FacUploadNineAlex x) override;
     void get_remain_data(const FixturePacketData packetData);
     void get_remain_data_sleep(const FixturePacketData packetData);
-    void on_end_clicked();
+    void on_stopTest_clicked();
     void getDongleWifi(QString data) override;
     void processTestItem(const QString& testItem, int currentValue, int lowValue, int highValue,
                          QList<TestItem>& testItems);
@@ -88,10 +89,13 @@ private slots:
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
 
+    void on_getMac_returnPressed();
+
 protected:
     void closeEvent(QCloseEvent*) override;
 
 private:
+    QStringList erroContent;
     int ble_wait_time = 0;
     int wifi_connect_waittime = 0;
     QTime TestTime;

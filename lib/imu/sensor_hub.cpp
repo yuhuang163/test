@@ -36,8 +36,8 @@ int q_convolution_int_3(new_imu_calibrate::sensordata_q* q, int kernel[8]) {
 }
 
 new_imu_calibrate::sensordata_q* new_imu_calibrate::init_int_3(int n) {
-    sensordata_q* q = (sensordata_q*)malloc(sizeof(sensordata_q));
 
+    sensordata_q* q = (sensordata_q*)malloc(sizeof(sensordata_q));
     q->data = (int(*)[3])malloc(sizeof(int[3]) * n);
     q->head = 0;
     q->tail = 0;
@@ -60,9 +60,8 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
 
     if (LSB == 4) {
         if (imu_static_state == 1) {
-            // for y20
-            // 根据条件填充数组
-            double y20_positions[11][3] = {
+            // y20的
+            double Y20Y20P_positions[11][3] = {
                 {0, 0, 1},            // Position 8     u     u
                 {0, 1, 0},            // Position 9		r
                 {0, 0, -1},           // Position 10    d
@@ -77,11 +76,11 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
                 {0.643, -0.766, 0},  // Position 1 	u     l
 
             };
-            memcpy(fixed_positions, y20_positions, sizeof(fixed_positions));
+            memcpy(fixed_positions, Y20Y20P_positions, sizeof(fixed_positions));
 
         } else {
-            //木星的
-            double q20_positions[11][3] = {
+            //p30p也在这
+            double U7U7P_positions[11][3] = {
 
                 {0, 0, 1},            // Position 1
                 {1, 0, 0},            // Position 2
@@ -96,11 +95,11 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
                 {-0.766, -0.643, 0}   // Position 11
 
             };
-            memcpy(fixed_positions, q20_positions, sizeof(fixed_positions));
+            memcpy(fixed_positions, U7U7P_positions, sizeof(fixed_positions));
         }
     } else {
         // for q20 and p20pro
-        double q20_positions[11][3] = {
+        double Q20P20P_positions[11][3] = {
             {0, 0, 1},            // Position 1
             {1, 0, 0},            // Position 2
             {0, 0, -1},           // Position 3
@@ -114,7 +113,7 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
             {-0.766, -0.643, 0}   // Position 11
 
         };
-        memcpy(fixed_positions, q20_positions, sizeof(fixed_positions));
+        memcpy(fixed_positions, Q20P20P_positions, sizeof(fixed_positions));
     }
 
     for (int i = 0; i < 11; i++) {
@@ -340,7 +339,8 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
 }
 
 void new_imu_calibrate::acccalib_sensors_init() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     STATIC_CONV_VAR = settings.value("IMU/STATIC_CONV_VAR", "200").toInt();
     STATIC_CONV_COUNT = settings.value("IMU/STATIC_CONV_COUNT", "45").toInt();
     STATIC_CONV_DELAY = settings.value("IMU/STATIC_CONV_DELAY", "15").toInt();

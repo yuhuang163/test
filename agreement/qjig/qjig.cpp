@@ -87,7 +87,8 @@ void Qjig::set_relay_state(int state)
 }
 void Qjig::sendjigData(jigState fixstate)
 {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     if (settings.value("Mes/FACTORY", "xwd").toString() == "xwd")
     {
         if (!serialPort->isOpen())

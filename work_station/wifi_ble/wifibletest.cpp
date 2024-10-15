@@ -53,7 +53,7 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
         comparewaittime->stop();
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     HighRssi = settings.value("WIFI/HighRssi").toDouble();
     LowRssi = settings.value("WIFI/LowRssi").toDouble();
@@ -143,7 +143,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         on_nfc_write_read_clicked();
     }
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     // 读取软件版本字符串
     QString softwareVersions = settings.value("ProductInfo/Software_Version").toString();
     qDebug() << "Read Software_Version:" << softwareVersions;
@@ -409,7 +409,7 @@ void wifibletest::refreshMesState(int state) {
 }
 
 void wifibletest::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -562,6 +562,7 @@ void wifibletest::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 initDate();
+                waitWork(500);
                 at->sendMac(macAddress);  // 开始连接
                 showlog("开始测试");
                 state = getNextState(state);
@@ -896,7 +897,7 @@ void wifibletest::on_disconnectwifi_clicked() {
     }
 }
 void wifibletest::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
     QString wifiPassword = settings.value("WIFI/Password").toString();
@@ -1382,7 +1383,7 @@ QString wifibletest::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
@@ -1445,8 +1446,18 @@ void wifibletest::on_nfc_write_read_clicked() {
     dc_reset(icdev, 1);
     st = dc_card_n(icdev, 0, &SnrLen, _Snr);
     if (st != 0) {
-        if (st == 1)
+        if (st == 1) {
             showlog("nfc卡识别不到");
+            TestItem test;
+            test.testItem = "nfc测试";
+            test.testData = "nfc卡识别不到";
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
+        }
         if (st < 0)
             showlog("nfc卡查询失败");
 
@@ -1459,6 +1470,16 @@ void wifibletest::on_nfc_write_read_clicked() {
         hex_a(_Snr, szSnr, SnrLen);
         std::string str1 = (char*)szSnr;
         showlog("卡的序列号为" + QString::fromStdString(str1));
+
+        TestItem test;
+        test.testItem = "nfc测试";
+        test.testData = "nfc的序列号为" + QString::fromStdString(str1);
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
     }
 
     for (int i = 0; i < dataSize; i += 4) {        // 每次处理8个字节
@@ -1473,6 +1494,16 @@ void wifibletest::on_nfc_write_read_clicked() {
             showlog(errMsg);
 
             qDebug() << getIndex() << "errMsg: " << writedata << errMsg;
+
+            TestItem test;
+            test.testItem = "nfc测试";
+            test.testData = "写入错误: " + errMsg;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
         }
     }
     showlog("nfc信息读取内容为：");
@@ -1482,6 +1513,16 @@ void wifibletest::on_nfc_write_read_clicked() {
             // showlog("dc_read Error!");
             showlog("nfc信息读取失败");
             TestResult = failValue;
+
+            TestItem test;
+            test.testItem = "nfc测试";
+            test.testData = "nfc信息读取失败";
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
 
             return;
         } else {
@@ -1497,7 +1538,15 @@ void wifibletest::on_nfc_write_read_clicked() {
         if (st != 0) {
             showlog("nfc信息读取失败");
             TestResult = failValue;
-            //  showlog("dc_read Error!");
+            TestItem test;
+            test.testItem = "nfc测试";
+            test.testData = "nfc信息读取失败";
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
 
             return;
         } else {
@@ -1511,9 +1560,28 @@ void wifibletest::on_nfc_write_read_clicked() {
     showlog("nfc信息读取结束");
     if (ReadNfcData == nfcdataText) {
         showlog("写入的与读取的比对通过");
+        TestItem test;
+        test.testItem = "nfc测试";
+        test.testData = "读写比对";
+        test.testResult = "通过";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
+
     } else {
         showlog("写入的与读取的比对失败");
         TestResult = failValue;
+        TestItem test;
+        test.testItem = "nfc测试";
+        test.testData = "读写比对";
+        test.testResult = "失败";
+        test.ask = "通过";
+        testItems.append(test);
+        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+        testResultTableUpdate(testItems);
+        testItems.clear();
     }
 }
 

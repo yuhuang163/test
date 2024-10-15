@@ -170,13 +170,6 @@
            </property>
           </widget>
          </item>
-         <item>
-          <widget class="QCheckBox" name="ismotortest">
-           <property name="text">
-            <string>是否只进行电机测试</string>
-           </property>
-          </widget>
-         </item>
         </layout>
        </item>
        <item row="4" column="0" colspan="2">
@@ -364,6 +357,13 @@
         <widget class="QPushButton" name="clear_nfc_data">
          <property name="text">
           <string>清空nfc数据</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="ismotortest">
+         <property name="text">
+          <string>是否只进行电机测试</string>
          </property>
         </widget>
        </item>

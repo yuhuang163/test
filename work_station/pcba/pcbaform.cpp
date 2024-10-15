@@ -10,20 +10,121 @@
 #    pragma execution_character_set("utf-8")
 #endif
 void PcbaForm::on_pushButton_clicked() {
-    ui->macInput->setText("f4:12:fa:c5:51:c6");  // 测试牙刷
-    //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su牙刷
-    // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏牙刷
-    // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏牙刷
-    // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng牙刷
-    //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    // ui->macInput->setText("e2:66:07:34:2d:f7");
-    // ui->macInput->setText("3c:84:27:29:50:32");
-    ui->macInput->setText("b4:56:5d:bf:54:4e");
-    ui->macInput->setText("3C:84:27:07:A8:D2");
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");  // 测试牙刷
+    // //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su牙刷
+    // // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏牙刷
+    // // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏牙刷
+    // // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng牙刷
+    // //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // // ui->macInput->setText("e2:66:07:34:2d:f7");
+    // // ui->macInput->setText("3c:84:27:29:50:32");
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
 
-    on_macInput_returnPressed();
-    at->sendMac(ui->macInput->text());  // 发送mac地址
+    // on_macInput_returnPressed();
+    // at->sendMac(ui->macInput->text());  // 发送mac地址
+
+    testData = "连接超时";
+    TestItem test;
+    test.testItem = "wifi连接";
+    test.testData = testData;
+    test.testResult = failValue;
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+
+    erroContent << "|WIFI连接:超时";
+
+    testData = "连接不行";
+    test.testItem = "wif劳烦";
+    test.testData = testData;
+    test.testResult = failValue;
+    test.ask = "通过";
+    testItems.append(test);
+    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+    testResultTableUpdate(testItems);
+    testItems.clear();
+
+    erroContent << "|WIFI测试:失败";
+}
+void PcbaForm::on_pushButton_2_clicked()  // 单机
+{
+    static int t = 1;
+    if (t == 1) {
+        pack.itemvalue ="";
+        pack.error = erroContent.join("") + "|";  //加结束符
+        pack.sn = ui->getMac->text();
+        showlog("失败过站");
+        if (ui->isusemes->checkState()) {
+            send_end_testPass(pack);
+        }
+        t = 0;
+    } else {
+        pack.itemvalue = exportTableContent();
+        pack.error = "";
+        pack.sn = ui->getMac->text();
+        showlog("正常过站");
+
+        if (ui->isusemes->checkState()) {
+            send_end_testPass(pack);
+        }
+        t = 1;
+    }
+    // at->sendBLELOG(1);
+    // testItem = "六轴状态";
+    // testData = "QString::number(data.imu_state)";
+
+    // pb->set_forbid_sleep(FacSwitch_CLOSE);
+    // pb->set_sleeep(FacSwitch_OPEN);
+    // waitWork(100);
+    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // waitWork(50);
+    // on_disconnectButton_clicked();
+    // // 3C:84:27:07:A8:D2
+
+    // showlog("已发送休眠");
+
+    // ui->ng_number->setText("NG:"+QString::number(ngnumber));
+    // ui->ng_number->setStyleSheet("font-size: 15px; background-color: #FF0000; color: black;
+    // border: 2px solid #FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
+
+    //  pb->set_wifi_disconnect();
+    // pb->set_device_mode();//进入亮白
+    // waitWork(500);
+    // pb->set_brush_control(1);
+    //  pb->set_ship_mode(1);
+
+    //  pb->set_led_color(1);
+    //  pb->get_battery();
+    //  pb->set_sleeep(FacSwitch_OPEN);
+    // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< " getIndex()"<<
+    // getIndex();
+    //     emit overtask(getIndex());
+
+    // pb->get_periph_state();
+
+    // pb->set_wifi_disconnect();
+    // pb->set_fac_mode(1);
+    // emit overtask(getIndex());
+
+    //  connectwifi();
+    // waitWork(WAITTIME);
+    // static int t=1;
+    // if(t==1){
+    //  //  pb->set_device_mode();//进入亮白
+    //       connectwifi();
+    //     t=0;
+    // }else{
+    //    pb->set_wifi_disconnect();
+    //     t=1;
+    // }
+
+    // pb->set_forbid_sleep(FacSwitch_CLOSE);
+    // waitWork(WAITTIME);
+    // pb->set_sleeep(FacSwitch_OPEN);
 }
 
 PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
@@ -39,19 +140,22 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     testResultTableInit();
 
     ui->ng_number->setText("NG:" + QString::number(0));
-    ui->ng_number->setStyleSheet("font-size: 16px; background-color: #ff557f; color: black; border: 2px solid #FF0000; "
+    ui->ng_number->setStyleSheet("font-size: 15px; background-color: #ff557f; color: black; border: 2px solid #FF0000; "
                                  "border-radius: 10px; padding: 1px; text-align: center; ");
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet("font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; "
+                                 "padding: 10px; text-align: center; ");
 
     ui->pass_number->setText("PASS:" + QString::number(0));
-    ui->pass_number->setStyleSheet("font-size: 16px; background-color: #00FF00; color: black; border: 2px solid "
+    ui->pass_number->setStyleSheet("font-size: 15px; background-color: #00FF00; color: black; border: 2px solid "
                                    "#00FF00; border-radius: 10px; padding: 1px; text-align: center;");
 
     ui->mechine_number->setText(QString::number(getIndex()) + "号机");
-    ui->mechine_number->setStyleSheet("font-size: 33px; background-color: yellow; color: black;  border-radius: 10px; "
+    ui->mechine_number->setStyleSheet("font-size: 30px; background-color: yellow; color: black;  border-radius: 10px; "
                                       "padding: 10px; text-align: center; ");
 
     ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 66px; background-color: #808080; color: black;  border-radius: 10px; "
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
 
     connect(usblogwaittime, &QTimer::timeout, [=]() {
@@ -87,6 +191,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     });
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
     // ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
@@ -152,6 +257,8 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     showlog("HighstaticCurrent=" + QString::number(HighstaticCurrent));
     showlog("LowstaticCurrent=" + QString::number(LowstaticCurrent));
     showlog("RssiTestTime=" + QString::number(RssiTestTime));
+    showlog("machineNo=" + pack.machineNo);
+    showlog("test_station=" + pack.test_station);
 
     if (pack.product == "P20P" || pack.product == "Q20" || pack.product == "U7" || pack.product == "U7P") {
         ui->productDisconnectButton->setEnabled(1);
@@ -162,10 +269,19 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         ui->productConnectButton->setEnabled(0);
         ui->productComNameCombo->setEnabled(0);
     }
+
+    if (pack.factory == "wks") {
+        ui->getMac->setEnabled(1);
+    } else {
+        ui->getMac->setEnabled(0);
+        ui->isusemes->setChecked(0);
+        ui->isformmes->setChecked(0);
+    }
 }
 void PcbaForm::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void PcbaForm::getDongleWifi(QString data) {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -398,6 +514,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
                  << "refresh_times" << refresh_times;
         refresh_times = 0;
         QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "algo_version" << data.algo_version;
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -557,6 +674,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         refresh_periph_state_times = 0;
 
         QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
         bool imuStatus = settings.value("PeripheralStatus/IMU_Status").toBool();
         bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
         bool magneticStatus = settings.value("PeripheralStatus/Magnetic_Status").toBool();
@@ -606,7 +724,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
     }
 }
 
-void PcbaForm::on_end_clicked() {
+void PcbaForm::on_stopTest_clicked() {
     usblogwaittime->stop();
     isPcbaTestContinue = false;
     on_disconnectButton_clicked();
@@ -615,10 +733,14 @@ void PcbaForm::on_end_clicked() {
         on_productDisconnectButton_clicked();
 
     ui->macInput->setDisabled(0);
+    if (pack.factory == "wks") {
+        ui->getMac->setDisabled(0);
+    }
 }
 
 void PcbaForm::connectwifi() {
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
     QString wifiPassword = settings.value("WIFI/Password").toString();
@@ -654,7 +776,7 @@ void PcbaForm::on_productDisconnectButton_clicked() {
     ui->productConnectButton->setEnabled(true);
 }
 
-void PcbaForm::overTask() { on_end_clicked(); }
+void PcbaForm::overTask() { on_stopTest_clicked(); }
 
 void PcbaForm::on_connectButton_clicked() {
     openDongleSerialPort();
@@ -735,6 +857,7 @@ void PcbaForm::processTestItem(const QString& testItem, int currentValue, int lo
     } else {
         test.testResult = "失败";
         totalresult = failValue;
+        erroContent << QString("|治具测试:失败");
     }
 
     testItems.append(test);
@@ -750,6 +873,7 @@ void PcbaForm::processSimpleTestItem(const QString& testItem, int currentValue, 
     if (currentValue != expectedValue) {
         test.testResult = "失败";
         totalresult = failValue;
+        erroContent << QString("|治具测试:失败");
     } else {
         test.testResult = "通过";
     }
@@ -761,15 +885,18 @@ void PcbaForm::updateTestResultUI() {
     if (totalresult == failValue) {
         remain_ok = 2;
         ui->ng_number->setText("NG:" + QString::number(ngnumber));
-        ui->ng_number->setStyleSheet("font-size: 16px; background-color: #ff557f; color: black; border: 2px solid "
+        ui->ng_number->setStyleSheet("font-size: 15px; background-color: #ff557f; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 1px; text-align: center;");
         ui->test_result->setText("FAIL");
-        ui->test_result->setStyleSheet("font-size: 66px; background-color: #FF0000; color: black; border: 2px solid "
+        ui->test_result->setStyleSheet("font-size: 40px; background-color: #FF0000; color: black; border: 2px solid "
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
         isPcbaTestContinue = false;  // 结束
 
         ui->macInput->setDisabled(0);
+        if (pack.factory == "wks") {
+            ui->getMac->setDisabled(0);
+        }
         on_disconnectButton_clicked();
 
         emit send_end_test(getIndex());
@@ -859,6 +986,8 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
                     .arg(value)
                     .arg(lower)
                     .arg(upper));
+
+        erroContent << "|六轴数据:异常";
     }
 }
 
@@ -874,10 +1003,11 @@ void PcbaForm::startTask() {
 
                 showlog("状态机" + QString::number(getIndex()));
                 ui->test_result->setText("WAIT");
-                ui->test_result->setStyleSheet("font-size: 66px; background-color: #808080; color: black;  "
+                ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                                "border-radius: 10px; padding: 10px; text-align: center; ");
                 pb->reset_all_pb();
                 refreshWifiState(0);
+                erroContent.clear();
                 testItems.clear();
                 periph_state = 0;
                 rssitestfailcount = 0;
@@ -981,6 +1111,7 @@ void PcbaForm::startTask() {
                         sendCommandWithRetry(std::bind(&Qpb::get_periph_state, pb));
                         showlog("2、设备外设测试");
                         totalresult = failValue;
+                        erroContent << "|基础信息:异常";
                         state = STATE_WATI_GET_PERIPHERAL_STATE;
                     }
                 }
@@ -998,6 +1129,7 @@ void PcbaForm::startTask() {
                     if (periph_state == 2)  // 设备信息异常
                     {
                         totalresult = failValue;
+                        erroContent << "|外设状态:异常";
                         showlog("外设状态异常");
                         state = STATE_WATI_CHARGE_CURRENT;
                     }
@@ -1074,6 +1206,8 @@ void PcbaForm::startTask() {
                     wifiwaittime->setInterval(wifi_wait_time);
                     wifiwaittime->start();
                     totalresult = failValue;
+
+                    erroContent << "|WIFI连接:超时";
                     blewaittime->setInterval(ble_wait_time);
                     blewaittime->start();
                     at->sendBLELOG(1);  // 日志开
@@ -1145,6 +1279,7 @@ void PcbaForm::startTask() {
                             state = STATE_WATI_GET_CORRECT_BLERSSI;
                             showlog("5、蓝牙强度测试");
                             at->sendBLELOG(1);  // 日志开
+                            erroContent << QString("|wifi信号:%1").arg(testData);
                         }
                     }
                 }
@@ -1230,7 +1365,7 @@ void PcbaForm::startTask() {
                             log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
                             testResultTableUpdate(testItems);
                             testItems.clear();
-
+                            erroContent << QString("|蓝牙信号:%1").arg(testData);
                             totalresult = failValue;
                             qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
                             qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
@@ -1400,6 +1535,7 @@ void PcbaForm::startTask() {
                     showlog("治具测试内容获取成功");
                     showlog("测试失败");
                     totalresult = failValue;
+                    erroContent << QString("|治具测试:失败");
                     state = STATE_SAVE_RESULT;
                 } else {
                     waitWork(100);
@@ -1423,26 +1559,43 @@ void PcbaForm::startTask() {
 
                     ui->pass_number->setText("PASS:" + QString::number(passnumber));
                     ui->pass_number->setStyleSheet(
-                        "font-size: 16px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                        "font-size: 15px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
                         "border-radius: 10px; padding: 1px; text-align: center;");
 
                     passnumber++;
                     pb->set_fac_result(1);
                     ui->test_result->setText("PASS");
                     ui->test_result->setStyleSheet(
-                        "font-size: 66px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                        "font-size: 40px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
                         "border-radius: 10px; padding: 10px; text-align: center;");
+
+                    QString itemvalue;
+                    itemvalue = exportTableContent();
+                    pack.itemvalue = itemvalue;
+                    pack.error = "";
+                    pack.sn = ui->getMac->text();
+                    if (ui->isusemes->checkState()) {
+                        send_end_testPass(pack);
+                    }
+
                 } else if ((totalresult == failValue)) {
+                    pack.itemvalue = "";
+                    pack.error = erroContent.join("") + "|";  //加结束符
+                    pack.sn = ui->getMac->text();
+                    if (ui->isusemes->checkState()) {
+                        send_end_testPass(pack);
+                    }
+
                     ui->ng_number->setText("NG:" + QString::number(ngnumber));
                     ui->ng_number->setStyleSheet(
-                        "font-size: 16px; background-color: #ff557f; color: black; border: 2px solid #FF0000; "
+                        "font-size: 15px; background-color: #ff557f; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 1px; text-align: center; ");
                     ngnumber++;
 
                     pb->set_fac_result(0);
                     ui->test_result->setText("FAIL");
                     ui->test_result->setStyleSheet(
-                        "font-size: 66px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                        "font-size: 40px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
 
@@ -1452,6 +1605,9 @@ void PcbaForm::startTask() {
                 ui->macInput->clear();
                 // ui->macInput->setFocus();
                 ui->macInput->setDisabled(0);
+                if (pack.factory == "wks") {
+                    ui->getMac->setDisabled(0);
+                }
 
                 isPcbaTestContinue = false;  // 结束
 
@@ -1469,71 +1625,6 @@ void PcbaForm::startTask() {
         }
         // QCoreApplication::processEvents();
     }
-}
-
-void PcbaForm::on_pushButton_2_clicked()  // 单机
-{
-    at->sendBLELOG(1);
-    // testItem = "六轴状态";
-    // testData = "QString::number(data.imu_state)";
-
-    // pb->set_forbid_sleep(FacSwitch_CLOSE);
-    // pb->set_sleeep(FacSwitch_OPEN);
-    // waitWork(100);
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-    // waitWork(50);
-    // on_disconnectButton_clicked();
-    // // 3C:84:27:07:A8:D2
-
-    // showlog("已发送休眠");
-
-    // ui->ng_number->setText("NG:"+QString::number(ngnumber));
-    // ui->ng_number->setStyleSheet("font-size: 16px; background-color: #FF0000; color: black;
-    // border: 2px solid #FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
-
-    //  pb->set_wifi_disconnect();
-    // pb->set_device_mode();//进入亮白
-    // waitWork(500);
-    // pb->set_brush_control(1);
-    //  pb->set_ship_mode(1);
-
-    //  pb->set_led_color(1);
-    //  pb->get_battery();
-    //  pb->set_sleeep(FacSwitch_OPEN);
-    // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< " getIndex()"<<
-    // getIndex();
-    //     emit overtask(getIndex());
-
-    // pb->get_periph_state();
-
-    // static int t=1;
-    // if(t==1){
-    //   pb->set_fac_result(1);
-    //   t=0;
-    // }else{
-    //   pb->set_fac_result(0);
-    //   t=1;
-    // }
-
-    // pb->set_wifi_disconnect();
-    // pb->set_fac_mode(1);
-    // emit overtask(getIndex());
-
-    //  connectwifi();
-    // waitWork(WAITTIME);
-    // static int t=1;
-    // if(t==1){
-    //  //  pb->set_device_mode();//进入亮白
-    //       connectwifi();
-    //     t=0;
-    // }else{
-    //    pb->set_wifi_disconnect();
-    //     t=1;
-    // }
-
-    // pb->set_forbid_sleep(FacSwitch_CLOSE);
-    // waitWork(WAITTIME);
-    // pb->set_sleeep(FacSwitch_OPEN);
 }
 
 void PcbaForm::on_macInput_returnPressed() {
@@ -1600,7 +1691,7 @@ void PcbaForm::startTest() {
     usblogwaittime->start();
     firstconnectbrush = 1;
     ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 66px; background-color: #808080; color: black;  border-radius: 10px; "
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
     clearDisplay();
     on_connectButton_clicked();
@@ -1648,5 +1739,52 @@ void PcbaForm::writeToLogFile(const QByteArray& data, QString currentDate, QStri
         logFile.close();
     } else {
         qDebug() << "无法打开牙刷日志文件：" << fileName;
+    }
+}
+void PcbaForm::on_getMac_returnPressed() {
+    testResultTableInit();
+    ui->log->clear();
+    ui->msgEdit->clear();
+    ui->getMac->setDisabled(1);
+    ui->macInput->setDisabled(1);
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet("font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; "
+                                 "padding: 10px; text-align: center; ");
+
+    // 检查是否是序列号格式
+    QRegularExpression snRegex(snPattern);
+    // 使用正则表达式匹配
+    if (!snRegex.match(ui->getMac->text()).hasMatch()) {
+        ui->getMac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        showlog("序列号错误");
+        ui->getMac->clear();
+        ui->getMac->setFocus();
+        return;
+    }
+
+    emit send_go_next_focus();
+
+    processInspection(ui->getMac->text());
+}
+void PcbaForm::processInspection(QString stringsn) {
+    if (stringsn != "" || !ui->isusemes->checkState()) {
+        if (ui->isusemes->checkState()) {
+            showlog("正在进行站前检测");
+            pack.sn = stringsn;
+            pack.mechines = getIndex();
+            pack.is_hq_send_mac = 0;
+            pack.instruct_num = "079";
+            emit sendProcessInspection(pack);
+        }
+    } else {
+        showlog("SN比对错误");
+    }
+
+    if (!ui->isusemes->checkState())  // 离线
+    {
+        ui->mes_state->setText("MES");
+        ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FFFF00; color: black; border: 2px solid "
+                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }

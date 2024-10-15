@@ -197,7 +197,8 @@ private:
     QString macAddress = "没有mac地址";
 
     bool is_camera_control = 0;
-
+    bool can_start_dirty_test = 0;
+    int picutre_times = 0;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
 
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
@@ -217,6 +218,7 @@ protected:
 private slots:
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void checkMissingPackets();
+    void start_dirty_test();
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
     void readDongleSerialPortData() override;

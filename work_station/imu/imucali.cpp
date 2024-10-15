@@ -99,6 +99,7 @@ imucali::imucali(int index, QWidget* parent) :
     });
 
     QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     settings.setValue("Window/Size", this->size());
 
     imu_wait_time = settings.value("IMU/IMU_Wait_Time", "15000").toInt();
@@ -763,26 +764,29 @@ void imucali::refreshBaseData(FacGetDevBaseInfo data) {
         if (data.imu_id == 144) {
             nqimuc->LSB = 1;
             isNeedNewCali = 1;
-            showlog("LSB改为" + QString::number(nqimuc->LSB));
+
         } else if (data.imu_id == 250) {  //博士的imu
             nqimuc->LSB = 0.25;
             isNeedNewCali = 1;
-            showlog("LSB改为" + QString::number(nqimuc->LSB));
         }
 
     } else {
         nqimuc->LSB = 4;
         isNeedNewCali = 1;
-        if (QString(data.product_name).compare("U7") == 0 || QString(data.product_name).compare("U7P") == 0) {
+        if (QString(data.product_name).compare("U7") == 0 || QString(data.product_name).compare("U7P") == 0 ||
+            QString(data.product_name).compare("P30P") == 0) {
+            if (QString(data.product_name).compare("P30P") == 0) {
+                isNeedNewCali = 0;
+                showlog("当前姿态为P30P");
+            }
             nqimuc->imu_static_state = 0;
             showlog("当前姿态为q20");
         } else {
             nqimuc->imu_static_state = 1;
             showlog("当前姿态为y20");
         }
-
-        showlog("LSB改为" + QString::number(nqimuc->LSB));
     }
+    showlog("LSB改为" + QString::number(nqimuc->LSB));
 }
 
 void imucali::processInspection(QString stringsn) {
@@ -1338,6 +1342,7 @@ void imucali::on_getMac_returnPressed() {
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
         ui->getMac->clear();
+        ui->getMac->setFocus();
         return;
     }
     if (pack.factory == "lx") {

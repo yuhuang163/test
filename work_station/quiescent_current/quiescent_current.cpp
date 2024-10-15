@@ -40,7 +40,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         showlog("正在定时器复位牙刷");
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     HighCurrent = settings.value("quiescentCurrent/HighCurrent").toDouble();
     LowCurrent = settings.value("quiescentCurrent/LowCurrent").toDouble();
@@ -81,7 +81,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
         qDebug() << getIndex() << "algo_version" << data.algo_version;
         qDebug() << getIndex() << "hw_version" << data.hw_version;
@@ -185,7 +185,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         qDebug() << getIndex() << "imu_state" << data.imu_state;
         qDebug() << getIndex() << "magnet_state" << data.magnet_state;
         qDebug() << getIndex() << "press_state" << data.press_state;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
         bool imuStatus = settings.value("PeripheralStatus/IMU_Status").toBool();
         bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
         bool magneticStatus = settings.value("PeripheralStatus/Magnetic_Status").toBool();

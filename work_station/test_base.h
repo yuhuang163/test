@@ -54,6 +54,7 @@ public:
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc);
     void testResultTableUpdate(const QVector<TestItem>& testItems);
+    QString exportTableContent();
     void testResultTableInit();
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);

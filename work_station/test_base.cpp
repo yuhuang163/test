@@ -32,7 +32,8 @@ test_base::test_base() :
     initData();
 }
 void test_base::initData() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     pack.factory = settings.value("Mes/FACTORY").toString();
     pack.Employee_ID = settings.value("Mes/mUserno").toString();
     pack.action = settings.value("Mes/Action").toString();
@@ -43,6 +44,7 @@ void test_base::initData() {
     pack.test_station = settings.value("Mes/test_station").toString();
     pack.password = settings.value("Mes/M_PASSWORD").toString();
     pack.userNo = settings.value("Mes/M_USERNO").toString();
+    pack.lotName = settings.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
     snPattern = settings.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
@@ -653,6 +655,26 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     timer->start(100);  // 启动定时器
     return 0;
 }
+QString test_base::exportTableContent() {
+    if (testResultTable() == nullptr) {
+        showlog("不存在表格");
+        return "不存在表格";
+    }
+
+    QStringList exportedContent;
+    for (int row = 0; row < testResultTable()->rowCount(); ++row) {
+        QString testItem = testResultTable()->item(row, 0)->text();
+        QString testData = testResultTable()->item(row, 1)->text();
+        QString itemValue = QString("|%1:%2").arg(testItem).arg(testData);
+
+        exportedContent << itemValue;
+    }
+    // 将所有内容连接成一个字符串，不在最后一个元素后面添加换行符
+    QString result = exportedContent.join("") + "|";
+
+    qDebug() << result;
+    return result;
+}
 
 void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
     if (testResultTable() == nullptr) {
@@ -703,6 +725,10 @@ void test_base::updateTestData(QVector<TestItem>& testItems) {
     testResultTableUpdate(testItems);
 }
 void test_base::solveMesSucess(const int mechines) {
+    if (getMesStateQlabel() == nullptr) {
+        showlog("mes的状态文本为空");
+        return;
+    }
     if (mechines == getIndex()) {
         TestItem test;
         test.testItem = "mes操作";
@@ -723,6 +749,15 @@ void test_base::solveMesSucess(const int mechines) {
 }
 
 void test_base::solveMesData(const int mechines, QString msg) {
+    if (getMesStateQlabel() == nullptr) {
+        showlog("mes的状态文本为空");
+        return;
+    }
+    if (getEndTestButton() == nullptr) {
+        showlog("结束测试按钮未绑定");
+        return;
+    }
+
     if (mechines == getIndex()) {
         TestItem test;
         test.testItem = "mes报错";

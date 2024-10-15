@@ -31,7 +31,7 @@ screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
@@ -500,6 +500,7 @@ void screentest::on_getMac_returnPressed() {
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
         ui->getMac->clear();
+           ui->getMac->setFocus();
         return;
     }
     sn = ui->getMac->text().toUtf8();

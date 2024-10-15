@@ -108,7 +108,8 @@ int main(int argc, char* argv[]) {
 
     // qDebug() << "串口问题"<<QSslSocket::sslLibraryBuildVersionString();
     a.setFont(QFont("Microsoft Yahei", 9));
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString station = settings.value("SYSTEM/station").toString();  // 工站
     qDebug() << "工站为：" + station;
 

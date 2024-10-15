@@ -35,7 +35,8 @@ private slots:
     void processInspection(QString stringsn);
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
-    
+    void canGoNextMechine(int x) override;
+
     void refreshMesState(int state);
     void refreshSn(FacDevInfo data) override;
 
@@ -72,6 +73,7 @@ private:
         MOTOR_CALI2,
         STOP_MOTOR_CALI,
         MOTOR_TESTING,
+         MOTOR_WAIT_TESTING,
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     QTime TestTime;
