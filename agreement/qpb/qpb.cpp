@@ -1757,6 +1757,11 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
         send_pb_date("设置工厂模式成功");
         emit sendGetBrushResponse(1);
     }
+    if (x.dev_state_type == DevStateType_UART_RECEIVE) {
+        qDebug() << "设置串口状态成功";
+        send_pb_date("设置串口状态成功");
+        emit sendGetBrushResponse(1);
+    }
 }
 
 void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {

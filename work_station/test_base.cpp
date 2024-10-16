@@ -32,7 +32,7 @@ test_base::test_base() :
     initData();
 }
 void test_base::initData() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
     settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     pack.factory = settings.value("Mes/FACTORY").toString();
     pack.Employee_ID = settings.value("Mes/mUserno").toString();
@@ -47,6 +47,7 @@ void test_base::initData() {
     pack.lotName = settings.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
+    isBrushLogGet = settings.value("SYSTEM/BrushLog", 0).toBool();
     snPattern = settings.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
@@ -499,8 +500,8 @@ void test_base::readProductSerialPortData() {
     QByteArray dataTemp = productSerialPortBuf;  // 读取缓冲区数据
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
-
-    log->save_brush_log(m_index, macAddress, dataTemp);
+    if (isBrushLogGet)
+        log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
     logEdit()->appendPlainText("收到牙刷日志");
     // getmacadress(dataTemp);

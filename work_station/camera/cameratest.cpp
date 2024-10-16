@@ -1,13 +1,13 @@
 ﻿
 #include "cameratest.h"
 
+#include <QColor>
 #include <QPainter>
 
 #include "ImageWindow.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_cameratest.h"
-
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
 #endif
@@ -104,7 +104,7 @@ void cameratest::on_pushButton_clicked() {
     // }
 
     // 假设 imagePath 是您的绝对路径
-    QString imagePath = "./u7p_camera_defect_detect_env/code/clear_test.png";
+    QString imagePath = "./u7p_camera_defect_detect_env/code/fguo.png";
     ;
 
     // 尝试加载图像
@@ -134,7 +134,8 @@ void cameratest::on_pushButton_clicked() {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
@@ -173,7 +174,8 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     settings.setValue("Window/Size", this->size());
     CameraGetTime = settings.value("CAMERA/CameraGetTime", 6000).toInt();
@@ -466,7 +468,8 @@ cameratest::~cameratest() {
     delete ui;
 }
 void cameratest::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -637,7 +640,8 @@ void cameratest::onTimeout() {
 }
 
 void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     // 读取软件版本字符串
     QString Camera_Id = settings.value("ProductInfo/Camera_Id").toString();
     qDebug() << "Read Camera_Id:" << Camera_Id;
@@ -1022,7 +1026,8 @@ void cameratest::on_distribution_network_clicked() {
     ipString = ui->client_ip_label->text();
     ui->client_ip_label->setText(ipString);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 
@@ -1212,7 +1217,8 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
@@ -1260,7 +1266,6 @@ void cameratest::on_exposure_time_edit_returnPressed() {
     pb->set_camera_exposure_time(ui->exposure_time_edit->text().toUInt());
 }
 void cameratest::on_DirtyTestButton_clicked() {
-    ui->DirtyTestButton->setDisabled(1);
     QString filePath;
     if (!viewercamrea->temporarypixmap.isNull()) {
         QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1304,6 +1309,8 @@ void cameratest::on_DirtyTestButton_clicked() {
 
     QString zwTestResult;
     QList<QRect> rectangles;
+    QList<Qt::GlobalColor> rectanglesColor;
+
     QStringList parts = output.trimmed().split('\n');
     for (const QString& part : parts) {
         QStringList values = part.trimmed().split(' ');
@@ -1327,7 +1334,7 @@ void cameratest::on_DirtyTestButton_clicked() {
         // flag = 1 OK图片
         //     flag = 0 NG图片有脏污
         //     flag = -1 NG图片出现裂缝（画面撕裂）
-        if (flag == 1) {
+        if (flag == -1) {
             TestItem test;
             test.testItem = "脏污测试";
             test.testData = "通过";
@@ -1344,7 +1351,7 @@ void cameratest::on_DirtyTestButton_clicked() {
             on_normal_clicked();
         }
 
-        if (flag == 0) {
+        if (flag == 10) {
             TestItem test;
             test.testItem = "脏污测试";
             test.testData = "有脏污";
@@ -1358,10 +1365,26 @@ void cameratest::on_DirtyTestButton_clicked() {
 
             zwTestResult = "脏污测试失败";
             showlog("有脏污");
-
+            rectanglesColor.append(Qt::red);
             on_abnormal_clicked();
         }
-        if (flag == -1) {
+        if (flag == 1) {
+            TestItem test;
+            test.testItem = "脏污测试";
+            test.testData = "可放过脏污";
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+            testResultTableUpdate(testItems);
+            testItems.clear();
+            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
+            showlog("有可放过脏污");
+            rectanglesColor.append(Qt::green);
+            on_abnormal_clicked();
+        }
+        if (flag == 0) {
             TestItem test;
             test.testItem = "脏污测试";
             test.testData = "图片出现裂缝（画面撕裂）";
@@ -1386,13 +1409,24 @@ void cameratest::on_DirtyTestButton_clicked() {
     }
     QPixmap pixmapzw = QPixmap::fromImage(image);
     QPainter painter(&pixmapzw);
-    QPen pen(Qt::red);
-    painter.setPen(pen);
 
-    for (const QRect& rect : rectangles) {
-        //    qDebug() << "开始画矩形";
+    // 确保两个列表的大小相同
+    if (rectangles.size() != rectanglesColor.size()) {
+        qWarning() << "The size of rectangles and rectanglesColor should be the same.";
+        return;
+    }
+
+    for (int i = 0; i < rectangles.size(); ++i) {
+        const QRect& rect = rectangles[i];
+        Qt::GlobalColor color = rectanglesColor[i];
+
+        QPen pen(color);
+        painter.setPen(pen);
+
+        // qDebug() << "开始画矩形";
         painter.drawRect(rect);
     }
+
     painter.end();
     viewercamrea_py->pixmap = pixmapzw;
     // qDebug() << "开始更新";
@@ -1416,9 +1450,6 @@ void cameratest::on_DirtyTestButton_clicked() {
             qDebug() << "Image saved successfully to:" << filePath;
         }
     }
-    // ui->jxl_normal->setDisabled(0);
-    // ui->jxl_abnormal->setDisabled(0);
-    // ui->DirtyTestButton->setDisabled(0);
 }
 
 void cameratest::on_stopTest_clicked() {
@@ -1674,7 +1705,8 @@ void cameratest::on_OffsetTest_clicked() {
     // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
     //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
     // python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
 
     int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();

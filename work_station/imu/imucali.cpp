@@ -950,10 +950,36 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已进入禁止休眠");
+
+                    if (pack.product == "U7" || pack.product == "U7P") {
+                        sendCommandWithRetry(std::bind(&Qpb::set_uart_receive, pb, 0));
+                        state = STATE_CLOSE_UART;
+                    } else {
+                        sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                        state = STATE_GETBASEDATA;
+                    }
+                }
+                break;
+
+            case STATE_CLOSE_UART:
+
+                if (canGoNext) {
+                    showlog("已经关闭串口接收功能");
+                    TestItem test;
+                    test.testItem = "串口接收";
+                    test.testData = "关闭";
+                    test.testResult = "通过";
+                    test.ask = "关闭";
+                    testItems.append(test);
+                    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+                    testResultTableUpdate(testItems);
+                    testItems.clear();
+
                     sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                     state = STATE_GETBASEDATA;
                 }
                 break;
+
             case STATE_GETBASEDATA:
                 if (canGoNext) {
                     sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
@@ -1126,6 +1152,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         showlog("已发送进入船运模式");
                         qDebug() << ui->getMac->text() << macAddress << getIndex() << "已发送进入船运模式";
                         state = STATE_SHIP_MODE_CHECK;
+
                     } else {
                         state = STATE_END;
                     }

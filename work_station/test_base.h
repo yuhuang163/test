@@ -70,6 +70,7 @@ public:
     QString passValue = "通过";
     QString failValue = "失败";
     QString upperComputerVer;
+    bool isBrushLogGet = 0;
 
     QVector<TestItem> testItems;
     MesPacketData pack;

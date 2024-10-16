@@ -23,8 +23,8 @@ public:
     bool turn = true;
     void useMes() override;
     void startTest() override;
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };     // dongle口
-    QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };  // usb口（治具）
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };     // usb口（治具）
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // log地址输入口
@@ -100,8 +100,10 @@ private:
         STATE_TEST,  // 六轴测试
         STATE_WIAT_FIX_SET,
         STATE_COMPARE,
+
+        STATE_SHIP_MODE_CHECK,
+        STATE_CLOSE_UART,
         STATE_END,
-        STATE_SHIP_MODE_CHECK
     } State;
     State state = STATE_IDLE;
     QTime TestTime;
