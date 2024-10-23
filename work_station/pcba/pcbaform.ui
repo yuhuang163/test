@@ -20,7 +20,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <property name="usesScrollButtons">
       <bool>true</bool>
@@ -83,7 +83,7 @@
            <item>
             <widget class="QLineEdit" name="getMac">
              <property name="text">
-              <string>PCBA2410140001</string>
+              <string/>
              </property>
             </widget>
            </item>

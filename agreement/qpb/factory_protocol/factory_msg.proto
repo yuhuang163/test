@@ -264,11 +264,13 @@ enum FacBatteryType
 }
 
 
+
 message FacBatteryInfo {
     FacChargeStateType charge_state = 1;
     uint32 voltage = 2;
     uint32 percent = 3;
     FacBatteryType  battery_type =4;
+
 
 }
 
@@ -278,6 +280,8 @@ message FacWifiInfo {
     bytes ip_address = 3 [(nanopb).max_size =4];
     uint32 port = 4;
 }
+
+
 
 message FacDevInfoValue {
     FacDevInfoType info_item = 1;
@@ -289,14 +293,17 @@ message FacDevInfoValue {
         FacBatteryInfo battery = 6;
         FacSwitch if_qualified = 7;
         string sub_pid = 8 [(nanopb).max_size = 64];
-         string sku_id = 9 [(nanopb).max_size = 64];
-
+        string sku_id = 9 [(nanopb).max_size = 64];
+    
     }
+     string  write_info= 50[(nanopb).max_size = 64];
+
 }
 
 message FacDevInfo
 {
     repeated FacDevInfoValue dev_info = 1 [(nanopb).max_count = 5];
+ 
     FacErrorCode result = 100;
 }
 /*********************设备自定义信息区域******************/

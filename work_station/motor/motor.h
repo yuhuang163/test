@@ -25,8 +25,8 @@ public:
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override{ return ui->mes_state; };              // mes状态的qlab
-     QPushButton* getEndTestButton() override{ return ui->stopTest; };      // 结束测试按钮
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
 private slots:
     void getDongleVer(QString data) override;
@@ -70,10 +70,12 @@ private:
         STATE_SN_CHECK,
         UNLOCK_DAMPING,
         MOTOR_CALI1,
+        MOTOR_WAIT_CALI1,
         MOTOR_CALI2,
+        MOTOR_WAIT_CALI2,
         STOP_MOTOR_CALI,
         MOTOR_TESTING,
-         MOTOR_WAIT_TESTING,
+        MOTOR_WAIT_TESTING,
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     QTime TestTime;
@@ -85,10 +87,8 @@ private:
 
     int is_battary_test = 0;
     double standbattary = 0;
-
+    bool is_canGoNext = 0;
     bool is_motor_test_continue = 0;
-
-    
 
     // 动作
 

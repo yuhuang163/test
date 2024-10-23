@@ -16,10 +16,10 @@
 #    pragma execution_character_set("utf-8")
 #endif
 lxmes::lxmes() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-  settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    url = settings.value("Mes/NET", "http://10.16.204.138/Bobcat_CWS_TEST/sfc_response.aspx?").toString();
-    field = settings.value("Mes/FIELD", "BT_MAC").toString();
+       
+  
+    url = SETTINGS.value("Mes/NET", "http://10.16.204.138/Bobcat_CWS_TEST/sfc_response.aspx?").toString();
+    field = SETTINGS.value("Mes/FIELD", "BT_MAC").toString();
 }
 // sn和工站，站前检测
 void lxmes::ProcessInspection(MesPacketData pack) {

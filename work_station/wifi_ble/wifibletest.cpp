@@ -53,23 +53,24 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
         comparewaittime->stop();
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    HighRssi = settings.value("WIFI/HighRssi").toDouble();
-    LowRssi = settings.value("WIFI/LowRssi").toDouble();
-    BleHighRssi = settings.value("BLE/HighRssi").toDouble();
-    BleLowRssi = settings.value("BLE/LowRssi").toDouble();
-    filter_name = settings.value("BLE/Filter_Name").toString();
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
-    HighCurrent = settings.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = settings.value("quiescentCurrent/LowCurrent").toDouble();
-    measure_wait_time = settings.value("Current/measure_wait_time").toInt();
+    HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
+    LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
+    BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
+    BleLowRssi = SETTINGS.value("BLE/LowRssi").toDouble();
+    filter_name = SETTINGS.value("BLE/Filter_Name").toString();
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
+    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
+    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
+    measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
-    RssiTestTime = settings.value("BLE/RssiCount").toInt();
-    // ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
+    // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "usmile123").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
 
     showlog("HighCurrent=" + QString::number(HighCurrent));
     showlog("LowCurrent=" + QString::number(LowCurrent));
@@ -143,30 +144,31 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         on_nfc_write_read_clicked();
     }
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     // 读取软件版本字符串
-    QString softwareVersions = settings.value("ProductInfo/Software_Version").toString();
+    QString softwareVersions = SETTINGS.value("ProductInfo/Software_Version").toString();
     qDebug() << "Read Software_Version:" << softwareVersions;
     QStringList softwareVersionList = softwareVersions.split('=');
 
     // 读取资源版本字符串
-    QString resourceVersions = settings.value("ProductInfo/Resource_Version").toString();
+    QString resourceVersions = SETTINGS.value("ProductInfo/Resource_Version").toString();
     QStringList resourceVersionList = resourceVersions.split('=');
 
     // 读取老化状态字符串
-    QString ageStates = settings.value("ProductInfo/Age_State").toString();
+    QString ageStates = SETTINGS.value("ProductInfo/Age_State").toString();
     QStringList ageStateList = ageStates.split('=');
 
     // 读取蓝牙版本字符串
-    QString bleVersions = settings.value("ProductInfo/Ble_Ver").toString();
+    QString bleVersions = SETTINGS.value("ProductInfo/Ble_Ver").toString();
     QStringList bleVersionList = bleVersions.split('=');
 
     // 读取压感版本字符串
-    QString pressVersions = settings.value("ProductInfo/Pressure_Sense_Version").toString();
+    QString pressVersions = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
     QStringList pressVersionList = pressVersions.split('=');
 
     // 读取电机版本字符串
-    QString motorVersions = settings.value("ProductInfo/Motor_Ver").toString();
+    QString motorVersions = SETTINGS.value("ProductInfo/Motor_Ver").toString();
     QStringList motorVersionList = motorVersions.split('=');
 
     // 输出蓝牙状态列表
@@ -409,17 +411,18 @@ void wifibletest::refreshMesState(int state) {
 }
 
 void wifibletest::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
-    settings.setValue("WIFI/Password", "usmile123");
+    SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
-    settings.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
+    SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
 
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 void wifibletest::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
@@ -624,7 +627,8 @@ void wifibletest::startTask() {
 
                             rssitestcount = 0;
                             at->sendBLELOG(0);  // 日志关
-                            if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
+                            if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" ||
+                                pack.product == "U7P") {
                                 sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                                 state = STATE_WATI_CORRECT_BATTARY;
                             } else {
@@ -659,7 +663,8 @@ void wifibletest::startTask() {
                             at->sendBLELOG(0);  // 日志关
                             rssitestfailcount = 0;
 
-                            if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
+                            if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" ||
+                                pack.product == "U7P") {
                                 wifiresult = "通过";
                                 sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                                 state = STATE_WATI_CORRECT_BATTARY;
@@ -854,7 +859,7 @@ void wifibletest::startTask() {
                     }
                 }
 
-                if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
+                if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" || pack.product == "U7P") {
                     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                     waitWork(50);
                     on_disconnectButton_clicked();
@@ -897,12 +902,13 @@ void wifibletest::on_disconnectwifi_clicked() {
     }
 }
 void wifibletest::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
-    QString wifiPassword = settings.value("WIFI/Password").toString();
+    QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
+    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
-    // QString wifiName = settings.value("WIFI/Name").toString();
+    // QString wifiName = SETTINGS.value("WIFI/Name").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -972,6 +978,8 @@ void wifibletest::on_getMac_returnPressed() {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         return;
     }
@@ -1383,8 +1391,9 @@ QString wifibletest::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+    
+    
+    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
     return value;

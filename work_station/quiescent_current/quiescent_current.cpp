@@ -40,11 +40,11 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         showlog("正在定时器复位牙刷");
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
-    HighCurrent = settings.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = settings.value("quiescentCurrent/LowCurrent").toDouble();
-    measure_wait_time = settings.value("Current/measure_wait_time").toInt();
+    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
+    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
+    measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     showlog("action=" + pack.test_station);
     showlog("line=" + pack.line);
@@ -81,7 +81,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+           
 
         qDebug() << getIndex() << "algo_version" << data.algo_version;
         qDebug() << getIndex() << "hw_version" << data.hw_version;
@@ -92,17 +92,17 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         qDebug() << getIndex() << "soft_version" << QString("%1").arg(data.soft_version);
         qDebug() << getIndex() << "res_version" << data.res_version;
 
-        QString productName = settings.value("ProductInfo/Product_Name").toString();
-        QString appProtocolVersion = settings.value("ProductInfo/App_Protocol_Version").toString();
-        QString factoryProtocolVersion = settings.value("ProductInfo/Factory_Protocol_Version").toString();
-        QString hardwareVersion = settings.value("ProductInfo/Hardware_Version").toString();
-        QString softwareVersion = settings.value("ProductInfo/Software_Version").toString();
-        QString resourceVersion = settings.value("ProductInfo/Resource_Version").toString();
-        QString motorVersion = settings.value("ProductInfo/Motor_Ver").toString();
-        QString algorithmVersion = settings.value("ProductInfo/Algorithm_Version").toString();
-        QString pressureSenseVersion = settings.value("ProductInfo/Pressure_Sense_Version").toString();
-        QString imuId = settings.value("ProductInfo/IMU_ID").toString();
-        QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
+        QString productName = SETTINGS.value("ProductInfo/Product_Name").toString();
+        QString appProtocolVersion = SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
+        QString factoryProtocolVersion = SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
+        QString hardwareVersion = SETTINGS.value("ProductInfo/Hardware_Version").toString();
+        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
+        QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
+        QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
+        QString algorithmVersion = SETTINGS.value("ProductInfo/Algorithm_Version").toString();
+        QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+        QString imuId = SETTINGS.value("ProductInfo/IMU_ID").toString();
+        QString ble_ver = SETTINGS.value("ProductInfo/Ble_Ver").toString();
 
         if (algorithmVersion.contains(data.algo_version) && hardwareVersion.contains(data.hw_version) &&
             pressureSenseVersion.contains(data.presure_version) && productName.contains(data.product_name) &&
@@ -185,12 +185,12 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         qDebug() << getIndex() << "imu_state" << data.imu_state;
         qDebug() << getIndex() << "magnet_state" << data.magnet_state;
         qDebug() << getIndex() << "press_state" << data.press_state;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-        bool imuStatus = settings.value("PeripheralStatus/IMU_Status").toBool();
-        bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
-        bool magneticStatus = settings.value("PeripheralStatus/Magnetic_Status").toBool();
-        bool pressureStatus = settings.value("PeripheralStatus/Pressure_Status").toBool();
-        bool audioState = settings.value("PeripheralStatus/Audio_Status").toBool();
+           
+        bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
+        bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
+        bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
+        bool pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toBool();
+        bool audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toBool();
 
         if (data.flash_state == flashStatus && data.imu_state == imuStatus && data.press_state == pressureStatus &&
             data.magnet_state == magneticStatus) {
@@ -305,7 +305,8 @@ void quiescent_current::on_snInput_returnPressed() {
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->snInput->clear();
         return;
     }

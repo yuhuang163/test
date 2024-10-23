@@ -48,6 +48,7 @@ typedef struct {
 class Qpb : public QSerialPort {
     Q_OBJECT
 public:
+    QString APP_VERSION;
     explicit Qpb(QSerialPort* parent = nullptr);
     void parseCmd(const QByteArray& byte);
     void sendShortPack(const FactoryDataPackage& pack);
@@ -60,7 +61,7 @@ public:
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
     bool getisDevintowhitemode() { return is_dev_into_white_mode; }
-
+    int is_motor_cali_data_set = 0;
     int getisHallCali() { return is_hall_cali; }
     int getis_camera_control() { return is_camera_control; }
     int get_is_damping_state() { return is_damping_state; }
@@ -143,7 +144,7 @@ private:
     int is_wif_set = 0;
     int is_motor_test_state = 0;
     int is_stop_motor_cali = 0;
-    int is_motor_cali_data_set = 0;
+
     int is_get_battery_data = 0;
     bool is_imu_set_sta = 0;
     bool is_set_press_collect_param = 0;

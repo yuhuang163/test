@@ -145,7 +145,7 @@
            <string>信息显示</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_13">
-           <item row="0" column="0">
+           <item row="1" column="0">
             <widget class="QSplitter" name="splitter_3">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>2</number>
+               <number>6</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2039,13 +2039,13 @@
               </widget>
               <widget class="QWidget" name="tab">
                <attribute name="title">
-                <string>伺服电机校准</string>
+                <string>板厂简易测试</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_5">
                 <item row="1" column="0">
                  <widget class="QGroupBox" name="verticalGroupBox_100">
                   <property name="title">
-                   <string>P20PRP电机校准（只传参）</string>
+                   <string>板厂测试</string>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_7">
                    <item>
@@ -2068,6 +2068,16 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QCheckBox" name="is_sero_motor">
+                       <property name="text">
+                        <string>是否是伺服电机</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <widget class="QCheckBox" name="is_test_camera">
                        <property name="text">
                         <string>是否测试摄像头</string>
@@ -2075,9 +2085,6 @@
                       </widget>
                      </item>
                     </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_18"/>
                    </item>
                    <item>
                     <widget class="QPushButton" name="start_scan">
@@ -2088,38 +2095,12 @@
                       </sizepolicy>
                      </property>
                      <property name="text">
-                      <string>开始扫描和电机校准</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="clear_scan">
-                     <property name="sizePolicy">
-                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                       <horstretch>0</horstretch>
-                       <verstretch>0</verstretch>
-                      </sizepolicy>
-                     </property>
-                     <property name="text">
-                      <string>清空扫描</string>
+                      <string>板厂扫描测试（自动化）</string>
                      </property>
                     </widget>
                    </item>
                    <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_21">
-                     <item>
-                      <widget class="QPushButton" name="test_cali">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>霍尔和零点校准</string>
-                       </property>
-                      </widget>
-                     </item>
                      <item>
                       <widget class="QPushButton" name="end_motor_cali">
                        <property name="sizePolicy">
@@ -2129,7 +2110,7 @@
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>取消校准</string>
+                        <string>取消板厂测试</string>
                        </property>
                       </widget>
                      </item>
@@ -2142,7 +2123,7 @@
                         </sizepolicy>
                        </property>
                        <property name="text">
-                        <string>电机校准</string>
+                        <string>开始板厂测试流程</string>
                        </property>
                       </widget>
                      </item>
@@ -2213,6 +2194,19 @@
                      </property>
                      <property name="editable">
                       <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="clear_scan">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>清空扫描</string>
                      </property>
                     </widget>
                    </item>
@@ -2528,6 +2522,26 @@
                 </item>
                 <item row="7" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_79">
+                  <item>
+                   <widget class="QPushButton" name="test_cali">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>霍尔和零点校准</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="brush_relocation">
+                    <property name="text">
+                     <string>刷头重定位</string>
+                    </property>
+                   </widget>
+                  </item>
                   <item>
                    <widget class="QPushButton" name="open_motor_adc_switch">
                     <property name="text">

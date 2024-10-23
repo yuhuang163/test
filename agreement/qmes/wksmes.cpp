@@ -16,11 +16,10 @@
 #    pragma execution_character_set("utf-8")
 #endif
 wksmes::wksmes() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    url = settings.value("Mes/NET", "http://218.14.127.107:8880/WIP/").toString();
-    field = settings.value("Mes/FIELD", "BT_MAC").toString();
+    
+    
+    url = SETTINGS.value("Mes/NET", "http://218.14.127.107:8880/WIP/").toString();
+    field = SETTINGS.value("Mes/FIELD", "BT_MAC").toString();
 }
 // sn和工站，站前检测
 void wksmes::ProcessInspection(MesPacketData pack) {

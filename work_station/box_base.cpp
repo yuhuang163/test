@@ -14,8 +14,7 @@
 #endif
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString station = settings.value("SYSTEM/station").toString();  // 工站
+    QString station = SETTINGS.value("SYSTEM/station").toString();  // 工站
     if (station != "PCBA_TEST") {
         loginMes();
     }
@@ -150,10 +149,7 @@ void box_base::checkAndUpdateFile() {
 void box_base::signalAndslot() {
     for (int i = 0; i < testList.size(); i++) {
         connect(this, SIGNAL(sendBoxLog(QString)), testList[i], SLOT(showlog(QString)));
-        // 最后一个回车会清空所有状态重新开始测试
-
         connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNextMechine(int)));
-        // 最后一个回车会清空所有状态重新开始测试
 
         connect(testList[i], SIGNAL(send_go_next_test(int)), this, SLOT(checkAllTest(int)));
         connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(checkAllover(int)));
@@ -165,8 +161,7 @@ void box_base::signalAndslot() {
 
         connect(testList[i], SIGNAL(send_startTest(int)), this, SLOT(reset_vector(int)));
 
-        // connect(MesManager, SIGNAL(MesState(const int)), testList[i],
-        //         SLOT(solveMesSucess(const int)));
+        // connect(MesManager, SIGNAL(MesState(const int)), testList[i],SLOT(solveMesSucess(const int)));
         connect(MesManager, SIGNAL(MesError(const int, QString)), testList[i], SLOT(solveMesData(const int, QString)));
         connect(MesManager, SIGNAL(MesSucess(const int)), testList[i], SLOT(solveMesSucess(const int)));
         connect(MesManager, SIGNAL(MesTestvalue(const int, const QString)), testList[i],
@@ -193,19 +188,17 @@ void box_base::signalAndslot() {
 //每一路开始测试都会清除掉自己的那个变量
 void box_base::reset_vector(int i) { FixTureStates[i - 1] = 0; }
 void box_base::initData() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
-    pack.Employee_ID = settings.value("Mes/mUserno").toString();
-    pack.action = settings.value("Mes/Action").toString();
-    pack.machineNo = settings.value("Mes/machineNo").toString();
-    pack.product = settings.value("Mes/Product_Name").toString();
-    pack.line = settings.value("Mes/Line").toString();
-    pack.model = settings.value("Mes/model").toString();
-    pack.test_station = settings.value("Mes/test_station").toString();
-    pack.password = settings.value("Mes/M_PASSWORD").toString();
-    pack.userNo = settings.value("Mes/M_USERNO").toString();
-    pack.lotName = settings.value("Mes/Work_Order").toString();
+    pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
+    pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
+    pack.action = SETTINGS.value("Mes/Action").toString();
+    pack.machineNo = SETTINGS.value("Mes/machineNo").toString();
+    pack.product = SETTINGS.value("Mes/Product_Name").toString();
+    pack.line = SETTINGS.value("Mes/Line").toString();
+    pack.model = SETTINGS.value("Mes/model").toString();
+    pack.test_station = SETTINGS.value("Mes/test_station").toString();
+    pack.password = SETTINGS.value("Mes/M_PASSWORD").toString();
+    pack.userNo = SETTINGS.value("Mes/M_USERNO").toString();
+    pack.lotName = SETTINGS.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
     for (int i = 0; i < testList.size(); i++) {
@@ -213,27 +206,25 @@ void box_base::initData() {
     }
 }
 // 辅助函数定义
-void setComboBoxValue(QSettings& settings, const QString& baseKey, const QString& key, QComboBox* comboBox) {
+void setComboBoxValue(const QString& baseKey, const QString& key, QComboBox* comboBox) {
     if (comboBox != nullptr && comboBox->currentText() != "") {
-        settings.setValue(QString("%1/%2").arg(baseKey).arg(key), comboBox->currentText());
+        SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg(key), comboBox->currentText());
         qDebug() << comboBox->currentText();
     }
 }
 void box_base::saveCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    settings.setValue("Window/Size", this->size());
+    SETTINGS.setValue("Window/Size", this->size());
     for (int i = 0; i < testList.size(); i++) {
         qDebug() << "保存的串口号";
         QString baseKey = QString("mechine/%1").arg(i);
         // 保存COM口相关信息
-        setComboBoxValue(settings, baseKey, "comName", testList[i]->getComNameCombo());
-
-        setComboBoxValue(settings, baseKey, "usbcomName", testList[i]->getUsbcomNameCombo());
-        setComboBoxValue(settings, baseKey, "JigcomName", testList[i]->getJigcomNameCombo());
-        setComboBoxValue(settings, baseKey, "ProductcomName", testList[i]->getProductcomNameCombo());
+        setComboBoxValue(baseKey, "comName", testList[i]->getComNameCombo());
+        setComboBoxValue(baseKey, "usbcomName", testList[i]->getUsbcomNameCombo());
+        setComboBoxValue(baseKey, "JigcomName", testList[i]->getJigcomNameCombo());
+        setComboBoxValue(baseKey, "ProductcomName", testList[i]->getProductcomNameCombo());
 
         if (testList[i]->getMotorCaliParam() != nullptr)
-            settings.setValue(QString("%1/MotorCaliParam").arg(baseKey), testList[i]->getMotorCaliParam()->text());
+            SETTINGS.setValue(QString("%1/MotorCaliParam").arg(baseKey), testList[i]->getMotorCaliParam()->text());
     }
 }
 
@@ -307,17 +298,15 @@ void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
 }
 
 void box_base::recoverCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-
     for (int i = 0; i < testList.size(); ++i) {
         QString baseKey = QString("mechine/%1").arg(i);
         // 从设置中读取串口相关信息
-        QString comName = settings.value(QString("%1/comName").arg(baseKey)).toString();
-        QString usbComName = settings.value(QString("%1/usbcomName").arg(baseKey)).toString();
-        QString jigComomName = settings.value(QString("%1/JigcomName").arg(baseKey)).toString();
-        QString nfcComName = settings.value(QString("%1/nfcComName").arg(baseKey)).toString();
-        QString ProductComName = settings.value(QString("%1/ProductcomName").arg(baseKey)).toString();
-        QString MotorCaliParam = settings.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
+        QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
+        QString usbComName = SETTINGS.value(QString("%1/usbcomName").arg(baseKey)).toString();
+        QString jigComomName = SETTINGS.value(QString("%1/JigcomName").arg(baseKey)).toString();
+        QString nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(baseKey)).toString();
+        QString ProductComName = SETTINGS.value(QString("%1/ProductcomName").arg(baseKey)).toString();
+        QString MotorCaliParam = SETTINGS.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
 
         setComboBoxEditText(testList[i]->getComNameCombo(), comName);
         setComboBoxEditText(testList[i]->getUsbcomNameCombo(), usbComName);
@@ -334,7 +323,6 @@ void box_base::recoverCustom() {
 }
 
 void box_base::ShowData(QMainWindow* parent) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
     if (parent) {  // 确保 parent 指针不为空
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
@@ -356,17 +344,16 @@ void box_base::ShowData(QMainWindow* parent) {
 
     QAction* updata = parent->menuBar()->addAction("软件更新");
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
-    if (!settings.value("SYSTEM/system_ota").toInt()) {
+    if (!SETTINGS.value("SYSTEM/system_ota").toInt()) {
         updata->setVisible(false);
     }
 }
 
 void box_base::loginMes() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    pack.factory = settings.value("Mes/FACTORY", "xwd").toString();
-    pack.machineNo = settings.value("Mes/M_MACHINENO").toString();
-    pack.password = settings.value("Mes/M_PASSWORD").toString();
-    pack.userNo = settings.value("Mes/M_USERNO").toString();
+    pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
+    pack.machineNo = SETTINGS.value("Mes/M_MACHINENO").toString();
+    pack.password = SETTINGS.value("Mes/M_PASSWORD").toString();
+    pack.userNo = SETTINGS.value("Mes/M_USERNO").toString();
 
     MesManager->loginAll(pack);
 }

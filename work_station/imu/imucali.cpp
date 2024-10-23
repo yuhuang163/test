@@ -98,15 +98,15 @@ imucali::imucali(int index, QWidget* parent) :
         }
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    settings.setValue("Window/Size", this->size());
+    
+    
+    SETTINGS.setValue("Window/Size", this->size());
 
-    imu_wait_time = settings.value("IMU/IMU_Wait_Time", "15000").toInt();
-    imu_compare_wait_time = settings.value("IMU/IMU_Compare_Wait_Time", "15000").toInt();
-    ImuCompareData = settings.value("IMU/ImuCompareData", "-8000").toInt();
-    imu_cali_wait_time = settings.value("IMU/imu_cali_wait_time", "15000").toInt();
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
+    imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
+    imu_compare_wait_time = SETTINGS.value("IMU/IMU_Compare_Wait_Time", "15000").toInt();
+    ImuCompareData = SETTINGS.value("IMU/ImuCompareData", "-8000").toInt();
+    imu_cali_wait_time = SETTINGS.value("IMU/imu_cali_wait_time", "15000").toInt();
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
 
     showlog("standbattary=" + QString::number(standbattary));
 
@@ -1367,7 +1367,8 @@ void imucali::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;

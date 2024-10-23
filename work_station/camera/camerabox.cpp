@@ -28,8 +28,8 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
                         SLOT(set_camera_action(camreaFixtureState)));
             }
 
-            QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-            QString masterFixturecomName = settings.value(QString("0/masterFixturecomName")).toString();
+               
+            QString masterFixturecomName = SETTINGS.value(QString("0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
 
@@ -44,10 +44,10 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
 }
 
 camerabox::~camerabox() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
     if (Fixture_uart_ui != NULL)
-        settings.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }

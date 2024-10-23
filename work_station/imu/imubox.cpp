@@ -58,8 +58,8 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
                 connect(Fixture_uart_ui, SIGNAL(start_fix_action(int)), testList[i], SLOT(get_fix_action(int)));
             }
 
-            QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-            QString masterFixturecomName = settings.value(QString("0/masterFixturecomName")).toString();
+               
+            QString masterFixturecomName = SETTINGS.value(QString("0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
 
@@ -144,7 +144,7 @@ void imubox::startTest() {
     set_cylinder_state(STATE_RESET);
     waitWork(500);
 
-    if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
+    if (pack.product == "Y21" ||pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
         if (pack.factory == "xwd") {
             set_cylinder_state(STATE_BRUSH_RIGHT);
         } else {
@@ -158,10 +158,10 @@ void imubox::startTest() {
 }
 
 imubox::~imubox() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
     if (Fixture_uart_ui != NULL)
-        settings.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }
@@ -175,9 +175,9 @@ void imubox::resetall() {
     //     waitWork(500);
 
     //     if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
-    //         if (pack.factory == "xwd") {
-    //             set_cylinder_state(STATE_BRUSH_RIGHT);
-    //         } else {
+            // if (pack.factory == "xwd") {
+            //     set_cylinder_state(STATE_BRUSH_RIGHT);
+            // } else {
     //             set_cylinder_state(STATE_BRUSH_LEFT);
     //         }
 

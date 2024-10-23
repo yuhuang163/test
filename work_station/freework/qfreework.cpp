@@ -40,23 +40,23 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
         comparewaittime->stop();
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
-    HighRssi = settings.value("WIFI/HighRssi").toDouble();
-    LowRssi = settings.value("WIFI/LowRssi").toDouble();
-    BleHighRssi = settings.value("BLE/HighRssi").toDouble();
-    BleLowRssi = settings.value("BLE/LowRssi").toDouble();
-    filter_name = settings.value("BLE/Filter_Name").toString();
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
-    HighCurrent = settings.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = settings.value("quiescentCurrent/LowCurrent").toDouble();
-    measure_wait_time = settings.value("Current/measure_wait_time").toInt();
+    HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
+    LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
+    BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
+    BleLowRssi = SETTINGS.value("BLE/LowRssi").toDouble();
+    filter_name = SETTINGS.value("BLE/Filter_Name").toString();
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
+    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
+    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
+    measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
-    RssiTestTime = settings.value("BLE/RssiCount").toInt();
-    // ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
+    // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "usmile123").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
 
     showlog("HighCurrent=" + QString::number(HighCurrent));
     showlog("LowCurrent=" + QString::number(LowCurrent));
@@ -410,10 +410,10 @@ void QFreeWork::startTask() {
 QFreeWork::~QFreeWork() { delete ui; }
 
 void QFreeWork::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString softwareVersion = settings.value("ProductInfo/Software_Version").toString();
-    QString resourceVersion = settings.value("ProductInfo/Resource_Version").toString();
-    QString Age_State = settings.value("ProductInfo/Age_State").toString();
+       
+    QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
+    QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
+    QString Age_State = SETTINGS.value("ProductInfo/Age_State").toString();
     product = data.product_name;
     if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
         // sku = "55040701";
@@ -592,16 +592,16 @@ void QFreeWork::refreshMesState(int state) {
 }
 
 void QFreeWork::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
     // 保存密码
-    settings.setValue("WIFI/Password", "usmile123");
+    SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
-    settings.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
+    SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
 
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 void QFreeWork::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
@@ -769,12 +769,12 @@ void QFreeWork::on_disconnectwifi_clicked() {
     }
 }
 void QFreeWork::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
-    QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
-    QString wifiPassword = settings.value("WIFI/Password").toString();
+    QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
+    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
-    // QString wifiName = settings.value("WIFI/Name").toString();
+    // QString wifiName = SETTINGS.value("WIFI/Name").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -840,7 +840,8 @@ void QFreeWork::on_getMac_returnPressed() {
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->getMac->clear();
         return;
     }

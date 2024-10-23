@@ -803,6 +803,10 @@ void Qpb::set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data
 void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
+    // 获取当前日期
+    QString currentDate = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    // 格式化字符串
+    QString infoString = QString("Date: %1, Ver: %2").arg(currentDate).arg(APP_VERSION);
 
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
     pack.cmd_id = cmd;
@@ -823,6 +827,7 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
         pack.command_data.set_dev_info.dev_info[0]
             .value_item.tail_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_tail_sn_tag;
+
     } else if (which_sn == FacDevInfoType_SUB_PID) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
         qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.sub_pid, sn,
@@ -842,9 +847,19 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
         qDebug() << "未知的 which_sn 值";
         return;
     }
+    // 转换为 QByteArray 并存入 write_info
+    QByteArray byteArray = infoString.toUtf8();
+    // qstrncpy(pack.command_data.set_dev_info.write_info, byteArray.data(),
+    //          sizeof(pack.command_data.set_dev_info.write_info) - 1);
+    // pack.command_data.set_dev_info.write_info[sizeof(pack.command_data.set_dev_info.write_info) - 1] = '\0';
+
+    qstrncpy(pack.command_data.set_dev_info.dev_info[0].write_info, byteArray.data(),
+             sizeof(pack.command_data.set_dev_info.dev_info[0].write_info) - 1);
+    pack.command_data.set_dev_info.dev_info[0]
+        .write_info[sizeof(pack.command_data.set_dev_info.dev_info[0].write_info) - 1] = '\0';
 
     sendShortPack(pack);
-    qDebug() << "已发送sn码";
+    qDebug() << "已发送sn码" << pack.command_data.set_dev_info.dev_info[0].write_info;
 }
 
 void Qpb::get_sn(FacDevInfoType which_sn) {
@@ -1518,12 +1533,15 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     if (x.which_value_item == FacMotorCalibResult_zero_calibration_data_tag &&
         x.type == FacMotorUploadType_ZERO_CALIBRATION_DATA) {
         emit sendGetBrushResponse(1);
-        emit send_pb_date("获取到0点校准结果" + QString::number(x.value_item.zero_calibration_data));
+        emit send_pb_date("获取到0点校准结果为" + QString::number(x.value_item.zero_calibration_data));
         qDebug() << "获取到0点校准结果" << x.value_item.zero_calibration_data;
-        if (x.value_item.zero_calibration_data == 0)
+        if (x.value_item.zero_calibration_data == 0) {
+            emit send_pb_date("0点校准成功");
             is_zero_cali = 1;
-        else
+        } else {
+            emit send_pb_date("0点校准失败");
             is_zero_cali = 2;
+        }
     }
 
     if (x.which_value_item == FacMotorCalibResult_servo_info_tag && x.type == FacMotorUploadType_SERVO_INFO) {
@@ -1692,6 +1710,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
         emit sendGetBrushResponse(1);
     }
+    emit send_pb_date("获取到写入的日期版本信息内容" + QString(x.dev_info[0].write_info));
 }
 
 void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {

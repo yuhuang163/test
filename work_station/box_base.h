@@ -18,13 +18,13 @@ public:
 
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+           
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
         QVariant windowSize(availableSize / 4 * 3);
-        this->resize(settings.value("Window/Size", windowSize).toSize());
-        restoreState(settings.value("Window/windowState").toByteArray());
-        formColumn = settings.value("User/formColumn", "1").toInt();
-        formRow = settings.value("User/formRow", "1").toInt();
+        this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
+        restoreState(SETTINGS.value("Window/windowState").toByteArray());
+        formColumn = SETTINGS.value("User/formColumn", "1").toInt();
+        formRow = SETTINGS.value("User/formRow", "1").toInt();
 
         QVBoxLayout* vlayout = new QVBoxLayout(parent->centralWidget());
 

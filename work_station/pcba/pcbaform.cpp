@@ -54,7 +54,7 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
 {
     static int t = 1;
     if (t == 1) {
-        pack.itemvalue ="";
+        pack.itemvalue = "";
         pack.error = erroContent.join("") + "|";  //加结束符
         pack.sn = ui->getMac->text();
         showlog("失败过站");
@@ -190,45 +190,45 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         music_play_time->stop();
     });
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    
+    
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    // ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "usmile123").toString());
-    HighRssi = settings.value("WIFI/HighRssi").toInt();
-    LowRssi = settings.value("WIFI/LowRssi").toInt();
-    BleHighRssi = settings.value("BLE/HighRssi").toInt();
-    BleLowRssi = settings.value("BLE/LowRssi").toInt();
-    ble_wait_time = settings.value("BLE/BleWaitTime", "15000").toInt();
-    wifi_wait_time = settings.value("WIFI/WifiWaitTime", "15000").toInt();
-    wifi_connect_waittime = settings.value("BLE/WifiConnectWaitTime", "15000").toInt();
-    HighCharCurrent = settings.value("Current/HighCharCurrent").toDouble();
-    LowCharCurrent = settings.value("Current/LowCharCurrent").toDouble();
-    HighworkCurrent = settings.value("Current/HighworkCurrent").toDouble();
-    LowworkCurrent = settings.value("Current/LowworkCurrent").toDouble();
+    // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
+    HighRssi = SETTINGS.value("WIFI/HighRssi").toInt();
+    LowRssi = SETTINGS.value("WIFI/LowRssi").toInt();
+    BleHighRssi = SETTINGS.value("BLE/HighRssi").toInt();
+    BleLowRssi = SETTINGS.value("BLE/LowRssi").toInt();
+    ble_wait_time = SETTINGS.value("BLE/BleWaitTime", "15000").toInt();
+    wifi_wait_time = SETTINGS.value("WIFI/WifiWaitTime", "15000").toInt();
+    wifi_connect_waittime = SETTINGS.value("BLE/WifiConnectWaitTime", "15000").toInt();
+    HighCharCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
+    LowCharCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
+    HighworkCurrent = SETTINGS.value("Current/HighworkCurrent").toDouble();
+    LowworkCurrent = SETTINGS.value("Current/LowworkCurrent").toDouble();
 
-    HighmusicCurrent = settings.value("Current/HighmusicCurrent").toDouble();
-    LowmusicCurrent = settings.value("Current/LowmusicCurrent").toDouble();
+    HighmusicCurrent = SETTINGS.value("Current/HighmusicCurrent").toDouble();
+    LowmusicCurrent = SETTINGS.value("Current/LowmusicCurrent").toDouble();
 
-    HighshipCurrent = settings.value("Current/HighshipCurrent").toDouble();
-    LowshipCurrent = settings.value("Current/LowshipCurrent").toDouble();
+    HighshipCurrent = SETTINGS.value("Current/HighshipCurrent").toDouble();
+    LowshipCurrent = SETTINGS.value("Current/LowshipCurrent").toDouble();
 
-    HighstaticCurrent = settings.value("Current/HighstaticCurrent").toDouble();
-    LowstaticCurrent = settings.value("Current/LowstaticCurrent").toDouble();
-    music_state = settings.value("FIXTEST/MusicState").toInt();
-    overVoltageLight = settings.value("FIXTEST/OverVoltageLight").toInt();
-    button1 = settings.value("FIXTEST/Button1").toInt();
-    button2 = settings.value("FIXTEST/Button2").toInt();
-    RssiTestTime = settings.value("BLE/RssiCount").toInt();
-    acc_x_up = settings.value("IMU/acc_x_up").toInt();
-    acc_x_down = settings.value("IMU/acc_x_down").toInt();
+    HighstaticCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();
+    LowstaticCurrent = SETTINGS.value("Current/LowstaticCurrent").toDouble();
+    music_state = SETTINGS.value("FIXTEST/MusicState").toInt();
+    overVoltageLight = SETTINGS.value("FIXTEST/OverVoltageLight").toInt();
+    button1 = SETTINGS.value("FIXTEST/Button1").toInt();
+    button2 = SETTINGS.value("FIXTEST/Button2").toInt();
+    RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
+    acc_x_up = SETTINGS.value("IMU/acc_x_up").toInt();
+    acc_x_down = SETTINGS.value("IMU/acc_x_down").toInt();
 
-    acc_y_up = settings.value("IMU/acc_y_up").toInt();
-    acc_y_down = settings.value("IMU/acc_y_down").toInt();
+    acc_y_up = SETTINGS.value("IMU/acc_y_up").toInt();
+    acc_y_down = SETTINGS.value("IMU/acc_y_down").toInt();
 
-    acc_z_up = settings.value("IMU/acc_z_up").toInt();
-    acc_z_down = settings.value("IMU/acc_z_down").toInt();
+    acc_z_up = SETTINGS.value("IMU/acc_z_up").toInt();
+    acc_z_down = SETTINGS.value("IMU/acc_z_down").toInt();
 
     showlog("acc_z_up=" + QString::number(acc_z_up));
     showlog("acc_z_down=" + QString::number(acc_z_down));
@@ -240,8 +240,8 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     showlog("ble_wait_time=" + QString::number(ble_wait_time));
     showlog("wifi_wait_time=" + QString::number(wifi_wait_time));
     showlog("wifi_connect_waittime=" + QString::number(wifi_connect_waittime));
-    showlog("wifiUserName=" + settings.value("WIFI/Name", "请在配置文件中设置").toString());
-    showlog("wifiPassword=" + settings.value("WIFI/Password", "usmile123").toString());
+    showlog("wifiUserName=" + SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
+    showlog("wifiPassword=" + SETTINGS.value("WIFI/Password", "usmile123").toString());
     showlog("HighRssi=" + QString::number(HighRssi));
     showlog("LowRssi=" + QString::number(LowRssi));
     showlog("BleHighRssi=" + QString::number(BleHighRssi));
@@ -280,18 +280,18 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
 }
 void PcbaForm::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void PcbaForm::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
-    settings.setValue("WIFI/Password", "usmile123");
+    SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
-    settings.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
+    SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
 
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 
 void PcbaForm::processReceivedData(const QByteArray& data) {
@@ -513,8 +513,8 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "refresh_times" << refresh_times;
         refresh_times = 0;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
-        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+        
+        
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "algo_version" << data.algo_version;
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -563,28 +563,26 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "设备的 wifiMac:" << wifiMac;
 
-        QString productName = settings.value("ProductInfo/Product_Name").toString();
-        QString appProtocolVersion = settings.value("ProductInfo/App_Protocol_Version").toString();
-        QString factoryProtocolVersion = settings.value("ProductInfo/Factory_Protocol_Version").toString();
-        QString hardwareVersion = settings.value("ProductInfo/Hardware_Version").toString();
-        QString softwareVersion = settings.value("ProductInfo/Software_Version").toString();
-        QString resourceVersion = settings.value("ProductInfo/Resource_Version").toString();
-        QString algorithmVersion = settings.value("ProductInfo/Algorithm_Version").toString();
-        QString pressureSenseVersion = settings.value("ProductInfo/Pressure_Sense_Version").toString();
-        QString imuId = settings.value("ProductInfo/IMU_ID").toString();
-        QString ble_ver = settings.value("ProductInfo/Ble_Ver").toString();
-        QString motorVersion = settings.value("ProductInfo/Motor_Ver").toString();
-        QString camera_id = settings.value("ProductInfo/Camera_Id").toString();
+        QString productName = SETTINGS.value("ProductInfo/Product_Name").toString();
+        QString appProtocolVersion = SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
+        QString factoryProtocolVersion = SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
+        QString hardwareVersion = SETTINGS.value("ProductInfo/Hardware_Version").toString();
+        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
+        QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
+        QString algorithmVersion = SETTINGS.value("ProductInfo/Algorithm_Version").toString();
+        QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+        QString imuId = SETTINGS.value("ProductInfo/IMU_ID").toString();
+        QString ble_ver = SETTINGS.value("ProductInfo/Ble_Ver").toString();
+        QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
+        QString camera_id = SETTINGS.value("ProductInfo/Camera_Id").toString();
 
-        if (data.algo_version == algorithmVersion && data.hw_version == hardwareVersion &&
-            data.ble_version == ble_ver && data.motor_version == motorVersion &&
-            data.presure_version == pressureSenseVersion && data.product_name == productName &&
-            QString("%1").arg(data.pb_phone_ver) == appProtocolVersion &&
-            QString("%1").arg(data.pb_factory_ver) == factoryProtocolVersion && data.soft_version == softwareVersion &&
-            data.res_version == resourceVersion && QString::number(data.imu_id) == imuId &&
-            data.camera_version == camera_id)
-
-        {
+        if (algorithmVersion.contains(data.algo_version) && hardwareVersion.contains(data.hw_version) &&
+            pressureSenseVersion.contains(data.presure_version) && productName.contains(data.product_name) &&
+            appProtocolVersion.contains(QString::number(data.pb_phone_ver)) &&
+            factoryProtocolVersion.contains(QString::number(data.pb_factory_ver)) &&
+            softwareVersion.contains(data.soft_version) && resourceVersion.contains(data.res_version) &&
+            motorVersion.contains(data.motor_version) && imuId.contains(QString::number(data.imu_id)) &&
+            ble_ver.contains(data.ble_version) && camera_id.contains(data.camera_version)) {
             base_state = 1;
         } else {
             base_state = 2;
@@ -673,13 +671,13 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
                  << "refresh_periph_state_times" << refresh_periph_state_times;
         refresh_periph_state_times = 0;
 
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);
-        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-        bool imuStatus = settings.value("PeripheralStatus/IMU_Status").toBool();
-        bool flashStatus = settings.value("PeripheralStatus/Flash_Status").toBool();
-        bool magneticStatus = settings.value("PeripheralStatus/Magnetic_Status").toBool();
-        bool pressureStatus = settings.value("PeripheralStatus/Pressure_Status").toBool();
-        bool audioState = settings.value("PeripheralStatus/Audio_Status").toBool();
+        
+        
+        bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
+        bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
+        bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
+        bool pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toBool();
+        bool audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toBool();
 
         if (data.flash_state == flashStatus && data.imu_state == imuStatus && data.audio_state == audioState &&
             data.press_state == pressureStatus && data.magnet_state == magneticStatus) {
@@ -739,13 +737,13 @@ void PcbaForm::on_stopTest_clicked() {
 }
 
 void PcbaForm::connectwifi() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    QString wifiName = settings.value(QString("WIFI/Name%1").arg(getIndex())).toString();
-    QString wifiPassword = settings.value("WIFI/Password").toString();
+    QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
+    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
-    // QString wifiName = settings.value("WIFI/Name").toString();
+    // QString wifiName = SETTINGS.value("WIFI/Name").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -892,7 +890,7 @@ void PcbaForm::updateTestResultUI() {
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
         isPcbaTestContinue = false;  // 结束
-
+        ui->getMac->clear();
         ui->macInput->setDisabled(0);
         if (pack.factory == "wks") {
             ui->getMac->setDisabled(0);
@@ -1603,6 +1601,7 @@ void PcbaForm::startTask() {
                 showlog("保存完毕");
                 showlog("测试结束");
                 ui->macInput->clear();
+                ui->getMac->clear();
                 // ui->macInput->setFocus();
                 ui->macInput->setDisabled(0);
                 if (pack.factory == "wks") {
@@ -1672,7 +1671,7 @@ void PcbaForm::on_macInput_returnPressed() {
         firstconnectbrush = 0;
         ui->macLabel->setText("蓝牙mac: " + macAddress);
         // QSettings settings(SETTING_NAME,QSettings::IniFormat);
-        // if(settings.value("User/formColumn").toInt()*settings.value("User/formRow").toInt()==1)
+        // if(SETTINGS.value("User/formColumn").toInt()*SETTINGS.value("User/formRow").toInt()==1)
         // startTask();
 
         isPcbaTestContinue = true;
@@ -1758,6 +1757,8 @@ void PcbaForm::on_getMac_returnPressed() {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;

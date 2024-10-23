@@ -256,17 +256,17 @@ void MainWindow::processTheDatagram(QByteArray& datagram) {
 
     QPainter painter(&viewercamrea->pixmap);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat); 
-  settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
-    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
-    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
-    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
+     
+  
+    int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
+    int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
+    int Rect1_Width = SETTINGS.value("CAMERA/Rect1_Width", 40).toInt();
+    int Rect1_Height = SETTINGS.value("CAMERA/Rect1_Height", 25).toInt();
 
-    // int Rect2_X = settings.value("CAMERA/Rect2_X", 64).toInt();
-    // int Rect2_Y = settings.value("CAMERA/Rect2_Y", 0).toInt();
-    // int Rect2_Width = settings.value("CAMERA/Rect2_Width", 52).toInt();
-    // int Rect2_Height = settings.value("CAMERA/Rect2_Height", 34).toInt();
+    // int Rect2_X = SETTINGS.value("CAMERA/Rect2_X", 64).toInt();
+    // int Rect2_Y = SETTINGS.value("CAMERA/Rect2_Y", 0).toInt();
+    // int Rect2_Width = SETTINGS.value("CAMERA/Rect2_Width", 52).toInt();
+    // int Rect2_Height = SETTINGS.value("CAMERA/Rect2_Height", 34).toInt();
 
     QPen pen(Qt::red);               // 创建一个红色的画笔
     painter.setPen(pen);             // 设置画笔颜色
@@ -1322,18 +1322,18 @@ void MainWindow::getWifiMsg(QString data) {
 void MainWindow::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void MainWindow::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
-    settings.setValue("WIFI/Password", "usmile123");
+    SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
-    settings.setValue(QString("WIFI/Name%1").arg(0), data);
+    SETTINGS.setValue(QString("WIFI/Name%1").arg(0), data);
 
-    ui->wifiUserName->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
-    ui->ssid_lineEdit->setText(settings.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
+    ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 void MainWindow::updateWifi(FacDevInfo wifi) {
     QString wifiName = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_name);
@@ -1566,16 +1566,16 @@ void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
     }
 }
 void MainWindow::getMac(QString sn_to_search) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
 
-    if (settings.value("Mes/FACTORY").toString() == "hq")
+    if (SETTINGS.value("Mes/FACTORY").toString() == "hq")
         fileName = "mac_sn.txt";
-    else if (settings.value("Mes/FACTORY").toString() == "lx")
+    else if (SETTINGS.value("Mes/FACTORY").toString() == "lx")
         fileName = "mac_sn.txt";
-    else if (settings.value("Mes/FACTORY").toString() == "jj")
+    else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
         fileName = "mac_sn.txt";
     else {
         QString path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
@@ -1918,10 +1918,10 @@ void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifi
     }
 
     // 构建完整的文件路径
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
     QString filePath =
-        QDir(folderPath).filePath(settings.value("ProductInfo/Product_Name").toString() + "wifi蓝牙报告.csv");
+        QDir(folderPath).filePath(SETTINGS.value("ProductInfo/Product_Name").toString() + "wifi蓝牙报告.csv");
     QFile file(filePath);
 
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
@@ -2179,9 +2179,9 @@ QString MainWindow::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+       
+      
+    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
     return value;
@@ -2386,28 +2386,28 @@ void MainWindow::getmacadress(const QByteArray& byte) {
     }
 }
 void MainWindow::saveCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    settings.setValue("Window/Size", this->size());
+       
+      
+    SETTINGS.setValue("Window/Size", this->size());
 
     QString baseKey = QString("mechine/%1").arg(0);
     // 保存COM口相关信息
-    settings.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
+    SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
 
     qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }
 
 void MainWindow::recoverCustom() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
     QVariant windowSize(availableSize / 4 * 3);
-    this->resize(settings.value("Window/Size", windowSize).toSize());
-    restoreState(settings.value("Window/windowState").toByteArray());
-    ui->wifiUserName->setText(settings.value("WIFI/Name", "请在配置文件中设置").toString());
-    ui->wifiPassword->setText(settings.value("WIFI/Password", "123445566").toString());
+    this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
+    restoreState(SETTINGS.value("Window/windowState").toByteArray());
+    ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
+    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
     QString baseKey = QString("mechine/%1").arg(0);
-    QString comName = settings.value(QString("%1/comName").arg(baseKey)).toString();
+    QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
     ui->comNameCombo->setCurrentText(comName);
     qDebug() << "配置内容" << comName;
 }
@@ -2418,30 +2418,31 @@ void MainWindow::initBasicInfo() {
         QString displayName;
         QString settings;
     };
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
 
     // 读取 ProductInfo 节下的键值对
-    productName = "=" + settings.value("ProductInfo/Product_Name").toString();
-    QString appProtocolVersion = "=" + settings.value("ProductInfo/App_Protocol_Version").toString();
-    QString factoryProtocolVersion = "=" + settings.value("ProductInfo/Factory_Protocol_Version").toString();
-    QString hardwareVersion = "=" + settings.value("ProductInfo/Hardware_Version").toString();
-    QString softwareVersion = "=" + settings.value("ProductInfo/Software_Version").toString();
-    QString camera_id = "=" + settings.value("ProductInfo/Camera_Id").toString();
+    productName = "=" + SETTINGS.value("ProductInfo/Product_Name").toString();
+    QString appProtocolVersion = "=" + SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
+    QString factoryProtocolVersion = "=" + SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
+    QString hardwareVersion = "=" + SETTINGS.value("ProductInfo/Hardware_Version").toString();
+    QString softwareVersion = "=" + SETTINGS.value("ProductInfo/Software_Version").toString();
+    QString camera_id = "=" + SETTINGS.value("ProductInfo/Camera_Id").toString();
 
-    QString resourceVersion = "=" + settings.value("ProductInfo/Resource_Version").toString();
-    QString algorithmVersion = "=" + settings.value("ProductInfo/Algorithm_Version").toString();
-    QString pressureSenseVersion = "=" + settings.value("ProductInfo/Pressure_Sense_Version").toString();
-    QString imuId = "=" + settings.value("ProductInfo/IMU_ID").toString();
+    QString resourceVersion = "=" + SETTINGS.value("ProductInfo/Resource_Version").toString();
+    QString algorithmVersion = "=" + SETTINGS.value("ProductInfo/Algorithm_Version").toString();
+    QString pressureSenseVersion = "=" + SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+    QString imuId = "=" + SETTINGS.value("ProductInfo/IMU_ID").toString();
+    QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
 
-    QString age_state = "=" + settings.value("ProductInfo/Age_State").toString();
+    QString age_state = "=" + SETTINGS.value("ProductInfo/Age_State").toString();
 
-    QString motor_ver = "=" + settings.value("ProductInfo/Motor_Ver").toString();
-    QString ble_ver = "=" + settings.value("ProductInfo/Ble_Ver").toString();
+    QString motor_ver = "=" + SETTINGS.value("ProductInfo/Motor_Ver").toString();
+    QString ble_ver = "=" + SETTINGS.value("ProductInfo/Ble_Ver").toString();
 
-    imu_wait_time = settings.value("IMU/IMU_Wait_Time", "15000").toInt();
+    imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
 
-    music_time = settings.value("music/music_Time", "music_time").toInt();
+    music_time = SETTINGS.value("music/music_Time", "music_time").toInt();
 
     QList<namePair> basicItems = {{"product_name", "产品名称", productName},
                                   {"pb_phone_ver", "app协议版本号", appProtocolVersion},
@@ -2460,6 +2461,7 @@ void MainWindow::initBasicInfo() {
                                   {"ble_ver", "蓝牙版本号", ble_ver}
 
     };
+
 
     for (auto name : basicItems) {
         basicInfoModel->addTestItem(new TestItems(name.name, name.displayName, name.settings));
@@ -2517,6 +2519,19 @@ void MainWindow::initBasicInfo() {
         basicInfoModel->getTestItemByName("ble_ver")->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
 
         writeDataToCSVFile();
+
+
+        if (algorithmVersion.contains(baseInfo.algo_version) && hardwareVersion.contains(baseInfo.hw_version) &&
+            pressureSenseVersion.contains(baseInfo.presure_version) && productName.contains(baseInfo.product_name) &&
+            appProtocolVersion.contains(QString::number(baseInfo.pb_phone_ver)) &&
+            factoryProtocolVersion.contains(QString::number(baseInfo.pb_factory_ver)) &&
+            softwareVersion.contains(baseInfo.soft_version) && resourceVersion.contains(baseInfo.res_version) &&
+            motorVersion.contains(baseInfo.motor_version) && imuId.contains(QString::number(baseInfo.imu_id)) &&
+            ble_ver.contains(baseInfo.ble_version)) {
+            ;
+        } else {
+              motorresult = failValue;
+        }
     });
 }
 
@@ -2526,14 +2541,14 @@ void MainWindow::initPeriphState() {
         QString displayName;
         QString settings;
     };
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
+      
 
     // 读取 PeripheralStatus 节下的键值对
-    QString imuStatus = "=" + settings.value("PeripheralStatus/IMU_Status").toString();
-    QString flashStatus = "=" + settings.value("PeripheralStatus/Flash_Status").toString();
-    QString magneticStatus = "=" + settings.value("PeripheralStatus/Magnetic_Status").toString();
-    QString pressureStatus = "=" + settings.value("PeripheralStatus/Pressure_Status").toString();
+    QString imuStatus = "=" + SETTINGS.value("PeripheralStatus/IMU_Status").toString();
+    QString flashStatus = "=" + SETTINGS.value("PeripheralStatus/Flash_Status").toString();
+    QString magneticStatus = "=" + SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
+    QString pressureStatus = "=" + SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
 
     QList<namePair> items = {
         {"imu_state", "imu状态", imuStatus},
@@ -2559,6 +2574,13 @@ void MainWindow::initPeriphState() {
         peripheralModel->getTestItemByName("press_state")
             ->setData(QString("%1").arg(state.press_state), Qt::DisplayRole);
         writePeripheralDataToCSVFile();
+
+        if (state.flash_state == flashStatus && state.imu_state == imuStatus && state.press_state == pressureStatus &&
+            state.magnet_state == magneticStatus) {
+           ;
+        } else {
+            motorresult = failValue;
+        }
     });
 }
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {

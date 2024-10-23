@@ -31,7 +31,8 @@ screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
@@ -163,27 +164,27 @@ void screentest::processInspection(QString stringsn) {
     }
 }
 void screentest::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+    QString brushstringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
 
-    stringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
+    QString brushstringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
-    qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+    qDebug() << getIndex() << "brushstringsn" << brushstringsn;
+    ui->tail_sn->setText("芯片存储的尾盖sn:" + brushstringsn);
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        showlog("读取的subpid为" + stringSubpid);
-        showlog("写入的subpid为" + subpid);
+        showlog("读取的subpid为" + brushstringSubpid);
+        showlog("扫描的subpid为" + stringsubpid);
 
-        if (subpid == stringSubpid)
+        if (stringsubpid == brushstringSubpid)
             subpidCompareOk = 1;
         else
             subpidCompareOk = 2;
     }
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        showlog("读取的sn为" + stringsn);
-        showlog("写入的sn为" + sn);
-        if (stringsn == sn)
+        showlog("读取的sn为" + brushstringsn);
+        showlog("扫描的sn为" + writesn);
+        if (brushstringsn == writesn)
             snCompareOk = 1;
         else
             snCompareOk = 2;
@@ -498,12 +499,13 @@ void screentest::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->getMac->clear();
-           ui->getMac->setFocus();
+        ui->getMac->setFocus();
         return;
     }
-    sn = ui->getMac->text().toUtf8();
+    writesn = ui->getMac->text().toUtf8();
 
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取

@@ -294,15 +294,16 @@ MainWindow::MainWindow(QWidget* parent) :
         ui->version_type_2->addItem(item);
     }
     ui->version_type_1->setCurrentIndex(1);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    HighRssi = settings.value("WIFI/HighRssi").toDouble();
-    LowRssi = settings.value("WIFI/LowRssi").toDouble();
-    BleHighRssi = settings.value("BLE/HighRssi").toDouble();
-    BleLowRssi = settings.value("BLE/LowRssi").toDouble();
-    RssiTestTime = settings.value("BLE/RssiCount").toInt();
+    
+    
+    
+    HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
+    LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
+    BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
+    BleLowRssi = SETTINGS.value("BLE/LowRssi").toDouble();
+    RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
 
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
     QRegExp regExp("[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,}");
     QValidator* validator = new QRegExpValidator(regExp, this);
     ui->brushTime->setValidator(validator);
@@ -322,10 +323,10 @@ MainWindow::MainWindow(QWidget* parent) :
 
     ui->progressBar->hide();
 
-    if (!settings.value("SYSTEM/brush_local_ota").toInt())
+    if (!SETTINGS.value("SYSTEM/brush_local_ota").toInt())
         ui->tabWidget->setTabVisible(8, false);
 
-    if (!settings.value("SYSTEM/system_ota").toInt())
+    if (!SETTINGS.value("SYSTEM/system_ota").toInt())
         updata->setVisible(false);
 
     ui->high_speed_tp->installEventFilter(this);
@@ -334,11 +335,11 @@ MainWindow::MainWindow(QWidget* parent) :
     ui->active_picture->installEventFilter(this);
     ui->active_picture->setAcceptDrops(true);
 
-    if (settings.value("Mes/FACTORY").toString() == "hq")
+    if (SETTINGS.value("Mes/FACTORY").toString() == "hq")
         ui->statusbar->addPermanentWidget(new QLabel("华勤"));
-    else if (settings.value("Mes/FACTORY").toString() == "lx")
+    else if (SETTINGS.value("Mes/FACTORY").toString() == "lx")
         ui->statusbar->addPermanentWidget(new QLabel("立讯"));
-    else if (settings.value("Mes/FACTORY").toString() == "jj")
+    else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
         ui->statusbar->addPermanentWidget(new QLabel("金进"));
     else
         ui->statusbar->addPermanentWidget(new QLabel("欣旺达"));
@@ -379,6 +380,9 @@ MainWindow::MainWindow(QWidget* parent) :
     //上位机ota使用的
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
+
+    pb->APP_VERSION = DEBUG_VER;
+    udpSocket = new QUdpSocket(this);
 }
 
 void MainWindow::on_add_data_clicked() {
@@ -708,13 +712,16 @@ void MainWindow::on_lcdTestButton_clicked() {
 
 void MainWindow::on_snInput_returnPressed() {
     // 检查是否是序列号格式
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString snPattern = settings.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
+    
+    
+    QString snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
         showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
+        showlog("要求格式为" + snPattern);
+
         ui->snInput->clear();
         return;
     }
@@ -924,10 +931,11 @@ void MainWindow::on_disconnectwifi_clicked() {
     }
 }
 void MainWindow::on_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString wifiName = settings.value("WIFI/Name").toString();
-    QString wifiPassword = settings.value("WIFI/Password").toString();
+    
+    
+    
+    QString wifiName = SETTINGS.value("WIFI/Name").toString();
+    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -1271,18 +1279,26 @@ void MainWindow::on_motor_cali_clicked() {
                     waitWork(100);
                     on_getperipheralButton_clicked();
                     waitWork(100);
-                    bool ok = false;
-                    value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16);  // 将十六进制字符串转换为
-                    if (ok) {
-                        qDebug() << value;  // 输出 38822029，即十六进制字符串
-                                            // "003bdf6d" 对应的数值
-                    } else {
-                        qDebug() << "Invalid input string";
-                    }
-                    waitWork(WAITTIME);
-                    pb->set_motor_cali_result_param(value);
 
-                    motorstate = MOTOR_CALI_DATA_SET;
+                    if (ui->is_sero_motor->checkState()) {
+                        bool ok = false;
+                        value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16);  // 将十六进制字符串转换为
+                        if (ok) {
+                            qDebug() << value;  // 输出 38822029，即十六进制字符串
+                                                // "003bdf6d" 对应的数值
+                        } else {
+                            qDebug() << "Invalid input string";
+                        }
+
+                        pb->set_motor_cali_result_param(value);
+
+                        motorstate = MOTOR_CALI_DATA_SET;
+
+                    } else {
+                        pb->is_motor_cali_data_set = 1;
+                        motorstate = MOTOR_CALI_DATA_SET;
+                    }
+
                 } else {
                     waitWork(500);
                     pb->set_forbid_sleep(FacSwitch_OPEN);
@@ -1296,7 +1312,12 @@ void MainWindow::on_motor_cali_clicked() {
                         motorstate = CAMERA_TEST;
                         pb->set_screen_camera_state(1);
                     } else {
-                        pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                        if (ui->is_sero_motor->checkState()) {
+                            pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                        } else {
+                            pb->set_motor_param(270, 60);
+                            pb->set_motor_state(1);
+                        }
                         showlog("已经发送电机测试指令");
                         motorstate = MOTOR_TESTING;
                     }
@@ -1316,7 +1337,12 @@ void MainWindow::on_motor_cali_clicked() {
                         motorresult = failValue;
                     }
                     showlog("已经发送电机测试指令");
-                    pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                    if (ui->is_sero_motor->checkState()) {
+                        pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                    } else {
+                        pb->set_motor_param(270, 60);
+                        pb->set_motor_state(1);
+                    }
                     motorstate = MOTOR_TESTING;
                 } else {
                     waitWork(500);
@@ -1326,7 +1352,7 @@ void MainWindow::on_motor_cali_clicked() {
                 }
                 break;
             case MOTOR_TESTING:
-                if (pb->get_is_motor_test_state()) {
+                if (pb->get_is_motor_param_set() || pb->get_is_motor_test_state()) {
                     reply = QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
                     if (reply == QMessageBox::No) {
                         motorresult = failValue;
@@ -1334,7 +1360,12 @@ void MainWindow::on_motor_cali_clicked() {
                     motorstate = STATE_SAVE_RESULT;
                 } else {
                     waitWork(500);
-                    pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                    if (ui->is_sero_motor->checkState()) {
+                        pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                    } else {
+                        pb->set_motor_param(270, 60);
+                        pb->set_motor_state(1);
+                    }
                 }
                 break;
 
@@ -1356,7 +1387,13 @@ void MainWindow::on_motor_cali_clicked() {
                 }
 
                 waitWork(500);
-                pb->set_sevor_motor_param(0, 0, 0, 0);
+
+                if (ui->is_sero_motor->checkState()) {
+                    pb->set_sevor_motor_param(0, 0, 0, 0);
+                } else {
+                    pb->set_motor_state(0);
+                }
+
                 waitWork(500);
                 pb->set_sleeep(FacSwitch_OPEN);
                 waitWork(500);
@@ -1811,12 +1848,12 @@ void MainWindow::on_test_cali_clicked() {
     switch (clickStep) {
         case 1:
             pb->set_motor_cali(1);
-            showlog("霍尔校准");
+            showlog("已发送霍尔校准");
             break;
 
         case 2:
             pb->set_motor_cali(2);
-            showlog("零点校准");
+            showlog("已发送零点校准");
             break;
     }
 
@@ -1872,10 +1909,11 @@ void MainWindow::on_start_local_ota_clicked() {
 }
 
 void MainWindow::on_new_connectwifi_clicked() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString wifiName = settings.value("WIFI/Name").toString();
-    QString wifiPassword = settings.value("WIFI/Password").toString();
+    
+    
+    
+    QString wifiName = SETTINGS.value("WIFI/Name").toString();
+    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -2178,45 +2216,46 @@ void MainWindow::on_distribution_network_clicked() {
     QString localHostName = QHostInfo::localHostName();
     QHostInfo hostInfo = QHostInfo::fromName(localHostName);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
+
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
+    // 获取QLineEdit中的端口号文本
+    QString portText = ui->port_num->text();
+    QHostAddress ipAddress(ipString);
 
+    if (udpSocket->state() == QAbstractSocket::BoundState) {
+        qDebug() << "UDP socket is already bound";
+        udpSocket->abort();
+    } else {
+        qDebug() << "UDP socket is not bound";
+    }
+
+    int port = portText.toInt();
+    if (udpSocket) {
+        udpSocket->close();
+        delete udpSocket;
+    }
+
+    bool bindResult = udpSocket->bind(ipAddress, port);
+    qDebug() << "connect_udp,localhost: " << ipString << ":" << port;
+
+    if (!bindResult) {
+        showlog("ip绑定失败");
+        return;
+    }
+
+    connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
     if (at->getConnected()) {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
     }
-
-    // static bool isExecuted = false;
-    // if (!isExecuted) {
-    // 获取QLineEdit中的端口号文本
-    QString portText = ui->port_num->text();
-    bool conversionOk;
-    int port = portText.toInt(&conversionOk);
-    if (udpSocket) {
-        udpSocket->close();
-        delete udpSocket;
-    }
-    udpSocket = new QUdpSocket(this);
-    QHostAddress ipAddress(ipString);
-    bool bindResult = udpSocket->bind(ipAddress, port);
-    qDebug() << "connect_udp,localhost: " << ipString << ":" << port;
-    qDebug() << "Bind result: " << bindResult;
-
-    if (!bindResult) {
-        showlog("ip绑定失败");
-    }
-
-    connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
-
-    //     isExecuted = true;
-    // }
 }
 
 void MainWindow::on_save_photo_clicked() {
@@ -3197,3 +3236,9 @@ void MainWindow::on_set_hw_ver_clicked() {
 //         pb->set_battery(selectedType);
 //     }
 // }
+
+void MainWindow::on_brush_relocation_clicked() {
+    pb->set_motor_damping_state(0);
+    QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
+    pb->set_motor_cali(2);
+}

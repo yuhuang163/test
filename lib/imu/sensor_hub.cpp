@@ -36,7 +36,6 @@ int q_convolution_int_3(new_imu_calibrate::sensordata_q* q, int kernel[8]) {
 }
 
 new_imu_calibrate::sensordata_q* new_imu_calibrate::init_int_3(int n) {
-
     sensordata_q* q = (sensordata_q*)malloc(sizeof(sensordata_q));
     q->data = (int(*)[3])malloc(sizeof(int[3]) * n);
     q->head = 0;
@@ -60,7 +59,7 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
 
     if (LSB == 4) {
         if (imu_static_state == 1) {
-            // y20的
+            // y20的f20的
             double Y20Y20P_positions[11][3] = {
                 {0, 0, 1},            // Position 8     u     u
                 {0, 1, 0},            // Position 9		r
@@ -71,15 +70,14 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
                 {-0.643, -0.766, 0},  // Position 5 	d     r
                 {0.643, 0, 0.766},    // Position 2 	u     u
                 {0.643, 0.766, 0},    // Position 0 	u     r
-
-                {0.643, 0, -0.766},  // Position 3 	u     d
-                {0.643, -0.766, 0},  // Position 1 	u     l
+                {0.643, 0, -0.766},   // Position 3 	u     d
+                {0.643, -0.766, 0},   // Position 1 	u     l
 
             };
             memcpy(fixed_positions, Y20Y20P_positions, sizeof(fixed_positions));
 
         } else {
-            //p30p也在这
+            // p30p也在这
             double U7U7P_positions[11][3] = {
 
                 {0, 0, 1},            // Position 1
@@ -339,11 +337,12 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
 }
 
 void new_imu_calibrate::acccalib_sensors_init() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    STATIC_CONV_VAR = settings.value("IMU/STATIC_CONV_VAR", "200").toInt();
-    STATIC_CONV_COUNT = settings.value("IMU/STATIC_CONV_COUNT", "45").toInt();
-    STATIC_CONV_DELAY = settings.value("IMU/STATIC_CONV_DELAY", "15").toInt();
+    
+    
+    
+    STATIC_CONV_VAR = SETTINGS.value("IMU/STATIC_CONV_VAR", "200").toInt();
+    STATIC_CONV_COUNT = SETTINGS.value("IMU/STATIC_CONV_COUNT", "45").toInt();
+    STATIC_CONV_DELAY = SETTINGS.value("IMU/STATIC_CONV_DELAY", "15").toInt();
     // init sensorhub timer. it's will collect data from sensor
 
     q = init_int_3(8);  // init a int[3] q with capacity 25 for sensor data

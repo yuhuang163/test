@@ -35,9 +35,9 @@ Fixture_uart::Fixture_uart(QWidget* parent) :
     });
     running.store(true);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-      settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    pack.product = settings.value("Mes/Product_Name").toString();
+       
+      
+    pack.product = SETTINGS.value("Mes/Product_Name").toString();
 }
 
 Fixture_uart::~Fixture_uart() {

@@ -537,6 +537,7 @@ typedef struct _FacDevInfoValue {
         char sub_pid[64];
         char sku_id[64];
     } value_item; 
+    char write_info[64]; 
 } FacDevInfoValue;
 
 typedef struct _FacImuCalibResult { 
@@ -800,7 +801,7 @@ extern "C" {
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
-#define FacDevInfoValue_init_default             {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_default}}
+#define FacDevInfoValue_init_default             {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_default}, ""}
 #define FacDevInfo_init_default                  {0, {FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_default               {0, 0, 0, "", false, FacWifiInfo_init_default, 0, _FacErrorCode_MIN}
 #define FacBrushLog_init_default                 {_FacSwitch_MIN, _FacErrorCode_MIN}
@@ -842,7 +843,7 @@ extern "C" {
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
-#define FacDevInfoValue_init_zero                {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_zero}}
+#define FacDevInfoValue_init_zero                {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_zero}, ""}
 #define FacDevInfo_init_zero                     {0, {FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_zero                  {0, 0, 0, "", false, FacWifiInfo_init_zero, 0, _FacErrorCode_MIN}
 #define FacBrushLog_init_zero                    {_FacSwitch_MIN, _FacErrorCode_MIN}
@@ -1042,6 +1043,7 @@ extern "C" {
 #define FacDevInfoValue_if_qualified_tag         7
 #define FacDevInfoValue_sub_pid_tag              8
 #define FacDevInfoValue_sku_id_tag               9
+#define FacDevInfoValue_write_info_tag           50
 #define FacImuCalibResult_gyro_x_tag             1
 #define FacImuCalibResult_gyro_y_tag             2
 #define FacImuCalibResult_gyro_z_tag             3
@@ -1269,7 +1271,8 @@ X(a, STATIC,   ONEOF,    UINT32,   (value_item,brush_mode,value_item.brush_mode)
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,battery,value_item.battery),   6) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualified),   7) \
 X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8) \
-X(a, STATIC,   ONEOF,    STRING,   (value_item,sku_id,value_item.sku_id),   9)
+X(a, STATIC,   ONEOF,    STRING,   (value_item,sku_id,value_item.sku_id),   9) \
+X(a, STATIC,   SINGULAR, STRING,   write_info,       50)
 #define FacDevInfoValue_CALLBACK NULL
 #define FacDevInfoValue_DEFAULT NULL
 #define FacDevInfoValue_value_item_wifi_info_MSGTYPE FacWifiInfo
@@ -1705,8 +1708,8 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacCameraControl_size                    11
 #define FacCollectParam_size                     211
 #define FacDataCollectItem_size                  24
-#define FacDevInfoValue_size                     114
-#define FacDevInfo_size                          583
+#define FacDevInfoValue_size                     180
+#define FacDevInfo_size                          918
 #define FacDevState_size                         7
 #define FacGetDevBaseInfo_size                   244
 #define FacGetPeriphState_size                   13

@@ -30,25 +30,26 @@ test_base::test_base() :
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     initData();
+    pb->APP_VERSION=upperComputerVer;
 }
 void test_base::initData() {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    pack.factory = settings.value("Mes/FACTORY").toString();
-    pack.Employee_ID = settings.value("Mes/mUserno").toString();
-    pack.action = settings.value("Mes/Action").toString();
-    pack.machineNo = settings.value("Mes/machineNo").toString();
-    pack.product = settings.value("Mes/Product_Name").toString();
-    pack.line = settings.value("Mes/Line").toString();
-    pack.model = settings.value("Mes/model").toString();
-    pack.test_station = settings.value("Mes/test_station").toString();
-    pack.password = settings.value("Mes/M_PASSWORD").toString();
-    pack.userNo = settings.value("Mes/M_USERNO").toString();
-    pack.lotName = settings.value("Mes/Work_Order").toString();
+    
+    
+    pack.factory = SETTINGS.value("Mes/FACTORY").toString();
+    pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
+    pack.action = SETTINGS.value("Mes/Action").toString();
+    pack.machineNo = SETTINGS.value("Mes/machineNo").toString();
+    pack.product = SETTINGS.value("Mes/Product_Name").toString();
+    pack.line = SETTINGS.value("Mes/Line").toString();
+    pack.model = SETTINGS.value("Mes/model").toString();
+    pack.test_station = SETTINGS.value("Mes/test_station").toString();
+    pack.password = SETTINGS.value("Mes/M_PASSWORD").toString();
+    pack.userNo = SETTINGS.value("Mes/M_USERNO").toString();
+    pack.lotName = SETTINGS.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
-    isBrushLogGet = settings.value("SYSTEM/BrushLog", 0).toBool();
-    snPattern = settings.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
+    isBrushLogGet = SETTINGS.value("SYSTEM/BrushLog", 0).toBool();
+    snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
@@ -733,7 +734,7 @@ void test_base::solveMesSucess(const int mechines) {
     if (mechines == getIndex()) {
         TestItem test;
         test.testItem = "mes操作";
-        test.testData = "";
+        test.testData = QString::number(mechines);
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);

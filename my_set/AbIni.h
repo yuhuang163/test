@@ -53,34 +53,30 @@
 #define WAITTIME 0  // 指令的300延时防止粘包
 #define NEW_XWD_QUIESCENT_CURRENT
 
-#define SETTING_NAME "上位机设置.ini"
 
-#define DEBUG_VER "电刷产测工具   V1.3.7"
-#define CAMERA_VER "摄像测试工站   V1.2.3"
-#define AGE_VER "老化测试工站   V1.2.1"
-#define MOTOR_VER "电机校准工站   V1.2.1"
-#define QC_VER "静态电流测试   V1.3.9"
-#define SCREEN_VER "屏幕测试工站   V1.1.6"
-#define LIGHT_VER "灯光测试工站   V1.1.6"
-#define SINGLE_VER "信号测试工站   V1.3.5"
-#define FREE_VER "自由测试工站   V1.0.9"
-#define IMU_VER "IMU校准工站    V1.4.8"
-#define PCBA_VER "电刷板子测试   V1.3.7"
+#define DEBUG_VER "电刷产测工具   V1.3.8"
+#define CAMERA_VER "摄像测试工站   V1.2.4"
+#define AGE_VER "老化测试工站   V1.2.2"
+#define MOTOR_VER "电机校准工站   V1.2.3"
+#define QC_VER "静态电流测试   V1.4.0"
+#define SCREEN_VER "屏幕测试工站   V1.1.7"
+#define LIGHT_VER "灯光测试工站   V1.1.7"
+#define SINGLE_VER "信号测试工站   V1.3.6"
+#define FREE_VER "自由测试工站   V1.1.0"
+#define IMU_VER "IMU校准工站    V1.4.9"
+#define PCBA_VER "电刷板子测试   V1.3.8"
 
-// [PCBA_VER] 支持配置文件选择是否抓牙刷日志
-// [QC_VER] 支持配置文件选择是否抓牙刷日志
-// [IMU_VER] 关闭串口接收功能仅限制木星
-// [CAMERA_VER]  调整了摄像头偏位测试和脏污测试区分可不可以放过脏污
-//
-// [DEBUG_VER] 
-// [AGE_VER] 
-// [CAMERA_VER] 
-// [SCREEN_VER]
-// [SINGLE_VER] 
-// [MOTOR_VER] 
-
-// [LIGHT_VER] 
-// [FREE_VER] 
+// [PCBA_VER] 配置文件的读写改成单例模式，修复pass没看见fail问题
+// [QC_VER] 配置文件的读写改成单例模式
+// [IMU_VER] 配置文件的读写改成单例模式，做了y21的适配
+// [CAMERA_VER]  配置文件的读写改成单例模式
+// [DEBUG_VER] 配置文件的读写改成单例模式
+// [AGE_VER] 配置文件的读写改成单例模式，增加sn日期写入记录
+// [SCREEN_VER] 配置文件的读写改成单例模式
+// [SINGLE_VER] 配置文件的读写改成单例模式，做了p30p的适配
+// [MOTOR_VER] 配置文件的读写改成单例模式，1拖多bug修复
+// [LIGHT_VER] 配置文件的读写改成单例模式
+// [FREE_VER] 配置文件的读写改成单例模式
 //
 
 #endif  // ABINI_H

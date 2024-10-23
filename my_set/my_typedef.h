@@ -19,6 +19,28 @@
 #include "qeventloop.h"
 #include "qlibrary.h"
 
+
+#define SETTING_NAME "上位机设置.ini"
+
+#define SETTINGS SettingsManager::instance()
+class SettingsManager {
+public:
+    //获取单例实例的方法
+    static QSettings& instance() {
+        static QSettings settings(SETTING_NAME, QSettings::IniFormat);
+        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+        return settings;
+    }
+
+private:
+    // 私有化构造函数
+    SettingsManager() = default;
+    ~SettingsManager() = default;
+
+    // 删除拷贝构造函数和赋值操作符
+    SettingsManager(const SettingsManager&) = delete;
+    SettingsManager& operator=(const SettingsManager&) = delete;
+};
 typedef struct MesPacketData {
     QString factory;         //工厂
     QString userNo;          //登陆的用户名

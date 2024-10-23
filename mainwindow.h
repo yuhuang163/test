@@ -481,6 +481,8 @@ private slots:
 
     // void on_set_battery_clicked();
 
+    void on_brush_relocation_clicked();
+
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);

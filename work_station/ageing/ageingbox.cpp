@@ -19,6 +19,8 @@ ageingbox::ageingbox(QWidget* parent) : box_base(parent), ui(new Ui::ageingbox) 
     recoverCustom();
     ShowData(this);
     ui->statusbar->addPermanentWidget(new QLabel(AGE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+
+
 }
 
 ageingbox::~ageingbox() { delete ui; }

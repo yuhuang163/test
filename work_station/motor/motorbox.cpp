@@ -33,15 +33,18 @@ motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
     //      Fixture_uart_ui->activateWindow();
 
     //  });
-    connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this,
-            SLOT(startAllReturnPressed()));
-}
+    // connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this,
+    //         SLOT(startAllReturnPressed()));
 
+    connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this, SLOT(resetValue()));
+}
+void motorbox::resetValue() { motor_cali_stage = 1; }
 motorbox::~motorbox() {
     // delete Fixture_uart_ui;
 
     delete ui;
 }
+
 void motorbox::checkAllTest(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;
     if (fixtureNumber < 0 || fixtureNumber > testList.size()) {
@@ -54,12 +57,24 @@ void motorbox::checkAllTest(int fixtureNumber) {
         }
 
         if (motor_cali_stage == 1) {
-            motor_cali_stage = 2;
+            if (pack.factory == "lx") {
+                motor_cali_stage++;
+            } else {
+                motor_cali_stage = 3;
+            }
             QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
+            emit go_screen_next(0);  // 没问题
             return;
         }
 
         if (motor_cali_stage == 2) {
+            motor_cali_stage++;
+            QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
+            emit go_screen_next(0);  // 没问题
+            return;
+        }
+
+        if (motor_cali_stage == 3) {
             motor_cali_stage = 1;
             QMessageBox::StandardButton reply;
             reply = QMessageBox::question(this, "电机测试", "电机是否都震动吗？", QMessageBox::Yes | QMessageBox::No);
@@ -74,6 +89,8 @@ void motorbox::checkAllTest(int fixtureNumber) {
                     QMessageBox::warning(nullptr, "警告", "没有输入不良机号");
                 }
             } else {
+                qDebug() << "发送没问题";
+
                 emit go_screen_next(0);  // 没问题
             }
             return;

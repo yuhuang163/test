@@ -134,18 +134,18 @@ void cameratest::on_pushButton_clicked() {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
-    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
-    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
-    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
+    int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
+    int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
+    int Rect1_Width = SETTINGS.value("CAMERA/Rect1_Width", 40).toInt();
+    int Rect1_Height = SETTINGS.value("CAMERA/Rect1_Height", 25).toInt();
 
-    // int Rect2_X = settings.value("CAMERA/Rect2_X", 64).toInt();
-    // int Rect2_Y = settings.value("CAMERA/Rect2_Y", 0).toInt();
-    // int Rect2_Width = settings.value("CAMERA/Rect2_Width", 52).toInt();
-    // int Rect2_Height = settings.value("CAMERA/Rect2_Height", 34).toInt();
+    // int Rect2_X = SETTINGS.value("CAMERA/Rect2_X", 64).toInt();
+    // int Rect2_Y = SETTINGS.value("CAMERA/Rect2_Y", 0).toInt();
+    // int Rect2_Width = SETTINGS.value("CAMERA/Rect2_Width", 52).toInt();
+    // int Rect2_Height = SETTINGS.value("CAMERA/Rect2_Height", 34).toInt();
 
     QPen pen(Qt::red);                                              // 创建一个红色的画笔
     painter.setPen(pen);                                            // 设置画笔颜色
@@ -174,11 +174,11 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    settings.setValue("Window/Size", this->size());
-    CameraGetTime = settings.value("CAMERA/CameraGetTime", 6000).toInt();
+    SETTINGS.setValue("Window/Size", this->size());
+    CameraGetTime = SETTINGS.value("CAMERA/CameraGetTime", 6000).toInt();
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
     showlog("action=" + pack.action);
@@ -223,6 +223,8 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     // //启动定时器
     // cameratimer->start(10);
     testResultTableInit();
+
+    udpSocket = new QUdpSocket(this);
 }
 void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
     int surpluse_space = 0;
@@ -468,18 +470,18 @@ cameratest::~cameratest() {
     delete ui;
 }
 void cameratest::getDongleWifi(QString data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
-    settings.setValue("WIFI/Password", "usmile123");
+    SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
-    settings.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
+    SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
 
-    ui->ssid_lineEdit->setText(settings.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
-
-    ui->password_lineEdit->setText(settings.value("WIFI/Password", "123445566").toString());
+    // ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()),
+    // "请在配置文件中设置").toString()); ui->password_lineEdit->setText(SETTINGS.value("WIFI/Password",
+    // "123445566").toString());
 }
 void cameratest::on_disconnectButton_clicked() {
     closeDongleSerialPort();
@@ -640,10 +642,10 @@ void cameratest::onTimeout() {
 }
 
 void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     // 读取软件版本字符串
-    QString Camera_Id = settings.value("ProductInfo/Camera_Id").toString();
+    QString Camera_Id = SETTINGS.value("ProductInfo/Camera_Id").toString();
     qDebug() << "Read Camera_Id:" << Camera_Id;
     QStringList Camera_Id_List = Camera_Id.split('=');
 
@@ -983,6 +985,8 @@ void cameratest::on_getMac_returnPressed() {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;
@@ -1015,53 +1019,57 @@ void cameratest::on_distribution_network_clicked() {
     QString ipString = "0.0.0.0";
     QString localHostName = QHostInfo::localHostName();
     QHostInfo hostInfo = QHostInfo::fromName(localHostName);
-    qDebug() << getIndex() << "Local IP addresses:";
 
-    for (QHostAddress address : hostInfo.addresses()) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol) {
-            qDebug() << getIndex() << address.toString();
-            // ipString = address.toString();
-        }
-    }
+    // for (QHostAddress address : hostInfo.addresses()) {
+    //     if (address.protocol() == QAbstractSocket::IPv4Protocol) {
+    //         qDebug() << getIndex() << address.toString();
+    //         ipString = address.toString();
+    //     }
+    // }
     ipString = ui->client_ip_label->text();
     ui->client_ip_label->setText(ipString);
-
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
+    // if (!isExecuted) {
+    // 获取QLineEdit中的端口号文本
+    QString portText = ui->port_num->text();
+    int port = portText.toInt();
+
+    QHostAddress ipAddress(ipString);
+
+    if (udpSocket->state() == QAbstractSocket::BoundState) {
+        qDebug() << "UDP socket is already bound";
+        udpSocket->abort();
+    } else {
+        qDebug() << "UDP socket is not bound";
+    }
+
+    bool bindResult = udpSocket->bind(ipAddress, port);
+    qDebug() << getIndex() << "connect_udp,localhost: " << ipString << ":" << port;
+
+    if (!bindResult) {
+        showlog("ip绑定失败" + udpSocket->errorString());
+        udpSocket->abort();
+        return;
+    } else {
+        showlog("ip绑定成功");
+    }
+
+    connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
+
+    //     isExecuted = true;
+    // }
     if (at->getConnected()) {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接牙刷后再试");
-    }
-
-    if (!isExecuted) {
-        // 获取QLineEdit中的端口号文本
-        QString portText = ui->port_num->text();
-        bool conversionOk;
-        int port = portText.toInt(&conversionOk);
-
-        udpSocket = new QUdpSocket(this);
-        QHostAddress ipAddress(ipString);
-        bool bindResult = udpSocket->bind(ipAddress, port);
-        qDebug() << getIndex() << "connect_udp,localhost: " << ipString << ":" << port;
-        qDebug() << getIndex() << "Bind result: " << bindResult;
-
-        if (!bindResult) {
-            showlog("ip绑定失败");
-        } else {
-            showlog("ip绑定成功");
-        }
-
-        connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
-
-        isExecuted = true;
     }
 }
 
@@ -1217,18 +1225,18 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
-    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
-    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
-    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
+    int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
+    int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
+    int Rect1_Width = SETTINGS.value("CAMERA/Rect1_Width", 40).toInt();
+    int Rect1_Height = SETTINGS.value("CAMERA/Rect1_Height", 25).toInt();
 
-    // int Rect2_X = settings.value("CAMERA/Rect2_X", 64).toInt();
-    // int Rect2_Y = settings.value("CAMERA/Rect2_Y", 0).toInt();
-    // int Rect2_Width = settings.value("CAMERA/Rect2_Width", 52).toInt();
-    // int Rect2_Height = settings.value("CAMERA/Rect2_Height", 34).toInt();
+    // int Rect2_X = SETTINGS.value("CAMERA/Rect2_X", 64).toInt();
+    // int Rect2_Y = SETTINGS.value("CAMERA/Rect2_Y", 0).toInt();
+    // int Rect2_Width = SETTINGS.value("CAMERA/Rect2_Width", 52).toInt();
+    // int Rect2_Height = SETTINGS.value("CAMERA/Rect2_Height", 34).toInt();
 
     QPen pen(Qt::red);                                              // 创建一个红色的画笔
     painter.setPen(pen);                                            // 设置画笔颜色
@@ -1382,7 +1390,7 @@ void cameratest::on_DirtyTestButton_clicked() {
 
             showlog("有可放过脏污");
             rectanglesColor.append(Qt::green);
-            on_abnormal_clicked();
+            on_normal_clicked();
         }
         if (flag == 0) {
             TestItem test;
@@ -1705,13 +1713,13 @@ void cameratest::on_OffsetTest_clicked() {
     // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
     //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
     // python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
-    int Rect1_X = settings.value("CAMERA/Rect1_X", 70).toInt();
-    int Rect1_Y = settings.value("CAMERA/Rect1_Y", 25).toInt();
-    int Rect1_Width = settings.value("CAMERA/Rect1_Width", 40).toInt();
-    int Rect1_Height = settings.value("CAMERA/Rect1_Height", 25).toInt();
+    int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
+    int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
+    int Rect1_Width = SETTINGS.value("CAMERA/Rect1_Width", 40).toInt();
+    int Rect1_Height = SETTINGS.value("CAMERA/Rect1_Height", 25).toInt();
 
     QString filePath;
     if (!viewercamrea->temporarypixmap.isNull()) {

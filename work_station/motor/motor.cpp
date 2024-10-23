@@ -37,10 +37,11 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
     updateMainStyle("Ubuntu.qss");
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
 
     showlog("standbattary=" + QString::number(standbattary));
     showlog("action=" + pack.action);
@@ -258,22 +259,23 @@ void motor::processInspection(QString stringsn) {
 }
 
 void motor::refreshBaseData(FacGetDevBaseInfo data) {
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+    
+    
 
     // 读取软件版本字符串
-    QString softwareVersions = settings.value("ProductInfo/Software_Version").toString();
+    QString softwareVersions = SETTINGS.value("ProductInfo/Software_Version").toString();
     QStringList softwareVersionList = softwareVersions.split('=');
 
     // 读取资源版本字符串
-    QString resourceVersions = settings.value("ProductInfo/Resource_Version").toString();
+    QString resourceVersions = SETTINGS.value("ProductInfo/Resource_Version").toString();
     QStringList resourceVersionList = resourceVersions.split('=');
 
     // 读取电机版本字符串
-    QString motorVersions = settings.value("ProductInfo/Motor_Ver").toString();
+    QString motorVersions = SETTINGS.value("ProductInfo/Motor_Ver").toString();
     QStringList motorVersionList = motorVersions.split('=');
 
     // 读取蓝牙版本字符串
-    QString bleVersions = settings.value("ProductInfo/Ble_Ver").toString();
+    QString bleVersions = SETTINGS.value("ProductInfo/Ble_Ver").toString();
     QStringList bleVersionList = bleVersions.split('=');
 
     // 输出蓝牙状态列表
@@ -408,6 +410,7 @@ void motor::refreshBattaryData(FacDevInfo adc) {
 }
 
 void motor::canGoNextMechine(int x) {
+    is_canGoNext = 1;
     qDebug() << getIndex() << "得到信息" << getIndex();
 
     if (x == getIndex()) {
@@ -420,7 +423,6 @@ void motor::canGoNextMechine(int x) {
         state = STATE_SAVE_RESULT;
         showlog("电机测试失败");
     }
-    state = STATE_SAVE_RESULT;
 }
 
 void motor::startTask() {
@@ -433,6 +435,7 @@ void motor::startTask() {
                 pb->reset_all_pb();
                 testItems.clear();
                 at->resetConnected();
+                is_canGoNext = 0;
                 refreshBleState(0);
                 ui->tail_sn->setText("存储尾盖sn:");
                 stringsn = "";
@@ -525,24 +528,9 @@ void motor::startTask() {
             case MOTOR_CALI1:
                 if (pb->getisHallCali() == 1) {
                     refreshMotorCaliMsg("霍尔校准完成");
-
-                    // showlog("霍尔校准完成");
-
-                    // #ifdef    LXSET
-                    //                    waitWork(WAITTIME);
-                    //                 control_motor_cmd("/c:zero");
-                    //                     waitWork(1000);
-                    // #else
-                    //                 QMessageBox::warning(NULL, "警告", " 请把刷头置于0位\t\r\n");
-                    // #endif
-
                     emit send_go_next_test(getIndex());
 
-                    waitWork(WAITTIME);
-                    pb->set_motor_cali(2);
-                    waitWork(WAITTIME);
-                    showlog("正在进行零点校准");
-                    state = MOTOR_CALI2;
+                    state = MOTOR_WAIT_CALI1;
                 }
                 if (pb->getisHallCali() == 2) {
                     refreshMotorCaliMsg("霍尔校准失败");
@@ -551,15 +539,28 @@ void motor::startTask() {
                     state = STATE_SAVE_RESULT;
                 }
                 break;
+            case MOTOR_WAIT_CALI1:
+                if (is_canGoNext) {
+                    is_canGoNext = 0;
+                    waitWork(WAITTIME);
+                    pb->set_motor_cali(2);
+                    waitWork(WAITTIME);
+                    showlog("正在进行零点校准");
+                    state = MOTOR_CALI2;
+                }
+
+                break;
             case MOTOR_CALI2:
                 if (pb->getisZeroCali() == 1) {
                     refreshMotorCaliMsg("零点校准完成");
                     // showlog("零点校准完成");
-                    // if (pack.factory == "lx")
-                    //     QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
+                    if (pack.factory == "lx") {
+                        emit send_go_next_test(getIndex());
+                        state = MOTOR_WAIT_CALI2;
+                        break;
+                    }
 
                     pb->set_motor_cali_state(0);
-
                     state = STOP_MOTOR_CALI;
                 }
                 if (pb->getisZeroCali() == 2) {
@@ -567,6 +568,15 @@ void motor::startTask() {
                     state = STATE_SAVE_RESULT;
                 }
                 break;
+
+            case MOTOR_WAIT_CALI2:
+                if (is_canGoNext) {
+                    is_canGoNext = 0;
+                    pb->set_motor_cali_state(0);
+                    state = STOP_MOTOR_CALI;
+                }
+                break;
+
             case STOP_MOTOR_CALI:
                 if (pb->get_is_stop_motor_cali()) {
                     refreshMotorCaliMsg("正在进行电机测试");
@@ -584,11 +594,18 @@ void motor::startTask() {
             case MOTOR_TESTING:
                 if (pb->get_is_motor_test_state()) {
                     emit send_go_next_test(getIndex());
-
+                    state = MOTOR_WAIT_TESTING;
                 } else {
                     pb->set_sevor_motor_param(14, 12, 5.2, 190);
                     refreshMotorCaliMsg("重发电机测试");
                     waitWork(500);
+                }
+                break;
+
+            case MOTOR_WAIT_TESTING:
+                if (is_canGoNext) {
+                    is_canGoNext = 0;
+                    state = STATE_SAVE_RESULT;
                 }
                 break;
 
@@ -640,9 +657,7 @@ void motor::startTask() {
                 ui->getMac->setFocus();
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                // ui->macInput->setFocus();
                 waitWork(WAITTIME);
-                // pb->set_motor_test_state(0);
                 pb->set_sevor_motor_param(0, 0, 0, 0);
                 waitWork(500);
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -819,7 +834,7 @@ void motor::getTestValue(const int mechines, const QString value) {
         mesmacAddress = mesmacAddress.toUpper();
         if (mechines == getIndex()) {
             ui->macInput->setText(mesmacAddress);
-            // on_macInput_returnPressed();
+            on_macInput_returnPressed();
         }
     } else {
         if (mechines == getIndex()) {
@@ -858,13 +873,12 @@ void motor::on_getMac_returnPressed() {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
         showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
-           ui->getMac->setFocus();
+        ui->getMac->setFocus();
         return;
     }
-
-    if (pack.product == "U7" || pack.product == "U7P")
-        ui->nfc_sn->setFocus();
 
     showlog("正在查询mac地址");
     sn = ui->getMac->text().toUtf8();
@@ -942,9 +956,6 @@ void motor::getMac(QString sn_to_search) {
 void motor::on_end_cali_clicked() {
     sn = "";
     stringsn = "";
-    ui->macInput->clear();
-    ui->getMac->clear();
-    ui->getMac->setFocus();
     showlog("测试结束");
     isTestContinue = false;
     state = STATE_IDLE;

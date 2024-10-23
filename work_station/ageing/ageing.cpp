@@ -24,10 +24,10 @@ ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
+       
 
-    settings.setValue("Window/Size", this->size());
-    standbattary = settings.value("BATTARY/standbattary").toDouble();
+    SETTINGS.setValue("Window/Size", this->size());
+    standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
 
     showlog("standbattary=" + QString::number(standbattary));
     showlog("machineNo=" + pack.machineNo);
@@ -46,8 +46,8 @@ void ageing::refreshMesState(int state) {
 void ageing::refreshPeriphData(FacGetPeriphState data) {
     if (refresh_periph_times) {
         refresh_periph_times = 0;
-        QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-        QString flashStatus = settings.value("PeripheralStatus/Flash_Status").toString();
+           
+        QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
 
         if (static_cast<int>(data.flash_state) == flashStatus.toInt() || flashStatus == "null") {
             flash_state = 1;
@@ -619,8 +619,8 @@ QString ageing::getValueBySN(const QString& mysn) {
     QString truncatedSN = mysn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);   settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-    QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+       
+    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
     return value;
@@ -643,7 +643,8 @@ void ageing::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;
@@ -758,7 +759,8 @@ void ageing::on_snInput_returnPressed() {
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");
+        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
+        showlog("要求格式为"+snPattern);
         ui->snInput->clear();
         return;
     }

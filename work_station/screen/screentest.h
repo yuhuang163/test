@@ -40,10 +40,11 @@ private:
     QString macAddress = "没有mac地址";
     bool is_lcd_control = 0;
     int snCompareOk = 0;
-    QString stringSubpid;
     QByteArray subpid;
+    QString stringsubpid;
+
     int subpidCompareOk = 0;
-    QByteArray sn;
+    QByteArray writesn;
 
     QString product = "";
 
