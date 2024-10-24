@@ -32,8 +32,8 @@ void QFreeWork::createTestFunctions() {
         {"设置工厂结果状态", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_fac_result, pb, 1)); }},
 
         {"设置LED颜色", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_led_color, pb, 1, 1)); }},
-        {"设置电机参数", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_motor_param, pb, 1000, 0.5f)); }},
-        {"设置电机状态", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_motor_state, pb, 1)); }},
+        {"设置声波电机参数", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_motor_param, pb, 270, 60)); }},
+        {"打开声波电机", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_motor_state, pb, 1)); }},
         {"设置电机校准结果参数",
          [&]() { sendCommandWithRetry(std::bind(&Qpb::set_motor_cali_result_param, pb, 100)); }},
         {"连接WiFi",

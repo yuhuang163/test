@@ -24,9 +24,6 @@ ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-       
-
-    SETTINGS.setValue("Window/Size", this->size());
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
 
     showlog("standbattary=" + QString::number(standbattary));
@@ -46,7 +43,7 @@ void ageing::refreshMesState(int state) {
 void ageing::refreshPeriphData(FacGetPeriphState data) {
     if (refresh_periph_times) {
         refresh_periph_times = 0;
-           
+
         QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
 
         if (static_cast<int>(data.flash_state) == flashStatus.toInt() || flashStatus == "null") {
@@ -359,6 +356,7 @@ void ageing::startTask() {
                 refresh_periph_times = 1;
                 subpidCompareOk = 0;
                 at->sendMac(ui->macInput->text());  // 发送mac地址
+                showlog(ui->macInput->text());
                 state = STATE_WATI_CONNECT;
                 break;
             case STATE_WATI_CONNECT:
@@ -382,7 +380,7 @@ void ageing::startTask() {
 
                 if (canGoNext) {
                     if (snCompareOk == 1) {
-                        if (pack.product == "U7" || pack.product == "U7P") {
+                        if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
                             showlog("已发送subpid");
                             sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, writesubpid));
                             state = STATE_WAIT_BANDING_SUBPID;
@@ -619,7 +617,6 @@ QString ageing::getValueBySN(const QString& mysn) {
     QString truncatedSN = mysn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-       
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
@@ -643,8 +640,9 @@ void ageing::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
-        showlog("要求格式为"+snPattern);
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;
@@ -661,7 +659,7 @@ void ageing::on_getMac_returnPressed() {
         return;
     }
 
-    if (pack.product == "U7" || pack.product == "U7P") {
+    if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
         writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
 
         if ("SUBPID_ERRO" == writesubpid) {
@@ -759,8 +757,9 @@ void ageing::on_snInput_returnPressed() {
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
-        showlog("要求格式为"+snPattern);
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
     }

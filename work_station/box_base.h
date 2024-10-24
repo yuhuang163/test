@@ -60,7 +60,7 @@ public slots:
     virtual void resetall(){};
     void checkAndUpdateFile();
     void startAllReturnPressed();
-
+    void setting_ui();
 private slots:
     void reset_vector(int i);
     void loginMes();
@@ -74,6 +74,7 @@ private:
     int formRow = 1;     // 记录总共是几行几列的窗口
     int formColumn = 1;  // 记录总共是几行几列的窗口
     bool isTestContinue = true;
+    qsetting *qsetting_ui = NULL;
 
 protected:
     virtual void closeEvent(QCloseEvent*);

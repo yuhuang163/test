@@ -29,11 +29,12 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
             }
 
                
-            QString masterFixturecomName = SETTINGS.value(QString("0/masterFixturecomName")).toString();
+            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
 
         Fixture_uart_ui->show();
+        Fixture_uart_ui->raise();
         Fixture_uart_ui->activateWindow();
     });
     for (int i = 0; i < testList.size(); i++) {
@@ -47,7 +48,7 @@ camerabox::~camerabox() {
        
 
     if (Fixture_uart_ui != NULL)
-        SETTINGS.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.setValue(QString("mechine/0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }

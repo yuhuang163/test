@@ -30,11 +30,9 @@ test_base::test_base() :
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     initData();
-    pb->APP_VERSION=upperComputerVer;
+    pb->APP_VERSION = upperComputerVer;
 }
 void test_base::initData() {
-    
-    
     pack.factory = SETTINGS.value("Mes/FACTORY").toString();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
     pack.action = SETTINGS.value("Mes/Action").toString();
@@ -48,7 +46,7 @@ void test_base::initData() {
     pack.lotName = SETTINGS.value("Mes/Work_Order").toString();
     pack.error = "NULL";
 
-    isBrushLogGet = SETTINGS.value("SYSTEM/BrushLog", 0).toBool();
+    isBrushLogGet = SETTINGS.value("SYSTEM/SaveToothbrushLog", 0).toBool();
     snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
@@ -248,6 +246,36 @@ void test_base::saveDongleUartLog(QString data) {
         qDebug() << "无法打开dongle日志文件：" << fileName;
     }
 }
+
+void test_base::getmacadress(const QByteArray& byte) {
+    receivedData += QString::fromUtf8(byte);
+    // qDebug() << "内容" << receivedData;
+    while (receivedData.contains("\r\n")) {
+        int index = receivedData.indexOf("\r\n");
+        QString line = receivedData.left(index);
+        receivedData = receivedData.mid(index + 2);  // 删除处理过的数据
+        QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),"
+                                 "\\s*deviceRssi(?:\\s*:(.*))?");
+        QRegularExpressionMatch match = regex.match(line);
+        if (match.hasMatch()) {
+            QString deviceName = match.captured(1).trimmed();
+            QString deviceAddress = match.captured(2).trimmed();
+            QString deviceRssi = match.captured(3).trimmed();
+            // qDebug() << "设备名称：" << deviceName;
+            //  qDebug() << "设备地址：" << deviceAddress;
+            // qDebug() << "设备RSSI：" << deviceRssi;
+
+            // 更新 deviceMap、updateComboBox 等
+            deviceMap[deviceAddress]["Name"] = deviceName;
+            deviceMap[deviceAddress]["Rssi"] = deviceRssi;
+
+            updateComboBox();
+        } else {
+            // qDebug() << "Invalid line:" << line;
+        }
+    }
+}
+
 void test_base::readDongleSerialPortData() {
     dongleSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
@@ -256,6 +284,7 @@ void test_base::readDongleSerialPortData() {
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     pb->parseCmd(dataTemp);
+    getmacadress(dataTemp);  // 搜索设备用
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));

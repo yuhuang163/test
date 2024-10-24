@@ -339,22 +339,7 @@ void xwdmes::uploadOfflineData(const int mechines, const QString& mSn, const QSt
 
 void xwdmes::GetTestData(MesPacketData pack) {
     if (pack.factory == "xwd") {
-        
-        
         QString wpCode = SETTINGS.value("Mes/xwdWpCode", "Q20-JTDLTEST").toString();
-
-        //     if (pack.product == "Q20") {
-        //     pack.machineNo = "Q20-JTDLTEST";
-        //     pack.itemvalue = "BTMAC";
-        // }
-        // if (pack.product == "Y20") {
-        //     pack.machineNo = "Y20-CURRENT1-TEST";
-        //     pack.itemvalue = "BTMAC";
-        // }
-        // if (pack.product == "Y20P") {
-        //     pack.machineNo = "Y20Pro-CURRENT1-TEST";
-        //     pack.itemvalue = "BTMAC";
-        // }
 
         // 接口地址
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getTestData";

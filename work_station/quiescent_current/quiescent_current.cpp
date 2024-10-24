@@ -40,10 +40,9 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         showlog("正在定时器复位牙刷");
     });
 
-       
+    HighCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();
+    LowCurrent = SETTINGS.value("Current/LowstaticCurrent").toDouble();
 
-    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     showlog("action=" + pack.test_station);
@@ -62,7 +61,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         ui->jigDisconnectButton->setEnabled(false);
     }
 
-    if (pack.product == "P20P" || pack.product == "Q20") {
+    if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
         ui->productComNameCombo->setEnabled(true);
         ui->productConnectButton->setEnabled(true);
         ui->productDisconnectButton->setEnabled(true);
@@ -81,7 +80,6 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
-           
 
         qDebug() << getIndex() << "algo_version" << data.algo_version;
         qDebug() << getIndex() << "hw_version" << data.hw_version;
@@ -185,7 +183,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         qDebug() << getIndex() << "imu_state" << data.imu_state;
         qDebug() << getIndex() << "magnet_state" << data.magnet_state;
         qDebug() << getIndex() << "press_state" << data.press_state;
-           
+
         bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
         bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
         bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
@@ -217,7 +215,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         test.ask = QString::number(imuStatus);
         testItems.append(test);
 
-        if (pack.product == "P20P")
+        if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
             test.testItem = "马达状态";
         else
             test.testItem = "地磁状态";
@@ -305,8 +303,9 @@ void quiescent_current::on_snInput_returnPressed() {
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
-        showlog("要求格式为"+snPattern);
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
     }
@@ -327,7 +326,7 @@ void quiescent_current::on_snInput_returnPressed() {
 
     emit send_go_next_focus();
     processInspection(ui->snInput->text());
-    if (pack.product == "P20P" || pack.product == "Q20") {
+    if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
         if (!productSerialPort->isOpen()) {
             openProductSerialPort();
         } else {
@@ -534,6 +533,7 @@ void quiescent_current::startTask() {
                 at->resetConnected();
                 measure_ammeter = 0;
                 at->sendMac(ui->macInput->text());  // 发送mac地址
+                showlog(ui->macInput->text());
                 showlog("已经发送mac地址");
                 TestTime.start();
                 state = STATE_WATI_CONNECT;

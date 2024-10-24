@@ -107,7 +107,7 @@ private:
     QTimer* ble_waittime = new QTimer(this);
     int measure_wait_time = 15000;
     int disconnect_wait_time = 5000;
-    int music_time = 30000;
+
     bool isovertime = 0;  // 是否开始发送校验结果
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();

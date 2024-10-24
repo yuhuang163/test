@@ -30,6 +30,7 @@ motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
 
     //      }
     //      Fixture_uart_ui->show();
+   // Fixture_uart_ui->raise();
     //      Fixture_uart_ui->activateWindow();
 
     //  });

@@ -159,7 +159,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
                                    "padding: 10px; text-align: center; ");
 
     connect(usblogwaittime, &QTimer::timeout, [=]() {
-        if (pack.product == "P20P" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
+        if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
             at->ask_mac();
             showlog("正在定时器复位牙刷");
         }
@@ -190,8 +190,6 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         music_play_time->stop();
     });
 
-    
-    
     ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
     // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
@@ -260,7 +258,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     showlog("machineNo=" + pack.machineNo);
     showlog("test_station=" + pack.test_station);
 
-    if (pack.product == "P20P" || pack.product == "Q20" || pack.product == "U7" || pack.product == "U7P") {
+    if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
         ui->productDisconnectButton->setEnabled(1);
         ui->productConnectButton->setEnabled(1);
         ui->productComNameCombo->setEnabled(1);
@@ -277,11 +275,14 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         ui->isusemes->setChecked(0);
         ui->isformmes->setChecked(0);
     }
+
+    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+        ui->start_scan->setVisible(true);  // 隐藏按钮
+    else
+        ui->start_scan->setVisible(false);  // 隐藏按钮
 }
 void PcbaForm::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void PcbaForm::getDongleWifi(QString data) {
-    
-    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -513,8 +514,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "refresh_times" << refresh_times;
         refresh_times = 0;
-        
-        
+
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "algo_version" << data.algo_version;
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -671,8 +671,6 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
                  << "refresh_periph_state_times" << refresh_periph_state_times;
         refresh_periph_state_times = 0;
 
-        
-        
         bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
         bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
         bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
@@ -703,7 +701,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         test.ask = QString::number(imuStatus);
         testItems.append(test);
 
-        if (pack.product == "P20P")
+        if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
             test.testItem = "马达状态";
         else
             test.testItem = "地磁状态";
@@ -727,7 +725,7 @@ void PcbaForm::on_stopTest_clicked() {
     isPcbaTestContinue = false;
     on_disconnectButton_clicked();
 
-    if (pack.product == "P20P" || pack.product == "Q20")
+    if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool())
         on_productDisconnectButton_clicked();
 
     ui->macInput->setDisabled(0);
@@ -737,9 +735,6 @@ void PcbaForm::on_stopTest_clicked() {
 }
 
 void PcbaForm::connectwifi() {
-    
-    
-
     QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
     QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
@@ -812,11 +807,11 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData) {
     QList<TestItem> testItems;
 
     // 根据产品类型进行特定测试
-    if (pack.product == "U7" || pack.product == "U7P") {
+    if (SETTINGS.value("SYSTEM/TestShippingCurrent").toBool()) {
         processTestItem("船运电流", packetData.shipCurrent, LowshipCurrent, HighshipCurrent, testItems);
     }
 
-    if (pack.product == "Q20" || pack.product == "U7" || pack.product == "U7P") {
+    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
         processTestItem("音频电流", packetData.musicCurrent, LowmusicCurrent, HighmusicCurrent, testItems);
     } else {
         processSimpleTestItem("音频测试", packetData.music_state, music_state, testItems);
@@ -907,26 +902,16 @@ void PcbaForm::updateTestResultUI() {
 }
 
 void PcbaForm::logPacketData(const FixturePacketData& packetData) {
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "机号:" << packetData.machineNumber;
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "静态电流值:" << packetData.staticCurrent << "ua";
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "工作电流:" << packetData.workingCurrent << "ma";
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "过压灯正常:" << packetData.overVoltageLight;
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "按键1:" << packetData.button1;
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "按键2:" << packetData.button2;
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "充电电流:" << packetData.chargingCurrent << "ma";
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "船运电流:" << packetData.shipCurrent << "ua";
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "音频电流:" << packetData.musicCurrent << "ma";
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "产品为" << pack.product;
+    showlog("机号:" + QString(packetData.machineNumber));
+    showlog("静态电流值:" + QString::number(packetData.staticCurrent) + "ua");
+    showlog("工作电流:" + QString::number(packetData.workingCurrent) + "ma");
+    showlog("过压灯正常:" + QString(packetData.overVoltageLight ? "是" : "否"));
+    showlog("按键1:" + QString(packetData.button1 ? "按下" : "松开"));
+    showlog("按键2:" + QString(packetData.button2 ? "按下" : "松开"));
+    showlog("充电电流:" + QString::number(packetData.chargingCurrent) + "ma");
+    showlog("船运电流:" + QString::number(packetData.shipCurrent) + "ua");
+    showlog("音频电流:" + QString::number(packetData.musicCurrent) + "ma");
+    showlog("产品为:" + QString(pack.product));
 }
 
 void PcbaForm::getimuData(FacUploadNineAlex x) {
@@ -1136,7 +1121,8 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_CHARGE_CURRENT:
 
-                if (pack.product == "P20P" || pack.product == "U7P" || pack.product == "U7") {
+                if (SETTINGS.value("SYSTEM/SendMotorCalibration").toBool() &&
+                    !SETTINGS.value("SYSTEM/TestWifiSignal").toBool()) {
                     bool ok = false;
                     value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16);  // 将十六进制字符串转换为
                     if (ok) {
@@ -1327,7 +1313,7 @@ void PcbaForm::startTask() {
                             waitWork(100);      // 防止发送给治具粘包
                             emit overtask(getIndex());
                             showlog("6、等待治具测试");
-                            if (pack.product == "P20P") {
+                            if (SETTINGS.value("SYSTEM/LightTest").toBool()) {
                                 state = STATE_WATI_LIGHT_TEST;
                             } else {
                                 waitWork(WAITTIME);  // 播放音乐
@@ -1379,7 +1365,7 @@ void PcbaForm::startTask() {
                             emit overtask(getIndex());
                             showlog("6、等待治具测试");
 
-                            if (pack.product == "P20P") {
+                            if (SETTINGS.value("SYSTEM/LightTest").toBool()) {
                                 state = STATE_WATI_LIGHT_TEST;
                             } else {
                                 QString musicFileName = "/data/audio/scan_f.bin";
@@ -1419,19 +1405,21 @@ void PcbaForm::startTask() {
                 if (is_music_play_over_time) {
                     is_music_play_over_time = 0;
                     showlog("播放结束");
-                    if (pack.product == "Q20") {
+                    if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
+                        pb->set_sevor_motor_param(14, 12, 5.2, 190);
+                        showlog("已经发送电机测试指令");
+                    } else {
                         showlog("跑的是q20");
                         pb->set_motor_param(270, 60);
                         pb->set_motor_state(1);
                         //   waitWork(1500);
                         //   pb->set_device_mode(3);
                         //       pb->set_brush_control(1);
-                    } else if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
-                        pb->set_sevor_motor_param(14, 12, 5.2, 190);
-                        showlog("已经发送电机测试指令");
-                    } else {
-                        pb->set_device_mode(4);  // 进入亮白
                     }
+
+                    // else {
+                    //     pb->set_device_mode(4);  // 进入亮白
+                    // }
 
                     showlog("已发送进入亮白模式");
                     state = STATE_WATI_WHITE_MODE;
@@ -1451,21 +1439,28 @@ void PcbaForm::startTask() {
                     waitWork(100);
                     emit start_white_modle_command(getIndex());
 
+                    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool()) {
+                        QMessageBox::StandardButton reply;
+                        reply =
+                            QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
+                        if (reply == QMessageBox::No) {
+                            totalresult = failValue;
+                        }
+                    }
                     at->resetConnected();
                     showlog("等待治具请求休眠命令");
+                    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+                        start_sleep = 1;
                     state = STATE_WATI_RETURN_TEST;
                 } else {
                     waitWork(500);
-                    if (pack.product == "Q20") {
-                        pb->set_motor_param(270, 60);
-                        pb->set_motor_state(1);
-                        // waitWork(1500);
-                        // pb->set_brush_control(1);
-                    } else if (pack.product == "P20P" || pack.product == "U7" || pack.product == "U7P") {
+                    if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
                     } else {
-                        pb->set_device_mode(4);  // 进入亮白
+                        showlog("跑的是q20");
+                        pb->set_motor_param(270, 60);
+                        pb->set_motor_state(1);
                     }
                 }
                 break;
@@ -1482,24 +1477,15 @@ void PcbaForm::startTask() {
 
             case STATE_CLOSE_FORBID_SLEEP:
                 if (pb->get_is_close_forbid_sleep()) {
-                    // if (pack.product == "P20P")
-                    // {
-                    //     at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-                    //     showlog("已经断开蓝牙方式休眠");
-                    //     state = STATE_SLEEP_OPEN;
-                    // }
-                    // else
-                    // {
                     pb->set_sleeep(FacSwitch_OPEN);
 
-                    // if (pack.product != "U7P" && pack.product != "U7") {
                     waitWork(100);
                     at->sendMac("00:00:00:00:00:00");
                     waitWork(100);
-                    // }
+
                     showlog("已经发送请求牙刷休眠");
                     state = STATE_SLEEP_OPEN;
-                    // }
+
                 } else {
                     waitWork(500);
                     pb->set_forbid_sleep(FacSwitch_CLOSE);
@@ -1510,13 +1496,14 @@ void PcbaForm::startTask() {
             case STATE_SLEEP_OPEN:
                 if (!at->getConnected()) {
                     showlog("开始等待治具测试结果");
+
+                    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+                        remain_ok = 1;
                     state = STATE_WATI_REMAIN_TEST;
                 } else {
                     pb->set_sleeep(FacSwitch_OPEN);
                     showlog("正在重发开始休眠");
-                    // if (pack.product != "U7P" && pack.product != "U7") {
                     at->sendMac("00:00:00:00:00:00");
-                    // }
                     waitWork(500);
                 }
 
@@ -1581,7 +1568,7 @@ void PcbaForm::startTask() {
                     pack.error = erroContent.join("") + "|";  //加结束符
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->ng_number->setText("NG:" + QString::number(ngnumber));
@@ -1670,9 +1657,6 @@ void PcbaForm::on_macInput_returnPressed() {
         usblogwaittime->stop();
         firstconnectbrush = 0;
         ui->macLabel->setText("蓝牙mac: " + macAddress);
-        // QSettings settings(SETTING_NAME,QSettings::IniFormat);
-        // if(SETTINGS.value("User/formColumn").toInt()*SETTINGS.value("User/formRow").toInt()==1)
-        // startTask();
 
         isPcbaTestContinue = true;
         state = STATE_IDLE;
@@ -1787,5 +1771,68 @@ void PcbaForm::processInspection(QString stringsn) {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FFFF00; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+    }
+}
+
+void PcbaForm::on_start_scan_clicked() {
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
+
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+
+    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    ui->pick_device->clear();
+    deviceMap.clear();
+
+    showlog("已经触发");
+}
+void PcbaForm::updateComboBox() {
+    // 遍历设备信息，根据 rssi 的值进行过滤
+    for (auto it = deviceMap.begin(); it != deviceMap.end(); ++it) {
+        QString deviceAddress = it.key();
+        QString deviceName = it.value()["Name"];
+        QString deviceRssi = it.value()["Rssi"];
+
+        // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
+        if (deviceName.contains(ui->name_range->text()) && deviceRssi.toInt() > ui->rssi_range->text().toInt() &&
+            deviceAddress.length() == 17) {
+            int index = ui->pick_device->findText(deviceAddress);
+            index = ui->pick_device->findText(deviceAddress);
+
+            if (index == -1) {
+                ui->pick_device->addItem(deviceAddress);
+                if (ui->is_scan_connect->checkState()) {
+                    ui->macInput->setText(deviceAddress);
+                    qDebug() << deviceAddress;
+                    on_macInput_returnPressed();
+                }
+
+                // qDebug() << "有新增" << deviceAddress;
+            }
+        }
+    }
+}
+
+void PcbaForm::on_pick_device_textActivated(const QString& arg1) {
+    ui->log->clear();
+    ui->msgEdit->clear();
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+    // 检查是否是mac格式
+    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(arg1).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    } else {
+        ui->macInput->setText(arg1);
+
+        qDebug() << arg1;
+
+        on_macInput_returnPressed();
     }
 }

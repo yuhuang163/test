@@ -21,6 +21,7 @@ INCLUDEPATH += agreement
 INCLUDEPATH += agreement/qmes
 INCLUDEPATH += agreement/qat
 INCLUDEPATH += agreement/qpb
+INCLUDEPATH += agreement/qset
 INCLUDEPATH += agreement/qpb/ble_protocol
 INCLUDEPATH += agreement/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -76,6 +77,7 @@ SOURCES += \
     agreement/qpb/pb_decode.c \
     agreement/qpb/pb_encode.c \
     agreement/qpb/qpb.cpp \
+    agreement/qset/qsetting.cpp \
     agreement/qusb/qusb.cpp \
     lib/form/testmodel.cpp \
     lib/imu/imu_calibrate.cpp \
@@ -133,6 +135,7 @@ HEADERS += \
     agreement/qpb/pb_decode.h \
     agreement/qpb/pb_encode.h \
     agreement/qpb/qpb.h \
+    agreement/qset/qsetting.h \
     agreement/qusb/qusb.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
@@ -170,6 +173,7 @@ HEADERS += \
 FORMS += \
     advance/imagewindow/imagewindow.ui \
     agreement/qjig/fixture_uart.ui \
+    agreement/qset/qsetting.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \
     work_station/ageing/ageingbox.ui \

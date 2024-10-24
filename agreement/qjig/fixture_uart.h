@@ -127,7 +127,7 @@ private:
     uint8_t frame_buf[2 * 1024];  // 队列池
 
     QSerialPort* fixtureSerialPort;
-    MesPacketData pack;
+
 
     QTimer* fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;

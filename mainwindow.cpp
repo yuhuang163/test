@@ -294,9 +294,7 @@ MainWindow::MainWindow(QWidget* parent) :
         ui->version_type_2->addItem(item);
     }
     ui->version_type_1->setCurrentIndex(1);
-    
-    
-    
+
     HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
     BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
@@ -323,10 +321,10 @@ MainWindow::MainWindow(QWidget* parent) :
 
     ui->progressBar->hide();
 
-    if (!SETTINGS.value("SYSTEM/brush_local_ota").toInt())
+    if (!SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toInt())
         ui->tabWidget->setTabVisible(8, false);
 
-    if (!SETTINGS.value("SYSTEM/system_ota").toInt())
+    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toInt())
         updata->setVisible(false);
 
     ui->high_speed_tp->installEventFilter(this);
@@ -347,7 +345,7 @@ MainWindow::MainWindow(QWidget* parent) :
     viewercamrea = new ImageViewer("image.png", this);
     ui->verticalLayout_31->addWidget(viewercamrea);  // 将 ImageViewer 添加到布局中
     viewercamrea->show();                            // 显示 ImageViewer
-
+    viewercamrea->raise();
     dongleRingBuf = new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
     recoverCustom();
@@ -383,8 +381,21 @@ MainWindow::MainWindow(QWidget* parent) :
 
     pb->APP_VERSION = DEBUG_VER;
     udpSocket = new QUdpSocket(this);
-}
 
+    QAction* setting = ui->menubar->addAction("功能设置");
+    connect(setting, &QAction::triggered, [=]() { setting_ui(); });
+    if (!SETTINGS.value("SYSTEM/setting").toInt()) {
+        setting->setVisible(false);
+    }
+}
+void MainWindow::setting_ui() {
+    if (qsetting_ui == NULL) {
+        qsetting_ui = new qsetting;
+    }
+    qsetting_ui->raise();
+    qsetting_ui->show();
+    qsetting_ui->activateWindow();
+}
 void MainWindow::on_add_data_clicked() {
     int ring_size = cameraRingBuf->usmile_ring_buffer_items_count_get(&p_cameraRingBuffer);
     if (36040 > ring_size) {
@@ -603,7 +614,8 @@ void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
         at->sendMac(macAddress);  // 发送mac地址
         qDebug() << macAddress;
         bandingMacSn(macAddress, snbanding);
-        on_motor_cali_clicked();
+        if (!ui->is_just_banding->checkState())
+            on_motor_cali_clicked();
     }
 }
 
@@ -712,8 +724,7 @@ void MainWindow::on_lcdTestButton_clicked() {
 
 void MainWindow::on_snInput_returnPressed() {
     // 检查是否是序列号格式
-    
-    
+
     QString snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
@@ -866,6 +877,7 @@ void MainWindow::on_music_play_clicked() {
     audioRecorder->setAudioInput(selectedDevice.deviceName());
     // 设置输出路径并开始录制
     audioRecorder->setOutputLocation(QUrl::fromLocalFile(generateOutputFilePath()));
+    music_time = ui->music_time->text().toInt();
     QTimer::singleShot(music_time, this, SLOT(stopRecording()));
     showlog("开始录音中");
     audioRecorder->record();
@@ -931,9 +943,6 @@ void MainWindow::on_disconnectwifi_clicked() {
     }
 }
 void MainWindow::on_connectwifi_clicked() {
-    
-    
-    
     QString wifiName = SETTINGS.value("WIFI/Name").toString();
     QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
@@ -1153,6 +1162,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
                 if (!at->getConnected()) {
                     at->resetConnected();
                     at->sendMac(ui->macInput->text());  // 发送mac地址
+                    showlog(ui->macInput->text());
                 }
 
                 state = STATE_WATI_CONNECT;
@@ -1909,9 +1919,6 @@ void MainWindow::on_start_local_ota_clicked() {
 }
 
 void MainWindow::on_new_connectwifi_clicked() {
-    
-    
-    
     QString wifiName = SETTINGS.value("WIFI/Name").toString();
     QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
@@ -2215,9 +2222,6 @@ void MainWindow::on_distribution_network_clicked() {
     QString ipString = ui->ip_comboBox->currentText();
     QString localHostName = QHostInfo::localHostName();
     QHostInfo hostInfo = QHostInfo::fromName(localHostName);
-
-    
-    
 
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();

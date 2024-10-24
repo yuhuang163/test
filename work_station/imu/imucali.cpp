@@ -98,12 +98,7 @@ imucali::imucali(int index, QWidget* parent) :
         }
     });
 
-    
-    
-    SETTINGS.setValue("Window/Size", this->size());
-
     imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
-    imu_compare_wait_time = SETTINGS.value("IMU/IMU_Compare_Wait_Time", "15000").toInt();
     ImuCompareData = SETTINGS.value("IMU/ImuCompareData", "-8000").toInt();
     imu_cali_wait_time = SETTINGS.value("IMU/imu_cali_wait_time", "15000").toInt();
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
@@ -111,13 +106,12 @@ imucali::imucali(int index, QWidget* parent) :
     showlog("standbattary=" + QString::number(standbattary));
 
     showlog("model=" + pack.model);
-    showlog("action=" + pack.test_station);
+    showlog("test_station=" + pack.test_station);
     showlog("action=" + pack.action);
     showlog("line=" + pack.line);
 
     showlog("machineNo=" + pack.machineNo);
     showlog("IMU_Wait_Time=" + QString::number(imu_wait_time));
-    showlog("IMU_Compare_Wait_Time=" + QString::number(imu_compare_wait_time));
     showlog("ImuCompareData=" + QString::number(ImuCompareData));
     showlog("imu_cali_wait_time=" + QString::number(imu_cali_wait_time));
 
@@ -951,7 +945,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 if (canGoNext) {
                     showlog("已进入禁止休眠");
 
-                    if (pack.product == "U7" || pack.product == "U7P") {
+                    if (SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool()) {
                         sendCommandWithRetry(std::bind(&Qpb::set_uart_receive, pb, 0));
                         state = STATE_CLOSE_UART;
                     } else {
@@ -1161,7 +1155,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 break;
 
             case STATE_SHIP_MODE_CHECK:
-                if (pack.product == "Y20" || pack.product == "Y20P") {
+                if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
                     if (!at->getConnected()) {
                         showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
                         showlog("说明已经成功进入船运模式");
@@ -1367,8 +1361,9 @@ void imucali::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
-        showlog("要求格式为"+snPattern);
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;

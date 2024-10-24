@@ -256,8 +256,6 @@ void MainWindow::processTheDatagram(QByteArray& datagram) {
 
     QPainter painter(&viewercamrea->pixmap);
 
-     
-  
     int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
     int Rect1_Width = SETTINGS.value("CAMERA/Rect1_Width", 40).toInt();
@@ -1322,8 +1320,6 @@ void MainWindow::getWifiMsg(QString data) {
 void MainWindow::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void MainWindow::getDongleWifi(QString data) {
-       
-      
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -1566,8 +1562,6 @@ void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
     }
 }
 void MainWindow::getMac(QString sn_to_search) {
-       
-      
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
 
@@ -1918,8 +1912,7 @@ void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifi
     }
 
     // 构建完整的文件路径
-       
-      
+
     QString filePath =
         QDir(folderPath).filePath(SETTINGS.value("ProductInfo/Product_Name").toString() + "wifi蓝牙报告.csv");
     QFile file(filePath);
@@ -2179,8 +2172,6 @@ QString MainWindow::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-       
-      
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
@@ -2285,6 +2276,7 @@ void MainWindow::updateComboBox() {
         }
     }
 }
+
 void MainWindow::scanIpPorts() {
     // 获取所有网络接口的地址
     QList<QHostAddress> ips = QNetworkInterface::allAddresses();
@@ -2386,8 +2378,6 @@ void MainWindow::getmacadress(const QByteArray& byte) {
     }
 }
 void MainWindow::saveCustom() {
-       
-      
     SETTINGS.setValue("Window/Size", this->size());
 
     QString baseKey = QString("mechine/%1").arg(0);
@@ -2398,8 +2388,6 @@ void MainWindow::saveCustom() {
 }
 
 void MainWindow::recoverCustom() {
-       
-      
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
     QVariant windowSize(availableSize / 4 * 3);
     this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
@@ -2418,8 +2406,6 @@ void MainWindow::initBasicInfo() {
         QString displayName;
         QString settings;
     };
-       
-      
 
     // 读取 ProductInfo 节下的键值对
     productName = "=" + SETTINGS.value("ProductInfo/Product_Name").toString();
@@ -2442,8 +2428,6 @@ void MainWindow::initBasicInfo() {
 
     imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
 
-    music_time = SETTINGS.value("music/music_Time", "music_time").toInt();
-
     QList<namePair> basicItems = {{"product_name", "产品名称", productName},
                                   {"pb_phone_ver", "app协议版本号", appProtocolVersion},
                                   {"camera_id", "摄像头版本号", camera_id},
@@ -2461,7 +2445,6 @@ void MainWindow::initBasicInfo() {
                                   {"ble_ver", "蓝牙版本号", ble_ver}
 
     };
-
 
     for (auto name : basicItems) {
         basicInfoModel->addTestItem(new TestItems(name.name, name.displayName, name.settings));
@@ -2520,7 +2503,6 @@ void MainWindow::initBasicInfo() {
 
         writeDataToCSVFile();
 
-
         if (algorithmVersion.contains(baseInfo.algo_version) && hardwareVersion.contains(baseInfo.hw_version) &&
             pressureSenseVersion.contains(baseInfo.presure_version) && productName.contains(baseInfo.product_name) &&
             appProtocolVersion.contains(QString::number(baseInfo.pb_phone_ver)) &&
@@ -2530,7 +2512,7 @@ void MainWindow::initBasicInfo() {
             ble_ver.contains(baseInfo.ble_version)) {
             ;
         } else {
-              motorresult = failValue;
+            motorresult = failValue;
         }
     });
 }
@@ -2541,8 +2523,6 @@ void MainWindow::initPeriphState() {
         QString displayName;
         QString settings;
     };
-       
-      
 
     // 读取 PeripheralStatus 节下的键值对
     QString imuStatus = "=" + SETTINGS.value("PeripheralStatus/IMU_Status").toString();
@@ -2577,7 +2557,7 @@ void MainWindow::initPeriphState() {
 
         if (state.flash_state == flashStatus && state.imu_state == imuStatus && state.press_state == pressureStatus &&
             state.magnet_state == magneticStatus) {
-           ;
+            ;
         } else {
             motorresult = failValue;
         }

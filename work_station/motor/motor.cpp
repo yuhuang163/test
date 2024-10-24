@@ -50,10 +50,7 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     showlog("action=" + pack.test_station);
     showlog("machineNo=" + pack.machineNo);
 
-    if (pack.product == "U7" || pack.product == "U7P")
-        ui->nfc_sn->setDisabled(1);
-    else
-        ui->nfc_sn->setDisabled(0);
+
     testResultTableInit();
 }
 
@@ -442,6 +439,7 @@ void motor::startTask() {
                 result = passValue;
                 TestTime.start();
                 at->sendMac(ui->macInput->text());  // 发送mac地址
+                showlog(ui->macInput->text());
                 is_battary_test = 0;
 
                 state = STATE_WATI_CONNECT;

@@ -42,7 +42,7 @@ public:
     virtual QTableWidget* testResultTable() { return nullptr; };      // 测试结果表格输入口
     virtual QPushButton* getEndTestButton() { return nullptr; };      // 结束测试按钮
     virtual QLabel* getMesStateQlabel() { return nullptr; };          // mes状态的qlab
-
+    virtual void updateComboBox(){};
     int jigBaudRate = 115200;
     int productBaudRate = 1000000;
     int usbBaudRate = 115200;
@@ -59,9 +59,13 @@ public:
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);
 
-private:  // 通用变量
+    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
+private:                                              // 通用变量
+    QString receivedData = "";
+
     void initData();
     void saveDongleUartLog(QString data);
+    void getmacadress(const QByteArray& byte);
 
 public:
     QString macAddress = "没有mac地址";

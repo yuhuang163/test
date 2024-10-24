@@ -194,6 +194,7 @@ private:
         STATE_SAVE_RESULT  // 保存结果在本地
     } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
+    qsetting* qsetting_ui = NULL;
     bool is_motor_continue = false;
     bool is_need_noisy_data = false;
     motorState motorstate = STATE_IDLE;
@@ -240,6 +241,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void setting_ui();
     void saveblackbox(QString data);
     void sendNoisyData();
     void setBleOtaState(int);

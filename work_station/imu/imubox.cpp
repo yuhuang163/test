@@ -58,11 +58,10 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
                 connect(Fixture_uart_ui, SIGNAL(start_fix_action(int)), testList[i], SLOT(get_fix_action(int)));
             }
 
-               
-            QString masterFixturecomName = SETTINGS.value(QString("0/masterFixturecomName")).toString();
+            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
-
+        Fixture_uart_ui->raise();
         Fixture_uart_ui->show();
         Fixture_uart_ui->activateWindow();
     });
@@ -144,11 +143,11 @@ void imubox::startTest() {
     set_cylinder_state(STATE_RESET);
     waitWork(500);
 
-    if (pack.product == "Y21" ||pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
+    if (SETTINGS.value("SYSTEM/IMUCalibrationWakeup").toBool()) {
         if (pack.factory == "xwd") {
             set_cylinder_state(STATE_BRUSH_RIGHT);
         } else {
-            set_cylinder_state(STATE_BRUSH_LEFT);
+            set_cylinder_state(STATE_BRUSH_LEFT);  //可能是给华勤的
         }
 
         waitWork(1500);
@@ -158,34 +157,19 @@ void imubox::startTest() {
 }
 
 imubox::~imubox() {
-       
-
     if (Fixture_uart_ui != NULL)
-        SETTINGS.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.setValue(QString("mechine/0/masterFixturecomName"),
+                          Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }
 void imubox::resetall() {
-    //立讯的p20p要回车开始，木星是按键开始
-    if (pack.factory == "lx" && pack.product == "P20P") {
+
+    if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) {//表示p20p回车开始
         startTest();
     }
-    // if (pack.factory != "xwd") {
-    //     set_cylinder_state(STATE_RESET);
-    //     waitWork(500);
 
-    //     if (pack.product == "Y20" || pack.product == "Q20" || pack.product == "U7P" || pack.product == "U7") {
-            // if (pack.factory == "xwd") {
-            //     set_cylinder_state(STATE_BRUSH_RIGHT);
-            // } else {
-    //             set_cylinder_state(STATE_BRUSH_LEFT);
-    //         }
 
-    //         waitWork(1500);
-    //     }
-
-    //     set_cylinder_state(STATE_BRUSH_UP);
-    // }
 }
 //把12个的其中1个杀死变成1，跟随测试
 void imubox::set_vector_state(int state) {

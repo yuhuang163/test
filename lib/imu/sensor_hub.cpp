@@ -60,7 +60,7 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
     if (LSB == 4) {
         if (imu_static_state == 1) {
             // y20的f20的
-            double Y20Y20P_positions[11][3] = {
+            double y_right_positions[11][3] = {
                 {0, 0, 1},            // Position 8     u     u
                 {0, 1, 0},            // Position 9		r
                 {0, 0, -1},           // Position 10    d
@@ -74,11 +74,11 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
                 {0.643, -0.766, 0},   // Position 1 	u     l
 
             };
-            memcpy(fixed_positions, Y20Y20P_positions, sizeof(fixed_positions));
+            memcpy(fixed_positions, y_right_positions, sizeof(fixed_positions));
 
         } else {
-            // p30p也在这
-            double U7U7P_positions[11][3] = {
+            // p30pU7U7P也在这
+            double y_up_positions[11][3] = {
 
                 {0, 0, 1},            // Position 1
                 {1, 0, 0},            // Position 2
@@ -93,11 +93,11 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
                 {-0.766, -0.643, 0}   // Position 11
 
             };
-            memcpy(fixed_positions, U7U7P_positions, sizeof(fixed_positions));
+            memcpy(fixed_positions, y_up_positions, sizeof(fixed_positions));
         }
     } else {
         // for q20 and p20pro
-        double Q20P20P_positions[11][3] = {
+        double y_up_positions[11][3] = {
             {0, 0, 1},            // Position 1
             {1, 0, 0},            // Position 2
             {0, 0, -1},           // Position 3
@@ -111,7 +111,7 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
             {-0.766, -0.643, 0}   // Position 11
 
         };
-        memcpy(fixed_positions, Q20P20P_positions, sizeof(fixed_positions));
+        memcpy(fixed_positions, y_up_positions, sizeof(fixed_positions));
     }
 
     for (int i = 0; i < 11; i++) {

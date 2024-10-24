@@ -40,14 +40,15 @@ pcbabox::pcbabox(QWidget* parent) :
                 connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_sleep(const FixturePacketData)), testList[i],
                         SLOT(get_remain_data_sleep(const FixturePacketData)));
             }
-               
-            QString masterFixturecomName = SETTINGS.value(QString("0/masterFixturecomName")).toString();
+
+            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
 
             // Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(SETTINGS.value("mechine/FixturecomName").toString());
         }
         // 注册类型
         qRegisterMetaType<FixturePacketData>("FixturePacketData");
+        Fixture_uart_ui->raise();
         Fixture_uart_ui->show();
         Fixture_uart_ui->activateWindow();
     });
@@ -67,7 +68,7 @@ pcbabox::pcbabox(QWidget* parent) :
         testList[0]->getMacLineEdit()->setFocus();
     });
 }
-
+//用于治具的开始测试
 void pcbabox::startTest() {
     for (int i = 0; i < testList.size(); i++) {
         testList[i]->startTest();
@@ -75,10 +76,9 @@ void pcbabox::startTest() {
 }
 
 pcbabox::~pcbabox() {
-       
-
     if (Fixture_uart_ui != NULL)
-        SETTINGS.setValue(QString("0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.setValue(QString("mechine/0/masterFixturecomName"),
+                          Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }

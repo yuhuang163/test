@@ -25,7 +25,6 @@ private:
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";
-    QString filter_name = "";
     int HighRssi = 0;
     int LowRssi = 0;
     int BleHighRssi = 0;

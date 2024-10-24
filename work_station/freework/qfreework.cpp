@@ -46,10 +46,12 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
     BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
     BleLowRssi = SETTINGS.value("BLE/LowRssi").toDouble();
-    filter_name = SETTINGS.value("BLE/Filter_Name").toString();
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
-    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
+    HighCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
+    LowCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
+
+
+
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
@@ -63,7 +65,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
     showlog("measure_wait_time=" + QString::number(measure_wait_time));
 
     showlog("machineNo=" + pack.machineNo);
-    showlog("filter_name=" + filter_name);
     showlog("standbattary=" + QString::number(standbattary));
     showlog("model=" + pack.model);
     showlog("action=" + pack.test_station);

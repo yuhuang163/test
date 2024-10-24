@@ -53,17 +53,13 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
         comparewaittime->stop();
     });
 
-    
-    
-
     HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
     BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();
     BleLowRssi = SETTINGS.value("BLE/LowRssi").toDouble();
-    filter_name = SETTINGS.value("BLE/Filter_Name").toString();
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
-    HighCurrent = SETTINGS.value("quiescentCurrent/HighCurrent").toDouble();
-    LowCurrent = SETTINGS.value("quiescentCurrent/LowCurrent").toDouble();
+    HighCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
+    LowCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
@@ -77,7 +73,6 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
     showlog("measure_wait_time=" + QString::number(measure_wait_time));
 
     showlog("machineNo=" + pack.machineNo);
-    showlog("filter_name=" + filter_name);
     showlog("standbattary=" + QString::number(standbattary));
     showlog("model=" + pack.model);
     showlog("action=" + pack.test_station);
@@ -101,7 +96,7 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
 wifibletest::~wifibletest() { delete ui; }
 
 void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
-    showlog("当前产品名字为" + pack.product);
+    showlog("当前产品名字为" + QString(data.product_name));
     if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
         showlog("开始写入nfc数据");
         QString value = getValueBySN(ui->getMac->text()).toUtf8();
@@ -144,8 +139,6 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         on_nfc_write_read_clicked();
     }
 
-    
-    
     // 读取软件版本字符串
     QString softwareVersions = SETTINGS.value("ProductInfo/Software_Version").toString();
     qDebug() << "Read Software_Version:" << softwareVersions;
@@ -411,8 +404,6 @@ void wifibletest::refreshMesState(int state) {
 }
 
 void wifibletest::getDongleWifi(QString data) {
-    
-    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -627,13 +618,13 @@ void wifibletest::startTask() {
 
                             rssitestcount = 0;
                             at->sendBLELOG(0);  // 日志关
-                            if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" ||
-                                pack.product == "U7P") {
-                                sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
-                                state = STATE_WATI_CORRECT_BATTARY;
-                            } else {
+                            if (SETTINGS.value("SYSTEM/TestWifiSignal").toBool()) {
                                 on_connectwifi_clicked();
                                 state = STATE_WATI_WIFI_CONNECT;
+
+                            } else {
+                                sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                                state = STATE_WATI_CORRECT_BATTARY;
                             }
                         }
                     } else {
@@ -663,14 +654,14 @@ void wifibletest::startTask() {
                             at->sendBLELOG(0);  // 日志关
                             rssitestfailcount = 0;
 
-                            if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" ||
-                                pack.product == "U7P") {
+                            if (SETTINGS.value("SYSTEM/TestWifiSignal").toBool()) {
+                                on_connectwifi_clicked();
+                                state = STATE_WATI_WIFI_CONNECT;
+
+                            } else {
                                 wifiresult = "通过";
                                 sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                                 state = STATE_WATI_CORRECT_BATTARY;
-                            } else {
-                                on_connectwifi_clicked();
-                                state = STATE_WATI_WIFI_CONNECT;
                             }
                         }
                     }
@@ -859,17 +850,9 @@ void wifibletest::startTask() {
                     }
                 }
 
-                if (pack.product == "P20P" || pack.product == "P30P" || pack.product == "U7" || pack.product == "U7P") {
-                    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
-                    waitWork(50);
-                    on_disconnectButton_clicked();
-                }
-
-                else if (getIndex() != 1) {
-                    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
-                    waitWork(50);
-                    // on_disconnectButton_clicked();
-                }
+                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                waitWork(50);
+                on_disconnectButton_clicked();
 
                 showlog("测试结束");
                 // log->saveRssiDataToCsv(measure_ammeter, intwifirssi, intblerssi, wifiresult,
@@ -902,9 +885,6 @@ void wifibletest::on_disconnectwifi_clicked() {
     }
 }
 void wifibletest::on_connectwifi_clicked() {
-    
-    
-
     QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
     QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
 
@@ -1391,8 +1371,6 @@ QString wifibletest::getValueBySN(const QString& sn) {
     QString truncatedSN = sn.left(8);
     showlog("truncatedSN:" + truncatedSN);
 
-    
-    
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 

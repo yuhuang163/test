@@ -134,8 +134,6 @@ void cameratest::on_pushButton_clicked() {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    
-    
 
     int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
@@ -174,10 +172,6 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
-    
-    
-
-    SETTINGS.setValue("Window/Size", this->size());
     CameraGetTime = SETTINGS.value("CAMERA/CameraGetTime", 6000).toInt();
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
@@ -470,8 +464,6 @@ cameratest::~cameratest() {
     delete ui;
 }
 void cameratest::getDongleWifi(QString data) {
-    
-    
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -642,8 +634,6 @@ void cameratest::onTimeout() {
 }
 
 void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
-    
-    
     // 读取软件版本字符串
     QString Camera_Id = SETTINGS.value("ProductInfo/Camera_Id").toString();
     qDebug() << "Read Camera_Id:" << Camera_Id;
@@ -713,7 +703,8 @@ void cameratest::startTask() {
                 TestTime.start();
                 waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                qDebug() << getIndex() << macAddress;
+                showlog(ui->macInput->text());
+
                 state = STATE_WATI_CONNECT;
                 break;
             case STATE_WATI_CONNECT:
@@ -747,7 +738,7 @@ void cameratest::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
-                    if (pack.product == "U7P") {
+                    if (SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool()) {
                         // 设置定时器的超时时间为6000毫秒（6秒）
                         cameraSendTimer->setInterval(CameraGetTime);
                         // 启动定时器
@@ -1028,8 +1019,7 @@ void cameratest::on_distribution_network_clicked() {
     // }
     ipString = ui->client_ip_label->text();
     ui->client_ip_label->setText(ipString);
-    
-    
+
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
 
@@ -1225,8 +1215,6 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
     viewercamrea_py->pixmap = QPixmap::fromImage(image);
 
     QPainter painter(&viewercamrea->pixmap);
-    
-    
 
     int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();
@@ -1713,8 +1701,6 @@ void cameratest::on_OffsetTest_clicked() {
     // python.exe ./code/onnx_inference --model "./code/infer_240723_320_model.onnx" --img "绝对路径"
     //    arguments << "script.py" << QDir::currentPath() + "/图片存储/脏污正常"<< "--flag";
     // python.exe ./code/onnx_inference.py --model "./code/infer_240723_320_model.onnx" --img "./code/test.png"
-    
-    
 
     int Rect1_X = SETTINGS.value("CAMERA/Rect1_X", 70).toInt();
     int Rect1_Y = SETTINGS.value("CAMERA/Rect1_Y", 25).toInt();

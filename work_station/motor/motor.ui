@@ -24,7 +24,41 @@
        <string>电机校准测试</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="12" column="0" colspan="2">
+       <item row="2" column="1">
+        <widget class="QLCDNumber" name="test_time">
+         <property name="smallDecimalPoint">
+          <bool>false</bool>
+         </property>
+         <property name="segmentStyle">
+          <enum>QLCDNumber::Flat</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="test_result">
+           <property name="text">
+            <string>TextLabel</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="mes_state">
+           <property name="text">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;TextLabel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="11" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
           <widget class="QPushButton" name="pushButton_2">
@@ -51,16 +85,6 @@
           </widget>
          </item>
         </layout>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLCDNumber" name="test_time">
-         <property name="smallDecimalPoint">
-          <bool>false</bool>
-         </property>
-         <property name="segmentStyle">
-          <enum>QLCDNumber::Flat</enum>
-         </property>
-        </widget>
        </item>
        <item row="3" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_14">
@@ -90,114 +114,12 @@
          </item>
         </layout>
        </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QTableWidget" name="testResultTable"/>
-       </item>
-       <item row="6" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <widget class="QLabel" name="test_result">
-           <property name="text">
-            <string>TextLabel</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="mes_state">
-           <property name="text">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;TextLabel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="9" column="0" colspan="2">
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLineEdit" name="nfc_sn">
-           <property name="text">
-            <string>5504867023111111</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="tail_sn">
          <property name="text">
           <string>存储尾盖sn:</string>
          </property>
         </widget>
-       </item>
-       <item row="11" column="0" colspan="2">
-        <widget class="QPushButton" name="stopTest">
-         <property name="text">
-          <string>停止测试</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QCheckBox" name="isformmes">
-           <property name="text">
-            <string>是否从mes获取mac</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QCheckBox" name="isusemes">
-           <property name="text">
-            <string>是否过站</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="4" column="0" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="uartstate">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>串口连接：</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="bleStatusLabel">
-           <property name="text">
-            <string>蓝牙连接：</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
        </item>
        <item row="7" column="0" colspan="2">
         <layout class="QHBoxLayout" name="horizontalLayout_9">
@@ -257,6 +179,70 @@
             </widget>
            </item>
           </layout>
+         </item>
+        </layout>
+       </item>
+       <item row="10" column="0" colspan="2">
+        <widget class="QPushButton" name="stopTest">
+         <property name="text">
+          <string>停止测试</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="uartstate">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>串口连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="bleStatusLabel">
+           <property name="text">
+            <string>蓝牙连接：</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <widget class="QCheckBox" name="isformmes">
+           <property name="text">
+            <string>是否从mes获取mac</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="isusemes">
+           <property name="text">
+            <string>是否过站</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>

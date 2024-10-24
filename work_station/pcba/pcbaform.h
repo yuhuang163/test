@@ -38,7 +38,7 @@ public:
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                        // msg输入口
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };
-     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
+    QPushButton* getEndTestButton() override { return ui->stopTest; };  // 结束测试按钮
     explicit PcbaForm(int index, QWidget* parent = nullptr);
     ~PcbaForm();
     Ui::PcbaForm* ui;
@@ -50,8 +50,10 @@ public:
     void overTask() override;
 
     void startTest() override;
+    void updateComboBox() override;
 
 private slots:
+
     void getDongleVer(QString data) override;
     void processInspection(QString stringsn);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
@@ -88,8 +90,11 @@ private slots:
     void checkLedControlState(FacLedControl data) override;
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
-
     void on_getMac_returnPressed();
+
+    void on_start_scan_clicked();
+
+    void on_pick_device_textActivated(const QString& arg1);
 
 protected:
     void closeEvent(QCloseEvent*) override;

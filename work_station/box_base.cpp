@@ -344,9 +344,24 @@ void box_base::ShowData(QMainWindow* parent) {
 
     QAction* updata = parent->menuBar()->addAction("软件更新");
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
-    if (!SETTINGS.value("SYSTEM/system_ota").toInt()) {
+    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toInt()) {
         updata->setVisible(false);
     }
+
+    QAction* setting = parent->menuBar()->addAction("功能设置");
+    connect(setting, &QAction::triggered, [=]() { setting_ui(); });
+    if (!SETTINGS.value("SYSTEM/setting").toInt()) {
+        setting->setVisible(false);
+    }
+}
+
+void box_base::setting_ui() {
+    if (qsetting_ui == NULL) {
+        qsetting_ui = new qsetting;
+    }
+    qsetting_ui->raise();
+    qsetting_ui->show();
+    qsetting_ui->activateWindow();
 }
 
 void box_base::loginMes() {
