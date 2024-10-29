@@ -169,9 +169,8 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         test.ask = factoryProtocolVersion;
         testItems.append(test);
 
-        log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
         updateTestData(testItems);
-        testItems.clear();
+
     }
 }
 
@@ -227,10 +226,9 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         test.testData = QString::number(data.press_state);
         test.ask = QString::number(pressureStatus);
         testItems.append(test);
-        log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
 
         updateTestData(testItems);
-        testItems.clear();
+
     }
 }
 
@@ -522,7 +520,7 @@ void quiescent_current::startTask() {
                     usb->sethqMEASure();
                 else
                     usb->sendCONF("CURR", "DC", "500e-3");  // 500ma静态电流
-                testItems.clear();
+
                 pb->reset_all_pb();
                 periph_state = 0;
                 base_state = 0;
@@ -706,7 +704,7 @@ void quiescent_current::startTask() {
                     pack.instruct_num = "076";
                     pack.sn = ui->snInput->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                     showlog("静态电流测试失败：超时");
                     showlog("电流测量值为" + QString::number(measure_ammeter));
@@ -718,9 +716,9 @@ void quiescent_current::startTask() {
                     test.testResult = failValue;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
 
                     state = STATE_SAVE_RESULT;
                     totalresult = failValue;
@@ -738,7 +736,7 @@ void quiescent_current::startTask() {
 
                     pack.sn = ui->snInput->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                     showlog("静态电流正常");
                     testData = QString::number(measure_ammeter);
@@ -749,9 +747,9 @@ void quiescent_current::startTask() {
                     test.testResult = passValue;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(QC_VER, "", ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
 
                     waittime->stop();
                     totalresult = passValue;
@@ -788,7 +786,6 @@ void quiescent_current::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
 
-                log->saveTestCsv(QC_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                 showlog("测试结束");
                 ui->macInput->clear();
                 ui->snInput->clear();

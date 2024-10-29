@@ -349,9 +349,9 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     test.ask = softwareVersions;
     testItems.append(test);
 
-    log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
     updateTestData(testItems);
-    testItems.clear();
+
 }
 void motor::refreshBattaryData(FacDevInfo adc) {
     QString chargeStateStr;
@@ -386,9 +386,9 @@ void motor::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("电压通过");
     } else {
         TestItem test;
@@ -397,9 +397,9 @@ void motor::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("电压太低" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V");
         result = failValue;
         state = STATE_SAVE_RESULT;
@@ -430,7 +430,7 @@ void motor::startTask() {
                 refreshMotorCaliMsg("开始测试");
                 // showlog("开始测试");
                 pb->reset_all_pb();
-                testItems.clear();
+
                 at->resetConnected();
                 is_canGoNext = 0;
                 refreshBleState(0);
@@ -643,10 +643,10 @@ void motor::startTask() {
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);
-                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                 testResultTableUpdate(testItems);
-                testItems.clear();
-                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+
 
                 sn = "";
                 stringsn = "";
@@ -763,10 +763,10 @@ void motor::startTest_task() {
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);
-                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                 testResultTableUpdate(testItems);
-                testItems.clear();
-                log->saveTestCsv(MOTOR_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+
 
                 sn = "";
                 stringsn = "";

@@ -229,10 +229,10 @@ void screentest::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "1";
                         testItems.append(test);
-                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
-                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+
 
                         showlog("sn已比对成功");
                         state = STATE_DISABLE_SLEEP_1;
@@ -243,10 +243,10 @@ void screentest::startTask()  // 编写六轴校准的代码
                         test.testResult = "失败";
                         test.ask = "1";
                         testItems.append(test);
-                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
-                        log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
+
 
                         showlog("sn比对失败");
                         result = failValue;
@@ -361,11 +361,11 @@ void screentest::startTask()  // 编写六轴校准的代码
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);
-                log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
-                testResultTableUpdate(testItems);
-                testItems.clear();
 
-                log->saveTestCsv(SCREEN_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+                testResultTableUpdate(testItems);
+
+
+
 
                 stringsn = "";
                 ui->getMac->clear();

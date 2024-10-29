@@ -438,7 +438,6 @@ enum FacMotoControlType
     servo_param=7;   
     get_servo_info_data =8;
 
-  
 }
 
 message FacMotoParam
@@ -469,7 +468,7 @@ enum FacMotoState
 enum FacMotorFaultCode
 {
     NoFault=0;                      //无故障
-    OverVoltage=1;       	// 过压 
+    OverVoltage=1;       	        // 过压 
     UnderVoltage=2;                 // 欠压 
     OverCurrent=3;   			    // 软件过流
     HardOverCurrent=4;              // 硬件过流
@@ -498,6 +497,25 @@ enum CaliMark
 
 }
 
+enum FacMotoOperaType
+{
+    HALL_INFO = 0;
+    ZERO_INFO = 1;
+
+}
+
+message MotoOperaInfo{
+    FacMotoOperaType type = 1;
+    oneof value_item {
+        string  hall_info= 2[(nanopb).max_size = 128];
+        string  zero_info= 3[(nanopb).max_size = 128];
+    }
+
+    FacErrorCode result = 100;
+
+}
+
+
 message ServoMotorInfo 
 {
     FacMotoState motor_state = 1;
@@ -505,6 +523,7 @@ message ServoMotorInfo
     uint32 motor_current = 3;
     uint32 motor_voltage = 4;
     CaliMark  motor_cali_mark=5;
+    MotoOperaInfo opera_info=6;
 }
 
 
@@ -537,9 +556,8 @@ message FacMotoControl
         ServoMotorParam  servoparam =9;
         FacSwitch  get_servo_info =10; 
 
-    
     }
-
+    string  write_info= 50[(nanopb).max_size = 128];
     FacErrorCode result = 100;
 }
 

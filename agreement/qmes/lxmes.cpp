@@ -16,8 +16,6 @@
 #    pragma execution_character_set("utf-8")
 #endif
 lxmes::lxmes() {
-       
-  
     url = SETTINGS.value("Mes/NET", "http://10.16.204.138/Bobcat_CWS_TEST/sfc_response.aspx?").toString();
     field = SETTINGS.value("Mes/FIELD", "BT_MAC").toString();
 }
@@ -27,6 +25,60 @@ void lxmes::ProcessInspection(MesPacketData pack) {
         // 构建请求参数
         QString postData =
             QString("c=QUERY_RECORD&sn=%1&p=unit_process_check&tsid=%2").arg(pack.sn).arg(pack.machineNo);
+
+        // 输出请求内容到日志
+        QString logMsg = QString("发送网络请求，URL：%1，参数：%2").arg(url).arg(postData);
+        qDebug() << logMsg;
+
+        QNetworkAccessManager manager;
+        QNetworkRequest request(url);
+
+        // 设置请求头
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+        // 发送POST请求
+        QNetworkReply* reply = manager.post(request, postData.toUtf8());
+
+        // 创建事件循环
+        QEventLoop loop;
+
+        // 连接请求完成信号和事件循环退出
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+        // 开始事件循环，等待请求完成
+        loop.exec();
+
+        // 请求完成后的处理
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray responseData = reply->readAll();
+            QString response = QString::fromUtf8(responseData);
+
+            // 输出响应内容到日志
+            QString responseDataLog = QString("收到网络响应：%1").arg(response);
+            qDebug() << responseDataLog;
+
+            if (response.contains("0 SFC_OK")) {
+                emit operateMesSucess(pack.mechines);
+                qDebug() << "过站成功";
+                AgeTimeCheck(pack);
+            } else {
+                emit operateMesError(pack.mechines, "过站失败：" + response);
+            }
+        } else {
+            emit operateMesError(pack.mechines, reply->errorString());
+            qDebug() << "Error:" << reply->errorString() << pack.mechines;
+        }
+
+        // 清理资源
+        reply->deleteLater();
+    }
+}
+
+void lxmes::AgeTimeCheck(MesPacketData pack) {
+    // c=CHK_HOURS_STEWING&sn=ZZRTH003BJLX43230822&station_id=ANKER_Pallet01
+    if (SETTINGS.value("SYSTEM/station") == "AGE_TEST") {
+        // 构建请求参数
+        QString postData = QString("c=CHK_HOURS_STEWING&sn=%1&station_id=%2").arg(pack.sn).arg(pack.machineNo);
 
         // 输出请求内容到日志
         QString logMsg = QString("发送网络请求，URL：%1，参数：%2").arg(url).arg(postData);

@@ -1520,7 +1520,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
     });
     connect(pb, &Qpb::send_ota_result, [&](int r) {
         finish = true;
-        qDebug() << r;
+   
         if (r == 11 || r == 0) {
             result = true;
         }
@@ -2206,8 +2206,8 @@ void MainWindow::on_calculate_returnPressed() {
             csv_data[i].data[0] = data0;
             csv_data[i].data[1] = data1;
             csv_data[i].data[2] = data2;
-            qDebug() << data0 << data1 << data2;
-            qDebug() << csv_data[i].data[0] << csv_data[i].data[1] << csv_data[i].data[2];
+            qDebug() << "数值为"<< data0 << data1 << data2;
+            qDebug() << "数值为"<< csv_data[i].data[0] << csv_data[i].data[1] << csv_data[i].data[2];
         } else {
             qDebug() << "Invalid data format:" << dataStr;
             continue;

@@ -209,7 +209,7 @@ void box_base::initData() {
 void setComboBoxValue(const QString& baseKey, const QString& key, QComboBox* comboBox) {
     if (comboBox != nullptr && comboBox->currentText() != "") {
         SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg(key), comboBox->currentText());
-        qDebug() << comboBox->currentText();
+        qDebug() << "数值为"<< comboBox->currentText();
     }
 }
 void box_base::saveCustom() {

@@ -67,12 +67,16 @@ void MainWindow::getServoMotorInfoMsg(FacMotorCalibResult data) {
 
     showlog("伺服电机校准标志：" +
             getCaliMarkString(static_cast<CaliMark>(data.value_item.servo_info.motor_cali_mark)));
+
     showlog("伺服电机电流：" + QString::number(data.value_item.servo_info.motor_current));
     showlog("伺服电机工作状态：" +
             getMotorStateString(static_cast<FacMotoState>(data.value_item.servo_info.motor_state)));
     showlog("伺服电机电压：" + QString::number(data.value_item.servo_info.motor_voltage));
     showlog("伺服电机错误码：" +
             getMotorFaultCodeString(static_cast<FacMotorFaultCode>(data.value_item.servo_info.FaultCode)));
+
+    showlog("霍尔校准的记录内容:" + QString(data.value_item.servo_info.opera_info.value_item.hall_info));
+    showlog("零点校准的记录内容:" + QString(data.value_item.servo_info.opera_info.value_item.zero_info));
 }
 void MainWindow::updateHIDComboBox(QComboBox* comboBox) {
     if (!comboBox)

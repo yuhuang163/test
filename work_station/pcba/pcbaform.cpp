@@ -32,9 +32,8 @@ void PcbaForm::on_pushButton_clicked() {
     test.testResult = failValue;
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
 
     erroContent << "|WIFI连接:超时";
 
@@ -44,9 +43,8 @@ void PcbaForm::on_pushButton_clicked() {
     test.testResult = failValue;
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
 
     erroContent << "|WIFI测试:失败";
 }
@@ -492,9 +490,8 @@ void PcbaForm::checkbutton(FacButtonState data) {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
 
         isbuttonTest = 1;
     }
@@ -648,9 +645,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         test.ask = camera_id;
         testItems.append(test);
 
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
         updateTestData(testItems);
-        testItems.clear();
     }
 }
 
@@ -714,9 +709,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         test.ask = QString::number(pressureStatus);
         testItems.append(test);
 
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
         updateTestData(testItems);
-        testItems.clear();
     }
 }
 
@@ -828,12 +821,11 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData) {
     processTestItem("充电电流测试", packetData.chargingCurrent, LowCharCurrent, HighCharCurrent, testItems);
 
     // 保存测试结果并更新UI
-    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems.toVector());
-    testResultTableUpdate(testItems.toVector());
+    QVector<TestItem> vectorTestItems = QVector<TestItem>::fromList(testItems);  // 将 QList 转换为 QVector
+    testResultTableUpdate(vectorTestItems);                                      // 传递 QVector
 
     // 根据测试结果更新UI状态
     updateTestResultUI();
-    testItems.clear();
 
     showlog("流程结束");
 }
@@ -958,9 +950,8 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
         test.testResult = failValue;
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
 
         is_imu_correct_data = 2;
 
@@ -991,7 +982,7 @@ void PcbaForm::startTask() {
                 pb->reset_all_pb();
                 refreshWifiState(0);
                 erroContent.clear();
-                testItems.clear();
+
                 periph_state = 0;
                 rssitestfailcount = 0;
                 intblerssi = 0;
@@ -1059,9 +1050,9 @@ void PcbaForm::startTask() {
                     test.testResult = passValue;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
                     state = STATE_WATI_STOP_IMU_DATA;
                 }
@@ -1161,9 +1152,8 @@ void PcbaForm::startTask() {
                     test.testResult = passValue;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
 
                     showlog("4、wifi强度测试");
                     wifiwaittime->setInterval(wifi_wait_time);
@@ -1183,9 +1173,8 @@ void PcbaForm::startTask() {
                     test.testResult = failValue;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
 
                     wifiwaittime->setInterval(wifi_wait_time);
                     wifiwaittime->start();
@@ -1223,9 +1212,8 @@ void PcbaForm::startTask() {
                             test.testResult = passValue;
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
 
                             state = STATE_WATI_GET_CORRECT_BLERSSI;
                             showlog("5、蓝牙强度测试");
@@ -1253,9 +1241,8 @@ void PcbaForm::startTask() {
                             test.testResult = failValue;
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
 
                             qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                             showlog("wifi不合格信号强度" + WIFI_RSSI);
@@ -1302,9 +1289,8 @@ void PcbaForm::startTask() {
                             test.testResult = passValue;
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
 
                             showlog("蓝牙测试通过" + QString::number(intblerssi) + "测试次数为" +
                                     QString::number(rssitestcount));
@@ -1346,9 +1332,9 @@ void PcbaForm::startTask() {
                             test.testResult = failValue;
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
+
                             erroContent << QString("|蓝牙信号:%1").arg(testData);
                             totalresult = failValue;
                             qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
@@ -1584,7 +1570,6 @@ void PcbaForm::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
 
-                log->saveTestCsv(PCBA_VER, "", ui->macInput->text(), testItems);
                 showlog("保存完毕");
                 showlog("测试结束");
                 ui->macInput->clear();

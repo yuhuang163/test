@@ -844,7 +844,7 @@ void imucali::dataInit() {
     upPositionIndex = 0;  // 上一个位置的索引
     ui->test_time->display(0);
     information = "";
-    testItems.clear();
+
     isovertime = 0;
     is_old_cali = 1;
     is_battary_test = 0;
@@ -965,9 +965,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "通过";
                     test.ask = "关闭";
                     testItems.append(test);
-                    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
 
                     sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                     state = STATE_GETBASEDATA;
@@ -991,9 +991,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = QString::number(standbattary);
                         testItems.append(test);
-                        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                     }
 
                     if (is_battary_test == 2) {
@@ -1005,9 +1005,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "失败";
                         test.ask = QString::number(standbattary);
                         testItems.append(test);
-                        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                     }
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
 
@@ -1100,9 +1100,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "失败";
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
                     showlog("六轴校准结束");
                     emit endcali(getIndex());
                     state = STATE_END;
@@ -1131,9 +1131,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "通过";
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
                     showlog(data);
 
                     showlog("六轴校准结束");
@@ -1165,9 +1165,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
-                        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
 
                         state = STATE_END;
                     }
@@ -1181,9 +1181,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
-                        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                         state = STATE_END;
                     }
                 }
@@ -1194,9 +1194,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "失败";
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
                     result = failValue;
                     state = STATE_END;
                 }
@@ -1246,7 +1246,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         send_end_testPass(pack);
                     }
                 }
-                log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
                 testResultTableUpdate(testItems);
 
                 waitWork(WAITTIME);

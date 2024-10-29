@@ -66,6 +66,7 @@ void QFreeWork::createTestFunctions() {
         {"设置舵机电机参数",
          [&]() { sendCommandWithRetry(std::bind(&Qpb::set_sevor_motor_param, pb, 90, 30.0f, 50.0f, 100)); }},
         {"设置设备模式", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_device_mode, pb, 1)); }},
+        {"设置亮白模式", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_device_mode, pb, 4)); }},
         {"设置刷牙控制状态", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_brush_control, pb, 1)); }},
         {"设置工厂模式", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_fac_mode, pb, 1)); }},
         {"绑定SN码", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_TAIL_SN, sn)); }},

@@ -100,7 +100,7 @@ void hqmes::onNetworkReplyFinished()
         else
         {
             emit sendMesState(0);
-            qDebug() << resultCode;
+            qDebug() << "数值为"<< resultCode;
             // 登录失败，处理错误信息
             if (jsonObj.contains("H_MSG"))
             {

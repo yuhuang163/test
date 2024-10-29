@@ -18,6 +18,13 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonBoardFactoryTest"), 8);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 9);
 
+    // 如果需要从某个数据源添加项，可以使用循环来添加
+    QStringList productList = {"P30P", "P20P", "U7", "U7P", "F20", "Q20", "Y20", "Y20P", "Y21"};
+    ui->comboBox_productName->addItems(productList);
+
+    QStringList factoryList = {"lx", "xwd", "hq", "wks"};
+    ui->comboBox_factory->addItems(factoryList);
+
     loadConfig();
 }
 void qsetting::loadConfig() {
@@ -163,8 +170,8 @@ void qsetting::loadConfig() {
     ui->lineEdit_image_interval->setText(SETTINGS.value("CAMERA/CameraGetTime").toString());  // 重新获取图片时间间隔
 
     // MES 相关
-    ui->lineEdit_factory->setText(SETTINGS.value("MES/factory").toString());
-    ui->lineEdit_productName->setText(SETTINGS.value("MES/Product_Name").toString());
+    ui->comboBox_factory->setCurrentText(SETTINGS.value("MES/factory").toString());
+    ui->comboBox_productName->setCurrentText(SETTINGS.value("MES/Product_Name").toString());
     ui->lineEdit_macStation->setText(SETTINGS.value("MES/xwdWpCode").toString());
     ui->lineEdit_station->setText(SETTINGS.value("MES/machineNo").toString());
     ui->lineEdit_mesUrl->setText(SETTINGS.value("MES/NET").toString());
@@ -315,8 +322,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("CAMERA/CameraGetTime", ui->lineEdit_image_interval->text());
 
     // MES 相关
-    SETTINGS.setValue("MES/factory", ui->lineEdit_factory->text());
-    SETTINGS.setValue("MES/Product_Name", ui->lineEdit_productName->text());
+    SETTINGS.setValue("MES/factory", ui->comboBox_factory->currentText());
+    SETTINGS.setValue("MES/Product_Name", ui->comboBox_productName->currentText());
     SETTINGS.setValue("MES/xwdWpCode", ui->lineEdit_macStation->text());
     SETTINGS.setValue("MES/machineNo", ui->lineEdit_station->text());
     SETTINGS.setValue("MES/NET", ui->lineEdit_mesUrl->text());
@@ -355,7 +362,7 @@ void qsetting::on_Restore_default_setting_clicked() {
 
     //立讯的p20p要回车开始，木星是按键开始
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
-    if (ui->lineEdit_productName->text() == "U7") {
+    if (ui->comboBox_productName->currentText() == "U7") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_DisableSerialPortRx->setChecked(true);
@@ -366,7 +373,7 @@ void qsetting::on_Restore_default_setting_clicked() {
         ui->checkBox_TestAudioCurrent->setChecked(true);
     }
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
-    if (ui->lineEdit_productName->text() == "U7P") {
+    if (ui->comboBox_productName->currentText() == "U7P") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_BluetoothImageTransfer->setChecked(true);
@@ -378,50 +385,51 @@ void qsetting::on_Restore_default_setting_clicked() {
         ui->checkBox_TestAudioCurrent->setChecked(true);
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
-    if (ui->lineEdit_productName->text() == "F20") {
+    if (ui->comboBox_productName->currentText() == "F20") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
     }
     //欣旺达：依次扫码连接，不需要唤醒
-    if (ui->lineEdit_productName->text() == "Q20") {
+    if (ui->comboBox_productName->currentText() == "Q20") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestAudioCurrent->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
     //华勤：欣旺达：依次扫码连接，不需要唤醒
-    if (ui->lineEdit_productName->text() == "Y20") {
+    if (ui->comboBox_productName->currentText() == "Y20") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
     //华勤：欣旺达：依次扫码连接，不需要唤醒
-    if (ui->lineEdit_productName->text() == "Y20P") {
+    if (ui->comboBox_productName->currentText() == "Y20P") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
     //欣旺达：依次扫标签码连接，需要唤醒
-    if (ui->lineEdit_productName->text() == "Y21") {
+    if (ui->comboBox_productName->currentText() == "Y21") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     //华勤：依次扫码连接，不需要唤醒
-    if (ui->lineEdit_productName->text() == "P20P") {
+    if (ui->comboBox_productName->currentText() == "P20P") {
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_MagneticReuseMotorStatus->setChecked(true);
         ui->checkBox_SendMotorCalibration->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
         ui->checkBox_ServoMotorStart->setChecked(true);
-        if (ui->lineEdit_factory->text() == "lx")
+
+        if (ui->comboBox_factory->currentText() == "lx")
             ui->checkBox_IMULastEnterStartTest->setChecked(true);
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
-    if (ui->lineEdit_productName->text() == "P30P") {
+    if (ui->comboBox_productName->currentText() == "P30P") {
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);

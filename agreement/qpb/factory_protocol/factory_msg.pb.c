@@ -51,6 +51,9 @@ PB_BIND(FacLcdControl, FacLcdControl, 2)
 PB_BIND(FacMotoParam, FacMotoParam, AUTO)
 
 
+PB_BIND(MotoOperaInfo, MotoOperaInfo, 2)
+
+
 PB_BIND(ServoMotorInfo, ServoMotorInfo, AUTO)
 
 
@@ -130,6 +133,7 @@ PB_BIND(FacOtaFileInfo, FacOtaFileInfo, 2)
 
 
 PB_BIND(FacInternetOta, FacInternetOta, 2)
+
 
 
 

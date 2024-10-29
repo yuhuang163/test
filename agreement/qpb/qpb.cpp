@@ -587,6 +587,16 @@ void Qpb::set_motor_cali(int state) {
     if (state == 2)
         pack.command_data.moto_control.value_item.switch_cali = FacMotoCali_ZERO_CALIBRATION;
 
+    QString currentDate = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    // 格式化字符串
+    QString infoString = QString("Date: %1, Ver: %2").arg(currentDate).arg(APP_VERSION);
+    // 转换为 QByteArray 并存入 write_info
+    QByteArray byteArray = infoString.toUtf8();
+
+    qstrncpy(pack.command_data.moto_control.write_info, byteArray.data(),
+             sizeof(pack.command_data.moto_control.write_info) - 1);
+    pack.command_data.moto_control.write_info[sizeof(pack.command_data.moto_control.write_info) - 1] = '\0';
+
     sendShortPack(pack);
     qDebug() << "已发送电机校准类型" << state;
 }
@@ -1768,17 +1778,17 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     }
     if (x.dev_state_type == DevStateType_SHIP) {
         qDebug() << "设置船运成功";
-        send_pb_date("设置船运成功");
+        emit send_pb_date("设置船运成功");
         emit sendGetBrushResponse(1);
     }
     if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
         qDebug() << "设置工厂模式成功";
-        send_pb_date("设置工厂模式成功");
+        emit send_pb_date("设置工厂模式成功");
         emit sendGetBrushResponse(1);
     }
     if (x.dev_state_type == DevStateType_UART_RECEIVE) {
         qDebug() << "设置串口状态成功";
-        send_pb_date("设置串口状态成功");
+        emit send_pb_date("设置串口状态成功");
         emit sendGetBrushResponse(1);
     }
 }

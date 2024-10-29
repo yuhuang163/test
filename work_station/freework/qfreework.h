@@ -102,11 +102,22 @@ private:
 
     int getIndexAt(const QPoint& pos);
     void showTestIndexes();
+    void saveIndexesToConfig(const QVector<int>& indexes);
+    QVector<int> loadIndexesFromConfig();
+    void reorderCheckBoxes() ;
+    void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col);
+    void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col) ;
+
+    void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) ;
+
     QVector<int> testIndexes;  // 存储索引的容器
-    void saveIndexesToFile(const QVector<int>& indexes);
     QVBoxLayout* conFiglayout;
     QGridLayout* canUselayout;
-
+    int canUserRow;
+    int canUserCol;
+    int singleCheckBoxHeight;
+    int singleCheckBoxWidth;
+    QWidget* settingWidget;
     QByteArray sn;
     void paintEvent(QPaintEvent* event) override;
     void showInsertIndicator(const QPoint& pos);
@@ -120,8 +131,8 @@ private:
     std::vector<NamedFunction> testFunctions;
 
 protected:
-    // virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
+    void closeEvent(QCloseEvent* event) override;
+
 private slots:
     void initDate();
 
@@ -185,6 +196,8 @@ private slots:
     void on_disconnectButton_clicked();
 
     void on_stopTest_clicked();
+
+    void on_save_config_clicked();
 
 signals:
     void send_go_next_focus();

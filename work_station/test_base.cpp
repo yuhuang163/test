@@ -707,7 +707,7 @@ QString test_base::exportTableContent() {
     return result;
 }
 
-void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
+void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
     if (testResultTable() == nullptr) {
         showlog("不存在表格");
         return;
@@ -743,6 +743,9 @@ void test_base::testResultTableUpdate(const QVector<TestItem>& testItems) {
         testResultTable()->setItem(row, 2, resultItem);
         testResultTable()->setItem(row, 3, askItem);
     }
+    log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+
+    testItems.clear();
 }
 void test_base::updateTestData(QVector<TestItem>& testItems) {
     for (auto& item : testItems) {
@@ -767,9 +770,7 @@ void test_base::solveMesSucess(const int mechines) {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
         testResultTableUpdate(testItems);
-        testItems.clear();
 
         showlog("mes操作成功");
         getMesStateQlabel()->setText("MES");
@@ -796,9 +797,8 @@ void test_base::solveMesData(const int mechines, QString msg) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("MES:报错信息:" + msg);
         isTestContinue = false;
         showlog("停止运行");

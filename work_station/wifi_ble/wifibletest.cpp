@@ -111,9 +111,9 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
+
             showlog("停止运行");
             showlog("没匹配到subpid");
             return;
@@ -124,9 +124,9 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         if (QString(data.product_name).compare("U7P") == 0) {
             nfcdataHeadText = "033BD2023668772001004800324F3130" + value + "810800272000141785911410";
             showlog("当前nfc写入的是U7P!");
@@ -260,9 +260,9 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
     test.ask = softwareVersions;
     testItems.append(test);
 
-    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
     updateTestData(testItems);
-    testItems.clear();
+
 }
 
 void wifibletest::refreshBattaryData(FacDevInfo adc) {
@@ -315,9 +315,9 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         charageresult = "通过";
         voltageresult = "通过";
         showlog("电量和充电测试通过");
@@ -330,9 +330,9 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("充电状态不通过");
         charageresult = "失败";
         voltageresult = "通过";
@@ -348,9 +348,9 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("电量测试不通过");
         voltageresult = "失败";
         charageresult = "通过";
@@ -364,9 +364,9 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
         showlog("电量和充电测试都不通过");
         voltageresult = "失败";
         charageresult = "失败";
@@ -523,7 +523,7 @@ void wifibletest::initDate() {
     ui->tail_sn->setText("芯片存储的尾盖sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
-    testItems.clear();
+
     rssitestfailcount = 0;
     wifistate = 0;
     measure_ammeter = 0;
@@ -610,9 +610,9 @@ void wifibletest::startTask() {
                             test.testResult = "通过";
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
+
                             showlog("蓝牙测试通过" + QString::number(intblerssi) + "测试次数为" +
                                     QString::number(rssitestcount));
 
@@ -640,9 +640,9 @@ void wifibletest::startTask() {
                             test.testResult = "失败";
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
+
                             TestResult = failValue;
                             qDebug() << getIndex() << "蓝牙不合格信号强度" << BLE_RSSI;
                             qDebug() << getIndex() << "范围为" << BleHighRssi << BleLowRssi;
@@ -704,9 +704,9 @@ void wifibletest::startTask() {
                             test.testResult = "通过";
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
+
                             sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                             state = STATE_WATI_CORRECT_BATTARY;
                             rssitestcount = 0;
@@ -730,9 +730,9 @@ void wifibletest::startTask() {
                             test.testResult = TestResult;
                             test.ask = "通过";
                             testItems.append(test);
-                            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                             testResultTableUpdate(testItems);
-                            testItems.clear();
+
                             qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                             showlog("wifi不合格信号强度" + WIFI_RSSI);
                             rssitestfailcount = 0;
@@ -775,9 +775,9 @@ void wifibletest::startTask() {
                     test.testResult = currentresult;
                     test.ask = "通过";
                     testItems.append(test);
-                    log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                     testResultTableUpdate(testItems);
-                    testItems.clear();
+
                     TestResult = failValue;
                     state = STATE_SAVE_RESULT;
 
@@ -797,9 +797,9 @@ void wifibletest::startTask() {
                         test.testResult = currentresult;
                         test.ask = "通过";
                         testItems.append(test);
-                        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                     }
                 } else {
                     showlog("充电电流异常重新测试5次");
@@ -858,7 +858,7 @@ void wifibletest::startTask() {
                 // log->saveRssiDataToCsv(measure_ammeter, intwifirssi, intblerssi, wifiresult,
                 //                            bleresult, charageresult, voltageresult);
 
-                log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
                 state = STATE_IDLE;
                 isTestContinue = false;
                 ui->macInput->clear();
@@ -1441,9 +1441,9 @@ void wifibletest::on_nfc_write_read_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
+
         }
         if (st < 0)
             showlog("nfc卡查询失败");
@@ -1464,9 +1464,9 @@ void wifibletest::on_nfc_write_read_clicked() {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
     }
 
     for (int i = 0; i < dataSize; i += 4) {        // 每次处理8个字节
@@ -1488,9 +1488,9 @@ void wifibletest::on_nfc_write_read_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
+
         }
     }
     showlog("nfc信息读取内容为：");
@@ -1507,9 +1507,9 @@ void wifibletest::on_nfc_write_read_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
+
 
             return;
         } else {
@@ -1531,9 +1531,9 @@ void wifibletest::on_nfc_write_read_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
+
 
             return;
         } else {
@@ -1553,9 +1553,9 @@ void wifibletest::on_nfc_write_read_clicked() {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
 
     } else {
         showlog("写入的与读取的比对失败");
@@ -1566,9 +1566,9 @@ void wifibletest::on_nfc_write_read_clicked() {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(SINGLE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
+
     }
 }
 

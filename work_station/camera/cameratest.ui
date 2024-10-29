@@ -327,13 +327,6 @@
          <item row="3" column="1">
           <layout class="QHBoxLayout" name="horizontalLayout_7">
            <item>
-            <widget class="QPushButton" name="save_photo">
-             <property name="text">
-              <string>保存图片</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <widget class="QPushButton" name="normal">
              <property name="enabled">
               <bool>false</bool>
@@ -708,6 +701,13 @@
               </property>
               <property name="text">
                <string>图片测试</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="save_photo">
+              <property name="text">
+               <string>保存图片</string>
               </property>
              </widget>
             </item>

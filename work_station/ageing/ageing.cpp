@@ -57,10 +57,8 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         test.testData = QString::number(data.flash_state);
         test.ask = flashStatus;
         testItems.append(test);
-
-        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
         updateTestData(testItems);
-        testItems.clear();
+
     }
 }
 void ageing::getTestValue(const int mechines, const QString value) {
@@ -263,9 +261,8 @@ void ageing::refreshSn(FacDevInfo data) {
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             testResultTableUpdate(testItems);
-            testItems.clear();
+
             subpidCompareOk = 1;
 
         } else {
@@ -275,9 +272,8 @@ void ageing::refreshSn(FacDevInfo data) {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             testResultTableUpdate(testItems);
-            testItems.clear();
+
             subpidCompareOk = 2;
         }
     }
@@ -294,9 +290,8 @@ void ageing::refreshSn(FacDevInfo data) {
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             testResultTableUpdate(testItems);
-            testItems.clear();
+
             snCompareOk = 1;
 
         } else {
@@ -306,9 +301,8 @@ void ageing::refreshSn(FacDevInfo data) {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
             testResultTableUpdate(testItems);
-            testItems.clear();
+
             snCompareOk = 2;
         }
     }
@@ -342,13 +336,12 @@ void ageing::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 is_battary_test = 0;
-                testItems.clear();
+
                 showlog("开始测试");
                 pb->reset_all_pb();
                 at->resetConnected();
                 ui->tail_sn->setText("存储的尾盖sn:");
                 ui->brush_subpid->setText("存储的subpid:");
-
                 snCompareOk = 0;
                 result = "";
                 TestTime.start();
@@ -437,12 +430,10 @@ void ageing::startTask() {
                         test.testItem = "当前电压";
                         test.testData = QString::number(voltage);
                         test.testResult = "通过";
-
                         test.ask = "通过";
                         testItems.append(test);
-                        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                         pb->get_periph_state();
                         state = STATE_CHECK_FLASH;
                     }
@@ -455,9 +446,8 @@ void ageing::startTask() {
                         test.testResult = "失败";
                         test.ask = "通过";
                         testItems.append(test);
-                        log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                         testResultTableUpdate(testItems);
-                        testItems.clear();
+
                         result = failValue;
                         state = STATE_SAVE_RESULT;
                     }
@@ -530,12 +520,10 @@ void ageing::startTask() {
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);
-                log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                 testResultTableUpdate(testItems);
-                testItems.clear();
+
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                log->saveTestCsv(AGE_VER, ui->getMac->text(), ui->macInput->text(), testItems);
                 emit send_end_test(getIndex());
                 showlog("测试结束");
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址

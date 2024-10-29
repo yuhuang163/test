@@ -46,39 +46,37 @@
 #include <qat.h>    // 与esp32的at指令
 #include <qjig.h>
 #include <qpb.h>  // 与牙刷的pb协议
-#include "qsetting.h"//上位机设置界面
-
 #include <qproduct.h>
-#include <qusb.h>    // 与治具的测量协议
-#include <xwdmes.h>  // 欣旺达的mes头文件
+#include <qsetting.h>  //上位机设置界面
+#include <qusb.h>      // 与治具的测量协议
+#include <xwdmes.h>    // 欣旺达的mes头文件
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 #define NEW_XWD_QUIESCENT_CURRENT
 
+#define DEBUG_VER "电刷产测工具   V1.4.0"
+#define CAMERA_VER "摄像测试工站   V1.2.6"
+#define AGE_VER "老化测试工站   V1.2.4"
+#define MOTOR_VER "电机校准工站   V1.2.5"
+#define QC_VER "静态电流测试   V1.4.2"
+#define SCREEN_VER "屏幕测试工站   V1.1.9"
+#define LIGHT_VER "灯光测试工站   V1.2.0"
+#define SINGLE_VER "信号测试工站   V1.4.8"
+#define FREE_VER "自由测试工站   V1.1.2"
+#define IMU_VER "IMU校准工站    V1.5.1"
+#define PCBA_VER "电刷板子测试   V1.4.0"
 
-#define DEBUG_VER "电刷产测工具   V1.3.8"
-#define CAMERA_VER "摄像测试工站   V1.2.4"
-#define AGE_VER "老化测试工站   V1.2.2"
-#define MOTOR_VER "电机校准工站   V1.2.3"
-#define QC_VER "静态电流测试   V1.4.0"
-#define SCREEN_VER "屏幕测试工站   V1.1.7"
-#define LIGHT_VER "灯光测试工站   V1.1.7"
-#define SINGLE_VER "信号测试工站   V1.3.6"
-#define FREE_VER "自由测试工站   V1.1.0"
-#define IMU_VER "IMU校准工站    V1.4.9"
-#define PCBA_VER "电刷板子测试   V1.3.8"
-
-// [PCBA_VER] 将不同产品的差异配置统一提取到设置页面去配置，板厂增加简易测试的功能，增加扫描功能，串口配置页点击会前置，修改治具串口保存在配置文件的位置
-// [QC_VER] 将不同产品的差异配置统一提取到设置页面去配置，静态电流的电流标准移动到统一的电流配置处
-// [IMU_VER] 将不同产品的差异配置统一提取到设置页面去配置，串口配置页点击会前置，统一imu姿态的命名，y轴朝上和y轴朝右，修改治具串口保存在配置文件的位置，修正imu的不同测试功能
-// [CAMERA_VER]  将不同产品的差异配置统一提取到设置页面去配置，串口配置页点击会前置，
-// [DEBUG_VER] 将不同产品的差异配置统一提取到设置页面去配置
-// [AGE_VER] 将不同产品的差异配置统一提取到设置页面去配置，
-// [SCREEN_VER] 将不同产品的差异配置统一提取到设置页面去配置
-// [SINGLE_VER] 将不同产品的差异配置统一提取到设置页面去配置，
-// [MOTOR_VER] 将不同产品的差异配置统一提取到设置页面去配置，nfc相关内容彻底删掉
-// [LIGHT_VER] 将不同产品的差异配置统一提取到设置页面去配置
-// [FREE_VER] 将不同产品的差异配置统一提取到设置页面去配置，噪音测试震动功能完善
+// [PCBA_VER] 修复伟克森mes的bug，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [QC_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [IMU_VER]，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [CAMERA_VER]  上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [DEBUG_VER] 增加电机校准时间的读取，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [AGE_VER] 立讯新增老化静置时间查询，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [SCREEN_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [SINGLE_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [MOTOR_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [LIGHT_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
+// [FREE_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码，修复bug，增加保存功能，允许调整可拖动区
 //
 
 #endif  // ABINI_H

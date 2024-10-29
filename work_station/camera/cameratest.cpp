@@ -654,10 +654,9 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
         test.testResult = "通过";
         test.ask = Camera_Id;
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
     } else {
         TestItem test;
@@ -666,10 +665,9 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
         test.testResult = "失败";
         test.ask = Camera_Id;
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
         showlog("状态错误");
         showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
@@ -689,7 +687,7 @@ void cameratest::startTask() {
 
                 showlog("开始测试");
                 pb->reset_all_pb();
-                testItems.clear();
+
                 at->resetConnected();
                 displayRectangles = false;
                 refreshBleState(0);
@@ -1337,10 +1335,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             zwTestResult = "脏污测试通过";
             showlog("脏污测试通过");
@@ -1354,10 +1351,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             zwTestResult = "脏污测试失败";
             showlog("有脏污");
@@ -1371,10 +1367,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             showlog("有可放过脏污");
             rectanglesColor.append(Qt::green);
@@ -1387,10 +1382,9 @@ void cameratest::on_DirtyTestButton_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             zwTestResult = "图片出现裂缝（画面撕裂）";
             showlog("图片出现裂缝（画面撕裂）");
@@ -1505,10 +1499,9 @@ void cameratest::on_jxl_abnormal_clicked() {
     test.testResult = "失败";
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
     on_abnormal_clicked();
 }
@@ -1549,10 +1542,9 @@ void cameratest::on_jxl_normal_clicked() {
     test.testResult = "通过";
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
     on_OffsetTest_clicked();
 }
@@ -1590,10 +1582,9 @@ void cameratest::on_zw_normal_clicked() {
     test.testResult = "通过";
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 }
 
 void cameratest::on_zw_abnormal_clicked() {
@@ -1629,10 +1620,9 @@ void cameratest::on_zw_abnormal_clicked() {
     test.testResult = "失败";
     test.ask = "通过";
     testItems.append(test);
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
     testResultTableUpdate(testItems);
-    testItems.clear();
-    log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
     on_abnormal_clicked();
 }
@@ -1803,10 +1793,9 @@ void cameratest::on_OffsetTest_clicked() {
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
         pyTestResult = "偏位测试通过";
         showlog("偏位测试通过");
@@ -1819,10 +1808,9 @@ void cameratest::on_OffsetTest_clicked() {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
         pyTestResult = "刷头偏位";
         showlog("刷头偏位");
@@ -1836,10 +1824,9 @@ void cameratest::on_OffsetTest_clicked() {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
         pyTestResult = "算法计算失败";
         showlog("算法计算失败");
@@ -2002,10 +1989,9 @@ void cameratest::on_ResolutionTestButton_clicked() {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
         testResultTableUpdate(testItems);
-        testItems.clear();
-        log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
         on_abnormal_clicked();
         return;
@@ -2041,10 +2027,9 @@ void cameratest::on_ResolutionTestButton_clicked() {
             test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             jxlTestResult = "解析力测试通过";
             showlog("解析力测试通过");
@@ -2060,10 +2045,9 @@ void cameratest::on_ResolutionTestButton_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             jxlTestResult = "解析力测试失败";
             showlog("解析力测试失败");
@@ -2077,10 +2061,9 @@ void cameratest::on_ResolutionTestButton_clicked() {
             test.testResult = "失败";
             test.ask = "通过";
             testItems.append(test);
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
             testResultTableUpdate(testItems);
-            testItems.clear();
-            log->saveTestCsv(upperComputerVer, ui->getMac->text(), ui->macInput->text(), testItems);
+
 
             jxlTestResult = "解析度盘歪";
             showlog("图片算法处理不了，大概率是解析度盘太歪了");

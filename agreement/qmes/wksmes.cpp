@@ -16,8 +16,6 @@
 #    pragma execution_character_set("utf-8")
 #endif
 wksmes::wksmes() {
-    
-    
     url = SETTINGS.value("Mes/NET", "http://218.14.127.107:8880/WIP/").toString();
     field = SETTINGS.value("Mes/FIELD", "BT_MAC").toString();
 }
@@ -133,73 +131,81 @@ QString wksmes::transformString(const QString& input) {
 
 void wksmes::TestPass(MesPacketData pack) {
     if (pack.factory == "wks") {
-        // 构建JSON请求体
+        // 构建 JSON 请求体
         QJsonObject json;
-
+        json["lotName"] = pack.lotName;
         json["station_name"] = pack.machineNo;
-        json["userID"] = pack.userNo;          // 添加用户ID
-        json["stepName"] = pack.test_station;  // 可以根据需要更改
-        json["SCAN_TYPE"] = 22;                // 根据需要设置
+        json["userID"] = pack.userNo;
+        json["stepName"] = pack.test_station;
+        json["SCAN_TYPE"] = 22;
 
+        // 构建 inputSerials 项
+        QJsonObject inputSerial;
+
+        // 1. 添加 serialNumber
+        if (!pack.sn.isEmpty()) {
+            inputSerial["serialNumber"] = pack.sn;
+        }
+
+        // 2. 添加 testdatas (如果 pack.itemvalue 存在)
+        if (!pack.itemvalue.isEmpty()) {
+            QJsonArray testdatasArray;
+            QString inputString = pack.itemvalue.mid(1, pack.itemvalue.length() - 2);  // 移除起始和结束的'|'
+
+            // 分割字符串成键值对
+            QStringList keyValuePairs = inputString.split("|");
+
+            // 遍历键值对并添加到 JSON 对象
+            for (const QString& keyValue : keyValuePairs) {
+                int index = keyValue.indexOf(":");
+                if (index != -1) {
+                    QString key = keyValue.left(index).trimmed();
+                    QString value = keyValue.mid(index + 1).trimmed();
+                    QJsonObject interTestdata;
+                    interTestdata["key"] = key;
+                    interTestdata["value"] = value;
+                    testdatasArray.append(interTestdata);
+                }
+            }
+
+            // 如果 testdatasArray 不为空，添加到 inputSerial
+            if (!testdatasArray.isEmpty()) {
+                inputSerial["testdatas"] = testdatasArray;
+            }
+        }
+
+        // 3. 添加 defects (如果 pack.error 存在)
+        if (!pack.error.isEmpty()) {
+            QJsonArray defectsArray;
+            QString errorinputString = pack.error.mid(1, pack.error.length() - 2);
+
+            // 分割字符串成键值对
+            QStringList defectsPairs = errorinputString.split("|");
+
+            // 遍历键值对并添加到 JSON 对象
+            for (const QString& Defects : defectsPairs) {
+                int index = Defects.indexOf(":");
+                if (index != -1) {
+                    QJsonObject interDefect;
+                    QString key = Defects.left(index).trimmed();
+                    QString value = Defects.mid(index + 1).trimmed();
+                    interDefect["defectType"] = key;
+                    interDefect["defectCode"] = value;
+                    defectsArray.append(interDefect);
+                }
+            }
+
+            // 如果 defectsArray 不为空，添加到 inputSerial
+            if (!defectsArray.isEmpty()) {
+                inputSerial["defects"] = defectsArray;
+            }
+        }
+
+        // 4. 将 inputSerial 添加到 inputSerials 数组中
         QJsonArray inputSerials;
-        QJsonObject serial;
-        serial["serialNumber"] = pack.sn;
-        inputSerials.append(serial);
+        inputSerials.append(inputSerial);
 
-        QJsonArray testdatasArray;
-        QString inputString = pack.itemvalue.mid(1, pack.itemvalue.length() - 2);  // 移除起始和结束的'|'
-
-        // 分割字符串成键值对
-        QStringList keyValuePairs = inputString.split("|");  // 跳过空部分
-
-        // 遍历键值对并添加到 JSON 对象
-        for (const QString& keyValue : keyValuePairs) {
-            int index = keyValue.indexOf(":");
-            if (index != -1) {
-                QString key = keyValue.left(index).trimmed();
-                QString value = keyValue.mid(index + 1).trimmed();
-                QJsonObject interTestdata;
-                interTestdata["key"] = key;
-                interTestdata["value"] = value;
-                testdatasArray.append(interTestdata);
-                qDebug() << "解析的键值对：" << keyValue;
-            } else {
-                qDebug() << "无法解析的键值对：" << keyValue;
-            }
-        }
-
-        qDebug() << "测试结果" << testdatasArray;
-        QJsonObject testdatas;
-        testdatas["testdatas"] = testdatasArray;
-        inputSerials.append(testdatas);
-
-        qDebug() << "pack.error" << pack.error;
-
-        QJsonArray defectsArray;
-        QString errorinputString = pack.error.mid(1, pack.error.length() - 2);
-        // 分割字符串成键值对
-        QStringList defectsPairs = errorinputString.split("|");
-        // 遍历键值对并添加到 JSON 对象
-        for (const QString& Defects : defectsPairs) {
-            int index = Defects.indexOf(":");
-            if (index != -1) {
-                QJsonObject interDefects;
-                QString key = Defects.left(index).trimmed();
-                QString value = Defects.mid(index + 1).trimmed();
-                interDefects["defectType"] = key;
-                interDefects["defectCode"] = value;
-                defectsArray.append(interDefects);
-                qDebug() << "解析的键值对：" << Defects;
-            } else {
-                qDebug() << "无法解析的键值对：" << Defects;
-            }
-        }
-        QJsonObject defects;
-        qDebug() << "不良信息" << defectsArray;
-
-        defects["defects"] = defectsArray;
-        inputSerials.append(defects);
-
+        // 添加 inputSerials 到主 JSON 对象
         json["inputSerials"] = inputSerials;
 
         // 将JSON对象转换为字符串

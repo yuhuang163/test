@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1208</width>
+    <width>1234</width>
     <height>1113</height>
    </rect>
   </property>
@@ -35,11 +35,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_factory">
-          <property name="placeholderText">
-           <string>小写</string>
-          </property>
-         </widget>
+         <widget class="QComboBox" name="comboBox_factory"/>
         </item>
        </layout>
       </item>
@@ -59,14 +55,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_productName">
-          <property name="inputMask">
-           <string/>
-          </property>
-          <property name="placeholderText">
-           <string>大写</string>
-          </property>
-         </widget>
+         <widget class="QComboBox" name="comboBox_productName"/>
         </item>
        </layout>
       </item>
@@ -1341,7 +1330,7 @@
         <item>
          <widget class="QLabel" name="label_flash_status">
           <property name="text">
-           <string>flash状态</string>
+           <string>内存状态</string>
           </property>
          </widget>
         </item>
@@ -1410,7 +1399,7 @@
     </widget>
    </item>
    <item row="0" column="6" rowspan="3">
-    <widget class="QGroupBox" name="">
+    <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>产品差异化设置</string>
      </property>
