@@ -1235,6 +1235,9 @@ void cameratest::updateImageOnMainThread() {
 void cameratest::start_dirty_test() {
     if (can_start_dirty_test) {
         picutre_times++;
+        if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+            picutre_times = 2;
+
         if (picutre_times == 2) {
             picutre_times = 0;
             can_start_dirty_test = 0;
