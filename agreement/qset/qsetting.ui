@@ -1426,9 +1426,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBox_SimplPcbaTest">
+       <widget class="QCheckBox" name="checkBox_SimplePcbaTest">
         <property name="text">
-         <string>是否执行简易板厂测试</string>
+         <string>是否执行简易测试</string>
         </property>
        </widget>
       </item>
@@ -1529,6 +1529,23 @@
          <string>imu最后一次回车开始测试</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>静态电流几代</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_CurrentMechine"/>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QPushButton" name="Restore_default_setting">

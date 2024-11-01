@@ -52,7 +52,6 @@
 #include <xwdmes.h>    // 欣旺达的mes头文件
 
 #define WAITTIME 0  // 指令的300延时防止粘包
-#define NEW_XWD_QUIESCENT_CURRENT
 
 #define DEBUG_VER "电刷产测工具   V1.4.0"
 #define CAMERA_VER "摄像测试工站   V1.2.6"
@@ -66,17 +65,20 @@
 #define IMU_VER "IMU校准工站    V1.5.1"
 #define PCBA_VER "电刷板子测试   V1.4.0"
 
-// [PCBA_VER] 修复伟克森mes的bug，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [QC_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [IMU_VER]，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [CAMERA_VER]  上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [DEBUG_VER] 增加电机校准时间的读取，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [AGE_VER] 立讯新增老化静置时间查询，上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [SCREEN_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [SINGLE_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [MOTOR_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [LIGHT_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码
-// [FREE_VER] 上位机设置界面添加下拉选择产品和工厂，调整了保存测试记录的代码，修复bug，增加保存功能，允许调整可拖动区
+// [PCBA_VER] 
+// [QC_VER] 适配欣旺达新版本治具需求
+// [CAMERA_VER]  摄像头测试添加无治具的功能
+// [DEBUG_VER] 修复电机校准时间的读取bug
+//修复简易测试功能的配置bug，添加设置静态电流治具的不同功能
 //
+// [IMU_VER]，
+
+// [AGE_VER] 
+// [SCREEN_VER] 
+// [SINGLE_VER] 
+// [MOTOR_VER] 
+// [LIGHT_VER] 
+// [FREE_VER] 
+
 
 #endif  // ABINI_H

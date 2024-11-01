@@ -37,9 +37,6 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    
-    
-
     updateMainStyle("Ubuntu.qss");
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
 
@@ -50,13 +47,11 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     showlog("action=" + pack.test_station);
     showlog("machineNo=" + pack.machineNo);
 
-
     testResultTableInit();
 }
 
 void motor::refreshMotorCaliMsg(QString msg) {
     showlog(msg);
-    // qDebug() << getIndex()<< "收到数据: " << getIndex();
 
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
     QString folderPath = "D:/测试结果";
@@ -256,9 +251,6 @@ void motor::processInspection(QString stringsn) {
 }
 
 void motor::refreshBaseData(FacGetDevBaseInfo data) {
-    
-    
-
     // 读取软件版本字符串
     QString softwareVersions = SETTINGS.value("ProductInfo/Software_Version").toString();
     QStringList softwareVersionList = softwareVersions.split('=');
@@ -349,9 +341,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     test.ask = softwareVersions;
     testItems.append(test);
 
-
     updateTestData(testItems);
-
 }
 void motor::refreshBattaryData(FacDevInfo adc) {
     QString chargeStateStr;
@@ -646,8 +636,6 @@ void motor::startTask() {
 
                 testResultTableUpdate(testItems);
 
-
-
                 sn = "";
                 stringsn = "";
                 ui->macInput->clear();
@@ -765,8 +753,6 @@ void motor::startTest_task() {
                 testItems.append(test);
 
                 testResultTableUpdate(testItems);
-
-
 
                 sn = "";
                 stringsn = "";

@@ -54,7 +54,7 @@ PB_BIND(FacMotoParam, FacMotoParam, AUTO)
 PB_BIND(MotoOperaInfo, MotoOperaInfo, 2)
 
 
-PB_BIND(ServoMotorInfo, ServoMotorInfo, AUTO)
+PB_BIND(ServoMotorInfo, ServoMotorInfo, 2)
 
 
 PB_BIND(ServoMotorParam, ServoMotorParam, AUTO)
@@ -133,7 +133,6 @@ PB_BIND(FacOtaFileInfo, FacOtaFileInfo, 2)
 
 
 PB_BIND(FacInternetOta, FacInternetOta, 2)
-
 
 
 

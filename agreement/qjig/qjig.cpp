@@ -9,45 +9,57 @@
 #endif
 
 Qjig::Qjig(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {}
-
+// state表示阶段
 void Qjig::set_cylinder_state(int state, int mechine) {
     // if (getIndex() == 2)
     //     return;
     if (state) {
         qDebug() << "打开气缸";
 
-#ifdef NEW_XWD_QUIESCENT_CURRENT
+        if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+            SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+        } else {
+            waitWork(2000);
+            sendjigData(STATE_CYLINDER_OPEN);
 
-#else
-        waitWork(2000);
-        sendjigData(STATE_CYLINDER_OPEN);
-
-        waitWork(1500);
-#endif
+            waitWork(1500);
+        }
 
         if (mechine == 1) {
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-
-#else
-            set_relay_state(1);
-#endif
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+            } else {
+                set_relay_state(1);
+            }
         }
         if (mechine == 2) {
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-            sendjigData(STATE_RELAY_OPEN);
-            waitWork(50);
-            sendjigData(STATE_CYLINDER_OPEN);
-            waitWork(3000);
-            sendjigData(STATE_RELAY_RESET);
-#else
-            set_relay_state(2);
-#endif
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2)
+
+            {
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3) {
+                    sendjigData(STATE_TRAY_MIDDLE);
+                    waitWork(2000);
+                }
+
+                sendjigData(STATE_RELAY_OPEN);
+                waitWork(50);
+                sendjigData(STATE_CYLINDER_OPEN);
+                waitWork(3000);
+                sendjigData(STATE_RELAY_RESET);
+            } else {
+                set_relay_state(2);
+            }
         }
     } else {
         // waitWork(5000);
         sendjigData(STATE_CYLINDER_RESET);
         sendjigData(STATE_RESET_ALL);
-        // waitWork(5000);
+
+        if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3) {
+            waitWork(2000);
+            sendjigData(STATE_TRAY_REAR);
+        }
     }
 }
 
@@ -82,79 +94,166 @@ void Qjig::sendjigData(jigState fixstate) {
             return;
         }
 
+        QByteArray dataToSend;
+
         switch (fixstate) {
             case STATE_CYLINDER_OPEN:
-                // serialPort->write(QByteArray::fromHex("5501050001")); // 气缸1动作
-                serialPort->write(QByteArray("ctl_down\r\n"));
-                // serialPort->write(QByteArray("ctl_down\r\n"));
+
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("ctl_down\r\n");
+                } else {
+                    // dataToSend = QByteArray::fromHex("5501050001");  //不希望夹手
+                }
+
                 break;
 
             case STATE_CYLINDER_RESET:
-
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("ctl_up\r\n"));  // 治具上升
-#else
-                serialPort->write(QByteArray::fromHex("5501050000"));  // 气缸1复位
-#endif
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("ctl_up\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501050000");
+                }
 
                 break;
             case STATE_RELAY1_OPEN:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen1_down\r\n"));  // 笔形气缸1按下
-#else
-                serialPort->write(QByteArray::fromHex("5501010001"));  // 继电器1吸合
-#endif
+
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen1_down\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501010001");
+                }
+
                 break;
 
             case STATE_RELAY_RESET:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen_up\r\n"));  // 笔形气缸1弹起
-#else
-                serialPort->write(QByteArray::fromHex("5501010000"));  // 继电器1复位
-#endif
+
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen_up\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501010000");
+                }
+
                 break;
             case STATE_RELAY_OPEN:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen_down\r\n"));  // 笔形气缸2按下
-#else
-                serialPort->write(QByteArray::fromHex("5501020001"));  // 继电器2吸合
-#endif
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen_down\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501020001");
+                }
+
                 break;
 
             case STATE_RELAY1_RESET:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen1_up\r\n"));  // 笔形气缸1弹起
-#else
-                serialPort->write(QByteArray::fromHex("5501010000"));  // 继电器1复位
-#endif
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen1_up\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501010000");
+                }
+
                 break;
             case STATE_RELAY2_OPEN:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen2_down\r\n"));  // 笔形气缸2按下
-#else
-                serialPort->write(QByteArray::fromHex("5501020001"));  // 继电器2吸合
-#endif
+
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen2_down\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501020001");
+                }
+
                 break;
 
             case STATE_RELAY2_RESET:
-#ifdef NEW_XWD_QUIESCENT_CURRENT
-                serialPort->write(QByteArray("pen2_up\r\n"));  // 笔形气缸2弹起
-#else
-                serialPort->write(QByteArray::fromHex("5501020000"));  // 继电器2复位
-#endif
+
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                    dataToSend = QByteArray("pen2_up\r\n");
+                } else {
+                    dataToSend = QByteArray::fromHex("5501020000");
+                }
 
                 break;
 
             case STATE_RELAY4_OPEN:
-                serialPort->write(QByteArray::fromHex("5501040001"));  // 继电器4吸合
+                dataToSend = QByteArray::fromHex("5501040001");  // 继电器4吸合
                 break;
-            case STATE_RELAY4_RESET: serialPort->write(QByteArray::fromHex("5501040000"));  // 继电器4复位
+            case STATE_RELAY4_RESET:
+                dataToSend = QByteArray::fromHex("5501040000");  // 继电器4复位
+                break;
             case STATE_PEN_PRESS:
-                serialPort->write(QByteArray("pen_press\r\n"));  // 笔形气缸同时按下500ms并弹起复位
+                dataToSend = QByteArray("pen_press\r\n");
+                // serialPort->write(QByteArray("pen_press\r\n"));  // 笔形气缸同时按下500ms并弹起复位
                 break;
             case STATE_RESET_ALL:
-                serialPort->write(QByteArray("reset\r\n"));  // 气缸退出，状态复位
+                dataToSend = QByteArray("reset\r\n");
+                // serialPort->write(QByteArray("reset\r\n"));  // 气缸退出，状态复位
+                break;
+            case STATE_TRAY_MIDDLE:  //进去
+                dataToSend = QByteArray("tray_middle\r\n");
+                // serialPort->write(QByteArray("tray_middle\r\n"));
+                break;
+            case STATE_TRAY_REAR:  //下一个工站
+                dataToSend = QByteArray("tray_rear\r\n");
+                //  serialPort->write(QByteArray("tray_rear\r\n"));
+                break;
+            case STATE_FRONT:  //出来原位
+                dataToSend = QByteArray("tray_front\r\n");
+                //  serialPort->write(QByteArray("tray_front\r\n"));
                 break;
         }
+
+        if (!dataToSend.isEmpty()) {
+            serialPort->write(dataToSend);
+            save_Jig_uart_log(1, dataToSend);
+        }
+    }
+}
+void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
+    QString folderName = "治具log";
+    QDir dir;
+
+    // 检查并创建目录
+    if (!dir.exists(folderName)) {
+        if (!dir.mkpath(folderName)) {
+            qDebug() << "无法创建目录:" << folderName;
+            return;
+        }
+    }
+    // 获取当前时间并格式化为字符串
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
+
+    // 生成文件路径
+    QString fileName = "Jig治具日志" + timestamp + ".log";
+    QString filePath = dir.filePath(folderName + "/" + fileName);
+
+    QFile logFile(filePath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
+        qDebug() << "写入成功治具日志";
+        // 写入数据
+        QTextStream out(&logFile);
+        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
+        // 获取当前时间的详细时间戳
+        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+
+        // 将数据转换为16进制格式
+        QString hexData = data.toHex(' ').toUpper();
+
+        if (txrx)  // 发送的
+        {
+            out << detailedTimestamp << tr("- tx发送的原始数据为：") << data << "\n";
+            out << detailedTimestamp << tr("- tx发送的16进制数据：") << hexData << "\n";
+        } else {
+            out << detailedTimestamp << tr("- rx接收的原始数据为：") << data << "\n";
+            out << detailedTimestamp << tr("- rx接收的16进制数据：") << hexData << "\n";
+        }
+
+        logFile.close();
+    } else {
+        qDebug() << "无法打开治具日志文件：" << fileName;
     }
 }

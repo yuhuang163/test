@@ -34,8 +34,6 @@ Fixture_uart::Fixture_uart(QWidget* parent) :
         }
     });
     running.store(true);
-
-
 }
 
 Fixture_uart::~Fixture_uart() {
@@ -317,9 +315,10 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
 
     qDebug() << "开始打包治具数据包";
     FixturePacketData datapack;  // 发送出去的数据包
-    qDebug()<< "数值为" << receivebuf.toHex();
-    qDebug() << "数值为"<< receivebuf.size();
-    qDebug() << "数值为"<< static_cast<int>(receivebuf.at(0)) << static_cast<int>(receivebuf.at(receivebuf.size() - 1));
+    qDebug() << "数值为" << receivebuf.toHex();
+    qDebug() << "数值为" << receivebuf.size();
+    qDebug() << "数值为" << static_cast<int>(receivebuf.at(0))
+             << static_cast<int>(receivebuf.at(receivebuf.size() - 1));
 
     // 最小长度检查
     if (receivebuf.size() < 3) {

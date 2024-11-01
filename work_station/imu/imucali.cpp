@@ -1224,7 +1224,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     pack.instruct_num = "084";
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                       emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -1243,7 +1243,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     pack.itemvalue = itemvalue;
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                       emit send_end_testPass(pack);
                     }
                 }
 

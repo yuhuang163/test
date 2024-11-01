@@ -170,7 +170,6 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         testItems.append(test);
 
         updateTestData(testItems);
-
     }
 }
 
@@ -228,7 +227,6 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         testItems.append(test);
 
         updateTestData(testItems);
-
     }
 }
 
@@ -601,7 +599,7 @@ void quiescent_current::startTask() {
 
                     pack.itemvalue = "base_state=NG";
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
 
@@ -719,7 +717,6 @@ void quiescent_current::startTask() {
 
                     testResultTableUpdate(testItems);
 
-
                     state = STATE_SAVE_RESULT;
                     totalresult = failValue;
                     break;
@@ -749,7 +746,6 @@ void quiescent_current::startTask() {
                     testItems.append(test);
 
                     testResultTableUpdate(testItems);
-
 
                     waittime->stop();
                     totalresult = passValue;
@@ -792,20 +788,20 @@ void quiescent_current::startTask() {
 
                 isquiescent_currentContinue = false;  // 结束
 
-#ifdef NEW_XWD_QUIESCENT_CURRENT
+                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                } else {
+                    if (pack.factory == "xwd")
+                        jig->set_cylinder_state(0, getIndex());
+                }
 
-#else  // 旧的复位
-
-                if (pack.factory == "xwd")
-                    jig->set_cylinder_state(0, getIndex());
-
-#endif
                 on_disconnectButton_clicked();
                 on_usbdisconnectButton_clicked();
                 ui->snInput->setDisabled(0);
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 emit send_end_test(getIndex());
+
                 state = STATE_IDLE;
                 break;
         }

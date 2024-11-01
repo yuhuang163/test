@@ -45,14 +45,16 @@ void MainWindow::on_pushButton_clicked() {
     qDebug() << "Converted localString:" << localString;
 }
 void MainWindow::on_pushButton_3_clicked() {
-    pb->set_i_am_app();
-    RotasFileStatusReq RotasFiledata;
-    RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
+    // pb->set_i_am_app();
+    // RotasFileStatusReq RotasFiledata;
+    // RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
 
-    pb->set_start_ota_app(RotasFiledata);
-    waitWork(1000);
-    showlog("已发送OTA数据通道开启!");
-    at->sendOTADATA(1);
+    // pb->set_start_ota_app(RotasFiledata);
+    // waitWork(1000);
+    // showlog("已发送OTA数据通道开启!");
+    // at->sendOTADATA(1);
+
+    pb->set_servo_motor_info();
 }
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
@@ -1520,7 +1522,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
     });
     connect(pb, &Qpb::send_ota_result, [&](int r) {
         finish = true;
-   
+
         if (r == 11 || r == 0) {
             result = true;
         }
@@ -2206,8 +2208,8 @@ void MainWindow::on_calculate_returnPressed() {
             csv_data[i].data[0] = data0;
             csv_data[i].data[1] = data1;
             csv_data[i].data[2] = data2;
-            qDebug() << "数值为"<< data0 << data1 << data2;
-            qDebug() << "数值为"<< csv_data[i].data[0] << csv_data[i].data[1] << csv_data[i].data[2];
+            qDebug() << "数值为" << data0 << data1 << data2;
+            qDebug() << "数值为" << csv_data[i].data[0] << csv_data[i].data[1] << csv_data[i].data[2];
         } else {
             qDebug() << "Invalid data format:" << dataStr;
             continue;

@@ -598,7 +598,7 @@ void Qpb::set_motor_cali(int state) {
     pack.command_data.moto_control.write_info[sizeof(pack.command_data.moto_control.write_info) - 1] = '\0';
 
     sendShortPack(pack);
-    qDebug() << "已发送电机校准类型" << state;
+    qDebug() << "已发送电机校准类型" << state << pack.command_data.moto_control.write_info << byteArray << infoString;
 }
 void Qpb::set_motor_cali_state(int state) {
     FactoryDataPackage pack;
@@ -706,6 +706,26 @@ void Qpb::get_servo_motor_info() {
     pack.command_data.moto_control.which_value_item = FacMotoControlType_get_servo_info_data;
     sendShortPack(pack);
     qDebug() << "开始获取电机内容";
+}
+//调试用，没啥用
+void Qpb::set_servo_motor_info() {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+
+    pack.cmd_id = FactroyCmd_UPLOAD_MOTORCALI_DATA;
+    pack.command_data.upload_motorcali_data.type = FacMotorUploadType_SERVO_INFO;
+    pack.command_data.upload_motorcali_data.which_value_item = FacMotorCalibResult_servo_info_tag;
+    pack.command_data.upload_motorcali_data.value_item.servo_info.has_opera_info = 1;
+    pack.command_data.upload_motorcali_data.value_item.servo_info.motor_current = 255;
+    pack.command_data.upload_motorcali_data.value_item.servo_info.motor_voltage = 255;
+
+    strcpy(pack.command_data.upload_motorcali_data.value_item.servo_info.opera_info.hall_info,
+           "呵呵呵呵呵呵呵呵呵呵呵呵呵呵呵");
+    strcpy(pack.command_data.upload_motorcali_data.value_item.servo_info.opera_info.zero_info,
+           "呵呵呵呵呵呵呵呵呵呵呵呵呵呵呵");
+    pack.which_command_data = FactoryDataPackage_upload_motorcali_data_tag;
+    sendShortPack(pack);
+    qDebug() << "发送电机内容";
 }
 
 void Qpb::get_wifi_info() {
@@ -1555,7 +1575,8 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     }
 
     if (x.which_value_item == FacMotorCalibResult_servo_info_tag && x.type == FacMotorUploadType_SERVO_INFO) {
-        qDebug() << "收到电机信息";
+        qDebug() << "收到电机信息"
+                 << "new" << x.value_item.servo_info.opera_info.zero_info;
         emit send_servo_motor_info_msg(x);
         emit sendGetBrushResponse(1);
     }
