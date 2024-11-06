@@ -18,7 +18,6 @@ public:
 
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
-           
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
         QVariant windowSize(availableSize / 4 * 3);
         this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
@@ -41,6 +40,7 @@ public:
             vlayout->addLayout(hlayout);
         }
         testList[0]->getMacLineEdit()->setFocus();
+
         qDebug() << "当前为1拖" << formColumn * formRow;
     }
 
@@ -74,7 +74,7 @@ private:
     int formRow = 1;     // 记录总共是几行几列的窗口
     int formColumn = 1;  // 记录总共是几行几列的窗口
     bool isTestContinue = true;
-    qsetting *qsetting_ui = NULL;
+    qsetting* qsetting_ui = NULL;
 
 protected:
     virtual void closeEvent(QCloseEvent*);

@@ -56,7 +56,7 @@
 #define DEBUG_VER "电刷产测工具   V1.4.1"
 #define CAMERA_VER "摄像测试工站   V1.2.7"
 #define AGE_VER "老化测试工站   V1.2.4"
-#define MOTOR_VER "电机校准工站   V1.2.5"
+#define MOTOR_VER "电机校准工站   V1.2.6"
 #define QC_VER "静态电流测试   V1.4.3"
 #define SCREEN_VER "屏幕测试工站   V1.1.9"
 #define LIGHT_VER "灯光测试工站   V1.2.0"
@@ -66,17 +66,18 @@
 #define PCBA_VER "电刷板子测试   V1.4.0"
 
 // [PCBA_VER] 
-// [QC_VER] 适配欣旺达新版本治具需求
-// [CAMERA_VER]  摄像头测试添加无治具的功能
-// [DEBUG_VER] 修复电机校准时间的读取bug
-//修复简易测试功能的配置bug，添加设置静态电流治具的不同功能
+// [QC_VER] 修复音频测试失败不fail的问题
+// [CAMERA_VER]  摄像头简易测试进一步自动化
+// [DEBUG_VER] 修改蓝牙ota可以支持调整下载速度，wifiota修改密码usmile123
+// [MOTOR_VER] 修复写入版本为空问题
+// [AGE_VER] 修复写入版本为空问题
 //
 // [IMU_VER]，
 
-// [AGE_VER] 
+
 // [SCREEN_VER] 
 // [SINGLE_VER] 
-// [MOTOR_VER] 
+
 // [LIGHT_VER] 
 // [FREE_VER] 
 

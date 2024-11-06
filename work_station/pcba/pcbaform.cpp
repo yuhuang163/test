@@ -1043,14 +1043,12 @@ void PcbaForm::startTask() {
 
                     QString testData =
                         QString("acc_x: %1\nacc_y: %2\nacc_z: %3").arg(really_accx).arg(really_accy).arg(really_accz);
-
                     TestItem test;
                     test.testItem = "六轴数据";
                     test.testData = testData;
                     test.testResult = passValue;
                     test.ask = "通过";
                     testItems.append(test);
-
                     testResultTableUpdate(testItems);
 
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
@@ -1648,6 +1646,14 @@ void PcbaForm::on_macInput_returnPressed() {
 
         emit send_go_next_focus();
         ui->macInput->setDisabled(1);
+
+        TestItem test;
+        test.testItem = "BLEMAC";
+        test.testData = macAddress;
+        test.testResult = passValue;
+        test.ask = "通过";
+        testItems.append(test);
+        testResultTableUpdate(testItems);
 
         // thread->start();
     }

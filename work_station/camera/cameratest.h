@@ -198,7 +198,9 @@ private:
 
     bool is_camera_control = 0;
     bool can_start_dirty_test = 0;
-    int picutre_times = 0;
+    int picutre_dirty_times = 0;
+    bool can_start_offset_test = 0;
+    int picutre_offset_times = 0;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
 
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
@@ -219,6 +221,7 @@ private slots:
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void checkMissingPackets();
     void start_dirty_test();
+    void start_offset_test();
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
     void readDongleSerialPortData() override;

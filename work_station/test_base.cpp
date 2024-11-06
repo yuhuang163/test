@@ -30,7 +30,6 @@ test_base::test_base() :
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     initData();
-    pb->APP_VERSION = upperComputerVer;
 }
 void test_base::initData() {
     pack.factory = SETTINGS.value("Mes/FACTORY").toString();
@@ -231,7 +230,7 @@ void test_base::saveDongleUartLog(QString data) {
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
     // 生成文件路径
-    QString fileName = "dongle日志" + timestamp + ".log";
+    QString fileName = "dongle日志_" + QString::number(m_index) + "_" + timestamp + ".log";
     QString filePath = dir.filePath(folderName + "/" + fileName);
 
     QFile logFile(filePath);
@@ -818,6 +817,8 @@ void test_base::solveMesData(const int mechines, QString msg) {
     }
 }
 void test_base::testResultTableInit() {
+    pb->APP_VERSION = upperComputerVer;
+
     if (testResultTable() == nullptr) {
         showlog("不存在表格");
         return;

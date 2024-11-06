@@ -189,7 +189,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         bool audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toBool();
 
         if (data.flash_state == flashStatus && data.imu_state == imuStatus && data.press_state == pressureStatus &&
-            data.magnet_state == magneticStatus) {
+            data.magnet_state == magneticStatus && data.audio_state == audioState) {
             periph_state = 1;
         } else {
             periph_state = 2;
@@ -205,7 +205,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
         test.ask = QString::number(flashStatus);
-        ;
+
         testItems.append(test);
 
         test.testItem = "六轴状态";

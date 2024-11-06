@@ -1764,7 +1764,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         productName = testpair.product_name;
         deviceName = testpair.device_key;
         deviceSecret = testpair.device_secret;
-        if (ui->ota_secret->text() != "usmile") {
+        if (ui->ota_secret->text() != "usmile123") {
             QMessageBox::warning(NULL, "警告", "密码错误\r\n");
             return;
         }
@@ -3070,7 +3070,6 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         on_startBleOta_clicked();
     }
 }
-#define OTATIMEINTERVAL 10
 void MainWindow::on_startBleOta_clicked() {
     // 断开之前的定时器连接
     if (bleotatimer->isActive()) {
@@ -3111,7 +3110,7 @@ void MainWindow::on_startBleOta_clicked() {
     int numChunks = (totalOtaSize + chunkSize - 1) / chunkSize;  // 计算总包数
 
     // 设置定时器间隔
-    bleotatimer->setInterval(OTATIMEINTERVAL);
+    bleotatimer->setInterval(ui->OtaTimeInterval->text().toInt());
     bleOtaTestTime.start();
 
     // 定义定时器超时处理函数
@@ -3149,7 +3148,7 @@ void MainWindow::on_startBleOta_clicked() {
 
 void MainWindow::setBleOtaState(int state) {
     if (state)
-        bleotatimer->start(OTATIMEINTERVAL);
+        bleotatimer->start(ui->OtaTimeInterval->text().toInt());
     else
         bleotatimer->stop();
 }

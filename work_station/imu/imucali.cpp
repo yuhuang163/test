@@ -965,10 +965,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "通过";
                     test.ask = "关闭";
                     testItems.append(test);
-
                     testResultTableUpdate(testItems);
-
-
                     sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                     state = STATE_GETBASEDATA;
                 }
@@ -993,7 +990,6 @@ void imucali::startTask()  // 编写六轴校准的代码
                         testItems.append(test);
 
                         testResultTableUpdate(testItems);
-
                     }
 
                     if (is_battary_test == 2) {
@@ -1007,7 +1003,6 @@ void imucali::startTask()  // 编写六轴校准的代码
                         testItems.append(test);
 
                         testResultTableUpdate(testItems);
-
                     }
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
 
@@ -1168,7 +1163,6 @@ void imucali::startTask()  // 编写六轴校准的代码
 
                         testResultTableUpdate(testItems);
 
-
                         state = STATE_END;
                     }
                 } else {
@@ -1224,7 +1218,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     pack.instruct_num = "084";
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                       emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -1243,7 +1237,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     pack.itemvalue = itemvalue;
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                       emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                 }
 

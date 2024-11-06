@@ -58,7 +58,6 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         test.ask = flashStatus;
         testItems.append(test);
         updateTestData(testItems);
-
     }
 }
 void ageing::getTestValue(const int mechines, const QString value) {
@@ -433,7 +432,6 @@ void ageing::startTask() {
                         test.ask = "通过";
                         testItems.append(test);
                         testResultTableUpdate(testItems);
-
                         pb->get_periph_state();
                         state = STATE_CHECK_FLASH;
                     }

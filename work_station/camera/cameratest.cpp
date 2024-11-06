@@ -189,6 +189,7 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, &cameratest::send_image_processed, this, &cameratest::updateImageOnMainThread);
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_dirty_test);
+    connect(this, &cameratest::send_image_processed, this, &cameratest::start_offset_test);
 
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
@@ -1234,19 +1235,23 @@ void cameratest::updateImageOnMainThread() {
 }
 void cameratest::start_dirty_test() {
     if (can_start_dirty_test) {
-        picutre_times++;
-        if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
-            picutre_times = 2;
-
-        if (picutre_times == 2) {
-            picutre_times = 0;
+        picutre_dirty_times++;
+        if (picutre_dirty_times == 2) {
+            picutre_dirty_times = 0;
             can_start_dirty_test = 0;
-            // waitWork(2000);
             on_DirtyTestButton_clicked();
         }
     }
 }
-
+void cameratest::start_offset_test() {
+    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool()) {
+        picutre_offset_times++;
+        if (picutre_offset_times == 2) {
+            picutre_offset_times = 0;
+            on_ResolutionTestButton_clicked();
+        }
+    }
+}
 void cameratest::on_normal_clicked() {
     canGoNextMechine(0);
     cameraSendTimer->stop();
@@ -1496,9 +1501,7 @@ void cameratest::on_jxl_abnormal_clicked() {
     test.testResult = "失败";
     test.ask = "通过";
     testItems.append(test);
-
     testResultTableUpdate(testItems);
-
     on_abnormal_clicked();
 }
 
@@ -1538,9 +1541,7 @@ void cameratest::on_jxl_normal_clicked() {
     test.testResult = "通过";
     test.ask = "通过";
     testItems.append(test);
-
     testResultTableUpdate(testItems);
-
     on_OffsetTest_clicked();
 }
 
@@ -1874,7 +1875,11 @@ void cameratest::on_OffsetTest_clicked() {
             case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
             default: break;
         }
-        can_start_dirty_test = 1;
+
+        if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+            on_normal_clicked();
+        else
+            can_start_dirty_test = 1;
         showlog("可以开始赃污测试");
     }
 }
@@ -2023,7 +2028,6 @@ void cameratest::on_ResolutionTestButton_clicked() {
 
                 jxlTestResult = "解析力测试通过";
                 showlog("解析力测试通过");
-                // on_normal_clicked();
             }
 
             if (flag == 0) {
@@ -2035,9 +2039,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
                 test.testResult = "失败";
                 test.ask = "通过";
                 testItems.append(test);
-
                 testResultTableUpdate(testItems);
-
                 jxlTestResult = "解析力测试失败";
                 showlog("解析力测试失败");
 
@@ -2094,7 +2096,8 @@ void cameratest::on_ResolutionTestButton_clicked() {
         // ui->jxl_normal->setDisabled(0);
         // ui->jxl_abnormal->setDisabled(0);
         // ui->DirtyTestButton->setDisabled(0);
-
+        if (flag == 1)
+            on_OffsetTest_clicked();
     } else {
         if (flag == 1)
             on_OffsetTest_clicked();
