@@ -74,12 +74,14 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
     Serial.print("长度为:"); // 打印带有时间戳的消息
     Serial.print(length);
 
-    const int additionalBytes = 9;
+    const int additionalBytes = 10;
     uint8_t modifiedData[length + additionalBytes];
     memset(modifiedData, 0xaa, 8);
 
-    modifiedData[8] = length;
-    memcpy(modifiedData + 9, pData, length);
+    modifiedData[8] = PHY_CHANNEL_FAC;
+
+    modifiedData[9] = length;
+    memcpy(modifiedData + 10, pData, length);
 
     Serial.print("内容为:"); // 打印带有时间戳的消息
     Serial.write(modifiedData, length + additionalBytes);
@@ -100,12 +102,14 @@ void AppNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_
     Serial.print("长度为:"); // 打印带有时间戳的消息
     Serial.print(length);
 
-    const int additionalBytes = 9;
+    const int additionalBytes = 10;
     uint8_t modifiedData[length + additionalBytes];
     memset(modifiedData, 0xaa, 8);
 
-    modifiedData[8] = length;
-    memcpy(modifiedData + 9, pData, length);
+    modifiedData[8] = PHY_CHANNEL_APP;
+
+    modifiedData[9] = length;
+    memcpy(modifiedData + 10, pData, length);
 
     Serial.print("内容为:"); // 打印带有时间戳的消息
     Serial.write(modifiedData, length + additionalBytes);
@@ -125,12 +129,14 @@ void mainNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8
     Serial.print("长度为:"); // 打印带有时间戳的消息
     Serial.print(length);
 
-    const int additionalBytes = 9;
+    const int additionalBytes = 10;
     uint8_t modifiedData[length + additionalBytes];
     memset(modifiedData, 0xaa, 8);
 
-    modifiedData[8] = length;
-    memcpy(modifiedData + 9, pData, length);
+    modifiedData[8] = PHY_CHANNEL_MAIN;
+
+    modifiedData[9] = length;
+    memcpy(modifiedData + 10, pData, length);
 
     Serial.print("内容为:"); // 打印带有时间戳的消息
     Serial.write(modifiedData, length + additionalBytes);
