@@ -58,8 +58,6 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
             return;
         }
     }
-    // 获取当前时间并格式化为字符串
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
     // 生成文件路径
     QString fileNamemacAddress = macAddress;
@@ -75,7 +73,10 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
         // qDebug() << "写入成功牙刷日志";
         // 写入数据
         QTextStream out(&logFile);
-        out << data << endl;
+        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        out << detailedTimestamp << "\n" << data << "\n";
+
+        //   out << data << endl;
         logFile.close();
     } else {
         qDebug() << "无法打开牙刷日志文件：" << fileName;

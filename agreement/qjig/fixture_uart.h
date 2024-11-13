@@ -5,8 +5,8 @@
 #include <QQueue>
 
 #include "Abini.h"
-#include "usmile_ring_buffer.h"
 #include "my_set/my_typedef.h"
+#include "usmile_ring_buffer.h"
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
@@ -27,6 +27,8 @@ typedef enum {
     STATE_THOROUGHFARE1_OUT,  // 通道1出去
     STATE_THOROUGHFARE2_IN,   // 通道2进入
     STATE_THOROUGHFARE2_OUT,  // 通道2出去
+    STATE_THOROUGHFARE3_IN,   // 通道3进入
+    STATE_THOROUGHFARE3_OUT,  // 通道3出去
 
 } camreaFixtureState;
 
@@ -127,7 +129,6 @@ private:
     uint8_t frame_buf[2 * 1024];  // 队列池
 
     QSerialPort* fixtureSerialPort;
-
 
     QTimer* fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;

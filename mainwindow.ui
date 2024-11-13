@@ -3031,23 +3031,15 @@
                 <string>蓝牙ota</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_14">
-                <item row="0" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_82">
-                  <item>
-                   <widget class="QPushButton" name="selectPath">
-                    <property name="text">
-                     <string>选择OTA文件路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="otaFilePath">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/upgrade.ota</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
+                <item row="0" column="3" rowspan="8">
+                 <widget class="QLabel" name="bleotaresult">
+                  <property name="text">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
                 </item>
                 <item row="1" column="0" colspan="3">
                  <layout class="QHBoxLayout" name="horizontalLayout_81">
@@ -3072,7 +3064,14 @@
                   <item>
                    <widget class="QPushButton" name="startBleOta">
                     <property name="text">
-                     <string>开始蓝牙 ota</string>
+                     <string>开始ota</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="stopBleOta">
+                    <property name="text">
+                     <string>停止ota</string>
                     </property>
                    </widget>
                   </item>
@@ -3087,6 +3086,38 @@
                    <widget class="QCheckBox" name="is_bleota_press">
                     <property name="text">
                      <string>OTA压测</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="7" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                  <item>
+                   <widget class="QLabel" name="label_83">
+                    <property name="text">
+                     <string>发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_speed">
+                    <property name="value">
+                     <number>24</number>
                     </property>
                    </widget>
                   </item>
@@ -3110,48 +3141,21 @@
                   </item>
                  </layout>
                 </item>
-                <item row="0" column="3" rowspan="8">
-                 <widget class="QLabel" name="bleotaresult">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                <item row="0" column="0" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
                   <item>
-                   <widget class="QLabel" name="label_83">
+                   <widget class="QPushButton" name="selectPath">
                     <property name="text">
-                     <string>发送进度</string>
+                     <string>选择OTA文件路径</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QProgressBar" name="bel_ota_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="8" column="0" colspan="4">
-                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
-                </item>
-                <item row="7" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_89">
-                  <item>
-                   <widget class="QLabel" name="label_88">
+                   <widget class="QLineEdit" name="otaFilePath">
                     <property name="text">
-                     <string>耗时</string>
+                     <string>C:/Users/heyj/Downloads/upgrade.ota</string>
                     </property>
                    </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="bleotalcdtime"/>
                   </item>
                  </layout>
                 </item>
@@ -3174,7 +3178,20 @@
                     </property>
                    </widget>
                   </item>
+                  <item>
+                   <widget class="QCheckBox" name="is_clear_mac">
+                    <property name="text">
+                     <string>是否升级完成清空mac</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
+                </item>
+                <item row="8" column="0" colspan="4">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
                 </item>
                </layout>
               </widget>

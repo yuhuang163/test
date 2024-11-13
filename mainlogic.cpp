@@ -508,8 +508,7 @@ void MainWindow::saveDongleUartLog(QString data) {
         QTextStream out(&logFile);
         out.setCodec("UTF-8");  // 设置编码格式为UTF-8
         // 获取当前时间的详细时间戳
-        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        out << detailedTimestamp << data << "\n";
+        out << data << "\n";
         logFile.close();
     } else {
         qDebug() << "无法打开dongle日志文件：" << fileName;
@@ -1629,11 +1628,7 @@ void MainWindow::getMac(QString sn_to_search) {
     }
 }
 void MainWindow::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
-    // 获取桌面路径
-    QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-
-    // 构建 "测试结果" 文件夹的完整路径
-    QString folderPath = QDir(desktopPath).filePath("测试结果");
+    QString folderPath = "D:/测试结果";
 
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
@@ -2590,11 +2585,11 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
             if (!image.isNull() || !path.isNull()) {
                 if (ui->active_picture->underMouse()) {  // 如果拖到了active_picture上
                     on_clear_picture_clicked();
+
                     renameFilesInFolder(path);
                 }
                 if (ui->high_speed_tp->underMouse()) {  // 如果拖到了high_speed_tp上
                     on_clear_picture_clicked();
-
                     ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
                     QFileInfo fileInfo(path);
                     QString fileName = fileInfo.fileName();

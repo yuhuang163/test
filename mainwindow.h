@@ -80,7 +80,7 @@ public:
 
     typedef enum {
         PHY_CHANNEL_INVALID = 0,  //无效值
-        PHY_CHANNEL_CAMREA,       //控制命令通道
+        PHY_CHANNEL_CAMREA,       //摄像头通道
         PHY_CHANNEL_LOG,          // ota数据通道
 
         PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
@@ -140,6 +140,8 @@ public:
     QNetworkAccessManager* updatamanager;
 
 private:
+    int totalBleSendData = 0;
+    int stopBleOta = 0;
     void saveDongleUartLog(QString data);
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
@@ -236,6 +238,7 @@ private:
     bool otaFinish = false;
     QStringList otaResults;
     QTimer* bleotatimer = new QTimer(this);
+    int currentChunk = 0;
 
 protected:
     virtual void closeEvent(QCloseEvent*);
@@ -484,6 +487,8 @@ private slots:
     // void on_set_battery_clicked();
 
     void on_brush_relocation_clicked();
+
+    void on_stopBleOta_clicked();
 
 signals:
     void send_uart_state(int data);

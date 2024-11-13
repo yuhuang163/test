@@ -1,13 +1,15 @@
 ﻿#include "qpb.h"
 
 #include <QDebug>
+#include <iomanip>
+#include <sstream>
+#include <vector>
 
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
 #include "qcoreapplication.h"
 #include "qdatetime.h"
-
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
 #endif
@@ -68,8 +70,16 @@ void Qpb::parseCmd(const QByteArray& byte) {
                     state = STATE_IDLE;
                 }
                 if (hitTimes == 7) {
-                    state = STATE_LEN;
+                    state = STATE_CHANNEL;
                 }
+                break;
+
+            case STATE_CHANNEL:
+
+                pbChannel = (ext_ble_phy_channel_e)x;
+
+                state = STATE_LEN;
+
                 break;
 
             case STATE_LEN:
@@ -77,7 +87,9 @@ void Qpb::parseCmd(const QByteArray& byte) {
                 state = STATE_PB_HEADER;
                 break;
 
-            case STATE_PB_HEADER: state = x ? STATE_STAGE : STATE_UNPACK; break;
+            case STATE_PB_HEADER:  // 0就解包，非0就继续加东西
+                state = x ? STATE_STAGE : STATE_UNPACK;
+                break;
 
             case STATE_STAGE:
                 ibuffer.push_back(x);
@@ -88,7 +100,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                 break;
 
             case STATE_UNPACK:
-
+                qDebug() << "len" << len << ibuffer.size();
                 if (ibuffer.size() == len - 1) {
                     ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
                     uint8_t crc16 = calCrc16(ipack);
@@ -97,7 +109,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
 
                     if (crc16 == x) {
                         pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
-                        if (pb_mode == FACTORY) {
+                        if (pbChannel == PHY_CHANNEL_FAC) {
                             if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack)) {
                                 // qDebug() << "command_id" << recievePack.cmd_id;
 
@@ -112,7 +124,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                             }
                         }
 
-                        if (pb_mode == CLIENT) {
+                        else if (pbChannel == PHY_CHANNEL_APP || pbChannel == PHY_CHANNEL_MAIN) {
                             if (pb_decode(&istream, DataPackage_fields, &blePack)) {
                                 qDebug() << "blecommand_id" << blePack.command_id;
 
@@ -126,7 +138,10 @@ void Qpb::parseCmd(const QByteArray& byte) {
                             } else {
                                 qDebug() << "ble 解码失败原因：" << PB_GET_ERROR(&istream);
                             }
+                        } else {
+                            emit send_pb_date("通道出错，请更新dongle固件为1.3.3");
                         }
+
                     } else {
                         qDebug() << "pb协议的CRC校验失败";
                         qDebug() << "收到的crc16" << crc16 << x;
@@ -256,6 +271,16 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
             output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
         }
         qDebug() << "发出去的pb码为" << output.trimmed();
+
+        std::ostringstream oss;
+        for (const auto& byte : new_buffer) {
+            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+        }
+
+        // 使用 qDebug() 输出十六进制字符串
+        QString hex_string = QString::fromStdString(oss.str());
+        qDebug() << "发出去的新码为" << hex_string;
+
     } else {
         qDebug() << "短包工厂pb编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
@@ -1505,6 +1530,9 @@ void Qpb::registerCommand() {
     bleCommandList[CommandId_ROTAS_FILE_STATUS_REQ] =
         std::bind(&Qpb::process_CommandId_ROTAS_FILE_STATUS_REQ, this, std::placeholders::_1);
 
+    bleCommandList[CommandId_GET_USER_INFO] =
+        std::bind(&Qpb::process_CommandId_GET_USER_INFO, this, std::placeholders::_1);
+
     factoryCommandList[FactroyCmd_WIFI_DEMAND] =
         std::bind(&Qpb::process_FactroyCmd_WIFI_DEMAND, this, std::placeholders::_1);  // 获取电量信息
 
@@ -1525,6 +1553,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
     FacWifiDemand x;
     memcpy(&x, &f.command_data, sizeof(x));
+
     emit send_FactroyCmd_WIFI_DEMAND(x);
     qDebug() << "收到wifi连接回应" << x.result;
     emit sendGetBrushResponse(1);
@@ -1799,8 +1828,10 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     }
     if (x.dev_state_type == DevStateType_SHIP) {
         qDebug() << "设置船运成功";
-        emit send_pb_date("设置船运成功");
+        emit send_pb_date("设置船运成功" + QString::number(shipCount));
         emit sendGetBrushResponse(1);
+        if (shipCount)
+            shipCount++;
     }
     if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
         qDebug() << "设置工厂模式成功";
@@ -1857,8 +1888,17 @@ void Qpb::process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f) {
     RotasFileStatusReq x;
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.fileType == RotasUpdateFile_BLE_FIRMWARE) {
-        emit send_pb_date("成功发送开始ota指令");
-
+        emit sendGetBrushResponse(1);
+    }
+}
+void Qpb::process_CommandId_GET_USER_INFO(DataPackage& f) {
+    DataPackage x;
+    memcpy(&x, &f, sizeof(x));
+    qDebug() << "x.which_command_data" << x.which_command_data;
+    if (x.which_command_data == DataPackage_get_user_info_tag)  //回应是0
+    {
+        emit send_pb_date("成功收到获取user_info指令回应");
+        is_set_i_am_app = 1;
         emit sendGetBrushResponse(1);
     }
 }
@@ -1914,6 +1954,12 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
         case CommandId_ROTAS_FILE_STATUS_RSP:
             if (f.command_data.rota_file_status_rsp.result < s.size()) {
                 emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
+
+                if (f.command_data.rota_file_status_rsp.result == 0) {
+                    emit send_pb_date("成功收到开始ota指令回应");
+                    is_ota_start = 1;
+                }
+
             } else {
                 emit send_pb_date(QString("未知错误码: %1").arg(f.command_data.rota_file_status_rsp.result));
             }

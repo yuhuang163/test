@@ -45,16 +45,15 @@ void MainWindow::on_pushButton_clicked() {
     qDebug() << "Converted localString:" << localString;
 }
 void MainWindow::on_pushButton_3_clicked() {
-    // pb->set_i_am_app();
+    pb->set_i_am_app();
     // RotasFileStatusReq RotasFiledata;
     // RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
 
     // pb->set_start_ota_app(RotasFiledata);
     // waitWork(1000);
-    // showlog("已发送OTA数据通道开启!");
     // at->sendOTADATA(1);
 
-    pb->set_servo_motor_info();
+    // pb->set_servo_motor_info();
 }
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
@@ -175,8 +174,14 @@ MainWindow::MainWindow(QWidget* parent) :
     });
 
     connect(pb, &Qpb::send_ota_result, [&](int r) {
+        ui->testMsg->appendPlainText(" ");
+        ui->testMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+
         ui->testMsg->appendPlainText("OTA 结果 : ");
         ui->testMsg->appendPlainText(otaResults[r]);
+
+        ui->bleOtaMsg->appendPlainText(" ");
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
         ui->bleOtaMsg->appendPlainText("OTA 结果 : ");
         ui->bleOtaMsg->appendPlainText(otaResults[r]);
 
@@ -191,11 +196,14 @@ MainWindow::MainWindow(QWidget* parent) :
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
             } else {
-                ui->bleotamacInput->clear();
-                ui->bleotamacInput->setFocus();
+                if (ui->is_clear_mac->checkState()) {
+                    ui->bleotamacInput->clear();
+                    ui->bleotamacInput->setFocus();
+                }
             }
 
-        } else {
+        } else if (r == 12) {
+            on_stopBleOta_clicked();
             on_disconnectButton_clicked();
             ui->bleotaresult->setText("FAIL");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
@@ -204,8 +212,10 @@ MainWindow::MainWindow(QWidget* parent) :
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
             } else {
-                ui->bleotamacInput->clear();
-                ui->bleotamacInput->setFocus();
+                if (ui->is_clear_mac->checkState()) {
+                    ui->bleotamacInput->clear();
+                    ui->bleotamacInput->setFocus();
+                }
             }
         }
     });
@@ -576,6 +586,7 @@ void MainWindow::openDongleSerialPort() {
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
                 &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
     } else {
+        ui->testMsg->appendPlainText("串口被占用！");
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
         // showlog("打开错误");
     }
@@ -2554,7 +2565,7 @@ void MainWindow::on_nfc_read_clicked()
     unsigned char szSnr[100] = "\0";
     unsigned int SnrLen = 0;
     QString ReadNfcData = "";
-    int dataSize = 62;
+    int dataSize = 61;
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 
@@ -2750,34 +2761,68 @@ void MainWindow::on_write_device_subpid_clicked() {
     pb->set_sn(FacDevInfoType_SUB_PID, subpid);
     showlog("已绑定subpid到牙刷");
 }
+// void MainWindow::on_clear_picture_clicked() {
+//     // 创建网络访问管理器
+//     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+
+//     // 创建请求
+//     QNetworkRequest request;
+//     request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));  // 拼接
+//                                                                          // "/trigger_function"
+//                                                                          // 到 ESP32 的 IP 地址
+
+//     // 发送 GET 请求
+//     QNetworkReply* reply = manager->get(request);
+
+//     // 处理请求完成信号
+//     connect(reply, &QNetworkReply::finished, [=]() {
+//         // 检查响应状态码
+//         if (reply->error() == QNetworkReply::NoError) {
+//             qDebug() << "Request succeeded";
+//             showlog("图片删除完毕");
+//         } else {
+//             qDebug() << "Request failed:" << reply->errorString();
+//             showlog("图片删除失败");
+//         }
+
+//         // 释放资源
+//         reply->deleteLater();
+//         manager->deleteLater();
+//     });
+// }
+
 void MainWindow::on_clear_picture_clicked() {
     // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));  // 拼接
-                                                                         // "/trigger_function"
-                                                                         // 到 ESP32 的 IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));
 
     // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
-    // 处理请求完成信号
-    connect(reply, &QNetworkReply::finished, [=]() {
-        // 检查响应状态码
-        if (reply->error() == QNetworkReply::NoError) {
-            qDebug() << "Request succeeded";
-            showlog("图片删除完毕");
-        } else {
-            qDebug() << "Request failed:" << reply->errorString();
-            showlog("图片删除失败");
-        }
+    // 创建事件循环
+    QEventLoop loop;
 
-        // 释放资源
-        reply->deleteLater();
-        manager->deleteLater();
-    });
+    // 连接请求完成信号到事件循环的退出槽
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+    // 进入事件循环，等待网络请求完成
+    loop.exec();
+
+    // 请求完成后处理结果
+    if (reply->error() == QNetworkReply::NoError) {
+        qDebug() << "Request succeeded";
+        showlog("图片删除完毕");
+    } else {
+        qDebug() << "Request failed:" << reply->errorString();
+        showlog("图片删除失败");
+    }
+
+    // 释放资源
+    reply->deleteLater();
+    manager->deleteLater();
 }
 void MainWindow::on_up_picture_clicked() {
     // 创建网络访问管理器
@@ -3030,6 +3075,7 @@ void MainWindow::on_uploadapp_clicked() {
 void MainWindow::on_delefile_clicked() { deleteFile("http://163.177.79.53:16888/Readme.md"); }
 
 void MainWindow::on_bleotamacInput_returnPressed() {
+    on_stopBleOta_clicked();
     on_disconnectButton_clicked();
 
     if (!ui->is_bleota_press->checkState()) {
@@ -3044,6 +3090,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
+
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
@@ -3053,23 +3100,58 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     } else {
         waitWork(500);
         at->sendOTADATA(0);
+        pb->reset_all_pb();
         macAddress = ui->bleotamacInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
-        pb->setPbMode(0);  //为了区分收到的解包是app接口
-        at->sendotaMac(ui->bleotamacInput->text());
-        at->resetConnected();
 
-        QTime timeout;
+        at->resetConnected();
+        at->sendotaMac(ui->bleotamacInput->text());
+
+        QTime bleOtaTimeConnectOut;
+        bleOtaTimeConnectOut.start();
+        ui->bleOtaMsg->appendPlainText(" ");
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+        ui->bleOtaMsg->appendPlainText("开始连接蓝牙");
+        stopBleOta = 0;  //取消停止ota
         while (at->getConnected() == false) {
             waitWork(100);
-            if (timeout.elapsed() > 1000 * 30) {
-                ui->testMsg->appendPlainText("蓝牙连接超时");
-                break;
+            if (bleOtaTimeConnectOut.elapsed() > 1000 * 30) {  //安装需要2分钟
+                bleOtaTimeConnectOut.start();
+                showlog("蓝牙连接超时,重试连接蓝牙");
+                ui->log->clear();
+                on_disconnectButton_clicked();
+                if (!dongleSerialPort->isOpen()) {
+                    on_connectButton_clicked();
+                }
+                waitWork(500);
+                if (at->getConnected())
+                    break;
+                at->sendotaMac(ui->bleotamacInput->text());
+            }
+            if (stopBleOta) {
+                showlog("停止测试");
+                stopBleOta = 0;
+                return;  // 停止测试
             }
         }
+        pb->setPbMode(1);  //为了区分收到的解包工厂接口
+        on_getBasicInfoButton_clicked();
+        waitWork(500);
+        on_getperipheralButton_clicked();
+        waitWork(500);
+        pb->setPbMode(0);  //为了区分收到的解包是app接口
         on_startBleOta_clicked();
+        waitWork(3000);
     }
 }
+
+void MainWindow::on_stopBleOta_clicked() {
+    stopBleOta = 1;
+    bleotatimer->stop();
+    disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
+    currentChunk = 0;
+}
+
 void MainWindow::on_startBleOta_clicked() {
     // 断开之前的定时器连接
     if (bleotatimer->isActive()) {
@@ -3088,49 +3170,73 @@ void MainWindow::on_startBleOta_clicked() {
         QMessageBox::critical(this, "错误", "无法打开OTA文件");
         return;
     }
-
+    qDebug() << "文件路径" << filePath;
     QByteArray fileData = file.readAll();
     file.close();
     showlog("文件大小为：" + QString::number(fileData.size()));
-    pb->set_i_am_app();  //假装是app
+
+    while (!pb->getisSetIamApp()) {
+        showlog("已发送假装app!");
+        pb->set_i_am_app();  //假装是app
+        waitWork(1000);
+    }
+    showlog("假装app成功");
 
     RotasFileStatusReq RotasFiledata;
     RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
     RotasFiledata.fileUnzipSize = fileData.size();
     RotasFiledata.fileSize = fileData.size();
 
-    pb->set_start_ota_app(RotasFiledata);
-    showlog("已发送开始OTA!");
-    waitWork(1000);
-    showlog("已发送OTA数据通道开启!");
-    at->sendOTADATA(1);
+    while (!pb->getisOtaStart()) {
+        showlog("已发送开始OTA!");
+        pb->set_start_ota_app(RotasFiledata);
+        waitWork(2000);
+    }
 
+    showlog("开始OTA!");
+    waitWork(1000);
+    showlog("开始发送OTA数据通道开启");
+    at->sendOTADATA(1);
+    showlog("已发送OTA数据通道开启");
+    currentChunk = 0;
     int chunkSize = 300;  // 每包244字节
     int totalOtaSize = fileData.size();
     int numChunks = (totalOtaSize + chunkSize - 1) / chunkSize;  // 计算总包数
 
     // 设置定时器间隔
-    bleotatimer->setInterval(ui->OtaTimeInterval->text().toInt());
-    bleOtaTestTime.start();
+    bool ok;
+    int interval = ui->OtaTimeInterval->text().toInt(&ok);
+    if (!ok || interval <= 0) {
+        QMessageBox::warning(this, "警告", "无效的时间间隔");
+        return;
+    }
+    bleotatimer->setInterval(interval);
 
+    bleOtaTestTime.start();
+    totalBleSendData = 0;
     // 定义定时器超时处理函数
     connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
         // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         // showlog("开始发送:" + timestamp);
         ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
-        static int currentChunk = 0;
+        int offset = currentChunk * chunkSize;
+        int size = qMin(chunkSize, totalOtaSize - offset);
+
+        QByteArray chunk = fileData.mid(offset, size);
         if (currentChunk >= numChunks) {
             showlog("文件发送完毕!");
+            qDebug() << "ota write data" << chunk.size() << currentChunk << offset << totalBleSendData;
             bleotatimer->stop();
+            disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
             currentChunk = 0;
             return;
         }
 
-        int offset = currentChunk * chunkSize;
-        int size = qMin(chunkSize, totalOtaSize - offset);
-        QByteArray chunk = fileData.mid(offset, size);
-
         dongleSerialPort->write(chunk);
+        totalBleSendData = chunk.size() + totalBleSendData;
+        if (currentChunk % 20 == 0) {
+            qDebug() << "ota write data" << chunk.size() << currentChunk << offset << totalBleSendData;
+        }
         // timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         // showlog("发送包:" + timestamp);
 
@@ -3160,7 +3266,13 @@ void MainWindow::on_selectPath_clicked() {
 }
 
 void MainWindow::on_ship_bomb_clicked() {
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+    waitWork(1000);
     at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
+
+    pb->shipCount = 1;
 }
 
 void MainWindow::on_get_noisy_clicked() {

@@ -59,10 +59,10 @@ void lxmes::ProcessInspection(MesPacketData pack) {
 
             if (response.contains("0 SFC_OK")) {
                 emit operateMesSucess(pack.mechines);
-                qDebug() << "过站成功";
+                qDebug() << "站前检查成功";
                 AgeTimeCheck(pack);
             } else {
-                emit operateMesError(pack.mechines, "过站失败：" + response);
+                emit operateMesError(pack.mechines, "站前检查失败：" + response);
             }
         } else {
             emit operateMesError(pack.mechines, reply->errorString());

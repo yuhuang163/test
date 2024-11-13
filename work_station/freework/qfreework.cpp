@@ -411,7 +411,6 @@ void QFreeWork::startTask() {
                             testItems.append(test);
 
                             testResultTableUpdate(testItems);
-
                         }
                         ++teststate;
                     }
@@ -430,7 +429,6 @@ void QFreeWork::startTask() {
             testItems.append(test);
 
             testResultTableUpdate(testItems);
-
 
             if (TestResult == failValue) {
                 ui->test_result->setText("FAIL");
@@ -569,7 +567,6 @@ void QFreeWork::refreshBattaryData(FacDevInfo adc) {
         testItems.append(test);
 
         testResultTableUpdate(testItems);
-
 
         charageresult = "通过";
         voltageresult = "通过";
@@ -897,6 +894,9 @@ void QFreeWork::on_getMac_returnPressed() {
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);

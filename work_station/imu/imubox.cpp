@@ -164,12 +164,9 @@ imubox::~imubox() {
     delete ui;
 }
 void imubox::resetall() {
-
-    if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) {//表示p20p回车开始
+    if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) {  //表示p20p回车开始
         startTest();
     }
-
-
 }
 //把12个的其中1个杀死变成1，跟随测试
 void imubox::set_vector_state(int state) {

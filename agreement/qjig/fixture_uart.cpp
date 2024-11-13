@@ -441,6 +441,9 @@ void Fixture_uart::set_camera_action(camreaFixtureState fixstate) {
         case STATE_THOROUGHFARE1_OUT: dataToSend = QByteArray("CTL_OUT1\r\n"); break;
         case STATE_THOROUGHFARE2_IN: dataToSend = QByteArray("CTL_IN2\r\n"); break;
         case STATE_THOROUGHFARE2_OUT: dataToSend = QByteArray("CTL_OUT2\r\n"); break;
+        case STATE_THOROUGHFARE3_IN: dataToSend = QByteArray("CTL_IN3\r\n"); break;
+        case STATE_THOROUGHFARE3_OUT: dataToSend = QByteArray("CTL_OUT3\r\n"); break;
+
 
         default: break;
     }

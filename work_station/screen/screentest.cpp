@@ -31,9 +31,6 @@ screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    
-    
-
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
     showlog("line=" + pack.line);
@@ -141,7 +138,7 @@ void screentest::canGoNextMechine(int x) {
 
 void screentest::processInspection(QString stringsn) {
     if (stringsn != "" || !ui->isusemes->checkState()) {
-        if (ui->isformmes->checkState()) {
+        if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
             pack.sn = stringsn;
 
@@ -163,6 +160,7 @@ void screentest::processInspection(QString stringsn) {
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
+
 void screentest::refreshSn(FacDevInfo data) {
     QString brushstringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
 
@@ -232,8 +230,6 @@ void screentest::startTask()  // 编写六轴校准的代码
 
                         testResultTableUpdate(testItems);
 
-
-
                         showlog("sn已比对成功");
                         state = STATE_DISABLE_SLEEP_1;
                     } else if (snCompareOk == 2) {
@@ -245,8 +241,6 @@ void screentest::startTask()  // 编写六轴校准的代码
                         testItems.append(test);
 
                         testResultTableUpdate(testItems);
-
-
 
                         showlog("sn比对失败");
                         result = failValue;
@@ -363,9 +357,6 @@ void screentest::startTask()  // 编写六轴校准的代码
                 testItems.append(test);
 
                 testResultTableUpdate(testItems);
-
-
-
 
                 stringsn = "";
                 ui->getMac->clear();
@@ -492,6 +483,9 @@ void screentest::on_getMac_returnPressed() {
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -500,8 +494,9 @@ void screentest::on_getMac_returnPressed() {
     if (!snRegex.match(ui->getMac->text()).hasMatch()) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");        showlog("实际长度为"+QString::number(ui->getMac->text().length()));
-        showlog("要求格式为"+snPattern);
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;
@@ -515,7 +510,7 @@ void screentest::on_getMac_returnPressed() {
 }
 
 void screentest::processGetMesTestValue() {
-    if (ui->isusemes->checkState()) {
+    if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
 
         pack.is_hq_send_mac = 1;

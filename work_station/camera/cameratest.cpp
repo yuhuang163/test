@@ -798,6 +798,7 @@ void cameratest::startTask() {
                 switch (getIndex()) {
                     case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
                     case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
+                    case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_OUT); break;
                     default: break;
                 }
 
@@ -964,6 +965,9 @@ void cameratest::on_getMac_returnPressed() {
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
     ui->getMac->setDisabled(1);
     ui->macInput->setDisabled(1);
     // 检查是否是序列号格式
@@ -1460,6 +1464,8 @@ void cameratest::on_stopTest_clicked() {
     switch (getIndex()) {
         case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
         case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
+        case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_OUT); break;
+
         default: break;
     }
 }
@@ -1873,6 +1879,8 @@ void cameratest::on_OffsetTest_clicked() {
         switch (getIndex()) {
             case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
             case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
+            case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_IN); break;
+
             default: break;
         }
 

@@ -238,8 +238,7 @@ void test_base::saveDongleUartLog(QString data) {
         QTextStream out(&logFile);
         out.setCodec("UTF-8");  // 设置编码格式为UTF-8
         // 获取当前时间的详细时间戳
-        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        out << detailedTimestamp << data << "\n";
+        out << data << "\n";
         logFile.close();
     } else {
         qDebug() << "无法打开dongle日志文件：" << fileName;
@@ -354,7 +353,7 @@ void test_base::openDongleSerialPort() {
                 &test_base::readDongleSerialPortData);  // timeout执行真正的读取操作
     } else {
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // showlog("打开错误");
+        showlog("串口被占用！");
     }
 }
 

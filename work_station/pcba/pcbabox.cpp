@@ -67,6 +67,14 @@ pcbabox::pcbabox(QWidget* parent) :
         }
         testList[0]->getMacLineEdit()->setFocus();
     });
+
+    QAction* clear_sn_act = ui->menubar->addAction("清空所有sn");
+    connect(clear_sn_act, &QAction::triggered, [=]() {
+        for (int i = 0; i < testList.size(); i++) {
+            testList[i]->getMacLineEdit()->clear();
+        }
+        testList[0]->getMacLineEdit()->setFocus();
+    });
 }
 //用于治具的开始测试
 void pcbabox::startTest() {

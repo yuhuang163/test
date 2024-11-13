@@ -140,6 +140,7 @@ void Qat::sendMAINDATA(int state) {
 
 void Qat::sendBOMB(QString devicename, QString rssi, QString connectionInterval, QString command) {
     QString s = "AT+BOMB=" + devicename + "," + rssi + "," + connectionInterval + "," + command + "\r\n";
+    qDebug() << "炸弹内容："<<s;
     sendCmd(s);
 }
 void Qat::ask_mac() {

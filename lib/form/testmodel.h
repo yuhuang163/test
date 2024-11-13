@@ -29,7 +29,7 @@ public slots:
 public:
     QStandardItem *testItemName;
     QStandardItem *setValue;
-    QStandardItem *testVaule;
+    QStandardItem *testValue ;
     QStandardItem *testResult;
 
     TestItems(QString name, QString displayName, QString value = "");

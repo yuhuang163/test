@@ -1009,7 +1009,6 @@ void PcbaForm::startTask() {
                 waitWork(500);                      // 用于esp32启动等待时间
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog(ui->macInput->text());
-
                 totalresult = passValue;
                 state = STATE_WATI_CONNECT;
 
@@ -1428,6 +1427,8 @@ void PcbaForm::startTask() {
                         reply =
                             QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
                         if (reply == QMessageBox::No) {
+                            showlog("电机测试失败");
+                            erroContent << QString("|电机测试:异常");
                             totalresult = failValue;
                         }
                     }
@@ -1646,14 +1647,7 @@ void PcbaForm::on_macInput_returnPressed() {
 
         emit send_go_next_focus();
         ui->macInput->setDisabled(1);
-
-        TestItem test;
-        test.testItem = "BLEMAC";
-        test.testData = macAddress;
-        test.testResult = passValue;
-        test.ask = "通过";
-        testItems.append(test);
-        testResultTableUpdate(testItems);
+        pack.mac = macAddress;
 
         // thread->start();
     }
@@ -1725,6 +1719,10 @@ void PcbaForm::on_getMac_returnPressed() {
     ui->mes_state->setStyleSheet("font-size: 20px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
+
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
@@ -1742,6 +1740,9 @@ void PcbaForm::on_getMac_returnPressed() {
     emit send_go_next_focus();
 
     processInspection(ui->getMac->text());
+
+    if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
+        on_start_scan_clicked();
 }
 void PcbaForm::processInspection(QString stringsn) {
     if (stringsn != "" || !ui->isusemes->checkState()) {

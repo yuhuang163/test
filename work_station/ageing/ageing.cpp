@@ -619,6 +619,9 @@ void ageing::on_getMac_returnPressed() {
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);

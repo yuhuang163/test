@@ -53,33 +53,29 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.4.1"
-#define CAMERA_VER "摄像测试工站   V1.2.7"
-#define AGE_VER "老化测试工站   V1.2.4"
-#define MOTOR_VER "电机校准工站   V1.2.6"
-#define QC_VER "静态电流测试   V1.4.3"
-#define SCREEN_VER "屏幕测试工站   V1.1.9"
-#define LIGHT_VER "灯光测试工站   V1.2.0"
-#define SINGLE_VER "信号测试工站   V1.4.8"
-#define FREE_VER "自由测试工站   V1.1.2"
-#define IMU_VER "IMU校准工站    V1.5.1"
-#define PCBA_VER "电刷板子测试   V1.4.0"
+#define DEBUG_VER "电刷产测工具   V1.4.5"
+#define CAMERA_VER "摄像测试工站   V1.2.9"
+#define AGE_VER "老化测试工站   V1.2.6"
+#define MOTOR_VER "电机校准工站   V1.2.7"
+#define QC_VER "静态电流测试   V1.4.5"
+#define SCREEN_VER "屏幕测试工站   V1.2.0"
+#define LIGHT_VER "灯光测试工站   V1.2.1"
+#define SINGLE_VER "信号测试工站   V1.4.9"
+#define FREE_VER "自由测试工站   V1.1.3"
+#define IMU_VER "IMU校准工站    V1.5.2"
+#define PCBA_VER "电刷板子测试   V1.4.1"
 
-// [PCBA_VER] 
-// [QC_VER] 修复音频测试失败不fail的问题
-// [CAMERA_VER]  摄像头简易测试进一步自动化
-// [DEBUG_VER] 修改蓝牙ota可以支持调整下载速度，wifiota修改密码usmile123
-// [MOTOR_VER] 修复写入版本为空问题
-// [AGE_VER] 修复写入版本为空问题
+// [PCBA_VER] 伟克森mes添加mac查重功能，增加pb协议通道选择，牙刷日志保存加时间戳，增加清空所有sn功能，简易测试添加sn触发的功能，适应高分辨率屏幕
+// [QC_VER] 增加pb协议通道选择，牙刷日志保存加时间戳，适应高分辨率屏幕
+// [CAMERA_VER]  摄像头测试允许3路测试治具，增加pb协议通道选择，适应高分辨率屏幕
+// [DEBUG_VER] 增加pb协议通道选择，保存的报告全部存到d盘，ota日志压测等稳定性添加，修改nfc读取多读，船运炸弹计数，UI预览清图阻塞式，允许多个版本的固件测试pass，适应高分辨率屏幕
+// [MOTOR_VER] 增加pb协议通道选择，适应高分辨率屏幕
+// [AGE_VER] 增加pb协议通道选择，适应高分辨率屏幕
+// [IMU_VER] 增加pb协议通道选择，适应高分辨率屏幕
+// [SCREEN_VER] 增加pb协议通道选择，屏幕测试修复离线获取mac的bug，适应高分辨率屏幕
+// [SINGLE_VER] 增加pb协议通道选择，适应高分辨率屏幕
+// [LIGHT_VER] 增加pb协议通道选择，适应高分辨率屏幕
+// [FREE_VER] 增加pb协议通道选择，修改nfc读取多读，适应高分辨率屏幕
 //
-// [IMU_VER]，
-
-
-// [SCREEN_VER] 
-// [SINGLE_VER] 
-
-// [LIGHT_VER] 
-// [FREE_VER] 
-
 
 #endif  // ABINI_H

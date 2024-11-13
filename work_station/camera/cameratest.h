@@ -140,7 +140,7 @@ public:
     ImageViewer* viewercamrea_py;
     typedef enum {
         PHY_CHANNEL_INVALID = 0,  //无效值
-        PHY_CHANNEL_CAMREA,       //控制命令通道
+        PHY_CHANNEL_CAMREA,       //摄像头命令通道
         PHY_CHANNEL_LOG,          // ota数据通道
 
         PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道

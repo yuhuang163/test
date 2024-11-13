@@ -949,6 +949,9 @@ void wifibletest::on_getMac_returnPressed() {
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -1603,7 +1606,7 @@ void wifibletest::on_nfc_read_clicked() {
     unsigned char szSnr[100] = "\0";
     unsigned int SnrLen = 0;
     ReadNfcData = "";
-    int dataSize = 62;
+    int dataSize = 61;
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
 

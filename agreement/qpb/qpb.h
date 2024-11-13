@@ -49,6 +49,7 @@ class Qpb : public QSerialPort {
     Q_OBJECT
 public:
     QString APP_VERSION;
+    int shipCount = 0;
     explicit Qpb(QSerialPort* parent = nullptr);
     void parseCmd(const QByteArray& byte);
     void sendShortPack(const FactoryDataPackage& pack);
@@ -61,6 +62,9 @@ public:
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
     bool getisDevintowhitemode() { return is_dev_into_white_mode; }
+    bool getisOtaStart() { return is_ota_start; }
+    bool getisSetIamApp() { return is_set_i_am_app; }
+
     int is_motor_cali_data_set = 0;
     int getisHallCali() { return is_hall_cali; }
     int getis_camera_control() { return is_camera_control; }
@@ -85,7 +89,8 @@ public:
 
     void reset_all_pb() {
         is_dev_into_white_mode = 0;
-
+        is_ota_start = 0;
+        is_set_i_am_app = 0;
         is_wif_set = 0;
         is_damping_state = 0;
         is_motor_test_state = 0;
@@ -105,7 +110,15 @@ public:
         is_get_imu_cali_data = 0;
     }  // 复位参数
 private:
-    typedef enum { STATE_IDLE, STATE_HEADER, STATE_LEN, STATE_STAGE, STATE_PB_HEADER, STATE_UNPACK } State;
+    typedef enum {
+        STATE_IDLE,
+        STATE_HEADER,
+        STATE_CHANNEL,
+        STATE_LEN,
+        STATE_STAGE,
+        STATE_PB_HEADER,
+        STATE_UNPACK
+    } State;
     enum PB_MODE {
         CLIENT,
         FACTORY,
@@ -116,9 +129,12 @@ private:
         PHY_CHANNEL_APP,          // app数据通道
         PHY_CHANNEL_MAIN,         // main数据通道
     } ext_ble_phy_channel_e;
+
+    ext_ble_phy_channel_e pbChannel = PHY_CHANNEL_INVALID;
     State state = STATE_IDLE;
     int hitTimes = 0;
     int len = 1;
+
     QSerialPort* serialPort;
     std::vector<uint8_t> ibuffer, ipack;
     FactoryDataPackage recievePack = FactoryDataPackage_init_default;
@@ -135,6 +151,8 @@ private:
     bool is_save_imu_cali_ok = 0;
     bool is_banding_ok = 0;
     bool is_dev_into_white_mode = 0;
+    bool is_ota_start = 0;
+    bool is_set_i_am_app = 0;
 
     bool is_disable_sleep = 0;
     int is_hall_cali = 0;
@@ -221,6 +239,7 @@ private slots:
 
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
     void process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f);
+    void process_CommandId_GET_USER_INFO(DataPackage& f);
     void process_CommandId_CONNECT_PRO(DataPackage& f);
     void process_CommandId_ROTAS(DataPackage& f);
     void process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f);

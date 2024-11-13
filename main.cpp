@@ -100,6 +100,7 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
 }
 
 int main(int argc, char* argv[]) {
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication a(argc, argv);
     // 设置使用 UTF-8 编码
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));

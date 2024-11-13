@@ -146,7 +146,7 @@ void wksmes::TestPass(MesPacketData pack) {
         if (!pack.sn.isEmpty()) {
             inputSerial["serialNumber"] = pack.sn;
         }
-
+        qDebug() << "mes数据为" << pack.itemvalue << pack.error;
         // 2. 添加 testdatas (如果 pack.itemvalue 存在)
         if (!pack.itemvalue.isEmpty()) {
             QJsonArray testdatasArray;
@@ -171,6 +171,19 @@ void wksmes::TestPass(MesPacketData pack) {
             // 如果 testdatasArray 不为空，添加到 inputSerial
             if (!testdatasArray.isEmpty()) {
                 inputSerial["testdatas"] = testdatasArray;
+            }
+
+            // 4. 添加 assemblys (如果 pack.mac 存在)
+            if (!pack.mac.isEmpty()) {
+                QJsonArray assemblysArray;
+                QJsonObject interTestdata;
+                interTestdata["key"] = "MAC";
+                interTestdata["value"] = pack.mac;
+                assemblysArray.append(interTestdata);
+                // 如果 assemblysArray 不为空，添加到 inputSerial
+                if (!assemblysArray.isEmpty()) {
+                    inputSerial["assemblys"] = assemblysArray;
+                }
             }
         }
 
@@ -201,7 +214,7 @@ void wksmes::TestPass(MesPacketData pack) {
             }
         }
 
-        // 4. 将 inputSerial 添加到 inputSerials 数组中
+        // 5. 将 inputSerial 添加到 inputSerials 数组中
         QJsonArray inputSerials;
         inputSerials.append(inputSerial);
 

@@ -19,7 +19,6 @@
 #include "qeventloop.h"
 #include "qlibrary.h"
 
-
 #define SETTING_NAME "上位机设置.ini"
 
 #define SETTINGS SettingsManager::instance()
@@ -60,6 +59,7 @@ typedef struct MesPacketData {
     QString instruct_num;    //指令标识
     QString product;         //产品名字
     QString lotName;         //工单号码
+    QString mac;             //工单号码
 
 } MesPacketData;
 
