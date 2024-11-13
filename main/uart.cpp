@@ -334,11 +334,8 @@ void serialEventTask(void *pvParameters)
             }
             delete[] tempBuffer; // 释放动态分配的内存
         }
-        else
-        {
-            Serial.println("wait receive");
-        }
-        vTaskDelay(10); // 让出处理器
+    
+        vTaskDelay(5); // 让出处理器
     }
     Serial.print("serialEventTask线程退出");
 }

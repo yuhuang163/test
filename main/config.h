@@ -14,7 +14,7 @@
 #define D2_PIN 2
 #define RST_PIN 10
 #define UART_RX_BUFFER_SIZE (2 * 1024)    // 串口接收setRxBufferSize
-#define UART_SOLVE_BUFFER_SIZE (8 * 1024) // 串口读取处理一口气最多
+#define UART_SOLVE_BUFFER_SIZE (16 * 1024) // 串口读取处理一口气最多
 
 #define UART_RING_BUFFER_SIZE (16 * 1024) // 环形队列缓冲区大小
 #define MAX_RECEIVE_BUFFER_SIZE 8192      // 设置一个合理的最大缓冲区大小

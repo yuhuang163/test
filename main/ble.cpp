@@ -86,6 +86,58 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
     Serial.println();
     Serial.println();
 }
+
+void AppNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
+                       size_t length, bool isNotify)
+{
+    // vTaskDelay(10);   // 让出处理器
+
+    unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
+    String timestamp = String(currentMillis); // 将时间戳转换为字符串
+    Serial.println();
+    Serial.print("App数据包的时间戳:"); // 打印带有时间戳的消息
+    Serial.print(timestamp);
+    Serial.print("长度为:"); // 打印带有时间戳的消息
+    Serial.print(length);
+
+    const int additionalBytes = 9;
+    uint8_t modifiedData[length + additionalBytes];
+    memset(modifiedData, 0xaa, 8);
+
+    modifiedData[8] = length;
+    memcpy(modifiedData + 9, pData, length);
+
+    Serial.print("内容为:"); // 打印带有时间戳的消息
+    Serial.write(modifiedData, length + additionalBytes);
+    Serial.println();
+    Serial.println();
+}
+void mainNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
+                        size_t length, bool isNotify)
+{
+    // vTaskDelay(10);   // 让出处理器
+
+    unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
+    String timestamp = String(currentMillis); // 将时间戳转换为字符串
+    Serial.println();
+    Serial.print("main数据包的时间戳:"); // 打印带有时间戳的消息
+    Serial.print(timestamp);
+    Serial.print("长度为:"); // 打印带有时间戳的消息
+    Serial.print(length);
+
+    const int additionalBytes = 9;
+    uint8_t modifiedData[length + additionalBytes];
+    memset(modifiedData, 0xaa, 8);
+
+    modifiedData[8] = length;
+    memcpy(modifiedData + 9, pData, length);
+
+    Serial.print("内容为:"); // 打印带有时间戳的消息
+    Serial.write(modifiedData, length + additionalBytes);
+    Serial.println();
+    Serial.println();
+}
+
 // 消息提醒函数
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify)
@@ -650,11 +702,11 @@ bool ServerStateCheck()
     {
         if (AppNotifyCharacteristic->canNotify()) // 注册特征通知回调
         {
-            Serial.println("注册特征通知回调");
+            Serial.println("注册AppNotifyCharacteristic特征通知回调");
 
             if (pClient->isConnected())
             {
-                AppNotifyCharacteristic->registerForNotify(notifyCallback);
+                AppNotifyCharacteristic->registerForNotify(AppNotifyCallback);
             }
             else
             {
@@ -663,11 +715,33 @@ bool ServerStateCheck()
                 return false;
             }
         }
-        Serial.println("找到我们的DataCharacteristic写入特征");
     }
     else
     {
         Serial.println("找不到AppDataCharacteristic的数据传输特征");
+    }
+
+    if (mainNotifyCharacteristic != nullptr)
+    {
+        if (mainNotifyCharacteristic->canNotify()) // 注册特征通知回调
+        {
+            Serial.println("注册mainNotifyCharacteristic特征通知回调");
+
+            if (pClient->isConnected())
+            {
+                mainNotifyCharacteristic->registerForNotify(mainNotifyCallback);
+            }
+            else
+            {
+                Serial.println("蓝牙没有连接");
+                candeleteble = true;
+                return false;
+            }
+        }
+    }
+    else
+    {
+        Serial.println("找不到mainNotifyCharacteristic的数据传输特征");
     }
 
     if (WriteCharacteristic != nullptr)

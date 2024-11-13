@@ -43,13 +43,14 @@ void wifi_init()
     Serial.println("wifi名字为" + ssid);
     Serial.print("AT+WIFINAME=");
     Serial.println(ssid);
-    if (!WiFi.softAP(ssid, password, 1, 0, 10))
+   // if (!WiFi.softAP(ssid, password, 1, 0, 10))
+
+    if (!WiFi.softAP(ssid, password, 3, 0, 4, false, WIFI_AUTH_WPA2_PSK, WIFI_CIPHER_TYPE_CCMP))
     {
         Serial.println("ap设置失败");
         while (1)
             ;
     }
-
     // IPAddress myIP = WiFi.softAPIP();
     // Serial.print("AP IP address: ");
     // Serial.println(myIP);

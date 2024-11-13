@@ -42,7 +42,7 @@ size_t bufferRead(byte *data, size_t length)
     }
 
     size_t bytesRead = 0;
-    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, pdMS_TO_TICKS(50));
+    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, pdMS_TO_TICKS(25));
     if (temp != NULL)
     {
         size_t copyLength = 0;
@@ -53,6 +53,9 @@ size_t bufferRead(byte *data, size_t length)
         else
         {
             Serial.print("失败，实际读取的大于需要的");
+            Serial.print(bytesRead); Serial.print(" ");
+            Serial.println(readLength);
+
             copyLength = readLength;
         }
 
