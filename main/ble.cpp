@@ -577,6 +577,7 @@ bool connectToServer()
 
         if (facRemoteService != nullptr)
         {
+            Serial.println("找到facRemoteService服务");
             CAMERAUUIDCharacteristic = facRemoteService->getCharacteristic(CameraUUID);
             NotifyCharacteristic = facRemoteService->getCharacteristic(NotifyUUID);
             WriteCharacteristic = facRemoteService->getCharacteristic(WriteUUID);
@@ -618,7 +619,7 @@ bool connectToServer()
         {
             Serial.println("normolRemoteService为空");
         }
-
+     
         return ServerStateCheck();
     }
     else
@@ -631,20 +632,18 @@ bool connectToServer()
 
 bool ServerStateCheck()
 {
-
-    if (LOGUUIDCharacteristic != nullptr)
+    if (mainNotifyCharacteristic != nullptr)
     {
-        Serial.println("找到我们的日志传输特征");
-        if (LOGUUIDCharacteristic->canNotify()) // 注册特征通知回调
+        if (mainNotifyCharacteristic->canNotify()) // 注册特征通知回调
         {
-            Serial.println("注册日志特征通知回调");
+            Serial.println("注册mainNotifyCharacteristic特征通知回调");
             if (pClient->isConnected())
             {
-                LOGUUIDCharacteristic->registerForNotify(brushLogNotifyCallback);
+                mainNotifyCharacteristic->registerForNotify(mainNotifyCallback);
             }
             else
             {
-                Serial.println("蓝牙还没有连接");
+                Serial.println("蓝牙没有连接");
                 candeleteble = true;
                 return false;
             }
@@ -652,8 +651,31 @@ bool ServerStateCheck()
     }
     else
     {
-        Serial.print("找不到log消息提醒UUID：");
-        Serial.println(LogUUID.toString().c_str());
+        Serial.println("找不到mainNotifyCharacteristic的数据传输特征");
+    }
+
+
+    if (NotifyCharacteristic != nullptr)
+    {
+        if (NotifyCharacteristic->canNotify()) // 注册特征通知回调
+        {
+            Serial.println("注册NotifyCharacteristic特征通知回调");
+            if (pClient->isConnected())
+            {
+                NotifyCharacteristic->registerForNotify(notifyCallback);
+            }
+            else
+            {
+                Serial.println("蓝牙没有连接");
+                candeleteble = true;
+                return false;
+            }
+        }
+    }
+    else
+    {
+        Serial.print("找不到消息提醒UUID：");
+        Serial.println(NotifyUUID.toString().c_str());
     }
 
     if (CAMERAUUIDCharacteristic != nullptr)
@@ -680,19 +702,20 @@ bool ServerStateCheck()
         Serial.println(CameraUUID.toString().c_str());
     }
 
-    if (NotifyCharacteristic != nullptr)
-    {
-        if (NotifyCharacteristic->canNotify()) // 注册特征通知回调
-        {
-            Serial.println("注册特征通知回调");
 
+    if (LOGUUIDCharacteristic != nullptr)
+    {
+        Serial.println("找到我们的日志传输特征");
+        if (LOGUUIDCharacteristic->canNotify()) // 注册特征通知回调
+        {
+            Serial.println("注册日志特征通知回调");
             if (pClient->isConnected())
             {
-                NotifyCharacteristic->registerForNotify(notifyCallback);
+                LOGUUIDCharacteristic->registerForNotify(brushLogNotifyCallback);
             }
             else
             {
-                Serial.println("蓝牙没有连接");
+                Serial.println("蓝牙还没有连接");
                 candeleteble = true;
                 return false;
             }
@@ -700,16 +723,16 @@ bool ServerStateCheck()
     }
     else
     {
-        Serial.print("找不到消息提醒UUID：");
-        Serial.println(NotifyUUID.toString().c_str());
+        Serial.print("找不到log消息提醒UUID：");
+        Serial.println(LogUUID.toString().c_str());
     }
+
 
     if (AppNotifyCharacteristic != nullptr)
     {
         if (AppNotifyCharacteristic->canNotify()) // 注册特征通知回调
         {
             Serial.println("注册AppNotifyCharacteristic特征通知回调");
-
             if (pClient->isConnected())
             {
                 AppNotifyCharacteristic->registerForNotify(AppNotifyCallback);
@@ -727,28 +750,7 @@ bool ServerStateCheck()
         Serial.println("找不到AppDataCharacteristic的数据传输特征");
     }
 
-    if (mainNotifyCharacteristic != nullptr)
-    {
-        if (mainNotifyCharacteristic->canNotify()) // 注册特征通知回调
-        {
-            Serial.println("注册mainNotifyCharacteristic特征通知回调");
 
-            if (pClient->isConnected())
-            {
-                mainNotifyCharacteristic->registerForNotify(mainNotifyCallback);
-            }
-            else
-            {
-                Serial.println("蓝牙没有连接");
-                candeleteble = true;
-                return false;
-            }
-        }
-    }
-    else
-    {
-        Serial.println("找不到mainNotifyCharacteristic的数据传输特征");
-    }
 
     if (WriteCharacteristic != nullptr)
     {
