@@ -666,14 +666,23 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
                  << "refresh_periph_state_times" << refresh_periph_state_times;
         refresh_periph_state_times = 0;
 
-        bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
-        bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
-        bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
-        bool pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toBool();
-        bool audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toBool();
+        QString imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toString();
+        QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
+        QString magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
+        QString pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
+        QString audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toString();
 
-        if (data.flash_state == flashStatus && data.imu_state == imuStatus && data.audio_state == audioState &&
-            data.press_state == pressureStatus && data.magnet_state == magneticStatus) {
+        // 将布尔值转换为 QString
+        QString flashStateStr = QString::number(data.flash_state);
+        QString imuStateStr = QString::number(data.imu_state);
+        QString audioStateStr = QString::number(data.audio_state);
+        QString pressStateStr = QString::number(data.press_state);
+        QString magnetStateStr = QString::number(data.magnet_state);
+
+        // 现在可以将 QString 类型的状态用于你的条件判断
+        if (flashStatus.contains(flashStateStr) && imuStatus.contains(imuStateStr) &&
+            audioState.contains(audioStateStr) && pressureStatus.contains(pressStateStr) &&
+            magneticStatus.contains(magnetStateStr)) {
             periph_state = 1;
         } else {
             periph_state = 2;
@@ -683,17 +692,17 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
 
         test.testItem = "功放状态";
         test.testData = QString::number(data.audio_state);
-        test.ask = QString::number(audioState);
+        test.ask = audioState;
         testItems.append(test);
 
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
-        test.ask = QString::number(flashStatus);
+        test.ask = flashStatus;
         testItems.append(test);
 
         test.testItem = "六轴状态";
         test.testData = QString::number(data.imu_state);
-        test.ask = QString::number(imuStatus);
+        test.ask = imuStatus;
         testItems.append(test);
 
         if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
@@ -701,12 +710,12 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         else
             test.testItem = "地磁状态";
         test.testData = QString::number(data.magnet_state);
-        test.ask = QString::number(magneticStatus);
+        test.ask = magneticStatus;
         testItems.append(test);
 
         test.testItem = "压感状态";
         test.testData = QString::number(data.press_state);
-        test.ask = QString::number(pressureStatus);
+        test.ask = pressureStatus;
         testItems.append(test);
 
         updateTestData(testItems);
@@ -1099,6 +1108,14 @@ void PcbaForm::startTask() {
                     }
                     if (periph_state == 2)  // 设备信息异常
                     {
+                        TestItem test;
+                        test.testItem = "外设状态";
+                        test.testData = QString::number(periph_state);
+                        test.testResult = failValue;
+                        test.ask = "通过";
+                        testItems.append(test);
+                        testResultTableUpdate(testItems);
+
                         totalresult = failValue;
                         erroContent << "|外设状态:异常";
                         showlog("外设状态异常");
@@ -1124,6 +1141,12 @@ void PcbaForm::startTask() {
                     sendCommandWithRetry(std::bind(&Qpb::set_motor_cali_result_param, pb, value));
 
                     state = STATE_WATI_GET_CORRECT_MOTOR;
+                } else if (!SETTINGS.value("SYSTEM/TestWifiSignal").toBool() &&
+                           !SETTINGS.value("SYSTEM/SendMotorCalibration").toBool()) {
+                    showlog("5、蓝牙强度测试");
+                    at->sendBLELOG(1);  // 日志开
+                    rssitestcount = 0;
+                    state = STATE_WATI_GET_CORRECT_BLERSSI;
                 } else {
                     showlog("3、wifi测试");
                     connectwifi();
@@ -1448,9 +1471,14 @@ void PcbaForm::startTask() {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
                     } else {
-                        showlog("跑的是q20");
-                        pb->set_motor_param(270, 60);
-                        pb->set_motor_state(1);
+                        if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
+                            showlog("跑的是P30P");
+                            pb->set_sevor_motor_param(3500, 14000, 10, 380);
+                        } else {
+                            showlog("跑的是q20");
+                            pb->set_motor_param(270, 60);
+                            pb->set_motor_state(1);
+                        }
                     }
                 }
                 break;

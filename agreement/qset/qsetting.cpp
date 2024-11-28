@@ -19,7 +19,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 9);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"P30P", "P20P", "U7", "U7P", "F20", "Q20", "Y20", "Y20P", "Y21"};
+    QStringList productList = {"P20PS", "P30P", "P20P", "U7", "U7P", "F20", "Q20", "Y20", "Y20P", "Y21"};
     ui->comboBox_productName->addItems(productList);
 
     QStringList factoryList = {"lx", "xwd", "hq", "wks"};
@@ -440,6 +440,13 @@ void qsetting::on_Restore_default_setting_clicked() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "P30P") {
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_LightTest->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+    }
+
+    if (ui->comboBox_productName->currentText() == "P20PS") {
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
