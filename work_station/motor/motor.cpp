@@ -429,7 +429,7 @@ void motor::startTask() {
                 result = passValue;
                 TestTime.start();
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog(ui->macInput->text());
+                showlog("MAC地址为："+ui->macInput->text());
                 is_battary_test = 0;
 
                 state = STATE_WATI_CONNECT;

@@ -24,6 +24,7 @@ public:
     void useMes() override;
     void startTest() override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QCheckBox* getIsUseMes()override { return ui->isusemes; };
     QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };     // usb口（治具）
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口

@@ -1008,7 +1008,7 @@ void PcbaForm::startTask() {
                 at->resetConnected();
                 waitWork(500);                      // 用于esp32启动等待时间
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog(ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
                 totalresult = passValue;
                 state = STATE_WATI_CONNECT;
 
@@ -1392,9 +1392,14 @@ void PcbaForm::startTask() {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
                     } else {
-                        showlog("跑的是q20");
-                        pb->set_motor_param(270, 60);
-                        pb->set_motor_state(1);
+                        if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
+                            showlog("跑的是P30P");
+                            pb->set_sevor_motor_param(3500, 14000, 10, 380);
+                        } else {
+                            showlog("跑的是q20");
+                            pb->set_motor_param(270, 60);
+                            pb->set_motor_state(1);
+                        }
                         //   waitWork(1500);
                         //   pb->set_device_mode(3);
                         //       pb->set_brush_control(1);
@@ -1631,12 +1636,6 @@ void PcbaForm::on_macInput_returnPressed() {
         // }
         return;
     } else {
-        // // 执行 USB 断开操作
-        // if (pack.product == "P20P" || pack.product == "Q20")
-        // {
-        //     on_productDisconnectButton_clicked();
-        // }
-
         macAddress = ui->macInput->text();
         usblogwaittime->stop();
         firstconnectbrush = 0;

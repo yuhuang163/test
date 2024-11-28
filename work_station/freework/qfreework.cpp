@@ -387,7 +387,9 @@ void QFreeWork::startTask() {
         if (teststate == -1) {
             showlog("开始测试");
             initDate();
+
             at->sendMac(macAddress);  // 开始连接
+            showlog("MAC地址为："+ui->macInput->text());
             teststate++;
         }
         if (at->getConnected()) {

@@ -382,7 +382,7 @@ void cameratest::solve_frame(void) {
         dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, UART_PHY_LAYER_HEAD_SIZE);
 
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
-        if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC) {
+        if (ring_size <= UART_PHY_LAYER_HEADER_ADN_LEN) {
             // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" << ring_size;
             break;
         }
@@ -395,7 +395,7 @@ void cameratest::solve_frame(void) {
             // qDebug() << "now content:"
             //          << QByteArray(reinterpret_cast<char *>(head), 280).toHex();
 
-            int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
+            int frame_size = UART_PHY_LAYER_HEADER_ADN_LEN + head->length;
             if (frame_size > ring_size) {
                 // qDebug() << "串口帧数据不完整"
                 //          << "需要" << frame_size << "实际为" << ring_size;
@@ -700,7 +700,7 @@ void cameratest::startTask() {
                 TestTime.start();
                 waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog(ui->macInput->text());
+                showlog("MAC地址为："+ui->macInput->text());
 
                 state = STATE_WATI_CONNECT;
                 break;

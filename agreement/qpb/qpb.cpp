@@ -78,12 +78,19 @@ void Qpb::parseCmd(const QByteArray& byte) {
 
                 pbChannel = (ext_ble_phy_channel_e)x;
 
+                if (x > 3 || x == 0) {
+                    emit send_pb_date("通道出错，请更新dongle固件为1.3.3");
+
+                    state = STATE_IDLE;
+                    break;
+                }
                 state = STATE_LEN;
 
                 break;
 
             case STATE_LEN:
                 len = x - 1;
+
                 state = STATE_PB_HEADER;
                 break;
 
@@ -100,7 +107,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                 break;
 
             case STATE_UNPACK:
-                qDebug() << "len" << len << ibuffer.size();
+                // qDebug() << "len" << len << ibuffer.size();
                 if (ibuffer.size() == len - 1) {
                     ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
                     uint8_t crc16 = calCrc16(ipack);
@@ -183,6 +190,22 @@ void Qpb::sendMainPack(const DataPackage& pack) {
 
         serialPort->write((char*)new_buffer.data(), new_buffer.size());
 
+        const char* dataPtr = reinterpret_cast<const char*>(tx_buffer.data());
+        QString output;
+        for (int i = 0; i < len + 2; ++i) {
+            output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
+        }
+        qDebug() << "发出去的Mainpb码为" << output.trimmed();
+
+        std::ostringstream oss;
+        for (const auto& byte : new_buffer) {
+            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+        }
+
+        // 使用 qDebug() 输出十六进制字符串
+        QString hex_string = QString::fromStdString(oss.str());
+        qDebug() << "发出去的Main新码为" << hex_string;
+
     } else {
         qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
     }
@@ -212,6 +235,22 @@ void Qpb::sendShortPack(const DataPackage& pack) {
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
         serialPort->write((char*)new_buffer.data(), new_buffer.size());
+
+        const char* dataPtr = reinterpret_cast<const char*>(tx_buffer.data());
+        QString output;
+        for (int i = 0; i < len + 2; ++i) {
+            output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
+        }
+        qDebug() << "发出去的笑容加pb码为" << output.trimmed();
+
+        std::ostringstream oss;
+        for (const auto& byte : new_buffer) {
+            oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+        }
+
+        // 使用 qDebug() 输出十六进制字符串
+        QString hex_string = QString::fromStdString(oss.str());
+        qDebug() << "发出去的笑容加新码为" << hex_string;
 
     } else {
         qDebug() << "短包编码失败原因：" << PB_GET_ERROR(&o_stream);
@@ -270,7 +309,7 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
         for (int i = 0; i < len + 2; ++i) {
             output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
         }
-        qDebug() << "发出去的pb码为" << output.trimmed();
+        qDebug() << "发出去的工厂pb码为" << output.trimmed();
 
         std::ostringstream oss;
         for (const auto& byte : new_buffer) {
@@ -279,7 +318,7 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
 
         // 使用 qDebug() 输出十六进制字符串
         QString hex_string = QString::fromStdString(oss.str());
-        qDebug() << "发出去的新码为" << hex_string;
+        qDebug() << "发出去的工厂新码为" << hex_string;
 
     } else {
         qDebug() << "短包工厂pb编码失败原因：" << PB_GET_ERROR(&o_stream);

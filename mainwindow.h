@@ -71,8 +71,8 @@ public:
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
 
 #define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
-#define UART_PHY_LAYER_CRC_SIZE 1
-#define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
+#define UART_PHY_LAYER_LENGTH 1
+#define UART_PHY_LAYER_HEADER_ADN_LEN (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_LENGTH)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
 #define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
@@ -81,12 +81,9 @@ public:
     typedef enum {
         PHY_CHANNEL_INVALID = 0,  //无效值
         PHY_CHANNEL_CAMREA,       //摄像头通道
-        PHY_CHANNEL_LOG,          // ota数据通道
+        PHY_CHANNEL_LOG,          // LOG数据通道
 
-        PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
-        PHY_CHANNEL_FACTORY,      //厂测通道
-        PHY_CHANNEL_USMILE_APP,   //笑容加app通道
-        PHY_CHANNEL_USMILE_ROTA,  //笑容加ota通道
+
     } ext_ble_phy_channel_e;
 
 #pragma pack(1)
@@ -233,7 +230,8 @@ private:
     // 定义用于保存MAC地址的QString变量
     QString csvmac;
     QComboBox* comNameCombo;
-    QUdpSocket* udpSocket;
+    QUdpSocket* udpSocket = new QUdpSocket(this);
+
     QString result = "";
     bool otaFinish = false;
     QStringList otaResults;
@@ -489,6 +487,8 @@ private slots:
     void on_brush_relocation_clicked();
 
     void on_stopBleOta_clicked();
+
+    void on_closeconnect_clicked();
 
 signals:
     void send_uart_state(int data);

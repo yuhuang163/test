@@ -205,7 +205,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 is_lcd_control = 0;
                 TestTime.start();
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog(ui->macInput->text());
+                showlog("MAC地址为："+ui->macInput->text());
                 snCompareOk = 0;
                 subpidCompareOk = 0;
                 state = STATE_WATI_CONNECT;

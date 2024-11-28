@@ -36,6 +36,7 @@ public:
     void refreshAmmeterData(QString data) override;
 
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };                // dongle口
+    QCheckBox* getIsUseMes()override { return ui->isusemes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };          // usb口（治具）
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };          // 治具口（治具）
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）

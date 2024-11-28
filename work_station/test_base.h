@@ -11,6 +11,7 @@
 #include <qlog.h>
 
 #include "Abini.h"
+#include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
 #include "qpushbutton.h"
@@ -29,6 +30,7 @@ public:
     virtual void endTask(){};
     virtual void useMes(){};
 
+    virtual QCheckBox* getIsUseMes() { return nullptr; };             // 获取mes获取接口
     virtual QComboBox* getComNameCombo() { return nullptr; };         // dongle口
     virtual QComboBox* getUsbcomNameCombo() { return nullptr; };      // usb口
     virtual QComboBox* getJigcomNameCombo() { return nullptr; };      // 治具口
@@ -53,12 +55,12 @@ public:
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc);
-    void testResultTableUpdate( QVector<TestItem>& testItems);
+    void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);
-
+    void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
 private:                                              // 通用变量
     QString receivedData = "";

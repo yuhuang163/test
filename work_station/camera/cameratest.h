@@ -104,8 +104,8 @@ public:
     }
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC
 #define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
-#define UART_PHY_LAYER_CRC_SIZE 1
-#define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_CRC_SIZE)
+#define UART_PHY_LAYER_LENGTH 1
+#define UART_PHY_LAYER_HEADER_ADN_LEN (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_LENGTH)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
 #define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
@@ -202,7 +202,7 @@ private:
     bool can_start_offset_test = 0;
     int picutre_offset_times = 0;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-
+QCheckBox* getIsUseMes()override { return ui->isusemes; };
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口

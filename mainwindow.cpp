@@ -392,7 +392,6 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 
     pb->APP_VERSION = DEBUG_VER;
-    udpSocket = new QUdpSocket(this);
 
     QAction* setting = ui->menubar->addAction("功能设置");
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
@@ -524,6 +523,7 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::closeEvent(QCloseEvent*) {
+    on_stopBleOta_clicked();
     running.store(false);
     // 等待线程结束
     future.waitForFinished();
@@ -1950,7 +1950,13 @@ void MainWindow::on_get_imu_info_clicked() { pb->get_imu_cali_result(); }
 
 void MainWindow::on_swing_test_clicked() {
     if (at->getConnected()) {
-        pb->set_sevor_motor_param(14, 12, 5.2, 190);
+        if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
+            showlog("跑的是P30P");
+            pb->set_sevor_motor_param(3500, 14000, 10, 380);
+        } else {
+            pb->set_sevor_motor_param(14, 12, 5.2, 190);
+        }
+
         showlog("已经设置摆幅测试");
     } else {
         showlog("请等待连接牙刷后再试");
@@ -2229,7 +2235,7 @@ void MainWindow::on_calculate_returnPressed() {
 
     file.close();
 }
-
+void MainWindow::on_closeconnect_clicked() { udpSocket->close(); }
 void MainWindow::on_distribution_network_clicked() {
     // 获取IP地址
     QString ipString = ui->ip_comboBox->currentText();
@@ -2256,6 +2262,10 @@ void MainWindow::on_distribution_network_clicked() {
     if (udpSocket) {
         udpSocket->close();
         delete udpSocket;
+        udpSocket = nullptr;  // 避免使用已释放的内存
+        udpSocket = new QUdpSocket(this);
+    } else {
+        udpSocket = new QUdpSocket(this);
     }
 
     bool bindResult = udpSocket->bind(ipAddress, port);
@@ -2768,8 +2778,6 @@ void MainWindow::on_write_device_subpid_clicked() {
 //     // 创建请求
 //     QNetworkRequest request;
 //     request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));  // 拼接
-//                                                                          // "/trigger_function"
-//                                                                          // 到 ESP32 的 IP 地址
 
 //     // 发送 GET 请求
 //     QNetworkReply* reply = manager->get(request);
@@ -3140,8 +3148,8 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         on_getperipheralButton_clicked();
         waitWork(500);
         pb->setPbMode(0);  //为了区分收到的解包是app接口
-        on_startBleOta_clicked();
         waitWork(3000);
+        on_startBleOta_clicked();
     }
 }
 
@@ -3179,6 +3187,11 @@ void MainWindow::on_startBleOta_clicked() {
         showlog("已发送假装app!");
         pb->set_i_am_app();  //假装是app
         waitWork(1000);
+        if (stopBleOta) {
+            showlog("停止测试");
+            stopBleOta = 0;
+            return;  // 停止测试
+        }
     }
     showlog("假装app成功");
 
@@ -3191,6 +3204,11 @@ void MainWindow::on_startBleOta_clicked() {
         showlog("已发送开始OTA!");
         pb->set_start_ota_app(RotasFiledata);
         waitWork(2000);
+        if (stopBleOta) {
+            showlog("停止测试");
+            stopBleOta = 0;
+            return;  // 停止测试
+        }
     }
 
     showlog("开始OTA!");

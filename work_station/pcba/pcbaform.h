@@ -29,7 +29,8 @@ signals:
     void send_startTest(int data);
 
 public:
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };                // dongle口
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QLineEdit* getMotorCaliParam() override { return ui->pcba_motor_cali_param; };     // 电机校准参数
     QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口

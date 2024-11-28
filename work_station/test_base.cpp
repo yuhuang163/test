@@ -817,7 +817,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
 }
 void test_base::testResultTableInit() {
     pb->APP_VERSION = upperComputerVer;
-
+    LockProductUI();
     if (testResultTable() == nullptr) {
         showlog("不存在表格");
         return;
@@ -837,4 +837,8 @@ void test_base::testResultTableInit() {
     testResultTable()->setHorizontalHeaderLabels(headers);
     // 设置表格自适应列宽
     testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+}
+void test_base::LockProductUI() {
+    if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
+        getIsUseMes()->setEnabled(false);
 }

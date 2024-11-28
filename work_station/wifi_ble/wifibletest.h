@@ -19,6 +19,7 @@ public:
     void startTask() override;
 
 private:
+    bool allow_retry = 1;
     int measure_ammeter_counts;
     QString nfcdataHeadText = "";
     QString getValueBySN(const QString& sn);
@@ -94,7 +95,8 @@ private slots:
 
     void initDate();
 
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };          // nfc的usb口
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口

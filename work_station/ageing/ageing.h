@@ -18,6 +18,7 @@ public:
     void refreshBleState(int state) override;
     void show_product(QString name);
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
+    QCheckBox* getIsUseMes()override { return ui->isusemes; };
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口

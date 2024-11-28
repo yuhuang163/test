@@ -53,29 +53,29 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.4.5"
-#define CAMERA_VER "摄像测试工站   V1.2.9"
-#define AGE_VER "老化测试工站   V1.2.6"
-#define MOTOR_VER "电机校准工站   V1.2.7"
-#define QC_VER "静态电流测试   V1.4.5"
-#define SCREEN_VER "屏幕测试工站   V1.2.0"
-#define LIGHT_VER "灯光测试工站   V1.2.1"
-#define SINGLE_VER "信号测试工站   V1.4.9"
-#define FREE_VER "自由测试工站   V1.1.3"
-#define IMU_VER "IMU校准工站    V1.5.2"
-#define PCBA_VER "电刷板子测试   V1.4.1"
+#define DEBUG_VER "电刷产测工具   V1.4.6"
+#define CAMERA_VER "摄像测试工站   V1.3.0"
+#define AGE_VER "老化测试工站   V1.2.7"
+#define MOTOR_VER "电机校准工站   V1.2.8"
+#define QC_VER "静态电流测试   V1.4.6"
+#define SCREEN_VER "屏幕测试工站   V1.2.1"
+#define LIGHT_VER "灯光测试工站   V1.2.2"
+#define SINGLE_VER "信号测试工站   V1.5.0"
+#define FREE_VER "自由测试工站   V1.1.4"
+#define IMU_VER "IMU校准工站    V1.5.3"
+#define PCBA_VER "电刷板子测试   V1.4.2"
 
-// [PCBA_VER] 伟克森mes添加mac查重功能，增加pb协议通道选择，牙刷日志保存加时间戳，增加清空所有sn功能，简易测试添加sn触发的功能，适应高分辨率屏幕
-// [QC_VER] 增加pb协议通道选择，牙刷日志保存加时间戳，适应高分辨率屏幕
-// [CAMERA_VER]  摄像头测试允许3路测试治具，增加pb协议通道选择，适应高分辨率屏幕
-// [DEBUG_VER] 增加pb协议通道选择，保存的报告全部存到d盘，ota日志压测等稳定性添加，修改nfc读取多读，船运炸弹计数，UI预览清图阻塞式，允许多个版本的固件测试pass，适应高分辨率屏幕
-// [MOTOR_VER] 增加pb协议通道选择，适应高分辨率屏幕
-// [AGE_VER] 增加pb协议通道选择，适应高分辨率屏幕
-// [IMU_VER] 增加pb协议通道选择，适应高分辨率屏幕
-// [SCREEN_VER] 增加pb协议通道选择，屏幕测试修复离线获取mac的bug，适应高分辨率屏幕
-// [SINGLE_VER] 增加pb协议通道选择，适应高分辨率屏幕
-// [LIGHT_VER] 增加pb协议通道选择，适应高分辨率屏幕
-// [FREE_VER] 增加pb协议通道选择，修改nfc读取多读，适应高分辨率屏幕
+// [PCBA_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，添加对p20p电机的测试
+// [QC_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [CAMERA_VER]  添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [DEBUG_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，修改摄像头变量命名，ui预览传输日志和计时，摄像头测试允许断开服务器
+// [MOTOR_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [AGE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [IMU_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [SCREEN_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，允许重新获取压感信息一次
+// [SINGLE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [LIGHT_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [FREE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 //
 
 #endif  // ABINI_H

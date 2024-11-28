@@ -929,7 +929,8 @@ void imucali::startTask()  // 编写六轴校准的代码
                 showlog("开始测试");
                 dataInit();
                 at->sendMac(ui->macInput->text());  // 开始连接
-                showlog("已经发送mac地址");
+                showlog("MAC地址为："+ui->macInput->text());
+
                 TestTime.start();
                 state = STATE_WATI_CONNECT;
                 break;

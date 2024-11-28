@@ -408,7 +408,7 @@ void MainWindow::solve_frame(void) {
         // 从环形缓冲区中读取帧头
         dongleRingBuf->usmile_ring_buffer_pick(&p_dongleRingBuffer, frame_buf, UART_PHY_LAYER_HEAD_SIZE);
         int ring_size = dongleRingBuf->usmile_ring_buffer_items_count_get(&p_dongleRingBuffer);
-        if (ring_size <= UART_PHY_LAYER_HEADER_ADN_CRC) {
+        if (ring_size <= UART_PHY_LAYER_HEADER_ADN_LEN) {
             // qDebug() << "串口环形缓冲区中的数据不足一个完整帧的大小" <<
             // ring_size;
             break;
@@ -417,7 +417,7 @@ void MainWindow::solve_frame(void) {
         ext_uart_phy_layer_t* head = (ext_uart_phy_layer_t*)frame_buf;
 
         if (head->magic == EXT_UART_MAGIC) {
-            int frame_size = UART_PHY_LAYER_HEADER_ADN_CRC + head->length;
+            int frame_size = UART_PHY_LAYER_HEADER_ADN_LEN + head->length;
             if (frame_size > ring_size) {
                 qDebug() << "串口帧数据不完整"
                          << "需要" << frame_size << "实际为" << ring_size;
@@ -949,12 +949,15 @@ void MainWindow::renameFilesInFolder(const QString& folderPath) {
         qDebug() << "文件夹不存在";
         return;
     }
-
+    QTime TestTime;
     // 获取文件夹中所有文件的列表
     QStringList files = folder.entryList(QDir::Files, QDir::Name);
     int fileCount = files.size();
     std::sort(files.begin(), files.end(), compareFileNames);
     qDebug() << "files:" << files;
+
+    TestTime.start();
+
     // 遍历文件夹中的文件
     for (int i = 0; i < fileCount; ++i) {
         QString fileName = files.at(i);
@@ -984,6 +987,8 @@ void MainWindow::renameFilesInFolder(const QString& folderPath) {
         // 运行convertImageTo16BitPaletteHigh函数
         convertImageTo16BitPaletteHigh(newFilePath, newFileName);
     }
+    showlog("发送结束");
+    showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }
 
 void MainWindow::sendPicture(const QString& url, const QString& filePath) {
@@ -1023,27 +1028,26 @@ void MainWindow::sendPicture(const QString& url, const QString& filePath) {
     QNetworkAccessManager* manager = new QNetworkAccessManager();
     QNetworkReply* reply = manager->post(request, multiPart);
     multiPart->setParent(reply);
-    qDebug() << "发送文件：" << filePath;
-
+    showlog("开始发送文件：" + filePath);
     // 创建事件循环
     QEventLoop loop;
     QTimer timer;
-    timer.setInterval(5000);  // 10 seconds timeout
+    timer.setInterval(30000);  // 10 seconds timeout
     timer.setSingleShot(true);
-    QObject::connect(&timer, &QTimer::timeout, [&loop]() {
+    QObject::connect(&timer, &QTimer::timeout, [&loop, this]() {
         qDebug() << "Request timeout";
+        showlog("Request timeout");
         loop.quit();
     });
     timer.start();
     // 连接请求完成信号和事件循环退出
-    QObject::connect(reply, &QNetworkReply::finished, [&loop, reply, filePath, ui = this->ui]() {
+    QObject::connect(reply, &QNetworkReply::finished, [&loop, reply, filePath, ui = this->ui, this]() {
         // 如果请求响应完成，打印响应结果
         if (reply->error() == QNetworkReply::NoError) {
-            qDebug() << "发送完成" << filePath;
-            ui->msgEdit->appendPlainText("发送完成" + filePath);
+            showlog("发送完成" + filePath);
+
         } else {
-            qDebug() << "发送失败" << filePath;
-            qDebug() << "错误信息：" << reply->errorString();
+            showlog("发送失败" + reply->errorString());
         }
         // 退出事件循环
         loop.quit();
@@ -2382,6 +2386,7 @@ void MainWindow::saveCustom() {
     QString baseKey = QString("mechine/%1").arg(0);
     // 保存COM口相关信息
     SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
+    SETTINGS.setValue("Window/otaFilePath", ui->otaFilePath->text());
 
     qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }
@@ -2396,6 +2401,9 @@ void MainWindow::recoverCustom() {
     QString baseKey = QString("mechine/%1").arg(0);
     QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
     ui->comNameCombo->setCurrentText(comName);
+
+    ui->otaFilePath->setText(SETTINGS.value("Window/otaFilePath").toString());
+
     qDebug() << "配置内容" << comName;
 }
 

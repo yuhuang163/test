@@ -529,7 +529,7 @@ void quiescent_current::startTask() {
                 at->resetConnected();
                 measure_ammeter = 0;
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog(ui->macInput->text());
+                showlog("MAC地址为："+ui->macInput->text());
                 showlog("已经发送mac地址");
                 TestTime.start();
                 state = STATE_WATI_CONNECT;

@@ -56,6 +56,8 @@ void qsetting::loadConfig() {
     ui->checkBox_ShowLocalOTAFunc->setChecked(SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
     ui->checkBox_ShowUpperComputerOTAFunc->setChecked(SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool());
     ui->checkBox_SaveToothbrushLog->setChecked(SETTINGS.value("SYSTEM/SaveToothbrushLog").toBool());
+    ui->checkBox_LockProductUI->setChecked(SETTINGS.value("SYSTEM/LockProductUI").toBool());
+
     ui->checkBox_SimplePcbaTest->setChecked(SETTINGS.value("SYSTEM/SimplePcbaTest").toBool());
     ui->checkBox_NeedWriteSubpid->setChecked(SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool());
     ui->checkBox_BluetoothImageTransfer->setChecked(SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool());
@@ -68,10 +70,12 @@ void qsetting::loadConfig() {
     ui->checkBox_TestShippingCurrent->setChecked(SETTINGS.value("SYSTEM/TestShippingCurrent").toBool());
     ui->checkBox_SendMotorCalibration->setChecked(SETTINGS.value("SYSTEM/SendMotorCalibration").toBool());
     ui->checkBox_LightTest->setChecked(SETTINGS.value("SYSTEM/LightTest").toBool());
+    ui->checkBox_uperMotor->setChecked(SETTINGS.value("SYSTEM/uperMotor").toBool());
+
     ui->checkBox_ServoMotorStart->setChecked(SETTINGS.value("SYSTEM/ServoMotorStart").toBool());
     ui->checkBox_TestWifiSignal->setChecked(SETTINGS.value("SYSTEM/TestWifiSignal").toBool());
     ui->checkBox_IMULastEnterStartTest->setChecked(SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool());
-     ui->lineEdit_CurrentMechine->setText(SETTINGS.value("SYSTEM/CurrentMechine").toString());
+    ui->lineEdit_CurrentMechine->setText(SETTINGS.value("SYSTEM/CurrentMechine").toString());
     // 加载 SN
     ui->snLineEdit->setText(SETTINGS.value("Regex/SNPattern").toString());
 
@@ -207,6 +211,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("SYSTEM/ShowLocalOTAFunc", ui->checkBox_ShowLocalOTAFunc->isChecked());
     SETTINGS.setValue("SYSTEM/ShowUpperComputerOTAFunc", ui->checkBox_ShowUpperComputerOTAFunc->isChecked());
     SETTINGS.setValue("SYSTEM/SaveToothbrushLog", ui->checkBox_SaveToothbrushLog->isChecked());
+    SETTINGS.setValue("SYSTEM/LockProductUI", ui->checkBox_LockProductUI->isChecked());
+
     SETTINGS.setValue("SYSTEM/SimplePcbaTest", ui->checkBox_SimplePcbaTest->isChecked());
     SETTINGS.setValue("SYSTEM/NeedWriteSubpid", ui->checkBox_NeedWriteSubpid->isChecked());
     SETTINGS.setValue("SYSTEM/BluetoothImageTransfer", ui->checkBox_BluetoothImageTransfer->isChecked());
@@ -220,6 +226,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("SYSTEM/SendMotorCalibration", ui->checkBox_SendMotorCalibration->isChecked());
     SETTINGS.setValue("SYSTEM/LightTest", ui->checkBox_LightTest->isChecked());
     SETTINGS.setValue("SYSTEM/ServoMotorStart", ui->checkBox_ServoMotorStart->isChecked());
+    SETTINGS.setValue("SYSTEM/uperMotor", ui->checkBox_uperMotor->isChecked());
+
     SETTINGS.setValue("SYSTEM/TestWifiSignal", ui->checkBox_TestWifiSignal->isChecked());
     SETTINGS.setValue("SYSTEM/IMULastEnterStartTest", ui->checkBox_IMULastEnterStartTest->isChecked());
     SETTINGS.setValue("SYSTEM/CurrentMechine", ui->lineEdit_CurrentMechine->text());
@@ -357,6 +365,8 @@ void qsetting::on_Restore_default_setting_clicked() {
     ui->checkBox_SendMotorCalibration->setChecked(false);
     ui->checkBox_LightTest->setChecked(false);
     ui->checkBox_ServoMotorStart->setChecked(false);
+    ui->checkBox_uperMotor->setChecked(false);
+
     ui->checkBox_TestWifiSignal->setChecked(false);
     ui->checkBox_IMULastEnterStartTest->setChecked(false);
 
@@ -433,6 +443,7 @@ void qsetting::on_Restore_default_setting_clicked() {
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
     }
 }
 void qsetting::updateMainStyle(QString style) {

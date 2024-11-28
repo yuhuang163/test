@@ -192,6 +192,13 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
     }
     qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
 
+    if (!pressVersionList.contains(data.presure_version) && allow_retry) {
+        allow_retry = 0;
+        showlog("压感版本错误尝试重新获取一次");
+        pb->get_base_info();
+        return;
+    }
+
     // 检查软件版本、资源版本和老化状态是否匹配
     if (softwareVersionList.contains(data.soft_version) && resourceVersionList.contains(data.res_version) &&
         bleVersionList.contains(data.ble_version) && pressVersionList.contains(data.presure_version) &&
@@ -260,9 +267,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
     test.ask = softwareVersions;
     testItems.append(test);
 
-
     updateTestData(testItems);
-
 }
 
 void wifibletest::refreshBattaryData(FacDevInfo adc) {
@@ -519,6 +524,7 @@ void wifibletest::getWifiMsg(QString data) {
     }
 }
 void wifibletest::initDate() {
+    allow_retry = 1;
     measure_ammeter_counts = 0;
     ui->tail_sn->setText("芯片存储的尾盖sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -558,6 +564,7 @@ void wifibletest::startTask() {
                 initDate();
                 waitWork(500);
                 at->sendMac(macAddress);  // 开始连接
+                showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");
                 state = getNextState(state);
 
@@ -799,7 +806,6 @@ void wifibletest::startTask() {
                         testItems.append(test);
 
                         testResultTableUpdate(testItems);
-
                     }
                 } else {
                     showlog("充电电流异常重新测试5次");
@@ -857,7 +863,6 @@ void wifibletest::startTask() {
                 showlog("测试结束");
                 // log->saveRssiDataToCsv(measure_ammeter, intwifirssi, intblerssi, wifiresult,
                 //                            bleresult, charageresult, voltageresult);
-
 
                 state = STATE_IDLE;
                 isTestContinue = false;
@@ -1446,7 +1451,6 @@ void wifibletest::on_nfc_write_read_clicked() {
             testItems.append(test);
 
             testResultTableUpdate(testItems);
-
         }
         if (st < 0)
             showlog("nfc卡查询失败");
@@ -1469,7 +1473,6 @@ void wifibletest::on_nfc_write_read_clicked() {
         testItems.append(test);
 
         testResultTableUpdate(testItems);
-
     }
 
     for (int i = 0; i < dataSize; i += 4) {        // 每次处理8个字节
@@ -1493,7 +1496,6 @@ void wifibletest::on_nfc_write_read_clicked() {
             testItems.append(test);
 
             testResultTableUpdate(testItems);
-
         }
     }
     showlog("nfc信息读取内容为：");
@@ -1512,7 +1514,6 @@ void wifibletest::on_nfc_write_read_clicked() {
             testItems.append(test);
 
             testResultTableUpdate(testItems);
-
 
             return;
         } else {
@@ -1537,7 +1538,6 @@ void wifibletest::on_nfc_write_read_clicked() {
 
             testResultTableUpdate(testItems);
 
-
             return;
         } else {
             memset(rdatahex, 0x00, sizeof(rdatahex));
@@ -1559,7 +1559,6 @@ void wifibletest::on_nfc_write_read_clicked() {
 
         testResultTableUpdate(testItems);
 
-
     } else {
         showlog("写入的与读取的比对失败");
         TestResult = failValue;
@@ -1571,7 +1570,6 @@ void wifibletest::on_nfc_write_read_clicked() {
         testItems.append(test);
 
         testResultTableUpdate(testItems);
-
     }
 }
 

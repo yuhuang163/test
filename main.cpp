@@ -83,7 +83,10 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
         fileNumber = "default";
     }
     // 生成文件路径
-    QString fileName = "上位机日志_" + fileNumber + "_" + QDate::currentDate().toString("yyyy-MM-dd") + ".txt";
+    QString hostName = QSysInfo::machineHostName();
+
+    QString fileName =
+        hostName + "_上位机日志_" + fileNumber + "_" + QDate::currentDate().toString("yyyy-MM-dd") + ".txt";
 
     // QString fileName = QDate::currentDate().toString("上位机日志yyyy-MM-dd")
     // +
@@ -93,7 +96,10 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     QFile file(filePath);
     file.open(QIODevice::WriteOnly | QIODevice::Append);
     QTextStream text_stream(&file);
-    printf("%s\r\n", msg.toUtf8().constData());  // 或者使用
+
+    printf("%s", current_date.toUtf8().constData());
+    // 打印 msg 并换行
+    printf("  %s\r\n", msg.toUtf8().constData());
     fflush(stdout);
     text_stream << message << "\r\n";
     file.close();
@@ -101,6 +107,7 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
 
 int main(int argc, char* argv[]) {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     QApplication a(argc, argv);
     // 设置使用 UTF-8 编码
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
