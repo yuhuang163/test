@@ -651,9 +651,15 @@ void Qpb::set_motor_cali(int state) {
     if (state == 2)
         pack.command_data.moto_control.value_item.switch_cali = FacMotoCali_ZERO_CALIBRATION;
 
-    QString currentDate = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    QString hostName = QSysInfo::machineHostName();
+    if (hostName.length() > 10) {
+        hostName = hostName.right(10);
+    }
+    hostName = "," + hostName;
+    QString currentDate = QDateTime::currentDateTime().toString("yyMMddhhmmss") + hostName;
     // 格式化字符串
-    QString infoString = QString("Date: %1, Ver: %2").arg(currentDate).arg(APP_VERSION);
+
+    QString infoString = QString("%1,%2.").arg(currentDate).arg(APP_VERSION);
     // 转换为 QByteArray 并存入 write_info
     QByteArray byteArray = infoString.toUtf8();
 
@@ -898,9 +904,16 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
     // 获取当前日期
-    QString currentDate = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    QString hostName = QSysInfo::machineHostName();
+    if (hostName.length() > 10) {
+        hostName = hostName.right(10);
+    }
+    hostName = "," + hostName;
+
+    QString currentDate = QDateTime::currentDateTime().toString("yyMMddhhmmss") + hostName;
     // 格式化字符串
-    QString infoString = QString("Date: %1, Ver: %2").arg(currentDate).arg(APP_VERSION);
+
+    QString infoString = QString("%1,%2").arg(currentDate).arg(APP_VERSION);
 
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
     pack.cmd_id = cmd;
@@ -1809,7 +1822,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
         emit sendGetBrushResponse(1);
     }
-    emit send_pb_date("获取到写入的日期版本信息内容" + QString(x.dev_info[0].write_info));
+    emit send_pb_date("获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));
 }
 
 void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {

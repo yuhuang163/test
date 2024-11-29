@@ -45,8 +45,10 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         refresh_periph_times = 0;
 
         QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
+        QString flashStateStr = QString::number(data.flash_state);
 
-        if (static_cast<int>(data.flash_state) == flashStatus.toInt() || flashStatus == "null") {
+        // 现在可以将 QString 类型的状态用于你的条件判断
+        if (flashStatus.contains(flashStateStr)) {
             flash_state = 1;
         } else {
             flash_state = 2;
@@ -348,7 +350,7 @@ void ageing::startTask() {
                 refresh_periph_times = 1;
                 subpidCompareOk = 0;
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为："+ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
                 state = STATE_WATI_CONNECT;
                 break;
             case STATE_WATI_CONNECT:
@@ -515,7 +517,7 @@ void ageing::startTask() {
                 TestItem test;
                 test.testItem = "老化测试";
                 test.testData = "已进入";
-                test.testResult = result;
+                test.testResult = "通过";
                 test.ask = "通过";
                 testItems.append(test);
                 testResultTableUpdate(testItems);

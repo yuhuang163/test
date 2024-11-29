@@ -754,7 +754,8 @@ void imucali::refreshBaseData(FacGetDevBaseInfo data) {
 
     product_name = QString(data.product_name);
 
-    if (QString(data.product_name).compare("P20P") == 0 || QString(data.product_name).compare("Q20") == 0) {
+    if (QString(data.product_name).compare("P20PS") == 0 || QString(data.product_name).compare("P20P") == 0 ||
+        QString(data.product_name).compare("Q20") == 0) {
         if (data.imu_id == 144) {
             nqimuc->LSB = 1;
             isNeedNewCali = 1;
@@ -768,10 +769,10 @@ void imucali::refreshBaseData(FacGetDevBaseInfo data) {
         nqimuc->LSB = 4;
         isNeedNewCali = 1;
         if (QString(data.product_name).compare("U7") == 0 || QString(data.product_name).compare("U7P") == 0 ||
-            QString(data.product_name).compare("P30P") == 0) {
-            if (QString(data.product_name).compare("P30P") == 0) {
+            QString(data.product_name).compare("Y25SE") == 0) {
+            if (QString(data.product_name).compare("Y25SE") == 0) {
                 isNeedNewCali = 0;
-                showlog("当前姿态为P30P");
+                showlog("当前姿态为Y25SE");
             }
             nqimuc->imu_static_state = 0;
             showlog("当前姿态为q20");
@@ -929,7 +930,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 showlog("开始测试");
                 dataInit();
                 at->sendMac(ui->macInput->text());  // 开始连接
-                showlog("MAC地址为："+ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
 
                 TestTime.start();
                 state = STATE_WATI_CONNECT;

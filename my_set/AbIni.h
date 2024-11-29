@@ -55,24 +55,27 @@
 
 #define DEBUG_VER "电刷产测工具   V1.4.6"
 #define CAMERA_VER "摄像测试工站   V1.3.0"
-#define AGE_VER "老化测试工站   V1.2.7"
-#define MOTOR_VER "电机校准工站   V1.2.8"
+#define AGE_VER "老化测试工站   V1.2.8"
+#define MOTOR_VER "电机校准工站   V1.2.9"
 #define QC_VER "静态电流测试   V1.4.6"
 #define SCREEN_VER "屏幕测试工站   V1.2.1"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
 #define SINGLE_VER "信号测试工站   V1.5.0"
 #define FREE_VER "自由测试工站   V1.1.4"
-#define IMU_VER "IMU校准工站    V1.5.3"
+#define IMU_VER "IMU校准工站    V1.5.4"
 #define PCBA_VER "电刷板子测试   V1.4.2"
 
-// [PCBA_VER] 做了p20ps的版本上位机适配
+
+// [MOTOR_VER] 增加写入版本信息的电脑名字
+// [AGE_VER] 增加写入版本信息的电脑名字，老化显示修改
+// [IMU_VER] 修改p30p为y25se，适配P20PS
 //
+// [PCBA_VER] 做了p20ps的版本上位机适配
 // [QC_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [CAMERA_VER]  添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [DEBUG_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，修改摄像头变量命名，ui预览传输日志和计时，摄像头测试允许断开服务器
-// [MOTOR_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
-// [AGE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
-// [IMU_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+
+
 // [SCREEN_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，允许重新获取压感信息一次
 // [SINGLE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [LIGHT_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间

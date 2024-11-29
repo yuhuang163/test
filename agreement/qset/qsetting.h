@@ -26,8 +26,9 @@ private:
 protected:
     virtual void closeEvent(QCloseEvent*);
 private slots:
-    void on_Restore_default_setting_clicked();
+    void RestoreDefaultSetting();
 
+    void on_comboBox_productName_textActivated(const QString &arg1);
 };
 
 #endif  // QSETTING_H
