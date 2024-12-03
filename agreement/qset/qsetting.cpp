@@ -87,12 +87,16 @@ void qsetting::loadConfig() {
     this->resize(SETTINGS.value("Window/SettingSize", windowSize).toSize());
 
     // 使用映射将 station 和 QRadioButton 关联
-    QMap<QString, QRadioButton*> stationMap = {
-        {"IMU_CALI", ui->radioButtonImuCalibration},      {"MOTOR_TEST", ui->radioButtonMotorCalibration},
-        {"STATIC_CURRENT", ui->radioButtonStaticCurrent}, {"SCREEN_TEST", ui->radioButtonScreenTest},
-        {"CAMERA_TEST", ui->radioButtonCameraTest},       {"WIFIBLE_TEST", ui->radioButtonSignalTest},
-        {"AGE_TEST", ui->radioButtonAgingTest},           {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
-        {"FREE_WORK", ui->radioButtonFreeWorkstation},    {"MAIN_TEST", ui->radioButtonDebug}};
+    QMap<QString, QRadioButton*> stationMap = {{"IMU_CALI", ui->radioButtonImuCalibration},
+                                               {"MOTOR_TEST", ui->radioButtonMotorCalibration},
+                                               {"QUIESCENT_CURRENT", ui->radioButtonStaticCurrent},
+                                               {"SCREEN_TEST", ui->radioButtonScreenTest},
+                                               {"CAMERA_TEST", ui->radioButtonCameraTest},
+                                               {"WIFIBLE_TEST", ui->radioButtonSignalTest},
+                                               {"AGE_TEST", ui->radioButtonAgingTest},
+                                               {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
+                                               {"FREE_WORK", ui->radioButtonFreeWorkstation},
+                                               {"MAIN_TEST", ui->radioButtonDebug}};
 
     // 清除所有 QRadioButton 的选中状态
     for (auto button : stationMap) {

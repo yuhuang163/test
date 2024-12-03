@@ -133,72 +133,103 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
             base_state = 2;
         }
 
-        if (algorithmVersion.contains(data.algo_version) && hardwareVersion.contains(data.hw_version) &&
-            pressureSenseVersion.contains(data.presure_version) && productName.contains(data.product_name) &&
-            appProtocolVersion.contains(QString::number(data.pb_phone_ver)) &&
-            factoryProtocolVersion.contains(QString::number(data.pb_factory_ver)) &&
-            softwareVersion.contains(data.soft_version) && resourceVersion.contains(data.res_version) &&
-            motorVersion.contains(data.motor_version) && imuId.contains(QString::number(data.imu_id)) &&
-            bleVersion.contains(data.ble_version)) {
-            base_state = 1;
-        } else {
-            base_state = 2;
-        }
-
         TestItem test;
 
-        test.testItem = "蓝牙版本";
-        test.testData = QString::fromUtf8(data.ble_version);
-        test.ask = bleVersion;
-        testItems.append(test);
+        // Check for BLE version
+        if (isBleTest) {
+            test.testItem = "蓝牙版本";
+            test.testData = QString::fromUtf8(data.ble_version);
+            test.ask = bleVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "电机版本";
-        test.testData = QString::fromUtf8(data.motor_version);
-        test.ask = motorVersion;
-        testItems.append(test);
+        // Check for Motor version
+        if (isMotorTest) {
+            test.testItem = "电机版本";
+            test.testData = QString::fromUtf8(data.motor_version);
+            test.ask = motorVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "资源版本";
-        test.testData = QString::fromUtf8(data.res_version);
-        test.ask = resourceVersion;
-        testItems.append(test);
-        test.testItem = "软件版本";
-        test.testData = QString::fromUtf8(data.soft_version);
-        test.ask = softwareVersion;
-        testItems.append(test);
+        // Check for Resource version
+        if (isResourceTest) {
+            test.testItem = "资源版本";
+            test.testData = QString::fromUtf8(data.res_version);
+            test.ask = resourceVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "产品名字";
-        test.testData = QString::fromUtf8(data.product_name);
-        test.ask = productName;
-        testItems.append(test);
-        test.testItem = "硬件版本";
-        test.testData = QString::fromUtf8(data.hw_version);
-        test.ask = hardwareVersion;
-        testItems.append(test);
+        // Check for Software version
+        if (isSoftwareTest) {
+            test.testItem = "软件版本";
+            test.testData = QString::fromUtf8(data.soft_version);
+            test.ask = softwareVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "算法版本号";
-        test.testData = QString::fromUtf8(data.algo_version);
-        test.ask = algorithmVersion;
-        testItems.append(test);
+        // Check for Product name
+        if (isProductTest) {
+            test.testItem = "产品名字";
+            test.testData = QString::fromUtf8(data.product_name);
+            test.ask = productName;
+            testItems.append(test);
+        }
 
-        test.testItem = "压感版本";
-        test.testData = QString::fromUtf8(data.presure_version);
-        test.ask = pressureSenseVersion;
-        testItems.append(test);
+        // Check for Hardware version
+        if (isHwTest) {
+            test.testItem = "硬件版本";
+            test.testData = QString::fromUtf8(data.hw_version);
+            test.ask = hardwareVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "六轴id";
-        test.testData = QString::number(data.imu_id);
-        test.ask = imuId;
-        testItems.append(test);
+        // Check for Algorithm version
+        if (isAlgoTest) {
+            test.testItem = "算法版本号";
+            test.testData = QString::fromUtf8(data.algo_version);
+            test.ask = algorithmVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "APP的pb版本";
-        test.testData = QString("%1").arg(data.pb_phone_ver);
-        test.ask = appProtocolVersion;
-        testItems.append(test);
+        // Check for Pressure version
+        if (isPresureTest) {
+            test.testItem = "压感版本";
+            test.testData = QString::fromUtf8(data.presure_version);
+            test.ask = pressureSenseVersion;
+            testItems.append(test);
+        }
 
-        test.testItem = "工厂的pb版本";
-        test.testData = QString("%1").arg(data.pb_factory_ver);
-        test.ask = factoryProtocolVersion;
-        testItems.append(test);
+        // Check for IMU ID
+        if (isImuTest) {
+            test.testItem = "六轴id";
+            test.testData = QString::number(data.imu_id);
+            test.ask = imuId;
+            testItems.append(test);
+        }
+
+        // Check for APP Protocol version
+        if (isAppProtocolTest) {
+            test.testItem = "APP的pb版本";
+            test.testData = QString("%1").arg(data.pb_phone_ver);
+            test.ask = appProtocolVersion;
+            testItems.append(test);
+        }
+
+        // Check for Factory Protocol version
+        if (isFactoryProtocolTest) {
+            test.testItem = "工厂的pb版本";
+            test.testData = QString("%1").arg(data.pb_factory_ver);
+            test.ask = factoryProtocolVersion;
+            testItems.append(test);
+        }
+
+        // Check for Camera ID
+        if (isCameraTest) {
+            test.testItem = "摄像头id";
+            test.testData = QString::fromUtf8(data.camera_version);
+            test.ask = camera_id;
+            testItems.append(test);
+        }
 
         updateTestData(testItems);
     }
@@ -230,11 +261,11 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
     QString magnetStateStr = QString::number(data.magnet_state);
 
     // 现在可以将 QString 类型的状态用于你的条件判断
-    bool checkFlash = SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool();
-    bool checkIMU = SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool();
-    bool checkAudio = SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool();
-    bool checkPressure = SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool();
-    bool checkMagnetic = SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool();
+    bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
+    bool checkIMU = SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool();
+    bool checkAudio = SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool();
+    bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
+    bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
 
     if ((!checkFlash || flashStatus.contains(flashStateStr)) && (!checkIMU || imuStatus.contains(imuStateStr)) &&
         (!checkAudio || audioState.contains(audioStateStr)) &&

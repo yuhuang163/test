@@ -601,7 +601,6 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
             base_state = 1;
         } else {
             base_state = 2;
-
         }
 
         TestItem test;
@@ -743,8 +742,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         bool checkPressure = SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool();
         bool checkMagnetic = SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool();
 
-        if ((!checkFlash || flashStatus.contains(flashStateStr)) &&
-            (!checkIMU || imuStatus.contains(imuStateStr)) &&
+        if ((!checkFlash || flashStatus.contains(flashStateStr)) && (!checkIMU || imuStatus.contains(imuStateStr)) &&
             (!checkAudio || audioState.contains(audioStateStr)) &&
             (!checkPressure || pressureStatus.contains(pressStateStr)) &&
             (!checkMagnetic || magneticStatus.contains(magnetStateStr))) {
@@ -753,31 +751,30 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
             periph_state = 2;
         }
 
-
         TestItem test;
 
-        if (SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool()) {
+        if (SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool()) {
             test.testItem = "功放状态";
             test.testData = QString::number(data.audio_state);
             test.ask = audioState;
             testItems.append(test);
         }
 
-        if (SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool()) {
+        if (SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool()) {
             test.testItem = "内存状态";
             test.testData = QString::number(data.flash_state);
             test.ask = flashStatus;
             testItems.append(test);
         }
 
-        if (SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool()) {
+        if (SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool()) {
             test.testItem = "六轴状态";
             test.testData = QString::number(data.imu_state);
             test.ask = imuStatus;
             testItems.append(test);
         }
 
-        if (SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool()) {
+        if (SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool()) {
             if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
                 test.testItem = "马达状态";
             else
@@ -787,13 +784,12 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
             testItems.append(test);
         }
 
-        if (SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool()) {
+        if (SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool()) {
             test.testItem = "压感状态";
             test.testData = QString::number(data.press_state);
             test.ask = pressureStatus;
             testItems.append(test);
         }
-
 
         updateTestData(testItems);
     }

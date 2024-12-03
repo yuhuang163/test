@@ -48,7 +48,7 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         QString flashStateStr = QString::number(data.flash_state);
 
         // 现在可以将 QString 类型的状态用于你的条件判断
-        bool checkFlash = SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool();
+        bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
 
         if ((!checkFlash || flashStatus.contains(flashStateStr))) {
             flash_state = 1;
@@ -58,7 +58,7 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
 
         TestItem test;
 
-        if (SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool()) {
+        if (checkFlash) {
             test.testItem = "内存状态";
             test.testData = QString::number(data.flash_state);
             test.ask = flashStatus;

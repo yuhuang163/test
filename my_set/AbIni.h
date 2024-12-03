@@ -55,15 +55,15 @@
 
 #define DEBUG_VER "电刷产测工具   V1.4.6"
 #define CAMERA_VER "摄像测试工站   V1.3.0"
-#define AGE_VER "老化测试工站   V1.2.8"
-#define MOTOR_VER "电机校准工站   V1.2.9"
-#define QC_VER "静态电流测试   V1.4.6"
+#define AGE_VER "老化测试工站   V1.2.9"
+#define MOTOR_VER "电机校准工站   V1.3.0"
+#define QC_VER "静态电流测试   V1.4.7"
 #define SCREEN_VER "屏幕测试工站   V1.2.1"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
-#define SINGLE_VER "信号测试工站   V1.5.0"
+#define SINGLE_VER "信号测试工站   V1.5.1"
 #define FREE_VER "自由测试工站   V1.1.4"
 #define IMU_VER "IMU校准工站    V1.5.4"
-#define PCBA_VER "电刷板子测试   V1.4.2"
+#define PCBA_VER "电刷板子测试   V1.4.3"
 
 
 // [MOTOR_VER] 允许配置是否测这个基础信息项和外设状态项
