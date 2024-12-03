@@ -756,11 +756,11 @@ void imucali::refreshBaseData(FacGetDevBaseInfo data) {
 
     if (QString(data.product_name).compare("P20PS") == 0 || QString(data.product_name).compare("P20P") == 0 ||
         QString(data.product_name).compare("Q20") == 0) {
-        if (data.imu_id == 144) {
+        if (data.imu_id == 144) {  //无陀螺仪
             nqimuc->LSB = 1;
             isNeedNewCali = 1;
 
-        } else if (data.imu_id == 250) {  //博士的imu
+        } else if (data.imu_id == 250) {  //博士的imu无陀螺仪
             nqimuc->LSB = 0.25;
             isNeedNewCali = 1;
         }
@@ -1154,7 +1154,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_SHIP_MODE_CHECK:
                 if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
                     if (!at->getConnected()) {
-                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
+                        showlog("检测到蓝牙已经断开");
                         showlog("说明已经成功进入船运模式");
                         TestItem test;
                         test.testItem = "船运测试";
@@ -1162,9 +1162,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
-
                         testResultTableUpdate(testItems);
-
                         state = STATE_END;
                     }
                 } else {
@@ -1190,7 +1188,6 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testResult = "失败";
                     test.ask = "通过";
                     testItems.append(test);
-
                     testResultTableUpdate(testItems);
 
                     result = failValue;

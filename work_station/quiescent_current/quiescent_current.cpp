@@ -100,7 +100,38 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         QString algorithmVersion = SETTINGS.value("ProductInfo/Algorithm_Version").toString();
         QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
         QString imuId = SETTINGS.value("ProductInfo/IMU_ID").toString();
-        QString ble_ver = SETTINGS.value("ProductInfo/Ble_Ver").toString();
+        QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
+        QString camera_id = SETTINGS.value("ProductInfo/Camera_Id").toString();
+
+        bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+        bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
+        bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
+        bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+        bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
+        bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
+        bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
+        bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
+        bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
+        bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
+        bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
+        bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
+
+        if ((!isAlgoTest || algorithmVersion.contains(data.algo_version)) &&
+            (!isHwTest || hardwareVersion.contains(data.hw_version)) &&
+            (!isPresureTest || pressureSenseVersion.contains(data.presure_version)) &&
+            (!isProductTest || productName.contains(data.product_name)) &&
+            (!isAppProtocolTest || appProtocolVersion.contains(QString::number(data.pb_phone_ver))) &&
+            (!isFactoryProtocolTest || factoryProtocolVersion.contains(QString::number(data.pb_factory_ver))) &&
+            (!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
+            (!isResourceTest || resourceVersion.contains(data.res_version)) &&
+            (!isMotorTest || motorVersion.contains(data.motor_version)) &&
+            (!isImuTest || imuId.contains(QString::number(data.imu_id))) &&
+            (!isBleTest || bleVersion.contains(data.ble_version)) &&
+            (!isCameraTest || camera_id.contains(data.camera_version))) {
+            base_state = 1;
+        } else {
+            base_state = 2;
+        }
 
         if (algorithmVersion.contains(data.algo_version) && hardwareVersion.contains(data.hw_version) &&
             pressureSenseVersion.contains(data.presure_version) && productName.contains(data.product_name) &&
@@ -108,7 +139,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
             factoryProtocolVersion.contains(QString::number(data.pb_factory_ver)) &&
             softwareVersion.contains(data.soft_version) && resourceVersion.contains(data.res_version) &&
             motorVersion.contains(data.motor_version) && imuId.contains(QString::number(data.imu_id)) &&
-            ble_ver.contains(data.ble_version)) {
+            bleVersion.contains(data.ble_version)) {
             base_state = 1;
         } else {
             base_state = 2;
@@ -118,7 +149,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
 
         test.testItem = "蓝牙版本";
         test.testData = QString::fromUtf8(data.ble_version);
-        test.ask = ble_ver;
+        test.ask = bleVersion;
         testItems.append(test);
 
         test.testItem = "电机版本";
@@ -174,60 +205,87 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
 }
 
 void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
-    if (refresh_periph_times) {
-        qDebug() << getIndex() << "refresh_times" << refresh_periph_times;
-        refresh_periph_times = 0;
-        qDebug() << getIndex() << "flash_state" << data.flash_state;
-        qDebug() << getIndex() << "imu_state" << data.imu_state;
-        qDebug() << getIndex() << "magnet_state" << data.magnet_state;
-        qDebug() << getIndex() << "press_state" << data.press_state;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "flash_state" << data.flash_state;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "imu_state" << data.imu_state;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "magnet_state" << data.magnet_state;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "press_state" << data.press_state;
+    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+             << "audio_state" << data.audio_state;
 
-        bool imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toBool();
-        bool flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toBool();
-        bool magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toBool();
-        bool pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toBool();
-        bool audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toBool();
+    QString imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toString();
+    QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
+    QString magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
+    QString pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
+    QString audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toString();
 
-        if (data.flash_state == flashStatus && data.imu_state == imuStatus && data.press_state == pressureStatus &&
-            data.magnet_state == magneticStatus && data.audio_state == audioState) {
-            periph_state = 1;
-        } else {
-            periph_state = 2;
-        }
+    // 将布尔值转换为 QString
+    QString flashStateStr = QString::number(data.flash_state);
+    QString imuStateStr = QString::number(data.imu_state);
+    QString audioStateStr = QString::number(data.audio_state);
+    QString pressStateStr = QString::number(data.press_state);
+    QString magnetStateStr = QString::number(data.magnet_state);
 
-        TestItem test;
+    // 现在可以将 QString 类型的状态用于你的条件判断
+    bool checkFlash = SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool();
+    bool checkIMU = SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool();
+    bool checkAudio = SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool();
+    bool checkPressure = SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool();
+    bool checkMagnetic = SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool();
 
+    if ((!checkFlash || flashStatus.contains(flashStateStr)) && (!checkIMU || imuStatus.contains(imuStateStr)) &&
+        (!checkAudio || audioState.contains(audioStateStr)) &&
+        (!checkPressure || pressureStatus.contains(pressStateStr)) &&
+        (!checkMagnetic || magneticStatus.contains(magnetStateStr))) {
+        periph_state = 1;
+    } else {
+        periph_state = 2;
+    }
+
+    TestItem test;
+
+    if (SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool()) {
         test.testItem = "功放状态";
         test.testData = QString::number(data.audio_state);
-        test.ask = QString::number(audioState);
+        test.ask = audioState;
         testItems.append(test);
+    }
 
+    if (SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool()) {
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
-        test.ask = QString::number(flashStatus);
-
+        test.ask = flashStatus;
         testItems.append(test);
+    }
 
+    if (SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool()) {
         test.testItem = "六轴状态";
         test.testData = QString::number(data.imu_state);
-        test.ask = QString::number(imuStatus);
+        test.ask = imuStatus;
         testItems.append(test);
+    }
 
+    if (SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool()) {
         if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
             test.testItem = "马达状态";
         else
             test.testItem = "地磁状态";
         test.testData = QString::number(data.magnet_state);
-        test.ask = QString::number(magneticStatus);
+        test.ask = magneticStatus;
         testItems.append(test);
+    }
 
+    if (SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool()) {
         test.testItem = "压感状态";
         test.testData = QString::number(data.press_state);
-        test.ask = QString::number(pressureStatus);
+        test.ask = pressureStatus;
         testItems.append(test);
-
-        updateTestData(testItems);
     }
+
+    updateTestData(testItems);
 }
 
 void quiescent_current::refreshAmmeterData(QString data) {
@@ -529,7 +587,7 @@ void quiescent_current::startTask() {
                 at->resetConnected();
                 measure_ammeter = 0;
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为："+ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
                 showlog("已经发送mac地址");
                 TestTime.start();
                 state = STATE_WATI_CONNECT;

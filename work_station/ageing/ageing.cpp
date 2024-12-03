@@ -48,17 +48,23 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         QString flashStateStr = QString::number(data.flash_state);
 
         // 现在可以将 QString 类型的状态用于你的条件判断
-        if (flashStatus.contains(flashStateStr)) {
+        bool checkFlash = SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool();
+
+        if ((!checkFlash || flashStatus.contains(flashStateStr))) {
             flash_state = 1;
         } else {
             flash_state = 2;
         }
 
         TestItem test;
-        test.testItem = "内存状态";
-        test.testData = QString::number(data.flash_state);
-        test.ask = flashStatus;
-        testItems.append(test);
+
+        if (SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool()) {
+            test.testItem = "内存状态";
+            test.testData = QString::number(data.flash_state);
+            test.ask = flashStatus;
+            testItems.append(test);
+        }
+
         updateTestData(testItems);
     }
 }

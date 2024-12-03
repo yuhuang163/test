@@ -27,6 +27,58 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
 
     loadConfig();
 }
+
+void qsetting::readSubPIDAndFilter() {
+    SETTINGS.beginGroup("SUBPID");
+    // 读取 [SUBPID] 部分的所有键值对
+    QStringList subPIDKeys = SETTINGS.childKeys();  // 获取所有键
+    SETTINGS.endGroup();
+    // 用于存储不同值的变量
+    QString subPID_00;
+    QString subPID_01;
+    QString subPID_02;
+    QString subPID_03;
+    qDebug() << "subPIDKeys###########: " << subPIDKeys;
+    // 遍历所有键，并读取对应的值
+    for (const QString& key : subPIDKeys) {
+        QString value = SETTINGS.value("SUBPID/" + key).toString();
+
+        // 根据值分类，将键名加到相应的变量中
+        if (value == "00") {
+            if (!subPID_00.isEmpty()) {
+                subPID_00 += "=";  // 如果不是第一个键，添加 "=" 连接符
+            }
+            subPID_00 += key;
+        } else if (value == "01") {
+            if (!subPID_01.isEmpty()) {
+                subPID_01 += "=";
+            }
+            subPID_01 += key;
+        } else if (value == "02") {
+            if (!subPID_02.isEmpty()) {
+                subPID_02 += "=";
+            }
+            subPID_02 += key;
+        } else if (value == "03") {
+            if (!subPID_03.isEmpty()) {
+                subPID_03 += "=";
+            }
+            subPID_03 += key;
+        }
+    }
+
+    // 输出结果
+    qDebug() << "subPID_00: " << subPID_00;
+    qDebug() << "subPID_01: " << subPID_01;
+    qDebug() << "subPID_02: " << subPID_02;
+    qDebug() << "subPID_03: " << subPID_03;
+
+    // 将数据填充到 QLineEdit 控件
+    ui->lineEdit_SubPID_00->setText(subPID_00);
+    ui->lineEdit_SubPID_01->setText(subPID_01);
+    ui->lineEdit_SubPID_02->setText(subPID_02);
+    ui->lineEdit_SubPID_03->setText(subPID_03);
+}
 void qsetting::loadConfig() {
     // 假设 SETTINGS 是一个 QSettings 实例
     QString station = SETTINGS.value("SYSTEM/station").toString();  // 读取 station 的值
@@ -78,6 +130,8 @@ void qsetting::loadConfig() {
     ui->lineEdit_CurrentMechine->setText(SETTINGS.value("SYSTEM/CurrentMechine").toString());
     // 加载 SN
     ui->snLineEdit->setText(SETTINGS.value("Regex/SNPattern").toString());
+
+    readSubPIDAndFilter();
 
     // 加载 WIFI 信息
     ui->wifiAccountLineEdit->setText(SETTINGS.value("WIFI/Name").toString());
@@ -132,6 +186,20 @@ void qsetting::loadConfig() {
     ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                            // imu的id
     ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());  // 摄像头的id
 
+    ui->checkBox_ProductName->setChecked(SETTINGS.value("ProductInfo/ProductName_checkBox").toBool());
+    ui->checkBox_HardwareVersion->setChecked(SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool());
+    ui->checkBox_SoftwareVersion->setChecked(SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool());
+    ui->checkBox_ResourceVersion->setChecked(SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool());
+    ui->checkBox_AgingStatus->setChecked(SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool());
+    ui->checkBox_MotorVersion->setChecked(SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool());
+    ui->checkBox_BluetoothVersion->setChecked(SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool());
+    ui->checkBox_AppPB->setChecked(SETTINGS.value("ProductInfo/AppPB_checkBox").toBool());
+    ui->checkBox_FactoryPB->setChecked(SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool());
+    ui->checkBox_AlgorithmVersion->setChecked(SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool());
+    ui->checkBox_PressureVersion->setChecked(SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool());
+    ui->checkBox_ImuID->setChecked(SETTINGS.value("ProductInfo/ImuID_checkBox").toBool());
+    ui->checkBox_CameraID->setChecked(SETTINGS.value("ProductInfo/CameraID_checkBox").toBool());
+
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
     ui->lineEdit_CargoCurrentLower->setText(SETTINGS.value("Current/LowshipCurrent").toString());
@@ -161,6 +229,12 @@ void qsetting::loadConfig() {
     ui->lineEdit_magnetic_status->setText(SETTINGS.value("PeripheralStatus/Magnetic_Status").toString());  // 地磁状态
     ui->lineEdit_pressure_status->setText(SETTINGS.value("PeripheralStatus/Pressure_Status").toString());  // 压感状态
     ui->lineEdit_audio_status->setText(SETTINGS.value("PeripheralStatus/Audio_Status").toString());  // 音频状态
+
+    ui->checkBox_imu_status->setChecked(SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool());
+    ui->checkBox_flash_status->setChecked(SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool());
+    ui->checkBox_magnetic_status->setChecked(SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool());
+    ui->checkBox_pressure_status->setChecked(SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool());
+    ui->checkBox_audio_status->setChecked(SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool());
 
     // Battery Control
     ui->lineEdit_battery_voltage_control->setText(SETTINGS.value("BATTARY/standbattary").toString());  // 电池电压
@@ -193,6 +267,60 @@ qsetting::~qsetting() {
     qDebug() << "已经删除页面";
     delete ui;
 }
+
+void qsetting::saveSubPIDAndFilter() {
+    // 获取 QLineEdit 控件中的文本内容
+    QString subPID_00 = ui->lineEdit_SubPID_00->text();
+    QString subPID_01 = ui->lineEdit_SubPID_01->text();
+    QString subPID_02 = ui->lineEdit_SubPID_02->text();
+    QString subPID_03 = ui->lineEdit_SubPID_03->text();
+
+    // 输出当前内容
+    qDebug() << "subPID_00 (from UI): " << subPID_00;
+    qDebug() << "subPID_01 (from UI): " << subPID_01;
+    qDebug() << "subPID_02 (from UI): " << subPID_02;
+    qDebug() << "subPID_03 (from UI): " << subPID_03;
+
+    // 进入 SUBPID 组
+    SETTINGS.beginGroup("SUBPID");
+
+    // 清空原有的配置
+    for (const QString& key : SETTINGS.childKeys()) {
+        SETTINGS.remove(key);
+    }
+
+    // 解析并保存每个 subPID 组的键值对
+    // 将 subPID_00 中的键值对存入文件
+    QStringList keys_00 = subPID_00.split("=");
+    for (const QString& key : keys_00) {
+        SETTINGS.setValue(key, "00");
+    }
+
+    // 将 subPID_01 中的键值对存入文件
+    QStringList keys_01 = subPID_01.split("=");
+    for (const QString& key : keys_01) {
+        SETTINGS.setValue(key, "01");
+    }
+
+    // 将 subPID_02 中的键值对存入文件
+    QStringList keys_02 = subPID_02.split("=");
+    for (const QString& key : keys_02) {
+        SETTINGS.setValue(key, "02");
+    }
+
+    // 将 subPID_03 中的键值对存入文件
+    QStringList keys_03 = subPID_03.split("=");
+    for (const QString& key : keys_03) {
+        SETTINGS.setValue(key, "03");
+    }
+
+    // 结束 SUBPID 组
+    SETTINGS.endGroup();
+
+    // 输出保存后的结果
+    qDebug() << "Saved SUBPID data to file!";
+}
+
 void qsetting::saveConfig() {
     SETTINGS.setValue("Window/SettingSize", this->size());
     // 假设 SETTINGS 是一个 QSettings 实例
@@ -235,6 +363,7 @@ void qsetting::saveConfig() {
     // 保存 SN
     SETTINGS.setValue("Regex/SNPattern", ui->snLineEdit->text());
 
+    saveSubPIDAndFilter();
     // 保存 WIFI 信息
     SETTINGS.setValue("WIFI/Name", ui->wifiAccountLineEdit->text());
     SETTINGS.setValue("WIFI/Password", ui->wifiPasswordLineEdit->text());
@@ -289,6 +418,20 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/IMU_ID", ui->lineEdit_ImuID->text());
     SETTINGS.setValue("ProductInfo/Camera_Id", ui->lineEdit_CameraID->text());
 
+    SETTINGS.setValue("ProductInfo/ProductName_checkBox", ui->checkBox_ProductName->isChecked());
+    SETTINGS.setValue("ProductInfo/HardwareVersion_checkBox", ui->checkBox_HardwareVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/SoftwareVersion_checkBox", ui->checkBox_SoftwareVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/ResourceVersion_checkBox", ui->checkBox_ResourceVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/AgingStatus_checkBox", ui->checkBox_AgingStatus->isChecked());
+    SETTINGS.setValue("ProductInfo/MotorVersion_checkBox", ui->checkBox_MotorVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/BluetoothVersion_checkBox", ui->checkBox_BluetoothVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/AppPB_checkBox", ui->checkBox_AppPB->isChecked());
+    SETTINGS.setValue("ProductInfo/FactoryPB_checkBox", ui->checkBox_FactoryPB->isChecked());
+    SETTINGS.setValue("ProductInfo/AlgorithmVersion_checkBox", ui->checkBox_AlgorithmVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/PressureVersion_checkBox", ui->checkBox_PressureVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/ImuID_checkBox", ui->checkBox_ImuID->isChecked());
+    SETTINGS.setValue("ProductInfo/CameraID_checkBox", ui->checkBox_CameraID->isChecked());
+
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());
     SETTINGS.setValue("Current/LowshipCurrent", ui->lineEdit_CargoCurrentLower->text());
@@ -318,6 +461,13 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("PeripheralStatus/Magnetic_Status", ui->lineEdit_magnetic_status->text());
     SETTINGS.setValue("PeripheralStatus/Pressure_Status", ui->lineEdit_pressure_status->text());
     SETTINGS.setValue("PeripheralStatus/Audio_Status", ui->lineEdit_audio_status->text());
+
+    // 检查 QCheckBox 的状态并保存到配置文件
+    SETTINGS.setValue("PeripheralStatus/IMUStatus_checkBox", ui->checkBox_imu_status->isChecked());
+    SETTINGS.setValue("PeripheralStatus/FlashStatus_checkBox", ui->checkBox_flash_status->isChecked());
+    SETTINGS.setValue("PeripheralStatus/MagneticStatus_checkBox", ui->checkBox_magnetic_status->isChecked());
+    SETTINGS.setValue("PeripheralStatus/PressureStatus_checkBox", ui->checkBox_pressure_status->isChecked());
+    SETTINGS.setValue("PeripheralStatus/AudioStatus_checkBox", ui->checkBox_audio_status->isChecked());
 
     // Battery Control
     SETTINGS.setValue("BATTARY/standbattary", ui->lineEdit_battery_voltage_control->text());

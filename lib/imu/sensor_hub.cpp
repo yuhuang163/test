@@ -337,9 +337,6 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
 }
 
 void new_imu_calibrate::acccalib_sensors_init() {
-    
-    
-    
     STATIC_CONV_VAR = SETTINGS.value("IMU/STATIC_CONV_VAR", "200").toInt();
     STATIC_CONV_COUNT = SETTINGS.value("IMU/STATIC_CONV_COUNT", "45").toInt();
     STATIC_CONV_DELAY = SETTINGS.value("IMU/STATIC_CONV_DELAY", "15").toInt();
@@ -452,9 +449,7 @@ int new_imu_calibrate::acccalib_sensors_task() {
             // addjust penalty term lambda
             if (loss < last_loss) {
                 lambda_LM = lambda_LM * 0.5;
-            }
-
-            else {
+            } else {
                 lambda_LM = lambda_LM * 2;
             }
 

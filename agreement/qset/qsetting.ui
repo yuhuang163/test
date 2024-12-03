@@ -13,22 +13,8 @@
   <property name="windowTitle">
    <string>上位机设置</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout_3">
-     <item>
-      <widget class="QLabel" name="label_battery_voltage_control">
-       <property name="text">
-        <string>电池电压卡控</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="lineEdit_battery_voltage_control"/>
-     </item>
-    </layout>
-   </item>
-   <item row="0" column="0" rowspan="3">
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
     <widget class="QGroupBox" name="radioButtonGroupWidget">
      <property name="title">
       <string>工站选择</string>
@@ -107,630 +93,289 @@
      </layout>
     </widget>
    </item>
-   <item row="9" column="0" colspan="3">
-    <widget class="QGroupBox" name="groupBox">
+   <item row="0" column="1" rowspan="4">
+    <widget class="QGroupBox" name="mainWidget">
      <property name="title">
-      <string>电流阈值设置</string>
+      <string>上位机基础信息测试判断条件</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_Settings">
+     <layout class="QVBoxLayout" name="verticalLayoutMain">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrent">
+       <layout class="QHBoxLayout" name="layoutProductName">
         <item>
-         <widget class="QLabel" name="label_CargoCurrent">
+         <widget class="QLabel" name="labelProductName">
           <property name="text">
-           <string>船运电流</string>
+           <string>产品名字</string>
           </property>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrentLimits">
-          <item>
-           <widget class="QLabel" name="label_CargoCurrentUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_CargoCurrentUpper"/>
-          </item>
-         </layout>
+         <widget class="QLineEdit" name="lineEdit_ProductName"/>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrentLower">
-          <item>
-           <widget class="QLabel" name="label_CargoCurrentLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_CargoCurrentLower"/>
-          </item>
-         </layout>
+         <widget class="QCheckBox" name="checkBox_ProductName">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrent">
+       <layout class="QHBoxLayout" name="layoutHardwareVersion">
         <item>
-         <widget class="QLabel" name="label_ChargingCurrent">
+         <widget class="QLabel" name="labelHardwareVersion">
           <property name="text">
-           <string>充电电流</string>
+           <string>硬件版本号</string>
           </property>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrentLimits">
-          <item>
-           <widget class="QLabel" name="label_ChargingCurrentUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_ChargingCurrentUpper"/>
-          </item>
-         </layout>
+         <widget class="QLineEdit" name="lineEdit_HardwareVersion"/>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrentLower">
-          <item>
-           <widget class="QLabel" name="label_ChargingCurrentLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_ChargingCurrentLower"/>
-          </item>
-         </layout>
+         <widget class="QCheckBox" name="checkBox_HardwareVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrent">
+       <layout class="QHBoxLayout" name="layoutSoftwareVersion">
         <item>
-         <widget class="QLabel" name="label_WorkingCurrent">
+         <widget class="QLabel" name="labelSoftwareVersion">
           <property name="text">
-           <string>工作电流</string>
+           <string>软件版本</string>
           </property>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLimits">
-          <item>
-           <widget class="QLabel" name="label_WorkingCurrentUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_WorkingCurrentUpper"/>
-          </item>
-         </layout>
+         <widget class="QLineEdit" name="lineEdit_SoftwareVersion"/>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLower">
-          <item>
-           <widget class="QLabel" name="label_WorkingCurrentLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_WorkingCurrentLower"/>
-          </item>
-         </layout>
+         <widget class="QCheckBox" name="checkBox_SoftwareVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrent">
+       <layout class="QHBoxLayout" name="layoutResourceVersion">
         <item>
-         <widget class="QLabel" name="label_StaticCurrent">
+         <widget class="QLabel" name="labelResourceVersion">
           <property name="text">
-           <string>静态电流</string>
+           <string>资源版本</string>
           </property>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrentLimits">
-          <item>
-           <widget class="QLabel" name="label_StaticCurrentUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_StaticCurrentUpper"/>
-          </item>
-         </layout>
+         <widget class="QLineEdit" name="lineEdit_ResourceVersion"/>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrentLower">
-          <item>
-           <widget class="QLabel" name="label_StaticCurrentLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_StaticCurrentLower"/>
-          </item>
-         </layout>
+         <widget class="QCheckBox" name="checkBox_ResourceVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrent">
+       <layout class="QHBoxLayout" name="layoutAgingStatus">
         <item>
-         <widget class="QLabel" name="label_AudioCurrent">
+         <widget class="QLabel" name="labelAgingStatus">
           <property name="text">
-           <string>音频电流</string>
+           <string>老化状态</string>
           </property>
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrentLimits">
-          <item>
-           <widget class="QLabel" name="label_AudioCurrentUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_AudioCurrentUpper"/>
-          </item>
-         </layout>
+         <widget class="QLineEdit" name="lineEdit_AgingStatus"/>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrentLower">
-          <item>
-           <widget class="QLabel" name="label_AudioCurrentLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_AudioCurrentLower"/>
-          </item>
-         </layout>
+         <widget class="QCheckBox" name="checkBox_AgingStatus">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_TestDuration">
+       <layout class="QHBoxLayout" name="layoutMotorVersion">
         <item>
-         <widget class="QLabel" name="label_TestDuration">
+         <widget class="QLabel" name="labelMotorVersion">
           <property name="text">
-           <string>测试限制时长</string>
+           <string>电机版本</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit_TestDuration"/>
+         <widget class="QLineEdit" name="lineEdit_MotorVersion"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_MotorVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutBluetoothVersion">
+        <item>
+         <widget class="QLabel" name="labelBluetoothVersion">
+          <property name="text">
+           <string>蓝牙版本</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_BluetoothVersion"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_BluetoothVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutAppPB">
+        <item>
+         <widget class="QLabel" name="labelAppPB">
+          <property name="text">
+           <string>app的pb</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_AppPB"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_AppPB">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutFactoryPB">
+        <item>
+         <widget class="QLabel" name="labelFactoryPB">
+          <property name="text">
+           <string>厂测的pb</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_FactoryPB"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_FactoryPB">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutAlgorithmVersion">
+        <item>
+         <widget class="QLabel" name="labelAlgorithmVersion">
+          <property name="text">
+           <string>算法版本</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_AlgorithmVersion"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_AlgorithmVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutPressureVersion">
+        <item>
+         <widget class="QLabel" name="labelPressureVersion">
+          <property name="text">
+           <string>压感版本</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_PressureVersion"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_PressureVersion">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutImuID">
+        <item>
+         <widget class="QLabel" name="labelImuID">
+          <property name="text">
+           <string>imu的id</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_ImuID"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_ImuID">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutCameraID">
+        <item>
+         <widget class="QLabel" name="labelCameraID">
+          <property name="text">
+           <string>摄像头的id</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_CameraID"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_CameraID">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
      </layout>
     </widget>
    </item>
-   <item row="0" column="5" rowspan="4">
-    <widget class="QGroupBox" name="groupBox_15">
-     <property name="title">
-      <string>上位机外设信息测试判断条件</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_6">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_imu_status">
-        <item>
-         <widget class="QLabel" name="label_imu_status">
-          <property name="text">
-           <string>imu状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_imu_status"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_flash_status">
-        <item>
-         <widget class="QLabel" name="label_flash_status">
-          <property name="text">
-           <string>内存状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_flash_status"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_magnetic_status">
-        <item>
-         <widget class="QLabel" name="label_magnetic_status">
-          <property name="text">
-           <string>地磁状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_magnetic_status">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_pressure_status">
-        <item>
-         <widget class="QLabel" name="label_pressure_status">
-          <property name="text">
-           <string>压感状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_pressure_status">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_audio_status">
-        <item>
-         <widget class="QLabel" name="label_audio_status">
-          <property name="text">
-           <string>音频状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_audio_status"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="9" column="6">
-    <widget class="QGroupBox" name="imuCalibrationWidget">
-     <property name="title">
-      <string>imu相关设置</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_IMU">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_calibrationTime">
-        <item>
-         <widget class="QLabel" name="label_calibrationTime">
-          <property name="text">
-           <string>imu校准总时间</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_calibrationTime"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_comparisonValue">
-        <item>
-         <widget class="QLabel" name="label_comparisonValue">
-          <property name="text">
-           <string>imu测试比较值</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_comparisonValue"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_singlePointTimeout">
-        <item>
-         <widget class="QLabel" name="label_singlePointTimeout">
-          <property name="text">
-           <string>imu单点位超时时间</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_singlePointTimeout"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_zAxis">
-        <item>
-         <widget class="QLabel" name="label_zAxis">
-          <property name="text">
-           <string>imu的z轴</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_zAxisUpper">
-          <item>
-           <widget class="QLabel" name="label_zAxisUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_zAxisUpper"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_zAxisLower">
-          <item>
-           <widget class="QLabel" name="label_zAxisLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_zAxisLower"/>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_xAxis">
-        <item>
-         <widget class="QLabel" name="label_xAxis">
-          <property name="text">
-           <string>imu的x轴</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_xAxisUpper">
-          <item>
-           <widget class="QLabel" name="label_xAxisUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_xAxisUpper"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_xAxisLower">
-          <item>
-           <widget class="QLabel" name="label_xAxisLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_xAxisLower"/>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_yAxis">
-        <item>
-         <widget class="QLabel" name="label_yAxis">
-          <property name="text">
-           <string>imu的y轴</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_yAxisUpper">
-          <item>
-           <widget class="QLabel" name="label_yAxisUpper">
-            <property name="text">
-             <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_yAxisUpper"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_yAxisLower">
-          <item>
-           <widget class="QLabel" name="label_yAxisLower">
-            <property name="text">
-             <string>下限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineEdit_yAxisLower"/>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_threshold">
-        <item>
-         <widget class="QLabel" name="label_threshold">
-          <property name="text">
-           <string>数据波动阈值</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_threshold"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_sampleFrames">
-        <item>
-         <widget class="QLabel" name="label_sampleFrames">
-          <property name="text">
-           <string>样本帧数</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_sampleFrames"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_delayFrames">
-        <item>
-         <widget class="QLabel" name="label_delayFrames">
-          <property name="text">
-           <string>延时帧数</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_delayFrames"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="9" column="5">
-    <widget class="QGroupBox" name="groupBox_TestRequirements">
-     <property name="title">
-      <string>治具测试要求</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_TestRequirements">
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_MusicStatus">
-        <item>
-         <widget class="QLabel" name="label_MusicStatus">
-          <property name="text">
-           <string>音乐状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_MusicStatus"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_OvervoltageLightStatus">
-        <item>
-         <widget class="QLabel" name="label_OvervoltageLightStatus">
-          <property name="text">
-           <string>过压灯状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_OvervoltageLightStatus"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_Button1Status">
-        <item>
-         <widget class="QLabel" name="label_Button1Status">
-          <property name="text">
-           <string>按键1状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_Button1Status">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_Button2Status">
-        <item>
-         <widget class="QLabel" name="label_Button2Status">
-          <property name="text">
-           <string>按键2状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_Button2Status">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <property name="topMargin">
-         <number>0</number>
-        </property>
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>静态电流治具第几代</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_CurrentMechine"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="0" column="2" rowspan="7">
+   <item row="0" column="2" rowspan="4">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>MES相关设置</string>
@@ -961,198 +606,7 @@
      </layout>
     </widget>
    </item>
-   <item row="0" column="1" rowspan="7">
-    <widget class="QGroupBox" name="mainWidget">
-     <property name="title">
-      <string>上位机基础信息测试判断条件</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayoutMain">
-      <item>
-       <layout class="QHBoxLayout" name="layoutProductName">
-        <item>
-         <widget class="QLabel" name="labelProductName">
-          <property name="text">
-           <string>产品名字</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_ProductName"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutHardwareVersion">
-        <item>
-         <widget class="QLabel" name="labelHardwareVersion">
-          <property name="text">
-           <string>硬件版本号</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_HardwareVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutSoftwareVersion">
-        <item>
-         <widget class="QLabel" name="labelSoftwareVersion">
-          <property name="text">
-           <string>软件版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_SoftwareVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutResourceVersion">
-        <item>
-         <widget class="QLabel" name="labelResourceVersion">
-          <property name="text">
-           <string>资源版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_ResourceVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutAgingStatus">
-        <item>
-         <widget class="QLabel" name="labelAgingStatus">
-          <property name="text">
-           <string>老化状态</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_AgingStatus"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutMotorVersion">
-        <item>
-         <widget class="QLabel" name="labelMotorVersion">
-          <property name="text">
-           <string>电机版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_MotorVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutBluetoothVersion">
-        <item>
-         <widget class="QLabel" name="labelBluetoothVersion">
-          <property name="text">
-           <string>蓝牙版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_BluetoothVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutAppPB">
-        <item>
-         <widget class="QLabel" name="labelAppPB">
-          <property name="text">
-           <string>app的pb</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_AppPB"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutFactoryPB">
-        <item>
-         <widget class="QLabel" name="labelFactoryPB">
-          <property name="text">
-           <string>厂测的pb</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_FactoryPB"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutAlgorithmVersion">
-        <item>
-         <widget class="QLabel" name="labelAlgorithmVersion">
-          <property name="text">
-           <string>算法版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_AlgorithmVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutPressureVersion">
-        <item>
-         <widget class="QLabel" name="labelPressureVersion">
-          <property name="text">
-           <string>压感版本</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_PressureVersion"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutImuID">
-        <item>
-         <widget class="QLabel" name="labelImuID">
-          <property name="text">
-           <string>imu的id</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_ImuID"/>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="layoutCameraID">
-        <item>
-         <widget class="QLabel" name="labelCameraID">
-          <property name="text">
-           <string>摄像头的id</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="lineEdit_CameraID"/>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="0" column="6" rowspan="4">
+   <item row="0" column="4" rowspan="2">
     <widget class="QGroupBox" name="groupBox_camera_position">
      <property name="title">
       <string>摄像头相关设置</string>
@@ -1231,7 +685,7 @@
      </layout>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="1" column="0">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>1拖多设置</string>
@@ -1271,8 +725,8 @@
      </layout>
     </widget>
    </item>
-   <item row="5" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item row="2" column="0">
+    <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QLabel" name="label_5">
        <property name="text">
@@ -1289,7 +743,7 @@
      </item>
     </layout>
    </item>
-   <item row="4" column="5" rowspan="3" colspan="2">
+   <item row="2" column="3" rowspan="2" colspan="2">
     <widget class="QGroupBox" name="signalStrengthSettingWidget">
      <property name="title">
       <string>信号测试相关设置</string>
@@ -1422,12 +876,749 @@
      </layout>
     </widget>
    </item>
-   <item row="0" column="8" rowspan="10">
+   <item row="3" column="0">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <item>
+      <widget class="QLabel" name="label_battery_voltage_control">
+       <property name="text">
+        <string>电池电压卡控</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEdit_battery_voltage_control"/>
+     </item>
+    </layout>
+   </item>
+   <item row="4" column="3">
+    <widget class="QGroupBox" name="groupBox_TestRequirements">
+     <property name="title">
+      <string>治具测试要求</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_TestRequirements">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_MusicStatus">
+        <item>
+         <widget class="QLabel" name="label_MusicStatus">
+          <property name="text">
+           <string>音乐状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_MusicStatus"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_OvervoltageLightStatus">
+        <item>
+         <widget class="QLabel" name="label_OvervoltageLightStatus">
+          <property name="text">
+           <string>过压灯状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_OvervoltageLightStatus"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_Button1Status">
+        <item>
+         <widget class="QLabel" name="label_Button1Status">
+          <property name="text">
+           <string>按键1状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_Button1Status">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_Button2Status">
+        <item>
+         <widget class="QLabel" name="label_Button2Status">
+          <property name="text">
+           <string>按键2状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_Button2Status">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>静态电流治具第几代</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_CurrentMechine"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="4">
+    <widget class="QGroupBox" name="imuCalibrationWidget">
+     <property name="title">
+      <string>imu相关设置</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_IMU">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_calibrationTime">
+        <item>
+         <widget class="QLabel" name="label_calibrationTime">
+          <property name="text">
+           <string>imu校准总时间</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_calibrationTime"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_comparisonValue">
+        <item>
+         <widget class="QLabel" name="label_comparisonValue">
+          <property name="text">
+           <string>imu测试比较值</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_comparisonValue"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_singlePointTimeout">
+        <item>
+         <widget class="QLabel" name="label_singlePointTimeout">
+          <property name="text">
+           <string>imu单点位超时时间</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_singlePointTimeout"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_zAxis">
+        <item>
+         <widget class="QLabel" name="label_zAxis">
+          <property name="text">
+           <string>imu的z轴</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_zAxisUpper">
+          <item>
+           <widget class="QLabel" name="label_zAxisUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_zAxisUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_zAxisLower">
+          <item>
+           <widget class="QLabel" name="label_zAxisLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_zAxisLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_xAxis">
+        <item>
+         <widget class="QLabel" name="label_xAxis">
+          <property name="text">
+           <string>imu的x轴</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_xAxisUpper">
+          <item>
+           <widget class="QLabel" name="label_xAxisUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_xAxisUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_xAxisLower">
+          <item>
+           <widget class="QLabel" name="label_xAxisLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_xAxisLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_yAxis">
+        <item>
+         <widget class="QLabel" name="label_yAxis">
+          <property name="text">
+           <string>imu的y轴</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_yAxisUpper">
+          <item>
+           <widget class="QLabel" name="label_yAxisUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_yAxisUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_yAxisLower">
+          <item>
+           <widget class="QLabel" name="label_yAxisLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_yAxisLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_threshold">
+        <item>
+         <widget class="QLabel" name="label_threshold">
+          <property name="text">
+           <string>数据波动阈值</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_threshold"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_sampleFrames">
+        <item>
+         <widget class="QLabel" name="label_sampleFrames">
+          <property name="text">
+           <string>样本帧数</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_sampleFrames"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_delayFrames">
+        <item>
+         <widget class="QLabel" name="label_delayFrames">
+          <property name="text">
+           <string>延时帧数</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_delayFrames"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>电流阈值设置</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrent">
+        <item>
+         <widget class="QLabel" name="label_CargoCurrent">
+          <property name="text">
+           <string>船运电流</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrentLimits">
+          <item>
+           <widget class="QLabel" name="label_CargoCurrentUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_CargoCurrentUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrentLower">
+          <item>
+           <widget class="QLabel" name="label_CargoCurrentLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_CargoCurrentLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrent">
+        <item>
+         <widget class="QLabel" name="label_ChargingCurrent">
+          <property name="text">
+           <string>充电电流</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrentLimits">
+          <item>
+           <widget class="QLabel" name="label_ChargingCurrentUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_ChargingCurrentUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_ChargingCurrentLower">
+          <item>
+           <widget class="QLabel" name="label_ChargingCurrentLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_ChargingCurrentLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="2" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrent">
+        <item>
+         <widget class="QLabel" name="label_WorkingCurrent">
+          <property name="text">
+           <string>工作电流</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLimits">
+          <item>
+           <widget class="QLabel" name="label_WorkingCurrentUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_WorkingCurrentUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLower">
+          <item>
+           <widget class="QLabel" name="label_WorkingCurrentLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_WorkingCurrentLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="3" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrent">
+        <item>
+         <widget class="QLabel" name="label_StaticCurrent">
+          <property name="text">
+           <string>静态电流</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrentLimits">
+          <item>
+           <widget class="QLabel" name="label_StaticCurrentUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_StaticCurrentUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrentLower">
+          <item>
+           <widget class="QLabel" name="label_StaticCurrentLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_StaticCurrentLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="4" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrent">
+        <item>
+         <widget class="QLabel" name="label_AudioCurrent">
+          <property name="text">
+           <string>音频电流</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrentLimits">
+          <item>
+           <widget class="QLabel" name="label_AudioCurrentUpper">
+            <property name="text">
+             <string>上限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_AudioCurrentUpper"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrentLower">
+          <item>
+           <widget class="QLabel" name="label_AudioCurrentLower">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_AudioCurrentLower"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="5" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_TestDuration">
+        <item>
+         <widget class="QLabel" name="label_TestDuration">
+          <property name="text">
+           <string>测试限制时长</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_TestDuration"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QGroupBox" name="groupBox_SubPIDSettings">
+     <property name="title">
+      <string>SUBPID设置</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_SubPIDSettings">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_SubPID_00">
+        <item>
+         <widget class="QLabel" name="label_SubPID_00">
+          <property name="text">
+           <string>00</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_SubPID_00"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_SubPID_01">
+        <item>
+         <widget class="QLabel" name="label_SubPID_01">
+          <property name="text">
+           <string>01</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_SubPID_01"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_SubPID_02">
+        <item>
+         <widget class="QLabel" name="label_SubPID_02">
+          <property name="text">
+           <string>02</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_SubPID_02"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_SubPID_03">
+        <item>
+         <widget class="QLabel" name="label_SubPID_03">
+          <property name="text">
+           <string>03</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_SubPID_03"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="3" rowspan="2">
+    <widget class="QGroupBox" name="groupBox_15">
+     <property name="title">
+      <string>上位机外设信息测试判断条件</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_imu_status">
+        <item>
+         <widget class="QLabel" name="label_imu_status">
+          <property name="text">
+           <string>imu状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_imu_status"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_imu_status">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_flash_status">
+        <item>
+         <widget class="QLabel" name="label_flash_status">
+          <property name="text">
+           <string>内存状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_flash_status"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_flash_status">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_magnetic_status">
+        <item>
+         <widget class="QLabel" name="label_magnetic_status">
+          <property name="text">
+           <string>地磁状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_magnetic_status">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_magnetic_status">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_pressure_status">
+        <item>
+         <widget class="QLabel" name="label_pressure_status">
+          <property name="text">
+           <string>压感状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_pressure_status">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_pressure_status">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_audio_status">
+        <item>
+         <widget class="QLabel" name="label_audio_status">
+          <property name="text">
+           <string>音频状态</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_audio_status"/>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_audio_status">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="5" rowspan="5">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>产品差异化设置</string>
      </property>
-     <layout class="QGridLayout" name="gridLayout_2">
+     <layout class="QGridLayout" name="gridLayout">
       <item row="1" column="0">
        <widget class="QCheckBox" name="checkBox_ShowUpperComputerOTAFunc">
         <property name="text">

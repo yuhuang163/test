@@ -2431,7 +2431,7 @@ void MainWindow::initBasicInfo() {
     QString age_state = "=" + SETTINGS.value("ProductInfo/Age_State").toString();
 
     QString motor_ver = "=" + SETTINGS.value("ProductInfo/Motor_Ver").toString();
-    QString ble_ver = "=" + SETTINGS.value("ProductInfo/Ble_Ver").toString();
+    QString bleVersion = "=" + SETTINGS.value("ProductInfo/Ble_Ver").toString();
 
     imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
 
@@ -2449,7 +2449,7 @@ void MainWindow::initBasicInfo() {
                                   {"imu_id", "IMU版本号", imuId},
                                   {"age_state", "老化状态", age_state},
                                   {"motor_ver", "电机版本号", motor_ver},
-                                  {"ble_ver", "蓝牙版本号", ble_ver}
+                                  {"bleVersion", "蓝牙版本号", bleVersion}
 
     };
 
@@ -2506,7 +2506,7 @@ void MainWindow::initBasicInfo() {
             ->setData(QString("%1").arg(baseInfo.ageing_state), Qt::DisplayRole);
         basicInfoModel->getTestItemByName("motor_ver")
             ->setData(QString("%1").arg(baseInfo.motor_version), Qt::DisplayRole);
-        basicInfoModel->getTestItemByName("ble_ver")->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
+        basicInfoModel->getTestItemByName("bleVersion")->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
 
         writeDataToCSVFile();
 
@@ -2516,7 +2516,7 @@ void MainWindow::initBasicInfo() {
             factoryProtocolVersion.contains(QString::number(baseInfo.pb_factory_ver)) &&
             softwareVersion.contains(baseInfo.soft_version) && resourceVersion.contains(baseInfo.res_version) &&
             motorVersion.contains(baseInfo.motor_version) && imuId.contains(QString::number(baseInfo.imu_id)) &&
-            ble_ver.contains(baseInfo.ble_version)) {
+            bleVersion.contains(baseInfo.ble_version)) {
             ;
         } else {
             motorresult = failValue;

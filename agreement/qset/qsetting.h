@@ -23,6 +23,10 @@ private:
     void loadConfig();
     void saveConfig();
       void updateMainStyle(QString style);
+    void readSubPIDAndFilter();
+      void saveSubPIDAndFilter();
+
+
 protected:
     virtual void closeEvent(QCloseEvent*);
 private slots:
