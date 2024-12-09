@@ -292,7 +292,37 @@ void Fixture_uart::processimuReceivedData(const QByteArray& data) {
         emit send_data_to_mechine_imu(0);
         data_command.clear();
     }
+
+// 待整理
+    if (data_command.contains("BarCode?\r"))
+    {
+        #if Y20_Pro_PRESS_TEST
+            send_command_to_machine(COMMAND_ID_CHEAK_STATUS, 0);
+        #endif
+        emit receive_data_from_mechine(1);
+        data_command = "";
+    }
+
+    if (data_command.contains("Ready\r"))
+    {
+        emit receive_data_from_mechine(2);
+        data_command = "";
+    }
+
+    if (data_command.contains("START1_OK\r\n"))
+    {
+        emit receive_data_from_mechine(3);
+        data_command = "";
+    }
+
+    if (data_command.contains("START2_OK\r\n"))
+    {
+        emit receive_data_from_mechine(4);
+        data_command = "";
+    }
 }
+// 待整理
+
 void Fixture_uart::processReceivedData(const QByteArray& data) {
     QByteArray receivebuf = data;
     if (receivebuf.size() > receivebuf.at(2)) {
@@ -533,3 +563,127 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
         ui->Fixtureuartstate->setText("串口连接：<font color='red'>拔出</font>");
     }
 }
+
+// 待整理
+void Fixture_uart::FixtureCommandInit(void)
+{
+    // Y20Pro校准治具
+    commands[COMMAND_ID_TRAY_IN][0] =           {"TARY_I"};
+    commands[COMMAND_ID_TRAY_OUT][0] =          {"TARY_O"};
+    commands[COMMAND_ID_FIXED_BLOCK_UP][0] =    {"PROD_U"};
+    commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] =  {"PROD_D"};
+    commands[COMMAND_ID_KEY_UP][0] =            {"FAMA_U"};
+    commands[COMMAND_ID_KEY_DOWN_200][0] =      {"FAMA_D"};
+    commands[COMMAND_ID_BTH_UP][0] =            {"HEAD_U"};
+    commands[COMMAND_ID_BTH_DOWN_200][0] =      {"HEAD_D"};
+
+    // Y20Pro测试治具
+    commands[COMMAND_ID_CHEAK_STATUS][0] =      {"Check:Pass\r"}; 
+    commands[COMMAND_ID_RESULT][0] =            {"End:1,1,1\r"}; 
+    commands[COMMAND_ID_RESULT][1] =            {"End:1,1,1,1\r"}; 
+    for (int i = 0; i < 4; i++) {
+        QString command1 = QString("Set:%1H,500\r").arg(i + 1);
+        QString command2 = QString("Set:%1H:3500\r").arg(i + 1);
+        QString command3 = QString("Set:%1H:4500\r").arg(i + 1);
+        QString command4 = QString("Rst:%1\r").arg(i + 1);
+        QString command5 = QString("Set:%1B:2300\r").arg(i + 1);
+        QString command6 = QString("Rst:%1\r").arg(i + 1);
+
+        commands[COMMAND_ID_BTH_PRESS_50][i] = strdup(command1.toStdString().c_str());
+        commands[COMMAND_ID_BTH_PRESS_350][i] = strdup(command2.toStdString().c_str());
+        commands[COMMAND_ID_BTH_PRESS_450][i] = strdup(command3.toStdString().c_str());
+        commands[COMMAND_ID_BTH_PRESS_UP][i] = strdup(command4.toStdString().c_str());
+        commands[COMMAND_ID_KEY_PRESS_230][i] = strdup(command5.toStdString().c_str());
+        commands[COMMAND_ID_KEY_PRESS_UP][i] = strdup(command6.toStdString().c_str());
+
+        qDebug() << "commmmmmmm:"<< commands[COMMAND_ID_BTH_PRESS_50][i];
+    }
+
+    // F20校准测试治具
+    #if 0   // F20项目取消
+    commands[COMMAND_ID_F20_FIXED][0] =         {"C"};  // 手柄夹具下压
+    commands[COMMAND_ID_F20_UNFIXED][0] =       {"O"};  // 手柄夹具上升
+    commands[COMMAND_ID_KEY_DOWN][0] =          {"F"};  // 按键下压
+    commands[COMMAND_ID_KEY_UP][0] =            {"G"};  // 按键上升
+    commands[COMMAND_ID_KEY_SWITCH_MODE][0] =   {"W"};  // 切换按键
+    commands[COMMAND_ID_KEY_SWITCH_POWER][0] =  {"M"};  // 切换按键
+    #endif
+
+    // U7、P30P校准测试治具
+    commands[COMMAND_ID_FAMA_100_O][0] =    {"FAMA1_100G_O\r\n"};
+    commands[COMMAND_ID_FAMA_100_C][0] =    {"FAMA1_100G_C\r\n"};
+    commands[COMMAND_ID_FAMA_300_O][0] =    {"FAMA1_300G_O\r\n"};
+    commands[COMMAND_ID_FAMA_300_C][0] =    {"FAMA1_300G_C\r\n"};
+    commands[COMMAND_ID_FAMA_100_O][1] =    {"FAMA2_100G_O\r\n"};
+    commands[COMMAND_ID_FAMA_100_C][1] =    {"FAMA2_100G_C\r\n"};
+    commands[COMMAND_ID_FAMA_300_O][1] =    {"FAMA2_300G_O\r\n"};
+    commands[COMMAND_ID_FAMA_300_C][1] =    {"FAMA2_300G_C\r\n"};
+}
+
+void Fixture_uart::delay_msec(unsigned int msec)
+{
+    QEventLoop loop;                                 // 定义一个新的事件循环
+    QTimer::singleShot(msec, &loop, SLOT(quit()));   // 创建单次定时器，槽函数为事件循环的退出函数
+    loop.exec();   // 事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
+}
+
+void Fixture_uart::send_command_to_machine(int command_id, int numb)
+{
+    if (!fixtureSerialPort->isOpen())
+    {
+        QMessageBox::warning(NULL, "警告", " 未打开串口\t\r\n  无法发送数据！\r\n");
+        return;
+    }
+
+    // 每帧数据包之间添加时间间隔
+    qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
+    qDebug() << "last" << last_sent_timestamp << "current" << current_timestamp;
+    if (current_timestamp - last_sent_timestamp < 100 && last_sent_timestamp != 0) {
+        qDebug() << "short time,current_time - last:" << current_timestamp - last_sent_timestamp;
+        delay_msec(100);
+    }
+    last_sent_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
+
+#if 0 //!IS_INDEPENDENT
+    last_commid_timestamp = last_sent_timestamp;
+#endif
+
+    if (command_id >= COMMAND_ID_INVALID && command_id < COMMAND_ID_MAX && numb >= 0 && numb < 4)
+    {
+        qDebug() << "command_id:" << command_id << "numb" << numb;
+        fixtureSerialPort->write(commands[command_id][numb]);
+        qDebug() << "已发送命令" << commands[command_id][numb];
+    }
+    else
+    {
+        qDebug() << "Invalid command index";
+    }
+
+}
+
+// void Fixture_uart::send_start_command(int command_id, int numb)
+// {
+//     const char *commands[7][3] = {
+//         {"Status?", "Check:Pass", "Check:Fail"},
+//         {"Set:1B,2000", "Set:2B,2000", "Set:3B,2000"},
+//         {"Set:1H,2000", "Set:2H,2000", "Set:3H,2000"},
+//         {"Set:1H,2500", "Set:2H,2500", "Set:3H,2500"},
+//         {"Set:1H,3500", "Set:2H,3500", "Set:3H,3500"},
+//         {"Rst:1", "Rst:2", "Rst:3"},
+//         {"End:1,1,1", "End:1,1,0", "End:1,0,0"},
+//     };
+
+//     // if (numb <= 3 && command_id > 0 && command_id <=4 ) {
+//     //     numb = getIndex() - 1;
+//     // }
+//     if (command_id >= 0 && command_id <= 7 && numb >= 0 && numb < 3)
+//     {
+//         fixtureSerialPort->write(commands[command_id][numb]);
+//         qDebug() << "已发送命令" << commands[command_id][numb];
+//     }
+//     else
+//     {
+//         qDebug() << "Invalid command index";
+//     }
+// }
+// 待整理
