@@ -231,6 +231,8 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
     connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(updateWifi(FacDevInfo)));
     connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refreshSn(FacDevInfo)));
+    connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
+
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
@@ -1005,6 +1007,7 @@ void MainWindow::on_duty_returnPressed() {
         waitWork(WAITTIME);
         pb->set_motor_state(1);
     }
+    qDebug() << "频率为：" << fre << "占空比为" << duty;
 }
 
 void MainWindow::on_close_motor_clicked() { pb->set_motor_state(0); }
@@ -3377,3 +3380,5 @@ void MainWindow::on_brush_relocation_clicked() {
     QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
     pb->set_motor_cali(2);
 }
+
+void MainWindow::on_get_now_music_clicked() { pb->get_now_music_info(); }

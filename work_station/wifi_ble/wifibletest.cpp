@@ -411,12 +411,6 @@ void wifibletest::refreshSn(FacDevInfo data) {
         QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
     }
 }
-void wifibletest::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
-}
 
 void wifibletest::getDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
@@ -430,7 +424,6 @@ void wifibletest::getDongleWifi(QString data) {
 
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
-void wifibletest::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void wifibletest::refreshBleRssi(QString data) {
     // qDebug() << data;
@@ -845,7 +838,7 @@ void wifibletest::startTask() {
                     pack.sn = ui->getMac->text();
                     pack.instruct_num = "079";
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                 } else {
                     ui->test_result->setText("PASS");
@@ -862,7 +855,7 @@ void wifibletest::startTask() {
 
                     pack.instruct_num = "079";
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                 }
 
@@ -1018,31 +1011,7 @@ void wifibletest::processGetMesTestValue() {
         emit getMesTestValue(pack);
     }
 }
-void wifibletest::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {
-                QString sn = fields.at(0);   // 第一个字段是sn
-                QString mac = fields.at(1);  // 第二个字段是mac
-                if (sn == sn_to_search) {    // 检查是否是待检索的sn
-                    {
-                        ui->macInput->setText(mac);
-                        on_macInput_returnPressed();
-                        showlog("这是从文件获取的mac地址");
-                        qDebug() << getIndex() << "The corresponding mac is: " << mac;
-                    }
 
-                    break;
-                }
-            }
-        }
-        file.close();  // 关闭文件
-    }
-}
 void wifibletest::getmacadress(const QByteArray& byte) {
     receivedData = "";
     receivedData = receivedData + QString::fromUtf8(byte);
@@ -1188,7 +1157,7 @@ void wifibletest::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
     pack.instruct_num = "076";
 
     if (ui->isusemes->checkState()) {
-        send_end_testPass(pack);
+        emit send_end_testPass(pack);
     }
 
     if (bandingresult) {

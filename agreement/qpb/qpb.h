@@ -222,6 +222,8 @@ public slots:
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
     void set_battery(FacBatteryType type);  // 设置电池信息
     void set_servo_motor_info();
+    void get_now_music_info();
+
 public slots:
     void get_battery();                    // 获取电池信息
     void get_button_state(int state);      // 获取按钮状态
@@ -274,6 +276,7 @@ signals:
     void send_battary(FacDevInfo);
     void send_wifi_State(FacDevInfo);
     void send_sn_data(FacDevInfo);
+    void send_music_state(FacDevInfo);
     void send_button_state(FacButtonState);
     void send_BrushControl_state(FacBrushControl);
     void send_LED_CONTROL_state(FacLedControl);

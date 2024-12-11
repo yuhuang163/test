@@ -70,6 +70,7 @@ SOURCES += \
     agreement/qmes/qmes.cpp \
     agreement/qmes/wksmes.cpp \
     agreement/qmes/xwdmes.cpp \
+    agreement/qmes/ydmmes.cpp \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/qpb/ble_protocol/data_collection.pb.c \
     agreement/qpb/factory_protocol/factory_msg.pb.c \
@@ -127,6 +128,7 @@ HEADERS += \
     agreement/qmes/qmes.h \
     agreement/qmes/wksmes.h \
     agreement/qmes/xwdmes.h \
+    agreement/qmes/ydmmes.h \
     agreement/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/qpb/ble_protocol/data_collection.pb.h \
     agreement/qpb/factory_protocol/factory_msg.pb.h \

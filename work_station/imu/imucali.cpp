@@ -19,13 +19,6 @@ void imucali::on_pushButton_clicked() {
     // ui->macInput->setText("ca:5b:09:30:ca:fb");
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     on_macInput_returnPressed();
-
-    // for(int i=0 ;i<500;i++)
-    // {
-    //     ui->log->appendPlainText("当前次数为：" + QString::number(i));
-    //         at->sendMac(ui->macInput->text());   // 开始连接
-    //     waitWork(5000);
-    // }
 }
 imucali::imucali(int index, QWidget* parent) :
     ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
@@ -244,12 +237,6 @@ void imucali::refreshImuCaliResult(FacImuCalibResult x) {
     }
 }
 
-void imucali::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
-}
 void imucali::getTestValue(const int mechines, const QString value) {
     // showlog(value);
     QString mesmacAddress;
@@ -1271,7 +1258,6 @@ void imucali::startTask()  // 编写六轴校准的代码
         }
     }
 }
-void imucali::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void imucali::on_pushButton_2_clicked() {
     // pb->set_forbid_sleep(FacSwitch_OPEN);
@@ -1291,30 +1277,6 @@ void imucali::on_pushButton_2_clicked() {
     // }
 }
 
-void imucali::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {             // 至少需要两个字段
-                QString sn = fields.at(0);         // 第一个字段是sn
-                QString mac = fields.at(1);        // 第二个字段是mac
-                if (sn == sn_to_search) {          // 检查是否是待检索的sn
-                    showlog("这是从文件获取的mac地址");
-                    ui->macInput->setText(mac);
-                    on_macInput_returnPressed();
-                    qDebug() << getIndex() << "The corresponding mac is: " << mac;
-                    break;
-                }
-            } else {
-                showlog("存在没有逗号分开的" + QString::number(fields.count()) + line);
-            }
-        }
-        file.close();  // 关闭文件
-    }
-}
 void imucali::on_macInput_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();

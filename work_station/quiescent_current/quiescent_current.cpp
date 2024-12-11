@@ -572,8 +572,6 @@ void quiescent_current::on_jigDisconnectButton_clicked() {
     ui->jigConnectButton->setEnabled(true);
 }
 
-void quiescent_current::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
-
 void quiescent_current::processInspection(QString stringsn) {
     if (stringsn != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
@@ -728,7 +726,7 @@ void quiescent_current::startTask() {
                     pack.itemvalue = "periph_state=NG";
                     pack.instruct_num = "076";
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -856,9 +854,7 @@ void quiescent_current::startTask() {
                 break;
 
             case STATE_SAVE_RESULT:
-
                 stringsn = "";
-
                 if (totalresult == passValue) {
                     ui->test_result->setText("PASS");
                     ui->test_result->setStyleSheet(
@@ -986,13 +982,6 @@ void quiescent_current::on_pushButton_4_clicked() {
     if (clickStep > 2) {
         clickStep = 1;
     }
-}
-
-void quiescent_current::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
 }
 
 void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {

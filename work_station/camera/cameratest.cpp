@@ -22,87 +22,6 @@ void cameratest::on_pushButton_clicked() {
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     // ui->macInput->setText("F8:8F:C8:57:73:E9");
 
-    // QVector<int> faultData = {1, 2, 3, 4, 5};
-    // emit send_fault_data_packet(faultData.size(), faultData);
-
-    // on_macInput_returnPressed();
-    // QByteArray allPackets;
-
-    // qDebug() << "哈哈哈1" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-    // const int width = 180;
-    // const int height = 200;
-    // const int half_width = width / 2;
-    // // 图像数据（每个像素一个字节，灰度值）
-    // QByteArray imageData;
-
-    // // 填充图像数据
-    // for (int y = 0; y < height; ++y) {
-    //     for (int x = 0; x < width; ++x) {
-    //         if (x < half_width) {
-    //             // 左半边白色（灰度值 255）
-    //             imageData[y * width + x] = 0;
-    //         } else {
-    //             // 右半边黑色（灰度值 0）
-    //             imageData[y * width + x] = 244;
-    //         }
-    //     }
-    // }
-    // // 十六进制字符串
-    // QString hexString = "f6420c0000000000b4000000c800000000000000a5a5a5a551420000a08c000078016405784f5558";
-
-    // // 将十六进制字符串转换为 QByteArray
-    // QByteArray padding = QByteArray::fromHex(hexString.toUtf8());
-
-    // // 将 hexData 添加到 padding 的开头
-    // QByteArray finalData = padding + imageData;
-
-    // const int headerSize = 8;
-    // QByteArray header(headerSize, 0xcc);
-    // header.append(static_cast<char>(244));
-
-    // int dataSize = finalData.size();
-    // qDebug() << "dataSize:" << dataSize;
-
-    // int numberOfPackets = (dataSize/ 243)+1; // 计算需要的包数量
-    // qDebug() <<"有这么多包"<< numberOfPackets;
-    //     for (int i = 0; i < numberOfPackets; ++i) {
-    //     int offset = i * 243;
-
-    //     if(i==(numberOfPackets-1))
-    //     {
-    //         header[8]=1+(static_cast<char>(dataSize% 243));
-
-    //     }
-    //     QByteArray packet = header;
-    //     // 添加包的索引
-    //     QByteArray index(1, static_cast<char>(i));
-    //     packet.append(index);
-
-    //     packet.append(finalData.mid(offset, 243));
-    //     allPackets.append(packet);
-    // }
-    // qDebug() << "allPacketssize:" << allPackets.size();
-
-    // int write_len = 0;
-    // int len = allPackets.size();
-    // write_len = dongleRingBuf->usmile_ring_buffer_write(
-    //     &p_dongleRingBuffer, reinterpret_cast<uint8_t *>(allPackets.data()), allPackets.size());
-    // qDebug() << "写完了:" << allPackets.size();
-
-    //                             if (write_len < len)
-    // {
-    //     qDebug() << "write_len:" << write_len << "len:" << allPackets.size();
-    // }
-
-    // for(int i=0 ;i<500;i++)
-    // {
-    //     ui->log->appendPlainText("当前次数为：" + QString::number(i));
-    //         at->sendMac(ui->macInput->text());   // 开始连接
-    //     waitWork(1000);
-
-    // }
-
     // 假设 imagePath 是您的绝对路径
     QString imagePath = "./u7p_camera_defect_detect_env/code/fguo.png";
     ;
@@ -700,7 +619,7 @@ void cameratest::startTask() {
                 TestTime.start();
                 waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为："+ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
 
                 state = STATE_WATI_CONNECT;
                 break;
@@ -808,7 +727,7 @@ void cameratest::startTask() {
                     pack.itemvalue = QString("|CAMERA_TEST:PASS|");
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -822,7 +741,7 @@ void cameratest::startTask() {
                     pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("FAIL");
@@ -872,13 +791,6 @@ void cameratest::on_lcdTestButton_clicked() {
     // waitWork(WAITTIME);
     // pb->set_fac_mode(1);
     // waitWork(WAITTIME);
-}
-
-void cameratest::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
 }
 
 void cameratest::getTestValue(const int mechines, const QString value) {
@@ -932,31 +844,7 @@ void cameratest::getTestValue(const int mechines, const QString value) {
 
     // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
-void cameratest::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
-void cameratest::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {             // 至少需要两个字段
-                QString sn = fields.at(0);         // 第一个字段是sn
-                QString mac = fields.at(1);        // 第二个字段是mac
-                if (sn == sn_to_search) {          // 检查是否是待检索的sn
-                    showlog("这是从文件获取的mac地址");
-                    ui->macInput->setText(mac);
-                    on_macInput_returnPressed();
-                    qDebug() << getIndex() << "The corresponding mac is: " << mac;
-                    break;
-                }
-            } else {
-                showlog("存在没有逗号分开的" + QString::number(fields.count()) + line);
-            }
-        }
-        file.close();  // 关闭文件
-    }
-}
+
 void cameratest::on_getMac_returnPressed() {
     testResultTableInit();
 
@@ -1453,9 +1341,7 @@ void cameratest::on_stopTest_clicked() {
     // waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
-    // ui->jxl_normal->setDisabled(0);
-    // ui->jxl_abnormal->setDisabled(0);
-    // ui->DirtyTestButton->setDisabled(0);
+
     cameraSendTimer->stop();
     ui->macInput->clear();
     ui->getMac->clear();
@@ -1467,221 +1353,6 @@ void cameratest::on_stopTest_clicked() {
         case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_OUT); break;
 
         default: break;
-    }
-}
-
-void cameratest::on_jxl_abnormal_clicked() {
-    // ui->jxl_normal->setDisabled(1);
-    // ui->jxl_abnormal->setDisabled(1);
-
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力不正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
-    }
-
-    TestItem test;
-    test.testItem = "解析力测试";
-    test.testData = "异常";
-    test.testResult = "失败";
-    test.ask = "通过";
-    testItems.append(test);
-    testResultTableUpdate(testItems);
-    on_abnormal_clicked();
-}
-
-void cameratest::on_jxl_normal_clicked() {
-    // ui->jxl_normal->setDisabled(1);
-    // ui->jxl_abnormal->setDisabled(1);
-
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/解析力正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
-    }
-    TestItem test;
-    test.testItem = "解析力测试";
-    test.testData = "正常";
-    test.testResult = "通过";
-    test.ask = "通过";
-    testItems.append(test);
-    testResultTableUpdate(testItems);
-    on_OffsetTest_clicked();
-}
-
-void cameratest::on_zw_normal_clicked() {
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
-    }
-    TestItem test;
-    test.testItem = "脏污测试";
-    test.testData = "无脏污";
-    test.testResult = "通过";
-    test.ask = "通过";
-    testItems.append(test);
-
-    testResultTableUpdate(testItems);
-}
-
-void cameratest::on_zw_abnormal_clicked() {
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/脏污不正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
-    }
-    TestItem test;
-    test.testItem = "脏污测试";
-    test.testData = "存在脏污";
-    test.testResult = "失败";
-    test.ask = "通过";
-    testItems.append(test);
-
-    testResultTableUpdate(testItems);
-
-    on_abnormal_clicked();
-}
-
-void cameratest::on_py_normal_clicked() {
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
-    }
-}
-
-void cameratest::on_py_abnormal_clicked() {
-    if (!viewercamrea->temporarypixmap.isNull()) {
-        // 获取当前日期时间
-        QDateTime currentDateTime = QDateTime::currentDateTime();
-        QString timestamp = currentDateTime.toString("yyyyMMdd_HHmmss");
-
-        // 生成文件名
-        QString fileName = ui->getMac->text() + "_" + timestamp + ".png";
-        QString date = currentDateTime.toString("yyyyMMdd");
-
-        // 指定保存目录并检查是否存在，不存在则创建
-        QString saveDir = QDir::currentPath() + "/图片存储/偏移不正常/" + date;
-        QDir dir(saveDir);
-        if (!dir.exists()) {
-            dir.mkpath(".");
-        }
-
-        // 完整的保存路径
-        QString filePath = saveDir + "/" + fileName;
-
-        // 保存图片
-        if (!viewercamrea->temporarypixmap.save(filePath)) {
-            qDebug() << "Failed to save image:" << fileName;
-        } else {
-            qDebug() << "Image saved successfully to:" << filePath;
-        }
     }
 }
 

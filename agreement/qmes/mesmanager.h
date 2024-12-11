@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "my_set/my_typedef.h"
+#include "ydmmes.h"
 class QMesManager : public QObject {
     Q_OBJECT
 public:
@@ -35,6 +36,7 @@ private:
     lxmes LxMes;
     hqmes HqMes;
     wksmes WksMes;
+    ydmmes YdmMes;
     std::vector<Qmes*> MesSystems;
 };
 

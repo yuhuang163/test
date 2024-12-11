@@ -34,21 +34,19 @@ public:
     void refreshPeriphData(FacGetPeriphState data) override;
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void refreshAmmeterData(QString data) override;
-
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };                // dongle口
-    QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };          // usb口（治具）
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };          // 治具口（治具）
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
-
-    QLineEdit* getMacLineEdit() override { return ui->snInput; };       // sn输入口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };    // mac地址输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };             // mac地址输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };         // msg输入口
-    QLabel* getMesStateQlabel() override { return ui->mes_state; };     // mes状态的qlab
-    QPushButton* getEndTestButton() override { return ui->stopTest; };  // 结束测试按钮
-
+    QLineEdit* getMacLineEdit() override { return ui->snInput; };                      // sn输入口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };                            // mac地址输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                        // msg输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };                    // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };                 // 结束测试按钮
     void disconnect_dongle();
 
 private:
@@ -65,15 +63,11 @@ private:
     QLabel* board_sn;
     QLabel* tail_sn;
     int periph_state = 0;
-
     int base_state = 0;
-
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
-
     QString testItem;
     QString testData;
-
     TestModel* basicInfoModel;
     TestModel* displaybasicInfoModel;
     TestModel* peripheralModel;
@@ -108,7 +102,6 @@ private:
     QTimer* ble_waittime = new QTimer(this);
     int measure_wait_time = 15000;
     int disconnect_wait_time = 5000;
-
     bool isovertime = 0;  // 是否开始发送校验结果
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();
@@ -124,13 +117,10 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
-    void getDongleVer(QString data) override;
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-
-    void refreshMesState(int state);
     void on_usbconnectButton_clicked();
     void on_usbdisconnectButton_clicked();
     void on_connectButton_clicked();

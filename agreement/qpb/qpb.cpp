@@ -777,6 +777,21 @@ void Qpb::get_servo_motor_info() {
     sendShortPack(pack);
     qDebug() << "开始获取电机内容";
 }
+
+void Qpb::get_now_music_info() {
+    FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_get_dev_info_tag;
+    pack.command_data.get_dev_info.dev_info_count = 1;
+
+    pack.command_data.get_dev_info.dev_info[0].info_item = FacDevInfoType_MUSIC_STATE;
+
+    pack.command_data.get_dev_info.dev_info[0].which_value_item = FacDevInfoValue_music_state_tag;
+
+    sendShortPack(pack);
+}
 //调试用，没啥用
 void Qpb::set_servo_motor_info() {
     FactoryDataPackage pack;
@@ -1820,6 +1835,11 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
+        emit sendGetBrushResponse(1);
+    }
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_music_state_tag) {
+        emit send_music_state(x);
+        qDebug() << "获取到音乐状态回应" << x.dev_info[0].value_item.music_state;
         emit sendGetBrushResponse(1);
     }
     emit send_pb_date("获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));

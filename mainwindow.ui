@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>10</number>
+               <number>15</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -441,324 +441,6 @@
                    </widget>
                   </item>
                  </layout>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_4">
-               <attribute name="title">
-                <string>成品测试</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_4">
-                <item row="4" column="1">
-                 <widget class="QGroupBox" name="verticalGroupBox">
-                  <property name="title">
-                   <string>音乐测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_13">
-                   <property name="topMargin">
-                    <number>1</number>
-                   </property>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_19">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="just_music">
-                       <property name="text">
-                        <string>播放音乐</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="music_play">
-                       <property name="text">
-                        <string>播放音乐并录音</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_91">
-                       <property name="text">
-                        <string>录音时间</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="music_time"/>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="music_combo"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <widget class="QGroupBox" name="groupBox_6">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-                  </property>
-                  <property name="title">
-                   <string>功能测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_3">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_8">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="fac_mode">
-                       <property name="text">
-                        <string>进入工厂模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="exit_fac_mode">
-                       <property name="text">
-                        <string>退出工厂模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="enterShipModeButton">
-                       <property name="text">
-                        <string>进入船运</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="rebot">
-                       <property name="text">
-                        <string>重启</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="buruing1">
-                       <property name="text">
-                        <string>工厂老化1开关</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_13">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="getBackLog">
-                       <property name="text">
-                        <string>牙刷黑盒获取</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="enterwhitemode">
-                       <property name="text">
-                        <string>进入亮白模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="clean_mode">
-                       <property name="text">
-                        <string>清洁模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="start_brush">
-                       <property name="text">
-                        <string>开启刷牙流程</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="entersleep">
-                       <property name="text">
-                        <string>进入休眠模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="forbidsleep">
-                       <property name="text">
-                        <string>禁止休眠模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_76">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="get_device_sn">
-                       <property name="text">
-                        <string>获取尾盖的sn</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_board_sn">
-                       <property name="text">
-                        <string>获取板子sn</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_device_subpid">
-                       <property name="text">
-                        <string>获取设备的sbupid</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_device_skuid">
-                       <property name="text">
-                        <string>获取skuid</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_78">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="write_device_sn">
-                       <property name="text">
-                        <string>写入尾盖的sn</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="write_board_sn">
-                       <property name="text">
-                        <string>写入板子sn</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="write_device_subpid">
-                       <property name="text">
-                        <string>写入设备sbupid</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="write_device_skuid">
-                       <property name="text">
-                        <string>写入skuid</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="show_bursh_log">
-                     <property name="text">
-                      <string>串口指令模式是否打开</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QGroupBox" name="verticalGroupBox">
-                  <property name="title">
-                   <string>电池测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_34">
-                   <property name="topMargin">
-                    <number>1</number>
-                   </property>
-                   <item>
-                    <widget class="QWidget" name="widget_102" native="true">
-                     <layout class="QHBoxLayout" name="horizontalLayout_14">
-                      <item>
-                       <widget class="QPushButton" name="get_battery">
-                        <property name="text">
-                         <string>显示充电情况</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="battary_voltage">
-                        <property name="text">
-                         <string>电压为:</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="battary_state">
-                        <property name="text">
-                         <string>充电状态：</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="battary_value">
-                        <property name="text">
-                         <string>电量为：</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="battery_type">
-                        <property name="text">
-                         <string>电池类型：</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QWidget" name="horizontalWidget" native="true">
-                     <layout class="QHBoxLayout" name="horizontalLayout_72">
-                      <item>
-                       <widget class="QPushButton" name="set_battery">
-                        <property name="enabled">
-                         <bool>false</bool>
-                        </property>
-                        <property name="text">
-                         <string>设置电池类型</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QComboBox" name="battery_type_combox">
-                        <property name="enabled">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
                 </item>
                </layout>
               </widget>
@@ -1287,6 +969,331 @@
                    </widget>
                   </item>
                  </layout>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_4">
+               <attribute name="title">
+                <string>成品测试</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_4">
+                <item row="4" column="1">
+                 <widget class="QGroupBox" name="verticalGroupBox">
+                  <property name="title">
+                   <string>音乐测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_13">
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_19">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="just_music">
+                       <property name="text">
+                        <string>播放音乐</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="music_play">
+                       <property name="text">
+                        <string>播放音乐并录音</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_91">
+                       <property name="text">
+                        <string>录音时间</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="music_time"/>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="music_combo"/>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QGroupBox" name="groupBox_6">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
+                  </property>
+                  <property name="title">
+                   <string>功能测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_3">
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_8">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="fac_mode">
+                       <property name="text">
+                        <string>进入工厂模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exit_fac_mode">
+                       <property name="text">
+                        <string>退出工厂模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enterShipModeButton">
+                       <property name="text">
+                        <string>进入船运</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="rebot">
+                       <property name="text">
+                        <string>重启</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="buruing1">
+                       <property name="text">
+                        <string>工厂老化1开关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_now_music">
+                       <property name="text">
+                        <string>获取当前曲目</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_13">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="getBackLog">
+                       <property name="text">
+                        <string>牙刷黑盒获取</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enterwhitemode">
+                       <property name="text">
+                        <string>进入亮白模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="clean_mode">
+                       <property name="text">
+                        <string>清洁模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="start_brush">
+                       <property name="text">
+                        <string>开启刷牙流程</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="entersleep">
+                       <property name="text">
+                        <string>进入休眠模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="forbidsleep">
+                       <property name="text">
+                        <string>禁止休眠模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_76">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="get_device_sn">
+                       <property name="text">
+                        <string>获取尾盖的sn</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_board_sn">
+                       <property name="text">
+                        <string>获取板子sn</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_device_subpid">
+                       <property name="text">
+                        <string>获取设备的sbupid</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_device_skuid">
+                       <property name="text">
+                        <string>获取skuid</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_78">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="write_device_sn">
+                       <property name="text">
+                        <string>写入尾盖的sn</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="write_board_sn">
+                       <property name="text">
+                        <string>写入板子sn</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="write_device_subpid">
+                       <property name="text">
+                        <string>写入设备sbupid</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="write_device_skuid">
+                       <property name="text">
+                        <string>写入skuid</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="show_bursh_log">
+                     <property name="text">
+                      <string>串口指令模式是否打开</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QGroupBox" name="verticalGroupBox">
+                  <property name="title">
+                   <string>电池测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_34">
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <widget class="QWidget" name="widget_102" native="true">
+                     <layout class="QHBoxLayout" name="horizontalLayout_14">
+                      <item>
+                       <widget class="QPushButton" name="get_battery">
+                        <property name="text">
+                         <string>显示充电情况</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_voltage">
+                        <property name="text">
+                         <string>电压为:</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_state">
+                        <property name="text">
+                         <string>充电状态：</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battary_value">
+                        <property name="text">
+                         <string>电量为：</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="battery_type">
+                        <property name="text">
+                         <string>电池类型：</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QWidget" name="horizontalWidget" native="true">
+                     <layout class="QHBoxLayout" name="horizontalLayout_72">
+                      <item>
+                       <widget class="QPushButton" name="set_battery">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="text">
+                         <string>设置电池类型</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QComboBox" name="battery_type_combox">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
                 </item>
                </layout>
               </widget>

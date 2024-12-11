@@ -23,8 +23,9 @@ public:
     bool turn = true;
     void useMes() override;
     void startTest() override;
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
-    QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->comNameCombo; };     // usb口（治具）
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
@@ -115,11 +116,10 @@ protected:
 private slots:
 
     void get_fix_action(int state);
-    void getDongleVer(QString data) override;
 
     void print_fixture_log(QString data);
     void refreshBaseData(FacGetDevBaseInfo data) override;
-    void refreshMesState(int state);
+
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;
     void refreshImuCaliResult(FacImuCalibResult x) override;
@@ -137,7 +137,7 @@ private slots:
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_pushButton_2_clicked();
-    void getMac(QString sn_to_search);
+
     void on_getMac_returnPressed();
     void refresh_imu_cali_position(int position);
     void processInspection(QString stringsn);

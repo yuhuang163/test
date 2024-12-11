@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1420</width>
+    <width>1439</width>
     <height>1049</height>
    </rect>
   </property>
@@ -524,7 +524,7 @@
         <item>
          <widget class="QLabel" name="label_weikesen_order">
           <property name="text">
-           <string>工单(wks)</string>
+           <string>工单(wks|ydm)</string>
           </property>
          </widget>
         </item>
@@ -552,7 +552,7 @@
         <item>
          <widget class="QLabel" name="label_mes_login_account">
           <property name="text">
-           <string>MES密码（xwd|hq)</string>
+           <string>MES用户名（ydm|xwd|hq)</string>
           </property>
          </widget>
         </item>
@@ -1756,6 +1756,13 @@
        <widget class="QCheckBox" name="checkBox_TestWifiSignal">
         <property name="text">
          <string>是否需要测试wifi信号</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="0">
+       <widget class="QCheckBox" name="checkBox_NeedWriteSkuid">
+        <property name="text">
+         <string>是否需要写入skuid</string>
         </property>
        </widget>
       </item>

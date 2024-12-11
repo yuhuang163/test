@@ -842,3 +842,67 @@ void test_base::LockProductUI() {
     if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
         getIsUseMes()->setEnabled(false);
 }
+void test_base::getMac(QString sn_to_search) {
+    if (!getIsFormMes()->isChecked()) {
+        // 在合适的位置定义变量
+        QString fileName = "mac_sn.txt";
+
+        if (SETTINGS.value("Mes/FACTORY").toString() == "hq")
+            fileName = "mac_sn.txt";
+        else if (SETTINGS.value("Mes/FACTORY").toString() == "lx")
+            fileName = "mac_sn.txt";
+        else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
+            fileName = "mac_sn.txt";
+        else {
+            QString path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
+            QFileInfo fileInfo(path);
+            // 创建一个文件对象
+            if (fileInfo.exists() && fileInfo.isFile()) {
+                fileName = path;
+                // file.setFileName(path);
+                showlog("云端文件存在，正在打开云端文件...");
+            } else {
+                fileName = "mac_sn.txt";
+                // file.setFileName("mac_sn.txt");
+                showlog("云端文件不存在，正在打开本地文件...");
+            }
+        }
+
+        // 在需要的地方使用这个变量创建 QFile 对象
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+            QTextStream in(&file);
+            while (!in.atEnd()) {                      // 逐行读取文件
+                QString line = in.readLine();          // 读取一行
+                QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
+                if (fields.count() >= 2) {             // 至少需要两个字段
+                    QString sn = fields.at(0);         // 第一个字段是sn
+                    QString mac = fields.at(1);        // 第二个字段是mac
+                    if (sn == sn_to_search) {          // 检查是否是待检索的sn
+                        showlog("这是从文件获取的mac地址");
+                        macInputLineEdit()->setText(mac);
+                        macInputLineEdit()->returnPressed();
+
+                        qDebug() << getIndex() << "The corresponding mac is: " << mac;
+                        break;
+                    }
+                } else {
+                    showlog("存在没有逗号分开的" + QString::number(fields.count()) + line);
+                }
+            }
+            file.close();  // 关闭文件
+        }
+        if (!getIsFormMes()->isChecked() && macInputLineEdit()->text().isEmpty()) {
+            getMacLineEdit()->clear();
+            showlog("找不到mac地址，清空当前输入的sn");
+        }
+    }
+}
+
+void test_base::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
+void test_base::refreshMesState(int state) {
+    if (state)
+        showlog("mes登录成功");
+    else
+        showlog("mes登录失败");
+}

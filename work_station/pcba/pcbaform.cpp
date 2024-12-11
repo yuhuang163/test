@@ -25,49 +25,50 @@ void PcbaForm::on_pushButton_clicked() {
     // on_macInput_returnPressed();
     // at->sendMac(ui->macInput->text());  // 发送mac地址
 
-    testData = "连接超时";
-    TestItem test;
-    test.testItem = "wifi连接";
-    test.testData = testData;
-    test.testResult = failValue;
-    test.ask = "通过";
-    testItems.append(test);
+    // testData = "连接超时";
+    // TestItem test;
+    // test.testItem = "wifi连接";
+    // test.testData = testData;
+    // test.testResult = failValue;
+    // test.ask = "通过";
+    // testItems.append(test);
 
-    testResultTableUpdate(testItems);
+    // testResultTableUpdate(testItems);
 
-    erroContent << "|WIFI连接:超时";
+    // erroContent << "|WIFI连接:超时";
 
-    testData = "连接不行";
-    test.testItem = "wif劳烦";
-    test.testData = testData;
-    test.testResult = failValue;
-    test.ask = "通过";
-    testItems.append(test);
+    // testData = "连接不行";
+    // test.testItem = "wif劳烦";
+    // test.testData = testData;
+    // test.testResult = failValue;
+    // test.ask = "通过";
+    // testItems.append(test);
 
-    testResultTableUpdate(testItems);
+    // testResultTableUpdate(testItems);
 
-    erroContent << "|WIFI测试:失败";
+    // erroContent << "|WIFI测试:失败";
 }
 void PcbaForm::on_pushButton_2_clicked()  // 单机
 {
     static int t = 1;
     if (t == 1) {
-        pack.itemvalue = "";
-        pack.error = erroContent.join("") + "|";  //加结束符
-        pack.sn = ui->getMac->text();
-        showlog("失败过站");
-        if (ui->isusemes->checkState()) {
-            send_end_testPass(pack);
-        }
-        t = 0;
-    } else {
-        pack.itemvalue = exportTableContent();
+        showlog("已发送失败");
+        pack.itemvalue = "|蓝牙信号:-55|";
+        pack.result = "NG";
         pack.error = "";
         pack.sn = ui->getMac->text();
-        showlog("正常过站");
-
         if (ui->isusemes->checkState()) {
-            send_end_testPass(pack);
+            emit send_end_testPass(pack);
+        }
+        t++;
+    } else {
+        showlog("已发送成功");
+        pack.itemvalue = "|蓝牙信号:-55|";
+        pack.result = "PASS";
+        pack.error = "";
+        pack.sn = ui->getMac->text();
+        if (ui->isusemes->checkState()) {
+            emit send_end_testPass(pack);
         }
         t = 1;
     }
@@ -266,7 +267,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         ui->productComNameCombo->setEnabled(0);
     }
 
-    if (pack.factory == "wks") {
+    if (pack.factory == "wks" || pack.factory == "ydm") {
         ui->getMac->setEnabled(1);
     } else {
         ui->getMac->setEnabled(0);
@@ -279,7 +280,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
     else
         ui->start_scan->setVisible(false);  // 隐藏按钮
 }
-void PcbaForm::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
+
 void PcbaForm::getDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
 
@@ -804,7 +805,7 @@ void PcbaForm::on_stopTest_clicked() {
         on_productDisconnectButton_clicked();
 
     ui->macInput->setDisabled(0);
-    if (pack.factory == "wks") {
+    if (pack.factory == "wks" || pack.factory == "ydm") {
         ui->getMac->setDisabled(0);
     }
 }
@@ -961,7 +962,7 @@ void PcbaForm::updateTestResultUI() {
         isPcbaTestContinue = false;  // 结束
         ui->getMac->clear();
         ui->macInput->setDisabled(0);
-        if (pack.factory == "wks") {
+        if (pack.factory == "wks" || pack.factory == "ydm") {
             ui->getMac->setDisabled(0);
         }
         on_disconnectButton_clicked();
@@ -1024,11 +1025,7 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
 
         TestItem test;
         test.testItem = "六轴数据";
-        test.testData = QString("六轴数据异常: %1 超出范围. 实际值: %2， 范围: [%3， %4]")
-                            .arg(axis)
-                            .arg(value)
-                            .arg(lower)
-                            .arg(upper);
+        test.testData = QString("%1六轴数据异常").arg(axis);
         test.testResult = failValue;
         test.ask = "通过";
         testItems.append(test);
@@ -1648,6 +1645,7 @@ void PcbaForm::startTask() {
                     QString itemvalue;
                     itemvalue = exportTableContent();
                     pack.itemvalue = itemvalue;
+                    pack.result = "PASS";
                     pack.error = "";
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
@@ -1655,7 +1653,10 @@ void PcbaForm::startTask() {
                     }
 
                 } else if ((totalresult == failValue)) {
-                    pack.itemvalue = "";
+                    pack.result = "NG";
+                    QString itemvalue;
+                    itemvalue = exportTableContent();
+                    pack.itemvalue = itemvalue;
                     pack.error = erroContent.join("") + "|";  //加结束符
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
@@ -1681,7 +1682,7 @@ void PcbaForm::startTask() {
                 ui->getMac->clear();
                 // ui->macInput->setFocus();
                 ui->macInput->setDisabled(0);
-                if (pack.factory == "wks") {
+                if (pack.factory == "wks" || pack.factory == "ydm") {
                     ui->getMac->setDisabled(0);
                 }
 
@@ -1901,7 +1902,6 @@ void PcbaForm::updateComboBox() {
                     qDebug() << deviceAddress;
                     on_macInput_returnPressed();
                 }
-
                 // qDebug() << "有新增" << deviceAddress;
             }
         }
@@ -1922,9 +1922,7 @@ void PcbaForm::on_pick_device_textActivated(const QString& arg1) {
         return;
     } else {
         ui->macInput->setText(arg1);
-
         qDebug() << arg1;
-
         on_macInput_returnPressed();
     }
 }

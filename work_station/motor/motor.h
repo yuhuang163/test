@@ -16,10 +16,10 @@ public:
     ~motor();
     Ui::motor* ui;
     void startTask() override;
-
     void startTest_task();
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-    QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -29,21 +29,16 @@ public:
     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
 private slots:
-    void getDongleVer(QString data) override;
 
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void processInspection(QString stringsn);
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
     void canGoNextMechine(int x) override;
-
-    void refreshMesState(int state);
     void refreshSn(FacDevInfo data) override;
-
     void refreshBleState(int state) override;
     void refreshDongleUartState(int state) override;
     void refreshBattaryData(FacDevInfo adc) override;
-
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_pushButton_2_clicked();
@@ -55,9 +50,7 @@ private slots:
     void on_damping_open_clicked();
     void on_damping_close_clicked();
     void on_getMac_returnPressed();
-    void getMac(QString sn_to_search);
     void on_end_cali_clicked();
-
     void on_stopTest_clicked();
 
 private:
@@ -82,16 +75,11 @@ private:
     State state = STATE_IDLE;
     State test_state = STATE_IDLE;
     QByteArray sn;
-
     QString test_result = "";
-
     int is_battary_test = 0;
     double standbattary = 0;
     bool is_canGoNext = 0;
     bool is_motor_test_continue = 0;
-
-    // 动作
-
     QString stringsn;
     QString totalresult = "";
     QString macAddress = "没有mac地址";

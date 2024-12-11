@@ -47,19 +47,19 @@ typedef struct MesPacketData {
     QString machineNo;       //工站
     QString Employee_ID;     //员工工号
     QString action;          //动作
-    int mechines;            //机号
+    int mechines;            //上位机机号
     QString line;            //线体
     QString sn;              // sn
     QString result;          //结果
     QString itemvalue;       //测试项
     QString model;           //机种
-    int is_hq_send_mac = 0;  //机号
+    int is_hq_send_mac = 0;  //区分是否发送mac
     QString test_station;    //制程名称
     QString error;           //错误
     QString instruct_num;    //指令标识
     QString product;         //产品名字
     QString lotName;         //工单号码
-    QString mac;             //工单号码
+    QString mac;             //mac地址
 
 } MesPacketData;
 

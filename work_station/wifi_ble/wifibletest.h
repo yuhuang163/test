@@ -97,6 +97,7 @@ private slots:
 
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };          // nfc的usb口
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
@@ -115,7 +116,6 @@ private slots:
     void refreshSn(FacDevInfo data) override;
     void refreshBleState(int state) override;
 
-    void getDongleVer(QString data) override;
     void getDongleWifi(QString data) override;
 
     void refreshDongleUartState(int state) override;
@@ -130,7 +130,6 @@ private slots:
     void processInspection(QString stringsn);
     void processGetMesTestValue();
 
-    void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
 
     void on_macInput_returnPressed();
@@ -148,7 +147,7 @@ private slots:
 
     void on_mac_combo_textActivated(const QString& arg1);
     void on_clear_scan_clicked();
-    void getMac(QString sn_to_search);
+
     void on_snbanding_returnPressed();
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();

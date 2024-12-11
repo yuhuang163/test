@@ -209,7 +209,7 @@ void box_base::initData() {
 void setComboBoxValue(const QString& baseKey, const QString& key, QComboBox* comboBox) {
     if (comboBox != nullptr && comboBox->currentText() != "") {
         SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg(key), comboBox->currentText());
-        qDebug() << "数值为"<< comboBox->currentText();
+        qDebug() << "数值为" << comboBox->currentText();
     }
 }
 void box_base::saveCustom() {
@@ -334,6 +334,8 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("金进"));
         else if (pack.factory == "wks")
             parent->statusBar()->addPermanentWidget(new QLabel("伟克森"));
+        else if (pack.factory == "ydm")
+            parent->statusBar()->addPermanentWidget(new QLabel("亚达明"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
     } else {

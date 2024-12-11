@@ -30,7 +30,8 @@ public:
     virtual void endTask(){};
     virtual void useMes(){};
 
-    virtual QCheckBox* getIsUseMes() { return nullptr; };             // 获取mes获取接口
+    virtual QCheckBox* getIsUseMes() { return nullptr; };  // 获取mes获取接口
+    virtual QCheckBox* getIsFormMes() { return nullptr; };
     virtual QComboBox* getComNameCombo() { return nullptr; };         // dongle口
     virtual QComboBox* getUsbcomNameCombo() { return nullptr; };      // usb口
     virtual QComboBox* getJigcomNameCombo() { return nullptr; };      // 治具口
@@ -62,7 +63,9 @@ public:
     QString toHex(const QByteArray& data);
     void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
-private:                                              // 通用变量
+    void getMac(QString sn_to_search);
+
+private:  // 通用变量
     QString receivedData = "";
 
     void initData();
@@ -161,7 +164,7 @@ public slots:
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString){};
     virtual void refreshBleRssi(QString){};
-    virtual void getDongleVer(QString){};
+
     virtual void getDongleWifi(QString){};
     virtual void refreshBleState(int){};
     virtual void getWifiMsg(QString){};
@@ -176,6 +179,10 @@ public slots:
     virtual void refreshJigUartState(int){};
     virtual void refreshProductUartState(int){};
     virtual void processReceivedData(const QByteArray&){};
+
+private slots:
+    void getDongleVer(QString);
+    void refreshMesState(int state);
 
 signals:
     void send_dongle_serialPort_state(int);

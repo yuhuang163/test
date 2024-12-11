@@ -389,7 +389,7 @@ void QFreeWork::startTask() {
             initDate();
 
             at->sendMac(macAddress);  // 开始连接
-            showlog("MAC地址为："+ui->macInput->text());
+            showlog("MAC地址为：" + ui->macInput->text());
             teststate++;
         }
         if (at->getConnected()) {
@@ -649,12 +649,6 @@ void QFreeWork::refreshSn(FacDevInfo data) {
     //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
     // }
 }
-void QFreeWork::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
-}
 
 void QFreeWork::getDongleWifi(QString data) {
     // 保存密码
@@ -666,7 +660,6 @@ void QFreeWork::getDongleWifi(QString data) {
 
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
-void QFreeWork::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 
 void QFreeWork::refreshBleRssi(QString data) {
     // qDebug() << data;
@@ -1123,7 +1116,7 @@ void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
     pack.itemvalue = QString("|BTMAC:%1|").arg(bandingmac);
     pack.instruct_num = "076";
     if (ui->isusemes->checkState()) {
-        send_end_testPass(pack);
+        emit send_end_testPass(pack);
     }
 
     if (bandingresult) {

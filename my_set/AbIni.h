@@ -53,9 +53,9 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.4.6"
-#define CAMERA_VER "摄像测试工站   V1.3.0"
-#define AGE_VER "老化测试工站   V1.2.9"
+#define DEBUG_VER "电刷产测工具   V1.4.7"
+#define CAMERA_VER "摄像测试工站   V1.3.1"
+#define AGE_VER "老化测试工站   V1.3.0"
 #define MOTOR_VER "电机校准工站   V1.3.0"
 #define QC_VER "静态电流测试   V1.4.7"
 #define SCREEN_VER "屏幕测试工站   V1.2.1"
@@ -63,17 +63,28 @@
 #define SINGLE_VER "信号测试工站   V1.5.1"
 #define FREE_VER "自由测试工站   V1.1.4"
 #define IMU_VER "IMU校准工站    V1.5.4"
-#define PCBA_VER "电刷板子测试   V1.4.3"
+#define PCBA_VER "电刷板子测试   V1.4.4"
 
 
-// [MOTOR_VER] 允许配置是否测这个基础信息项和外设状态项
-// [AGE_VER] 允许配置是否测这个基础信息项和外设状态项
-// [SINGLE_VER] 允许配置是否测这个基础信息项和外设状态项
-// [PCBA_VER] 允许配置是否测这个基础信息项和外设状态项
-// [QC_VER] 允许配置是否测这个基础信息项和外设状态项
+
+
+
+
+// [DEBUG_VER] 添加获取牙刷当前曲目的功能
+// [CAMERA_VER]  删除冗余代码
+// [AGE_VER] 可以勾选是否写入skuid功能
+// [PCBA_VER] 添加亚达明的mes功能
 //
-// [CAMERA_VER]  添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
-// [DEBUG_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，修改摄像头变量命名，ui预览传输日志和计时，摄像头测试允许断开服务器
+
+
+// [MOTOR_VER] 
+
+// [SINGLE_VER] 
+
+// [QC_VER] 
+
+
+
 // [IMU_VER] 修改p30p为y25se，适配P20PS 
 
 // [SCREEN_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，允许重新获取压感信息一次

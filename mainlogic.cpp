@@ -1268,6 +1268,9 @@ void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString 
     }
 }
 
+void MainWindow::refreshMusicState(FacDevInfo data) {
+    showlog("当前曲目为：" + QString::number(data.dev_info[0].value_item.music_state));
+}
 void MainWindow::refreshSn(FacDevInfo data) {
     if (data.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
         qDebug() << "原始的board_sn：" << data.dev_info[0].value_item.board_sn;
@@ -2506,7 +2509,8 @@ void MainWindow::initBasicInfo() {
             ->setData(QString("%1").arg(baseInfo.ageing_state), Qt::DisplayRole);
         basicInfoModel->getTestItemByName("motor_ver")
             ->setData(QString("%1").arg(baseInfo.motor_version), Qt::DisplayRole);
-        basicInfoModel->getTestItemByName("bleVersion")->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
+        basicInfoModel->getTestItemByName("bleVersion")
+            ->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
 
         writeDataToCSVFile();
 

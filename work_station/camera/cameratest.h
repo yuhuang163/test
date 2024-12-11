@@ -85,7 +85,6 @@ public:
     int dataNumber = 0;
     int CameraGetTime = 6000;
     /*摄像头传图部分*/
-
     std::atomic<bool> running;
     QFuture<void> future;
 #define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
@@ -106,7 +105,6 @@ public:
 #define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
 #define UART_PHY_LAYER_LENGTH 1
 #define UART_PHY_LAYER_HEADER_ADN_LEN (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_LENGTH)
-
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
 #define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
 #define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
@@ -142,7 +140,6 @@ public:
         PHY_CHANNEL_INVALID = 0,  //无效值
         PHY_CHANNEL_CAMREA,       //摄像头命令通道
         PHY_CHANNEL_LOG,          // ota数据通道
-
         PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
         PHY_CHANNEL_FACTORY,      //厂测通道
         PHY_CHANNEL_USMILE_APP,   //笑容加app通道
@@ -163,7 +160,6 @@ public:
     void solve_frame(void);
     void solve_picture_frame(QByteArray picturedata);
     /*摄像头传图部分*/
-
     explicit cameratest(int index, QWidget* parent = nullptr);
     ~cameratest();
     Ui::cameratest* ui;
@@ -188,21 +184,20 @@ private:
     QTime TestTime;
     State state = STATE_IDLE;
     QTimer* cameraSendTimer = new QTimer(this);
-
     bool is_canGoNext = 0;
     QByteArray pictureByteArray = 0;
     QString stringsn;
     QUdpSocket* udpSocket;
     QByteArray sn;
     QString macAddress = "没有mac地址";
-
     bool is_camera_control = 0;
     bool can_start_dirty_test = 0;
     int picutre_dirty_times = 0;
     bool can_start_offset_test = 0;
     int picutre_offset_times = 0;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -210,7 +205,6 @@ QCheckBox* getIsUseMes()override { return ui->isusemes; };
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
-
     bool displayRectangles;
     bool displayDirty;
 
@@ -227,16 +221,13 @@ private slots:
     void readDongleSerialPortData() override;
     void getPictureSendOver(FacPictureDataAck x);
     void onTimeout();
-    void getDongleVer(QString data) override;
     void processTheDatagram(QByteArray& datagram);
-    void refreshMesState(int state);
     void bandSnMacToCsv(const QString& macAddress, const QString& sn);
     void refreshCameraControl(FacCameraControl style) override;
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(FacDevInfo data) override;
     void getDongleWifi(QString data) override;
-
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
@@ -246,7 +237,6 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void getMac(QString sn_to_search);
     void on_getMac_returnPressed();
     void processInspection(QString stringsn);
     void on_distribution_network_clicked();
@@ -262,13 +252,6 @@ private slots:
     void on_OffsetTest_clicked();
     void on_stopTest_clicked();
     void updateImageOnMainThread();
-    void on_jxl_normal_clicked();
-    void on_jxl_abnormal_clicked();
-    void on_zw_normal_clicked();
-    void on_zw_abnormal_clicked();
-    void on_py_normal_clicked();
-    void on_py_abnormal_clicked();
-
     void on_ResolutionTestButton_clicked();
 
 signals:

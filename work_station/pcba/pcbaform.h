@@ -20,7 +20,6 @@ namespace Ui {
 class PcbaForm : public test_base {
     Q_OBJECT
 signals:
-
     void overtask(int);
     void start_sleep_command(int);
     void start_white_modle_command(int);
@@ -31,6 +30,7 @@ signals:
 public:
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
     QLineEdit* getMotorCaliParam() override { return ui->pcba_motor_cali_param; };     // 电机校准参数
     QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口
@@ -43,19 +43,16 @@ public:
     explicit PcbaForm(int index, QWidget* parent = nullptr);
     ~PcbaForm();
     Ui::PcbaForm* ui;
-
     int firstconnectbrush = 1;
     bool mac_retry_flag = false;
     bool isPcbaTestContinue = false;
     void startTask() override;
     void overTask() override;
-
     void startTest() override;
     void updateComboBox() override;
 
 private slots:
 
-    void getDongleVer(QString data) override;
     void processInspection(QString stringsn);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
     void getimuData(FacUploadNineAlex x) override;
@@ -92,9 +89,7 @@ private slots:
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
     void on_getMac_returnPressed();
-
     void on_start_scan_clicked();
-
     void on_pick_device_textActivated(const QString& arg1);
 
 protected:
@@ -116,11 +111,8 @@ private:
     int rssitestcount = 0;
     int rssitestfailcount = 0;
     int intwifirssi = 0;
-
     int32_t processIMUData(uint16_t imuData);
-
     void checkIMUData(const QString& axis, int32_t value, int32_t upper, int32_t lower);
-
     int is_imu_correct_data = 0;
     bool iswificonnectovertime = 0;    // 是否开始发送校验结果
     bool is_music_play_over_time = 0;  // 是否开始发送校验结果
@@ -128,12 +120,10 @@ private:
     int ngnumber = 0;
     int refresh_times = 1;
     int refresh_periph_state_times = 1;
-
     int acc_x_up = 0;
     int acc_x_down = 0;
     int acc_y_up = 0;
     int acc_y_down = 0;
-
     int acc_z_up = 0;
     int acc_z_down = 0;
 
@@ -210,9 +200,7 @@ private:
     int base_state = 0;
     int remain_ok = 0;
     int start_sleep = 0;
-
     QString totalresult = "";
-
     QString testItem;
     QString testData;
     QString bleMac;

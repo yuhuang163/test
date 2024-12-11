@@ -83,7 +83,6 @@ public:
         PHY_CHANNEL_CAMREA,       //摄像头通道
         PHY_CHANNEL_LOG,          // LOG数据通道
 
-
     } ext_ble_phy_channel_e;
 
 #pragma pack(1)
@@ -327,6 +326,7 @@ private slots:
     QString getMotorStateString(FacMotoState state);
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
+    void refreshMusicState(FacDevInfo data);
     void scanIpPorts();
 private slots:
     void on_connectButton_clicked();
@@ -489,6 +489,8 @@ private slots:
     void on_stopBleOta_clicked();
 
     void on_closeconnect_clicked();
+
+    void on_get_now_music_clicked();
 
 signals:
     void send_uart_state(int data);

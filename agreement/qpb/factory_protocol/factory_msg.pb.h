@@ -81,7 +81,7 @@ typedef enum _FacBasInfoType {
     FacBasInfoType_CAMERA_VERSION = 14 
 } FacBasInfoType;
 
-/* b'********************\xe8\xae\xbe\xe5\xa4\x87\xe7\x8a\xb6\xe6\x80\x81\xe8\xae\xbe\xe7\xbd\xae\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************设备状态设置区域***************** */
 typedef enum _DevStateType { 
     DevStateType_REBOOT = 0, /* 系统重启 */
     DevStateType_RESET = 1, /* 重置 */
@@ -90,8 +90,9 @@ typedef enum _DevStateType {
     DevStateType_FACTORY_QRCORD = 4, /* 工厂模式 */
     DevStateType_SHIP = 5, /* 船运模式 */
     DevStateType_UART_RECEIVE = 6, /* 串口接收 */
-    DevStateType_PRESS_SENSOR_TEMP = 7, /* b'\xe5\x8e\x8b\xe6\x84\x9f\xe6\xb8\xa9\xe5\xba\xa6\xe8\xa1\xa5\xe5\x81\xbf\xe5\xbc\x80\xe5\x85?' */
-    DevStateType_MOTOR_ADC_MOS = 8 /* 电机adc采集的mos */
+    DevStateType_PRESS_SENSOR_TEMP = 7, /* 压感温度补偿开关 */
+    DevStateType_MOTOR_ADC_MOS = 8, /* 电机adc采集的mos */
+    DevStateType_PRESS_CALIB_STATE = 9 /* 压感校准状态设置 */
 } DevStateType;
 
 typedef enum _FacSwitch { 
@@ -101,7 +102,7 @@ typedef enum _FacSwitch {
     FacSwitch_OPEN = 1 
 } FacSwitch;
 
-/* b'********************\xe8\xae\xbe\xe5\xa4\x87\xe8\x87\xaa\xe5\xae\x9a\xe4\xb9\x89\xe4\xbf\xa1\xe6\x81\xaf\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************设备自定义信息区域***************** */
 typedef enum _FacDevInfoType { 
     FacDevInfoType_WIFI_INFO = 0, 
     FacDevInfoType_TAIL_SN = 1, 
@@ -110,7 +111,8 @@ typedef enum _FacDevInfoType {
     FacDevInfoType_BATTERY_INFO = 4, 
     FacDevInfoType_IF_QUALIFIED = 5, /* 工厂测试结果 */
     FacDevInfoType_SUB_PID = 6, 
-    FacDevInfoType_SKUID = 7 
+    FacDevInfoType_SKUID = 7, 
+    FacDevInfoType_MUSIC_STATE = 8 
 } FacDevInfoType;
 
 typedef enum _FacChargeStateType { 
@@ -126,7 +128,7 @@ typedef enum _FacBatteryType {
     FacBatteryType_ONE_BATTERY = 1 
 } FacBatteryType;
 
-/* b'********************\xe8\x80\x81\xe5\x8c\x96\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************老化类区域***************** */
 typedef enum _FacAgeingTestType { 
     FacAgeingTestType_AGEING_1 = 0, 
     FacAgeingTestType_AGEING_2 = 1, 
@@ -135,13 +137,13 @@ typedef enum _FacAgeingTestType {
     FacAgeingTestType_AGEING_PRODUCTION_1 = 4 /* 弃用 */
 } FacAgeingTestType;
 
-/* b'********************\xe5\xb1\x8f\xe5\xb9\x95\xe6\xb5\x8b\xe8\xaf\x95\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************屏幕测试类区域***************** */
 typedef enum _FacLcdControlType { 
     FacLcdControlType_color = 0, 
     FacLcdControlType_reg = 1 
 } FacLcdControlType;
 
-/* b'********************\xe7\x94\xb5\xe6\x9c\xba\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************电机类区域***************** */
 typedef enum _FacMotoControlType { 
     FacMotoControlType_motor_state = 0, 
     FacMotoControlType_motor_param = 1, 
@@ -172,22 +174,22 @@ typedef enum _FacMotoState {
 } FacMotoState;
 
 typedef enum _FacMotorFaultCode { 
-    FacMotorFaultCode_NoFault = 0, /* b'\xe6\x97\xa0\xe6\x95\x85\xe9\x9a?' */
+    FacMotorFaultCode_NoFault = 0, /* 无故障 */
     FacMotorFaultCode_OverVoltage = 1, /* 过压 */
     FacMotorFaultCode_UnderVoltage = 2, /* 欠压 */
     FacMotorFaultCode_OverCurrent = 3, /* 软件过流 */
     FacMotorFaultCode_HardOverCurrent = 4, /* 硬件过流 */
     FacMotorFaultCode_OverTempMotor = 5, /* 电机过温 */
-    FacMotorFaultCode_Abnormal_working_current = 6, /* b'\xe5\xb7\xa5\xe4\xbd\x9c\xe7\x8a\xb6\xe6\x80\x81\xe7\x94\xb5\xe6\xb5\x81\xe8\xbe\xbe\xe5\x88\xb0\xe9\xa5\xb1\xe5\x92?' */
+    FacMotorFaultCode_Abnormal_working_current = 6, /* 工作状态电流达到饱和 */
     FacMotorFaultCode_OverTempIGBT = 7, /* IPM过温 */
     FacMotorFaultCode_StartupFail = 8, /* 启动失败 */
     FacMotorFaultCode_StartupFailContious = 9, /* 连续启动失败 */
-    FacMotorFaultCode_OverLoad = 10, /* b'\xe8\xbd\xaf\xe4\xbb\xb6\xe8\xbf\x87\xe8\xbd\xbd\xef\xbc\x8c\xe9\x99\x8d\xe9\xa2\x9d\xe8\xbf\x90\xe8\xa1?' */
-    FacMotorFaultCode_OverWindSpeed = 11, /* b'\xe8\xb6\x85\xe9\x80?' */
+    FacMotorFaultCode_OverLoad = 10, /* 软件过载，降额运行 */
+    FacMotorFaultCode_OverWindSpeed = 11, /* 超速 */
     FacMotorFaultCode_LosePhase = 12, /* 丢相 */
-    FacMotorFaultCode_OverIAs = 13, /* b'A\xe7\x9b\xb8\xe8\xbf\x87\xe6\xb5?' */
-    FacMotorFaultCode_OverIBs = 14, /* b'B\xe7\x9b\xb8\xe8\xbf\x87\xe6\xb5?' */
-    FacMotorFaultCode_OverICs = 15, /* b'C\xe7\x9b\xb8\xe8\xbf\x87\xe6\xb5?' */
+    FacMotorFaultCode_OverIAs = 13, /* A相过流 */
+    FacMotorFaultCode_OverIBs = 14, /* B相过流 */
+    FacMotorFaultCode_OverICs = 15, /* C相过流 */
     FacMotorFaultCode_OverIAsIBsICs = 16, /* 全相过流 */
     FacMotorFaultCode_STOPMode = 17, /* 停止模式 */
     FacMotorFaultCode_MotorStall = 18 /* 堵转 */
@@ -224,7 +226,7 @@ typedef enum _FacCameraControlType {
     FacCameraControlType_camera_get_picture = 5 
 } FacCameraControlType;
 
-/* b'********************\xe7\x81\xaf\xe5\x85\x89\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************灯光类区域***************** */
 typedef enum _LedPosition { 
     LedPosition_led_left_up = 0, 
     LedPosition_led_left_down = 1, 
@@ -232,7 +234,7 @@ typedef enum _LedPosition {
     LedPosition_led_right_down = 3 
 } LedPosition;
 
-/* b'********************\xe9\x87\x87\xe9\x9b\x86\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************采集类区域***************** */
 typedef enum _DataCollectType { 
     DataCollectType_BATTERY = 0, 
     DataCollectType_PRESSURE_SENSOR = 1, 
@@ -245,7 +247,7 @@ typedef enum _FacBrushControlType {
     FacBrushControlType_CHANGE_MODE = 1 
 } FacBrushControlType;
 
-/* b'********************\xe6\x8c\x89\xe9\x94\xae\xe7\xb1\xbb\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************按键类区域***************** */
 typedef enum _FacButtonType { 
     FacButtonType_POWER_BUTTON = 0, 
     FacButtonType_MODEL_BUTTON = 1, 
@@ -275,13 +277,13 @@ typedef struct _AccCaliData {
 
 typedef struct _DataButtonParam { 
     FacSwitch state; 
-    ButtonState button_state_now; /* b'\xe6\x8c\x89\xe9\x94\xae\xe7\x8a\xb6\xe6\x80?' */
+    ButtonState button_state_now; /* 按键状态 */
 } DataButtonParam;
 
 typedef struct _DataCollectParam { 
     FacSwitch state; 
     uint32_t sampling_count; /* 采样次数  0xFFFFFFFF不限次数 */
-    uint32_t sampling_rate; /* b'\xe9\x87\x87\xe6\xa0\xb7\xe7\x8e?' */
+    uint32_t sampling_rate; /* 采样率 */
     uint32_t upload_rate; /* 上报频率 */
 } DataCollectParam;
 
@@ -359,7 +361,7 @@ typedef struct _FacGetDevBaseInfo {
     FacErrorCode result; 
 } FacGetDevBaseInfo;
 
-/* b'********************\xe8\xae\xbe\xe5\xa4\x87\xe7\x8a\xb6\xe6\x80\x81\xe5\x8c\xba\xe5\x9f?*****************' */
+/* ********************设备状态区域***************** */
 typedef struct _FacGetPeriphState { 
     bool imu_state; 
     bool flash_state; 
@@ -384,7 +386,7 @@ typedef struct _FacMotoParam {
 
 typedef struct _FacOtaFileInfo { 
     uint32_t file_size; 
-    uint32_t version_code; /* b'\xe7\x89\x88\xe6\x9c\xac\xe5\x8f?' */
+    uint32_t version_code; /* 版本号 */
     uint32_t version_type; /* 文件类型  201固件  202资源  303音频 304主题 305音乐文件 */
     char url[256]; 
     char md5[64]; 
@@ -534,6 +536,7 @@ typedef struct _FacDevInfoValue {
         FacSwitch if_qualified;
         char sub_pid[64];
         char sku_id[64];
+        uint32_t music_state;
     } value_item; 
     char write_info[64]; 
 } FacDevInfoValue;
@@ -606,7 +609,7 @@ typedef struct _FacWifiDemand {
     char ota_data[50]; 
     bool has_wifi_info;
     FacWifiInfo wifi_info; 
-    uint32_t ota_result; /* b'\xe6\xb2\xa1\xe6\x9c\x89\xe7\x94?' */
+    uint32_t ota_result; /* 没有用 */
     FacErrorCode result; 
 } FacWifiDemand;
 
@@ -723,16 +726,16 @@ typedef struct _FactoryDataPackage {
 #define _FacBasInfoType_ARRAYSIZE ((FacBasInfoType)(FacBasInfoType_CAMERA_VERSION+1))
 
 #define _DevStateType_MIN DevStateType_REBOOT
-#define _DevStateType_MAX DevStateType_MOTOR_ADC_MOS
-#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_MOTOR_ADC_MOS+1))
+#define _DevStateType_MAX DevStateType_PRESS_CALIB_STATE
+#define _DevStateType_ARRAYSIZE ((DevStateType)(DevStateType_PRESS_CALIB_STATE+1))
 
 #define _FacSwitch_MIN FacSwitch_CLOSE
 #define _FacSwitch_MAX FacSwitch_START
 #define _FacSwitch_ARRAYSIZE ((FacSwitch)(FacSwitch_START+1))
 
 #define _FacDevInfoType_MIN FacDevInfoType_WIFI_INFO
-#define _FacDevInfoType_MAX FacDevInfoType_SKUID
-#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_SKUID+1))
+#define _FacDevInfoType_MAX FacDevInfoType_MUSIC_STATE
+#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_MUSIC_STATE+1))
 
 #define _FacChargeStateType_MIN FacChargeStateType_ERROR
 #define _FacChargeStateType_MAX FacChargeStateType_NO_BATT
@@ -1052,6 +1055,7 @@ extern "C" {
 #define FacDevInfoValue_if_qualified_tag         7
 #define FacDevInfoValue_sub_pid_tag              8
 #define FacDevInfoValue_sku_id_tag               9
+#define FacDevInfoValue_music_state_tag          10
 #define FacDevInfoValue_write_info_tag           50
 #define FacImuCalibResult_gyro_x_tag             1
 #define FacImuCalibResult_gyro_y_tag             2
@@ -1288,6 +1292,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,battery,value_item.battery),   6)
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualified),   7) \
 X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8) \
 X(a, STATIC,   ONEOF,    STRING,   (value_item,sku_id,value_item.sku_id),   9) \
+X(a, STATIC,   ONEOF,    UINT32,   (value_item,music_state,value_item.music_state),  10) \
 X(a, STATIC,   SINGULAR, STRING,   write_info,       50)
 #define FacDevInfoValue_CALLBACK NULL
 #define FacDevInfoValue_DEFAULT NULL

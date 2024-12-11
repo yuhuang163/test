@@ -32,9 +32,7 @@ private:
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     State state = STATE_IDLE;
-
     QTime TestTime;
-
     bool is_canGoNext = 0;
     QString stringsn;
     QString macAddress = "没有mac地址";
@@ -42,10 +40,8 @@ private:
     int snCompareOk = 0;
     QByteArray subpid;
     QString stringsubpid;
-
     int subpidCompareOk = 0;
     QByteArray writesn;
-
     QString product = "";
 
 protected:
@@ -54,8 +50,9 @@ protected:
 
 private slots:
 
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
-    QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -63,17 +60,13 @@ private slots:
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
-
     void refreshLcdControl(FacLcdControl style) override;
     void refreshBleState(int state) override;
     void refreshSn(FacDevInfo data) override;
-    void getDongleVer(QString data) override;
     void refreshDongleUartState(int state) override;
     void processInspection(QString stringsn);
     void canGoNextMechine(int x) override;
-    void refreshMesState(int state);
     void set_screen_color(int x);
-
     void processGetMesTestValue();
     void getTestValue(const int mechines, const QString value) override;
     void on_pushButton_clicked();
@@ -81,7 +74,6 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void getMac(QString sn_to_search);
     void on_getMac_returnPressed();
     void on_stopTest_clicked();
 

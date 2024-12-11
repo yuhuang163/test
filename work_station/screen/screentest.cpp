@@ -44,7 +44,6 @@ void screentest::refreshLcdControl(FacLcdControl style) {
     is_lcd_control = 1;
 }
 
-void screentest::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 screentest::~screentest() { delete ui; }
 
 void screentest::on_disconnectButton_clicked() {
@@ -205,7 +204,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 is_lcd_control = 0;
                 TestTime.start();
                 at->sendMac(ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为："+ui->macInput->text());
+                showlog("MAC地址为：" + ui->macInput->text());
                 snCompareOk = 0;
                 subpidCompareOk = 0;
                 state = STATE_WATI_CONNECT;
@@ -214,7 +213,6 @@ void screentest::startTask()  // 编写六轴校准的代码
                 if (at->getConnected()) {
                     stringsn = ui->getMac->text();
                     sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN));
-
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
                 break;
@@ -227,9 +225,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "1";
                         testItems.append(test);
-
                         testResultTableUpdate(testItems);
-
                         showlog("sn已比对成功");
                         state = STATE_DISABLE_SLEEP_1;
                     } else if (snCompareOk == 2) {
@@ -265,7 +261,6 @@ void screentest::startTask()  // 编写六轴校准的代码
                     set_screen_color(1);
                     showlog("--------------当前是绿色");
                     emit send_go_next_test(getIndex());
-
                     state = STATE_COLOR2;
                 }
                 break;
@@ -275,9 +270,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                     is_lcd_control = 0;
                     set_screen_color(2);
                     showlog("--------------当前是蓝色");
-
                     emit send_go_next_test(getIndex());
-
                     state = STATE_COLOR3;
                 }
                 break;
@@ -287,9 +280,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                     is_lcd_control = 0;
                     set_screen_color(3);
                     showlog("--------------当前是白色");
-
                     emit send_go_next_test(getIndex());
-
                     state = STATE_COLOR4;
                 }
                 break;
@@ -299,9 +290,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                     is_lcd_control = 0;
                     set_screen_color(4);
                     showlog("--------------当前是黑色");
-
                     emit send_go_next_test(getIndex());
-
                     state = STATE_COLOR5;
                 }
                 break;
@@ -309,7 +298,6 @@ void screentest::startTask()  // 编写六轴校准的代码
                 if (is_lcd_control && is_canGoNext) {
                     is_canGoNext = 0;
                     is_lcd_control = 0;
-
                     state = STATE_SAVE_RESULT;
                 }
                 break;
@@ -318,15 +306,11 @@ void screentest::startTask()  // 编写六轴校准的代码
 
                 if (result == passValue) {
                     QString mesresult = "PASS";
-
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|SCREEN_TEST:PASS|");
-
                     pack.sn = ui->getMac->text();
-
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -336,13 +320,10 @@ void screentest::startTask()  // 编写六轴校准的代码
                 } else if ((result == failValue)) {
                     QString mesresult = "NG";
                     pack.result = mesresult;
-
                     pack.itemvalue = QString("|SCREEN_TEST:NG|");
-
                     pack.sn = ui->getMac->text();
-
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                     ui->test_result->setText("FAIL");
                     ui->test_result->setStyleSheet(
@@ -355,9 +336,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 test.testResult = result;
                 test.ask = "通过";
                 testItems.append(test);
-
                 testResultTableUpdate(testItems);
-
                 stringsn = "";
                 ui->getMac->clear();
                 ui->macInput->clear();
@@ -394,12 +373,6 @@ void screentest::on_lcdTestButton_clicked() {
     // waitWork(WAITTIME);
 }
 
-void screentest::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
-}
 void screentest::getTestValue(const int mechines, const QString value) {
     // showlog(value);
     QString mesmacAddress;
@@ -449,30 +422,7 @@ void screentest::getTestValue(const int mechines, const QString value) {
         }
     }
 }
-void screentest::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {             // 至少需要两个字段
-                QString sn = fields.at(0);         // 第一个字段是sn
-                QString mac = fields.at(1);        // 第二个字段是mac
-                if (sn == sn_to_search) {          // 检查是否是待检索的sn
-                    showlog("这是从文件获取的mac地址");
-                    ui->macInput->setText(mac);
-                    on_macInput_returnPressed();
-                    qDebug() << getIndex() << "The corresponding mac is: " << mac;
-                    break;
-                }
-            } else {
-                showlog("存在没有逗号分开的" + QString::number(fields.count()) + line);
-            }
-        }
-        file.close();  // 关闭文件
-    }
-}
+
 void screentest::on_getMac_returnPressed() {
     testResultTableInit();
 

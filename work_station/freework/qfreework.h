@@ -99,17 +99,14 @@ private:
     DraggableCheckBox* checkBox2;
     DraggableCheckBox* getCheckBoxByIndex(int index);
     DraggableCheckBox* getCanUseCheckBoxByIndex(int index);
-
     int getIndexAt(const QPoint& pos);
     void showTestIndexes();
     void saveIndexesToConfig(const QVector<int>& indexes);
     QVector<int> loadIndexesFromConfig();
-    void reorderCheckBoxes() ;
+    void reorderCheckBoxes();
     void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col);
-    void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col) ;
-
-    void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) ;
-
+    void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
+    void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     QVector<int> testIndexes;  // 存储索引的容器
     QVBoxLayout* conFiglayout;
     QGridLayout* canUselayout;
@@ -135,9 +132,9 @@ protected:
 
 private slots:
     void initDate();
-
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
-    QCheckBox* getIsUseMes()override { return ui->isusemes; };
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口（治具）
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
@@ -149,30 +146,21 @@ private slots:
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;
-
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void refreshBattaryData(FacDevInfo data) override;
     void refreshSn(FacDevInfo data) override;
     void refreshBleState(int state) override;
-
-    void getDongleVer(QString data) override;
     void getDongleWifi(QString data) override;
-
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
-
     void refreshWifiState(int state);
-
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox();
     void getmacadress(const QByteArray& byte);
     void processInspection(QString stringsn);
     void processGetMesTestValue();
-
-    void refreshMesState(int state);
     void getTestValue(const int mechines, const QString value) override;
-
     void on_macInput_returnPressed();
     void on_pushButton_clicked();
     void on_disconnectwifi_clicked();

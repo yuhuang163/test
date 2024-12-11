@@ -19,10 +19,11 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 9);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"P20PS", "Y25SE", "P20P", "U7", "U7P", "F20", "Q20", "Y20", "Y20P", "Y21"};
+    QStringList productList = {"P20PS", "Y25SE", "P20P", "U7",   "U7P", "F20", "Q20",
+                               "Q30",   "Y20",   "Y20P", "Y25P", "Y25", "Y21"};
     ui->comboBox_productName->addItems(productList);
 
-    QStringList factoryList = {"lx", "xwd", "hq", "wks"};
+    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
 
     loadConfig();
@@ -116,6 +117,8 @@ void qsetting::loadConfig() {
 
     ui->checkBox_SimplePcbaTest->setChecked(SETTINGS.value("SYSTEM/SimplePcbaTest").toBool());
     ui->checkBox_NeedWriteSubpid->setChecked(SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool());
+    ui->checkBox_NeedWriteSkuid->setChecked(SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool());
+
     ui->checkBox_BluetoothImageTransfer->setChecked(SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool());
     ui->checkBox_IMUCalibrationWakeup->setChecked(SETTINGS.value("SYSTEM/IMUCalibrationWakeup").toBool());
     ui->checkBox_DisableSerialPortRx->setChecked(SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool());
@@ -347,6 +350,8 @@ void qsetting::saveConfig() {
 
     SETTINGS.setValue("SYSTEM/SimplePcbaTest", ui->checkBox_SimplePcbaTest->isChecked());
     SETTINGS.setValue("SYSTEM/NeedWriteSubpid", ui->checkBox_NeedWriteSubpid->isChecked());
+    SETTINGS.setValue("SYSTEM/NeedWriteSkuid", ui->checkBox_NeedWriteSkuid->isChecked());
+
     SETTINGS.setValue("SYSTEM/BluetoothImageTransfer", ui->checkBox_BluetoothImageTransfer->isChecked());
     SETTINGS.setValue("SYSTEM/IMUCalibrationWakeup", ui->checkBox_IMUCalibrationWakeup->isChecked());
     SETTINGS.setValue("SYSTEM/DisableSerialPortRx", ui->checkBox_DisableSerialPortRx->isChecked());
@@ -507,6 +512,7 @@ void qsetting::closeEvent(QCloseEvent* event) {
 }
 
 void qsetting::RestoreDefaultSetting() {
+    ui->checkBox_NeedWriteSkuid->setChecked(false);
     ui->checkBox_NeedWriteSubpid->setChecked(false);
     ui->checkBox_BluetoothImageTransfer->setChecked(false);
     ui->checkBox_IMUCalibrationWakeup->setChecked(false);
@@ -555,6 +561,16 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
     }
+    //立讯：imu需要晃动唤醒，全扫码再测试
+    if (ui->comboBox_productName->currentText() == "Q30") {
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_TestAudioCurrent->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+    }
     //欣旺达：依次扫码连接，不需要唤醒
     if (ui->comboBox_productName->currentText() == "Q20") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
@@ -600,7 +616,29 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_uperMotor->setChecked(true);
     }
 
+    //立讯：imu不需要晃动唤醒，全扫码再测试
+    if (ui->comboBox_productName->currentText() == "Y25") {
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+    }
+    //立讯：imu不需要晃动唤醒，全扫码再测试
+    if (ui->comboBox_productName->currentText() == "Y25P") {
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+    }
+
     if (ui->comboBox_productName->currentText() == "P20PS") {
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);

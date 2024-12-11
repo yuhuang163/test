@@ -131,6 +131,10 @@ QString wksmes::transformString(const QString& input) {
 
 void wksmes::TestPass(MesPacketData pack) {
     if (pack.factory == "wks") {
+
+        if( pack.result == "NG"){
+                 pack.itemvalue = "";
+        }
         // 构建 JSON 请求体
         QJsonObject json;
         json["lotName"] = pack.lotName;

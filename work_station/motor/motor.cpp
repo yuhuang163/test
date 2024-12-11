@@ -217,7 +217,6 @@ void motor::on_motor_cali_clicked() {
     }
 }
 
-void motor::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void motor::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
@@ -603,7 +602,7 @@ void motor::startTask() {
                     pack.result = mesresult;
                     pack.itemvalue = QString("|MOTOR_TEST:PASS|");
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -617,7 +616,7 @@ void motor::startTask() {
                     pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("FAIL");
@@ -720,7 +719,7 @@ void motor::startTest_task() {
                     pack.itemvalue = itemvalue;
 
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
 
                     ui->test_result->setText("PASS");
@@ -737,7 +736,7 @@ void motor::startTest_task() {
                     pack.sn = ui->getMac->text();
 
                     if (ui->isusemes->checkState()) {
-                        send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                     }
                     ui->test_result->setText("FAIL");
                     ui->test_result->setStyleSheet(
@@ -772,12 +771,6 @@ void motor::startTest_task() {
     }
 }
 
-void motor::refreshMesState(int state) {
-    if (state)
-        showlog("mes登录成功");
-    else
-        showlog("mes登录失败");
-}
 void motor::getTestValue(const int mechines, const QString value) {
     // showlog(value);
     QString mesmacAddress;
@@ -906,31 +899,6 @@ void motor::on_macInput_returnPressed() {
         emit send_go_next_focus();
 
         state = STATE_IDLE;
-    }
-}
-void motor::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {
-                QString sn = fields.at(0);   // 第一个字段是sn
-                QString mac = fields.at(1);  // 第二个字段是mac
-                if (sn == sn_to_search) {    // 检查是否是待检索的sn
-                    {
-                        ui->macInput->setText(mac);
-                        on_macInput_returnPressed();
-                        showlog("这是从文件获取的mac地址");
-                        qDebug() << getIndex() << "The corresponding mac is: " << mac;
-                    }
-
-                    break;
-                }
-            }
-        }
-        file.close();  // 关闭文件
     }
 }
 
