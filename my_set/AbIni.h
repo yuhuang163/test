@@ -87,26 +87,17 @@
 #define P30_Pro_PRESS_TEST  01              // P30P压感校准
 
 #if Y20_Pro_PRESS_TEST
-    // #define FROM_SN
     #define IS_INDEPENDENT   0   // 每个产品的校准是否是独立的
     #define USE_CALIB_FIXTURE 01
     #define USE_TEST_FIXTURE  0
+
 #elif U7_PRESS_TEST
-    #define LXSET
-    #define FROM_SN
     #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
+
 #elif P30_Pro_PRESS_TEST
-    #define LXSET
-    #define FROM_SN
     #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
+    
 #endif
-
-#define USE_DONGLE_LOG   0
-
-#define PRESS_SENSOR_VER   "压感校准 V1.2.2"
-#define WINDOWS_NAME    PRESS_SENSOR_VER
-
-#define SETTINGS_NAME "pressure_sensor_calibration.ini"
 // 待整理
 
 #endif  // ABINI_H

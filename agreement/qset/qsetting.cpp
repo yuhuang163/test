@@ -16,7 +16,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSignalTest"), 6);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonAgingTest"), 7);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonBoardFactoryTest"), 8);
-    StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 9);
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonPressTest"), 9);
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
     QStringList productList = {"P30P", "P20P", "U7", "U7P", "F20", "Q20", "Y20", "Y20P", "Y21"};
@@ -40,7 +41,8 @@ void qsetting::loadConfig() {
         {"STATIC_CURRENT", ui->radioButtonStaticCurrent}, {"SCREEN_TEST", ui->radioButtonScreenTest},
         {"CAMERA_TEST", ui->radioButtonCameraTest},       {"WIFIBLE_TEST", ui->radioButtonSignalTest},
         {"AGE_TEST", ui->radioButtonAgingTest},           {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
-        {"FREE_WORK", ui->radioButtonFreeWorkstation},    {"MAIN_TEST", ui->radioButtonDebug}};
+        {"FREE_WORK", ui->radioButtonFreeWorkstation},    {"MAIN_TEST", ui->radioButtonDebug},
+        {"PRESS_TEST", ui->radioButtonPressTest}};
 
     // 清除所有 QRadioButton 的选中状态
     for (auto button : stationMap) {
@@ -199,6 +201,7 @@ void qsetting::saveConfig() {
                                         ui->radioButtonCameraTest->isChecked()       ? "CAMERA_TEST" :
                                         ui->radioButtonSignalTest->isChecked()       ? "WIFIBLE_TEST" :
                                         ui->radioButtonAgingTest->isChecked()        ? "AGE_TEST" :
+                                        ui->radioButtonPressTest->isChecked()        ? "PRESS_TEST" :
                                         ui->radioButtonBoardFactoryTest->isChecked() ? "PCBA_TEST" :
                                         ui->radioButtonFreeWorkstation->isChecked()  ? "FREE_WORK" :
                                                                                        "MAIN_TEST");

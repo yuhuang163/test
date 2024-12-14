@@ -43,15 +43,6 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 #define COUNT_THRESHOLD_P30P_KEY  200
 
 PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::PressureSensorForm) {
-// PressureSensorForm::PressureSensorForm(int index, QWidget *parent)
-//     : QWidget(parent),
-//       ui(new Ui::PressureSensorForm),
-//       m_index(index),
-//       serialPort(new QSerialPort),
-//       pb(new Qpb(serialPort)),
-//       at(new Qat(serialPort)),
-//       FixtureserialPort(new QSerialPort(this))
-// {
     m_index = index;
     pack.mechines = getIndex();
     //  dongleBaudRate = 115200;
@@ -59,7 +50,7 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     upperComputerVer = PRESSURE_VER;
 
     ui->setupUi(this);
-    update_main_style("Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
     ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
     ui->uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
     ui->macLabel->setText("蓝牙mac:                        ");
@@ -76,10 +67,6 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
 
     ui->botton_adc_diff->hide();
 
-#ifndef FROM_SN
-    ui->get_mac->setEnabled(false);
-#endif
-
     QTextCharFormat fmt;
     // 字体色
     // fmt.setForeground(QBrush(QColor(255, 255, 255)));
@@ -93,13 +80,13 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     ui->log->mergeCurrentCharFormat(fmt);
 
     on_refreshButton_clicked();
-    ui->msg->setStyleSheet("font-size: 16pt;");
-    QSettings settings(SETTINGS_NAME, QSettings::IniFormat);
+    ui->msgEdit->setStyleSheet("font-size: 16pt;");
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
     mUserno = settings.value("Mes/mUserno").toString();
     machineNo = settings.value("Mes/machineNo").toString();
-    ui->msg->appendPlainText("mUserno=" + mUserno);
-    ui->msg->appendPlainText("machineNo=" + machineNo);
+    ui->msgEdit->appendPlainText("mUserno=" + mUserno);
+    ui->msgEdit->appendPlainText("machineNo=" + machineNo);
 
     actual_wait_time = settings.value("Time/TestTime").toInt( );
     measure_wait_time = actual_wait_time + 5000;
@@ -120,12 +107,12 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 50px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
 
-    connect(pb, SIGNAL(pressSensorDataReady(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
-    connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(getButtonState(FacButtonState)));
-    connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
-    connect(pb, SIGNAL(sendpresscalidata(FacPreSensorCalibResult)), this, SLOT(getPresscalidata(FacPreSensorCalibResult)));
-    connect(pb, SIGNAL(baseInfoReady(FacGetDevBaseInfo)), this, SLOT(refreshBaseData(FacGetDevBaseInfo)));
-    connect(at, SIGNAL(send_debug(QString)), this, SLOT(LogPrintDebug(QString)));
+    connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
+    // connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(getButtonState(FacButtonState)));
+    // connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
+    // connect(pb, SIGNAL(sendpresscalidata(FacPreSensorCalibResult)), this, SLOT(getPresscalidata(FacPreSensorCalibResult)));
+    // connect(pb, SIGNAL(baseInfoReady(FacGetDevBaseInfo)), this, SLOT(refreshBaseData(FacGetDevBaseInfo)));
+    // connect(at, SIGNAL(send_debug(QString)), this, SLOT(LogPrintDebug(QString)));
     nfcComName = settings.value(QString("%1/nfcComName").arg(getIndex())).toString();
 
     IsSaveFail = settings.value("DATA/IsSaveFail").toInt();
@@ -136,7 +123,7 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
         ui->FixturecomNameCombo->addItem(info.portName());
     }
 
-    connect(FixtureserialPort, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(FixturehandleError(QSerialPort::SerialPortError)));
+    // connect(FixtureserialPort, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(FixturehandleError(QSerialPort::SerialPortError)));
     connect(waittime, &QTimer::timeout, [=]() {
                 isovertime = 1;
                 waittime->stop();
@@ -233,7 +220,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model)
     } else {
         qDebug() << "sensor_v is already empty.";
     }
-    QSettings settings(SETTINGS_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
     qDebug() << "初始化压感模组容器";
 
     if(model == MODEL_ID_Y20P){
@@ -345,32 +332,6 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model)
     qDebug() << "model:" << model << "压感模组通道总数为：" << total_sensor;
 }
 
-void PressureSensorForm::update_main_style(QString style)
-{
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    // QFile qss("../pressure_sensor_calibration/qss/" + style);
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly))
-        {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
-}
-
 void PressureSensorForm::system_cmd(QString command, system_command_e numb)
 {
     QProcess    process;
@@ -395,55 +356,55 @@ void PressureSensorForm::system_cmd(QString command, system_command_e numb)
 
 void PressureSensorForm::getTestvalue(const int mechines, const QString value)
 {
-    qDebug() << "enter getTestvalue";
-#ifdef HQSET
-    // 定义正则表达式，匹配MAC地址的模式
-    QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+    // showlog(value);
+    QString mesmacAddress;
+    if (pack.factory == "hq") {
+        // 定义正则表达式，匹配MAC地址的模式
+        QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
 
-    // 在数据中查找匹配的内容
-    QRegularExpressionMatch match = regex.match(value);
+        // 在数据中查找匹配的内容
+        QRegularExpressionMatch match = regex.match(value);
 
-    // 检查是否有匹配项
-    if (match.hasMatch())
-    {
-        // 提取MAC地址
-        QString macAddress = match.captured(1);
-        qDebug() << "MAC地址：" << macAddress;
-        if (mechines == getIndex()) {
-            ui->macInput->setText(macAddress);
+        // 检查是否有匹配项
+        if (match.hasMatch()) {
+            // 提取MAC地址
+            mesmacAddress = match.captured(1);
+            qDebug() << getIndex() << "MAC地址：" << mesmacAddress;
+            if (mechines == getIndex()) {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        } else {
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
         }
-
     }
-    else
-    {
-        ui->msgEdit->appendPlainText("mes未找到匹配的MAC地址");
+    // showlog(value);
+    else if (pack.factory == "lx") {
+        mesmacAddress = value;
+
+        // 在2、4、6、8、10的位置插入冒号
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+
+        // 将小写字母转换成大写字母
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex()) {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    } else {
+        if (mechines == getIndex()) {
+            mesmacAddress = value;
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
     }
 
-// ui->msgEdit->appendPlainText(value);
-#elif defined(LXSET)
-    QString mesmacAddress = value;
-
-    // 在2、4、6、8、10的位置插入冒号
-    mesmacAddress.insert(2, ":");
-    mesmacAddress.insert(5, ":");
-    mesmacAddress.insert(8, ":");
-    mesmacAddress.insert(11, ":");
-    mesmacAddress.insert(14, ":");
-
-    // 将小写字母转换成大写字母
-    mesmacAddress = mesmacAddress.toUpper();
-    if (mechines == getIndex()) {
-        ui->macInput->setText(mesmacAddress);
-        on_macInput_returnPressed();
-    }
-
-#else
-
-    if (mechines == getIndex()) {
-        ui->macInput->setText(value);
-        on_macInput_returnPressed();
-    }
-#endif
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x)
@@ -622,11 +583,6 @@ void PressureSensorForm::FixturereadData()
     dataTemp = FixtureserialPort->readAll();
     // qusb->parseCmd(dataTemp);
     qDebug() << QString::fromUtf8(dataTemp);
-#if USE_DONGLE_LOG
-    ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-#else
-    // ui->log->appendPlainText("人员：放置350g砝码");
-#endif
     // 处理接收到的数据
     processReceivedData(dataTemp);
 }
@@ -762,7 +718,7 @@ void PressureSensorForm::openSerialPort(void)
         // 启用DTR信号
         dongleSerialPort->setDataTerminalReady(true);
 
-        ui->msg->appendPlainText("串口连接成功");
+        ui->msgEdit->appendPlainText("串口连接成功");
         refresh_uart_state(1);
         ui->refreshButton->setEnabled(false);
         ui->comNameCombo->setEnabled(false);
@@ -774,7 +730,7 @@ void PressureSensorForm::openSerialPort(void)
     {
         QMessageBox::critical(this, tr("Error"), dongleSerialPort->errorString());
 
-        ui->msg->appendPlainText("打开错误");
+        ui->msgEdit->appendPlainText("打开错误");
         isTestContinue = false;
     }
 }
@@ -792,7 +748,7 @@ void PressureSensorForm::closeSerialPort()
     ui->refreshButton->setEnabled(true);
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
-    ui->msg->appendPlainText("串口断开连接");
+    ui->msgEdit->appendPlainText("串口断开连接");
     refresh_uart_state(0);
 }
 
@@ -802,7 +758,7 @@ void PressureSensorForm::handleError(QSerialPort::SerialPortError error)
     {
         closeSerialPort();
 
-        ui->msg->appendPlainText("串口模块拔出");
+        ui->msgEdit->appendPlainText("串口模块拔出");
         refresh_uart_state(0);
         // bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         isTestContinue = false;
@@ -824,7 +780,9 @@ void PressureSensorForm::on_refreshButton_clicked()
 
 void PressureSensorForm::on_connectButton_clicked()
 {
-    openSerialPort();
+    ui->comNameCombo->setEnabled(false);
+    ui->connectButton->setEnabled(false);
+    openDongleSerialPort();
 }
 
 void PressureSensorForm::save_press_test_data_to_csv(const QString &macAddress,
@@ -906,13 +864,13 @@ void PressureSensorForm::save_press_test_data_to_csv(const QString &macAddress,
         stream << rowData.join(",") << "\n";
 
         file.close();
-        // ui->msg->appendPlainText("文件保存到" + filePath);
+        // ui->msgEdit->appendPlainText("文件保存到" + filePath);
 
         qDebug() << "文件保存到" << filePath;
     }
     else
     {
-        ui->msg->appendPlainText("文件没关或者其他问题");
+        ui->msgEdit->appendPlainText("文件没关或者其他问题");
         qDebug() << "文件没关或者其他问题";
     }
 }
@@ -926,7 +884,7 @@ void PressureSensorForm::closeEvent(QCloseEvent *)
 void PressureSensorForm::clear_display()
 {
     qDebug() << "clear_display";
-    ui->msg->clear();
+    ui->msgEdit->clear();
     ui->log->clear();
 }
 
@@ -935,7 +893,7 @@ void PressureSensorForm::on_macInput_returnPressed()
     clear_display();
     if (!dongleSerialPort->isOpen())
     {
-        openSerialPort();
+        on_connectButton_clicked();
     }
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
@@ -951,7 +909,8 @@ void PressureSensorForm::on_macInput_returnPressed()
         stringsn = "";
         state = STATE_IDLE;
         isTestContinue = true;
-        emit gonextfocus();
+        // emit gonextfocus();
+        emit send_go_next_focus();
 
         ui->test_result->setText("WAIT");
         ui->test_result->setStyleSheet("font-size: 68px; background-color: #808080; color: black;  border-radius: 10px; padding: 10px; text-align: center; ");
@@ -961,7 +920,7 @@ void PressureSensorForm::on_macInput_returnPressed()
     }
 }
 
-void PressureSensorForm::get_mac(QString sn_to_search)
+void PressureSensorForm::getMac(QString sn_to_search)
 {
     QFile file("mac_sn.txt");   // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly))
@@ -985,43 +944,77 @@ void PressureSensorForm::get_mac(QString sn_to_search)
             }
             else
             {
-                ui->msg->appendPlainText("存在没有逗号分开的" + QString::number(fields.count()) + line);
+                ui->msgEdit->appendPlainText("存在没有逗号分开的" + QString::number(fields.count()) + line);
             }
         }
         file.close();   // 关闭文件
     }
 }
 
-void PressureSensorForm::on_get_mac_returnPressed()
+void PressureSensorForm::on_getMac_returnPressed()
 {
-    qDebug() << "get_mac_returnPressed";
-    ui->msg->appendPlainText("正在查询mac地址");
-    get_mac(ui->get_mac->text());   // 文件获取
+    testResultTableInit();
+    ui->log->clear();
+    ui->msgEdit->clear();
+    ui->getMac->setDisabled(1);
+    ui->macInput->setDisabled(1);
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                 "padding: 10px; text-align: center; ");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
 
-#ifdef HQSET
-
-    pack.mechines = getIndex();
-    pack.sn = stringsn;
-    pack.userNo = mUserno;
-    pack.machineNo = machineNo;
-    pack.action = action;
-    if (ui->isformmes->checkState())
-    {   // 离线
-        emit send_processInspection_hq(pack);
+    // 检查是否是序列号格式
+    QRegularExpression snRegex(snPattern);
+    // 使用正则表达式匹配
+    if (!snRegex.match(ui->getMac->text()).hasMatch()) {
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
+        ui->getMac->clear();
+        ui->getMac->setFocus();
+        return;
     }
-#elif defined(LXSET)
-    QString getsn = ui->get_mac->text();
-    pack.sn = getsn;
-    pack.mechines = getIndex();
-    if (ui->isformmes->checkState())
+
+    showlog("正在查询mac地址");
+    getMac(ui->getMac->text());             // 文件获取
+    processInspection(ui->getMac->text());  // 站前检测
+    processGetMesTestValue();               // mes获取
+}
+
+void PressureSensorForm::processInspection(QString stringsn)
+{
+    if (stringsn != "" || !ui->isusemes->checkState()) {
+        if (ui->isusemes->checkState()) {
+            showlog("正在进行站前检测");
+            pack.sn = stringsn;
+            pack.mechines = getIndex();
+            pack.is_hq_send_mac = 0;
+            pack.instruct_num = "079";
+            emit sendProcessInspection(pack);
+        }
+    } else {
+        showlog("SN比对错误");
+    }
+
+    if (!ui->isusemes->checkState())  // 离线
     {
-       emit send_getsn_lx(pack);
+        ui->mes_state->setText("MES");
+        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
+                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
+}
 
-#else
-    QString getsn = ui->get_mac->text();
-    emit send_getTestData(getIndex(), getsn, "Y20Pro-CURRENT1-TEST", "BTMAC");
-#endif
+void PressureSensorForm::processGetMesTestValue()
+{
+    if (ui->isformmes->checkState()) {
+        pack.sn = ui->getMac->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+        emit getMesTestValue(pack);
+    }
 }
 
 void PressureSensorForm::on_end_clicked()
@@ -1032,7 +1025,7 @@ void PressureSensorForm::on_end_clicked()
         delay_msec(300);
         pb->set_dev_reset();   // 开始复位牙刷
         delay_msec(50);
-        ui->msg->appendPlainText("牙刷已复位");
+        ui->msgEdit->appendPlainText("牙刷已复位");
     }
 
     if (dongleSerialPort->isOpen())
@@ -1044,7 +1037,7 @@ void PressureSensorForm::on_end_clicked()
     set_fixture_movement(product_model, STATE_SAVE_RESULT, 0);
 
     ui->macInput->clear();
-    ui->get_mac->clear();
+    ui->getMac->clear();
     ui->macInput->setEnabled(true);
 }
 
@@ -1282,22 +1275,22 @@ void PressureSensorForm::calib_send_result(void)
                 case MODULE_BTH:
                     cali_result.calib_factor[MODULE_BTH] = sensor_v[channel].calib_result;
                     cali_result.temperature[MODULE_BTH] = sensor_v[channel].temperature;
-                    ui->msg->appendPlainText(QString("刷头校准系数：") + QString::number(cali_result.calib_factor[MODULE_BTH]));
-                    ui->msg->appendPlainText(QString("温度校准系数：") + QString::number(cali_result.temperature[MODULE_BTH]));
+                    ui->msgEdit->appendPlainText(QString("刷头校准系数：") + QString::number(cali_result.calib_factor[MODULE_BTH]));
+                    ui->msgEdit->appendPlainText(QString("温度校准系数：") + QString::number(cali_result.temperature[MODULE_BTH]));
                     qDebug() << "刷头校准系数：" << cali_result.calib_factor[MODULE_BTH];
                     break;
                 case MODULE_MODE_BUTTON:
                     cali_result.calib_factor[MODULE_MODE_BUTTON] = sensor_v[channel].calib_result;
                     cali_result.temperature[MODULE_MODE_BUTTON] = sensor_v[channel].temperature;
-                    ui->msg->appendPlainText(QString("模式按键校准系数：") + QString::number(cali_result.calib_factor[MODULE_MODE_BUTTON]));
+                    ui->msgEdit->appendPlainText(QString("模式按键校准系数：") + QString::number(cali_result.calib_factor[MODULE_MODE_BUTTON]));
                     if (sensor_v[channel].temperature != 0) {
-                        ui->msg->appendPlainText(QString("温度校准系数：") + QString::number(cali_result.temperature[MODULE_MODE_BUTTON]));
+                        ui->msgEdit->appendPlainText(QString("温度校准系数：") + QString::number(cali_result.temperature[MODULE_MODE_BUTTON]));
                     }
                     qDebug() << "模式按键校准系数：" << cali_result.calib_factor[MODULE_MODE_BUTTON];
                     break;
                 case MODULE_POWER_BUTTON:
                     cali_result.calib_factor[MODULE_POWER_BUTTON] = sensor_v[channel].calib_result;
-                    ui->msg->appendPlainText(QString("电源按键校准系数：") + QString::number(cali_result.calib_factor[MODULE_POWER_BUTTON]));
+                    ui->msgEdit->appendPlainText(QString("电源按键校准系数：") + QString::number(cali_result.calib_factor[MODULE_POWER_BUTTON]));
                     qDebug() << "电源按键校准系数：" << cali_result.calib_factor[MODULE_POWER_BUTTON];
                     break;
             }
@@ -1432,7 +1425,7 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x)
         // 在函数内使用标志，确保每个条件只运行一次
         if (sensor_v[calib_chan].gs32SensorFlag == 1 && !donotmoveFlag)
         {
-            // ui->msg->appendPlainText(donotmove);
+            // ui->msgEdit->appendPlainText(donotmove);
             donotmoveFlag = true;
         }
 
@@ -1448,22 +1441,22 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x)
 
         if (sensor_v[calib_chan].gs32SensorFlag == 4 && !bottonPlacingFlag)
         {
-            ui->msg->appendPlainText(botton_placing_200_weights);
+            ui->msgEdit->appendPlainText(botton_placing_200_weights);
             bottonPlacingFlag = true;
         }
 
         if (sensor_v[calib_chan].gs32SensorFlag == 5 && !caliResultOkFlag)
         {
-            ui->msg->appendPlainText(cali_result_ok);
+            ui->msgEdit->appendPlainText(cali_result_ok);
             caliResultOkFlag = true;
         }
 
         if (sensor_v[calib_chan].gs32SensorFlag == 6 && !caliResultFailFlag)
         {
-            ui->msg->appendPlainText(cali_result_fail);
+            ui->msgEdit->appendPlainText(cali_result_fail);
             caliResultFailFlag = true;
 
-            ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_err[0] + QString::number(sensor_v[calib_chan].err[0]));
+            ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_err[0] + QString::number(sensor_v[calib_chan].err[0]));
         }
     }
 }
@@ -1575,17 +1568,17 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                         delay_msec(200);
                         pb->set_brush_control(1);
                         appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[0], QColor("black"));
-                        ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);  
+                        ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);  
                     } else if (lock == 0) {
                         lock = 1;
                         pb->set_device_mode(3); // 清洁模式
                         // pb->setDevintowhitemode();   // 进入亮白
-                        ui->msg->appendPlainText("TEST_START");
+                        ui->msgEdit->appendPlainText("TEST_START");
                         delay_msec(200);
                         lock = 0;
                     }
 #if 0 //Y20_PRESS_TEST
-                    ui->msg->appendPlainText("放上350g砝码");   
+                    ui->msgEdit->appendPlainText("放上350g砝码");   
                     countdowntime.start();
 #endif
 
@@ -1600,7 +1593,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
 #if 0 //USE_KEY_CLICK_TEST // 按键测试 0:使用按键是否响应的方案 1：使用200g砝码值比对的方案
                 if (sensor_v[test_chan].test_status == TEST_START) {
                     sensor_v[test_chan].test_status = TEST_KET_NORMAL;
-                    ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);
+                    ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);
                     qDebug() << "TEST_KET_NORMAL";
                 }
 #else
@@ -1609,7 +1602,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                     pb->get_button_state(1);
                     delay_msec(500);
                     qDebug() << "set_fixture_movement:key_test";
-                    ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);
+                    ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[0]);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     qDebug() << "TEST_KET_NO_CLICK";
                 }
@@ -1629,7 +1622,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                     sensor_v[test_chan].test_status = TEST_BTH_NORMAL;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[1], QColor("black"));
-                    ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[1]);
+                    ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[1]);
                 }
             }
             sensor_v[test_chan].test_result[0] = 50;
@@ -1647,7 +1640,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                     sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[2], QColor("black"));
-                    ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[2]);
+                    ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[2]);
                 }
             } else if (value_c[test_chan] > 400) { // 不该过压的时候过压
                 sensor_v[test_chan].para.error_count++;
@@ -1668,7 +1661,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                 {
                     sensor_v[test_chan].para.current_count = 0;
                     sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
-                    ui->msg->appendPlainText("放上450g砝码");
+                    ui->msgEdit->appendPlainText("放上450g砝码");
 
                     countdowntime.restart();
                 }
@@ -1732,11 +1725,11 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                     // sensor_v[test_chan].test_result[0] = 100;
                     sensor_v[test_chan].para.button_state = 0;
                     sensor_v[test_chan].test_status = TEST_KET_CLICK;
-                    ui->msg->appendPlainText(sensor_v[test_chan].ui_msg_test[1]);
+                    ui->msgEdit->appendPlainText(sensor_v[test_chan].ui_msg_test[1]);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                 } else if (sensor_v[test_chan].para.button_state == 1) {
                     sensor_v[test_chan].test_status = TEST_FAIL;
-                    ui->msg->appendPlainText("测试失败：100g按键触发");
+                    ui->msgEdit->appendPlainText("测试失败：100g按键触发");
                 }
             }
         } else if (sensor_v[test_chan].test_status == TEST_KET_CLICK) {
@@ -1760,7 +1753,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x)
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                 } else if (sensor_v[test_chan].para.button_state == 0) {
                     sensor_v[test_chan].test_status = TEST_FAIL;
-                    ui->msg->appendPlainText("测试失败：300g按键未触发");
+                    ui->msgEdit->appendPlainText("测试失败：300g按键未触发");
                 }
             }
         }
@@ -1797,33 +1790,30 @@ void PressureSensorForm::refresh_sn(FacDevInfo data)
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << "dev_info" << data.dev_info[0].value_item.tail_sn;
     qDebug() << "stringsn" << stringsn;
-    ui->msg->appendPlainText("芯片存储的尾盖sn:" + stringsn);
+    ui->msgEdit->appendPlainText("芯片存储的尾盖sn:" + stringsn);
 }
 
 void PressureSensorForm::solve_mes_sucess(const int mechines)
 {
     if (mechines == getIndex())
     {
-        ui->msg->appendPlainText("mes操作成功");
+        ui->msgEdit->appendPlainText("mes操作成功");
         qDebug() << "mes操作成功";
         mes_set_ok = 1;
     }
 }
-void PressureSensorForm::solve_mes_data(const int mechines, QString msg)
+void PressureSensorForm::solve_mes_data(const int mechines, QString msgEdit)
 {
     if (mechines == getIndex())
     {
-        ui->msg->appendPlainText("MES:报错信息:" + msg);
+        ui->msgEdit->appendPlainText("MES:报错信息:" + msgEdit);
         isTestContinue = false;   // 结束
-        ui->msg->appendPlainText("停止运行");
+        ui->msgEdit->appendPlainText("停止运行");
         at->resetConnected();
         ui->macInput->clear();
-        ui->get_mac->clear();
-    #ifdef FROM_SN
-        ui->get_mac->setFocus();
-    #else
+        ui->getMac->clear();
+
         ui->macInput->setFocus();
-    #endif
         ui->macInput->setDisabled(0);
     }
 }
@@ -1888,8 +1878,8 @@ void PressureSensorForm::reset_all()
 
     set_independent_state(STATE_INVALID);
     at->sendMac(ui->macInput->text());
-    ui->msg->appendPlainText("开始测试");
-    ui->msg->appendPlainText("请扫描二维码");
+    ui->msgEdit->appendPlainText("开始测试");
+    ui->msgEdit->appendPlainText("请扫描二维码");
 }
 
 void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int argument)
@@ -2143,60 +2133,60 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
     switch (model){
         case MODEL_ID_Y20P:
             if(state == STATE_CALIB_CH_X){
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
             } else if(state == STATE_CALIB_CH_X_RESULT) {
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
             }
             
             break;
 
         case MODEL_ID_F20:
             if(state == STATE_CALIB_CH_X){
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
             } else if(state == STATE_CALIB_CH_X_RESULT) {
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
             }
             break;
 
         case MODEL_ID_U7:
             if(state == STATE_CALIB_CH_X){
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
             } else if(state == STATE_CALIB_CH_X_RESULT) {
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
             } else if(state == STATE_TEST_CH_X) {
-                ui->msg->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
             } else if(state == STATE_TEST_CH_X_RESULT) {
-                ui->msg->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
             } else if(state == STATE_CALIB_ALL_RESULT) {
-                ui->msg->appendPlainText("测试结束");
+                ui->msgEdit->appendPlainText("测试结束");
             }
             break;
 
         case MODEL_ID_Y21:
             if(state == STATE_CALIB_CH_X){
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
             } else if(state == STATE_CALIB_CH_X_RESULT) {
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
             } else if(state == STATE_TEST_CH_X) {
-                ui->msg->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
             } else if(state == STATE_TEST_CH_X_RESULT) {
-                ui->msg->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
             } else if(state == STATE_CALIB_ALL_RESULT) {
-                ui->msg->appendPlainText("测试结束");
+                ui->msgEdit->appendPlainText("测试结束");
             }
             break;
 
         case MODEL_ID_P30P:
             if(state == STATE_CALIB_CH_X){
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[1]);
             } else if(state == STATE_CALIB_CH_X_RESULT) {
-                ui->msg->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
+                ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_tip[2]);
             } else if(state == STATE_TEST_CH_X) {
-                ui->msg->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("测试通道%1:按键").arg(test_chan));
             } else if(state == STATE_TEST_CH_X_RESULT) {
-                ui->msg->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
+                ui->msgEdit->appendPlainText(QString("通道%1：按键已测试完毕").arg(test_chan));
             } else if(state == STATE_CALIB_ALL_RESULT) {
-                ui->msg->appendPlainText("测试结束");
+                ui->msgEdit->appendPlainText("测试结束");
             }
             break;
 
@@ -2216,94 +2206,27 @@ void PressureSensorForm::startTask()
             reset_all();
             calib_vector_init(product_model);
             qDebug() << "sizeof(sensor_v)" <<sensor_v.size();
-
+            // at->sendMac(ui->macInput->text());  // 发送mac地址
+            showlog(ui->macInput->text());
             state = STATE_WATI_CONNECT;
             break;
 
         case STATE_WATI_CONNECT:   // 设置禁止休眠
             if (at->getConnected())
             {
-                ui->msg->appendPlainText("蓝牙连接成功");
+                ui->msgEdit->appendPlainText("蓝牙连接成功");
                 emit refresh_ble_state(1);
                 delay_msec(200);
                 pb->get_base_info(); // 获取设备信息
                 delay_msec(200);
                 pb->set_forbid_sleep(FacSwitch_OPEN);
                 delay_msec(200);
-                ui->msg->appendPlainText("已发送禁止休眠");
-                state = STATE_SN_INSPECTION;
+                ui->msgEdit->appendPlainText("已发送禁止休眠");
+                state = STATE_DISABLE_SLEEP_CALIB;
             }
             else
             {
                 emit refresh_ble_state(0);
-            }
-            break;
-
-        case STATE_TEST_1:
-            if (at->getConnected()) {
-                delay_msec(500);
-                pb->set_dev_reset();   // 开始复位牙刷
-                delay_msec(1000);
-                ui->msg->appendPlainText("已发送复位请求，等待牙刷复位");
-                at->resetConnected();
-                state = STATE_TEST_2;
-            }
-            break;
-
-        case STATE_TEST_2:
-            delay_msec(30);
-            at->sendMac(ui->macInput->text());   // 发送mac地址重连
-            ui->msg->appendPlainText("已发送mac地址");
-            delay_msec(30);
-            state = STATE_TEST_1;
-            break;
-
-        case STATE_SN_INSPECTION:
-            if (stringsn != "")
-            {
-                if (ui->isusemes->checkState())
-                {
-                    ui->msg->appendPlainText("正在进行站前检测");
-                    pack.sn = stringsn;
-                    pack.machineNo = machineNo;
-#ifdef HQSET
-                    pack.mechines = getIndex();
-                    pack.userNo = mUserno;
-                    pack.action = action;
-                    emit send_processInspection_hq(pack);
-#elif defined(LXSET)
-                    emit send_processInspection_lx(pack);
-#else
-                    emit send_processInspection(getIndex(), stringsn, mUserno, machineNo);
-#endif
-                }
-                state = STATE_PROCESS_INSPECTION;
-            }
-            else
-            {
-                pb->get_sn(FacDevInfoType_TAIL_SN);
-                delay_msec(500);
-                qDebug() << "sn为" << stringsn;
-            }
-            break;
-
-        case STATE_PROCESS_INSPECTION:
-            if (!ui->isusemes->checkState())
-            {
-                ui->mes_state->setText("MES");
-                ui->mes_state->setStyleSheet("font-size: 68px; background-color: #FFFF00; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
-                ui->msg->appendPlainText("mes未登录");
-                state = STATE_DISABLE_SLEEP_CALIB;
-                break;
-            }
-
-            if (mes_set_ok)
-            {
-                ui->mes_state->setText("MES");
-                ui->mes_state->setStyleSheet("font-size: 68px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
-                ui->msg->appendPlainText("mes登录成功");
-                mes_set_ok = 0;
-                state = STATE_DISABLE_SLEEP_CALIB;
             }
             break;
 
@@ -2312,7 +2235,7 @@ void PressureSensorForm::startTask()
             if (pb->getDisableSleep())
             {
                 delay_msec(200);
-                ui->msg->appendPlainText("已进入禁止休眠");
+                ui->msgEdit->appendPlainText("已进入禁止休眠");
                 pb->set_press_collect_param(FacSwitch_START);
                 delay_msec(200);
                 state = STATE_WATI_ASKQR;
@@ -2322,45 +2245,22 @@ void PressureSensorForm::startTask()
                 delay_msec(100);
                 pb->set_forbid_sleep(FacSwitch_OPEN);
                 delay_msec(200);
-                ui->msg->appendPlainText("再次发送禁止休眠");
+                ui->msgEdit->appendPlainText("再次发送禁止休眠");
             }
             break;
 
         case STATE_WATI_ASKQR:
-#if 0 // IS_INDEPENDENT
-                if (getaskbarcode == 0) {
-                    getaskbarcode = 1;
-
-                    QMessageBox::StandardButton reply;
-                    reply = QMessageBox::question(this, "压感校准测试", "是否开始测试", QMessageBox::Yes | QMessageBox::No);
-                    if (reply == QMessageBox::Yes)
-                    {
-                        is_get_ready_command = 1;
-                        set_fixture_movement(product_model, STATE_WATI_ASKQR, 0);
-                        ui->msg->appendPlainText("等待治具就绪");
-                        delay_msec(3000);    // 等待治具下压
-                        state = STATE_WAIT_STATIC;
-                    }
-                    else if (reply == QMessageBox::No)
-                    {
-                        delay_msec(1 * 60 * 1000);  // 1 min 
-                        getaskbarcode = 0;
-                    }
-                }
-#else
                 if (get_independent_state() == STATE_CALIB_START) {
                     set_independent_state(STATE_CALIB_STATIC_WAIT);
                     set_fixture_movement(product_model, STATE_WATI_ASKQR, 0);
-                    ui->msg->appendPlainText("等待治具就绪");
+                    ui->msgEdit->appendPlainText("等待治具就绪");
                     state = STATE_WAIT_STATIC;
                 } else if (get_independent_state() == STATE_INVALID) {
                     set_independent_state(STATE_WAIT_START);
+                    set_independent_state(STATE_CALIB_START);
                     emit operator_instruct(getIndex(), 1);
                 }
-
-#endif
                 break;
-            
             break;
 
         case STATE_WAIT_STATIC:   // 收集无负载时的数据
@@ -2376,10 +2276,10 @@ void PressureSensorForm::startTask()
                     pb->get_cali_result();
                 }
 
-                ui->msg->appendPlainText("已设置压感采集参数");
+                ui->msgEdit->appendPlainText("已设置压感采集参数");
 
                 if (function_switch == FUNCTION_CALIB_TEST || function_switch == FUNCTION_CALIB) {
-                    ui->msg->appendPlainText(donotmove);
+                    ui->msgEdit->appendPlainText(donotmove);
                     for(int i = 0;i < sensor_v.size();i++) {
                         sensor_v[i].sensor_cali_set(1);
                     }
@@ -2446,14 +2346,14 @@ void PressureSensorForm::startTask()
                     ui->log->appendPlainText(QString("通道%1开始校准").arg(calib_chan));
                 } else {
                     state = STATE_CHECK_CAIL_RESULT;
-                    ui->msg->appendPlainText("所有通道校准完毕");
+                    ui->msgEdit->appendPlainText("所有通道校准完毕");
                 }
                 waittime->stop();
                 qDebug() << "ime->stop();";
             } else if (sensor_v[calib_chan].gs32SensorFlag == 6) {
                 pb->set_press_collect_param(FacSwitch_STOP);
                 delay_msec(200);
-                ui->msg->appendPlainText("压感校准失败");
+                ui->msgEdit->appendPlainText("压感校准失败");
                 waittime->stop();
                 qDebug() << "stopime->stop();";
                 result = failValue;
@@ -2461,7 +2361,7 @@ void PressureSensorForm::startTask()
             }
             // 校准超时判断
             if (isovertime) {
-                ui->msg->appendPlainText(QString("校准超时"));
+                ui->msgEdit->appendPlainText(QString("校准超时"));
                 state = STATE_OVERTIME_ERROR;
             }
             break;
@@ -2475,7 +2375,7 @@ void PressureSensorForm::startTask()
                 } else {
                     pb->set_press_collect_param(FacSwitch_STOP);
                     delay_msec(200);
-                    ui->msg->appendPlainText(QString("校准系数超阈值:%1(%2-%3)").arg(sensor_v[chan].calib_result)
+                    ui->msgEdit->appendPlainText(QString("校准系数超阈值:%1(%2-%3)").arg(sensor_v[chan].calib_result)
                                                  .arg(sensor_v[chan].para.lower_limit)
                                                  .arg(sensor_v[chan].para.upper_limit));
                     result = failValue;
@@ -2488,7 +2388,7 @@ void PressureSensorForm::startTask()
         case STATE_SEND_CAIL_RESULT:   // 开始发送校准值
             if (isCaliOk)
             {
-                ui->msg->appendPlainText("开始发送校准值");
+                ui->msgEdit->appendPlainText("开始发送校准值");
                 if (product_model == MODEL_ID_U7) {
                     state = STATE_CHECK_NFC;
                 } else {
@@ -2501,21 +2401,21 @@ void PressureSensorForm::startTask()
 
         case STATE_CHECK_NFC:
             if(CheckNfcData() == 6) {
-                ui->msg->appendPlainText("nfc标签校验成功");
+                ui->msgEdit->appendPlainText("nfc标签校验成功");
                 state = STATE_SAVE_CAIL_RESULT;
             } else {
-                ui->msg->appendPlainText("nfc标签校验失败");
+                ui->msgEdit->appendPlainText("nfc标签校验失败");
                 result = failValue;
                 state = STATE_SAVE_RESULT;
             }
 
             if (ui->isusemes->checkState())
             {
-                if (stringsn == ui->get_mac->text())
+                if (stringsn == ui->getMac->text())
                 {
-                    ui->msg->appendPlainText("机内sn与mes比对校验成功");
+                    ui->msgEdit->appendPlainText("机内sn与mes比对校验成功");
                 } else {
-                    ui->msg->appendPlainText("机内sn与mes比对校验失败");
+                    ui->msgEdit->appendPlainText("机内sn与mes比对校验失败");
                     result = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -2530,16 +2430,16 @@ void PressureSensorForm::startTask()
                     delay_msec(200);
                     if (is_calib_suc == 1)
                     {   // 保存回读成功
-                        ui->msg->appendPlainText("已保存完毕");
+                        ui->msgEdit->appendPlainText("已保存完毕");
                         pb->set_dev_reset();   // 开始复位牙刷
                         delay_msec(1000);
 
-                        ui->msg->appendPlainText("已发送复位请求，等待牙刷复位");
+                        ui->msgEdit->appendPlainText("已发送复位请求，等待牙刷复位");
                         at->resetConnected();
                         if (function_switch == FUNCTION_CALIB_TEST || function_switch == FUNCTION_TEST) {
                             delay_msec(30);
                             at->sendMac(ui->macInput->text());   // 发送mac地址重连
-                            ui->msg->appendPlainText("已发送mac地址");
+                            ui->msgEdit->appendPlainText("已发送mac地址");
                             delay_msec(30);
                             state = STATE_WAIT_REST;
                         } else {
@@ -2550,7 +2450,7 @@ void PressureSensorForm::startTask()
                     else
                     {
                         result = failValue;
-                        ui->msg->appendPlainText("写入失败，获取结果与写入结果不一致");
+                        ui->msgEdit->appendPlainText("写入失败，获取结果与写入结果不一致");
                         state = STATE_SAVE_RESULT;
                     }
                 }
@@ -2569,7 +2469,7 @@ void PressureSensorForm::startTask()
         case STATE_WAIT_REST:   // 等待复位操作
             if (at->getConnected())
             {
-                ui->msg->appendPlainText("蓝牙已重连");
+                ui->msgEdit->appendPlainText("蓝牙已重连");
                 emit refresh_ble_state(1);
                 pb->reset_all_pb();
                 pb->set_forbid_sleep(FacSwitch_OPEN);
@@ -2588,14 +2488,14 @@ void PressureSensorForm::startTask()
             if (pb->getDisableSleep())
             {
                 delay_msec(200);
-                ui->msg->appendPlainText("已进入第二次禁止休眠");
+                ui->msgEdit->appendPlainText("已进入第二次禁止休眠");
                 pb->set_press_collect_param(FacSwitch_START);
                 delay_msec(200);
                 state = STATE_SET_COLLECT_PARAM_2;
             }
             else
             {
-                ui->msg->appendPlainText("设置第二次禁止休眠");
+                ui->msgEdit->appendPlainText("设置第二次禁止休眠");
                 pb->set_forbid_sleep(FacSwitch_OPEN);
                 delay_msec(200);
             }
@@ -2605,7 +2505,7 @@ void PressureSensorForm::startTask()
             if (pb->getCollectParam())
             {
                 delay_msec(200);
-                ui->msg->appendPlainText("已进入第二次设置压感采集参数");
+                ui->msgEdit->appendPlainText("已进入第二次设置压感采集参数");
                 state = STATE_TEST_CH_X;
             }
             break;
@@ -2621,7 +2521,7 @@ void PressureSensorForm::startTask()
                     } else {
                         pb->set_press_collect_param(FacSwitch_STOP);
                         delay_msec(200);
-                        ui->msg->appendPlainText(QString("校准系数超阈值:%1(%2-%3)").arg(LastCali.calib_factor[chan])
+                        ui->msgEdit->appendPlainText(QString("校准系数超阈值:%1(%2-%3)").arg(LastCali.calib_factor[chan])
                                                     .arg(sensor_v[chan].para.lower_limit)
                                                     .arg(sensor_v[chan].para.upper_limit));
                         result = failValue;
@@ -2659,22 +2559,22 @@ void PressureSensorForm::startTask()
                 if(test_chan + 1 < total_sensor){
                     test_chan++;
                     state = STATE_TEST_CH_X;
-                    ui->msg->appendPlainText(QString("通道%1开始测试").arg(test_chan));
+                    ui->msgEdit->appendPlainText(QString("通道%1开始测试").arg(test_chan));
                 } else {
                     state = STATE_TEST_ALL_RESULT;
-                    ui->msg->appendPlainText("所有通道测试完毕");
+                    ui->msgEdit->appendPlainText("所有通道测试完毕");
                 }
             } else if (sensor_v[test_chan].test_status == TEST_FAIL) {
                 waittime->stop();
                 pb->set_press_collect_param(FacSwitch_STOP);
                 delay_msec(200);
-                ui->msg->appendPlainText("压感测试失败");
+                ui->msgEdit->appendPlainText("压感测试失败");
                 result = failValue;
                 state = STATE_SAVE_RESULT;
             }
 
             if (isovertime) {
-                ui->msg->appendPlainText(QString("测试超时"));
+                ui->msgEdit->appendPlainText(QString("测试超时"));
                 state = STATE_OVERTIME_ERROR;
             }
             break;
@@ -2697,47 +2597,20 @@ void PressureSensorForm::startTask()
             // save result
             if (result == passValue)
             {
-                // result
-                // send_start_command(COMMAND_ID_RESET, 0);
-                // delay_msec(50);
-                // send_start_command(COMMAND_ID_RESULT, 1);
-                ui->test_result->setText("PASS");
-                ui->test_result->setStyleSheet(
-                    "font-size: 68px; background-color: #00FF00; color: black; border: 2px solid #00FF00; border-radius: 10px; padding: 10px; text-align: center;");
-
-                // mes
                 QString mesresult = "PASS";
-                QString itemvalue = QString("|PRESSURE_SENSOR_CALI_RESULT:BTH:%1,BUTTON:%2|")
-                                        .arg(cali_result.calib_factor[MODULE_BTH])
-                                        .arg(cali_result.calib_factor[MODULE_MODE_BUTTON]) +
-                                    QString("PRESSURE_SENSOR_CALI_RESULT:PASS|");
+                QString itemvalue;
+                
+                itemvalue = 
+                    QString("|press_cali:BTH:%1").arg(cali_result.calib_factor[MODULE_BTH]) +
+                    QString("|mode_key:%1").arg(cali_result.calib_factor[MODULE_MODE_BUTTON]) +
+                    QString("|power_key:%1").arg(cali_result.calib_factor[MODULE_POWER_BUTTON]);
 
                 pack.result = mesresult;
-                pack.line = line;
                 pack.itemvalue = itemvalue;
-                pack.action = action;
-
-                if (ui->isusemes->checkState())
-                {
-    #ifdef HQSET
-                    emit send_testPass_hq(pack);
-    #elif defined(LXSET)
-                    pack.model        = model;
-                    pack.test_station = test_station;
-                    // pack.itemvalue    = "PRESSURES_TEST_RESULT=PASS&" +
-                    //                     QString("PRESSURES_CALI_RESULT=bth:%1,mode:%2,power:%3,temperature:%4")
-                    //                     .arg(cali_result.calib_factor[MODULE_BTH])
-                    //                     .arg(cali_result.calib_factor[MODULE_MODE_BUTTON])
-                    //                     .arg(cali_result.calib_factor[MODULE_POWER_BUTTON])
-                    //                     .arg(cali_result.temperature[MODULE_BTH]);
-                    pack.itemvalue    = "PRESS_CALI_RESULT=PASS&" +
-                                        QString("PRESS_CALI_RESULT=mode:%1")
-                                        .arg(cali_result.calib_factor[MODULE_MODE_BUTTON]);
-                    emit send_testPass_lx(pack);
-    #else
-                    emit send_testPass(getIndex(), stringsn, mesresult, mUserno, machineNo, "",
-                                       itemvalue);
-    #endif
+                pack.instruct_num = "084";
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_testPass(pack);
                 }
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
@@ -2745,10 +2618,6 @@ void PressureSensorForm::startTask()
             }
             else if ((result == failValue))
             {
-                // result
-                // send_start_command(COMMAND_ID_RESET, 0);
-                // delay_msec(50);
-                // send_start_command(COMMAND_ID_RESULT, 0);
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
                     "font-size: 68px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
@@ -2758,64 +2627,34 @@ void PressureSensorForm::startTask()
                 ui->test_result->setStyleSheet(
                     "font-size: 68px; background-color: #FF0000; color: black; border: 2px solid #FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
                 QString mesresult = "NG";
-                QString itemvalue = QString("|PRESSURE_SENSOR_CALI_RESULT:NG|");   //+ QString("IMU_TEST_RESULT:NG|");
+                QString itemvalue = QString("|PRESSURE_SENSOR_CALI_RESULT:NG|");
                 pack.result = mesresult;
-                pack.line = line;
                 pack.itemvalue = itemvalue;
-                pack.action = action;
-
-                if (ui->isusemes->checkState())
-                {
-    #ifdef HQSET
-                    emit send_testPass_hq(pack);
-    #elif defined(LXSET)
-
-                    pack.result       = "FAIL";
-                    pack.model        = model;
-                    pack.test_station = test_station;
-                    // pack.itemvalue    = QString("|PRESSURES_TEST_RESULT:NG|") + \
-                    //                     QString("|PRESSURE_SENSOR_CALI_RESULT:MODE_BUTTON:%1,MODE_BUTTON_TEST_RESULT:%2,|") \
-                    //                     .arg(sensor_v[0].err[0])
-                    //                     .arg(sensor_v[0].test_result[0]);
-                    pack.itemvalue    = "PRESS_CALI_RESULT=NG&" +
-                                        QString("PRESS_CALI_RESULT=mode_err:%1")
-                                        .arg(sensor_v[0].err[0]);
-
-                    // pack.itemvalue    = QString("|PRESS_TEST_RESULT:NG|") +
-                    //                     QString("|PRESS_CALI_RESULT:BUTTON_err:%1|")
-                    //                     .arg(sensor_v[0].err[0]);
-                    emit send_testPass_lx(pack);
-    
-    #else
-                    emit send_testPass(getIndex(), stringsn, mesresult, mUserno, machineNo, "",
-                                       itemvalue);
-    #endif
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_testPass(pack);
                 }
             }
             set_fixture_movement(product_model, STATE_SAVE_RESULT, 0);
             save_press_test_data_to_csv(macAddress, result, cali_result);
             isTestContinue = false;
-            // ui->msg->appendPlainText("压感测试完毕");
+            // ui->msgEdit->appendPlainText("压感测试完毕");
             delay_msec(300);
             pb->set_dev_reset();   // 开始复位牙刷
             delay_msec(50);
-            ui->msg->appendPlainText("牙刷已复位");
+            ui->msgEdit->appendPlainText("牙刷已复位");
             closeSerialPort();
 
             stringsn = "";
             ui->macInput->setDisabled(0);
             ui->macInput->clear();
 
-            ui->get_mac->clear();
+            ui->getMac->clear();
 
             if (getIndex() == 0) {
-#ifdef FROM_SN
-                ui->get_mac->setFocus();
-#else
                 ui->macInput->setFocus();
-#endif
             }
-            ui->msg->appendPlainText("流程结束");
+            ui->msgEdit->appendPlainText("流程结束");
 
             state = STATE_IDLE;
 
@@ -2839,16 +2678,13 @@ void PressureSensorForm::readData()
     // qDebug() << "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     pb->parseCmd(dataTemp);
-#if USE_DONGLE_LOG
-    ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-#endif
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     // qDebug() << QString::fromUtf8(dataTemp);
 }
 
 void PressureSensorForm::on_msg_textChanged()
 {
-    ui->msg->moveCursor(QTextCursor::End);
+    ui->msgEdit->moveCursor(QTextCursor::End);
 }
 
 void PressureSensorForm::on_ClearGraph_clicked()
@@ -2909,7 +2745,7 @@ uint8_t PressureSensorForm::CheckNfcData()
     QString hexString;
     QString text = stringsn;
     QString truncatedSN = stringsn.left(8);
-    QSettings settings(SETTINGS_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
     QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     ui->log->appendPlainText("匹配到的subpid：" + value);
 

@@ -100,7 +100,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                 break;
 
             case STATE_UNPACK:
-                qDebug() << "len" << len << ibuffer.size();
+                // qDebug() << "len" << len << ibuffer.size();
                 if (ibuffer.size() == len - 1) {
                     ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
                     uint8_t crc16 = calCrc16(ipack);

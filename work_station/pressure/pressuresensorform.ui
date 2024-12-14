@@ -122,7 +122,7 @@
                <item>
                 <layout class="QVBoxLayout" name="verticalLayout_3">
                  <item>
-                  <widget class="QPlainTextEdit" name="msg">
+                  <widget class="QPlainTextEdit" name="msgEdit">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                      <horstretch>0</horstretch>
@@ -353,7 +353,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="get_mac">
+                <widget class="QLineEdit" name="getMac">
                  <property name="maximumSize">
                   <size>
                    <width>400</width>

@@ -8,7 +8,7 @@
 
 ndt_sensor_cali::ndt_sensor_cali()
 {
-    QSettings settings(SETTINGS_NAME, QSettings::IniFormat);
+    QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
     brush_test_time = settings.value("pressure/brush_test_time", "600").toInt();
     botton_test_time = settings.value("pressure/botton_test_time", "600").toInt();

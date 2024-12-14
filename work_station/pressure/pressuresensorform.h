@@ -8,7 +8,7 @@
 #include <WinSock2.h>
 #include "qcustomplot.h"
 
-#include "AbIni.h"
+#include "Abini.h"
 #include "fixture_uart.h"
 #include "hqmes.h"
 #include "qat.h"
@@ -16,6 +16,7 @@
 #include "ndt_sensor_cali.h"
 #include "xwdmes.h"
 #include "test_base.h"
+#include "ui_pressuresensorform.h"
 
 #if _MSC_VER >= 1600
     #pragma execution_character_set("utf-8")
@@ -45,21 +46,23 @@ class PressureSensorForm : public test_base
 {
     Q_OBJECT
 public:
+
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; };                // dongle口
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };                       // sn输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };                            // log输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                        // msg输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };
+
     explicit PressureSensorForm(int index, QWidget *parent = nullptr);
     ~PressureSensorForm();
+    Ui::PressureSensorForm *ui;
 
     void startTask() override;
     // void refreshBleState(int state) override;
     void show_product(QString name);
-    // QComboBox* getComNameCombo() override { return ui->comNameCombo; };        // dongle口
-    // QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
-    // QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
-    // QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
-    // QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
-    // QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    // QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
-    // QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
-
+    void processInspection(QString stringsn);
+    void PressureSensorForm::processGetMesTestValue();
     typedef enum
     {
         MODEL_ID_INVALID,
@@ -112,7 +115,7 @@ public:
     int calib_chan = 0;     // 当前校准通道
     int test_chan = 0;      // 当前测试通道
 
-    Ui::PressureSensorForm *ui;
+
     uint8_t TEST_STATE = 0;
 
 signals:
@@ -136,6 +139,10 @@ signals:
 
     // other
     void operator_instruct(int, int);
+
+    void send_go_next_focus();
+    void send_startTest(int data);
+    void send_go_next_test(int data);
 private:
     MesPacketData pack;
     QString result = "";
@@ -308,7 +315,6 @@ private slots:
     void send_mac(QString data);
     void send_frame_rate(QString data);
 
-    void update_main_style(QString style);
     void refresh_uart_state(int state);
     void refresh_ble_state(int state);
     void openFixtureSerialPort();
@@ -342,8 +348,8 @@ private slots:
 
 
     void on_macInput_returnPressed();
-    void on_get_mac_returnPressed();
-    void get_mac(QString sn_to_search);
+    void on_getMac_returnPressed();
+    void getMac(QString sn_to_search);
 
     void on_msg_textChanged();
 
