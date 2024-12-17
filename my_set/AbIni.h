@@ -81,8 +81,8 @@
 
 // [SINGLE_VER] 
 
-// [QC_VER] 
-
+// [QC_VER] 修复配置勾选是否测试外设状态失效问题
+//
 
 
 // [IMU_VER] 修改p30p为y25se，适配P20PS 

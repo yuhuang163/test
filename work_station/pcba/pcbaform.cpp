@@ -1061,7 +1061,6 @@ void PcbaForm::startTask() {
                 pb->reset_all_pb();
                 refreshWifiState(0);
                 erroContent.clear();
-
                 periph_state = 0;
                 rssitestfailcount = 0;
                 intblerssi = 0;
@@ -1096,6 +1095,10 @@ void PcbaForm::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     state = STATE_WATI_DISABLE_SLEEP;
+                    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
+                        pb->set_device_mode(4);    //进入纯享模式
+                        pb->set_brush_control(1);  //开始刷牙
+                    }
                 }
                 break;
 
@@ -1479,6 +1482,7 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_WORKING_TEST:
                 if (is_music_play_over_time) {
+                    pb->set_device_mode(4);  //退出纯享模式
                     is_music_play_over_time = 0;
                     showlog("播放结束");
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {

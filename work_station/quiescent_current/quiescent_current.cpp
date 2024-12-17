@@ -72,6 +72,12 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         ui->productConnectButton->setEnabled(false);
         ui->productDisconnectButton->setEnabled(false);
     }
+
+    if (QString(pack.product).compare("P20PS") == 0) {
+        productBaudRate = 2000000;
+    } else {
+        productBaudRate = 1000000;
+    }
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
@@ -278,28 +284,28 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
 
     TestItem test;
 
-    if (SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool()) {
+    if (SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool()) {
         test.testItem = "功放状态";
         test.testData = QString::number(data.audio_state);
         test.ask = audioState;
         testItems.append(test);
     }
 
-    if (SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool()) {
+    if (SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool()) {
         test.testItem = "内存状态";
         test.testData = QString::number(data.flash_state);
         test.ask = flashStatus;
         testItems.append(test);
     }
 
-    if (SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool()) {
-        test.testItem = "六轴状态";
+    if (SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool()) {
+        test.testItem = "imu状态";
         test.testData = QString::number(data.imu_state);
         test.ask = imuStatus;
         testItems.append(test);
     }
 
-    if (SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool()) {
+    if (SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool()) {
         if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
             test.testItem = "马达状态";
         else
@@ -309,7 +315,7 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
         testItems.append(test);
     }
 
-    if (SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool()) {
+    if (SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool()) {
         test.testItem = "压感状态";
         test.testData = QString::number(data.press_state);
         test.ask = pressureStatus;
@@ -718,11 +724,8 @@ void quiescent_current::startTask() {
                     QString mesresult = "NG";
                     QString itemvalue = QString("|设备信息:错误");
                     pack.result = mesresult;
-
                     pack.itemvalue = itemvalue;
-
                     pack.sn = ui->snInput->text();
-
                     pack.itemvalue = "periph_state=NG";
                     pack.instruct_num = "076";
                     if (ui->isusemes->checkState()) {

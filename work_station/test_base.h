@@ -48,6 +48,7 @@ public:
     virtual void updateComboBox(){};
     int jigBaudRate = 115200;
     int productBaudRate = 1000000;
+
     int usbBaudRate = 115200;
     int dongleBaudRate = 921600;
     int dongleOutTime = 10;

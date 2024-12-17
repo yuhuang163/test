@@ -582,7 +582,6 @@ void wifibletest::startTask() {
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
                 if (canGoNext) {
                     sendCommandWithRetry(std::bind(&Qpb::set_fac_mode, pb, 1));
-
                     showlog("已进入禁止休眠");
                     state = getNextState(state);
                 }

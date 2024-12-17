@@ -1594,7 +1594,7 @@
         <item>
          <widget class="QLabel" name="label_audio_status">
           <property name="text">
-           <string>音频状态</string>
+           <string>功放状态</string>
           </property>
          </widget>
         </item>

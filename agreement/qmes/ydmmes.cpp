@@ -196,7 +196,7 @@ void ydmmes::TestPass(MesPacketData pack) {
         dataObject["SnType"] = "SN";
         dataObject["ModelNo"] = "NH260-FS-0";  // 产品号
         dataObject["WO"] = pack.lotName;
-        dataObject["PassLive"] = "MO";
+        dataObject["PassLive"] = "WO";
         dataObject["TerminalNo"] = pack.machineNo;
         dataObject["CheckRoute"] = "Y";
         dataObject["BoardCount"] = "1";
