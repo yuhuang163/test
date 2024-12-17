@@ -45,6 +45,22 @@ typedef struct {
     QByteArray md5;    //
 } local_ota_data;
 
+// 待整理
+typedef enum
+{
+    MODULE_INVALID,
+    MODULE_BTH,
+    MODULE_MODE_BUTTON,
+    MODULE_POWER_BUTTON,
+    MODULE_MAX,
+} press_module_e;
+
+typedef struct {
+    short calib_factor[MODULE_MAX];
+    short temperature[MODULE_MAX];
+}press_calib_data_t;
+// 待整理
+
 class Qpb : public QSerialPort {
     Q_OBJECT
 public:
@@ -108,6 +124,7 @@ public:
         is_close_forbid_sleep = 0;
         is_motor_param_set = 0;
         is_get_imu_cali_data = 0;
+        is_save_press_cali_ok = 0;
     }  // 复位参数
 private:
     typedef enum {
@@ -149,6 +166,7 @@ private:
     bool is_motor_param_set = 0;
     int is_get_imu_cali_data = 0;
     bool is_save_imu_cali_ok = 0;
+    bool is_save_press_cali_ok = 0;
     bool is_banding_ok = 0;
     bool is_dev_into_white_mode = 0;
     bool is_ota_start = 0;
@@ -200,6 +218,8 @@ public slots:
     void set_dev_reset();                                                       // 设备复位
     void set_brush_reset();                                                     // 刷牙复位
     void set_press_cali_result(unsigned short* cali_ok);                        // 设置压力校准结果
+    void sendCaliResult(press_calib_data_t cali_result);// 待整理
+    bool get_is_save_press_cali_data(){return is_save_press_cali_ok;}// 待整理
     void set_imu_cali_result(ImuCalData cali_ok);                               // 发送IMU校准结果
     void set_new_imu_cali_result(NewImuCalData cali_ok);                        // 发送新的IMU校准结果
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
@@ -298,6 +318,7 @@ signals:
     void send_ota_result(int result);
 
     void sendGetBrushResponse(int data);
+    void sendpresscalidata(FacPreSensorCalibResult x);// 待整理
 };
 
 #endif  // QPB_H

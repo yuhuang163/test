@@ -45,6 +45,57 @@ typedef enum {
     STATE_BRUSH_RIGHT,  // 刷头朝右
     STATE_HOME,         // 治具回零位
 } imuFixtureState;
+
+// 待整理
+typedef enum
+{
+    COMMAND_ID_INVALID,
+    COMMAND_ID_BASE,
+
+    // Y20P校准治具
+    COMMAND_ID_TRAY_IN,
+    COMMAND_ID_TRAY_OUT,
+    COMMAND_ID_FIXED_BLOCK_UP,
+    COMMAND_ID_FIXED_BLOCK_DOWN,
+    COMMAND_ID_KEY_UP,
+    COMMAND_ID_KEY_DOWN_200,
+    COMMAND_ID_BTH_UP,
+    COMMAND_ID_BTH_DOWN_200,
+
+    //Y20P测试治具
+    COMMAND_ID_CHEAK_STATUS,
+
+    COMMAND_ID_BTH_PRESS_50,
+    COMMAND_ID_BTH_PRESS_350,
+    COMMAND_ID_BTH_PRESS_450,
+    COMMAND_ID_KEY_PRESS_230,
+    COMMAND_ID_BTH_PRESS_UP,
+    COMMAND_ID_KEY_PRESS_UP,
+
+    // U7校准治具
+    COMMAND_ID_FAMA_100_O,
+    COMMAND_ID_FAMA_100_C,
+    COMMAND_ID_FAMA_300_O,
+    COMMAND_ID_FAMA_300_C,
+
+    COMMAND_ID_RESET,
+    COMMAND_ID_RESULT,
+    COMMAND_ID_RESULT_SUC,
+
+    // 统一的指令
+
+    // F20
+    COMMAND_ID_F20_FIXED,
+    COMMAND_ID_F20_UNFIXED,
+    COMMAND_ID_KEY_DOWN,
+    COMMAND_ID_KEY_SWITCH_MODE,
+    COMMAND_ID_KEY_SWITCH_POWER,
+
+    COMMAND_ID_MAX,
+
+} machine_command_id_e;
+// 待整理
+
 typedef struct FixturePacketData {
     uchar sleep = 0;
     uchar machineNumber = 0;
@@ -58,6 +109,14 @@ typedef struct FixturePacketData {
     uint staticCurrent = 0;
     uint workingCurrent = 0;
     uint chargingCurrent = 0;
+
+// 待整理
+    uint machine_index = 0;
+    uint machine_get_mac_state = 0;
+    machine_command_id_e machine_command_id = COMMAND_ID_BASE;
+    uint argument = 0;
+    uint machine_result_state = 0;
+// 待整理
 } FixturePacketData;
 
 // 声明为元类型
@@ -77,6 +136,17 @@ public:
     Ui::Fixture_uart* ui;
     void sendimuData(imuFixtureState fixstate);
     void sendFixtureData(FixtureState fixstate);
+
+// 待整理
+    const char *commands[COMMAND_ID_MAX][6];
+#if 0 // !IS_INDEPENDENT
+    machine_command_id_e last_commid = COMMAND_ID_MAX;
+    qint64 last_commid_timestamp = 0;
+#endif
+    void FixtureCommandInit(void);
+    void send_command_to_machine(int command_id, int numb);
+    void delay_msec(unsigned int msec);
+// 待整理
     int fixBaudRate = 9600;
 
 private:
@@ -133,13 +203,18 @@ private:
     QTimer* fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;
 
+// 待整理
+    qint64 last_sent_timestamp = 0;
+// 待整理
 signals:
     void send_data_to_mechine(const FixturePacketData datapack);
     void send_data_to_mechine_imu(int state);
     void send_data_to_mechine_sleep(const FixturePacketData datapack);
     void send_data_to_mechine_start();
     void start_fix_action(int state);
-
+// 待整理
+    void receive_data_from_mechine(int state);
+// 待整理
 private slots:
     void readFixtureSerialPortData();
     void set_camera_action(camreaFixtureState fixstate);

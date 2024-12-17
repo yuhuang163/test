@@ -14,6 +14,7 @@
 #include "mainwindow.h"
 #include "motorbox.h"
 #include "pcbabox.h"
+#include "PressCalibBox.h"
 #include "qfreeworkbox.h"
 #include "quiescent_current_box.h"
 #include "screenbox.h"
@@ -132,7 +133,8 @@ int main(int argc, char* argv[]) {
 
     std::unordered_map<QString, int> map = {
         {"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2}, {"IMU_CALI", 3},  {"SCREEN_TEST", 4}, {"CAMERA_TEST", 5},
-        {"WIFIBLE_TEST", 6},      {"AGE_TEST", 7},   {"PCBA_TEST", 8}, {"FREE_WORK", 9},   {"MAIN_TEST", 10}};
+        {"WIFIBLE_TEST", 6},      {"AGE_TEST", 7},   {"PCBA_TEST", 8}, {"PRESS_TEST", 9},   {"FREE_WORK", 10},
+        {"MAIN_TEST", 11}};
 
     switch (map[station]) {
         case 1: {
@@ -198,13 +200,20 @@ int main(int argc, char* argv[]) {
             break;
         }
         case 9: {
+            PressCalibBox* c = new PressCalibBox;  // 压感校准测试工站
+            c->show();
+            c->TotallyTask();
+            delete c;
+            break;
+        }
+        case 10: {
             QFreeWorkBox* f = new QFreeWorkBox;  // 自由工站
             f->show();
             f->TotallyTask();
             delete f;
             break;
         }
-        case 10: {
+        case 11: {
             MainWindow h;  // 主测试
             h.show();
             return a.exec();

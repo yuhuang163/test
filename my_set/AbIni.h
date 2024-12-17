@@ -64,7 +64,7 @@
 #define FREE_VER "自由测试工站   V1.1.4"
 #define IMU_VER "IMU校准工站    V1.5.4"
 #define PCBA_VER "电刷板子测试   V1.4.4"
-
+#define PRESSURE_VER "压感校测工站   V1.3.0"
 
 
 
@@ -92,5 +92,26 @@
 // [LIGHT_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [FREE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 //
+
+// 待整理
+#define Y20_Pro_PRESS_TEST  0               // Y20 Pro压感校准
+
+// #define F20_PRESS_TEST      0               // F20压感校准
+#define U7_PRESS_TEST       0               // U7压感校准
+#define P30_Pro_PRESS_TEST  01              // P30P压感校准
+
+#if Y20_Pro_PRESS_TEST
+    #define IS_INDEPENDENT   0   // 每个产品的校准是否是独立的
+    #define USE_CALIB_FIXTURE 01
+    #define USE_TEST_FIXTURE  0
+
+#elif U7_PRESS_TEST
+    #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
+
+#elif P30_Pro_PRESS_TEST
+    #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
+    
+#endif
+// 待整理
 
 #endif  // ABINI_H

@@ -77,6 +77,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QRadioButton" name="radioButtonPressTest">
+        <property name="text">
+         <string>压感上位机</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QRadioButton" name="radioButtonBoardFactoryTest">
         <property name="text">
          <string>板厂测试上位机</string>

@@ -35,6 +35,7 @@ INCLUDEPATH += lib/imu
 INCLUDEPATH += lib/nfc
 INCLUDEPATH += lib/productlicense
 INCLUDEPATH += lib/quicklz
+INCLUDEPATH += lib/qcustomplot
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
 INCLUDEPATH += work_station/imu
@@ -43,6 +44,7 @@ INCLUDEPATH += work_station/quiescent_current
 INCLUDEPATH += work_station/screen
 INCLUDEPATH += work_station/wifi_ble
 INCLUDEPATH += work_station/pcba
+INCLUDEPATH += work_station/pressure
 INCLUDEPATH += work_station/freework
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
@@ -87,6 +89,7 @@ SOURCES += \
     lib/productlicense/productlicense.cpp \
     lib/quicklz/quicklz.cpp \
     lib/quicklz/quicklz_dec.cpp \
+    lib/qcustomplot/qcustomplot.cpp \
     main.cpp \
     mainlogic.cpp \
     mainwindow.cpp \
@@ -111,7 +114,10 @@ SOURCES += \
     work_station/screen/screentest.cpp \
     work_station/test_base.cpp \
     work_station/wifi_ble/wifibletest.cpp \
-    work_station/wifi_ble/wifibox.cpp
+    work_station/wifi_ble/wifibox.cpp \
+    work_station/pressure/pressuresensorform.cpp \
+    work_station/pressure/PressCalibBox.cpp \
+    work_station/pressure/ndt_sensor_cali.cpp \
 
 HEADERS += \
     advance/demo/usmile_ring_buffer.h \
@@ -147,6 +153,7 @@ HEADERS += \
     lib/productlicense/productlicense.h \
     lib/quicklz/quicklz.h \
     lib/quicklz/quicklz_dec.h \
+    lib/qcustomplot/qcustomplot.h \
     mainwindow.h \
     my_set/AbIni.h \
     my_set/my_typedef.h \
@@ -170,7 +177,10 @@ HEADERS += \
     work_station/screen/screentest.h \
     work_station/test_base.h \
     work_station/wifi_ble/wifibletest.h \
-    work_station/wifi_ble/wifibox.h
+    work_station/wifi_ble/wifibox.h \
+    work_station/pressure/pressuresensorform.h \
+    work_station/pressure/PressCalibBox.h \
+    work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
     advance/imagewindow/imagewindow.ui \
@@ -194,7 +204,9 @@ FORMS += \
     work_station/screen/screenbox.ui \
     work_station/screen/screentest.ui \
     work_station/wifi_ble/wifibletest.ui \
-    work_station/wifi_ble/wifibox.ui
+    work_station/wifi_ble/wifibox.ui \
+    work_station/pressure/pressuresensorform.ui \
+    work_station/pressure/PressCalibBox.ui \
 
 TRANSLATIONS += \
     new_production_zh_CN.ts

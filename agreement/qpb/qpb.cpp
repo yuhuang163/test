@@ -1504,6 +1504,29 @@ void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok) {
              << " by:" << pack.command_data.set_imu_calib.new_cali.by
              << " bz:" << pack.command_data.set_imu_calib.new_cali.bz;
 }
+// 待整理
+void Qpb::sendCaliResult(press_calib_data_t cali_result)//发送校准结果
+{
+    FactroyCmd cmd = FactroyCmd_SET_PRESS_SENSOR_CALIB;
+    FactoryDataPackage pack;
+    memset(&pack,0,sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_set_fsensor_calib_tag;
+    pack.command_data.set_fsensor_calib.brush_head_adc= (uint32_t)cali_result.calib_factor[MODULE_BTH];
+    pack.command_data.set_fsensor_calib.mode_button_adc= (uint32_t)cali_result.calib_factor[MODULE_MODE_BUTTON];
+    pack.command_data.set_fsensor_calib.power_button_adc= (uint32_t)cali_result.calib_factor[MODULE_POWER_BUTTON];
+
+    if (cali_result.temperature[MODULE_BTH] != 0) {
+        pack.command_data.set_fsensor_calib.temperature= (uint32_t)cali_result.temperature[MODULE_BTH];
+    } else if (cali_result.temperature[MODULE_MODE_BUTTON] != 0) {
+        pack.command_data.set_fsensor_calib.temperature= (uint32_t)cali_result.temperature[MODULE_MODE_BUTTON];
+    }
+
+
+    sendShortPack(pack);
+    qDebug() << "已发送压感校准结果";
+}
+// 待整理
 void Qpb::get_cali_result()  // 获取校准结果
 {
     FactroyCmd cmd = FactroyCmd_GET_PRESS_SENSOR_CALIB;
@@ -1865,10 +1888,13 @@ void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
 }
 void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacPreSensorCalibResult x;
-    memcpy(&x, &f.command_data, sizeof(x));
-    qDebug() << "获取牙刷校准的brush_head_adc=" << x.brush_head_adc;
-    qDebug() << "获取牙刷校准的mode_button_adc=" << x.mode_button_adc;
-
+    memcpy(&x , &f.command_data,sizeof(x));
+    qDebug() << "获取牙刷校准的brush_head_adc="<< x.brush_head_adc;
+    qDebug() << "获取牙刷校准的mode_button_adc="<< x.mode_button_adc;
+    qDebug() << "获取牙刷校准的temperature="<< x.temperature;
+    qDebug() << "获取牙刷校准的power_button_adc="<< x.power_button_adc;
+    sendpresscalidata(x);
+    is_save_press_cali_ok=1;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
