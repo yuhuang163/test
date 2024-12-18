@@ -50,28 +50,31 @@ void PcbaForm::on_pushButton_clicked() {
 }
 void PcbaForm::on_pushButton_2_clicked()  // 单机
 {
-    static int t = 1;
-    if (t == 1) {
-        showlog("已发送失败");
-        pack.itemvalue = "|蓝牙信号:-55|";
-        pack.result = "NG";
-        pack.error = "";
-        pack.sn = ui->getMac->text();
-        if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
-        }
-        t++;
-    } else {
-        showlog("已发送成功");
-        pack.itemvalue = "|蓝牙信号:-55|";
-        pack.result = "PASS";
-        pack.error = "";
-        pack.sn = ui->getMac->text();
-        if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
-        }
-        t = 1;
+    // static int t = 1;
+    // if (t == 1) {
+    //     showlog("已发送失败");
+    //     pack.itemvalue = "|蓝牙信号:-55|";
+    //     pack.result = "NG";
+    //     pack.error = "";
+    //     pack.sn = ui->getMac->text();
+    //     if (ui->isusemes->checkState()) {
+    //         emit send_end_testPass(pack);
+    //     }
+    //     t++;
+    // } else {
+    showlog("已发送成功");
+    pack.itemvalue = "|六轴数据:acc_x: -401 acc_y: 264 acc_z: "
+                     "8304|蓝牙版本:93|电机版本:119|资源版本:10001|软件版本:234|产品名字:U7P|硬件版本:1|算法版本号:"
+                     "1136|压感版本:63.15.17.1|六轴id:103|APP的pb版本:2172|工厂的pb版本:101|摄像头id:1880465544|"
+                     "功放状态:1|内存状态:1|六轴状态:1|地磁状态:0|压感状态:0|蓝牙信号:-47|";
+    pack.result = "OK";
+    pack.error = "";
+    pack.sn = ui->getMac->text();
+    if (ui->isusemes->checkState()) {
+        emit send_end_testPass(pack);
     }
+    //     t = 1;
+    // }
     // at->sendBLELOG(1);
     // testItem = "六轴状态";
     // testData = "QString::number(data.imu_state)";
@@ -1123,7 +1126,7 @@ void PcbaForm::startTask() {
                     showlog("1、设备信息测试");
 
                     QString testData =
-                        QString("acc_x: %1\nacc_y: %2\nacc_z: %3").arg(really_accx).arg(really_accy).arg(really_accz);
+                        QString("acc_x=%1;acc_y=%2;acc_z=%3;").arg(really_accx).arg(really_accy).arg(really_accz);
                     TestItem test;
                     test.testItem = "六轴数据";
                     test.testData = testData;
@@ -1649,7 +1652,7 @@ void PcbaForm::startTask() {
                     QString itemvalue;
                     itemvalue = exportTableContent();
                     pack.itemvalue = itemvalue;
-                    pack.result = "PASS";
+                    pack.result = "OK";  //欣旺达必须用ok
                     pack.error = "";
                     pack.sn = ui->getMac->text();
                     if (ui->isusemes->checkState()) {
@@ -1657,7 +1660,7 @@ void PcbaForm::startTask() {
                     }
 
                 } else if ((totalresult == failValue)) {
-                    pack.result = "NG";
+                    pack.result = "NG";  //威克森需要用到ng
                     QString itemvalue;
                     itemvalue = exportTableContent();
                     pack.itemvalue = itemvalue;

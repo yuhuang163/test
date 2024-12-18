@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1439</width>
-    <height>1049</height>
+    <height>1081</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -461,7 +461,7 @@
         <item>
          <widget class="QLabel" name="label_78">
           <property name="text">
-           <string>mes网址（wks|lx）</string>
+           <string>mes网址（wks|lx|ydm）</string>
           </property>
          </widget>
         </item>
@@ -489,7 +489,7 @@
         <item>
          <widget class="QLabel" name="label_80">
           <property name="text">
-           <string>机种名称（lx）</string>
+           <string>机种名称（lx|ydm）</string>
           </property>
          </widget>
         </item>
@@ -559,7 +559,7 @@
         <item>
          <widget class="QLabel" name="label_mes_login_account">
           <property name="text">
-           <string>MES用户名（ydm|xwd|hq)</string>
+           <string>MES用户名（xwd|hq)</string>
           </property>
          </widget>
         </item>

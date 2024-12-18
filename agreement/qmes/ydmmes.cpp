@@ -194,9 +194,9 @@ void ydmmes::TestPass(MesPacketData pack) {
         QJsonObject dataObject;
         dataObject["SN"] = pack.sn;
         dataObject["SnType"] = "SN";
-        dataObject["ModelNo"] = "NH260-FS-0";  // 产品号
-        dataObject["WO"] = pack.lotName;
-        dataObject["PassLive"] = "WO";
+        dataObject["ModelNo"] = pack.model;  // 机种"P20 Pro"
+        dataObject["WO"] = pack.lotName;     //工单
+        dataObject["PassLive"] = "MO";
         dataObject["TerminalNo"] = pack.machineNo;
         dataObject["CheckRoute"] = "Y";
         dataObject["BoardCount"] = "1";
@@ -209,10 +209,6 @@ void ydmmes::TestPass(MesPacketData pack) {
         dataObject["TestResult"] = pack.result;
         dataObject["Result"] = pack.result;
         dataObject["Detail"] = transformString(pack.itemvalue);
-
-        // 将数据对象添加到 data 数组中
-        dataArray.append(dataObject);
-        internalJson["data"] = dataArray;
 
         // 将数据对象添加到 data 数组中
         dataArray.append(dataObject);

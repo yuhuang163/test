@@ -614,6 +614,7 @@ void test_base::waitWork(int ms) {
     while (t.elapsed() < ms)
         QCoreApplication::processEvents();
 }
+
 void test_base::updateMainStyle(QString style) {
     // QSS文件初始化界面样式
     QString stylesheet;

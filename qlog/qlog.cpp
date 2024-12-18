@@ -37,8 +37,11 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
 
         // 写入数据
         for (const TestItem& item : testItems) {
+            QString testData = item.testData;  // 创建一个非 const 的副本
+            testData.replace("\r\n", "");      // 移除所有的换行符
+            testData.replace(",", "");         // 移除所有的换行符
             stream << sn << "," << ver << "," << macAddress << "," << timestamp << "," << item.testItem << ","
-                   << item.testData << "," << item.testResult << "," << item.ask << "\n";
+                   << testData << "," << item.testResult << "," << item.ask << "\n";
         }
         file.close();
         qDebug() << "Data appended to" << filePath;
