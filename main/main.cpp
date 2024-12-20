@@ -3,8 +3,7 @@
  * 作者：何宇杰
  * 更新时间2023/11/10/22：12
  * C:\Users\heyj\.espressif\tools\xtensa-esp32s3-elf\esp-12.2.0_20230208\xtensa-esp32s3-elf\bin\xtensa-esp32s3-elf-addr2line.exe -pfiaC -e newdongle.elf ADDRESS  0x42013334:0x3fcb1d40 0x420167ae:0x3fcb1d60 0x4200c51d:0x3fcb1dd0 0x4200b457:0x3fcb1df0 0x420110f0:0x3fcb1ed0 0x40383bb6:0x3fcb1ef0
- * ~/.espressif/tools/xtensa-esp32s3-elf/esp-12.2.0_20230208/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-addr2line -pfiaC -e build/newdongle.elf ADDRESS  0x42016642:0x3fcb1dd0 0x42016882:0x3fcb1df0 0x42016a9a:0x3fcb1ed0 0x4200c73d:0x3fcb1f40 0x4200b4de:0x3fcb1f60 0x420113d0:0x3fcb2040 0x40383bb6:0x3fcb2060
-
+ * ~/.espressif/tools/xtensa-esp32s3-elf/esp-12.2.0_20230208/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-addr2line -pfiaC -e build/newdongle.elf ADDRESS  0x40386d0f:0x3fccfb30 0x403866a2:0x3fccfb50 0x4037647d:0x3fccfb70 0x403764d5:0x3fccfb90 0x4037650a:0x3fccfbb0 0x40388764:0x3fccfbd0 0x40388788:0x3fccfbf0 0x4205a05a:0x3fccfc10 0x4002df25:0x3fccfc30 0x4000c6d5:0x3fccfc50 0x4000c7d1:0x3fccfc70 0x4000c841:0x3fccfc90 0x4000be27:0x3fccfcb0 0x40029487:0x3fccfcd0 0x4206cc17:0x3fccfcf0 0x4206a879:0x3fccfd30 0x40028f01:0x3fccfd50 0x4206f587:0x3fccfd70 0x4000d025:0x3fccfda0 0x4002c4a5:0x3fccfdc0 0x42063d0b:0x3fccfde0 0x40377e73:0x3fccfe00 0x40377fe2:0x3fccfe20 0x40383bb6:0x3fccfe50
 
 
 
@@ -45,7 +44,7 @@
 #define wifiuse 1
 int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
-String version = "1.3.4"; // 默认的版本号
+String version = "1.3.6"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 
@@ -203,7 +202,9 @@ void loop()
   {
     print_ble_rssi();
   }
-  else if (ble_scan_over) // 没有连接且扫描被关闭了
+ 
+ 
+  if (!doConnect&&!ble_connected&&!ble_scan_over) // 没有连接且扫描被关闭了
   {
     start_ble_scan();
     colorWipe(strip.Color(255, 0, 0)); // 红色

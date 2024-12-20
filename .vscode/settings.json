@@ -36,7 +36,10 @@
     "tuple": "cpp",
     "type_traits": "cpp",
     "utility": "cpp",
-    "bitset": "cpp"
+    "bitset": "cpp",
+    "deque": "cpp",
+    "list": "cpp",
+    "vector": "cpp"
   },
   "idf.portWin": "COM56",
   "C_Cpp.errorSquiggles": "disabled"

@@ -7,7 +7,7 @@ static BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
 boolean doConnect = false;     // 是否可以开始连接
 boolean ble_connected = false; // 是否是连接的状态
-boolean ble_scan_over = false; // 是否scan完成
+boolean ble_scan_over = false; // 是否停止扫描
 boolean StartSendOtaData = false;
 boolean StartSendmainData = false;
 boolean StartBombState = false;
@@ -296,7 +296,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             String deviceName = advertisedDevice.getName();
             if (deviceName.indexOf(BOMBdevicename) != -1 && rssi > damageDistance.toInt() && !isDeviceStored(advertisedDevice.getAddress().toString().c_str()))
             {
-
+                          ble_scan_over = true;   
                 Serial.print("找到设备:" + deviceName);
                 Serial.print(", deviceRssi:");
                 Serial.println(rssi);
@@ -314,7 +314,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 BLEDevice::getScan()->stop();
                 myDevice = new BLEAdvertisedDevice(advertisedDevice); // 有释放内存
                 doConnect = true;                                     // 是否可以开始连接
-                ble_scan_over = true;                                 // 是否完成了scan
+                ble_scan_over = false;                                 // 是否完成了scan
             }
         }
         else
@@ -335,7 +335,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             is_need_reset_adress = true;
             if (advertisedDevice.getAddress().equals(BLEAddress(targetDeviceAddress)))
             { // mac地址可以，那么准备开始连接
-
+                ble_scan_over = true;   
                 esp_bd_addr_t target_device_addr;
                 strToBdAddr(targetDeviceAddress, target_device_addr);
 
@@ -345,7 +345,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     0x09, // 9 * 1.25ms = 11.25ms
                     0x0c, // 12 * 1.25ms = 15ms
                     0,    // 从机延迟// 从机延迟 (单位: 连接事件数)
-                    2000  // 400 * 10ms = 4000ms
+                    2000  // 2000 * 10ms = 20s
                 );
 
                 if (status == ESP_OK)
@@ -365,7 +365,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 BLEDevice::getScan()->stop();
                 myDevice = new BLEAdvertisedDevice(advertisedDevice); // 有释放内存
                 doConnect = true;                                     // 是否可以开始连接
-                ble_scan_over = true;                                 // 是否完成了scan
+                ble_scan_over = false;                                 // 是否完成了scan
             }
         }
     }
@@ -625,6 +625,8 @@ bool connectToServer()
     else
     {
         Serial.println("MAC地址连接失败");
+        Serial.println("AT+DISCONNECT");
+
     }
     candeleteble = true;
     return false;

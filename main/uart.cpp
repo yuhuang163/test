@@ -156,7 +156,7 @@ void processATCommand(byte *get_cmd, int length)
             Serial.print("已设置新的目标设备 MAC 地址：");
             Serial.println(targetDeviceAddress);
 
-            ble_scan_over = true;
+            ble_scan_over = false;
             if (ble_connected && candeleteble)
             {
                 deinit_ble(); // 重置蓝牙
@@ -229,7 +229,7 @@ void processATCommand(byte *get_cmd, int length)
         Serial.println("连接间隔时间: " + connectionInterval);
         Serial.println("发送指令: " + sendCommand);
         deinit_ble();
-        ble_scan_over = true;
+        ble_scan_over = false;
         StartBombState = true;
         break;
     }
@@ -322,9 +322,9 @@ void serialEventTask(void *pvParameters)
 
         if (bufferSize > 0)
         {
-            uartreceivesize = uartreceivesize + availableBytes;
-            Serial.print("接收总数");
-            Serial.println(uartreceivesize);
+            // uartreceivesize = uartreceivesize + availableBytes;
+            // Serial.print("接收总数");
+            // Serial.println(uartreceivesize);
             byte *tempBuffer = new byte[bufferSize];
             size_t bytesRead = Serial.readBytes(tempBuffer, bufferSize);
 
@@ -342,6 +342,7 @@ void serialEventTask(void *pvParameters)
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC // 0xAAAAAAAAAAAAAAAA
 #define UART_PHY_LAYER_HEAD_SIZE 10       // 头大小
 #define UART_PHY_LAYER_HEADER_ADN_CRC (UART_PHY_LAYER_HEAD_SIZE)
+#define EXT_UART_MAGIC_SIZE 8       // 头大小
 
 typedef struct
 {
@@ -357,12 +358,17 @@ int ext_ble_find_next_frame(uint8_t *data, size_t *dataSize)
 
     // 包头的64位值
     const uint64_t header = 0xCCCCCCCCCCCCCCCC;
+    if (*dataSize < EXT_UART_MAGIC_SIZE)
+    {
+        Serial0.print("ext_uart1_find_next_frame有重大错误");
+        return 0;
+    }
 
     // 遍历数据流以查找包头
-    for (size_t i = 0; i <= *dataSize - 8; ++i)
+    for (size_t i = 0; i <= *dataSize - EXT_UART_MAGIC_SIZE; ++i)
     {
         uint64_t currentHeader;
-        memcpy(&currentHeader, &data[i], 8);
+        memcpy(&currentHeader, &data[i], EXT_UART_MAGIC_SIZE);
 
         if (currentHeader == header)
         {
@@ -391,9 +397,9 @@ void processDataTask(void *pvParameters)
             if (StartSendOtaData)
             {
                 send_ble_data(PHY_CHANNEL_INVALID_SEND, packet, packetSize); // 发送ota数据包
-                uartsolvesize = uartsolvesize + packetSize;
-                Serial.print("处理总数");
-                Serial.println(uartsolvesize);
+                // uartsolvesize = uartsolvesize + packetSize;
+                // Serial.print("处理总数");
+                // Serial.println(uartsolvesize);
             }
             else
             {
@@ -443,8 +449,8 @@ void processDataTask(void *pvParameters)
             {
                 processATChar((char)packet[i]);
             }
-            Serial.print("处理掉数据大小1：");
-            Serial.println(packetSize);
+            // Serial.print("处理掉数据大小1：");
+            // Serial.println(packetSize);
             packetSize = 0;
         }
 
