@@ -333,29 +333,32 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 Serial.println(rssi);
             }
             is_need_reset_adress = true;
-            if (advertisedDevice.getAddress().equals(BLEAddress(targetDeviceAddress)))
+               BLEAdvertisedDevice myadvertisedDevice=advertisedDevice;
+            if (myadvertisedDevice.getAddress().equals(BLEAddress(targetDeviceAddress)))
             { // mac地址可以，那么准备开始连接
+
+         
                 ble_scan_over = true;   
                 esp_bd_addr_t target_device_addr;
                 strToBdAddr(targetDeviceAddress, target_device_addr);
 
-                // 设置首选连接参数
-                esp_err_t status = esp_ble_gap_set_prefer_conn_params(
-                    target_device_addr,
-                    0x09, // 9 * 1.25ms = 11.25ms
-                    0x0c, // 12 * 1.25ms = 15ms
-                    0,    // 从机延迟// 从机延迟 (单位: 连接事件数)
-                    2000  // 2000 * 10ms = 20s
-                );
+                // // 设置首选连接参数
+                // esp_err_t status = esp_ble_gap_set_prefer_conn_params(
+                //     target_device_addr,
+                //     0x09, // 9 * 1.25ms = 11.25ms
+                //     0x0c, // 12 * 1.25ms = 15ms
+                //     0,    // 从机延迟// 从机延迟 (单位: 连接事件数)
+                //     2000  // 2000 * 10ms = 20s
+                // );
 
-                if (status == ESP_OK)
-                {
-                    Serial.println("连接间隔设置成功");
-                }
-                else
-                {
-                    Serial.printf("连接间隔设置失败，错误码 %d", status);
-                }
+                // if (status == ESP_OK)
+                // {
+                //     Serial.println("连接间隔设置成功");
+                // }
+                // else
+                // {
+                //     Serial.printf("连接间隔设置失败，错误码 %d", status);
+                // }
 
                 digitalWrite(D2_PIN, LOW); // 将 D2_PIN 设置为高电
 
@@ -363,7 +366,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 // colorWipe(strip.Color(0, 255, 0));  // 绿色
                 // colorWipe(strip.Color(0, 0, 255));  // 蓝色
                 BLEDevice::getScan()->stop();
-                myDevice = new BLEAdvertisedDevice(advertisedDevice); // 有释放内存
+                myDevice = new BLEAdvertisedDevice(myadvertisedDevice); // 有释放内存
                 doConnect = true;                                     // 是否可以开始连接
                 ble_scan_over = false;                                 // 是否完成了scan
             }
@@ -556,7 +559,9 @@ bool connectToServer()
     Serial.println("创建客户端...");
 
     pClient->setClientCallbacks(connect_callback); // 设置客户端回调函数
-    Serial.println("创建完成");
+    Serial.println("创建完成,连接到设备");
+    Serial.println(myDevice->getAddress().toString());
+
     if (pClient->connect(myDevice)) // 连接到远程BLE服务器
     {
         Serial.print("连接到UUID  ");

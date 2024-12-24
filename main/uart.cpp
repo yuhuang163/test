@@ -358,12 +358,15 @@ int ext_ble_find_next_frame(uint8_t *data, size_t *dataSize)
 
     // 包头的64位值
     const uint64_t header = 0xCCCCCCCCCCCCCCCC;
-    if (*dataSize < EXT_UART_MAGIC_SIZE)
+   if (*dataSize < EXT_UART_MAGIC_SIZE || *dataSize - EXT_UART_MAGIC_SIZE > 2 * 1024)
     {
         Serial0.print("ext_uart1_find_next_frame有重大错误");
+        Serial0.print("*dataSize - EXT_UART_MAGIC_SIZE=");
+        Serial0.println(*dataSize - EXT_UART_MAGIC_SIZE);
+        Serial0.print("*dataSize=");
+        Serial0.println(*dataSize);
         return 0;
     }
-
     // 遍历数据流以查找包头
     for (size_t i = 0; i <= *dataSize - EXT_UART_MAGIC_SIZE; ++i)
     {
@@ -379,7 +382,7 @@ int ext_ble_find_next_frame(uint8_t *data, size_t *dataSize)
             return 1; // 返回去除包头后的数据长度
         }
     }
-
+   *dataSize = 0;
     return 0; // 没有找到包头
 }
 void processDataTask(void *pvParameters)
