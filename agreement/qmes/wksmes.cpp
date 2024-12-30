@@ -16,7 +16,7 @@
 #    pragma execution_character_set("utf-8")
 #endif
 wksmes::wksmes() {
-    url = SETTINGS.value("Mes/NET", "http://218.14.127.107:8880/WIP/").toString();
+    url = SETTINGS.value("Mes/NET", "http://218.14.127.107:8880").toString();
     field = SETTINGS.value("Mes/FIELD", "BT_MAC").toString();
 }
 // sn和工站，站前检测
@@ -46,7 +46,7 @@ void wksmes::ProcessInspection(MesPacketData pack) {
         qDebug() << logMsg;
 
         QNetworkAccessManager manager;
-        QNetworkRequest request(url + "Check2");
+        QNetworkRequest request(url + "/WKSwip/Check2");
 
         // 设置请求头
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -77,9 +77,16 @@ void wksmes::ProcessInspection(MesPacketData pack) {
             if (!responseDoc.isNull() && responseDoc.isObject()) {
                 QJsonObject responseObject = responseDoc.object();
                 int errorCode = responseObject.value("errorcode").toInt();
-
+                QJsonObject infoObject = responseObject.value("info").toObject();
+                QString productversion = infoObject.value("productVersion").toString();
+                QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
                 if (errorCode == 0) {
-                    emit operateMesSucess(pack.mechines);
+                    if (productversion == softwareVersion)
+                        emit operateMesSucess(pack.mechines);
+                    else
+                        emit operateMesError(pack.mechines,
+                                             "版本比对有问题:" + productversion + "本地:" + softwareVersion);
+
                     qDebug() << "过站成功";
                 } else {
                     emit operateMesError(pack.mechines, "过站失败：" + response);
@@ -131,9 +138,8 @@ QString wksmes::transformString(const QString& input) {
 
 void wksmes::TestPass(MesPacketData pack) {
     if (pack.factory == "wks") {
-
-        if( pack.result == "NG"){
-                 pack.itemvalue = "";
+        if (pack.result == "NG") {
+            pack.itemvalue = "";
         }
         // 构建 JSON 请求体
         QJsonObject json;
@@ -234,7 +240,7 @@ void wksmes::TestPass(MesPacketData pack) {
         qDebug() << logMsg;
 
         QNetworkAccessManager manager;
-        QNetworkRequest request(url + "Complete2");
+        QNetworkRequest request(url + "/WIP/Complete2");
 
         // 设置请求头
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -267,7 +273,6 @@ void wksmes::TestPass(MesPacketData pack) {
                 int errorCode = responseObject.value("errorcode").toInt();
 
                 if (errorCode == 0) {
-                    emit operateMesSucess(pack.mechines);
                     qDebug() << "记录成功";
                 } else {
                     emit operateMesError(pack.mechines, "记录失败：" + response);

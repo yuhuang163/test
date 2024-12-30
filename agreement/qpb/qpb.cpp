@@ -1438,18 +1438,7 @@ void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 
 
     emit send_pb_date("成功发送摄像头错误数据包个数" + QString::number(count));
 }
-void Qpb::set_press_cali_result(unsigned short* cali_ok)  // 发送校准结果
-{
-    FactroyCmd cmd = FactroyCmd_SET_PRESS_SENSOR_CALIB;
-    FactoryDataPackage pack;
-    memset(&pack, 0, sizeof(pack));
-    pack.cmd_id = cmd;
-    pack.which_command_data = FactoryDataPackage_set_fsensor_calib_tag;
-    pack.command_data.set_fsensor_calib.brush_head_adc = cali_ok[0];
-    pack.command_data.set_fsensor_calib.mode_button_adc = cali_ok[1];
-    sendShortPack(pack);
-    qDebug() << "已发送压感校准结果";
-}
+
 void Qpb::set_imu_cali_result(ImuCalData cali_ok)  // 发送校准结果
 {
     FactroyCmd cmd = FactroyCmd_SET_IMU_CALIB;
@@ -1504,8 +1493,8 @@ void Qpb::set_new_imu_cali_result(NewImuCalData cali_ok) {
              << " by:" << pack.command_data.set_imu_calib.new_cali.by
              << " bz:" << pack.command_data.set_imu_calib.new_cali.bz;
 }
-// 待整理
-void Qpb::sendCaliResult(press_calib_data_t cali_result)//发送校准结果
+
+void Qpb::set_press_cali_result(press_calib_data_t cali_result)//发送校准结果
 {
     FactroyCmd cmd = FactroyCmd_SET_PRESS_SENSOR_CALIB;
     FactoryDataPackage pack;
@@ -1526,8 +1515,8 @@ void Qpb::sendCaliResult(press_calib_data_t cali_result)//发送校准结果
     sendShortPack(pack);
     qDebug() << "已发送压感校准结果";
 }
-// 待整理
-void Qpb::get_cali_result()  // 获取校准结果
+
+void Qpb::get_press_cali_result()  // 获取校准结果
 {
     FactroyCmd cmd = FactroyCmd_GET_PRESS_SENSOR_CALIB;
     FactoryDataPackage pack;
@@ -1893,7 +1882,7 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     qDebug() << "获取牙刷校准的mode_button_adc="<< x.mode_button_adc;
     qDebug() << "获取牙刷校准的temperature="<< x.temperature;
     qDebug() << "获取牙刷校准的power_button_adc="<< x.power_button_adc;
-    sendpresscalidata(x);
+   emit send_press_cali_data(x);
     is_save_press_cali_ok=1;
     emit sendGetBrushResponse(1);
 }
@@ -1902,7 +1891,7 @@ void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
 
     qDebug() << "保存压感校准值成功";
-    get_cali_result();
+    get_press_cali_result();
 }
 void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     FacDevState x;

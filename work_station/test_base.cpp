@@ -54,6 +54,10 @@ void test_base::signalAndslot() {
     connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
+
+
+    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this, SLOT(getPresscalidata(FacPreSensorCalibResult)));
+    connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(sendGetBrushResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
     connect(pb, SIGNAL(send_BrushControl_state(FacBrushControl)), this, SLOT(checkBrushControlState(FacBrushControl)));
@@ -69,6 +73,8 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_base_data(FacGetDevBaseInfo)), this, SLOT(refreshBaseData(FacGetDevBaseInfo)));
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
     connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refreshSn(FacDevInfo)));
+    connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
+
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
 

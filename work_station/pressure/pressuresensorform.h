@@ -22,17 +22,7 @@
 #    pragma execution_character_set("utf-8")
 #endif
 
-typedef enum {
-    STATE_INVALID,
-    STATE_WAIT_START,
-    STATE_CALIB_START,
-    STATE_CALIB_STATIC_WAIT,
-    STATE_CALIB_STATIC_START,
-    STATE_CALIB_CH0,
-    STATE_CALIB_CH1,
-    STATE_CALIB_RESULT,
-    STATE_MAX,
-} STATE_INDEPENDENT_E;
+
 
 namespace Ui {
     class PressureSensorForm;
@@ -42,10 +32,11 @@ class PressureSensorForm : public test_base {
     Q_OBJECT
 public:
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };     // mac地址输入口
-    QLineEdit* getMacLineEdit() override { return ui->getMac; };         // sn输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };              // log输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };          // msg输入口
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };
+    QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
+    QLineEdit* getMacLineEdit() override { return ui->getMac; };      // sn输入口
+    QPlainTextEdit* logEdit() override { return ui->log; };           // log输入口
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };
 
     explicit PressureSensorForm(int index, QWidget* parent = nullptr);
@@ -78,7 +69,7 @@ public:
         GRAPH_SET_MAX,
     } GRAPH_SET_E;
 
-    void over_task();
+    void overTask()override;
     void product_model_init(QString model);
 
     // graph
@@ -87,7 +78,7 @@ public:
     void graph_reset(uint8_t argument);
 
     // save file
-    void save_data(FacUploadPresSensor x);
+    void save_pressure_data(FacUploadPresSensor x);
 
     // calib and test
     void calib_process(FacUploadPresSensor x);
@@ -95,10 +86,7 @@ public:
     void calib_vector_init(MODEL_ID_E model);
     void calib_send_result(void);
 
-    // state
-    STATE_INDEPENDENT_E independent_state = STATE_INVALID;
-    void set_independent_state(STATE_INDEPENDENT_E state);
-    STATE_INDEPENDENT_E get_independent_state(void);
+
 
     uint8_t CheckNfcData();
     int findNfcDevicePort(QString name);
@@ -127,7 +115,7 @@ signals:
     void gonextfocus();
 
     // other
-    void operator_instruct(int, int);
+    void operator_instruct(int);
 
     void send_go_next_focus();
     void send_startTest(int data);
@@ -202,11 +190,9 @@ private:
     void U7_fixture(State state, int argument);
     void ui_msg_show(MODEL_ID_E model, State state, int argument);
 
-    // QSerialPort *serialPort;
+
     bool isTestContinue = false;
-    // Qpb *pb;
-    // Qat *at;
-    QSerialPort* FixtureserialPort;
+
     QTime transTime;
     QTime countdowntime;
     QTimer* waittime = new QTimer(this);
@@ -230,8 +216,7 @@ private:
     QString model = "";         // 机种
 
     QString nfcComName = "";
-    QString Product_Name = "";
-    QString product = "";
+    QString readProduct = "";
     MODEL_ID_E product_model = MODEL_ID_INVALID;  // 产品型号
 
     // ONLY_MODE 此处定义为了区分只校准测试刷头和只校准测试按键，目前只有F20用
@@ -292,54 +277,46 @@ private:
                                      press_calib_data_t cali_result);
 
 private slots:
-
+    void readJigSerialPortData(void) override;
+    void getPressSensorData(FacUploadPresSensor x) override;
     void solve_mes_data(const int mechines, QString msg);
     void solve_mes_sucess(const int mechines);
     void receive_uart_data(int state);
-    void send_mac(QString data);
+
     void send_frame_rate(QString data);
 
-    void refresh_uart_state(int state);
-    void refresh_ble_state(int state);
-    void openFixtureSerialPort();
-    void closeFixtureSerialPort();
-    void FixturereadData();
-    void refresh_Fixtureuart_state(int state);
-    void on_FixtureconnectButton_clicked();
-    void on_FixturerefreshCom_clicked();
-    void on_FixturedisconnectButton_clicked();
-    void FixturehandleError(QSerialPort::SerialPortError error);
-    void processReceivedData(const QByteArray& data);
+    void refreshDongleUartState(int state) override;
+    void refreshBleState(int state) override;
+
+    void refreshJigUartState(int state) override;
+    void on_jigConnectButton_clicked();
+
+    void on_jigDisconnectButton_clicked();
+
+    void processFixReceivedData(const QByteArray& data);
     void send_start_command(machine_command_id_e command_id, int argument);
 
     void getTestvalue(const int mechines, const QString value);
-    void refresh_sn(FacDevInfo data);
+    void refreshSn(FacDevInfo data) override;
     void delay_msec(unsigned int msec);
-    void refreshBaseData(FacGetDevBaseInfo data);
-    void readData();
-    void openSerialPort();
-    void closeSerialPort();
-    void handleError(QSerialPort::SerialPortError error);
-    void on_refreshButton_clicked();
-    void on_connectButton_clicked();
+    void refreshBaseData(FacGetDevBaseInfo data) override;
 
-    void getPresscalidata(FacPreSensorCalibResult x);
+
+
+    void on_connectButton_clicked();
+    void checkbutton(FacButtonState data) override;
+    void getPresscalidata(FacPreSensorCalibResult x) override;
 
     void on_end_clicked();
-
-    void getPressSensorData(FacUploadPresSensor x);
-    void getButtonState(FacButtonState x);
 
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
     void getMac(QString sn_to_search);
 
-    void on_msg_textChanged();
+
 
     void on_button_get_calib_factor_clicked();
     QString ReadNfcDataProcess();
-
-    void LogPrintDebug(QString debug);
 
     void on_SendCalib_clicked();
 
@@ -351,8 +328,10 @@ private slots:
 
     void on_TestButtonNFC_clicked();
 
+    void on_disconnectButton_clicked();
+
 protected:
-    virtual void closeEvent(QCloseEvent*);
+    virtual void closeEvent(QCloseEvent*) override;
 };
 
 #endif  // PRESSURESENSORFORM_H

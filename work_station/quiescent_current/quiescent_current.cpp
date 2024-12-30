@@ -81,7 +81,35 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
+void quiescent_current::refreshMusicState(FacDevInfo data) {
+    bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
+    showlog("当前曲目为：" + QString::number(data.dev_info[0].value_item.music_state));
 
+    if (!isMusicStateTest || SETTINGS.value("Music/MusicState").toInt() == data.dev_info[0].value_item.music_state) {
+        TestItem test;
+        test.testItem = "曲目测试";
+        test.testData = QString::number(data.dev_info[0].value_item.music_state);
+        test.testResult = passValue;
+        test.ask = QString::number(SETTINGS.value("Music/MusicState").toInt());
+        testItems.append(test);
+
+        testResultTableUpdate(testItems);
+
+    } else {
+        TestItem test;
+        test.testItem = "曲目测试";
+        test.testData = QString::number(data.dev_info[0].value_item.music_state);
+        test.testResult = failValue;
+        test.ask = QString::number(SETTINGS.value("Music/MusicState").toInt());
+        testItems.append(test);
+
+        testResultTableUpdate(testItems);
+
+        totalresult = failValue;
+        state = STATE_SAVE_RESULT;
+        showlog("曲目测试不良");
+    }
+}
 void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
@@ -655,6 +683,7 @@ void quiescent_current::startTask() {
 
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠");
+                    pb->get_now_music_info();
                     pb->get_base_info();
                     state = STATE_WATI_GET_BASE_STATE;
                 } else {
@@ -991,7 +1020,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
-        path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
+        path = "\\\\172.30.189.83\\sgpub\\LTC\\MAC\\mac_sn.txt";
 
     else
         path = "mac_sn.txt";

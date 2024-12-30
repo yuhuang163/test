@@ -145,7 +145,7 @@
            <string>信息显示</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_13">
-           <item row="1" column="0">
+           <item row="0" column="0">
             <widget class="QSplitter" name="splitter_3">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>1</number>
+               <number>3</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -313,7 +313,7 @@
                        <item>
                         <widget class="QLineEdit" name="wifiUserName">
                          <property name="readOnly">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
@@ -334,7 +334,7 @@
                           <enum>QLineEdit::Password</enum>
                          </property>
                          <property name="readOnly">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
@@ -3209,6 +3209,250 @@
                 </item>
                </layout>
               </widget>
+              <widget class="QWidget" name="tab_10">
+               <attribute name="title">
+                <string>主动触发测试</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_12">
+                <item row="0" column="2">
+                 <layout class="QVBoxLayout" name="verticalLayout_23">
+                  <item>
+                   <widget class="QPlainTextEdit" name="msgTest">
+                    <property name="enabled">
+                     <bool>true</bool>
+                    </property>
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="readOnly">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="clearDataPushButton">
+                    <property name="text">
+                     <string>清除数据</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1">
+                 <layout class="QVBoxLayout" name="verticalLayout_24">
+                  <item>
+                   <widget class="QPushButton" name="resetPushButton">
+                    <property name="text">
+                     <string>恢复出厂设置</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayout_46">
+                    <item>
+                     <widget class="QPushButton" name="setTimePushButton">
+                      <property name="text">
+                       <string>设置手柄时间</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QDateTimeEdit" name="dateTimeBrushSet">
+                      <property name="dateTime">
+                       <datetime>
+                        <hour>0</hour>
+                        <minute>0</minute>
+                        <second>0</second>
+                        <year>2023</year>
+                        <month>1</month>
+                        <day>1</day>
+                       </datetime>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_34">
+                    <property name="text">
+                     <string>刷牙记录</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="lineEdit">
+                    <property name="text">
+                     <string>specialmode 1641600010 0 120000 0 5000 0 0 0 1000 0 0 0 0 1500 1000 0 0 0 0 1000</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="pushButton_2">
+                    <property name="text">
+                     <string>发送单条数据</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QGroupBox" name="groupBox_9">
+                  <property name="title">
+                   <string>批量发送</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_26">
+                   <item>
+                    <layout class="QFormLayout" name="formLayout_2">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label_35">
+                       <property name="text">
+                        <string>开始时间</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QDateTimeEdit" name="startDateTime">
+                       <property name="dateTime">
+                        <datetime>
+                         <hour>0</hour>
+                         <minute>0</minute>
+                         <second>0</second>
+                         <year>2023</year>
+                         <month>1</month>
+                         <day>1</day>
+                        </datetime>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_36">
+                       <property name="text">
+                        <string>结束时间</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QDateTimeEdit" name="endDateTime">
+                       <property name="dateTime">
+                        <datetime>
+                         <hour>0</hour>
+                         <minute>0</minute>
+                         <second>0</second>
+                         <year>2023</year>
+                         <month>1</month>
+                         <day>2</day>
+                        </datetime>
+                       </property>
+                       <property name="date">
+                        <date>
+                         <year>2023</year>
+                         <month>1</month>
+                         <day>2</day>
+                        </date>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="label_37">
+                       <property name="text">
+                        <string>每天刷牙次数</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QSpinBox" name="brushTimesspinBox">
+                       <property name="value">
+                        <number>2</number>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="label_38">
+                       <property name="text">
+                        <string>牙菌斑(%)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QSpinBox" name="spinBox">
+                       <property name="maximum">
+                        <number>100</number>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="0">
+                      <widget class="QLabel" name="label_39">
+                       <property name="text">
+                        <string>刷牙时长(ms)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="1">
+                      <widget class="QLineEdit" name="brushTime">
+                       <property name="text">
+                        <string>2000,2000,2000,2000,2000,2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="5" column="0">
+                      <widget class="QLabel" name="label_40">
+                       <property name="text">
+                        <string>过压时长(ms)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="5" column="1">
+                      <widget class="QLineEdit" name="pressureTime">
+                       <property name="text">
+                        <string>2000,2000,2000,2000,2000,2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="6" column="0">
+                      <widget class="QLabel" name="label_41">
+                       <property name="text">
+                        <string>横刷时长(ms)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="6" column="1">
+                      <widget class="QLineEdit" name="horizalBrushTime">
+                       <property name="text">
+                        <string>2000,2000,2000,2000,2000,2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="sendBrushDataPushButton">
+                     <property name="text">
+                      <string>发送上述数据</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="Line" name="line">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="sendRandomData">
+                     <property name="text">
+                      <string>发送随机数据</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
               <widget class="QWidget" name="tab_9">
                <attribute name="title">
                 <string>压力测试</string>
@@ -3466,277 +3710,145 @@
                 </item>
                </layout>
               </widget>
-              <widget class="QWidget" name="tab_10">
-               <attribute name="title">
-                <string>主动触发测试</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_12">
-                <item row="0" column="2">
-                 <layout class="QVBoxLayout" name="verticalLayout_23">
-                  <item>
-                   <widget class="QPlainTextEdit" name="msgTest">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="readOnly">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="clearDataPushButton">
-                    <property name="text">
-                     <string>清除数据</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="1">
-                 <layout class="QVBoxLayout" name="verticalLayout_24">
-                  <item>
-                   <widget class="QPushButton" name="resetPushButton">
-                    <property name="text">
-                     <string>恢复出厂设置</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_46">
-                    <item>
-                     <widget class="QPushButton" name="setTimePushButton">
-                      <property name="text">
-                       <string>设置手柄时间</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QDateTimeEdit" name="dateTimeBrushSet">
-                      <property name="dateTime">
-                       <datetime>
-                        <hour>0</hour>
-                        <minute>0</minute>
-                        <second>0</second>
-                        <year>2023</year>
-                        <month>1</month>
-                        <day>1</day>
-                       </datetime>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_34">
-                    <property name="text">
-                     <string>刷牙记录</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="lineEdit">
-                    <property name="text">
-                     <string>specialmode 1641600010 0 120000 0 5000 0 0 0 1000 0 0 0 0 1500 1000 0 0 0 0 1000</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="pushButton_2">
-                    <property name="text">
-                     <string>发送单条数据</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="0">
-                 <widget class="QGroupBox" name="groupBox_9">
-                  <property name="title">
-                   <string>批量发送</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_26">
-                   <item>
-                    <layout class="QFormLayout" name="formLayout_2">
-                     <item row="0" column="0">
-                      <widget class="QLabel" name="label_35">
-                       <property name="text">
-                        <string>开始时间</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="0" column="1">
-                      <widget class="QDateTimeEdit" name="startDateTime">
-                       <property name="dateTime">
-                        <datetime>
-                         <hour>0</hour>
-                         <minute>0</minute>
-                         <second>0</second>
-                         <year>2023</year>
-                         <month>1</month>
-                         <day>1</day>
-                        </datetime>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QLabel" name="label_36">
-                       <property name="text">
-                        <string>结束时间</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QDateTimeEdit" name="endDateTime">
-                       <property name="dateTime">
-                        <datetime>
-                         <hour>0</hour>
-                         <minute>0</minute>
-                         <second>0</second>
-                         <year>2023</year>
-                         <month>1</month>
-                         <day>2</day>
-                        </datetime>
-                       </property>
-                       <property name="date">
-                        <date>
-                         <year>2023</year>
-                         <month>1</month>
-                         <day>2</day>
-                        </date>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QLabel" name="label_37">
-                       <property name="text">
-                        <string>每天刷牙次数</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QSpinBox" name="brushTimesspinBox">
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="0">
-                      <widget class="QLabel" name="label_38">
-                       <property name="text">
-                        <string>牙菌斑(%)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="1">
-                      <widget class="QSpinBox" name="spinBox">
-                       <property name="maximum">
-                        <number>100</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="0">
-                      <widget class="QLabel" name="label_39">
-                       <property name="text">
-                        <string>刷牙时长(ms)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="1">
-                      <widget class="QLineEdit" name="brushTime">
-                       <property name="text">
-                        <string>2000,2000,2000,2000,2000,2000</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="5" column="0">
-                      <widget class="QLabel" name="label_40">
-                       <property name="text">
-                        <string>过压时长(ms)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="5" column="1">
-                      <widget class="QLineEdit" name="pressureTime">
-                       <property name="text">
-                        <string>2000,2000,2000,2000,2000,2000</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="6" column="0">
-                      <widget class="QLabel" name="label_41">
-                       <property name="text">
-                        <string>横刷时长(ms)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="6" column="1">
-                      <widget class="QLineEdit" name="horizalBrushTime">
-                       <property name="text">
-                        <string>2000,2000,2000,2000,2000,2000</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="sendBrushDataPushButton">
-                     <property name="text">
-                      <string>发送上述数据</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="Line" name="line">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="sendRandomData">
-                     <property name="text">
-                      <string>发送随机数据</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
               <widget class="QWidget" name="tab_12">
                <attribute name="title">
                 <string>ui预览</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_16">
-                <item row="3" column="3">
+                <item row="4" column="3">
                  <widget class="QPushButton" name="play_picture">
                   <property name="text">
                    <string>播放</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="5">
-                 <widget class="QLineEdit" name="uissidInput">
+                <item row="2" column="8" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_95">
+                  <item>
+                   <widget class="QLabel" name="label_96">
+                    <property name="text">
+                     <string>wifi账号</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="uissidInput">
+                    <property name="text">
+                     <string>usmile_guest</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_97">
+                    <property name="text">
+                     <string>wifi密码</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="uipasswordInput">
+                    <property name="text">
+                     <string>Starspulse#@2024</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_94">
+                  <item>
+                   <widget class="QLabel" name="label_95">
+                    <property name="text">
+                     <string>播放速度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="play_speed">
+                    <property name="text">
+                     <string>50</string>
+                    </property>
+                    <property name="placeholderText">
+                     <string>输入播放间隔时间</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QPushButton" name="clear_picture">
                   <property name="text">
-                   <string>usmile_guest</string>
+                   <string>清空牙刷图片</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="4">
+                <item row="5" column="9">
+                 <layout class="QHBoxLayout" name="horizontalLayout_93">
+                  <item>
+                   <widget class="QCheckBox" name="is_audio_mode">
+                    <property name="text">
+                     <string>是否是音频传输模式</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="send_audio">
+                    <property name="text">
+                     <string>直接发送音频</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="5" colspan="2">
                  <widget class="QPushButton" name="set_play_speed">
                   <property name="text">
                    <string>设置播放速度</string>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0" colspan="7">
+                <item row="5" column="8">
+                 <layout class="QHBoxLayout" name="horizontalLayout_91">
+                  <item>
+                   <widget class="QLabel" name="label_93">
+                    <property name="text">
+                     <string>增加音量</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSlider" name="audio_volume">
+                    <property name="accessibleName">
+                     <string/>
+                    </property>
+                    <property name="autoFillBackground">
+                     <bool>false</bool>
+                    </property>
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_94">
+                    <property name="text">
+                     <string>0</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="2" column="5" colspan="2">
+                 <widget class="QPushButton" name="send_wifi_config">
+                  <property name="text">
+                   <string>配置网络信息</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0" colspan="10">
                  <layout class="QHBoxLayout" name="horizontalLayout_50">
                   <item>
                    <widget class="QLabel" name="high_speed_tp">
@@ -3746,7 +3858,7 @@ border-style: solid;
 border-color: rgb(255, 165, 0)</string>
                     </property>
                     <property name="text">
-                     <string>传输高速区(单图)</string>
+                     <string>传输单个音频文件</string>
                     </property>
                     <property name="alignment">
                      <set>Qt::AlignCenter</set>
@@ -3761,7 +3873,7 @@ border-style: solid;
 border-color: rgb(255, 165, 0)</string>
                     </property>
                     <property name="text">
-                     <string>动图传输区（文件夹）</string>
+                     <string>批量处理音频文件夹</string>
                     </property>
                     <property name="alignment">
                      <set>Qt::AlignCenter</set>
@@ -3770,13 +3882,6 @@ border-color: rgb(255, 165, 0)</string>
                   </item>
                  </layout>
                 </item>
-                <item row="4" column="4">
-                 <widget class="QPushButton" name="init_ui_data">
-                  <property name="text">
-                   <string>格式化全部</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="3">
                  <widget class="QPushButton" name="up_picture">
                   <property name="text">
@@ -3784,7 +3889,7 @@ border-color: rgb(255, 165, 0)</string>
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="5" colspan="2">
+                <item row="4" column="8" colspan="2">
                  <layout class="QHBoxLayout" name="horizontalLayout_69">
                   <item>
                    <widget class="QLabel" name="label_42">
@@ -3796,30 +3901,16 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLineEdit" name="ui_ip">
                     <property name="text">
-                     <string>http://192.168.137.186/</string>
+                     <string>http://192.168.137.225/</string>
                     </property>
                    </widget>
                   </item>
                  </layout>
                 </item>
-                <item row="2" column="6">
-                 <widget class="QLineEdit" name="uipasswordInput">
+                <item row="5" column="3">
+                 <widget class="QPushButton" name="down_picture">
                   <property name="text">
-                   <string>Starspulse#@2024</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QPushButton" name="clear_picture">
-                  <property name="text">
-                   <string>清空牙刷图片</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="4">
-                 <widget class="QPushButton" name="send_wifi_config">
-                  <property name="text">
-                   <string>配置网络信息</string>
+                   <string>下一张</string>
                   </property>
                  </widget>
                 </item>
@@ -3830,20 +3921,10 @@ border-color: rgb(255, 165, 0)</string>
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="3">
-                 <widget class="QPushButton" name="down_picture">
+                <item row="5" column="5" colspan="2">
+                 <widget class="QPushButton" name="init_ui_data">
                   <property name="text">
-                   <string>下一张</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLineEdit" name="play_speed">
-                  <property name="text">
-                   <string>50</string>
-                  </property>
-                  <property name="placeholderText">
-                   <string>输入播放间隔时间</string>
+                   <string>格式化全部</string>
                   </property>
                  </widget>
                 </item>

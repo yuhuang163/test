@@ -74,14 +74,14 @@
                  <item>
                   <widget class="QLabel" name="power_adc">
                    <property name="text">
-                    <string>电源adc：</string>
+                    <string>电源按键adc：</string>
                    </property>
                   </widget>
                  </item>
                  <item>
                   <widget class="QLabel" name="power_value">
                    <property name="text">
-                    <string>电源压力：</string>
+                    <string>电源按键压力：</string>
                    </property>
                   </widget>
                  </item>
@@ -207,19 +207,6 @@
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout">
                <item>
-                <widget class="QPushButton" name="refreshButton">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>30</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>刷新</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <widget class="QComboBox" name="comNameCombo">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -248,6 +235,19 @@
                  </property>
                 </widget>
                </item>
+               <item>
+                <widget class="QPushButton" name="disconnectButton">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>30</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>断开串口</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </item>
              <item>
@@ -256,7 +256,7 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QLabel" name="Fixtureuartstate">
+                <widget class="QLabel" name="Jiguartstate">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
@@ -408,6 +408,9 @@
                    <height>16777215</height>
                   </size>
                  </property>
+                 <property name="text">
+                  <string>b4:56:5d:bf:57:9d</string>
+                 </property>
                  <property name="placeholderText">
                   <string>切换英文输入扫码</string>
                  </property>
@@ -477,19 +480,15 @@
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_19">
                <item>
-                <widget class="QCheckBox" name="no_use_fixture">
-                 <property name="text">
-                  <string>不使用治具</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="checkBox_2">
+                <widget class="QCheckBox" name="debug">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="text">
-                  <string>CheckBox</string>
+                  <string>调试模式</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -529,7 +528,7 @@
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_14">
                <item>
-                <widget class="QPushButton" name="FixturedisconnectButton">
+                <widget class="QPushButton" name="jigDisconnectButton">
                  <property name="enabled">
                   <bool>false</bool>
                  </property>
@@ -539,7 +538,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="FixtureconnectButton">
+                <widget class="QPushButton" name="jigConnectButton">
                  <property name="enabled">
                   <bool>false</bool>
                  </property>
@@ -549,23 +548,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="FixturerefreshCom">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>16777215</width>
-                   <height>16777215</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>刷新串口</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="FixturecomNameCombo">
+                <widget class="QComboBox" name="jigComNameCombo">
                  <property name="enabled">
                   <bool>false</bool>
                  </property>

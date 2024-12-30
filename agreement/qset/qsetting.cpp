@@ -40,7 +40,7 @@ void qsetting::readSubPIDAndFilter() {
     QString subPID_01;
     QString subPID_02;
     QString subPID_03;
-    qDebug() << "subPIDKeys###########: " << subPIDKeys;
+    // qDebug() << "subPIDKeys###########: " << subPIDKeys;
     // 遍历所有键，并读取对应的值
     for (const QString& key : subPIDKeys) {
         QString value = SETTINGS.value("SUBPID/" + key).toString();
@@ -70,10 +70,10 @@ void qsetting::readSubPIDAndFilter() {
     }
 
     // 输出结果
-    qDebug() << "subPID_00: " << subPID_00;
-    qDebug() << "subPID_01: " << subPID_01;
-    qDebug() << "subPID_02: " << subPID_02;
-    qDebug() << "subPID_03: " << subPID_03;
+    // qDebug() << "subPID_00: " << subPID_00;
+    // qDebug() << "subPID_01: " << subPID_01;
+    // qDebug() << "subPID_02: " << subPID_02;
+    // qDebug() << "subPID_03: " << subPID_03;
 
     // 将数据填充到 QLineEdit 控件
     ui->lineEdit_SubPID_00->setText(subPID_00);
@@ -89,13 +89,17 @@ void qsetting::loadConfig() {
     this->resize(SETTINGS.value("Window/SettingSize", windowSize).toSize());
 
     // 使用映射将 station 和 QRadioButton 关联
-    QMap<QString, QRadioButton*> stationMap = {
-        {"IMU_CALI", ui->radioButtonImuCalibration},      {"MOTOR_TEST", ui->radioButtonMotorCalibration},
-        {"STATIC_CURRENT", ui->radioButtonStaticCurrent}, {"SCREEN_TEST", ui->radioButtonScreenTest},
-        {"CAMERA_TEST", ui->radioButtonCameraTest},       {"WIFIBLE_TEST", ui->radioButtonSignalTest},
-        {"AGE_TEST", ui->radioButtonAgingTest},           {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
-        {"FREE_WORK", ui->radioButtonFreeWorkstation},    {"MAIN_TEST", ui->radioButtonDebug},
-        {"PRESS_TEST", ui->radioButtonPressTest}};
+    QMap<QString, QRadioButton*> stationMap = {{"IMU_CALI", ui->radioButtonImuCalibration},
+                                               {"MOTOR_TEST", ui->radioButtonMotorCalibration},
+                                               {"QUIESCENT_CURRENT", ui->radioButtonStaticCurrent},
+                                               {"SCREEN_TEST", ui->radioButtonScreenTest},
+                                               {"CAMERA_TEST", ui->radioButtonCameraTest},
+                                               {"WIFIBLE_TEST", ui->radioButtonSignalTest},
+                                               {"AGE_TEST", ui->radioButtonAgingTest},
+                                               {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
+                                               {"FREE_WORK", ui->radioButtonFreeWorkstation},
+                                               {"MAIN_TEST", ui->radioButtonDebug},
+                                               {"PRESS_TEST", ui->radioButtonPressTest}};
 
     // 清除所有 QRadioButton 的选中状态
     for (auto button : stationMap) {
@@ -125,6 +129,8 @@ void qsetting::loadConfig() {
     ui->checkBox_MagneticReuseMotorStatus->setChecked(SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool());
     ui->checkBox_TestAudioCurrent->setChecked(SETTINGS.value("SYSTEM/TestAudioCurrent").toBool());
     ui->checkBox_TestShippingCurrent->setChecked(SETTINGS.value("SYSTEM/TestShippingCurrent").toBool());
+    ui->checkBox_PressIndependent->setChecked(SETTINGS.value("SYSTEM/PressIndependent").toBool());
+
     ui->checkBox_SendMotorCalibration->setChecked(SETTINGS.value("SYSTEM/SendMotorCalibration").toBool());
     ui->checkBox_LightTest->setChecked(SETTINGS.value("SYSTEM/LightTest").toBool());
     ui->checkBox_uperMotor->setChecked(SETTINGS.value("SYSTEM/uperMotor").toBool());
@@ -135,6 +141,8 @@ void qsetting::loadConfig() {
     ui->lineEdit_CurrentMechine->setText(SETTINGS.value("SYSTEM/CurrentMechine").toString());
     // 加载 SN
     ui->snLineEdit->setText(SETTINGS.value("Regex/SNPattern").toString());
+    ui->lineEdit_music_state->setText(SETTINGS.value("Music/MusicState").toString());
+    ui->checkBox_MusicState->setChecked(SETTINGS.value("Music/MusicState_checkBox").toBool());
 
     readSubPIDAndFilter();
 
@@ -160,6 +168,22 @@ void qsetting::loadConfig() {
     ui->lineEdit_OvervoltageLightStatus->setText(SETTINGS.value("FIXTEST/OverVoltageLight").toString());
     ui->lineEdit_Button1Status->setText(SETTINGS.value("FIXTEST/Button1").toString());
     ui->lineEdit_Button2Status->setText(SETTINGS.value("FIXTEST/Button2").toString());
+
+    // 加载压感参数
+    ui->lineEdit_displayImageType->setText(SETTINGS.value("PRESSURE/Use_graph").toString());  // 显示图像选择
+    ui->lineEdit_testWaitTime->setText(SETTINGS.value("PRESSURE/TestTime").toString());       // 压感测试时间
+    ui->lineEdit_individualMode->setText(SETTINGS.value("PRESSURE/Module").toString());       // 单模块
+    ui->lineEdit_functionSwitch->setText(SETTINGS.value("PRESSURE/functionSwitch").toString());  // 选择压感上位机的功能
+    ui->lineEdit_PressMechine->setText(SETTINGS.value("PRESSURE/PressMechine").toString());  //选择第几套治具
+
+    ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
+    ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
+
+    ui->modelPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/model_button_upper").toString());
+    ui->modelPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/model_button_lower").toString());
+
+    ui->powerPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/power_button_upper").toString());
+    ui->powerPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/power_button_lower").toString());
 
     // 加载 IMU 校准参数
     ui->lineEdit_calibrationTime->setText(SETTINGS.value("IMU/IMU_Wait_Time").toString());   // imu校准总时间
@@ -359,6 +383,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("SYSTEM/MagneticReuseMotorStatus", ui->checkBox_MagneticReuseMotorStatus->isChecked());
     SETTINGS.setValue("SYSTEM/TestAudioCurrent", ui->checkBox_TestAudioCurrent->isChecked());
     SETTINGS.setValue("SYSTEM/TestShippingCurrent", ui->checkBox_TestShippingCurrent->isChecked());
+    SETTINGS.setValue("SYSTEM/PressIndependent", ui->checkBox_PressIndependent->isChecked());
+
     SETTINGS.setValue("SYSTEM/SendMotorCalibration", ui->checkBox_SendMotorCalibration->isChecked());
     SETTINGS.setValue("SYSTEM/LightTest", ui->checkBox_LightTest->isChecked());
     SETTINGS.setValue("SYSTEM/ServoMotorStart", ui->checkBox_ServoMotorStart->isChecked());
@@ -370,6 +396,8 @@ void qsetting::saveConfig() {
 
     // 保存 SN
     SETTINGS.setValue("Regex/SNPattern", ui->snLineEdit->text());
+    SETTINGS.setValue("Music/MusicState", ui->lineEdit_music_state->text());
+    SETTINGS.setValue("Music/MusicState_checkBox", ui->checkBox_MusicState->isChecked());
 
     saveSubPIDAndFilter();
     // 保存 WIFI 信息
@@ -394,6 +422,22 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("FIXTEST/OverVoltageLight", ui->lineEdit_OvervoltageLightStatus->text());
     SETTINGS.setValue("FIXTEST/Button1", ui->lineEdit_Button1Status->text());
     SETTINGS.setValue("FIXTEST/Button2", ui->lineEdit_Button2Status->text());
+
+    // 加载压感参数
+    SETTINGS.setValue("PRESSURE/Use_graph", ui->lineEdit_displayImageType->text());
+    SETTINGS.setValue("PRESSURE/TestTime", ui->lineEdit_testWaitTime->text());
+    SETTINGS.setValue("PRESSURE/Module", ui->lineEdit_individualMode->text());
+    SETTINGS.setValue("PRESSURE/functionSwitch", ui->lineEdit_functionSwitch->text());
+    SETTINGS.setValue("PRESSURE/PressMechine", ui->lineEdit_PressMechine->text());
+
+    SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
+    SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());
+
+    SETTINGS.setValue("PRESSURE/model_button_upper", ui->modelPressUpperLimitLineEdit->text());
+    SETTINGS.setValue("PRESSURE/model_button_lower", ui->modelPressLowerLimitLineEdit->text());
+
+    SETTINGS.setValue("PRESSURE/power_button_upper", ui->powerPressUpperLimitLineEdit->text());
+    SETTINGS.setValue("PRESSURE/power_button_lower", ui->powerPressLowerLimitLineEdit->text());
 
     // 保存 IMU 校准参数
     SETTINGS.setValue("IMU/IMU_Wait_Time", ui->lineEdit_calibrationTime->text());
@@ -521,6 +565,9 @@ void qsetting::RestoreDefaultSetting() {
     ui->checkBox_MagneticReuseMotorStatus->setChecked(false);
     ui->checkBox_TestAudioCurrent->setChecked(false);
     ui->checkBox_TestShippingCurrent->setChecked(false);
+
+    ui->checkBox_PressIndependent->setChecked(false);
+
     ui->checkBox_SendMotorCalibration->setChecked(false);
     ui->checkBox_LightTest->setChecked(false);
     ui->checkBox_ServoMotorStart->setChecked(false);
@@ -532,6 +579,7 @@ void qsetting::RestoreDefaultSetting() {
     //立讯的p20p要回车开始，木星是按键开始
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
     if (ui->comboBox_productName->currentText() == "U7") {
+        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_DisableSerialPortRx->setChecked(true);
@@ -543,6 +591,7 @@ void qsetting::RestoreDefaultSetting() {
     }
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
     if (ui->comboBox_productName->currentText() == "U7P") {
+        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_BluetoothImageTransfer->setChecked(true);
@@ -607,8 +656,9 @@ void qsetting::RestoreDefaultSetting() {
         if (ui->comboBox_factory->currentText() == "lx")
             ui->checkBox_IMULastEnterStartTest->setChecked(true);
     }
-    //立讯：imu不需要晃动唤醒，全扫码再测试
+    //立讯：imu不需要晃动唤醒，全扫码再测试//原p30ps
     if (ui->comboBox_productName->currentText() == "Y25SE") {
+        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);

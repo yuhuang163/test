@@ -20,6 +20,17 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 {
 #include "lib/nfc/dcrf32.h"
 }
+typedef enum {
+    STATE_INVALID,
+    STATE_WAIT_START,
+    STATE_CALIB_START,
+    STATE_CALIB_STATIC_WAIT,
+    STATE_CALIB_STATIC_START,
+    STATE_CALIB_CH0,
+    STATE_CALIB_CH1,
+    STATE_CALIB_RESULT,
+    STATE_MAX,
+} STATE_INDEPENDENT_E;
 class test_base : public QWidget {
     Q_OBJECT
 public:
@@ -68,6 +79,9 @@ public:
 
 private:  // 通用变量
     QString receivedData = "";
+    // 各个上位机的状态
+
+    STATE_INDEPENDENT_E independent_state = STATE_INVALID;
 
     void initData();
     void saveDongleUartLog(QString data);
@@ -126,6 +140,8 @@ public:
     int m_index = 0;
 
 public slots:
+    void set_independent_state(STATE_INDEPENDENT_E state) { independent_state = state; };
+    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
@@ -141,7 +157,7 @@ public slots:
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
 
-    void readJigSerialPortData(void);
+    virtual void readJigSerialPortData(void);
     void handleJigSerialPortError(QSerialPort::SerialPortError error);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
@@ -158,6 +174,7 @@ public slots:
     virtual void canGoNextMechine(int){};
     virtual void refreshCameraControl(FacCameraControl){};
     virtual void checkLedControlState(FacLedControl){};
+    virtual void getPressSensorData(FacUploadPresSensor){};
     virtual void checkbutton(FacButtonState){};
     virtual void checkBrushControlState(FacBrushControl){};
     virtual void refreshImuCaliResult(FacImuCalibResult){};
@@ -165,12 +182,14 @@ public slots:
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString){};
     virtual void refreshBleRssi(QString){};
-
+    virtual void getPresscalidata(FacPreSensorCalibResult){};
     virtual void getDongleWifi(QString){};
     virtual void refreshBleState(int){};
     virtual void getWifiMsg(QString){};
     virtual void refreshBaseData(FacGetDevBaseInfo){};
     virtual void refreshBattaryData(FacDevInfo){};
+    virtual void refreshMusicState(FacDevInfo){};
+
     virtual void refreshSn(FacDevInfo){};
     virtual void refreshLcdControl(FacLcdControl){};
     virtual void refreshPeriphData(FacGetPeriphState){};

@@ -45,7 +45,7 @@ typedef struct {
     QByteArray md5;    //
 } local_ota_data;
 
-// 待整理
+
 typedef enum
 {
     MODULE_INVALID,
@@ -59,7 +59,7 @@ typedef struct {
     short calib_factor[MODULE_MAX];
     short temperature[MODULE_MAX];
 }press_calib_data_t;
-// 待整理
+
 
 class Qpb : public QSerialPort {
     Q_OBJECT
@@ -217,13 +217,12 @@ public slots:
     void set_camera_exposure_time(uint32_t time);                               // 设置摄像头曝光时间
     void set_dev_reset();                                                       // 设备复位
     void set_brush_reset();                                                     // 刷牙复位
-    void set_press_cali_result(unsigned short* cali_ok);                        // 设置压力校准结果
-    void sendCaliResult(press_calib_data_t cali_result);// 待整理
-    bool get_is_save_press_cali_data(){return is_save_press_cali_ok;}// 待整理
+
+    void set_press_cali_result(press_calib_data_t cali_result);// 设置压力校准结果
+    bool get_is_save_press_cali_data(){return is_save_press_cali_ok;}
     void set_imu_cali_result(ImuCalData cali_ok);                               // 发送IMU校准结果
     void set_new_imu_cali_result(NewImuCalData cali_ok);                        // 发送新的IMU校准结果
-    void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
-                               uint32_t vibrate_freq);           // 设置舵机电机参数
+
     void set_device_mode(int mode);                              // 设置设备模式
     void set_brush_control(int state);                           // 设置刷牙控制状态
     void set_fac_mode(int state);                                // 设置工厂模式
@@ -235,8 +234,7 @@ public slots:
     void set_i_am_app();                                       // 骗牙刷是app
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
-    void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
-                              const QString& port);  // 设置新的WiFi连接
+
     void set_press_collect_param(FacSwitch sta);     // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);       // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
@@ -244,11 +242,16 @@ public slots:
     void set_servo_motor_info();
     void get_now_music_info();
 
+    void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
+                              const QString& port);  // 设置新的WiFi连接
+    void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
+                               uint32_t vibrate_freq);           // 设置舵机电机参数
+
 public slots:
     void get_battery();                    // 获取电池信息
     void get_button_state(int state);      // 获取按钮状态
     void get_sn(FacDevInfoType which_sn);  // 获取SN码
-    void get_cali_result();                // 获取校准结果
+    void get_press_cali_result();                // 获取校准结果
     void get_imu_cali_result();            // 获取IMU校准结果
     void get_device_info();                // 获取设备信息
     void get_base_info();                  // 获取基本信息
@@ -306,19 +309,17 @@ signals:
     void send_FactroyCmd_WIFI_DEMAND(FacWifiDemand);
     void send_camera_CONTROL_state(FacCameraControl);
     void send_servo_motor_info_msg(FacMotorCalibResult);
-
     void send_get_picture_send_over(FacPictureDataAck);
-
     void send_pb_date(QString data);
     void send_ota_flow_control(int state);
-
     void send_motor_cali_msg(QString data);
     void send_pb_info(QString info);
     void send_ota_progress(int progress);
     void send_ota_result(int result);
+    void send_press_cali_data(FacPreSensorCalibResult x);
 
     void sendGetBrushResponse(int data);
-    void sendpresscalidata(FacPreSensorCalibResult x);// 待整理
+
 };
 
 #endif  // QPB_H

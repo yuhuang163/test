@@ -241,6 +241,8 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void renameAduioFilesInFolder(const QString& folderPath);
+    void processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb);
     void setting_ui();
     void saveblackbox(QString data);
     void sendNoisyData();
@@ -280,7 +282,7 @@ private slots:
     void showlog(QString msg);
     void refreshImuCaliMsg(QString msg);
     void sendPicture(const QString& url, const QString& filePath);
-    void renameFilesInFolder(const QString& folderPath);
+    void renamePictureFilesInFolder(const QString& folderPath);
     void convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName);
     void refreshImuCaliResult(FacImuCalibResult x);
     void updateComboBox();
@@ -491,6 +493,12 @@ private slots:
     void on_closeconnect_clicked();
 
     void on_get_now_music_clicked();
+
+    void on_send_audio_clicked();
+
+    void on_audio_volume_valueChanged(int value);
+
+    void on_is_audio_mode_stateChanged(int arg1);
 
 signals:
     void send_uart_state(int data);

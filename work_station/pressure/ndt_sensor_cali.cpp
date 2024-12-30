@@ -1,17 +1,16 @@
 ﻿#include "ndt_sensor_cali.h"
+
+#include <QSettings>
+
 #include "AbIni.h"
 #include "qdebug.h"
-#include <QSettings>
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+#    pragma execution_character_set("utf-8")
 #endif
 
-ndt_sensor_cali::ndt_sensor_cali()
-{
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-
-    brush_test_time = settings.value("pressure/brush_test_time", "600").toInt();
-    botton_test_time = settings.value("pressure/botton_test_time", "600").toInt();
+ndt_sensor_cali::ndt_sensor_cali() {
+    brush_test_time = SETTINGS.value("pressure/brush_test_time", "600").toInt();
+    botton_test_time = SETTINGS.value("pressure/botton_test_time", "600").toInt();
 }
 
 /*
@@ -20,35 +19,27 @@ ndt_sensor_cali::ndt_sensor_cali()
  * Return        : 0:pass 1:fail
  */
 
-unsigned char ndt_sensor_cali::Noise_CalProc(short *adc, short *noisePeak, short *noiseStd)
-{
+unsigned char ndt_sensor_cali::Noise_CalProc(short* adc, short* noisePeak, short* noiseStd) {
     unsigned char ret = 0;
     short diffData[CHANNEL_MAX];
     short ave[CHANNEL_MAX] = {0};
     short dataPeak[CHANNEL_MAX] = {0};
 
-    if (noiseLoopTime++ < NOISE_BUF_COUNT)
-    {
-        for (unsigned char ch = 0; ch < CAL_CHANNEL_NUM; ch++)
-        {
+    if (noiseLoopTime++ < NOISE_BUF_COUNT) {
+        for (unsigned char ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
             noiseAdcBuf[ch][noiseLoopTime - 1] = adc[ch];
             noiseAdcBufSum[ch] += adc[ch];
         }
 
         ret = 0;
-    }
-    else
-    {
-        for (unsigned char ch = 0; ch < CAL_CHANNEL_NUM; ch++)
-        {
+    } else {
+        for (unsigned char ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
             ave[ch] = noiseAdcBufSum[ch] / NOISE_BUF_COUNT;
 
-            for (short i = 0; i < NOISE_BUF_COUNT; i++)
-            {
+            for (short i = 0; i < NOISE_BUF_COUNT; i++) {
                 diffData[ch] = noiseAdcBuf[ch][i] - ave[ch];
                 noiseAdcDiffSum[ch] += diffData[ch] * diffData[ch];
-                if (dataPeak[ch] < qAbs(diffData[ch]))
-                {
+                if (dataPeak[ch] < qAbs(diffData[ch])) {
                     dataPeak[ch] = qAbs(diffData[ch]);
                 }
             }
@@ -62,8 +53,7 @@ unsigned char ndt_sensor_cali::Noise_CalProc(short *adc, short *noisePeak, short
     return ret;
 }
 
-void ndt_sensor_cali::sensor_cali_reset()
-{
+void ndt_sensor_cali::sensor_cali_reset() {
     gs32SensorFlag = 0;
     noiseLoopTime = 0;
     gu8CaliReset = 0;
@@ -94,23 +84,20 @@ void ndt_sensor_cali::sensor_cali_reset()
     memset(noiseAdcDiffSum, 0, sizeof(noiseAdcDiffSum));
 }
 
-void ndt_sensor_cali::sensor_cali_set(uint8_t stat)   // 开关
+void ndt_sensor_cali::sensor_cali_set(uint8_t stat)  // 开关
 {
     gu8CaliReset = stat;
 }
 
-void ndt_sensor_cali::sensor_test_status_set(TEST_STATUS_E t_status)
-{
-    test_status = t_status;
-}
+void ndt_sensor_cali::sensor_test_status_set(TEST_STATUS_E t_status) { test_status = t_status; }
 
-void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)   // 根据不同机型进行初始化
+void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)  // 根据不同机型进行初始化
 {
-    switch(machine) {
-        case CAL_CHANNEL_F20_CH0: //f20_bth
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            CAL_SIGNAL_CH0 = 70;      // 差异值刷头
-            CAL_WEIGHT_CH0 = 200;      // 刷头校准质量(g)
+    switch (machine) {
+        case CAL_CHANNEL_F20_CH0:  // f20_bth
+            CAL_CHANNEL_NUM = 1;   // 校准通道数
+            CAL_SIGNAL_CH0 = 70;   // 差异值刷头
+            CAL_WEIGHT_CH0 = 200;  // 刷头校准质量(g)
 
             para.lower_limit = 1000;
             para.upper_limit = 9000;
@@ -125,10 +112,10 @@ void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)   // 根据不同�
             ui_msg_test[2] = "人员：请放450g砝码";
             break;
 
-        case CAL_CHANNEL_F20_CH1: //f20_key1
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            CAL_SIGNAL_CH0 = 10;      // 差异值按键
-            CAL_WEIGHT_CH0 = 200;      // 按键校准质量(g)
+        case CAL_CHANNEL_F20_CH1:  // f20_key1
+            CAL_CHANNEL_NUM = 1;   // 校准通道数
+            CAL_SIGNAL_CH0 = 10;   // 差异值按键
+            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
 
             para.lower_limit = 1000;
             para.upper_limit = 15000;
@@ -141,10 +128,10 @@ void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)   // 根据不同�
             ui_msg_test[0] = "开始测试模式按键";
             break;
 
-        case CAL_CHANNEL_F20_CH2://f20_key2
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            CAL_SIGNAL_CH0 = 10;      // 差异值按键
-            CAL_WEIGHT_CH0 = 200;      // 按键校准质量(g)
+        case CAL_CHANNEL_F20_CH2:  // f20_key2
+            CAL_CHANNEL_NUM = 1;   // 校准通道数
+            CAL_SIGNAL_CH0 = 10;   // 差异值按键
+            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
 
             para.lower_limit = 1000;
             para.upper_limit = 15000;
@@ -157,76 +144,68 @@ void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)   // 根据不同�
             ui_msg_test[0] = "开始测试电源按键";
             break;
 
-        case CAL_CHANNEL_Y20_CH0://y20p_bth
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            
-            CAL_SIGNAL_CH0 = 300;      // 差异值刷头
+        case CAL_CHANNEL_Y20_CH0:  // y20p_bth
+            CAL_CHANNEL_NUM = 1;   // 校准通道数
 
-            CAL_WEIGHT_CH0 = 400;      // 刷头校准质量(g)
+            CAL_SIGNAL_CH0 = 300;  // 差异值刷头
+
+            CAL_WEIGHT_CH0 = 400;  // 刷头校准质量(g)
             break;
 
-        case CAL_CHANNEL_Y20_CH1://y20p_key
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            
-            CAL_SIGNAL_CH0 = 40;       // 差异值按键
+        case CAL_CHANNEL_Y20_CH1:  // y20p_key
+            CAL_CHANNEL_NUM = 1;   // 校准通道数
 
-            CAL_WEIGHT_CH0 = 200;      // 按键校准质量(g)
+            CAL_SIGNAL_CH0 = 40;  // 差异值按键
+
+            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
             break;
 
         case CAL_CHANNEL_U7_CH0:
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            
-            CAL_SIGNAL_CH0 = 40;       // 差异值按键
+            CAL_CHANNEL_NUM = 1;  // 校准通道数
 
-            CAL_WEIGHT_CH0 = 300;      // 按键校准质量(g)
+            CAL_SIGNAL_CH0 = 40;  // 差异值按键
+
+            CAL_WEIGHT_CH0 = 300;  // 按键校准质量(g)
             break;
-            
-        case CAL_CHANNEL_Y21_CH0:
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            
-            CAL_SIGNAL_CH0 = 250;       // 差异值刷头
 
-            CAL_WEIGHT_CH0 = 400;      // 按键刷头质量(g)
+        case CAL_CHANNEL_Y21_CH0:
+            CAL_CHANNEL_NUM = 1;  // 校准通道数
+
+            CAL_SIGNAL_CH0 = 250;  // 差异值刷头
+
+            CAL_WEIGHT_CH0 = 400;  // 按键刷头质量(g)
             break;
 
         case CAL_CHANNEL_P30P_CH0:
-            CAL_CHANNEL_NUM = 1;       // 校准通道数
-            
-            CAL_SIGNAL_CH0 = 40;       // 差异值按键
+            CAL_CHANNEL_NUM = 1;  // 校准通道数
 
-            CAL_WEIGHT_CH0 = 300;      // 按键刷头质量(g)
+            CAL_SIGNAL_CH0 = 40;  // 差异值按键
+
+            CAL_WEIGHT_CH0 = 300;  // 按键刷头质量(g)
             break;
 
-        default:
-            break;
+        default: break;
     }
 }
 
-unsigned char ndt_sensor_cali::Self_Checking_Proces(short *adc, short *err)
-{
+unsigned char ndt_sensor_cali::Self_Checking_Proces(short* adc, short* err) {
     unsigned char ret = 0;
     unsigned char ch = 0;
 
-    for (ch = 0; ch < CAL_CHANNEL_NUM; ch++)
-    {
-        if (adc[ch] < OFFSET_ADC_NEGATIVE || adc[ch] > OFFSET_ADC_POSITIVE)
-        {
+    for (ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
+        if (adc[ch] < OFFSET_ADC_NEGATIVE || adc[ch] > OFFSET_ADC_POSITIVE) {
             err[ch] = err[ch] | 0x01;
         }
     }
-    if (Noise_CalProc(adc, noisePeak, noiseStd))
-    {
+    if (Noise_CalProc(adc, noisePeak, noiseStd)) {
         // printf("noiseStd:%d %d noisePeak:%d %d\r\n",noiseStd[0],noiseStd[1], noisePeak[0],
         // noisePeak[1]);
 
-        for (ch = 0; ch < CAL_CHANNEL_NUM; ch++)
-        {
-            if (noiseStd[ch] > NOISE_STD_STANDARD)
-            {
+        for (ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
+            if (noiseStd[ch] > NOISE_STD_STANDARD) {
                 err[ch] = err[ch] | 0x02;
             }
-            if (noisePeak[ch] > NOISE_PEAK_STANDARD)
-            {
+            if (noisePeak[ch] > NOISE_PEAK_STANDARD) {
                 err[ch] = err[ch] | 0x04;
             }
         }
@@ -243,57 +222,46 @@ unsigned char ndt_sensor_cali::Self_Checking_Proces(short *adc, short *err)
                   err：错误代码
 * Return        : 1不要移动 2 挂砝码 3 拿起砝码 4 按键按下 5挺起按键（校准完成）
 */
-char ndt_sensor_cali::Calibration_Proces_ndt(short *adc, unsigned short *gRawDataFactor, short *err)
-{
+char ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned short* gRawDataFactor, short* err) {
     short diffData[CHANNEL_MAX] = {0};
     unsigned int cal_temp = 0;
     // char noiseFlag = 0;
 
     qDebug() << "cycles=" << cycles;
-    if (cycles++ <= CAL_SELF_CHECKING_TIME)   // 200帧用于噪声判断
+    if (cycles++ <= CAL_SELF_CHECKING_TIME)  // 200帧用于噪声判断
     {
         Self_Checking_Proces(adc, err);
         calProcessFlag = cal_self_checking_flag;
-        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT)
-        {
+        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT) {
             adcHeadSum[CH0] += adc[CH0];
-            if(CAL_CHANNEL_NUM == 2) {
+            if (CAL_CHANNEL_NUM == 2) {
                 adcHeadSum[CH1] += adc[CH1];
             }
         }
-        if (cycles == CAL_SELF_CHECKING_TIME)
-        {
+        if (cycles == CAL_SELF_CHECKING_TIME) {
             adcHead[CH0] = adcHeadSum[CH0] / SMOOTH_COUNT;
-            if(CAL_CHANNEL_NUM == 2) {
+            if (CAL_CHANNEL_NUM == 2) {
                 adcHead[CH1] = adcHeadSum[CH1] / SMOOTH_COUNT;
             }
             // printf("adcHead %d %d\r\n",adcHead[CH0],adcHead[CH1]);
         }
-    }
-    else if (cycles <= (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME) &&
-             cycles > CAL_SELF_CHECKING_TIME)
-    {
+    } else if (cycles <= (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME) && cycles > CAL_SELF_CHECKING_TIME) {
         diffData[CH0] = adc[CH0] - adcHead[CH0];
-        if (diffData[CH0] > CAL_SIGNAL_CH0)   // 如果有超过200adc
+        if (diffData[CH0] > CAL_SIGNAL_CH0)  // 如果有超过200adc
         {
             diffMaxFlag[CH0]++;
-        }
-        else
-        {
+        } else {
             diffDataSum[CH0] = 0;
             diffMaxFlag[CH0] = 0;
         }
         qDebug() << " singleFlag[CH0]" << singleFlag[CH0];
-        if (singleFlag[CH0] == 0)
-        {
+        if (singleFlag[CH0] == 0) {
             calProcessFlag = cal_ch0_press_flag;
         }
-        if (diffMaxFlag[CH0] > CAL_SIGNAL_TIME - SMOOTH_COUNT)
-        {
+        if (diffMaxFlag[CH0] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {
             diffDataSum[CH0] += diffData[CH0];
             // printf("diffData:%d\r\n",diffData[CH0]);
-            if (diffMaxFlag[CH0] == CAL_SIGNAL_TIME)
-            {
+            if (diffMaxFlag[CH0] == CAL_SIGNAL_TIME) {
                 diffDataCal[CH0] = diffDataSum[CH0] / SMOOTH_COUNT;
                 calProcessFlag = cal_ch0_leave_flag;
                 singleFlag[CH0] = 1;
@@ -306,30 +274,23 @@ char ndt_sensor_cali::Calibration_Proces_ndt(short *adc, unsigned short *gRawDat
 
     if (CAL_CHANNEL_NUM == 2) {
         if (cycles < (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME) &&
-            cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME))
-        {
+            cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME)) {
             diffData[CH1] = adc[CH1] - adcHead[CH1];
-            if (diffData[CH1] > CAL_SIGNAL_CH1)
-            {
+            if (diffData[CH1] > CAL_SIGNAL_CH1) {
                 diffMaxFlag[CH1]++;
-            }
-            else
-            {
+            } else {
                 diffMaxFlag[CH1] = 0;
                 diffDataSum[CH1] = 0;
             }
 
-            if (singleFlag[CH1] == 0)
-            {
+            if (singleFlag[CH1] == 0) {
                 calProcessFlag = cal_ch1_press_flag;
             }
 
-            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT)
-            {
+            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {
                 diffDataSum[CH1] += diffData[CH1];
                 // printf("diffData:%d\r\n",diffData[CH1]);
-                if (diffMaxFlag[CH1] == CAL_SIGNAL_TIME)
-                {
+                if (diffMaxFlag[CH1] == CAL_SIGNAL_TIME) {
                     diffDataCal[CH1] = diffDataSum[CH1] / SMOOTH_COUNT;
                     calProcessFlag = cal_ch1_leave_flag;
                     singleFlag[CH1] = 1;
@@ -339,25 +300,20 @@ char ndt_sensor_cali::Calibration_Proces_ndt(short *adc, unsigned short *gRawDat
                 }
             }
         }
-        if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME))
-        {
+        if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME)) {
             calProcessFlag = cal_finally_flag;
-            if (singleFlag[CH0] == 0)
-            {
+            if (singleFlag[CH0] == 0) {
                 err[CH0] = err[CH0] | 0x08;
             }
-            if (singleFlag[CH1] == 0)
-            {
+            if (singleFlag[CH1] == 0) {
                 err[CH1] = err[CH1] | 0x08;
             }
         }
 
     } else if (CAL_CHANNEL_NUM == 1) {
-        if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME))
-        {
+        if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME)) {
             calProcessFlag = cal_finally_flag;
-            if (singleFlag[CH0] == 0)
-            {
+            if (singleFlag[CH0] == 0) {
                 err[CH0] = err[CH0] | 0x08;
             }
         }
@@ -368,34 +324,27 @@ char ndt_sensor_cali::Calibration_Proces_ndt(short *adc, unsigned short *gRawDat
     return calProcessFlag;
 }
 
-unsigned short *ndt_sensor_cali::ndt_sensor_cali_process(int count, short *adc)
-{
-    if (gu8CaliReset)
-    {
-        if (count > 0)   // 有数据
+unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) {
+    if (gu8CaliReset) {
+        if (count > 0)  // 有数据
         {
             gSensorPressAdc[0] = adc[0];
             if (CAL_CHANNEL_NUM == 2) {
                 gSensorPressAdc[1] = adc[1];
             }
 
-            qDebug() << "CSU18M68, Cali BrushHead: PressAdc = " << gSensorPressAdc[0];   // 刷头
-            qDebug() << "CSU18M68, Cali Key: PressAdc =" << gSensorPressAdc[1];          // 按键
+            qDebug() << "CSU18M68, Cali BrushHead: PressAdc = " << gSensorPressAdc[0];  // 刷头
+            qDebug() << "CSU18M68, Cali Key: PressAdc =" << gSensorPressAdc[1];         // 按键
 
             // printf("CSU18M68, Cali Temperature: %d\r\n", tempFactor);
 
             gs32SensorFlag = Calibration_Proces_ndt(adc, rawDataFactor, err);
 
-            if (gs32SensorFlag == 1)
-            {
+            if (gs32SensorFlag == 1) {
                 qDebug() << "别移动,正在获取0点ADC";
-            }
-            else if (gs32SensorFlag == 2)
-            {
+            } else if (gs32SensorFlag == 2) {
                 qDebug() << "校准通道0";
-            }
-            else if (gs32SensorFlag == 3)
-            {
+            } else if (gs32SensorFlag == 3) {
                 if (CAL_CHANNEL_NUM == 1) {
                     qDebug() << "校准事件完成";
 
@@ -407,20 +356,16 @@ unsigned short *ndt_sensor_cali::ndt_sensor_cali_process(int count, short *adc)
                         gSensorPressAdc[0] = err[0];
                         rawDataFactor[0] = 0;
                         qDebug() << "发生错误：err =" << err[0];
-                        gs32SensorFlag = 6;   // 失败
+                        gs32SensorFlag = 6;  // 失败
                     }
                     gu8CaliReset = 0;
                 } else {
                     qDebug() << "拿走砝码";
                 }
-            }
-            else if (gs32SensorFlag == 4)
-            {
+            } else if (gs32SensorFlag == 4) {
                 qDebug() << "按键放xg砝码";
                 // Cailbration_Coef_Write();
-            }
-            else if (gs32SensorFlag == 5)
-            {
+            } else if (gs32SensorFlag == 5) {
                 qDebug() << "校准事件完成";
                 //  QThread::msleep(2000); // 暂停当前线程 2000 毫秒（2秒）
 
@@ -434,7 +379,7 @@ unsigned short *ndt_sensor_cali::ndt_sensor_cali_process(int count, short *adc)
                     rawDataFactor[0] = 0;
                     rawDataFactor[1] = 0;
                     qDebug() << "发生错误: err =" << err[0] << err[1];
-                    gs32SensorFlag = 6;   // 失败
+                    gs32SensorFlag = 6;  // 失败
                 }
 
                 gu8CaliReset = 0;

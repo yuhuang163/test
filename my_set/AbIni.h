@@ -56,7 +56,7 @@
 #define DEBUG_VER "电刷产测工具   V1.4.7"
 #define CAMERA_VER "摄像测试工站   V1.3.1"
 #define AGE_VER "老化测试工站   V1.3.0"
-#define MOTOR_VER "电机校准工站   V1.3.0"
+#define MOTOR_VER "电机校准工站   V1.3.1"
 #define QC_VER "静态电流测试   V1.4.7"
 #define SCREEN_VER "屏幕测试工站   V1.2.1"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
@@ -67,51 +67,25 @@
 #define PRESSURE_VER "压感校测工站   V1.3.0"
 
 
-
-
-
-// [DEBUG_VER] 添加获取牙刷当前曲目的功能
+// 修复静态电流配置失败的问题
+// [DEBUG_VER] 添加音频文件的批量处理，以及音频文件发送，wifi测试在主页面配置
 // [CAMERA_VER]  删除冗余代码
 // [AGE_VER] 可以勾选是否写入skuid功能
-// [PCBA_VER] 添加亚达明的mes功能
+// [PCBA_VER] 伟克森mes添加对版本的管控
+// [PRESSURE_VER] 合入压感上位机，添加压感配置内容到上位机配置页面
+// [QC_VER] 增加当前曲目的拦截，修改了ip地址
+// [MOTOR_VER] 电机校准测试过程获取设备的mac地址
+//
+// [SINGLE_VER]
+
 //
 
-
-// [MOTOR_VER] 
-
-// [SINGLE_VER] 
-
-// [QC_VER] 修复配置勾选是否测试外设状态失效问题
-//
-
-
-// [IMU_VER] 修改p30p为y25se，适配P20PS 
+// [IMU_VER] 修改p30p为y25se，适配P20PS
 
 // [SCREEN_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间，允许重新获取压感信息一次
 
 // [LIGHT_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [FREE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 //
-
-// 待整理
-#define Y20_Pro_PRESS_TEST  0               // Y20 Pro压感校准
-
-// #define F20_PRESS_TEST      0               // F20压感校准
-#define U7_PRESS_TEST       0               // U7压感校准
-#define P30_Pro_PRESS_TEST  01              // P30P压感校准
-
-#if Y20_Pro_PRESS_TEST
-    #define IS_INDEPENDENT   0   // 每个产品的校准是否是独立的
-    #define USE_CALIB_FIXTURE 01
-    #define USE_TEST_FIXTURE  0
-
-#elif U7_PRESS_TEST
-    #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
-
-#elif P30_Pro_PRESS_TEST
-    #define IS_INDEPENDENT   1   // 每个产品的校准是否是独立的
-    
-#endif
-// 待整理
 
 #endif  // ABINI_H

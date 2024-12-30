@@ -958,8 +958,8 @@ void MainWindow::on_disconnectwifi_clicked() {
     }
 }
 void MainWindow::on_connectwifi_clicked() {
-    QString wifiName = SETTINGS.value("WIFI/Name").toString();
-    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
+    QString wifiName = ui->wifiUserName->text();      // SETTINGS.value("WIFI/Name").toString();
+    QString wifiPassword = ui->wifiPassword->text();  // SETTINGS.value("WIFI/Password").toString();
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
@@ -3382,3 +3382,32 @@ void MainWindow::on_brush_relocation_clicked() {
 }
 
 void MainWindow::on_get_now_music_clicked() { pb->get_now_music_info(); }
+
+void MainWindow::on_send_audio_clicked() { sendPicture(ui->ui_ip->text(), "output/1.bin"); }
+
+void MainWindow::on_audio_volume_valueChanged(int value) { ui->label_94->setText(QString::number(value)); }
+
+void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
+    if (arg1) {  //音频的
+
+        ui->high_speed_tp->setText("传输单个音频文件");
+        ui->active_picture->setText("批量处理音频文件夹");
+        ui->send_audio->show();
+        ui->audio_volume->show();
+        ui->audio_volume->show();
+        ui->label_93->show();
+        ui->label_94->show();
+
+    }
+
+    else {  // ui的
+
+        ui->high_speed_tp->setText("传输单个图片文件");
+        ui->active_picture->setText("批量发送处理图片文件夹");
+        ui->send_audio->hide();
+        ui->audio_volume->hide();
+        ui->label_93->hide();
+        ui->label_94->hide();
+    }
+    qDebug() << "on_is_audio_mode_stateChanged" << arg1;
+}

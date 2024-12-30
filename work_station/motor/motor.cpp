@@ -250,6 +250,23 @@ void motor::processInspection(QString stringsn) {
 }
 
 void motor::refreshBaseData(FacGetDevBaseInfo data) {
+    QString mac;
+
+    for (int var = data.ble_mac.size - 1; var >= 0; --var) {
+        mac += QString("%1").arg(data.ble_mac.bytes[var], 2, 16, QChar('0'));
+        if (var > 0) {
+            mac += ":";
+        }
+    }
+
+    showlog("当前连接设备的mac地址" + mac);
+
+    if (macAddress != mac) {
+        isTestContinue = false;
+        showlog("停止运行");
+        QMessageBox::warning(NULL, "严重警告", " 当前连接设备与获取的mac不同\t\r\n");
+    }
+
     // 读取软件版本字符串
     QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
 

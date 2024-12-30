@@ -943,7 +943,7 @@ bool compareFileNames(const QString& fileName1, const QString& fileName2) {
     return number1 < number2;
 }
 
-void MainWindow::renameFilesInFolder(const QString& folderPath) {
+void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
     QDir folder(folderPath);
     if (!folder.exists()) {
         qDebug() << "文件夹不存在";
@@ -1582,7 +1582,7 @@ void MainWindow::getMac(QString sn_to_search) {
     else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
         fileName = "mac_sn.txt";
     else {
-        QString path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
+        QString path = "\\\\172.30.189.83\\sgpub\\LTC\\MAC\\mac_sn.txt";
         QFileInfo fileInfo(path);
         // 创建一个文件对象
         if (fileInfo.exists() && fileInfo.isFile()) {
@@ -1686,11 +1686,7 @@ void MainWindow::clearDisplay() {
     basicInfoModel->resetAllTestResult();
 }
 void MainWindow::saveImuTestDataToCsv(const QString& macAddress, const QString& result) {
-    // 获取桌面路径
-    QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-
-    // 构建 "测试结果" 文件夹的完整路径
-    QString folderPath = QDir(desktopPath).filePath("测试结果");
+    QString folderPath = "D:/测试结果";
 
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
@@ -1906,11 +1902,7 @@ void MainWindow::sendBrushData(bool is_random) {
 }
 
 void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult) {
-    // 获取桌面路径
-    QString desktopPath = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-
-    // 构建 "测试结果" 文件夹的完整路径
-    QString folderPath = QDir(desktopPath).filePath("测试结果");
+    QString folderPath = "D:/测试结果";
 
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
@@ -2574,6 +2566,20 @@ void MainWindow::initPeriphState() {
         }
     });
 }
+bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
+    QFile file(oldFilePath);
+    if (file.exists()) {
+        if (file.rename(newFilePath)) {
+            qDebug() << "File renamed successfully from" << oldFilePath << "to" << newFilePath;
+            return true;
+        } else {
+            qDebug() << "Failed to rename file from" << oldFilePath << "to" << newFilePath;
+        }
+    } else {
+        qDebug() << "File does not exist:" << oldFilePath;
+    }
+    return false;
+}
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
     if (watched == ui->high_speed_tp || watched == ui->active_picture) {
         if (event->type() == QEvent::DragEnter) {
@@ -2596,16 +2602,34 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
             // QImage对I/O优化过, QPixmap对显示优化
             if (!image.isNull() || !path.isNull()) {
                 if (ui->active_picture->underMouse()) {  // 如果拖到了active_picture上
-                    on_clear_picture_clicked();
 
-                    renameFilesInFolder(path);
+                    if (ui->is_audio_mode->checkState()) {  // 如果是音频模式
+                        renameAduioFilesInFolder(path);
+
+                    } else {
+                        on_clear_picture_clicked();
+                        renamePictureFilesInFolder(path);
+                    }
                 }
                 if (ui->high_speed_tp->underMouse()) {  // 如果拖到了high_speed_tp上
-                    on_clear_picture_clicked();
-                    ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
-                    QFileInfo fileInfo(path);
-                    QString fileName = fileInfo.fileName();
-                    convertImageTo16BitPaletteHigh(path, fileName);
+
+                    if (ui->is_audio_mode->checkState()) {  // 如果是音频模式
+                        processAudio(path, "output", QString::number(ui->audio_volume->value()));
+                        QFileInfo fileInfo(path);
+                        QString fileName = fileInfo.fileName();
+                        QString oldFilePath = "output/" + fileName + ".bin";
+                        QString newFilePath = "output/1.bin";
+                        renameFile(oldFilePath, newFilePath);
+                        sendPicture(ui->ui_ip->text(), "output/1.bin");
+
+                    } else {
+                        on_clear_picture_clicked();
+                        ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
+                        QFileInfo fileInfo(path);
+                        QString fileName = fileInfo.fileName();
+                        convertImageTo16BitPaletteHigh(path, fileName);
+                    }
+
                 } else {
                     qDebug() << "Image dropped on an unknown widget.";
                 }
@@ -2842,4 +2866,57 @@ void MainWindow::checkAndUpdateFile() {
         }
         reply->deleteLater();
     });
+}
+
+// EQ_TACKLE/.venv/Scripts/python.exe" "EQ_TACKLE/volume_and_reduce.py", "C:/Users/heyj/Desktop/Smart.mp3", "1.wav", "0"
+void MainWindow::processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb) {
+    QString pythonPath = "./EQ_TACKLE/.venv/Scripts/python.exe";
+    QString scriptPath = "./EQ_TACKLE/volume_and_reduce.py";
+
+    // 创建 QProcess 对象
+    QProcess process;
+
+    // 准备命令和参数，注意去掉路径中的引号
+    QStringList arguments;
+    arguments << scriptPath << inputFile  // 不加引号
+              << outputFile << volumeChangeDb;
+
+    // 打印调试信息，确保路径和参数正确
+    qDebug() << "Running command:" << pythonPath << arguments;
+
+    // 启动进程并等待完成
+    process.start(pythonPath, arguments);
+    process.waitForFinished(-1);  // 等待进程完成，-1 表示无限等待
+
+    // 获取输出和错误信息
+    QString output(process.readAllStandardOutput());
+    QString errorOutput(process.readAllStandardError());
+
+    // 打印输出信息
+    showlog("Output:" + output);
+    showlog("Error Output:" + errorOutput);
+}
+void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
+    QDir folder(folderPath);
+    if (!folder.exists()) {
+        showlog("文件夹不存在");
+        return;
+    }
+    QTime TestTime;
+    // 获取文件夹中所有文件的列表
+    QStringList files = folder.entryList(QDir::Files, QDir::Name);
+    int fileCount = files.size();
+    std::sort(files.begin(), files.end(), compareFileNames);
+    qDebug() << "files:" << files;
+
+    TestTime.start();
+
+    // 遍历文件夹中的文件
+    for (int i = 0; i < fileCount; ++i) {
+        QString fileName = files.at(i);
+        QString filePath = folder.filePath(fileName);
+        processAudio(filePath, "output", QString::number(ui->audio_volume->value()));
+    }
+    showlog("发送结束");
+    showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }

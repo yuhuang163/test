@@ -33,6 +33,8 @@ public:
     void refreshBleState(int state) override;
     void refreshPeriphData(FacGetPeriphState data) override;
     void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshMusicState(FacDevInfo data)override;
+
     void refreshAmmeterData(QString data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };

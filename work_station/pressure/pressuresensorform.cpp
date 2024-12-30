@@ -47,7 +47,7 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::PressureSensorForm) {
     m_index = index;
     pack.mechines = getIndex();
-    //  dongleBaudRate = 115200;
+
     dongleOutTime = 1;  // 太快会死锁
     upperComputerVer = PRESSURE_VER;
 
@@ -58,6 +58,7 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     ui->macLabel->setText("蓝牙mac:                        ");
     ui->frame_rate->setText("数据帧率:            ");
 
+    //治具串口不可见
     for (auto i = 0; i < ui->horizontalLayout_14->count(); i++) {
         QWidget* w = ui->horizontalLayout_14->itemAt(i)->widget();
         if (w != nullptr) {
@@ -79,25 +80,25 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     // 文本框使用以上设定
     ui->log->mergeCurrentCharFormat(fmt);
 
-    on_refreshButton_clicked();
+    scanSerialPorts();
     ui->msgEdit->setStyleSheet("font-size: 16pt;");
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
 
-    mUserno = settings.value("Mes/mUserno").toString();
-    machineNo = settings.value("Mes/machineNo").toString();
+    mUserno = SETTINGS.value("Mes/mUserno").toString();
+    machineNo = SETTINGS.value("Mes/machineNo").toString();
     ui->msgEdit->appendPlainText("mUserno=" + mUserno);
     ui->msgEdit->appendPlainText("machineNo=" + machineNo);
 
-    actual_wait_time = settings.value("Time/TestTime").toInt();
+    actual_wait_time = SETTINGS.value("PRESSURE/TestTime").toInt();
     measure_wait_time = actual_wait_time + 5000;
+    pack.product = SETTINGS.value("Mes/Product_Name").toString();
+    product_model_init(pack.product);
 
-    Product_Name = settings.value("ProductInfo/Product_Name").toString();
-    product_model_init(Product_Name);
-
-    Is_use_graph = settings.value("Graph/Use_graph").toString();
+    Is_use_graph = SETTINGS.value("PRESSURE/Use_graph").toString();
     graph_init(product_model, Is_use_graph);
 
-    only_mode = settings.value("OnlyModule/Module", "ALL").toString();
+    only_mode = SETTINGS.value("PRESSURE/Module", "ALL").toString();
+
+    function_switch = function_e(SETTINGS.value("PRESSURE/functionSwitch", 1).toInt());
 
     ui->mechine_number->setText(QString::number(getIndex() + 1) + "号机");
     ui->mechine_number->setStyleSheet("font-size: 33px; background-color: yellow; color: black;  border-radius: 10px; "
@@ -109,32 +110,16 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     ui->mes_state->setStyleSheet("font-size: 50px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
 
-    connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
-    // connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(getButtonState(FacButtonState)));
-    // connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refresh_sn(FacDevInfo)));
-    // connect(pb, SIGNAL(sendpresscalidata(FacPreSensorCalibResult)), this,
-    // SLOT(getPresscalidata(FacPreSensorCalibResult))); connect(pb, SIGNAL(baseInfoReady(FacGetDevBaseInfo)), this,
-    // SLOT(refreshBaseData(FacGetDevBaseInfo))); connect(at, SIGNAL(send_debug(QString)), this,
-    // SLOT(LogPrintDebug(QString)));
-    nfcComName = settings.value(QString("%1/nfcComName").arg(getIndex())).toString();
+    nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(getIndex())).toString();
 
-    IsSaveFail = settings.value("DATA/IsSaveFail").toInt();
+    IsSaveFail = SETTINGS.value("DATA/IsSaveFail").toInt();
 
-    ui->FixturecomNameCombo->clear();
-    foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
-        ui->FixturecomNameCombo->addItem(info.portName());
-    }
-
-    // connect(FixtureserialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-    // SLOT(FixturehandleError(QSerialPort::SerialPortError)));
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
         waittime->stop();
         qDebug() << "定时器结束计时" << QDateTime::currentDateTime();
     });
 }
-
-void PressureSensorForm::LogPrintDebug(QString debug) { ui->log->appendPlainText("LogPrint" + debug); }
 
 void PressureSensorForm::graph_init(MODEL_ID_E model, QString is_use_graph) {
     if (is_use_graph == "USE_ALL_GRAPH") {
@@ -217,7 +202,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
     } else {
         qDebug() << "sensor_v is already empty.";
     }
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
+
     qDebug() << "初始化压感模组容器";
 
     if (model == MODEL_ID_Y20P) {
@@ -263,11 +248,11 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         y20p_ch1_vector.para.test_tolerance[0] = 50;
         y20p_ch1_vector.para.test_count[0] = 300;
 
-        y20p_ch0_vector.para.lower_limit = settings.value("Limit/y20p_bth_lower", "1000").toInt();
-        y20p_ch0_vector.para.upper_limit = settings.value("Limit/y20p_bth_upper", "3000").toInt();
+        y20p_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/bth_lower", "1000").toInt();
+        y20p_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/bth_upper", "3000").toInt();
 
-        y20p_ch1_vector.para.lower_limit = settings.value("Limit/y20p_key_lower", "1000").toInt();
-        y20p_ch1_vector.para.upper_limit = settings.value("Limit/y20p_key_upper", "3000").toInt();
+        y20p_ch1_vector.para.lower_limit = SETTINGS.value("Limit/model_button_lower", "1000").toInt();
+        y20p_ch1_vector.para.upper_limit = SETTINGS.value("Limit/model_button_upper", "3000").toInt();
 
         sensor_v.push_back(y20p_ch0_vector);
         sensor_v.push_back(y20p_ch1_vector);
@@ -292,8 +277,8 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
 
         u7_ch0_vector.para.f_module = MODULE_MODE_BUTTON;
 
-        u7_ch0_vector.para.lower_limit = settings.value("Limit/lower", "2500").toInt();
-        u7_ch0_vector.para.upper_limit = settings.value("Limit/upper", "4500").toInt();
+        u7_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
+        u7_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
 
         sensor_v.push_back(u7_ch0_vector);
 
@@ -315,8 +300,8 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
 
         p30p_ch0_vector.para.f_module = MODULE_POWER_BUTTON;
 
-        p30p_ch0_vector.para.lower_limit = settings.value("Limit/power_button_lower", "500").toInt();
-        p30p_ch0_vector.para.upper_limit = settings.value("Limit/power_button_upper", "4500").toInt();
+        p30p_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/power_button_lower", "500").toInt();
+        p30p_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/power_button_upper", "4500").toInt();
 
         sensor_v.push_back(p30p_ch0_vector);
 
@@ -436,92 +421,29 @@ void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
 
 PressureSensorForm::~PressureSensorForm() { delete ui; }
 
-void PressureSensorForm::closeFixtureSerialPort() {
-    // 启用RTS信号
-    FixtureserialPort->setRequestToSend(false);
-    // 启用DTR信号
-    FixtureserialPort->setDataTerminalReady(false);
-    if (FixtureserialPort->isOpen())
-        FixtureserialPort->close();
-    disconnect(FixtureserialPort, SIGNAL(readyRead()), this, SLOT(FixturereadData()));
-    ui->FixturerefreshCom->setEnabled(true);
-    ui->FixturecomNameCombo->setEnabled(true);
-    ui->FixtureconnectButton->setEnabled(true);
-
-    refresh_Fixtureuart_state(0);
-}
-
-void PressureSensorForm::refresh_Fixtureuart_state(int state) {
-    if (state)
-        ui->Fixtureuartstate->setText("治具串口连接：<font color='green'>成功</font>");
-    else
-        ui->Fixtureuartstate->setText("治具串口连接：<font color='red'>失败</font>");
-}
-
-void PressureSensorForm::on_FixtureconnectButton_clicked() {
-    qDebug() << "FixtureconnectButton_clicked";
-    openFixtureSerialPort();
-}
-
-void PressureSensorForm::on_FixturedisconnectButton_clicked() {
-    qDebug() << "FixturedisconnectButton_clicked";
-    closeFixtureSerialPort();
-    ui->FixturerefreshCom->setEnabled(true);
-    ui->FixtureconnectButton->setEnabled(true);
-}
-
-void PressureSensorForm::on_FixturerefreshCom_clicked() {
-    qDebug() << "FixturerefreshCom_clicked";
-    ui->FixturecomNameCombo->clear();
-    foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
-        ui->FixturecomNameCombo->addItem(info.portName());
-    }
-}
-
-void PressureSensorForm::openFixtureSerialPort(void) {
-    qDebug() << "openFixtureSerialPort";
-    if (FixtureserialPort->isOpen()) {
-        disconnect(FixtureserialPort, SIGNAL(readyRead()), this, SLOT(FixturereadData()));
-        FixtureserialPort->close();
-    }
-
-    // 设置串口名
-    FixtureserialPort->setPortName(ui->FixturecomNameCombo->currentText());
-    // 设置波特率
-    FixtureserialPort->setBaudRate(115200);
-    // 设置数据位
-    FixtureserialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    FixtureserialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    FixtureserialPort->setStopBits(QSerialPort::OneStop);
-    FixtureserialPort->setReadBufferSize(4096);
-    // 设置流控制
-    FixtureserialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-    if (FixtureserialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        FixtureserialPort->setRequestToSend(true);
-        // 启用DTR信号
-        FixtureserialPort->setDataTerminalReady(true);
-        // ui->msgEdit->appendPlainText("Fixture串口连接成功");
-        refresh_Fixtureuart_state(1);
-        ui->FixturerefreshCom->setEnabled(false);
-        ui->FixturecomNameCombo->setEnabled(false);
-        ui->FixtureconnectButton->setEnabled(false);
-        FixtureserialPort->setDataTerminalReady(true);
-        connect(FixtureserialPort, SIGNAL(readyRead()), this, SLOT(FixturereadData()));
+void PressureSensorForm::refreshJigUartState(int state) {
+    if (state) {
+        showlog("治具串口连接成功");
+        ui->Jiguartstate->setText("治具串口连接：<font color='green'>成功</font>");
     } else {
-        QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        //  ui->msgEdit->appendPlainText("打开错误");
+        ui->jigComNameCombo->setEnabled(true);
+        ui->jigConnectButton->setEnabled(true);
+        showlog("治具串口连接断开");
+        ui->Jiguartstate->setText("治具串口连接：<font color='red'>失败</font>");
     }
 }
 
-void PressureSensorForm::set_independent_state(STATE_INDEPENDENT_E state) {
-    independent_state = state;
-    qDebug() << "set_independent_state:" << independent_state;
+void PressureSensorForm::on_jigConnectButton_clicked() {
+    openJigSerialPort();
+    ui->jigComNameCombo->setEnabled(false);
+    ui->jigConnectButton->setEnabled(false);
 }
 
-STATE_INDEPENDENT_E PressureSensorForm::get_independent_state(void) { return independent_state; }
+void PressureSensorForm::on_jigDisconnectButton_clicked() {
+    closeJigSerialPort();
+    ui->jigComNameCombo->setEnabled(true);
+    ui->jigConnectButton->setEnabled(true);
+}
 
 void PressureSensorForm::receive_uart_data(int state) {
     qDebug() << "receive_uart_data:" << state;
@@ -541,16 +463,16 @@ void PressureSensorForm::receive_uart_data(int state) {
     }
 }
 
-void PressureSensorForm::FixturereadData() {
+void PressureSensorForm::readJigSerialPortData() {
     QByteArray dataTemp;
-    dataTemp = FixtureserialPort->readAll();
+    dataTemp = jigSerialPort->readAll();
     // qusb->parseCmd(dataTemp);
     qDebug() << QString::fromUtf8(dataTemp);
     // 处理接收到的数据
-    processReceivedData(dataTemp);
+    processFixReceivedData(dataTemp);
 }
 
-void PressureSensorForm::processReceivedData(const QByteArray& data) {
+void PressureSensorForm::processFixReceivedData(const QByteArray& data) {
     if (data == "BarCode?") {
         getaskbarcode = 1;
         qDebug() << data;
@@ -574,22 +496,17 @@ void PressureSensorForm::processReceivedData(const QByteArray& data) {
     //  emit send_data_to_mechine(datapack);
 }
 
-void PressureSensorForm::send_mac(QString data) { ui->macLabel->setText("蓝牙mac: " + data); }
-
 void PressureSensorForm::send_frame_rate(QString data) { ui->frame_rate->setText("数据帧率: " + data); }
 
-void PressureSensorForm::refresh_uart_state(int state) {
-    if (state)
-        ui->uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
-    else
-        ui->uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
-}
-
-void PressureSensorForm::refresh_ble_state(int state) {
+void PressureSensorForm::refreshDongleUartState(int state) {
     if (state) {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
+        showlog("dongle串口连接成功");
+        ui->uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
     } else {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
+        ui->uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
+        ui->comNameCombo->setEnabled(true);
+        ui->connectButton->setEnabled(true);
+        showlog("dongle串口连接断开");
     }
 }
 
@@ -598,7 +515,7 @@ void PressureSensorForm::send_start_command(machine_command_id_e command_id, int
 
     packet_data.machine_command_id = command_id;
     packet_data.argument = argument;
-    packet_data.machine_index = getIndex();
+    packet_data.machineNumber = getIndex();
 
     qDebug() << "command_id:" << argument << "argument:" << argument;
 
@@ -617,98 +534,10 @@ void PressureSensorForm::send_start_command(machine_command_id_e command_id, int
     emit send_data_to_mechine(packet_data);
 }
 
-void PressureSensorForm::FixturehandleError(QSerialPort::SerialPortError error) {
-    qDebug() << "串口问题" << error;
-    if (error == QSerialPort::PermissionError) {
-        if (FixtureserialPort->isOpen())
-            FixtureserialPort->close();
-        disconnect(FixtureserialPort, SIGNAL(readyRead()), this, SLOT(FixturereadData()));
-        ui->FixturerefreshCom->setEnabled(true);
-        ui->FixturecomNameCombo->setEnabled(true);
-        ui->FixtureconnectButton->setEnabled(true);
-        QMessageBox::warning(NULL, "警告", " 治具串口被拔出！\t\r\n");
-        ui->Fixtureuartstate->setText("串口连接：<font color='red'>拔出</font>");
-    }
-}
-
-void PressureSensorForm::openSerialPort(void) {
-    if (dongleSerialPort->isOpen()) {
-        disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        dongleSerialPort->close();
-    }
-    isTestContinue = true;
-    // 设置串口名
-    dongleSerialPort->setPortName(ui->comNameCombo->currentText());
-    // 设置波特率
-    dongleSerialPort->setBaudRate(921600);
-    // 设置数据位
-    dongleSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    dongleSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    dongleSerialPort->setStopBits(QSerialPort::OneStop);
-    dongleSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    dongleSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (dongleSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        dongleSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        dongleSerialPort->setDataTerminalReady(true);
-
-        ui->msgEdit->appendPlainText("串口连接成功");
-        refresh_uart_state(1);
-        ui->refreshButton->setEnabled(false);
-        ui->comNameCombo->setEnabled(false);
-        ui->connectButton->setEnabled(false);
-        dongleSerialPort->setDataTerminalReady(true);
-        connect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-    } else {
-        QMessageBox::critical(this, tr("Error"), dongleSerialPort->errorString());
-
-        ui->msgEdit->appendPlainText("打开错误");
-        isTestContinue = false;
-    }
-}
-
-void PressureSensorForm::closeSerialPort() {
-    // 启用RTS信号
-    dongleSerialPort->setRequestToSend(false);
-    // 启用DTR信号
-    dongleSerialPort->setDataTerminalReady(false);
-    if (dongleSerialPort->isOpen())
-        dongleSerialPort->close();
-    disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-
-    ui->refreshButton->setEnabled(true);
+void PressureSensorForm::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
-    ui->msgEdit->appendPlainText("串口断开连接");
-    refresh_uart_state(0);
-}
-
-void PressureSensorForm::handleError(QSerialPort::SerialPortError error) {
-    if (error == QSerialPort::ResourceError) {
-        closeSerialPort();
-
-        ui->msgEdit->appendPlainText("串口模块拔出");
-        refresh_uart_state(0);
-        // bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        isTestContinue = false;
-    }
-
-    ui->refreshButton->setEnabled(true);
-    ui->comNameCombo->setEnabled(true);
-    ui->connectButton->setEnabled(true);
-}
-
-void PressureSensorForm::on_refreshButton_clicked() {
-    ui->comNameCombo->clear();
-    foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
-        ui->comNameCombo->addItem(info.portName());
-    }
+    closeDongleSerialPort();
 }
 
 void PressureSensorForm::on_connectButton_clicked() {
@@ -803,7 +632,7 @@ void PressureSensorForm::closeEvent(QCloseEvent*) {
 }
 
 void PressureSensorForm::clear_display() {
-    qDebug() << "clear_display";
+    showlog("clear_display");
     ui->msgEdit->clear();
     ui->log->clear();
 }
@@ -821,7 +650,10 @@ void PressureSensorForm::on_macInput_returnPressed() {
         return;
     } else {
         macAddress = ui->macInput->text();
-        send_mac(macAddress);  // 发送到主界面
+
+        macAddress = ui->macInput->text();
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
         ui->macInput->setEnabled(false);
         stringsn = "";
         state = STATE_IDLE;
@@ -937,7 +769,7 @@ void PressureSensorForm::on_end_clicked() {
     }
 
     if (dongleSerialPort->isOpen()) {
-        closeSerialPort();
+        closeDongleSerialPort();
     }
 
     set_independent_state(STATE_CALIB_RESULT);
@@ -994,7 +826,7 @@ void PressureSensorForm::saveDataToLocalFolder(QStringList headers, int32_t* dat
 }
 
 void PressureSensorForm::product_model_init(QString model) {
-    qDebug() << "product_model_init" << model;
+    showlog("product_model_init is " + model);
     if (model == NULL) {
         qDebug() << "error,model == NULL";
         return;
@@ -1004,7 +836,7 @@ void PressureSensorForm::product_model_init(QString model) {
         product_model = MODEL_ID_Y20P;
     } else if (model == "F20") {
         product_model = MODEL_ID_F20;
-    } else if (model == "U7") {
+    } else if (model == "U7" || model == "U7P") {
         product_model = MODEL_ID_U7;
     } else if (model == "Y21") {
         product_model = MODEL_ID_Y21;
@@ -1112,7 +944,7 @@ void PressureSensorForm::graph_update(FacUploadPresSensor x) {
     transTime.restart();
 }
 
-void PressureSensorForm::save_data(FacUploadPresSensor x) {
+void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
     uint8_t data_len = 6;
     for (int i = 0; i < x.sensor_data_count; i++) {
         int32_t* data = new int32_t[data_len];
@@ -1191,11 +1023,29 @@ void PressureSensorForm::calib_send_result(void) {
 
         isStartSendCaliResult = 0;
         delay_msec(300);
-        pb->sendCaliResult(cali_result);
+        pb->set_press_cali_result(cali_result);
         repeat_send_ok = 1;
         delay_msec(300);
     }
 }
+
+// 模组ADC不在范围内（超出-27000 ~ 27000）（3V±250mv）
+// 1. 传感器模组损坏
+// 2. 传感器接触不良（如：FPC排线断触、断裂）
+// 2 未加负载时，ADC抖动太大，噪声计算过大（计算标准差值超出范围）
+// 1. 提示不能加负载时，加了负载
+// 2. 提示不能加负载时加了负载，治具的动作过大，抖动传导到传感器上。
+// 3. 传感器模组损坏，自身ADC值飘动
+
+// 4 噪声过大（噪声峰值超出范围）
+
+// 6 错误码2和4的结合
+
+// 8 挂上负载后信号量太小
+
+// 1. 传感器模组损坏
+// 2. 挂的负载不对
+// 3. 传感器与受力组件贴合得有问题，或力传导出现问题（例如：脱胶、与传感器本应过盈配合的组件未过盈配合）
 
 void PressureSensorForm::calib_process(FacUploadPresSensor x) {
     if (total_sensor <= 0) {
@@ -1614,12 +1464,12 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
 
 void PressureSensorForm::getPressSensorData(FacUploadPresSensor x) {
     graph_update(x);  // 图像更新
-    save_data(x);
+    save_pressure_data(x);
     calib_process(x);
     test_process(x);
 }
 
-void PressureSensorForm::getButtonState(FacButtonState x) {
+void PressureSensorForm::checkbutton(FacButtonState x) {
     qDebug() << "getButton_State";
     for (int i = 0; i < x.button_state_count; i++) {
         if (x.button_state[0].command_data.power_button.button_state_now == ButtonState_PRESSED) {
@@ -1634,13 +1484,24 @@ void PressureSensorForm::delay_msec(unsigned int msec) {
     loop.exec();  // 事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
 }
 
-void PressureSensorForm::refresh_sn(FacDevInfo data) {
+void PressureSensorForm::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << "dev_info" << data.dev_info[0].value_item.tail_sn;
     qDebug() << "stringsn" << stringsn;
     ui->msgEdit->appendPlainText("芯片存储的尾盖sn:" + stringsn);
 }
 
+void PressureSensorForm::refreshBleState(int state) {
+    if (state) {
+        ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
+        //   showlog("蓝牙连接成功");
+        pb->set_forbid_sleep(FacSwitch_OPEN);
+        showlog("已发送禁止休眠");
+    } else {
+        ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
+        // showlog("蓝牙连接断开");
+    }
+}
 void PressureSensorForm::solve_mes_sucess(const int mechines) {
     if (mechines == getIndex()) {
         ui->msgEdit->appendPlainText("mes操作成功");
@@ -1717,12 +1578,11 @@ void PressureSensorForm::reset_all() {
     memset(&LastCali, 0, sizeof(press_calib_data_t));
     memset(&start_calib_channel, 0, sizeof(start_calib_channel));  // 是否开始刷头200校准
 
-    emit operator_instruct(getIndex(), 0);
+    emit operator_instruct(getIndex());
 
     set_independent_state(STATE_INVALID);
     at->sendMac(ui->macInput->text());
     ui->msgEdit->appendPlainText("开始测试");
-    ui->msgEdit->appendPlainText("请扫描二维码");
 }
 
 void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int argument) {
@@ -1746,7 +1606,6 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
         case STATE_CALIB_CH_X:
             switch (sensor_v[argument].para.f_module) {
                 case MODULE_BTH:
-
                     set_independent_state(STATE_CALIB_CH0);
                     send_start_command(COMMAND_ID_BTH_DOWN_200, 0);
                     break;
@@ -1773,28 +1632,27 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
             break;
 
         case STATE_WATI_ASKQR:
-#if USE_CALIB_FIXTURE
+
             send_start_command(COMMAND_ID_TRAY_IN, 0);
             send_start_command(COMMAND_ID_FIXED_BLOCK_DOWN, 0);
-#endif
+
             break;
 
         case STATE_SAVE_RESULT:
             set_independent_state(STATE_CALIB_RESULT);
 
-            // calib
-#if USE_CALIB_FIXTURE
-            send_start_command(COMMAND_ID_BTH_UP, 0);
-            send_start_command(COMMAND_ID_KEY_UP, 0);
-            send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
-            send_start_command(COMMAND_ID_TRAY_OUT, 0);
-#endif
+            if (SETTINGS.value("PRESSURE/PressMechine").toInt() == 1) {
+                send_start_command(COMMAND_ID_BTH_UP, 0);
+                send_start_command(COMMAND_ID_KEY_UP, 0);
+                send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
+                send_start_command(COMMAND_ID_TRAY_OUT, 0);
+            }
 
-            // test
-#if USE_TEST_FIXTURE
-            send_start_command(COMMAND_ID_BTH_PRESS_UP, 0);
-            send_start_command(COMMAND_ID_RESULT, 0);
-#endif
+            if (SETTINGS.value("PRESSURE/PressMechine").toInt() == 2) {
+                send_start_command(COMMAND_ID_BTH_PRESS_UP, 0);
+                send_start_command(COMMAND_ID_RESULT, 0);
+            }
+
             break;
 
         case STATE_TEST_CH_X:
@@ -2008,7 +1866,7 @@ void PressureSensorForm::startTask() {
                 reset_all();
                 calib_vector_init(product_model);
                 qDebug() << "sizeof(sensor_v)" << sensor_v.size();
-                // at->sendMac(ui->macInput->text());  // 发送mac地址
+
                 showlog(ui->macInput->text());
                 state = STATE_WATI_CONNECT;
                 break;
@@ -2016,16 +1874,12 @@ void PressureSensorForm::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     ui->msgEdit->appendPlainText("蓝牙连接成功");
-                    emit refresh_ble_state(1);
+
                     delay_msec(200);
                     pb->get_base_info();  // 获取设备信息
                     delay_msec(200);
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
-                    delay_msec(200);
-                    ui->msgEdit->appendPlainText("已发送禁止休眠");
+
                     state = STATE_DISABLE_SLEEP_CALIB;
-                } else {
-                    emit refresh_ble_state(0);
                 }
                 break;
 
@@ -2054,20 +1908,20 @@ void PressureSensorForm::startTask() {
                 } else if (get_independent_state() == STATE_INVALID) {
                     set_independent_state(STATE_WAIT_START);
                     set_independent_state(STATE_CALIB_START);
-                    emit operator_instruct(getIndex(), 1);
+                    emit operator_instruct(getIndex());
                 }
                 break;
                 break;
 
             case STATE_WAIT_STATIC:  // 收集无负载时的数据
                 qDebug() << "pb->getCollectParam()" << pb->getCollectParam() << "isStartcali" << isStartcali;
-#if IS_INDEPENDENT
-                // set_independent_state(STATE_CALIB_STATIC_START);
-#endif
+                if (SETTINGS.value("SYSTEM/PressIndependent").toBool()) {
+                    set_independent_state(STATE_CALIB_STATIC_START);
+                }
                 if (pb->getCollectParam() && isStartcali && get_independent_state() == STATE_CALIB_STATIC_START) {
                     delay_msec(200);
                     if (only_mode == "BTH_ONLY" || only_mode == "KEY_ONLY") {
-                        pb->get_cali_result();
+                        pb->get_press_cali_result();
                     }
 
                     ui->msgEdit->appendPlainText("已设置压感采集参数");
@@ -2081,7 +1935,7 @@ void PressureSensorForm::startTask() {
                     } else if (function_switch == FUNCTION_TEST) {
                         state = STATE_TEST_CH_X;
 #if Y20_Pro_PRESS_TEST  // Y20pro测试前需要校准系数阈值比对
-                        pb->get_cali_result();
+                        pb->get_press_cali_result();
                         state = STATE_TEST_PARM_LIMIT;
 #endif
                     } else {
@@ -2183,7 +2037,10 @@ void PressureSensorForm::startTask() {
                 if (isCaliOk) {
                     ui->msgEdit->appendPlainText("开始发送校准值");
                     if (product_model == MODEL_ID_U7) {
-                        state = STATE_CHECK_NFC;
+                        if (ui->debug->checkState())
+                            state = STATE_SAVE_CAIL_RESULT;
+                        else
+                            state = STATE_CHECK_NFC;
                     } else {
                         state = STATE_SAVE_CAIL_RESULT;
                     }
@@ -2242,7 +2099,7 @@ void PressureSensorForm::startTask() {
                         }
                     } else {
                         delay_msec(200);
-                        pb->get_cali_result();
+                        pb->get_press_cali_result();
                         delay_msec(200);
                     }
                 }
@@ -2254,14 +2111,11 @@ void PressureSensorForm::startTask() {
             case STATE_WAIT_REST:  // 等待复位操作
                 if (at->getConnected()) {
                     ui->msgEdit->appendPlainText("蓝牙已重连");
-                    emit refresh_ble_state(1);
+
                     pb->reset_all_pb();
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
-                    delay_msec(200);
+
                     state = STATE_DISABLE_SLEEP_TEST;
                     // state = STATE_SAVE_RESULT;
-                } else {
-                    emit refresh_ble_state(0);
                 }
                 break;
 
@@ -2415,7 +2269,7 @@ void PressureSensorForm::startTask() {
                 pb->set_dev_reset();  // 开始复位牙刷
                 delay_msec(50);
                 ui->msgEdit->appendPlainText("牙刷已复位");
-                closeSerialPort();
+                closeDongleSerialPort();
 
                 stringsn = "";
                 ui->macInput->setDisabled(0);
@@ -2440,18 +2294,6 @@ void PressureSensorForm::startTask() {
     ui->macInput->setEnabled(true);
 }
 
-void PressureSensorForm::readData() {
-    QByteArray dataTemp;
-    dataTemp = dongleSerialPort->readAll();
-    // qDebug() << "data len : " << dataTemp.size();
-    at->parseCmd(dataTemp);
-    pb->parseCmd(dataTemp);
-    // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-    // qDebug() << QString::fromUtf8(dataTemp);
-}
-
-void PressureSensorForm::on_msg_textChanged() { ui->msgEdit->moveCursor(QTextCursor::End); }
-
 void PressureSensorForm::on_ClearGraph_clicked() { graph_reset(0); }
 
 void PressureSensorForm::on_GetButton_clicked() {
@@ -2459,11 +2301,11 @@ void PressureSensorForm::on_GetButton_clicked() {
     return;
 }
 
-void PressureSensorForm::over_task() { on_end_clicked(); }
+void PressureSensorForm::overTask() { on_end_clicked(); }
 
 void PressureSensorForm::on_button_get_calib_factor_clicked() {
     delay_msec(200);
-    pb->get_cali_result();
+    pb->get_press_cali_result();
     delay_msec(200);
 }
 
@@ -2501,8 +2343,8 @@ uint8_t PressureSensorForm::CheckNfcData() {
     QString hexString;
     QString text = stringsn;
     QString truncatedSN = stringsn.left(8);
-    QSettings settings(SETTING_NAME, QSettings::IniFormat);
-    QString value = settings.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+
+    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     ui->log->appendPlainText("匹配到的subpid：" + value);
 
     for (int i = 0; i < text.length(); ++i) {
@@ -2511,11 +2353,11 @@ uint8_t PressureSensorForm::CheckNfcData() {
     ui->log->appendPlainText("转化为:" + hexString);
 
     // 比对型号
-    ui->log->appendPlainText("当前型号为：" + product);
-    if (product == "U7P" && model == "033BD2023668772001004800324F3130") {
+    ui->log->appendPlainText("当前型号为：" + readProduct);
+    if (readProduct == "U7P" && model == "033BD2023668772001004800324F3130") {
         ui->log->appendPlainText("Check:U7P");
         ret = 1;
-    } else if (product == "U7" && model == "033BD2023668772001004800324F3045") {
+    } else if (readProduct == "U7" && model == "033BD2023668772001004800324F3045") {
         ret = 1;
         ui->log->appendPlainText("Check:U7");
     } else {
@@ -2668,9 +2510,9 @@ QString PressureSensorForm::ReadNfcDataProcess() {
 }
 
 void PressureSensorForm::refreshBaseData(FacGetDevBaseInfo data) {
-    product = data.product_name;
+    readProduct = data.product_name;
     qDebug() << "refreshBaseData";
-    ui->log->appendPlainText("获取到当前型号为：" + product);
+    ui->log->appendPlainText("获取到当前型号为：" + readProduct);
     ui->log->appendPlainText(data.product_name);
 }
 
@@ -2689,5 +2531,5 @@ void PressureSensorForm::on_SendCalib_clicked() {
     cali_result.calib_factor[MODULE_MODE_BUTTON] = 2666;
     cali_result.temperature[MODULE_BTH] = 2666;
 
-    pb->sendCaliResult(cali_result);
+    pb->set_press_cali_result(cali_result);
 }

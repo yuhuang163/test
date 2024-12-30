@@ -1860,6 +1860,7 @@ void PcbaForm::processInspection(QString stringsn) {
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
+            showlog("产品为" + pack.product);
             emit sendProcessInspection(pack);
         }
     } else {
@@ -1892,7 +1893,7 @@ void PcbaForm::on_start_scan_clicked() {
 void PcbaForm::updateComboBox() {
     // 遍历设备信息，根据 rssi 的值进行过滤
     for (auto it = deviceMap.begin(); it != deviceMap.end(); ++it) {
-        QString deviceAddress = it.key();
+        QString deviceAddress = it.key().toUpper();
         QString deviceName = it.value()["Name"];
         QString deviceRssi = it.value()["Rssi"];
 

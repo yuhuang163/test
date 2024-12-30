@@ -59,7 +59,7 @@ typedef struct MesPacketData {
     QString instruct_num;    //指令标识
     QString product;         //产品名字
     QString lotName;         //工单号码
-    QString mac;             //mac地址
+    QString mac;             // mac地址
 
 } MesPacketData;
 
