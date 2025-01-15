@@ -78,6 +78,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     } else {
         productBaudRate = 1000000;
     }
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
@@ -779,11 +780,7 @@ void quiescent_current::startTask() {
                     waittime->stop();
                     waitWork(100);
 
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    waitWork(100);
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    waitWork(100);
-                    pb->set_sleeep(FacSwitch_OPEN);
+                    sendCommandWithRetry(std::bind(&Qpb::set_sleeep, pb, FacSwitch_START));
 
                     state = STATE_SLEEP_OPEN;
                 } else {
@@ -794,17 +791,13 @@ void quiescent_current::startTask() {
 
                 break;
             case STATE_SLEEP_OPEN:
-                if (!at->getConnected()) {
+                if (!at->getConnected() || canGoNext) {
                     at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                     waitWork(2000);
                     qDebug() << getIndex() << "开始计时" << QDateTime::currentDateTime();
                     waittime->setInterval(measure_wait_time);
                     waittime->start();
                     state = STATE_SLEEP_CURRENT_TEST;
-                } else {
-                    waitWork(500);
-                    pb->set_sleeep(FacSwitch_OPEN);
-                    showlog("正在重发开始休眠");
                 }
 
                 break;

@@ -117,6 +117,7 @@ imucali::imucali(int index, QWidget* parent) :
     ui->acc_z->setFont(font);
 
     testResultTableInit();
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 void imucali::refreshImuCaliResult(FacImuCalibResult x) {
     showlog("以下为收到牙刷的imu校准数据");

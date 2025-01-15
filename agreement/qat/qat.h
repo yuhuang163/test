@@ -29,7 +29,8 @@ signals:
 
     void send_wifi_rssi(QString state);
     void send_WIFI_state(int state);
-    void sendwifimsg(QString data);
+    void sendWifiMsg(QString data);
+    void sendWifiIp(QString data);
 
 private:
     void waitWork(int ms);
@@ -41,6 +42,8 @@ private:
     typedef std::function<void(QString)> callback;
     std::map<QString, callback> commandList;
     void SEND_WIFI_DATA(QString p);
+    void SEND_WIFI_IP(QString p);
+
     void registerCommand();
     void help(QString p);
     void rssi(QString p);
@@ -66,7 +69,7 @@ public slots:
     void sendOTADATA(int state);
     void sendMAIN(QString mac);
     void sendMAINDATA(int state);
-    void sendBOMB(QString devicename,QString rssi, QString connectionInterval, QString command);
+    void sendBOMB(QString devicename, QString rssi, QString connectionInterval, QString command);
 private slots:
     void processCmd(QString cmd, QString parameter);
 };

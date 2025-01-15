@@ -160,6 +160,8 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
 
+    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
+            SLOT(getPresscalidata(FacPreSensorCalibResult)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
@@ -235,7 +237,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
-    connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
+    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
+    connect(at, SIGNAL(sendWifiIp(QString)), this, SLOT(getWifiIp(QString)));
+
     connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this, SLOT(updateLocalOtaResult(FacInternetOta)));
 
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
@@ -476,43 +480,7 @@ void MainWindow::on_get_battery_level_clicked() {
         manager->deleteLater();
     });
 }
-void MainWindow::on_send_wifi_config_clicked() {
-    // 创建网络访问管理器
-    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
-    // 获取用户输入的SSID和密码
-    QString ssid = ui->uissidInput->text();
-    QString password = ui->uipasswordInput->text();
-
-    // 创建请求
-    QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/wifi_config"));  // 拼接 "/wifi_config" 到 ESP32 的 IP 地址
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-    // 创建数据
-    QByteArray data;
-    data.append("ssid=" + QUrl::toPercentEncoding(ssid) + "&");
-    data.append("password=" + QUrl::toPercentEncoding(password));
-
-    // 发送 POST 请求
-    QNetworkReply* reply = manager->post(request, data);
-
-    // 处理请求完成信号
-    connect(reply, &QNetworkReply::finished, [=]() {
-        // 检查响应状态码
-        if (reply->error() == QNetworkReply::NoError) {
-            qDebug() << "WiFi config request succeeded";
-            showlog("WiFi 配置发送成功");
-        } else {
-            qDebug() << "WiFi config request failed:" << reply->errorString();
-            showlog("WiFi 配置发送失败");
-        }
-
-        // 释放资源
-        reply->deleteLater();
-        manager->deleteLater();
-    });
-}
 void MainWindow::updateImageOnMainThread() {
     processTheDatagram(pictureByteArray);  // 显示图片
 }
@@ -531,6 +499,8 @@ void MainWindow::closeEvent(QCloseEvent*) {
     future.waitForFinished();
     saveCustom();
     isrssiContinue = false;
+    if (qsetting_ui != NULL)
+        qsetting_ui->close();
 }
 
 void MainWindow::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
@@ -576,6 +546,10 @@ void MainWindow::openDongleSerialPort() {
             dongleSerialPort->setRequestToSend(true);
             // 启用DTR信号
             dongleSerialPort->setDataTerminalReady(true);
+            // 启用RTS信号
+            dongleSerialPort->setRequestToSend(false);
+            // 启用DTR信号
+            dongleSerialPort->setDataTerminalReady(false);
         } else {
             // 启用RTS信号
             dongleSerialPort->setRequestToSend(true);
@@ -595,10 +569,6 @@ void MainWindow::openDongleSerialPort() {
 }
 
 void MainWindow::closeDongleSerialPort() {
-    // // 启用RTS信号
-    // dongleSerialPort->setRequestToSend(false);
-    // // 启用DTR信号
-    // dongleSerialPort->setDataTerminalReady(false);
     if (dongleSerialPort->isOpen())
         dongleSerialPort->close();
     disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
@@ -2996,44 +2966,6 @@ void MainWindow::on_py_test_clicked() {
     qDebug() << "Error Output:" << errorOutput;
 }
 
-void MainWindow::on_set_play_speed_clicked() {
-    // 创建网络访问管理器
-    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
-
-    // 获取用户输入的SSID和密码
-    QString playspeed = ui->play_speed->text();
-
-    // 创建请求
-    QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/play_speed"));  // 拼接 "/_config" 到 ESP32 的 IP 地址
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-    // 创建数据
-    QByteArray data;
-    data.append("playspeed=" + QUrl::toPercentEncoding(playspeed));
-
-    // 发送 POST 请求
-    QNetworkReply* reply = manager->post(request, data);
-
-    qDebug() << "data: " << data;
-
-    // 处理请求完成信号
-    connect(reply, &QNetworkReply::finished, [=]() {
-        // 检查响应状态码
-        if (reply->error() == QNetworkReply::NoError) {
-            qDebug() << " config request succeeded";
-            showlog(" 播放速度配置发送成功");
-        } else {
-            qDebug() << " config request failed:" << reply->errorString();
-            showlog(" 播放速度配置发送失败");
-        }
-
-        // 释放资源
-        reply->deleteLater();
-        manager->deleteLater();
-    });
-}
-
 void MainWindow::on_close_imu_collect_solve_clicked() { pb->set_solve_imu_collect_param(FacSwitch_STOP); }
 
 void MainWindow::on_transfer_xls_clicked() {
@@ -3185,6 +3117,8 @@ void MainWindow::on_startBleOta_clicked() {
     QByteArray fileData = file.readAll();
     file.close();
     showlog("文件大小为：" + QString::number(fileData.size()));
+
+    pb->set_uart_receive(1);
 
     while (!pb->getisSetIamApp()) {
         showlog("已发送假装app!");
@@ -3392,22 +3326,168 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
 
         ui->high_speed_tp->setText("传输单个音频文件");
         ui->active_picture->setText("批量处理音频文件夹");
+        ui->label_95->setText("音频播放倍速");
+        ui->label_98->setText("倍");
         ui->send_audio->show();
         ui->audio_volume->show();
         ui->audio_volume->show();
         ui->label_93->show();
         ui->label_94->show();
-
+        ui->play_speed->setText("1");
     }
 
     else {  // ui的
 
         ui->high_speed_tp->setText("传输单个图片文件");
         ui->active_picture->setText("批量发送处理图片文件夹");
+        ui->label_95->setText("图片播放速度");
+        ui->label_98->setText("ms/张");
+        ui->play_speed->setText("50");
         ui->send_audio->hide();
         ui->audio_volume->hide();
         ui->label_93->hide();
         ui->label_94->hide();
     }
     qDebug() << "on_is_audio_mode_stateChanged" << arg1;
+}
+
+void MainWindow::on_play_speed_returnPressed() {
+    // 创建网络访问管理器
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+
+    // 获取用户输入的SSID和密码
+    QString playspeed = ui->play_speed->text();
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/play_speed"));  // 拼接 "/_config" 到 ESP32 的 IP 地址
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    // 创建数据
+    QByteArray data;
+    data.append("playspeed=" + QUrl::toPercentEncoding(playspeed));
+
+    // 发送 POST 请求
+    QNetworkReply* reply = manager->post(request, data);
+
+    qDebug() << "data: " << data;
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished, [=]() {
+        // 检查响应状态码
+        if (reply->error() == QNetworkReply::NoError) {
+            qDebug() << " config request succeeded";
+            showlog(" 播放速度配置发送成功");
+        } else {
+            qDebug() << " config request failed:" << reply->errorString();
+            showlog(" 播放速度配置发送失败");
+        }
+
+        // 释放资源
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+}
+
+void MainWindow::on_uipasswordInput_returnPressed() {
+    // 创建网络访问管理器
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+
+    // 获取用户输入的SSID和密码
+    QString ssid = ui->uissidInput->text();
+    QString password = ui->uipasswordInput->text();
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/wifi_config"));  // 拼接 "/wifi_config" 到 ESP32 的 IP 地址
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    // 创建数据
+    QByteArray data;
+    data.append("ssid=" + QUrl::toPercentEncoding(ssid) + "&");
+    data.append("password=" + QUrl::toPercentEncoding(password));
+
+    // 发送 POST 请求
+    QNetworkReply* reply = manager->post(request, data);
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished, [=]() {
+        // 检查响应状态码
+        if (reply->error() == QNetworkReply::NoError) {
+            qDebug() << "WiFi config request succeeded";
+            showlog("WiFi 配置发送成功");
+        } else {
+            qDebug() << "WiFi config request failed:" << reply->errorString();
+            showlog("WiFi 配置发送失败");
+        }
+
+        // 释放资源
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+}
+
+void MainWindow::on_ui_ypos_returnPressed() {
+    // 创建网络访问管理器
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+
+    // 获取用户输入的SSID和密码
+    QString ypos = ui->ui_ypos->text();
+
+    // 创建请求
+    QNetworkRequest request;
+    request.setUrl(QUrl(ui->ui_ip->text() + "/y_Pos"));  // 拼接 "/_config" 到 ESP32 的 IP 地址
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+    // 创建数据
+    QByteArray data;
+    data.append("yPos=" + QUrl::toPercentEncoding(ypos));
+
+    // 发送 POST 请求
+    QNetworkReply* reply = manager->post(request, data);
+
+    qDebug() << "data: " << data;
+
+    // 处理请求完成信号
+    connect(reply, &QNetworkReply::finished, [=]() {
+        // 检查响应状态码
+        if (reply->error() == QNetworkReply::NoError) {
+            qDebug() << " config request succeeded";
+            showlog(" y轴坐标配置发送成功");
+        } else {
+            qDebug() << " config request failed:" << reply->errorString();
+            showlog(" y轴坐标配置发送失败");
+        }
+
+        // 释放资源
+        reply->deleteLater();
+        manager->deleteLater();
+    });
+}
+
+void MainWindow::on_get_press_info_clicked() { pb->get_press_cali_result(); }
+
+void MainWindow::on_set_press_info_clicked() {
+    qDebug() << "发送校准系数";
+
+    press_calib_data_t cali_result = {0};
+    qDebug() << "刷头校准值:" << ui->calibValue_brushHead->text();
+    cali_result.calib_factor[MODULE_BTH] = ui->calibValue_brushHead->text().toInt();
+
+    qDebug() << "温度校准值:" << ui->calibValue_temp->text();
+    cali_result.temperature[MODULE_BTH] = ui->calibValue_temp->text().toInt();
+
+    qDebug() << "模式按键校准值:" << ui->calibValue_modeButton->text();
+    cali_result.calib_factor[MODULE_MODE_BUTTON] = ui->calibValue_modeButton->text().toInt();
+
+    qDebug() << "温度校准值:" << ui->calibValue_temp->text();
+    cali_result.temperature[MODULE_MODE_BUTTON] = ui->calibValue_temp->text().toInt();
+
+    qDebug() << "电源按键校准值:" << ui->calibValue_powerButton->text();
+    cali_result.calib_factor[MODULE_POWER_BUTTON] = ui->calibValue_powerButton->text().toInt();
+
+    qDebug() << "辅助元件校准值:" << ui->calibValue_auxComponent->text();
+    cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = ui->calibValue_auxComponent->text().toInt();
+
+    pb->set_press_cali_result(cali_result);
 }

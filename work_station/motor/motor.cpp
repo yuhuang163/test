@@ -48,6 +48,7 @@ motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
     showlog("machineNo=" + pack.machineNo);
 
     testResultTableInit();
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 void motor::refreshMotorCaliMsg(QString msg) {

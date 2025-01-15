@@ -92,7 +92,6 @@ void QFreeWork::createTestFunctions() {
          [&]() { sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START)); }},
         {"获取按钮状态", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_button_state, pb, 1)); }},
 
-        {"获取校准结果", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_cali_result, pb)); }},
         {"获取IMU校准结果", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_imu_cali_result, pb)); }},
         {"获取设备信息(ota)", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_device_info, pb)); }},
         {"获取外围设备状态", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_periph_state, pb)); }},

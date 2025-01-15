@@ -22,8 +22,6 @@
 #    pragma execution_character_set("utf-8")
 #endif
 
-
-
 namespace Ui {
     class PressureSensorForm;
 }
@@ -31,6 +29,9 @@ namespace Ui {
 class PressureSensorForm : public test_base {
     Q_OBJECT
 public:
+    explicit PressureSensorForm(int index, QWidget* parent = nullptr);
+    ~PressureSensorForm();
+    Ui::PressureSensorForm* ui;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };
     QLineEdit* macInputLineEdit() override { return ui->macInput; };  // mac地址输入口
@@ -38,16 +39,15 @@ public:
     QPlainTextEdit* logEdit() override { return ui->log; };           // log输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };       // msg输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };
-
-    explicit PressureSensorForm(int index, QWidget* parent = nullptr);
-    ~PressureSensorForm();
-    Ui::PressureSensorForm* ui;
+    QPushButton* getEndTestButton() override { return ui->end; };  // 结束测试按钮
+    QCheckBox* getIsUseMes() override { return ui->isusemes; };
+    QCheckBox* getIsFormMes() override { return ui->isformmes; };
 
     void startTask() override;
-    // void refreshBleState(int state) override;
+
     void show_product(QString name);
     void processInspection(QString stringsn);
-    void PressureSensorForm::processGetMesTestValue();
+    void processGetMesTestValue();
     typedef enum {
         MODEL_ID_INVALID,
         MODEL_ID_Y20P,
@@ -55,7 +55,10 @@ public:
         MODEL_ID_F20,
         MODEL_ID_U7,
         MODEL_ID_P30P,
-        MODEL_ID_MAX,
+
+        MODEL_ID_Y25S,
+        MODEL_ID_Y20PO,
+            MODEL_ID_MAX,
     } MODEL_ID_E;
 
     typedef enum {
@@ -68,12 +71,18 @@ public:
         GRAPH_SET_USE_ALL,
         GRAPH_SET_MAX,
     } GRAPH_SET_E;
+    typedef enum {
+        SET_INVALID,
+        BTH_ONLY,
+        KEY_ONLY,
+        ALL_ONLY,
+    } ONLY_SET_E;
 
-    void overTask()override;
+    void overTask() override;
     void product_model_init(QString model);
 
     // graph
-    void graph_init(MODEL_ID_E model, QString is_use_graph);
+    void graph_init(MODEL_ID_E model);
     void graph_update(FacUploadPresSensor x);
     void graph_reset(uint8_t argument);
 
@@ -85,8 +94,6 @@ public:
     void test_process(FacUploadPresSensor x);
     void calib_vector_init(MODEL_ID_E model);
     void calib_send_result(void);
-
-
 
     uint8_t CheckNfcData();
     int findNfcDevicePort(QString name);
@@ -190,7 +197,6 @@ private:
     void U7_fixture(State state, int argument);
     void ui_msg_show(MODEL_ID_E model, State state, int argument);
 
-
     bool isTestContinue = false;
 
     QTime transTime;
@@ -272,7 +278,7 @@ private:
     QString botton_placing_200_weights = "人员：按键放230g砝码";
     QString cali_result_ok = "校准完成";
     QString cali_result_fail = "校准失败";
-    void saveDataToLocalFolder(QStringList headers, int32_t* data, uint8_t len, bool appHeader);
+    void savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader);
     void save_press_test_data_to_csv(const QString& macAddress, const QString& resultunsigned,
                                      press_calib_data_t cali_result);
 
@@ -301,8 +307,6 @@ private slots:
     void delay_msec(unsigned int msec);
     void refreshBaseData(FacGetDevBaseInfo data) override;
 
-
-
     void on_connectButton_clicked();
     void checkbutton(FacButtonState data) override;
     void getPresscalidata(FacPreSensorCalibResult x) override;
@@ -312,8 +316,6 @@ private slots:
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
     void getMac(QString sn_to_search);
-
-
 
     void on_button_get_calib_factor_clicked();
     QString ReadNfcDataProcess();

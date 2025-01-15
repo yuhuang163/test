@@ -212,6 +212,7 @@ protected:
     void closeEvent(QCloseEvent*) override;
 
 private slots:
+    void deinit_distribution_network();
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void checkMissingPackets();
     void start_dirty_test();

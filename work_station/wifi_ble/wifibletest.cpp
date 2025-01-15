@@ -91,6 +91,8 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
     ui->tabWidget->setTabText(0, "信号测试");
     // on_nfcComFresh_clicked();
     testResultTableInit();
+
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 wifibletest::~wifibletest() { delete ui; }
@@ -780,7 +782,8 @@ void wifibletest::startTask() {
                     TestItem test;
 
                     test.testItem = "充电电流";
-                    test.testData = measure_ammeter;
+                    test.testData = QString::number(measure_ammeter);
+                   
                     test.testResult = currentresult;
                     test.ask = "通过";
                     testItems.append(test);
@@ -802,7 +805,7 @@ void wifibletest::startTask() {
                         state = STATE_SAVE_RESULT;
                         TestItem test;
                         test.testItem = "充电电流";
-                        test.testData = measure_ammeter;
+                        test.testData = QString::number(measure_ammeter);
                         test.testResult = currentresult;
                         test.ask = "通过";
                         testItems.append(test);

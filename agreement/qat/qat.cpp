@@ -140,7 +140,7 @@ void Qat::sendMAINDATA(int state) {
 
 void Qat::sendBOMB(QString devicename, QString rssi, QString connectionInterval, QString command) {
     QString s = "AT+BOMB=" + devicename + "," + rssi + "," + connectionInterval + "," + command + "\r\n";
-    qDebug() << "炸弹内容："<<s;
+    qDebug() << "炸弹内容：" << s;
     sendCmd(s);
 }
 void Qat::ask_mac() {
@@ -159,9 +159,12 @@ void Qat::registerCommand() {
     commandList["AT+WIFI_CONNECT_SUCCESS"] = std::bind(&Qat::WIFI_connected, this, std::placeholders::_1);
     commandList["AT+WIFI_DISCONNECT"] = std::bind(&Qat::WIFI_disconnected, this, std::placeholders::_1);
     commandList["AT+WIFI_DATA"] = std::bind(&Qat::SEND_WIFI_DATA, this, std::placeholders::_1);
+    commandList["AT+WIFIIP"] = std::bind(&Qat::SEND_WIFI_IP, this, std::placeholders::_1);
 }
 
-void Qat::SEND_WIFI_DATA(QString p) { sendwifimsg(p); }
+void Qat::SEND_WIFI_DATA(QString p) { sendWifiMsg(p); }
+void Qat::SEND_WIFI_IP(QString p) { sendWifiIp(p); }
+
 void Qat::sendbleMac(QString mac) {
     QString s = "AT+BLE=" + mac + "\r\n";
     sendCmd(s);

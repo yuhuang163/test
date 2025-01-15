@@ -23,8 +23,7 @@ void cameratest::on_pushButton_clicked() {
     // ui->macInput->setText("F8:8F:C8:57:73:E9");
 
     // 假设 imagePath 是您的绝对路径
-    QString imagePath = "./u7p_camera_defect_detect_env/code/fguo.png";
-    ;
+    QString imagePath = "./u7p_camera_defect_detect_env/code/解析度.png";
 
     // 尝试加载图像
     QImage image;
@@ -139,6 +138,8 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
     testResultTableInit();
 
     udpSocket = new QUdpSocket(this);
+
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
     int surpluse_space = 0;
@@ -385,15 +386,18 @@ cameratest::~cameratest() {
 }
 void cameratest::getDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
+    // if (getIndex() == 1) {
+    // showlog("自动保持wifi名字" + data);
+    //     // 保存密码
+    //     SETTINGS.setValue("WIFI/Password", "usmile123");
+    //     // 保存名称，带有索引
+    //     SETTINGS.setValue(QString("WIFI/Name"), data);
+    // }
 
-    // 保存密码
-    SETTINGS.setValue("WIFI/Password", "usmile123");
-    // 保存名称，带有索引
-    SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
-
-    // ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()),
-    // "请在配置文件中设置").toString()); ui->password_lineEdit->setText(SETTINGS.value("WIFI/Password",
-    // "123445566").toString());
+    ui->client_ip_label->setText(SETTINGS.value(QString("WIFI/IP"), "请在配置中设置").toString());
+    ui->port_num->setText(QString::number(getIndex()));
+    ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name"), "请在配置文件中设置").toString());
+    ui->password_lineEdit->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 void cameratest::on_disconnectButton_clicked() {
     closeDongleSerialPort();
@@ -428,6 +432,7 @@ void cameratest::on_connectButton_clicked() {
     openDongleSerialPort();
 }
 void cameratest::on_macInput_returnPressed() {
+    deinit_distribution_network();
     viewercamrea->pixmap = QPixmap();
     viewercamrea->temporarypixmap = QPixmap();
     viewercamrea->updateImage();
@@ -749,7 +754,7 @@ void cameratest::startTask() {
                         "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
-
+                deinit_distribution_network();
                 pb->set_camera_state(0);
                 pb->set_camera_light_state(0);
 
@@ -761,8 +766,8 @@ void cameratest::startTask() {
                 // ui->jxl_normal->setDisabled(0);
                 // ui->jxl_abnormal->setDisabled(0);
                 // waitWork(WAITTIME);
-                // pb->set_dev_reset();
-                // waitWork(WAITTIME);
+                pb->set_dev_reset();  //重启彻底断网，别发了
+                waitWork(500);
                 emit send_end_test(getIndex());
 
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -907,7 +912,6 @@ void cameratest::on_distribution_network_clicked() {
     //     }
     // }
     ipString = ui->client_ip_label->text();
-    ui->client_ip_label->setText(ipString);
 
     QString wifiName = ui->ssid_lineEdit->text();
     QString wifiPassword = ui->password_lineEdit->text();
@@ -951,7 +955,24 @@ void cameratest::on_distribution_network_clicked() {
         showlog("请等待连接牙刷后再试");
     }
 }
+void cameratest::deinit_distribution_network() {
+    if (udpSocket->state() == QAbstractSocket::BoundState) {
+        qDebug() << "Unbinding UDP socket";
+        udpSocket->abort();  // 关闭 UDP 连接
+    }
+    if (udpSocket->isOpen()) {
+        udpSocket->close();
+    }
+    disconnect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));  // 断开 readyRead 信号
 
+    showlog("UDP 连接已关闭");
+    QString wifiName = "test_over";
+    QString wifiPassword = "8888888888";
+    QString ipString = "0.0.0.0";
+    QByteArray wifiNameBytes = wifiName.toUtf8();
+    QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
+    pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
+}
 void cameratest::on_save_photo_clicked() {
     if (!viewercamrea->pixmap.isNull()) {
         QPixmap pix = viewercamrea->pixmap;
@@ -1015,6 +1036,7 @@ void cameratest::readPendingDatagrams() {
         quint16 senderPort;
         udpSocket->readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
         processTheDatagram(datagram);
+        emit send_image_processed();
     }
 }
 void cameratest::processTheDatagram(QByteArray& datagram) {
@@ -1181,12 +1203,22 @@ void cameratest::on_DirtyTestButton_clicked() {
     }
 
     QProcess process;
+
     QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
-    QString scriptPath = "./code/onnx_inference_camera_stain.py";
+    QString scriptPath;
     QStringList arguments;
-    arguments << "--model"
-              << "./code/infer_camera_stain_240911_320_model.onnx"
-              << "--img" << filePath;
+    if (pack.product == "Q30") {
+        scriptPath = "./code/onnx_inference_camera_stain_q30_250113.py";
+        arguments << "--model"
+                  << "./code/q30_model_250114.onnx"
+                  << "--img" << filePath;
+    } else {  //给木星
+        scriptPath = "./code/onnx_inference_camera_stain.py";
+        arguments << "--model"
+                  << "./code/infer_camera_stain_240911_320_model.onnx"
+                  << "--img" << filePath;
+    }
+
     process.setWorkingDirectory("./u7p_camera_defect_detect_env");
     qDebug() << "指令内容为:" << scriptPath << arguments;
     process.start(pythonPath, QStringList() << scriptPath << arguments);
@@ -1337,8 +1369,10 @@ void cameratest::on_DirtyTestButton_clicked() {
 }
 
 void cameratest::on_stopTest_clicked() {
+    showlog("用户按了结束测试");
+    pb->set_dev_reset();
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
-    // waitWork(100);
+    waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 
@@ -1406,11 +1440,19 @@ void cameratest::on_OffsetTest_clicked() {
     // 设置要运行的 Python 脚本及其参数
     QString scriptPath = "./code/onnx_inference.py";
     QStringList arguments;
-    arguments << "--model"
-              << "./code/infer_240725_320_model.onnx"
-              << "--img" << filePath << "--x1_s" << QString::number(Rect1_X) << "--y1_s" << QString::number(Rect1_Y)
-              << "--w_s" << QString::number(Rect1_Width) << "--h_s" << QString::number(Rect1_Height);
 
+    if (pack.product == "Q30") {
+        scriptPath = "./code/onnx_inference_pos_q30_250113.py";
+        arguments << "--model"
+                  << "./code/q30_model_250114.onnx"
+                  << "--img" << filePath << "--x1_s" << QString::number(Rect1_X) << "--y1_s" << QString::number(Rect1_Y)
+                  << "--w_s" << QString::number(Rect1_Width) << "--h_s" << QString::number(Rect1_Height);
+    } else {  //给木星
+        arguments << "--model"
+                  << "./code/infer_240725_320_model.onnx"
+                  << "--img" << filePath << "--x1_s" << QString::number(Rect1_X) << "--y1_s" << QString::number(Rect1_Y)
+                  << "--w_s" << QString::number(Rect1_Width) << "--h_s" << QString::number(Rect1_Height);
+    }
     // 设置工作目录为虚拟环境目录
     process.setWorkingDirectory("./u7p_camera_defect_detect_env");
 
@@ -1642,11 +1684,22 @@ void cameratest::on_ResolutionTestButton_clicked() {
         // python.exe ./code/blur_detect_out.py --img
         // "D:/new_production/build-new_production-Desktop_Qt_5_15_2_MSVC2019_64bit-Debug/bin/_20241010_134321.png"
         // python.exe ./code/blur_detect_out.py --img "./code/blur_test.png"
+
         QProcess process;
+
         QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
-        QString scriptPath = "./code/blur_detect_out.py";
+        QString scriptPath;
         QStringList arguments;
-        arguments << "--img" << filePath;
+        if (pack.product == "Q30") {
+            scriptPath = "./code/onnx_inference_clearness_q30_250113.py";
+            arguments << "--model"
+                      << "./code/q30_model_250114.onnx"
+                      << "--img" << filePath;
+        } else {  //给木星
+            scriptPath = "./code/blur_detect_out.py";
+            arguments << "--img" << filePath;
+        }
+
         process.setWorkingDirectory("./u7p_camera_defect_detect_env");
         qDebug() << "指令内容为:" << scriptPath << arguments;
         process.start(pythonPath, QStringList() << scriptPath << arguments);

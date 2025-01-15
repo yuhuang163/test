@@ -276,12 +276,20 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
         ui->getMac->setEnabled(0);
         ui->isusemes->setChecked(0);
         ui->isformmes->setChecked(0);
+
+        ui->label_6->setVisible(false);    // 隐藏按钮
+        ui->getMac->setVisible(false);     // 隐藏按钮
+        ui->isusemes->setVisible(false);   // 隐藏按钮
+        ui->isformmes->setVisible(false);  // 隐藏按钮
+        showlog("无mes隐藏相关内容");
     }
 
     if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
-        ui->start_scan->setVisible(true);  // 隐藏按钮
+        ui->start_scan->setVisible(true);  // 显示按钮
     else
         ui->start_scan->setVisible(false);  // 隐藏按钮
+
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 void PcbaForm::getDongleWifi(QString data) {
@@ -739,12 +747,24 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         QString pressStateStr = QString::number(data.press_state);
         QString magnetStateStr = QString::number(data.magnet_state);
 
+        qDebug() << "IMU Status:" << imuStatus;
+        qDebug() << "Flash Status:" << flashStatus;
+        qDebug() << "Magnetic Status:" << magneticStatus;
+        qDebug() << "Pressure Status:" << pressureStatus;
+        qDebug() << "Audio Status:" << audioState;
+
+        qDebug() << "flashStateStr:" << flashStateStr;
+        qDebug() << "imuStateStre:" << imuStateStr;
+        qDebug() << "audioStateStr:" << audioStateStr;
+        qDebug() << "pressStateStr:" << pressStateStr;
+        qDebug() << "magnetStateStr:" << magnetStateStr;
+
         // 现在可以将 QString 类型的状态用于你的条件判断
-        bool checkFlash = SETTINGS.value("ProductInfo/FlashStatus_checkBox").toBool();
-        bool checkIMU = SETTINGS.value("ProductInfo/IMUStatus_checkBox").toBool();
-        bool checkAudio = SETTINGS.value("ProductInfo/AudioStatus_checkBox").toBool();
-        bool checkPressure = SETTINGS.value("ProductInfo/PressureStatus_checkBox").toBool();
-        bool checkMagnetic = SETTINGS.value("ProductInfo/MagneticStatus_checkBox").toBool();
+        bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
+        bool checkIMU = SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool();
+        bool checkAudio = SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool();
+        bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
+        bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
 
         if ((!checkFlash || flashStatus.contains(flashStateStr)) && (!checkIMU || imuStatus.contains(imuStateStr)) &&
             (!checkAudio || audioState.contains(audioStateStr)) &&
@@ -802,6 +822,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
 void PcbaForm::on_stopTest_clicked() {
     usblogwaittime->stop();
     isPcbaTestContinue = false;
+
     on_disconnectButton_clicked();
 
     if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool())
@@ -1485,7 +1506,10 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_WORKING_TEST:
                 if (is_music_play_over_time) {
-                    pb->set_device_mode(4);  //退出纯享模式
+                    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
+                        pb->set_device_mode(4);  //退出纯享模式
+                    }
+
                     is_music_play_over_time = 0;
                     showlog("播放结束");
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {

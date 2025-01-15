@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>3</number>
+               <number>13</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1988,40 +1988,27 @@
                   <property name="title">
                    <string>压感测试</string>
                   </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_15">
-                   <property name="topMargin">
-                    <number>1</number>
-                   </property>
-                   <property name="bottomMargin">
-                    <number>1</number>
-                   </property>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_28">
+                  <layout class="QGridLayout" name="gridLayout_23">
+                   <item row="0" column="0">
+                    <layout class="QVBoxLayout" name="verticalLayout_15">
                      <item>
-                      <widget class="QLabel" name="botton_value1">
+                      <widget class="QLabel" name="mode_botton_adc">
                        <property name="text">
-                        <string>按键压力：</string>
+                        <string>模式按键adc：</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="botton_adc">
+                      <widget class="QLabel" name="mode_botton_value">
                        <property name="text">
-                        <string>按键adc：</string>
+                        <string>模式按键压力：</string>
                        </property>
                       </widget>
                      </item>
                     </layout>
                    </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_27">
-                     <item>
-                      <widget class="QLabel" name="brush_value">
-                       <property name="text">
-                        <string>刷头压力：</string>
-                       </property>
-                      </widget>
-                     </item>
+                   <item row="0" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_18">
                      <item>
                       <widget class="QLabel" name="brush_adc">
                        <property name="text">
@@ -2029,9 +2016,160 @@
                        </property>
                       </widget>
                      </item>
+                     <item>
+                      <widget class="QLabel" name="brush_value">
+                       <property name="text">
+                        <string>刷头压力：</string>
+                       </property>
+                      </widget>
+                     </item>
                     </layout>
                    </item>
-                   <item>
+                   <item row="0" column="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_36">
+                     <item>
+                      <widget class="QLabel" name="power_botton_adc">
+                       <property name="text">
+                        <string>电源按键adc：</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="power_botton_value">
+                       <property name="text">
+                        <string>电源按键压力：</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="0" column="3">
+                    <layout class="QVBoxLayout" name="verticalLayout_35">
+                     <item>
+                      <widget class="QLabel" name="assistant_botton_adc">
+                       <property name="text">
+                        <string>辅助元件adc：</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="assistant_botton_value">
+                       <property name="text">
+                        <string>辅助元件压力：</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="0" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_brushHead">
+                     <item>
+                      <widget class="QLabel" name="label_brushHeadCalib">
+                       <property name="text">
+                        <string>刷头校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="calibValue_brushHead">
+                       <property name="text">
+                        <string>2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="2" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_auxComponent">
+                     <item>
+                      <widget class="QLabel" name="label_auxComponentCalib">
+                       <property name="text">
+                        <string>辅助元件校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="calibValue_auxComponent">
+                       <property name="text">
+                        <string>2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="4" rowspan="2">
+                    <layout class="QVBoxLayout" name="verticalLayout_37">
+                     <item>
+                      <widget class="QPushButton" name="get_press_info">
+                       <property name="text">
+                        <string>获取压感校准</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="set_press_info">
+                       <property name="text">
+                        <string>设置压感校准</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="2" column="0" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_modeButton">
+                     <item>
+                      <widget class="QLabel" name="label_modeButtonCalib">
+                       <property name="text">
+                        <string>模式按键校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="calibValue_modeButton">
+                       <property name="text">
+                        <string>2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="2" column="2" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_powerButton">
+                     <item>
+                      <widget class="QLabel" name="label_powerButtonCalib">
+                       <property name="text">
+                        <string>电源按键校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="calibValue_powerButton">
+                       <property name="text">
+                        <string>2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="3" column="0" colspan="2">
+                    <layout class="QHBoxLayout" name="horizontalLayout_28">
+                     <item>
+                      <widget class="QLabel" name="label_brushHeadCalib_2">
+                       <property name="text">
+                        <string>温度校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="calibValue_temp">
+                       <property name="text">
+                        <string>2000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="3" column="2" colspan="3">
                     <layout class="QHBoxLayout" name="horizontalLayout_26">
                      <item>
                       <widget class="QCheckBox" name="press_sensor_temp__switch">
@@ -3715,139 +3853,6 @@
                 <string>ui预览</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_16">
-                <item row="4" column="3">
-                 <widget class="QPushButton" name="play_picture">
-                  <property name="text">
-                   <string>播放</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="8" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_95">
-                  <item>
-                   <widget class="QLabel" name="label_96">
-                    <property name="text">
-                     <string>wifi账号</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="uissidInput">
-                    <property name="text">
-                     <string>usmile_guest</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_97">
-                    <property name="text">
-                     <string>wifi密码</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="uipasswordInput">
-                    <property name="text">
-                     <string>Starspulse#@2024</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_94">
-                  <item>
-                   <widget class="QLabel" name="label_95">
-                    <property name="text">
-                     <string>播放速度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="play_speed">
-                    <property name="text">
-                     <string>50</string>
-                    </property>
-                    <property name="placeholderText">
-                     <string>输入播放间隔时间</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="5" column="0">
-                 <widget class="QPushButton" name="clear_picture">
-                  <property name="text">
-                   <string>清空牙刷图片</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="9">
-                 <layout class="QHBoxLayout" name="horizontalLayout_93">
-                  <item>
-                   <widget class="QCheckBox" name="is_audio_mode">
-                    <property name="text">
-                     <string>是否是音频传输模式</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="send_audio">
-                    <property name="text">
-                     <string>直接发送音频</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="5" colspan="2">
-                 <widget class="QPushButton" name="set_play_speed">
-                  <property name="text">
-                   <string>设置播放速度</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="8">
-                 <layout class="QHBoxLayout" name="horizontalLayout_91">
-                  <item>
-                   <widget class="QLabel" name="label_93">
-                    <property name="text">
-                     <string>增加音量</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSlider" name="audio_volume">
-                    <property name="accessibleName">
-                     <string/>
-                    </property>
-                    <property name="autoFillBackground">
-                     <bool>false</bool>
-                    </property>
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_94">
-                    <property name="text">
-                     <string>0</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="2" column="5" colspan="2">
-                 <widget class="QPushButton" name="send_wifi_config">
-                  <property name="text">
-                   <string>配置网络信息</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="0" column="0" colspan="10">
                  <layout class="QHBoxLayout" name="horizontalLayout_50">
                   <item>
@@ -3882,10 +3887,147 @@ border-color: rgb(255, 165, 0)</string>
                   </item>
                  </layout>
                 </item>
-                <item row="2" column="3">
-                 <widget class="QPushButton" name="up_picture">
+                <item row="2" column="8" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_95">
+                  <item>
+                   <widget class="QLabel" name="label_96">
+                    <property name="text">
+                     <string>wifi账号</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="uissidInput">
+                    <property name="text">
+                     <string>usmile_guest</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_97">
+                    <property name="text">
+                     <string>wifi密码</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="uipasswordInput">
+                    <property name="text">
+                     <string>Starspulse#@2024</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="8">
+                 <layout class="QHBoxLayout" name="horizontalLayout_91">
+                  <item>
+                   <widget class="QLabel" name="label_93">
+                    <property name="text">
+                     <string>增加音量</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSlider" name="audio_volume">
+                    <property name="accessibleName">
+                     <string/>
+                    </property>
+                    <property name="autoFillBackground">
+                     <bool>false</bool>
+                    </property>
+                    <property name="orientation">
+                     <enum>Qt::Horizontal</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_94">
+                    <property name="text">
+                     <string>0</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="2" column="5">
+                 <layout class="QHBoxLayout" name="horizontalLayout_94">
+                  <item>
+                   <widget class="QLabel" name="label_95">
+                    <property name="text">
+                     <string>播放速度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="play_speed">
+                    <property name="text">
+                     <string>1</string>
+                    </property>
+                    <property name="placeholderText">
+                     <string>输入播放间隔时间</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_98">
+                    <property name="text">
+                     <string>ms/张</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="9">
+                 <layout class="QHBoxLayout" name="horizontalLayout_93">
+                  <item>
+                   <widget class="QCheckBox" name="is_audio_mode">
+                    <property name="text">
+                     <string>是否是音频传输模式</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="send_audio">
+                    <property name="text">
+                     <string>直接发送音频</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="5">
+                 <layout class="QHBoxLayout" name="horizontalLayout_27">
+                  <item>
+                   <widget class="QLabel" name="label_99">
+                    <property name="text">
+                     <string>Y轴坐标</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="ui_ypos">
+                    <property name="text">
+                     <string>0</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_100">
+                    <property name="text">
+                     <string>像素点</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="3">
+                 <widget class="QPushButton" name="play_picture">
                   <property name="text">
-                   <string>上一张</string>
+                   <string>播放</string>
                   </property>
                  </widget>
                 </item>
@@ -3901,18 +4043,11 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLineEdit" name="ui_ip">
                     <property name="text">
-                     <string>http://192.168.137.225/</string>
+                     <string>http://192.168.137.201/</string>
                     </property>
                    </widget>
                   </item>
                  </layout>
-                </item>
-                <item row="5" column="3">
-                 <widget class="QPushButton" name="down_picture">
-                  <property name="text">
-                   <string>下一张</string>
-                  </property>
-                 </widget>
                 </item>
                 <item row="2" column="0">
                  <widget class="QPushButton" name="get_battery_level">
@@ -3921,7 +4056,28 @@ border-color: rgb(255, 165, 0)</string>
                   </property>
                  </widget>
                 </item>
-                <item row="5" column="5" colspan="2">
+                <item row="2" column="3">
+                 <widget class="QPushButton" name="up_picture">
+                  <property name="text">
+                   <string>上一张</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="3">
+                 <widget class="QPushButton" name="down_picture">
+                  <property name="text">
+                   <string>下一张</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QPushButton" name="clear_picture">
+                  <property name="text">
+                   <string>清空牙刷图片</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
                  <widget class="QPushButton" name="init_ui_data">
                   <property name="text">
                    <string>格式化全部</string>

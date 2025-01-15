@@ -822,6 +822,7 @@ message PresurceSensorData
     PresurceSensorItem brush_head = 3;
     PresurceSensorItem mode_button = 4;
     PresurceSensorItem power_button = 5;
+    PresurceSensorItem assistant_component = 6;
 }
 
 message FacUploadPresSensor
@@ -836,7 +837,7 @@ message FacPreSensorCalibResult
     uint32 mode_button_adc = 2;   //uint16
     uint32 power_button_adc = 3;
     uint32 temperature = 4;
-
+    uint32 assistant_component = 5;//目前y20p海外和y25s都是模式按键
     FacErrorCode result = 100;
 }
 /*********************压感的pb区域******************/

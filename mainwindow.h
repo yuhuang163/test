@@ -242,7 +242,8 @@ protected:
 
 private slots:
     void renameAduioFilesInFolder(const QString& folderPath);
-    void processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb);
+    void processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb,
+                      const QString& play_speed);
     void setting_ui();
     void saveblackbox(QString data);
     void sendNoisyData();
@@ -290,6 +291,8 @@ private slots:
     void refreshSn(FacDevInfo data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
+    void getWifiIp(QString data);
+
     void getDongleVer(QString data);
     void getDongleWifi(QString data);
     void stopRecording();
@@ -314,7 +317,7 @@ private slots:
     void getPressSensorData(FacUploadPresSensor x);
     void getServoMotorInfoMsg(FacMotorCalibResult data);
     void convertCsvToXls(const QString& csvFilename, const QString& xlsFilename);
-    void saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4, bool appHeader);
+    void savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader);
     void readPendingDatagrams();
     void refreshColor1();
     void refreshColor2();
@@ -329,6 +332,7 @@ private slots:
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
     void refreshMusicState(FacDevInfo data);
+    void getPresscalidata(FacPreSensorCalibResult x);
     void scanIpPorts();
 private slots:
     void on_connectButton_clicked();
@@ -453,14 +457,14 @@ private slots:
     void on_write_device_sn_clicked();
     void on_write_board_sn_clicked();
     void on_write_device_subpid_clicked();
-    void on_send_wifi_config_clicked();
+
     void on_get_battery_level_clicked();
     void on_up_picture_clicked();
     void on_down_picture_clicked();
     void on_play_picture_clicked();
     void on_open_imu_collect_solve_clicked();
     void on_py_test_clicked();
-    void on_set_play_speed_clicked();
+
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
     void on_nfc_close_clicked();
@@ -499,6 +503,16 @@ private slots:
     void on_audio_volume_valueChanged(int value);
 
     void on_is_audio_mode_stateChanged(int arg1);
+
+    void on_play_speed_returnPressed();
+
+    void on_uipasswordInput_returnPressed();
+
+    void on_ui_ypos_returnPressed();
+
+    void on_get_press_info_clicked();
+
+    void on_set_press_info_clicked();
 
 signals:
     void send_uart_state(int data);

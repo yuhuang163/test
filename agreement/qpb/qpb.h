@@ -45,21 +45,19 @@ typedef struct {
     QByteArray md5;    //
 } local_ota_data;
 
-
-typedef enum
-{
+typedef enum {
     MODULE_INVALID,
     MODULE_BTH,
     MODULE_MODE_BUTTON,
     MODULE_POWER_BUTTON,
+    MODULE_ASSISTANT_COMPONENT,
     MODULE_MAX,
 } press_module_e;
 
 typedef struct {
-    short calib_factor[MODULE_MAX];
+    unsigned short calib_factor[MODULE_MAX];
     short temperature[MODULE_MAX];
-}press_calib_data_t;
-
+} press_calib_data_t;
 
 class Qpb : public QSerialPort {
     Q_OBJECT
@@ -218,10 +216,10 @@ public slots:
     void set_dev_reset();                                                       // 设备复位
     void set_brush_reset();                                                     // 刷牙复位
 
-    void set_press_cali_result(press_calib_data_t cali_result);// 设置压力校准结果
-    bool get_is_save_press_cali_data(){return is_save_press_cali_ok;}
-    void set_imu_cali_result(ImuCalData cali_ok);                               // 发送IMU校准结果
-    void set_new_imu_cali_result(NewImuCalData cali_ok);                        // 发送新的IMU校准结果
+    void set_press_cali_result(press_calib_data_t cali_result);  // 设置压力校准结果
+    bool get_is_save_press_cali_data() { return is_save_press_cali_ok; }
+    void set_imu_cali_result(ImuCalData cali_ok);         // 发送IMU校准结果
+    void set_new_imu_cali_result(NewImuCalData cali_ok);  // 发送新的IMU校准结果
 
     void set_device_mode(int mode);                              // 设置设备模式
     void set_brush_control(int state);                           // 设置刷牙控制状态
@@ -235,8 +233,8 @@ public slots:
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
 
-    void set_press_collect_param(FacSwitch sta);     // 设置压力采集参数
-    void set_imu_collect_param(FacSwitch sta);       // 设置IMU采集参数
+    void set_press_collect_param(FacSwitch sta);  // 设置压力采集参数
+    void set_imu_collect_param(FacSwitch sta);    // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
     void set_battery(FacBatteryType type);  // 设置电池信息
     void set_servo_motor_info();
@@ -245,13 +243,13 @@ public slots:
     void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
                               const QString& port);  // 设置新的WiFi连接
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
-                               uint32_t vibrate_freq);           // 设置舵机电机参数
+                               uint32_t vibrate_freq);  // 设置舵机电机参数
 
 public slots:
     void get_battery();                    // 获取电池信息
     void get_button_state(int state);      // 获取按钮状态
     void get_sn(FacDevInfoType which_sn);  // 获取SN码
-    void get_press_cali_result();                // 获取校准结果
+    void get_press_cali_result();          // 获取校准结果
     void get_imu_cali_result();            // 获取IMU校准结果
     void get_device_info();                // 获取设备信息
     void get_base_info();                  // 获取基本信息
@@ -319,7 +317,6 @@ signals:
     void send_press_cali_data(FacPreSensorCalibResult x);
 
     void sendGetBrushResponse(int data);
-
 };
 
 #endif  // QPB_H

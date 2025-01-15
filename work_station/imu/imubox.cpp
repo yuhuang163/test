@@ -165,6 +165,7 @@ imubox::~imubox() {
 }
 void imubox::resetall() {
     if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) {  //表示p20p回车开始
+        qDebug() << "触发resetall";
         startTest();
     }
 }

@@ -37,6 +37,7 @@ screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
     showlog("action=" + pack.action);
     showlog("machineNo=" + pack.machineNo);
     testResultTableInit();
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 void screentest::refreshLcdControl(FacLcdControl style) {

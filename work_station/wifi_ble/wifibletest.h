@@ -104,9 +104,9 @@ private slots:
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
     QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // mac地址输入口
-    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
-    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
+     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
+    QLabel* getMesStateQlabel() override { return ui->mes_state; };     // mes状态的qlab
+    QPushButton* getEndTestButton() override { return ui->stopTest; };  // 结束测试按钮
 
     void refreshBleRssi(QString data) override;
     void getWifiMsg(QString data) override;

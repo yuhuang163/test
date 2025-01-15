@@ -15,9 +15,13 @@
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
     QString station = SETTINGS.value("SYSTEM/station").toString();  // 工站
-    if (station != "PCBA_TEST") {
+    pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
+
+    if (station == "PCBA_TEST" || pack.factory == "无mes厂") {
+    } else {
         loginMes();
     }
+
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 }
@@ -170,10 +174,20 @@ void box_base::signalAndslot() {
 
     for (int i = 0; i < testList.size() - 1; i++) {
         connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->getMacLineEdit(), SLOT(setFocus()));
+
+        if (pack.factory == "无mes厂")
+            connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->macInputLineEdit(), SLOT(setFocus()));
+        else
+            connect(testList[i], SIGNAL(send_go_next_focus()), testList[i + 1]->getMacLineEdit(), SLOT(setFocus()));
     }
 
-    connect(testList[testList.size() - 1], SIGNAL(send_go_next_focus()), testList[0]->getMacLineEdit(),
-            SLOT(setFocus()));
+    if (pack.factory == "无mes厂")
+        connect(testList[testList.size() - 1], SIGNAL(send_go_next_focus()), testList[0]->macInputLineEdit(),
+                SLOT(setFocus()));
+    else
+        connect(testList[testList.size() - 1], SIGNAL(send_go_next_focus()), testList[0]->getMacLineEdit(),
+                SLOT(setFocus()));
+
     connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this, SLOT(resetall()));
 
     initData();
@@ -227,12 +241,18 @@ void box_base::saveCustom() {
             SETTINGS.setValue(QString("%1/MotorCaliParam").arg(baseKey), testList[i]->getMotorCaliParam()->text());
     }
 }
-
+box_base::~box_base() {
+    // Cleanup if necessary
+    qDebug() << "box_base析构";
+}
 void box_base::closeEvent(QCloseEvent*) {
+    qDebug() << "box_base关闭";
     isTestContinue = 0;
     for (auto x : testList) {
         x->close();
     }
+    if (qsetting_ui != NULL)
+        qsetting_ui->close();
     saveCustom();
 }
 void box_base::startAllReturnPressed() {
@@ -387,6 +407,11 @@ void box_base::checkAllover(int fixtureNumber) {
         }
 
         testList[0]->getMacLineEdit()->setFocus();
+
+        if (pack.factory == "无mes厂")
+            testList[0]->macInputLineEdit()->setFocus();
+        else
+            testList[0]->getMacLineEdit()->setFocus();
     }
 }
 bool box_base::checkStateReady(std::vector<int> States) {

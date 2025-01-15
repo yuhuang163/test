@@ -53,18 +53,34 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.4.7"
-#define CAMERA_VER "摄像测试工站   V1.3.1"
-#define AGE_VER "老化测试工站   V1.3.0"
-#define MOTOR_VER "电机校准工站   V1.3.1"
-#define QC_VER "静态电流测试   V1.4.7"
-#define SCREEN_VER "屏幕测试工站   V1.2.1"
+#define DEBUG_VER "电刷产测工具   V1.4.9"
+#define CAMERA_VER "摄像测试工站   V1.3.5"
+#define AGE_VER "老化测试工站   V1.3.2"
+#define MOTOR_VER "电机校准工站   V1.3.2"
+#define QC_VER "静态电流测试   V1.4.9"
+#define SCREEN_VER "屏幕测试工站   V1.2.2"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
-#define SINGLE_VER "信号测试工站   V1.5.1"
+#define SINGLE_VER "信号测试工站   V1.5.2"
 #define FREE_VER "自由测试工站   V1.1.4"
 #define IMU_VER "IMU校准工站    V1.5.4"
-#define PCBA_VER "电刷板子测试   V1.4.4"
-#define PRESSURE_VER "压感校测工站   V1.3.0"
+#define PCBA_VER "电刷板子测试   V1.4.6"
+#define PRESSURE_VER "压感校测工站   V1.3.2"
+
+
+
+
+// [SINGLE_VER] 修复充电电流表格显示异常问题，设置每次打开上位机都显示tab的第一页
+// [SCREEN_VER] 设置每次打开上位机都显示tab的第一页
+// [QC_VER] 设置每次打开上位机都显示tab的第一页，优化发指令的效率
+// [PRESSURE_VER] 做y20po和y25s的压感适配，添加新的双通道算法。
+// [PCBA_VER] 设置每次打开上位机都显示tab的第一页，增加对无mes的工厂适配
+// [MOTOR_VER] 设置每次打开上位机都显示tab的第一页
+// [IMU_VER] 设置每次打开上位机都显示tab的第一页
+// [FREE_VER]  设置每次打开上位机都显示tab的第一页
+// [CAMERA_VER] 设置每次打开上位机都显示tab的第一页,增加对q30的适配，以及配网反初始化，测试完成重启手柄，wifi在总设置里面配置，测试的时候会自动加载wif设备名字密码ip端口，不用重启上位机
+// [AGE_VER] 设置每次打开上位机都显示tab的第一页
+// [DEBUG_VER] 新增压感校准的调试内容，修复ui预览的bug，配置信息变成回车，新增修改y轴位置，音频播放速度
+//
 
 
 // 修复静态电流配置失败的问题
@@ -73,12 +89,12 @@
 // [AGE_VER] 可以勾选是否写入skuid功能
 // [PCBA_VER] 伟克森mes添加对版本的管控
 // [PRESSURE_VER] 合入压感上位机，添加压感配置内容到上位机配置页面
-// [QC_VER] 增加当前曲目的拦截，修改了ip地址
+// [QC_VER] 
 // [MOTOR_VER] 电机校准测试过程获取设备的mac地址
 //
-// [SINGLE_VER]
 
-//
+
+// 
 
 // [IMU_VER] 修改p30p为y25se，适配P20PS
 

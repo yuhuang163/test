@@ -75,6 +75,8 @@ pcbabox::pcbabox(QWidget* parent) :
         }
         testList[0]->getMacLineEdit()->setFocus();
     });
+    if (pack.factory == "无mes厂")
+        testList[0]->macInputLineEdit()->setFocus();
 }
 //用于治具的开始测试
 void pcbabox::startTest() {

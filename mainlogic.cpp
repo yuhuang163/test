@@ -1037,6 +1037,7 @@ void MainWindow::sendPicture(const QString& url, const QString& filePath) {
     QObject::connect(&timer, &QTimer::timeout, [&loop, this]() {
         qDebug() << "Request timeout";
         showlog("Request timeout");
+        showlog("检查是否在同一个wifi下面");
         loop.quit();
     });
     timer.start();
@@ -1304,6 +1305,11 @@ void MainWindow::refreshWifiRssi(QString data) {
     // qDebug() << "rssi = " << data;
     ui->WIFI_RSSI->setText("WIFI的RSSI：" + data);
     WIFI_RSSI = data;
+}
+
+void MainWindow::getWifiIp(QString data) {
+    showlog("已更新当前设备ip" + data);
+    ui->ui_ip->setText(QString("http://%1/").arg(data));
 }
 void MainWindow::getWifiMsg(QString data) {
     // qDebug() << "收到wifi数据为" << data;
@@ -1755,34 +1761,29 @@ QString MainWindow::generateOutputFilePath() {
 }
 
 void MainWindow::getPressSensorData(FacUploadPresSensor x) {
-    int32_t mode_button_value = 0;
-    int32_t brush_head_value = 0;
     showlog("保存压感数据ing");
     for (int i = 0; i < x.sensor_data_count; i++) {
         ui->brush_value->setText("刷头压力：" + QString::number(int16_t(x.sensor_data[i].brush_head.value)));
         ui->brush_adc->setText("刷头adc：" + QString::number(int16_t(x.sensor_data[i].brush_head.adc)));
-        ui->botton_adc->setText("按键adc：" + QString::number(int16_t(x.sensor_data[i].mode_button.adc)));
-        ui->botton_value1->setText("按键压力：" + QString::number(int16_t(x.sensor_data[i].mode_button.value)));
 
-        if (x.sensor_data[i].mode_button.value & 0x8000) {  // 判断最高位是否为 1，表示负数
-            mode_button_value =
-                static_cast<int32_t>(x.sensor_data[i].mode_button.value | 0xFFFF0000);  // 扩展为 32 位的负数
-        } else {
-            mode_button_value = static_cast<int32_t>(x.sensor_data[i].mode_button.value);  // 保持正数不变
-        }
-        if (x.sensor_data[i].brush_head.value & 0x8000) {  // 判断最高位是否为 1，表示负数
-            brush_head_value =
-                static_cast<int32_t>(x.sensor_data[i].brush_head.value | 0xFFFF0000);  // 扩展为 32 位的负数
-        } else {
-            brush_head_value = static_cast<int32_t>(x.sensor_data[i].brush_head.value);  // 保持正数不变
-        }
-        saveDataToLocalFolder(x.sensor_data[i].brush_head.adc, brush_head_value, x.sensor_data[i].mode_button.adc,
-                              mode_button_value, isfirstsavedata);
+        ui->mode_botton_adc->setText("模式按键adc：" + QString::number(int16_t(x.sensor_data[i].mode_button.adc)));
+        ui->mode_botton_value->setText("模式按键压力：" + QString::number(int16_t(x.sensor_data[i].mode_button.value)));
+
+        ui->power_botton_adc->setText("电源按键adc：" + QString::number(int16_t(x.sensor_data[i].power_button.adc)));
+        ui->power_botton_value->setText("电源按键压力：" +
+                                        QString::number(int16_t(x.sensor_data[i].power_button.value)));
+
+        ui->assistant_botton_adc->setText("辅助元件adc：" +
+                                          QString::number(int16_t(x.sensor_data[i].assistant_component.adc)));
+        ui->assistant_botton_value->setText("辅助元件压力：" +
+                                            QString::number(int16_t(x.sensor_data[i].assistant_component.value)));
+
+        savePressDataToLocalFolder(x, isfirstsavedata);
         isfirstsavedata = 0;
     }
 }
 
-void MainWindow::saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3, int data4, bool appHeader) {
+void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader) {
     QString folderPath = "D:/测试结果";
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
@@ -1790,10 +1791,6 @@ void MainWindow::saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3
     }
     // 获取当前日期
     QDate currentDate = QDate::currentDate();
-    // 构建年、月、日的文件夹结构
-    QString yearFolder = QString::number(currentDate.year());
-    QString monthFolder = currentDate.toString("MM");
-    QString dayFolder = currentDate.toString("dd");
     // 构建完整的文件路径，加上日期
     QString fileName = currentDate.toString("yyyy-MM-dd") + "_压感数据报告.csv";
     QString filePath = QDir(folderPath).filePath(fileName);
@@ -1812,14 +1809,30 @@ void MainWindow::saveDataToLocalFolder(uint32_t data1, int data2, uint32_t data3
                 << "刷头ADC"
                 << "刷头压力"
                 << "模式按键ADC"
-                << "模式按键压力";
+                << "模式按键压力"
+                << "电源按键ADC"
+                << "电源按键压力"
+                << "辅助元件ADC"
+                << "辅助元件压力";
         out << headers.join(",") << "\n";
     }
     // 获取当前时间戳
     QDateTime currentDateTime = QDateTime::currentDateTime();
     QString timestamp = currentDateTime.toString("yyyy-MM-dd hh:mm:ss");
-    // 写入数据
-    out << timestamp << "," << macAddress << "," << data1 << "," << data2 << "," << data3 << "," << data4 << "\n";
+
+    // 遍历传感器数据并写入文件
+    for (int i = 0; i < x.sensor_data_count; i++) {
+        QStringList dataList;
+        dataList << timestamp << macAddress << QString::number(x.sensor_data[i].brush_head.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.value))
+                 << QString::number(x.sensor_data[i].mode_button.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.value))
+                 << QString::number(x.sensor_data[i].power_button.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.value))
+                 << QString::number(x.sensor_data[i].assistant_component.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.value));
+        out << dataList.join(",") << "\n";
+    }
     // 关闭文件
     file.close();
 }
@@ -2566,9 +2579,18 @@ void MainWindow::initPeriphState() {
         }
     });
 }
+
 bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
     QFile file(oldFilePath);
     if (file.exists()) {
+        QFile newFile(newFilePath);
+        if (newFile.exists()) {
+            // 删除目标文件
+            if (!newFile.remove()) {
+                qDebug() << "Failed to remove existing file:" << newFilePath;
+                return false;
+            }
+        }
         if (file.rename(newFilePath)) {
             qDebug() << "File renamed successfully from" << oldFilePath << "to" << newFilePath;
             return true;
@@ -2605,24 +2627,30 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
 
                     if (ui->is_audio_mode->checkState()) {  // 如果是音频模式
                         renameAduioFilesInFolder(path);
-
                     } else {
+                        showlog("准备删除active_picture");
                         on_clear_picture_clicked();
                         renamePictureFilesInFolder(path);
                     }
-                }
-                if (ui->high_speed_tp->underMouse()) {  // 如果拖到了high_speed_tp上
+
+                } else if (ui->high_speed_tp->underMouse()) {  // 如果拖到了high_speed_tp上
 
                     if (ui->is_audio_mode->checkState()) {  // 如果是音频模式
-                        processAudio(path, "output", QString::number(ui->audio_volume->value()));
+                        processAudio(path, "output", QString::number(ui->audio_volume->value()),
+                                     ui->play_speed->text());
                         QFileInfo fileInfo(path);
-                        QString fileName = fileInfo.fileName();
-                        QString oldFilePath = "output/" + fileName + ".bin";
+                        QString baseName = fileInfo.baseName();  // 这将只包含文件的基本名称，不包括扩展名
+                        QString oldFilePath = "output/" + baseName + ".bin";
                         QString newFilePath = "output/1.bin";
-                        renameFile(oldFilePath, newFilePath);
-                        sendPicture(ui->ui_ip->text(), "output/1.bin");
+
+                        if (renameFile(oldFilePath, newFilePath))
+                            sendPicture(ui->ui_ip->text(), "output/1.bin");
+                        else {
+                            showlog("发生错误");
+                        }
 
                     } else {
+                        showlog("准备删除high_speed_tp");
                         on_clear_picture_clicked();
                         ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
                         QFileInfo fileInfo(path);
@@ -2869,7 +2897,8 @@ void MainWindow::checkAndUpdateFile() {
 }
 
 // EQ_TACKLE/.venv/Scripts/python.exe" "EQ_TACKLE/volume_and_reduce.py", "C:/Users/heyj/Desktop/Smart.mp3", "1.wav", "0"
-void MainWindow::processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb) {
+void MainWindow::processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb,
+                              const QString& play_speed) {
     QString pythonPath = "./EQ_TACKLE/.venv/Scripts/python.exe";
     QString scriptPath = "./EQ_TACKLE/volume_and_reduce.py";
 
@@ -2879,7 +2908,7 @@ void MainWindow::processAudio(const QString& inputFile, const QString& outputFil
     // 准备命令和参数，注意去掉路径中的引号
     QStringList arguments;
     arguments << scriptPath << inputFile  // 不加引号
-              << outputFile << volumeChangeDb;
+              << outputFile << volumeChangeDb << play_speed;
 
     // 打印调试信息，确保路径和参数正确
     qDebug() << "Running command:" << pythonPath << arguments;
@@ -2892,9 +2921,13 @@ void MainWindow::processAudio(const QString& inputFile, const QString& outputFil
     QString output(process.readAllStandardOutput());
     QString errorOutput(process.readAllStandardError());
 
-    // 打印输出信息
-    showlog("Output:" + output);
-    showlog("Error Output:" + errorOutput);
+    // 转换为 UTF-8 编码的 QByteArray
+    QByteArray outputUtf8 = output.toUtf8();
+    QByteArray errorOutputUtf8 = errorOutput.toUtf8();
+
+    // 打印输出信息（可能是日志或者控制台输出）
+    showlog("Output: " + QString(outputUtf8));
+    showlog("Error Output: " + QString(errorOutputUtf8));
 }
 void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     QDir folder(folderPath);
@@ -2908,15 +2941,27 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     int fileCount = files.size();
     std::sort(files.begin(), files.end(), compareFileNames);
     qDebug() << "files:" << files;
-
+    // 获取文件夹的名字
+    QString folderName = folder.dirName();
+    QString outputFolderPath = "output/" + folderName;
     TestTime.start();
 
     // 遍历文件夹中的文件
     for (int i = 0; i < fileCount; ++i) {
         QString fileName = files.at(i);
         QString filePath = folder.filePath(fileName);
-        processAudio(filePath, "output", QString::number(ui->audio_volume->value()));
+        processAudio(filePath, outputFolderPath, QString::number(ui->audio_volume->value()), ui->play_speed->text());
+        QCoreApplication::processEvents();
     }
     showlog("发送结束");
     showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
+}
+void MainWindow::getPresscalidata(FacPreSensorCalibResult x) {
+
+        showlog("刷头" + QString::number(x.brush_head_adc));
+        showlog("模式" + QString::number(x.mode_button_adc));
+        showlog("电源" + QString::number(x.power_button_adc));
+        showlog("温度" + QString::number(x.temperature));
+        showlog("辅助元器件" + QString::number(x.assistant_component));
+
 }

@@ -404,6 +404,7 @@ typedef struct _FacPreSensorCalibResult {
     uint32_t mode_button_adc; /* uint16 */
     uint32_t power_button_adc; 
     uint32_t temperature; 
+    uint32_t assistant_component; /* 目前y20p海外和y25s都是模式按键 */
     FacErrorCode result; 
 } FacPreSensorCalibResult;
 
@@ -622,6 +623,8 @@ typedef struct _PresurceSensorData {
     PresurceSensorItem mode_button; 
     bool has_power_button;
     PresurceSensorItem power_button; 
+    bool has_assistant_component;
+    PresurceSensorItem assistant_component; 
 } PresurceSensorData;
 
 typedef struct _ServoMotorInfo { 
@@ -841,9 +844,9 @@ extern "C" {
 #define NineAlexData_init_default                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_default           {0, {NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default, NineAlexData_init_default}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_default          {0, 0}
-#define PresurceSensorData_init_default          {0, 0, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default}
+#define PresurceSensorData_init_default          {0, 0, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default, false, PresurceSensorItem_init_default}
 #define FacUploadPresSensor_init_default         {0, {PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default, PresurceSensorData_init_default}, _FacErrorCode_MIN}
-#define FacPreSensorCalibResult_init_default     {0, 0, 0, 0, _FacErrorCode_MIN}
+#define FacPreSensorCalibResult_init_default     {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define AccCaliData_init_default                 {0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacImuCalibResult_init_default           {0, 0, 0, 0, 0, 0, false, AccCaliData_init_default, _FacErrorCode_MIN}
 #define FacSetTime_init_default                  {0, 0}
@@ -884,9 +887,9 @@ extern "C" {
 #define NineAlexData_init_zero                   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacUploadNineAlex_init_zero              {0, {NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero, NineAlexData_init_zero}, _FacErrorCode_MIN}
 #define PresurceSensorItem_init_zero             {0, 0}
-#define PresurceSensorData_init_zero             {0, 0, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero}
+#define PresurceSensorData_init_zero             {0, 0, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero, false, PresurceSensorItem_init_zero}
 #define FacUploadPresSensor_init_zero            {0, {PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero, PresurceSensorData_init_zero}, _FacErrorCode_MIN}
-#define FacPreSensorCalibResult_init_zero        {0, 0, 0, 0, _FacErrorCode_MIN}
+#define FacPreSensorCalibResult_init_zero        {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define AccCaliData_init_zero                    {0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FacImuCalibResult_init_zero              {0, 0, 0, 0, 0, 0, false, AccCaliData_init_zero, _FacErrorCode_MIN}
 #define FacSetTime_init_zero                     {0, 0}
@@ -979,6 +982,7 @@ extern "C" {
 #define FacPreSensorCalibResult_mode_button_adc_tag 2
 #define FacPreSensorCalibResult_power_button_adc_tag 3
 #define FacPreSensorCalibResult_temperature_tag  4
+#define FacPreSensorCalibResult_assistant_component_tag 5
 #define FacPreSensorCalibResult_result_tag       100
 #define FacRegisterConfig_addr_tag               1
 #define FacRegisterConfig_value_tag              2
@@ -1101,6 +1105,7 @@ extern "C" {
 #define PresurceSensorData_brush_head_tag        3
 #define PresurceSensorData_mode_button_tag       4
 #define PresurceSensorData_power_button_tag      5
+#define PresurceSensorData_assistant_component_tag 6
 #define ServoMotorInfo_motor_state_tag           1
 #define ServoMotorInfo_FaultCode_tag             2
 #define ServoMotorInfo_motor_current_tag         3
@@ -1559,12 +1564,14 @@ X(a, STATIC,   SINGULAR, UINT32,   timestamp,         1) \
 X(a, STATIC,   SINGULAR, UINT32,   temperature,       2) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  brush_head,        3) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  mode_button,       4) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  power_button,      5)
+X(a, STATIC,   OPTIONAL, MESSAGE,  power_button,      5) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  assistant_component,   6)
 #define PresurceSensorData_CALLBACK NULL
 #define PresurceSensorData_DEFAULT NULL
 #define PresurceSensorData_brush_head_MSGTYPE PresurceSensorItem
 #define PresurceSensorData_mode_button_MSGTYPE PresurceSensorItem
 #define PresurceSensorData_power_button_MSGTYPE PresurceSensorItem
+#define PresurceSensorData_assistant_component_MSGTYPE PresurceSensorItem
 
 #define FacUploadPresSensor_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, MESSAGE,  sensor_data,       2) \
@@ -1578,6 +1585,7 @@ X(a, STATIC,   SINGULAR, UINT32,   brush_head_adc,    1) \
 X(a, STATIC,   SINGULAR, UINT32,   mode_button_adc,   2) \
 X(a, STATIC,   SINGULAR, UINT32,   power_button_adc,   3) \
 X(a, STATIC,   SINGULAR, UINT32,   temperature,       4) \
+X(a, STATIC,   SINGULAR, UINT32,   assistant_component,   5) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacPreSensorCalibResult_CALLBACK NULL
 #define FacPreSensorCalibResult_DEFAULT NULL
@@ -1756,19 +1764,19 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacMotorCalibResult_size                 292
 #define FacOtaFileInfo_size                      341
 #define FacPictureDataAck_size                   305
-#define FacPreSensorCalibResult_size             27
+#define FacPreSensorCalibResult_size             33
 #define FacRegisterConfig_size                   12
 #define FacSetBrushRecord_size                   66
 #define FacSetDevBaseInfo_size                   28
 #define FacSetTime_size                          12
 #define FacUploadNineAlex_size                   1683
-#define FacUploadPresSensor_size                 843
+#define FacUploadPresSensor_size                 1053
 #define FacWifiDemand_size                       189
 #define FacWifiInfo_size                         110
 #define FactoryDataPackage_size                  1689
 #define MotoOperaInfo_size                       263
 #define NineAlexData_size                        110
-#define PresurceSensorData_size                  54
+#define PresurceSensorData_size                  68
 #define PresurceSensorItem_size                  12
 #define ServoMotorInfo_size                      284
 #define ServoMotorParam_size                     22

@@ -123,6 +123,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
     testResultTableInit();
 
     reorderCheckBoxes();
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 void QFreeWork::reorderCheckBoxes() {
     QVector<int> indexes = loadIndexesFromConfig();  // 从配置文件加载测试顺序

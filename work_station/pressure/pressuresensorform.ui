@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>677</width>
-    <height>567</height>
+    <width>773</width>
+    <height>606</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" rowspan="2">
+   <item row="0" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_11">
      <property name="sizeConstraint">
       <enum>QLayout::SetDefaultConstraint</enum>
@@ -107,6 +107,24 @@
                   <widget class="QLabel" name="botton_adc_diff">
                    <property name="text">
                     <string>adc_diff:</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_35">
+                 <item>
+                  <widget class="QLabel" name="assistant_botton_adc">
+                   <property name="text">
+                    <string>辅助元件adc：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="assistant_botton_value">
+                   <property name="text">
+                    <string>辅助元件压力：</string>
                    </property>
                   </widget>
                  </item>
@@ -409,7 +427,7 @@
                   </size>
                  </property>
                  <property name="text">
-                  <string>b4:56:5d:bf:57:9d</string>
+                  <string>28:37:2f:e4:e1:ca</string>
                  </property>
                  <property name="placeholderText">
                   <string>切换英文输入扫码</string>
@@ -485,7 +503,7 @@
                   <bool>true</bool>
                  </property>
                  <property name="text">
-                  <string>调试模式</string>
+                  <string>调试模式(不发nfc)</string>
                  </property>
                  <property name="checked">
                   <bool>true</bool>

@@ -15,7 +15,7 @@ class box_base : public QMainWindow {
     Q_OBJECT
 public:
     explicit box_base(QWidget* parent = nullptr);
-
+ ~box_base();
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
@@ -77,7 +77,8 @@ private:
     qsetting* qsetting_ui = NULL;
 
 protected:
-    virtual void closeEvent(QCloseEvent*);
+    void closeEvent(QCloseEvent* event) override;
+
 signals:
     void go_screen_next(int);
 

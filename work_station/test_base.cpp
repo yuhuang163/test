@@ -51,12 +51,12 @@ void test_base::initData() {
 void test_base::signalAndslot() {
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
-    connect(at, SIGNAL(sendwifimsg(QString)), this, SLOT(getWifiMsg(QString)));
+    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
 
-
-    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this, SLOT(getPresscalidata(FacPreSensorCalibResult)));
+    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
+            SLOT(getPresscalidata(FacPreSensorCalibResult)));
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(sendGetBrushResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
@@ -74,7 +74,6 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
     connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refreshSn(FacDevInfo)));
     connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
-
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
 
@@ -374,6 +373,7 @@ void test_base::closeDongleSerialPort() {
                &test_base::readDongleSerialPortData);  // timeout执行真正的读取操作
 
     emit send_dongle_serialPort_state(0);
+    showlog("已经关闭串口");
 }
 
 void test_base::readUsbSerialPortData() {
@@ -609,6 +609,10 @@ void test_base::closeProductSerialPort() {
 void test_base::refreshPbData(QString data) { msgEdit()->appendPlainText(data); }
 
 void test_base::showlog(QString msg) {
+    if (!msgEdit()) {
+        qDebug() << "Error: msgEdit() is nullptr!";
+        return;  // 避免空指针调用
+    }
     msgEdit()->appendPlainText(msg);
     qDebug() << getIndex() << msg;
 }
@@ -848,6 +852,16 @@ void test_base::testResultTableInit() {
 void test_base::LockProductUI() {
     if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
         getIsUseMes()->setEnabled(false);
+
+    if (!getIsUseMes() || !getIsFormMes()) {
+        qDebug() << "Error: getIsUseMes() or getIsFormMes() is nullptr!";
+        return;
+    }
+
+    if (pack.factory == "无mes厂") {
+        getIsUseMes()->setCheckState(Qt::Unchecked);
+        getIsFormMes()->setCheckState(Qt::Unchecked);
+    }
 }
 void test_base::getMac(QString sn_to_search) {
     if (!getIsFormMes()->isChecked()) {

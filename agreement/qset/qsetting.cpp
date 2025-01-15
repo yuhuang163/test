@@ -20,9 +20,19 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"P20PS", "Y25SE", "P20P", "U7",   "U7P", "F20", "Q20",
-                               "Q30",   "Y20",   "Y20P", "Y25P", "Y25", "Y21"};
+    QStringList productList = {"P20PS", "Y25SE", "P20P", "U7",  "U7P", "F20",   "Q20", "Q30",
+                               "Y20",   "Y20P",  "Y25","Y25S", "Y21", "Y20PO", "T10"};
     ui->comboBox_productName->addItems(productList);
+
+    QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
+    ui->comboBox_pressFunctionSwitch->addItems(pressFunctionSwitch);
+
+    QStringList individualMode = {"无效选项", "单独刷头", "单独按键", "都校准"};
+    ui->comboBox_individualMode->addItems(individualMode);
+
+    QStringList displayImageType = {"无效选项", "关闭所有图像", "ADC图像",     "压力值图像",
+                                    "刷头图像", "按键图像",     "显示全部图像"};
+    ui->comboBox_displayImageType->addItems(displayImageType);
 
     QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
@@ -151,6 +161,7 @@ void qsetting::loadConfig() {
     ui->wifiPasswordLineEdit->setText(SETTINGS.value("WIFI/Password").toString());
     ui->wifiUpperLimitLineEdit->setText(SETTINGS.value("WIFI/HighRssi").toString());
     ui->wifiLowerLimitLineEdit->setText(SETTINGS.value("WIFI/LowRssi").toString());
+    ui->wifiIPLineEdit->setText(SETTINGS.value("WIFI/IP").toString());
 
     // 加载 BLE 信息
     ui->bluetoothUpperLimitLineEdit->setText(SETTINGS.value("BLE/HighRssi").toString());
@@ -170,11 +181,18 @@ void qsetting::loadConfig() {
     ui->lineEdit_Button2Status->setText(SETTINGS.value("FIXTEST/Button2").toString());
 
     // 加载压感参数
-    ui->lineEdit_displayImageType->setText(SETTINGS.value("PRESSURE/Use_graph").toString());  // 显示图像选择
-    ui->lineEdit_testWaitTime->setText(SETTINGS.value("PRESSURE/TestTime").toString());       // 压感测试时间
-    ui->lineEdit_individualMode->setText(SETTINGS.value("PRESSURE/Module").toString());       // 单模块
-    ui->lineEdit_functionSwitch->setText(SETTINGS.value("PRESSURE/functionSwitch").toString());  // 选择压感上位机的功能
+
+    ui->lineEdit_testWaitTime->setText(SETTINGS.value("PRESSURE/TestTime").toString());  // 压感测试时间
+    ui->comboBox_pressFunctionSwitch->setCurrentIndex(SETTINGS.value("PRESSURE/functionSwitch", 0).toInt());
+    ui->comboBox_displayImageType->setCurrentIndex(SETTINGS.value("PRESSURE/Use_graph", 0).toInt());
+    ui->comboBox_individualMode->setCurrentIndex(SETTINGS.value("PRESSURE/Module", 0).toInt());
     ui->lineEdit_PressMechine->setText(SETTINGS.value("PRESSURE/PressMechine").toString());  //选择第几套治具
+    ui->lineEdit_ButtonThreshold->setText(SETTINGS.value("PRESSURE/ButtonThreshold").toString());
+    ui->lineEdit_ButtonThresholdCount->setText(SETTINGS.value("PRESSURE/ButtonThresholdCount").toString());
+    ui->lineEdit_BrushThreshold->setText(SETTINGS.value("PRESSURE/BrushThreshold").toString());
+    ui->lineEdit_BrushThresholdCount->setText(SETTINGS.value("PRESSURE/BrushThresholdCount").toString());
+
+
 
     ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
     ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
@@ -305,10 +323,10 @@ void qsetting::saveSubPIDAndFilter() {
     QString subPID_03 = ui->lineEdit_SubPID_03->text();
 
     // 输出当前内容
-    qDebug() << "subPID_00 (from UI): " << subPID_00;
-    qDebug() << "subPID_01 (from UI): " << subPID_01;
-    qDebug() << "subPID_02 (from UI): " << subPID_02;
-    qDebug() << "subPID_03 (from UI): " << subPID_03;
+    // qDebug() << "subPID_00 (from UI): " << subPID_00;
+    // qDebug() << "subPID_01 (from UI): " << subPID_01;
+    // qDebug() << "subPID_02 (from UI): " << subPID_02;
+    // qDebug() << "subPID_03 (from UI): " << subPID_03;
 
     // 进入 SUBPID 组
     SETTINGS.beginGroup("SUBPID");
@@ -405,6 +423,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("WIFI/Password", ui->wifiPasswordLineEdit->text());
     SETTINGS.setValue("WIFI/HighRssi", ui->wifiUpperLimitLineEdit->text());
     SETTINGS.setValue("WIFI/LowRssi", ui->wifiLowerLimitLineEdit->text());
+    SETTINGS.setValue("WIFI/IP", ui->wifiIPLineEdit->text());
 
     // 保存 BLE 信息
     SETTINGS.setValue("BLE/HighRssi", ui->bluetoothUpperLimitLineEdit->text());
@@ -424,11 +443,19 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("FIXTEST/Button2", ui->lineEdit_Button2Status->text());
 
     // 加载压感参数
-    SETTINGS.setValue("PRESSURE/Use_graph", ui->lineEdit_displayImageType->text());
+
     SETTINGS.setValue("PRESSURE/TestTime", ui->lineEdit_testWaitTime->text());
-    SETTINGS.setValue("PRESSURE/Module", ui->lineEdit_individualMode->text());
-    SETTINGS.setValue("PRESSURE/functionSwitch", ui->lineEdit_functionSwitch->text());
+    SETTINGS.setValue("PRESSURE/functionSwitch", ui->comboBox_pressFunctionSwitch->currentIndex());
+    SETTINGS.setValue("PRESSURE/Use_graph", ui->comboBox_displayImageType->currentIndex());
+    SETTINGS.setValue("PRESSURE/Module", ui->comboBox_individualMode->currentIndex());
+
     SETTINGS.setValue("PRESSURE/PressMechine", ui->lineEdit_PressMechine->text());
+    SETTINGS.setValue("PRESSURE/ButtonThreshold", ui->lineEdit_ButtonThreshold->text());
+    SETTINGS.setValue("PRESSURE/ButtonThresholdCount", ui->lineEdit_ButtonThresholdCount->text());
+    SETTINGS.setValue("PRESSURE/BrushThreshold", ui->lineEdit_BrushThreshold->text());
+    SETTINGS.setValue("PRESSURE/BrushThresholdCount", ui->lineEdit_BrushThresholdCount->text());
+
+
 
     SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
     SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());
@@ -638,6 +665,20 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
+    if (ui->comboBox_productName->currentText() == "T10") {
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+    }
+
+    //华勤：欣旺达：依次扫码连接，不需要唤醒
+    if (ui->comboBox_productName->currentText() == "Y20PO") {
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->checkBox_PressIndependent->setChecked(true);
+    }
+
     //欣旺达：依次扫标签码连接，需要唤醒
     if (ui->comboBox_productName->currentText() == "Y21") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
@@ -664,7 +705,17 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_LightTest->setChecked(true);
         ui->checkBox_uperMotor->setChecked(true);
     }
-
+    //立讯：imu不需要晃动唤醒，全扫码再测试
+    if (ui->comboBox_productName->currentText() == "Y25S") {
+         ui->checkBox_PressIndependent->setChecked(true);
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+    }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y25") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
@@ -675,16 +726,7 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
-    //立讯：imu不需要晃动唤醒，全扫码再测试
-    if (ui->comboBox_productName->currentText() == "Y25P") {
-        // ui->checkBox_NeedWriteSkuid->setChecked(true);
-        ui->checkBox_IMULastEnterStartTest->setChecked(true);
-        ui->checkBox_SerialPortMAC->setChecked(true);
-        ui->checkBox_uperMotor->setChecked(true);
-        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
-        ui->checkBox_ShipModeResponse->setChecked(true);
-        ui->checkBox_TestWifiSignal->setChecked(true);
-    }
+
 
     if (ui->comboBox_productName->currentText() == "P20PS") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
