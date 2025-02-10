@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1406</width>
-    <height>1058</height>
+    <height>1116</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>13</number>
+               <number>9</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -4043,7 +4043,7 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLineEdit" name="ui_ip">
                     <property name="text">
-                     <string>http://192.168.137.201/</string>
+                     <string>http://192.168.137.133/</string>
                     </property>
                    </widget>
                   </item>

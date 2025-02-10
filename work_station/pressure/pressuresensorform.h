@@ -42,7 +42,7 @@ public:
     QPushButton* getEndTestButton() override { return ui->end; };  // 结束测试按钮
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
-
+    QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };  // nfc的usb口
     void startTask() override;
 
     void show_product(QString name);
@@ -55,10 +55,9 @@ public:
         MODEL_ID_F20,
         MODEL_ID_U7,
         MODEL_ID_P30P,
-
-        MODEL_ID_Y25S,
+        MODEL_ID_Y30PS,
         MODEL_ID_Y20PO,
-            MODEL_ID_MAX,
+        MODEL_ID_MAX,
     } MODEL_ID_E;
 
     typedef enum {
@@ -129,7 +128,6 @@ signals:
     void send_go_next_test(int data);
 
 private:
-    MesPacketData pack;
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
@@ -187,17 +185,15 @@ private:
 
     State state = STATE_IDLE;
 
-    int m_index;
-    int getIndex() const { return m_index; }
     void clear_display();
     void reset_all();
     void set_fixture_movement(MODEL_ID_E model, State state, int argument);
     void Y20P_fixture(State state, int argument);
     void F20_fixture(State state, int argument);
     void U7_fixture(State state, int argument);
-    void ui_msg_show(MODEL_ID_E model, State state, int argument);
+    void Y20PO_fixture(State state, int argument);
 
-    bool isTestContinue = false;
+    void ui_msg_show(MODEL_ID_E model, State state, int argument);
 
     QTime transTime;
     QTime countdowntime;
@@ -221,7 +217,6 @@ private:
     QString test_station = "";  // 制程
     QString model = "";         // 机种
 
-    QString nfcComName = "";
     QString readProduct = "";
     MODEL_ID_E product_model = MODEL_ID_INVALID;  // 产品型号
 
@@ -240,7 +235,6 @@ private:
     uint8_t is_calib_suc = 0;
     bool IsSaveFail = 0;  // 是否校准完成
 
-    bool mes_set_ok = 0;
     bool isCaliOk = 0;               // 是否校准完成
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
     bool repeat_send_ok = 0;         // 校准结果需要重复发送，确保写入，重复发送完成的标志位
@@ -285,8 +279,7 @@ private:
 private slots:
     void readJigSerialPortData(void) override;
     void getPressSensorData(FacUploadPresSensor x) override;
-    void solve_mes_data(const int mechines, QString msg);
-    void solve_mes_sucess(const int mechines);
+
     void receive_uart_data(int state);
 
     void send_frame_rate(QString data);
@@ -302,7 +295,8 @@ private slots:
     void processFixReceivedData(const QByteArray& data);
     void send_start_command(machine_command_id_e command_id, int argument);
 
-    void getTestvalue(const int mechines, const QString value);
+    void getTestValue(const int mechines, const QString value) override;
+
     void refreshSn(FacDevInfo data) override;
     void delay_msec(unsigned int msec);
     void refreshBaseData(FacGetDevBaseInfo data) override;

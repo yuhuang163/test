@@ -20,8 +20,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"P20PS", "Y25SE", "P20P", "U7",  "U7P", "F20",   "Q20", "Q30",
-                               "Y20",   "Y20P",  "Y25","Y25S", "Y21", "Y20PO", "T10"};
+    QStringList productList = {"U7",    "U7P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
+                               "Y30PS", "Y21", "Y20PO", "T10", "P20PS", "Y25SE", "P20P"};
     ui->comboBox_productName->addItems(productList);
 
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
@@ -38,6 +38,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->comboBox_factory->addItems(factoryList);
 
     loadConfig();
+    RestoreFacDefaultSetting();
+    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
 void qsetting::readSubPIDAndFilter() {
@@ -140,6 +142,7 @@ void qsetting::loadConfig() {
     ui->checkBox_TestAudioCurrent->setChecked(SETTINGS.value("SYSTEM/TestAudioCurrent").toBool());
     ui->checkBox_TestShippingCurrent->setChecked(SETTINGS.value("SYSTEM/TestShippingCurrent").toBool());
     ui->checkBox_PressIndependent->setChecked(SETTINGS.value("SYSTEM/PressIndependent").toBool());
+    ui->checkBox_PressWindow->setChecked(SETTINGS.value("SYSTEM/PressWindow").toBool());
 
     ui->checkBox_SendMotorCalibration->setChecked(SETTINGS.value("SYSTEM/SendMotorCalibration").toBool());
     ui->checkBox_LightTest->setChecked(SETTINGS.value("SYSTEM/LightTest").toBool());
@@ -191,8 +194,6 @@ void qsetting::loadConfig() {
     ui->lineEdit_ButtonThresholdCount->setText(SETTINGS.value("PRESSURE/ButtonThresholdCount").toString());
     ui->lineEdit_BrushThreshold->setText(SETTINGS.value("PRESSURE/BrushThreshold").toString());
     ui->lineEdit_BrushThresholdCount->setText(SETTINGS.value("PRESSURE/BrushThresholdCount").toString());
-
-
 
     ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
     ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
@@ -292,6 +293,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_camera_width->setText(SETTINGS.value("CAMERA/Rect1_Width").toString());  // 摄像头偏位标准矩形宽度
     ui->lineEdit_camera_height->setText(SETTINGS.value("CAMERA/Rect1_Height").toString());  // 摄像头偏位标准矩形高度
     ui->lineEdit_image_interval->setText(SETTINGS.value("CAMERA/CameraGetTime").toString());  // 重新获取图片时间间隔
+    ui->lineEdit_start_dirty_time->setText(SETTINGS.value("CAMERA/startDirtyTime").toString());
 
     // MES 相关
     ui->comboBox_factory->setCurrentText(SETTINGS.value("MES/factory").toString());
@@ -309,6 +311,28 @@ void qsetting::loadConfig() {
     ui->lineEdit_mes_login_station->setText(SETTINGS.value("MES/M_MACHINENO").toString());
     ui->lineEdit_line_huaqin->setText(SETTINGS.value("MES/Line").toString());
     ui->lineEdit_mes_login_password->setText(SETTINGS.value("MES/M_PASSWORD").toString());
+}
+void qsetting::updateMainStyle(QString style) {
+    // QSS文件初始化界面样式
+    QString stylesheet;
+    QFile qss(style);
+    if (qss.open(QFile::ReadOnly)) {
+        qDebug() << "qss load";
+        QTextStream filetext(&qss);
+        stylesheet = filetext.readAll();
+        this->setStyleSheet(stylesheet);
+        qss.close();
+    } else {
+        qDebug() << "qss not load";
+        qss.setFileName("/qss/" + style);
+        if (qss.open(QFile::ReadOnly)) {
+            qDebug() << "qss load";
+            QTextStream filetext(&qss);
+            stylesheet = filetext.readAll();
+            this->setStyleSheet(stylesheet);
+            qss.close();
+        }
+    }
 }
 qsetting::~qsetting() {
     qDebug() << "已经删除页面";
@@ -402,6 +426,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("SYSTEM/TestAudioCurrent", ui->checkBox_TestAudioCurrent->isChecked());
     SETTINGS.setValue("SYSTEM/TestShippingCurrent", ui->checkBox_TestShippingCurrent->isChecked());
     SETTINGS.setValue("SYSTEM/PressIndependent", ui->checkBox_PressIndependent->isChecked());
+    SETTINGS.setValue("SYSTEM/PressWindow", ui->checkBox_PressWindow->isChecked());
 
     SETTINGS.setValue("SYSTEM/SendMotorCalibration", ui->checkBox_SendMotorCalibration->isChecked());
     SETTINGS.setValue("SYSTEM/LightTest", ui->checkBox_LightTest->isChecked());
@@ -454,8 +479,6 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("PRESSURE/ButtonThresholdCount", ui->lineEdit_ButtonThresholdCount->text());
     SETTINGS.setValue("PRESSURE/BrushThreshold", ui->lineEdit_BrushThreshold->text());
     SETTINGS.setValue("PRESSURE/BrushThresholdCount", ui->lineEdit_BrushThresholdCount->text());
-
-
 
     SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
     SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());
@@ -557,6 +580,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("CAMERA/Rect1_Width", ui->lineEdit_camera_width->text());
     SETTINGS.setValue("CAMERA/Rect1_Height", ui->lineEdit_camera_height->text());
     SETTINGS.setValue("CAMERA/CameraGetTime", ui->lineEdit_image_interval->text());
+    SETTINGS.setValue("CAMERA/startDirtyTime", ui->lineEdit_start_dirty_time->text());
 
     // MES 相关
     SETTINGS.setValue("MES/factory", ui->comboBox_factory->currentText());
@@ -581,7 +605,8 @@ void qsetting::closeEvent(QCloseEvent* event) {
     qDebug() << "已经保存配置信息";
 }
 
-void qsetting::RestoreDefaultSetting() {
+void qsetting::RestoreProductDefaultSetting() {
+    ui->checkBox_PressIndependent->setChecked(true);  //默认所有产品都直接开始
     ui->checkBox_NeedWriteSkuid->setChecked(false);
     ui->checkBox_NeedWriteSubpid->setChecked(false);
     ui->checkBox_BluetoothImageTransfer->setChecked(false);
@@ -593,12 +618,11 @@ void qsetting::RestoreDefaultSetting() {
     ui->checkBox_TestAudioCurrent->setChecked(false);
     ui->checkBox_TestShippingCurrent->setChecked(false);
 
-    ui->checkBox_PressIndependent->setChecked(false);
-
     ui->checkBox_SendMotorCalibration->setChecked(false);
     ui->checkBox_LightTest->setChecked(false);
     ui->checkBox_ServoMotorStart->setChecked(false);
     ui->checkBox_uperMotor->setChecked(false);
+    ui->checkBox_PressWindow->setChecked(false);
 
     ui->checkBox_TestWifiSignal->setChecked(false);
     ui->checkBox_IMULastEnterStartTest->setChecked(false);
@@ -606,7 +630,6 @@ void qsetting::RestoreDefaultSetting() {
     //立讯的p20p要回车开始，木星是按键开始
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
     if (ui->comboBox_productName->currentText() == "U7") {
-        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_DisableSerialPortRx->setChecked(true);
@@ -618,7 +641,6 @@ void qsetting::RestoreDefaultSetting() {
     }
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
     if (ui->comboBox_productName->currentText() == "U7P") {
-        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_BluetoothImageTransfer->setChecked(true);
@@ -637,7 +659,7 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
-    if (ui->comboBox_productName->currentText() == "Q30") {
+    if (ui->comboBox_productName->currentText() == "Q20P") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
@@ -658,12 +680,14 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->checkBox_PressWindow->setChecked(true);
     }
     //华勤：欣旺达：依次扫码连接，不需要唤醒
     if (ui->comboBox_productName->currentText() == "Y20P") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->checkBox_PressWindow->setChecked(true);
     }
     if (ui->comboBox_productName->currentText() == "T10") {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
@@ -676,7 +700,7 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
-        ui->checkBox_PressIndependent->setChecked(true);
+        ui->checkBox_PressWindow->setChecked(true);
     }
 
     //欣旺达：依次扫标签码连接，需要唤醒
@@ -684,6 +708,7 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->checkBox_PressWindow->setChecked(true);
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     //华勤：依次扫码连接，不需要唤醒
@@ -699,15 +724,13 @@ void qsetting::RestoreDefaultSetting() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试//原p30ps
     if (ui->comboBox_productName->currentText() == "Y25SE") {
-        ui->checkBox_PressIndependent->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
         ui->checkBox_uperMotor->setChecked(true);
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
-    if (ui->comboBox_productName->currentText() == "Y25S") {
-         ui->checkBox_PressIndependent->setChecked(true);
+    if (ui->comboBox_productName->currentText() == "Y30PS") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
@@ -717,7 +740,7 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
-    if (ui->comboBox_productName->currentText() == "Y25") {
+    if (ui->comboBox_productName->currentText() == "Y30") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
@@ -726,7 +749,6 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
     }
-
 
     if (ui->comboBox_productName->currentText() == "P20PS") {
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
@@ -736,27 +758,111 @@ void qsetting::RestoreDefaultSetting() {
         ui->checkBox_uperMotor->setChecked(true);
     }
 }
-void qsetting::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
+
+void qsetting::RestoreFacDefaultSetting() {
+    // 隐藏 QLabel 和 QLineEdit 控件
+    ui->label_weikesen_order->hide();
+    ui->lineEdit_weikesen_order->hide();
+    ui->label_78->hide();
+    ui->lineEdit_mesUrl->hide();
+    ui->label_74->hide();
+    ui->lineEdit_macStation->hide();
+    ui->label_79->hide();
+    ui->lineEdit_processName->hide();
+    ui->label_80->hide();
+    ui->lineEdit_modelName->hide();
+    ui->label_mac_field->hide();
+    ui->lineEdit_mac_field->hide();
+    ui->label_79->hide();
+    ui->label_action_huaqin->hide();
+    ui->lineEdit_action_huaqin->hide();
+    ui->label_line_huaqin->hide();
+    ui->lineEdit_line_huaqin->hide();
+    ui->label_mes_login_account->hide();
+    ui->lineEdit_mes_login_account->hide();
+    ui->label_mes_login_password->hide();
+    ui->lineEdit_mes_login_password->hide();
+    ui->label_mes_operator->hide();
+    ui->lineEdit_mes_operator->hide();
+    ui->label_mes_login_station->hide();
+    ui->lineEdit_mes_login_station->hide();
+
+    if (ui->comboBox_factory->currentText() == "wks") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_79->show();
+        ui->lineEdit_processName->show();
+        ui->label_weikesen_order->show();
+        ui->lineEdit_weikesen_order->show();
+    }
+    if (ui->comboBox_factory->currentText() == "ydm") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_80->show();
+        ui->lineEdit_modelName->show();
+        ui->label_weikesen_order->show();
+        ui->lineEdit_weikesen_order->show();
+    }
+    if (ui->comboBox_factory->currentText() == "xwd") {
+        ui->label_74->show();
+        ui->lineEdit_macStation->show();
+        ui->label_mes_login_account->show();
+        ui->lineEdit_mes_login_account->show();
+        ui->label_mes_login_password->show();
+        ui->lineEdit_mes_login_password->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->label_mes_login_station->show();
+        ui->lineEdit_mes_login_station->show();
+    }
+    if (ui->comboBox_factory->currentText() == "hq") {
+        ui->label_action_huaqin->show();
+        ui->lineEdit_action_huaqin->show();
+        ui->label_line_huaqin->show();
+        ui->lineEdit_line_huaqin->show();
+        ui->label_mes_login_account->show();
+        ui->lineEdit_mes_login_account->show();
+        ui->label_mes_login_password->show();
+        ui->lineEdit_mes_login_password->show();
+    }
+    if (ui->comboBox_factory->currentText() == "lx") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_79->show();
+        ui->lineEdit_processName->show();
+        ui->label_80->show();
+        ui->lineEdit_modelName->show();
+        ui->label_mac_field->show();
+        ui->lineEdit_mac_field->show();
+    }
+    if (ui->comboBox_factory->currentText() == "无mes厂") {
+        ui->label_weikesen_order->show();
+        ui->lineEdit_weikesen_order->show();
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_74->show();
+        ui->lineEdit_macStation->show();
+        ui->label_79->show();
+        ui->lineEdit_processName->show();
+        ui->label_80->show();
+        ui->lineEdit_modelName->show();
+        ui->label_mac_field->show();
+        ui->lineEdit_mac_field->show();
+        ui->label_79->show();
+        ui->label_action_huaqin->show();
+        ui->lineEdit_action_huaqin->show();
+        ui->label_line_huaqin->show();
+        ui->lineEdit_line_huaqin->show();
+        ui->label_mes_login_account->show();
+        ui->lineEdit_mes_login_account->show();
+        ui->label_mes_login_password->show();
+        ui->lineEdit_mes_login_password->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->label_mes_login_station->show();
+        ui->lineEdit_mes_login_station->show();
     }
 }
+void qsetting::on_comboBox_productName_textActivated(const QString& arg1) { RestoreProductDefaultSetting(); }
 
-void qsetting::on_comboBox_productName_textActivated(const QString& arg1) { RestoreDefaultSetting(); }
+void qsetting::on_comboBox_factory_textActivated(const QString& arg1) { RestoreFacDefaultSetting(); }

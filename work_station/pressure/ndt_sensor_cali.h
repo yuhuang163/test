@@ -48,8 +48,8 @@ typedef enum {
     CAL_CHANNEL_F20_CH2,
     CAL_CHANNEL_U7_CH0,
     CAL_CHANNEL_P30P_CH0,
-    CAL_CHANNEL_Y25S_CH0,
-    CAL_CHANNEL_Y25S_CH1,
+    CAL_CHANNEL_Y30PS_CH0,
+    CAL_CHANNEL_Y30PS_CH1,
     CAL_CHANNEL_Y20PO_CH0,
     CAL_CHANNEL_Y20PO_CH1,
     CAL_CHANNEL_MAX
@@ -100,7 +100,7 @@ public:
         unsigned int lower_limit;  // 校准系数下限
         int16_t adc_threshold;     // adc变化量阈值，达到阈值之后才开始校准
         int16_t count_threshold;   // 超过adc阈值之后开始计数，超过该阈值之后才开始校准
-        int32_t first_adc;         // 第一次的adc值
+        int32_t first_adc=0;         // 第一次的adc值
 
         int16_t test_grams[3] = {0};      // 测试压力
         int16_t test_tolerance[3] = {0};  // 测试容差

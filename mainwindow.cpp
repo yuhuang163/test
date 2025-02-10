@@ -1428,11 +1428,11 @@ void MainWindow::on_bleTestPushButton_clicked() {
         // 检查是否是mac格式
         QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
         // 使用正则表达式匹配
-        if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
+        if (!macRegex.match(ui->macInput->text()).hasMatch()) {
             QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
             return;
         } else {
-            at->sendotaMac(ui->bleotamacInput->text());
+            at->sendotaMac(ui->macInput->text());
         }
 
         waitWork(ui->testPeriodSpin->value() * 1000 / 2);

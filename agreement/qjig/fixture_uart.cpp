@@ -155,8 +155,8 @@ void Fixture_uart::solve_frame(void) {
             int frame_size = head->length;
 
             if (frame_size > ring_size) {
-                qDebug() << "串口帧数据不完整"
-                         << "需要" << frame_size << "实际为" << ring_size;
+                // qDebug() << "串口帧数据不完整"
+                //          << "需要" << frame_size << "实际为" << ring_size;
                 break;
             }
 
@@ -218,6 +218,8 @@ int Fixture_uart::ext_ble_find_next_frame(void) {
 
     return 0;
 }
+
+// 1是发送的，0是接收的
 void Fixture_uart::save_Fixture_uart_log(int txrx, QByteArray data) {
     QString folderName = "治具log";
     QDir dir;
@@ -286,12 +288,10 @@ void Fixture_uart::processimuReceivedData(const QByteArray& data) {
     if (data_command.contains("OK")) {
         emit send_data_to_mechine_imu(1);
         qDebug() << "收到治具ok指令";
-        data_command.clear();
     }
 
     if (data_command.contains("ERROR")) {
         emit send_data_to_mechine_imu(0);
-        data_command.clear();
     }
 
     if (data_command.contains("BarCode?\r")) {
@@ -299,23 +299,20 @@ void Fixture_uart::processimuReceivedData(const QByteArray& data) {
         send_command_to_machine(COMMAND_ID_CHEAK_STATUS, 0);
 #endif
         emit send_data_to_mechine_press(1);
-        data_command = "";
     }
 
     if (data_command.contains("Ready\r")) {
         emit send_data_to_mechine_press(2);
-        data_command = "";
     }
 
     if (data_command.contains("START1_OK\r\n")) {
         emit send_data_to_mechine_press(3);
-        data_command = "";
     }
 
     if (data_command.contains("START2_OK\r\n")) {
         emit send_data_to_mechine_press(4);
-        data_command = "";
     }
+    data_command.clear();
 }
 
 void Fixture_uart::processReceivedData(const QByteArray& data) {
@@ -559,6 +556,17 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
 }
 
 void Fixture_uart::FixtureCommandInit(void) {
+#if 0
+    // Y20Pro校准治具
+    commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
+    commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O\r\n"};
+    commands[COMMAND_ID_FIXED_BLOCK_UP][0] = {"PROD_U\r\n"};
+    commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] = {"PROD_D\r\n"};
+    commands[COMMAND_ID_KEY_UP][0] = {"FAMA_U\r\n"};
+    commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D\r\n"};
+    commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U\r\n"};
+    commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D\r\n"};
+#else
     // Y20Pro校准治具
     commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I"};
     commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O"};
@@ -568,6 +576,7 @@ void Fixture_uart::FixtureCommandInit(void) {
     commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D"};
     commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U"};
     commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D"};
+#endif
 
     // Y20Pro测试治具
     commands[COMMAND_ID_CHEAK_STATUS][0] = {"Check:Pass\r"};
@@ -641,10 +650,8 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
         qDebug() << "command_id:" << command_id << "numb" << numb;
         fixtureSerialPort->write(commands[command_id][numb]);
         qDebug() << "已发送命令" << commands[command_id][numb];
+        save_Fixture_uart_log(1, commands[command_id][numb]);
     } else {
         qDebug() << "Invalid command index";
     }
 }
-
-
-

@@ -85,6 +85,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
         for (int i = 0; i < testList.size(); i++) {
             testList[i]->endTask();
         }
+        testList[0]->getMacLineEdit()->setFocus();
     });
 
     QAction* use_mes_act = ui->menubar->addAction("开关MES");

@@ -27,13 +27,11 @@ public:
 private:
     Ui::PressCalibBox* ui;
     Fixture_uart* Fixture_uart_ui = NULL;  // 牙刷控制窗口
-    QList<PressureSensorForm*> widgets;
-    QList<test_base*> testList;
-    bool isTestContinue = true;
+
     std::vector<int> display_state;
 private slots:
-
-    void resetall();
+    void checkAllover(int testNumber)override;
+    void reset_display_state();
     void send_uart_data(FixturePacketData PacketData);
     void display_on_screen(int instruct);
 };

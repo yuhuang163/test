@@ -98,188 +98,194 @@ wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
 wifibletest::~wifibletest() { delete ui; }
 
 void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
-    showlog("当前产品名字为" + QString(data.product_name));
-    if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
-        showlog("开始写入nfc数据");
-        QString value = getValueBySN(ui->getMac->text()).toUtf8();
+    if (refresh_base_times) {
+        refresh_base_times = 0;
+        showlog("当前产品名字为" + QString(data.product_name));
+        if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
+            showlog("开始写入nfc数据");
+            QString value = getValueBySN(ui->getMac->text()).toUtf8();
 
-        if ("SUBPID_ERRO" == value) {
-            TestResult = failValue;
-            isTestContinue = false;
-            on_stopTest_clicked();
+            if ("SUBPID_ERRO" == value) {
+                TestResult = failValue;
+                isTestContinue = false;
+                on_stopTest_clicked();
+                TestItem test;
+                test.testItem = "subpid";
+                test.testData = value;
+                test.testResult = "失败";
+                test.ask = "通过";
+                testItems.append(test);
+
+                testResultTableUpdate(testItems);
+
+                showlog("停止运行");
+                showlog("没匹配到subpid");
+                return;
+            }
             TestItem test;
             test.testItem = "subpid";
             test.testData = value;
-            test.testResult = "失败";
+            test.testResult = "通过";
             test.ask = "通过";
             testItems.append(test);
 
             testResultTableUpdate(testItems);
 
-            showlog("停止运行");
-            showlog("没匹配到subpid");
+            if (QString(data.product_name).compare("U7P") == 0) {
+                nfcdataHeadText = "033BD2023668772001004800324F3130" + value + "810800272000141785911410";
+                showlog("当前nfc写入的是U7P!");
+            }
+            if (QString(data.product_name).compare("U7") == 0) {
+                nfcdataHeadText = "033BD2023668772001004800324F3045" + value + "810800272000141785911410";
+                showlog("当前nfc写入的是U7!");
+            }
+
+            on_nfc_write_read_clicked();
+        }
+
+        // 读取软件版本字符串
+        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
+
+        // 读取资源版本字符串
+        QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
+
+        // 读取老化状态字符串
+        QString ageState = SETTINGS.value("ProductInfo/Age_State").toString();
+        // 读取蓝牙版本字符串
+        QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
+
+        // 读取压感版本字符串
+        QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+
+        // 读取电机版本字符串
+        QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
+
+        wifiMac.clear();
+        for (int var = 0; var < data.wifi_mac.size; ++var) {
+            wifiMac += QString::number(data.wifi_mac.bytes[var], 16);
+            if (var < data.wifi_mac.size - 1)
+                wifiMac += ":";
+        }
+        qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
+
+        if (!pressureSenseVersion.contains(data.presure_version) && allow_retry) {
+            showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
+                    pressureSenseVersion);
+            allow_retry = 0;
+            showlog("压感版本错误尝试重新获取一次");
+            pb->get_base_info();
+            refresh_base_times = 1;
             return;
         }
+
+        bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+        bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
+        bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
+        bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+        bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
+        bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
+        bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
+        bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
+        bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
+        bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
+        bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
+        bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
+        bool isAgeStatet = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
+
+        // 检查软件版本、资源版本和老化状态是否匹配
+        if ((!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
+            (!isResourceTest || resourceVersion.contains(data.res_version)) &&
+            (!isBleTest || bleVersion.contains(data.ble_version)) &&
+            (!isPresureTest || pressureSenseVersion.contains(data.presure_version)) &&
+            (!isMotorTest || motorVersion.contains(data.motor_version)) &&
+            (!isAgeStatet || ageState.contains(QString::number(data.ageing_state)))) {
+            showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
+            showlog("资源版本正确" + QString::fromUtf8(data.res_version));
+            showlog("老化状态正确" + QString::number(data.ageing_state));
+            showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
+            showlog("压感状态正确" + QString::fromUtf8(data.presure_version));
+            showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
+            showlog("软件版本正确");
+
+        } else {
+            showlog("版本错误");
+            showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersion);
+            showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersion);
+            showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + ageState);
+            showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
+            showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
+                    pressureSenseVersion);
+            showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersion);
+
+            TestResult = failValue;
+            isTestContinue = false;
+            showlog("停止运行");
+            // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+            waitWork(100);
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+
+            ui->macInput->clear();
+            ui->getMac->clear();
+            // ui->getMac->setFocus();
+            on_disconnectButton_clicked();
+
+            ui->test_result->setText("FAIL");
+            ui->test_result->setStyleSheet(
+                "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                "border-radius: 10px; padding: 10px; text-align: center; ");
+
+            // on_stopTest_clicked();
+        }
+
         TestItem test;
-        test.testItem = "subpid";
-        test.testData = value;
-        test.testResult = "通过";
-        test.ask = "通过";
-        testItems.append(test);
 
-        testResultTableUpdate(testItems);
-
-        if (QString(data.product_name).compare("U7P") == 0) {
-            nfcdataHeadText = "033BD2023668772001004800324F3130" + value + "810800272000141785911410";
-            showlog("当前nfc写入的是U7P!");
-        }
-        if (QString(data.product_name).compare("U7") == 0) {
-            nfcdataHeadText = "033BD2023668772001004800324F3045" + value + "810800272000141785911410";
-            showlog("当前nfc写入的是U7!");
+        if (isAgeStatet) {
+            test.testItem = "老化状态";
+            test.testData = QString::number(data.ageing_state);
+            test.ask = ageState;
+            testItems.append(test);
         }
 
-        on_nfc_write_read_clicked();
+        // Check for Pressure version
+        if (isPresureTest) {
+            test.testItem = "压感版本";
+            test.testData = QString::fromUtf8(data.presure_version);
+            test.ask = pressureSenseVersion;
+            testItems.append(test);
+        }
+
+        // Check for BLE version
+        if (isBleTest) {
+            test.testItem = "蓝牙版本";
+            test.testData = QString::fromUtf8(data.ble_version);
+            test.ask = bleVersion;
+            testItems.append(test);
+        }
+        // Check for Motor version
+        if (isMotorTest) {
+            test.testItem = "电机版本";
+            test.testData = QString::fromUtf8(data.motor_version);
+            test.ask = motorVersion;
+            testItems.append(test);
+        }
+        // Check for Resource version
+        if (isResourceTest) {
+            test.testItem = "资源版本";
+            test.testData = QString::fromUtf8(data.res_version);
+            test.ask = resourceVersion;
+            testItems.append(test);
+        }
+        // Check for Software version
+        if (isSoftwareTest) {
+            test.testItem = "软件版本";
+            test.testData = QString::fromUtf8(data.soft_version);
+            test.ask = softwareVersion;
+            testItems.append(test);
+        }
+
+        updateTestData(testItems);
     }
-
-    // 读取软件版本字符串
-    QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-
-    // 读取资源版本字符串
-    QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
-
-    // 读取老化状态字符串
-    QString ageState = SETTINGS.value("ProductInfo/Age_State").toString();
-    // 读取蓝牙版本字符串
-    QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
-
-    // 读取压感版本字符串
-    QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
-
-    // 读取电机版本字符串
-    QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
-
-    wifiMac.clear();
-    for (int var = 0; var < data.wifi_mac.size; ++var) {
-        wifiMac += QString::number(data.wifi_mac.bytes[var], 16);
-        if (var < data.wifi_mac.size - 1)
-            wifiMac += ":";
-    }
-    qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
-
-    if (!pressureSenseVersion.contains(data.presure_version) && allow_retry) {
-        allow_retry = 0;
-        showlog("压感版本错误尝试重新获取一次");
-        pb->get_base_info();
-        return;
-    }
-
-    bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
-    bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
-    bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
-    bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
-    bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
-    bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
-    bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
-    bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
-    bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
-    bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
-    bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
-    bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
-    bool isAgeStatet = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
-
-    // 检查软件版本、资源版本和老化状态是否匹配
-    if ((!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
-        (!isResourceTest || resourceVersion.contains(data.res_version)) &&
-        (!isBleTest || bleVersion.contains(data.ble_version)) &&
-        (!isPresureTest || pressureSenseVersion.contains(data.presure_version)) &&
-        (!isMotorTest || motorVersion.contains(data.motor_version)) &&
-        (!isAgeStatet || ageState.contains(QString::number(data.ageing_state)))) {
-        showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
-        showlog("资源版本正确" + QString::fromUtf8(data.res_version));
-        showlog("老化状态正确" + QString::number(data.ageing_state));
-        showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
-        showlog("压感状态正确" + QString::fromUtf8(data.presure_version));
-        showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
-        showlog("软件版本正确");
-
-    } else {
-        showlog("版本错误");
-        showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersion);
-        showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersion);
-        showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + ageState);
-        showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
-        showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
-                pressureSenseVersion);
-        showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersion);
-
-        TestResult = failValue;
-        isTestContinue = false;
-        showlog("停止运行");
-        // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
-        waitWork(100);
-        ui->macInput->setDisabled(0);
-        ui->getMac->setDisabled(0);
-
-        ui->macInput->clear();
-        ui->getMac->clear();
-        // ui->getMac->setFocus();
-        on_disconnectButton_clicked();
-
-        ui->test_result->setText("FAIL");
-        ui->test_result->setStyleSheet(
-            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-            "border-radius: 10px; padding: 10px; text-align: center; ");
-
-        // on_stopTest_clicked();
-    }
-
-    TestItem test;
-
-    if (isAgeStatet) {
-        test.testItem = "老化状态";
-        test.testData = QString::number(data.ageing_state);
-        test.ask = ageState;
-        testItems.append(test);
-    }
-
-    // Check for Pressure version
-    if (isPresureTest) {
-        test.testItem = "压感版本";
-        test.testData = QString::fromUtf8(data.presure_version);
-        test.ask = pressureSenseVersion;
-        testItems.append(test);
-    }
-
-    // Check for BLE version
-    if (isBleTest) {
-        test.testItem = "蓝牙版本";
-        test.testData = QString::fromUtf8(data.ble_version);
-        test.ask = bleVersion;
-        testItems.append(test);
-    }
-    // Check for Motor version
-    if (isMotorTest) {
-        test.testItem = "电机版本";
-        test.testData = QString::fromUtf8(data.motor_version);
-        test.ask = motorVersion;
-        testItems.append(test);
-    }
-    // Check for Resource version
-    if (isResourceTest) {
-        test.testItem = "资源版本";
-        test.testData = QString::fromUtf8(data.res_version);
-        test.ask = resourceVersion;
-        testItems.append(test);
-    }
-    // Check for Software version
-    if (isSoftwareTest) {
-        test.testItem = "软件版本";
-        test.testData = QString::fromUtf8(data.soft_version);
-        test.ask = softwareVersion;
-        testItems.append(test);
-    }
-
-    updateTestData(testItems);
 }
 
 void wifibletest::refreshBattaryData(FacDevInfo adc) {
@@ -529,6 +535,8 @@ void wifibletest::getWifiMsg(QString data) {
     }
 }
 void wifibletest::initDate() {
+    refresh_base_times = 1;
+    refresh_periph_times = 1;
     allow_retry = 1;
     measure_ammeter_counts = 0;
     ui->tail_sn->setText("芯片存储的尾盖sn:");
@@ -783,7 +791,7 @@ void wifibletest::startTask() {
 
                     test.testItem = "充电电流";
                     test.testData = QString::number(measure_ammeter);
-                   
+
                     test.testResult = currentresult;
                     test.ask = "通过";
                     testItems.append(test);
@@ -1357,7 +1365,13 @@ QString wifibletest::generateHexString(int productionNumber) {
 }
 
 QString wifibletest::getValueBySN(const QString& sn) {
-    QString truncatedSN = sn.left(8);
+    QString truncatedSN;
+
+    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
+        truncatedSN = sn.left(8);
+    else
+        truncatedSN = sn.left(9);
+
     showlog("truncatedSN:" + truncatedSN);
 
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();

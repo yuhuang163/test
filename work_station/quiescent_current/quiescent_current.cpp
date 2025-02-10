@@ -73,11 +73,11 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
         ui->productDisconnectButton->setEnabled(false);
     }
 
-    if (QString(pack.product).compare("P20PS") == 0) {
-        productBaudRate = 2000000;
-    } else {
-        productBaudRate = 1000000;
-    }
+    // if (QString(pack.product).compare("P20PS") == 0) {
+    //     productBaudRate = 2000000;
+    // } else {
+    //     productBaudRate = 1000000;
+    // }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
@@ -368,10 +368,8 @@ void quiescent_current::refreshAmmeterData(QString data) {
         // 转换成功
         qDebug() << getIndex() << "转换后的数值：" << normalValue << "ma";
         measure_ammeter = normalValue;
-        QString formattedValue = QString::number(normalValue, 'f', 8);
-        qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
-        // ui->log->appendPlainText(formattedValue+"ma");
-        showlog(formattedValue + "ma");
+
+        showlog("转换后的数值：" + QString::number(normalValue, 'f', 8) + "ma");
     } else {
         // 转换失败
         qDebug() << getIndex() << "无法将字符串转换为 double 类型";

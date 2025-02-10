@@ -151,6 +151,7 @@ void box_base::checkAndUpdateFile() {
 }
 
 void box_base::signalAndslot() {
+    qDebug() << "box_base的testList.size()" << testList.size();
     for (int i = 0; i < testList.size(); i++) {
         connect(this, SIGNAL(sendBoxLog(QString)), testList[i], SLOT(showlog(QString)));
         connect(this, SIGNAL(go_screen_next(int)), testList[i], SLOT(canGoNextMechine(int)));
@@ -324,7 +325,7 @@ void box_base::recoverCustom() {
         QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
         QString usbComName = SETTINGS.value(QString("%1/usbcomName").arg(baseKey)).toString();
         QString jigComomName = SETTINGS.value(QString("%1/JigcomName").arg(baseKey)).toString();
-        QString nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(baseKey)).toString();
+        QString nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(baseKey)).toString();  //需要手动去写
         QString ProductComName = SETTINGS.value(QString("%1/ProductcomName").arg(baseKey)).toString();
         QString MotorCaliParam = SETTINGS.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
 
@@ -333,7 +334,6 @@ void box_base::recoverCustom() {
         setComboBoxEditText(testList[i]->getJigcomNameCombo(), jigComomName);
         setComboBoxEditText(testList[i]->getProductcomNameCombo(), ProductComName);
         addComboBoxEditText(testList[i]->getNfcComboBox(), nfcComName);
-        setComboBoxEditText(testList[i]->getNfcComboBox(), nfcComName);
 
         if (testList[i]->getMotorCaliParam() != nullptr) {
             testList[i]->getMotorCaliParam()->setText(MotorCaliParam);
@@ -405,8 +405,6 @@ void box_base::checkAllover(int fixtureNumber) {
         for (int i = 0; i < testList.size(); ++i) {
             FixTureStates[i] = 0;
         }
-
-        testList[0]->getMacLineEdit()->setFocus();
 
         if (pack.factory == "无mes厂")
             testList[0]->macInputLineEdit()->setFocus();

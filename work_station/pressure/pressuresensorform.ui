@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>773</width>
-    <height>606</height>
+    <width>650</width>
+    <height>532</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -378,6 +378,9 @@
                    <height>16777215</height>
                   </size>
                  </property>
+                 <property name="text">
+                  <string/>
+                 </property>
                  <property name="placeholderText">
                   <string>切换英文输入扫码</string>
                  </property>
@@ -427,7 +430,7 @@
                   </size>
                  </property>
                  <property name="text">
-                  <string>28:37:2f:e4:e1:ca</string>
+                  <string/>
                  </property>
                  <property name="placeholderText">
                   <string>切换英文输入扫码</string>
@@ -498,15 +501,18 @@
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_19">
                <item>
-                <widget class="QCheckBox" name="debug">
+                <widget class="QCheckBox" name="mydebug">
                  <property name="enabled">
                   <bool>true</bool>
                  </property>
                  <property name="text">
                   <string>调试模式(不发nfc)</string>
                  </property>
+                 <property name="checkable">
+                  <bool>false</bool>
+                 </property>
                  <property name="checked">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                 </widget>
                </item>
@@ -538,6 +544,30 @@
                  </property>
                  <property name="text">
                   <string>发送校准系数</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_20">
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QComboBox" name="NfcComboBox">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="nfcComFresh">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="text">
+                  <string>刷新nfc口</string>
                  </property>
                 </widget>
                </item>

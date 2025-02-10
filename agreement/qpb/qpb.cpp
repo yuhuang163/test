@@ -981,7 +981,7 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
         .write_info[sizeof(pack.command_data.set_dev_info.dev_info[0].write_info) - 1] = '\0';
 
     sendShortPack(pack);
-    qDebug() << "已发送sn码" << pack.command_data.set_dev_info.dev_info[0].write_info;
+    qDebug() << "已发送sn码" << pack.command_data.set_dev_info.dev_info[0].write_info << sn;
 }
 
 void Qpb::get_sn(FacDevInfoType which_sn) {
@@ -2135,6 +2135,7 @@ void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f) {
     is_imu_set_sta = x.param[0].command_data.nine_axle.state;
 
     qDebug() << "接收到imu状态设置为" << x.param[0].command_data.nine_axle.state;
+    qDebug() << "接收到压感状态设置为" << x.param[0].command_data.pressure_sensor.state;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {

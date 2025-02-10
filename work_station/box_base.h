@@ -15,7 +15,7 @@ class box_base : public QMainWindow {
     Q_OBJECT
 public:
     explicit box_base(QWidget* parent = nullptr);
- ~box_base();
+    ~box_base();
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
@@ -42,6 +42,7 @@ public:
         testList[0]->getMacLineEdit()->setFocus();
 
         qDebug() << "当前为1拖" << formColumn * formRow;
+        qDebug() << "testList.size" << testList.size();
     }
 
     bool checkStateReady(std::vector<int> States);

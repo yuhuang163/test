@@ -641,15 +641,15 @@ void ageing::on_getMac_returnPressed() {
     showlog("正在查询mac地址");
     writesn = ui->getMac->text().toUtf8();
     stringsn = ui->getMac->text();
-    if (writesn != last_sn) {
-        last_sn = writesn;
-
-    } else {
-        showlog("sn与上一台机器重复,机子异常");
-        return;
-    }
-
     if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
+        if (writesn != last_sn) {
+            last_sn = writesn;
+
+        } else {
+            showlog("sn与上一台机器重复,机子异常" + last_sn + writesn);
+            return;
+        }
+
         writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
 
         if ("SUBPID_ERRO" == writesubpid) {

@@ -8,6 +8,7 @@
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_cameratest.h"
+
 #if _MSC_VER >= 1600
 #    pragma execution_character_set("utf-8")
 #endif
@@ -90,6 +91,7 @@ cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
                                  "padding: 10px; text-align: center; ");
     // mes失败停止。
 
+    startDirtyTime = SETTINGS.value("CAMERA/startDirtyTime", 2).toInt();
     CameraGetTime = SETTINGS.value("CAMERA/CameraGetTime", 6000).toInt();
     showlog("action=" + pack.test_station);
     showlog("model=" + pack.model);
@@ -1150,7 +1152,7 @@ void cameratest::updateImageOnMainThread() {
 void cameratest::start_dirty_test() {
     if (can_start_dirty_test) {
         picutre_dirty_times++;
-        if (picutre_dirty_times == 2) {
+        if (picutre_dirty_times >= startDirtyTime) {
             picutre_dirty_times = 0;
             can_start_dirty_test = 0;
             on_DirtyTestButton_clicked();
@@ -1207,7 +1209,7 @@ void cameratest::on_DirtyTestButton_clicked() {
     QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
     QString scriptPath;
     QStringList arguments;
-    if (pack.product == "Q30") {
+    if (pack.product == "Q20P") {
         scriptPath = "./code/onnx_inference_camera_stain_q30_250113.py";
         arguments << "--model"
                   << "./code/q30_model_250114.onnx"
@@ -1441,7 +1443,7 @@ void cameratest::on_OffsetTest_clicked() {
     QString scriptPath = "./code/onnx_inference.py";
     QStringList arguments;
 
-    if (pack.product == "Q30") {
+    if (pack.product == "Q20P") {
         scriptPath = "./code/onnx_inference_pos_q30_250113.py";
         arguments << "--model"
                   << "./code/q30_model_250114.onnx"
@@ -1690,7 +1692,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
         QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
         QString scriptPath;
         QStringList arguments;
-        if (pack.product == "Q30") {
+        if (pack.product == "Q20P") {
             scriptPath = "./code/onnx_inference_clearness_q30_250113.py";
             arguments << "--model"
                       << "./code/q30_model_250114.onnx"

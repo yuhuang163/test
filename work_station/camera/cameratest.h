@@ -84,6 +84,8 @@ public:
     QTimer* cameratimer = new QTimer(this);
     int dataNumber = 0;
     int CameraGetTime = 6000;
+    int startDirtyTime = 2;
+
     /*摄像头传图部分*/
     std::atomic<bool> running;
     QFuture<void> future;

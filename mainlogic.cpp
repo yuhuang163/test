@@ -1823,14 +1823,15 @@ void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool a
     // 遍历传感器数据并写入文件
     for (int i = 0; i < x.sensor_data_count; i++) {
         QStringList dataList;
-        dataList << timestamp << macAddress << QString::number(x.sensor_data[i].brush_head.adc)
+        dataList << timestamp << macAddress << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.adc))
                  << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.value))
-                 << QString::number(x.sensor_data[i].mode_button.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.adc))
                  << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.value))
-                 << QString::number(x.sensor_data[i].power_button.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.adc))
                  << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.value))
-                 << QString::number(x.sensor_data[i].assistant_component.adc)
+                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.adc))
                  << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.value));
+
         out << dataList.join(",") << "\n";
     }
     // 关闭文件
@@ -2180,7 +2181,14 @@ void MainWindow::SendRadomDataPushButton() {
     ui->spinBox->setValue(QRandomGenerator::global()->bounded(0, 100));
 }
 QString MainWindow::getValueBySN(const QString& sn) {
-    QString truncatedSN = sn.left(8);
+    QString truncatedSN;
+
+    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
+        truncatedSN = sn.left(8);
+    else
+        truncatedSN = sn.left(9);
+
+
     showlog("truncatedSN:" + truncatedSN);
 
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
@@ -2896,10 +2904,13 @@ void MainWindow::checkAndUpdateFile() {
     });
 }
 
-// EQ_TACKLE/.venv/Scripts/python.exe" "EQ_TACKLE/volume_and_reduce.py", "C:/Users/heyj/Desktop/Smart.mp3", "1.wav", "0"
+// // // EQ_TACKLE/.venv/Scripts/python.exe" "EQ_TACKLE/volume_and_reduce.py",
+// "C:/Users/heyj/Desktop/Smart.mp3","1.wav", "0"
+
 void MainWindow::processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb,
                               const QString& play_speed) {
-    QString pythonPath = "./EQ_TACKLE/.venv/Scripts/python.exe";
+    // QString pythonPath = "./EQ_TACKLE/.venv/Scripts/python.exe";
+    QString pythonPath = "./EQ_TACKLE/volume_and_reduce/python.exe";
     QString scriptPath = "./EQ_TACKLE/volume_and_reduce.py";
 
     // 创建 QProcess 对象
@@ -2929,6 +2940,7 @@ void MainWindow::processAudio(const QString& inputFile, const QString& outputFil
     showlog("Output: " + QString(outputUtf8));
     showlog("Error Output: " + QString(errorOutputUtf8));
 }
+
 void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     QDir folder(folderPath);
     if (!folder.exists()) {
@@ -2957,11 +2969,9 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }
 void MainWindow::getPresscalidata(FacPreSensorCalibResult x) {
-
-        showlog("刷头" + QString::number(x.brush_head_adc));
-        showlog("模式" + QString::number(x.mode_button_adc));
-        showlog("电源" + QString::number(x.power_button_adc));
-        showlog("温度" + QString::number(x.temperature));
-        showlog("辅助元器件" + QString::number(x.assistant_component));
-
+    showlog("刷头" + QString::number(x.brush_head_adc));
+    showlog("模式" + QString::number(x.mode_button_adc));
+    showlog("电源" + QString::number(x.power_button_adc));
+    showlog("温度" + QString::number(x.temperature));
+    showlog("辅助元器件" + QString::number(x.assistant_component));
 }

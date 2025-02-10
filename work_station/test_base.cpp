@@ -663,23 +663,32 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     // 启动定时器
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [=]() {
+        QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        qDebug() << "retryCount=" << retryCount
+                 << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
+                        .arg(currentTime)
+                        .arg(reinterpret_cast<quintptr>(timer), 0, 16);  // 以16进制显示地址
+
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr && !retryCount % 5) {
+                if (commandFunc != nullptr && !(retryCount % 5)) {
                     showlog("重新发送指令发送pb指令");
                     commandFunc();  // 重新发送指令
                 }
                 retryCount++;
             } else {
+                disconnect(timer, &QTimer::timeout, this, nullptr);
                 getRespone = 0;
                 retryCount = 0;
                 sendRetryOver = 1;
                 timer->stop();  // 达到最大重试次数，停止定时器
+
                 showlog("达到最大重试次数，停止定时器");
                 delete timer;
                 return 0;
             }
         } else {  // 如果收到响应
+            disconnect(timer, &QTimer::timeout, this, nullptr);
             timer->stop();
             delete timer;
             retryCount = 0;
@@ -692,12 +701,12 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         return 0;
     });
 
-    timer->start(100);  // 启动定时器
+    timer->start(300);  // 启动定时器
     return 0;
 }
 QString test_base::exportTableContent() {
     if (testResultTable() == nullptr) {
-        showlog("不存在表格");
+        showlog("exportTableContent不存在表格");
         return "不存在表格";
     }
 
@@ -718,7 +727,7 @@ QString test_base::exportTableContent() {
 
 void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
     if (testResultTable() == nullptr) {
-        showlog("不存在表格");
+        showlog("testResultTableUpdate不存在表格");
         return;
     }
 
@@ -830,7 +839,7 @@ void test_base::testResultTableInit() {
     pb->APP_VERSION = upperComputerVer;
     LockProductUI();
     if (testResultTable() == nullptr) {
-        showlog("不存在表格");
+        showlog("testResultTableInit不存在表格");
         return;
     }
     testResultTable()->clear();

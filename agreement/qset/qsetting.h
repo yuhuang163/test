@@ -22,17 +22,17 @@ private:
     QButtonGroup* StationGroup = new QButtonGroup(this);
     void loadConfig();
     void saveConfig();
-      void updateMainStyle(QString style);
+    void updateMainStyle(QString style);
     void readSubPIDAndFilter();
-      void saveSubPIDAndFilter();
-
+    void saveSubPIDAndFilter();
 
 protected:
     virtual void closeEvent(QCloseEvent*);
 private slots:
-    void RestoreDefaultSetting();
-
-    void on_comboBox_productName_textActivated(const QString &arg1);
+    void RestoreProductDefaultSetting();
+    void RestoreFacDefaultSetting();
+    void on_comboBox_productName_textActivated(const QString& arg1);
+    void on_comboBox_factory_textActivated(const QString& arg1);
 };
 
 #endif  // QSETTING_H

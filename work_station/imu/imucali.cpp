@@ -303,8 +303,7 @@ void imucali::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
-        showlog("已发送禁止休眠");
+
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         showlog("蓝牙连接断开");
@@ -963,12 +962,14 @@ void imucali::startTask()  // 编写六轴校准的代码
 
             case STATE_GETBASEDATA:
                 if (canGoNext) {
+                    showlog("开始获取出厂电压");
                     sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
                     state = STATE_GETBATTERY;
                 }
                 break;
 
             case STATE_GETBATTERY:
+                //等于0就卡着
                 if (is_battary_test != 0) {
                     if (is_battary_test == 1) {
                         showlog("出厂电压正常");
@@ -1261,7 +1262,6 @@ void imucali::startTask()  // 编写六轴校准的代码
 }
 
 void imucali::on_pushButton_2_clicked() {
-    // pb->set_forbid_sleep(FacSwitch_OPEN);
     at->sendBLEDEVICELOG(0);
     // for (int la = 0; la < 12; la++)
     // {

@@ -140,8 +140,8 @@ public:
     int m_index = 0;
 
 public slots:
-    void set_independent_state(STATE_INDEPENDENT_E state) { independent_state = state; };
-    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };
+    void set_independent_state(STATE_INDEPENDENT_E state) {   qDebug() << "independent_state状态被设置" << state;independent_state = state; };
+    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };  //获取当前上位机状态
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
