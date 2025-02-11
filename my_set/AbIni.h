@@ -67,7 +67,9 @@
 #define PRESSURE_VER "压感校测工站   V1.3.2"
 
 
-
+// [QC_VER] 静态电流显示异常
+// [AGE_VER] 适配正常手柄的设备skuid
+//
 
 // [SINGLE_VER] 修复充电电流表格显示异常问题，设置每次打开上位机都显示tab的第一页
 // [SCREEN_VER] 设置每次打开上位机都显示tab的第一页

@@ -883,7 +883,7 @@ void test_base::getMac(QString sn_to_search) {
             fileName = "mac_sn.txt";
         else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
             fileName = "mac_sn.txt";
-        else {
+        else if (SETTINGS.value("Mes/FACTORY").toString() == "xwd") {
             QString path = "\\\\172.60.1.249\\sgpub\\LTC\\MAC\\mac_sn.txt";
             QFileInfo fileInfo(path);
             // 创建一个文件对象
@@ -896,6 +896,8 @@ void test_base::getMac(QString sn_to_search) {
                 // file.setFileName("mac_sn.txt");
                 showlog("云端文件不存在，正在打开本地文件...");
             }
+        } else {
+            fileName = "mac_sn.txt";
         }
 
         // 在需要的地方使用这个变量创建 QFile 对象

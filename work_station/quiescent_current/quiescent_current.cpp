@@ -361,6 +361,8 @@ void quiescent_current::refreshAmmeterData(QString data) {
     bool conversionOk = false;
     if (pack.factory == "jj")
         normalValue = data.toDouble(&conversionOk) / 100;
+    else if (pack.factory == "hq")
+        normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;
 

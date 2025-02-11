@@ -1164,9 +1164,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
-
                         testResultTableUpdate(testItems);
-
                         state = STATE_END;
                     }
                 }

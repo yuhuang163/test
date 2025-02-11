@@ -172,7 +172,7 @@
              </widget>
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>9</number>
+               <number>13</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>

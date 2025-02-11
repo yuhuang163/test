@@ -601,9 +601,17 @@ void ageing::on_pushButton_clicked() {
     ui->macInput->setText("3C:84:27:07:A8:D2");
     on_macInput_returnPressed();
 }
-QString ageing::getValueBySN(const QString& mysn) {
-    QString truncatedSN = mysn.left(8);
+
+QString ageing::getValueBySN(const QString& sn) {
+    QString truncatedSN;
+
+    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
+        truncatedSN = sn.left(8);
+    else
+        truncatedSN = sn.left(9);
+
     showlog("truncatedSN:" + truncatedSN);
+
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
     showlog("匹配到的subpid：" + value);
 
