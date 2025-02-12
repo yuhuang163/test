@@ -3,10 +3,10 @@
 #include "ui_quiescent_current.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 quiescent_current::quiescent_current(int index, QWidget* parent) :
-    ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
+    test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = QC_VER;
@@ -380,7 +380,7 @@ void quiescent_current::refreshAmmeterData(QString data) {
 
 quiescent_current::~quiescent_current() {
     qDebug() << getIndex() << "已进入析构";
-    isquiescent_currentContinue = 0;
+    isTestContinue = 0;
     if (dongleSerialPort->isOpen()) {
         disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
         dongleSerialPort->close();
@@ -488,7 +488,7 @@ void quiescent_current::on_macInput_returnPressed() {
             totalresult = failValue;
             showlog("mac地址重复,请交叉复测...如复测也报错，机子异常");
         }
-        isquiescent_currentContinue = true;
+        isTestContinue = true;
     }
 }
 
@@ -631,8 +631,8 @@ void quiescent_current::processInspection(QString stringsn) {
 }
 
 void quiescent_current::startTask() {
-    if (isquiescent_currentContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+    if (isTestContinue) {
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
 
@@ -896,7 +896,7 @@ void quiescent_current::startTask() {
                 ui->macInput->clear();
                 ui->snInput->clear();
 
-                isquiescent_currentContinue = false;  // 结束
+                isTestContinue = false;  // 结束
 
                 if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
                     SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
@@ -918,8 +918,6 @@ void quiescent_current::startTask() {
         //   QCoreApplication::processEvents();
     }
 }
-
-void quiescent_current::closeEvent(QCloseEvent* event) { isquiescent_currentContinue = false; }
 
 void quiescent_current::on_pushButton_clicked() {
     ui->macInput->setText("f4:12:fa:c5:51:c6");
@@ -1046,7 +1044,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
         file.resize(0);
         QTextStream out(&file);
         for (const QString& line : lines) {
-            out << line << endl;
+            out << line << '\n';
         }
         file.close();  // 关闭文件
         showlog("保存mac_sn文件成功");
@@ -1105,7 +1103,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
     // {                                                    //
     //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << endl;   // 将sn和mac写入文件
+    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
     //     file.close();                                    // 关闭文件
     // }else{
 
@@ -1119,7 +1117,7 @@ void quiescent_current::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->snInput->clear();
     ui->snInput->setFocus();
-    isquiescent_currentContinue = false;  // 结束
+    isTestContinue = false;  // 结束
     if (pack.factory != "jj") {
         jig->set_cylinder_state(0, getIndex());
     }

@@ -5,7 +5,7 @@
 #include "qdatetime.h"
 #include "qdebug.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 Qjig::Qjig(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {}

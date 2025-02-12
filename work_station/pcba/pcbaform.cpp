@@ -7,7 +7,7 @@
 #include "ui_pcbaform.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 void PcbaForm::on_pushButton_clicked() {
     // ui->macInput->setText("f4:12:fa:c5:51:c6");  // 测试牙刷
@@ -129,7 +129,7 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     // pb->set_sleeep(FacSwitch_OPEN);
 }
 
-PcbaForm::PcbaForm(int index, QWidget* parent) : ui(new Ui::PcbaForm) {
+PcbaForm::PcbaForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::PcbaForm) {
     m_index = index;
     pack.mechines = getIndex();
     //  dongleBaudRate = 115200;
@@ -513,11 +513,7 @@ PcbaForm::~PcbaForm() {
              << "PcbaFormd的析构";
     delete ui;
 }
-void PcbaForm::closeEvent(QCloseEvent*) {
-    isPcbaTestContinue = false;
-    qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "已经关闭" << isPcbaTestContinue;
-}
+
 void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_times) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -821,7 +817,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
 
 void PcbaForm::on_stopTest_clicked() {
     usblogwaittime->stop();
-    isPcbaTestContinue = false;
+    isTestContinue = false;
 
     on_disconnectButton_clicked();
 
@@ -983,7 +979,7 @@ void PcbaForm::updateTestResultUI() {
         ui->test_result->setStyleSheet("font-size: 40px; background-color: #FF0000; color: black; border: 2px solid "
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
-        isPcbaTestContinue = false;  // 结束
+        isTestContinue = false;  // 结束
         ui->getMac->clear();
         ui->macInput->setDisabled(0);
         if (pack.factory == "wks" || pack.factory == "ydm") {
@@ -1071,8 +1067,8 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
 void PcbaForm::startTask() {
     // QMessageBox::StandardButton reply;
     uint32_t value = 0;
-    if (isPcbaTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+    if (isTestContinue) {
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         //   qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<<
         //   "状态机"<<getIndex();
         switch (state) {
@@ -1717,7 +1713,7 @@ void PcbaForm::startTask() {
                     ui->getMac->setDisabled(0);
                 }
 
-                isPcbaTestContinue = false;  // 结束
+                isTestContinue = false;  // 结束
 
                 // pb->set_fac_mode(1);
                 // waitWork(300);
@@ -1774,7 +1770,7 @@ void PcbaForm::on_macInput_returnPressed() {
         firstconnectbrush = 0;
         ui->macLabel->setText("蓝牙mac: " + macAddress);
 
-        isPcbaTestContinue = true;
+        isTestContinue = true;
         state = STATE_IDLE;
 
         emit send_go_next_focus();
@@ -1835,7 +1831,7 @@ void PcbaForm::writeToLogFile(const QByteArray& data, QString currentDate, QStri
         // qDebug() << "写入成功牙刷日志";
         // 写入数据
         QTextStream out(&logFile);
-        out << data << endl;
+        out << data << '\n';
         logFile.close();
     } else {
         qDebug() << "无法打开牙刷日志文件：" << fileName;

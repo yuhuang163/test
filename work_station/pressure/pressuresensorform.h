@@ -19,7 +19,7 @@
 #include "xwdmes.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace Ui {
@@ -230,8 +230,8 @@ private:
     short adc_c[3] = {0, 0, 0};
     short value_c[3] = {0, 0, 0};
 
-    press_calib_data_t cali_result = {0};
-    press_calib_data_t LastCali = {0};
+    press_calib_data_t cali_result = {{0}};
+    press_calib_data_t LastCali = {{0}};
     uint8_t is_calib_suc = 0;
     bool IsSaveFail = 0;  // 是否校准完成
 
@@ -273,8 +273,19 @@ private:
     QString cali_result_ok = "校准完成";
     QString cali_result_fail = "校准失败";
     void savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader);
-    void save_press_test_data_to_csv(const QString& macAddress, const QString& resultunsigned,
-                                     press_calib_data_t cali_result);
+    void save_press_test_data_to_csv(const QString& macAddress, press_calib_data_t cali_result);
+
+public slots:
+    void updateGraphs();  // 界面更新槽函数
+
+signals:
+    void dataReady();
+
+private:
+    QQueue<QPair<uint32_t, QVector<int16_t>>> adcDataQueue;
+    QQueue<QPair<uint32_t, QVector<int16_t>>> valueDataQueue;
+
+    QTimer graphUpdateTimer;
 
 private slots:
     void readJigSerialPortData(void) override;
@@ -325,9 +336,6 @@ private slots:
     void on_TestButtonNFC_clicked();
 
     void on_disconnectButton_clicked();
-
-protected:
-    virtual void closeEvent(QCloseEvent*) override;
 };
 
 #endif  // PRESSURESENSORFORM_H

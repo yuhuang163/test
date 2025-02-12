@@ -1,5 +1,6 @@
 ﻿#include "qsetting.h"
 
+#include "qevent.h"
 #include "ui_qsetting.h"
 
 qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
@@ -603,6 +604,7 @@ void qsetting::saveConfig() {
 void qsetting::closeEvent(QCloseEvent* event) {
     saveConfig();
     qDebug() << "已经保存配置信息";
+    event->accept();
 }
 
 void qsetting::RestoreProductDefaultSetting() {
@@ -863,6 +865,12 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_login_station->show();
     }
 }
-void qsetting::on_comboBox_productName_textActivated(const QString& arg1) { RestoreProductDefaultSetting(); }
+void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
+    qDebug() << "选择的产品" << arg1;
+    RestoreProductDefaultSetting();
+}
 
-void qsetting::on_comboBox_factory_textActivated(const QString& arg1) { RestoreFacDefaultSetting(); }
+void qsetting::on_comboBox_factory_textActivated(const QString& arg1) {
+    qDebug() << "选择的工厂" << arg1;
+    RestoreFacDefaultSetting();
+}

@@ -3,14 +3,13 @@
 #include <QRandomGenerator>
 #include <QtConcurrent>
 
-#include "ImageWindow.h"
 #include "productlicense.h"
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
 
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
 {

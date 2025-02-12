@@ -19,11 +19,11 @@
 #pragma comment(lib, "ole32.lib")
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
-test_base::test_base() :
-    log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
+test_base::test_base(QWidget* parent) :
+    QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
     at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)), usb(new Qusb(usbSerialPort)),
     jigSerialPort(new QSerialPort(this)), jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort)) {
@@ -930,7 +930,12 @@ void test_base::getMac(QString sn_to_search) {
         }
     }
 }
-
+void test_base::closeEvent(QCloseEvent*) {
+    qDebug() << getIndex() << "test_base关闭";
+    isTestContinue = 0;
+    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    waitWork(50);
+}
 void test_base::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
 void test_base::refreshMesState(int state) {
     if (state)

@@ -4,7 +4,7 @@
 #include "qdebug.h"
 
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+    #pragma execution_character_set(push, "utf-8")
 #endif
 
 void imu_calibrate::imu_calib_init(void)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1721</width>
-    <height>1064</height>
+    <height>1076</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -435,7 +435,7 @@
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="QGroupBox" name="groupBox">
+        <widget class="QGroupBox" name="groupBox_2">
          <property name="title">
           <string>1拖多设置</string>
          </property>
@@ -475,7 +475,7 @@
         </widget>
        </item>
        <item row="0" column="8" rowspan="11">
-        <widget class="QGroupBox" name="groupBox">
+        <widget class="QGroupBox" name="groupBox_1">
          <property name="title">
           <string>产品差异化设置</string>
          </property>
@@ -780,7 +780,7 @@
         </widget>
        </item>
        <item row="0" column="2" rowspan="6">
-        <widget class="QGroupBox" name="groupBox">
+        <widget class="QGroupBox" name="groupBox_3">
          <property name="title">
           <string>MES相关设置</string>
          </property>
@@ -1265,7 +1265,7 @@
          <property name="title">
           <string>压感相关设置</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout_3">
+         <layout class="QGridLayout" name="gridLayout_31">
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
             <item>
@@ -1558,11 +1558,11 @@
         </widget>
        </item>
        <item row="6" column="0" rowspan="5" colspan="2">
-        <widget class="QGroupBox" name="groupBox">
+        <widget class="QGroupBox" name="groupBox_4">
          <property name="title">
           <string>电流阈值设置</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout">
+         <layout class="QGridLayout" name="gridLayout_3">
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_CargoCurrent">
             <item>

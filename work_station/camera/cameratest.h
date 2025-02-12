@@ -183,7 +183,7 @@ private:
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     bool isExecuted = false;
-    QTime TestTime;
+    QElapsedTimer TestTime;
     State state = STATE_IDLE;
     QTimer* cameraSendTimer = new QTimer(this);
     bool is_canGoNext = 0;

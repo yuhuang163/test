@@ -5,7 +5,7 @@
 #include "qserialportinfo.h"
 #include "ui_screentest.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 void screentest::on_pushButton_clicked() {
     ui->macInput->setText("f4:12:fa:c5:51:c6");
@@ -13,7 +13,7 @@ void screentest::on_pushButton_clicked() {
     ui->macInput->setText("3C:84:27:07:A8:D2");
     on_macInput_returnPressed();
 }
-screentest::screentest(int index, QWidget* parent) : ui(new Ui::screentest) {
+screentest::screentest(int index, QWidget* parent) : test_base(parent), ui(new Ui::screentest) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = SCREEN_VER;
@@ -103,12 +103,6 @@ void screentest::on_macInput_returnPressed() {
     }
 }
 
-void screentest::closeEvent(QCloseEvent*) {
-    qDebug() << getIndex() << "开始关闭";
-
-    isTestContinue = false;
-}
-
 void screentest::set_screen_color(int x) {
     if (at->getConnected()) {
         pb->set_screen_color(x);
@@ -191,7 +185,7 @@ void screentest::refreshSn(FacDevInfo data) {
 void screentest::startTask()  // 编写六轴校准的代码
 {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 showlog("开始测试");

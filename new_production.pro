@@ -34,7 +34,6 @@ INCLUDEPATH += lib/form
 INCLUDEPATH += lib/imu
 INCLUDEPATH += lib/nfc
 INCLUDEPATH += lib/productlicense
-INCLUDEPATH += lib/quicklz
 INCLUDEPATH += lib/qcustomplot
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
@@ -60,7 +59,6 @@ include(advance/xlsx/qtxlsx.pri)
 SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
-    advance/imagewindow/imagewindow.cpp \
     agreement/qat/qat.cpp \
     agreement/qbrush/qproduct.cpp \
     agreement/qjig/fixture_uart.cpp \
@@ -87,8 +85,6 @@ SOURCES += \
     lib/imu/sensor_hub.cpp \
     lib/imu/us_eigen_nonsymmsquare.cpp \
     lib/productlicense/productlicense.cpp \
-    lib/quicklz/quicklz.cpp \
-    lib/quicklz/quicklz_dec.cpp \
     lib/qcustomplot/qcustomplot.cpp \
     main.cpp \
     mainlogic.cpp \
@@ -122,7 +118,6 @@ SOURCES += \
 HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
-    advance/imagewindow/imagewindow.h \
     agreement/qat/qat.h \
     agreement/qbrush/qproduct.h \
     agreement/qjig/fixture_uart.h \
@@ -151,8 +146,6 @@ HEADERS += \
     lib/imu/us_eigen_nonsymmsquare.h \
     lib/nfc/dcrf32.h \
     lib/productlicense/productlicense.h \
-    lib/quicklz/quicklz.h \
-    lib/quicklz/quicklz_dec.h \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \
     my_set/AbIni.h \
@@ -183,7 +176,6 @@ HEADERS += \
     work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
-    advance/imagewindow/imagewindow.ui \
     agreement/qjig/fixture_uart.ui \
     agreement/qset/qsetting.ui \
     mainwindow.ui \

@@ -7,7 +7,7 @@
 // osThreadId acccalib_thread_id = NULL;
 // TimerHandle_t sensorhub_timer = NULL;
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 void free_int_3(new_imu_calibrate::sensordata_q* q) {
     free(q->data);

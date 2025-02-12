@@ -4,7 +4,7 @@
 #include "ui_quiescent_current_box.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 quiescent_current_box::quiescent_current_box(QWidget* parent) : box_base(parent), ui(new Ui::quiescent_current_box) {

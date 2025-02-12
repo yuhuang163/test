@@ -5,10 +5,10 @@
 #include "ui_ageing.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
-ageing::ageing(int index, QWidget* parent) : ui(new Ui::ageing) {
+ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::ageing) {
     m_index = index;
     pack.mechines = getIndex();
     ui->setupUi(this);
@@ -65,7 +65,7 @@ void ageing::getTestValue(const int mechines, const QString value) {
     QString mesmacAddress;
     if (pack.factory == "hq") {
         // 定义正则表达式，匹配MAC地址的模式
-        QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+        static const QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
 
         // 在数据中查找匹配的内容
         QRegularExpressionMatch match = regex.match(value);
@@ -190,7 +190,7 @@ void ageing::on_macInput_returnPressed() {
     }
     waitWork(WAITTIME);
     // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+     static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
@@ -236,10 +236,6 @@ void ageing::on_exitBurningMode_clicked() {
     }
 }
 
-void ageing::closeEvent(QCloseEvent*) {
-    qDebug() << getIndex() << "开始关闭";
-    isTestContinue = false;
-}
 void ageing::refreshSn(FacDevInfo data) {
     QString brushstringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     QString brushstringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
@@ -359,7 +355,9 @@ void ageing::processInspection(QString stringsn) {
 
 void ageing::startTask() {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        // ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);  // 转换为浮动数
+
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 is_battary_test = 0;
@@ -547,8 +545,7 @@ void ageing::startTask() {
                 }
                 break;
 
-            case STATE_SAVE_RESULT:
-
+            case STATE_SAVE_RESULT: {
                 if (result == passValue) {
                     QString mesresult = "PASS";
                     pack.result = mesresult;
@@ -591,7 +588,8 @@ void ageing::startTask() {
                 waitWork(150);
                 on_disconnectButton_clicked();
                 isTestContinue = false;
-                break;
+            } break;
+            case STATE_PROCESS_INSPECTION: break;
         }
         QCoreApplication::processEvents();
     }

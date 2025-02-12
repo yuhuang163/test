@@ -5,7 +5,7 @@
 #include "ui_wifibletest.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 void wifibletest::on_pushButton_clicked() {
@@ -22,7 +22,7 @@ void wifibletest::on_pushButton_clicked() {
     // // waitWork(1000);
 }
 
-wifibletest::wifibletest(int index, QWidget* parent) : ui(new Ui::wifibletest) {
+wifibletest::wifibletest(int index, QWidget* parent) : test_base(parent), ui(new Ui::wifibletest) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = SINGLE_VER;
@@ -178,17 +178,17 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             return;
         }
 
-        bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
-        bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
+        // bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+        // bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
         bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
         bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
         bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
-        bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
-        bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
-        bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
+        // bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
+        // bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
+        // bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
         bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
-        bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
-        bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
+        // bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
+        // bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
         bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
         bool isAgeStatet = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
 
@@ -501,11 +501,6 @@ void wifibletest::refreshAmmeterData(QString data) {
     }
 }
 
-void wifibletest::closeEvent(QCloseEvent* event) {
-    qDebug() << getIndex() << "开始关闭";
-    isTestContinue = false;
-}
-
 void wifibletest::getWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
@@ -571,7 +566,7 @@ wifibletest::State wifibletest::getNextState(State currentState) {
 
 void wifibletest::startTask() {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 initDate();
@@ -1137,7 +1132,7 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
         file.resize(0);
         QTextStream out(&file);
         for (const QString& line : lines) {
-            out << line << endl;
+            out << line << '\n';
         }
         file.close();  // 关闭文件
         showlog("保存mac_sn文件成功");
@@ -1149,7 +1144,7 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
     // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
     // {                                                    //
     //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << endl;   // 将sn和mac写入文件
+    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
     //     file.close();                                    // 关闭文件
     // }
 
@@ -1349,20 +1344,6 @@ QString wifibletest::generateDateCode() {
     QString dateCode = QString::number(year) + monthCode + dayCode;
     return dateCode;
 }
-QString wifibletest::generateHexString(int productionNumber) {
-    // 构造生产数量字符串（4位数，不足位数前面补0）
-    QString productionStr = QString("%1").arg(productionNumber, 4, 16, QChar('0'));
-
-    // 构造十六进制字符串
-    sku = "55040701";
-
-    QString hexString = sku;          // 固定部分
-    hexString += generateDateCode();  // 日期部分
-    hexString += productionStr;       // 生产数量
-    qDebug() << getIndex() << "nfc的序列号: " << hexString;
-
-    return hexString;
-}
 
 QString wifibletest::getValueBySN(const QString& sn) {
     QString truncatedSN;
@@ -1395,7 +1376,7 @@ void wifibletest::on_nfc_write_read_clicked() {
     QString hexString;
 
     static int productionNumber = ui->nfc_count->text().toInt();  // 记录生产数量
-    // QString text = generateHexString(productionNumber++);//自己生
+
     QString text = ui->getMac->text();  // 外部给
 
     ui->nfc_count->setText(QString::number(productionNumber));

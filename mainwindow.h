@@ -37,7 +37,6 @@
 #include "Abini.h"
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
-#include "quicklz_dec.h"
 #include "sensor_hub.h"
 #include "testmodel.h"
 // #include <iomanip>

@@ -3,7 +3,7 @@
 #include "qpainter.h"
 #include "ui_qfreework.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
 {
@@ -14,7 +14,7 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 #define COLUMN_SPACING 10
 #define MARGIN 10
 
-QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
+QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = FREE_VER;
@@ -95,7 +95,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : ui(new Ui::QFreeWork) {
     canUselayout = qobject_cast<QGridLayout*>(ui->use_areas);
 
     // 定义行列数
-    int colCount = 3;  // 例如：3列
+    size_t colCount = 3;  // 例如：3列
 
     canUserCol = colCount;
     // 计算 canUserRow 并向上取整
@@ -384,7 +384,7 @@ void QFreeWork::executeFunctionByName(const QString functionName) {
 
 void QFreeWork::startTask() {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         if (teststate == -1) {
             showlog("开始测试");
             initDate();
@@ -730,11 +730,6 @@ void QFreeWork::refreshAmmeterData(QString data) {
     }
 }
 
-void QFreeWork::closeEvent(QCloseEvent* event) {
-    // qDebug() << getIndex() << "开始关闭";
-    isTestContinue = false;
-}
-
 void QFreeWork::getWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
@@ -854,7 +849,7 @@ void QFreeWork::on_macInput_returnPressed() {
     }
 
     // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
@@ -982,7 +977,7 @@ void QFreeWork::getmacadress(const QByteArray& byte) {
 
     if (receivedData.length() >= 2 && receivedData.right(2) == "\r\n") {
         // 使用正则表达式提取设备信息
-        QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),\\s*deviceRssi(?:\\s*:(.*))?");
+        static const QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),\\s*deviceRssi(?:\\s*:(.*))?");
         QRegularExpressionMatch match = regex.match(receivedData);
         QString deviceName, deviceAddress, deviceRssi;
 
@@ -1091,7 +1086,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         file.resize(0);
         QTextStream out(&file);
         for (const QString& line : lines) {
-            out << line << endl;
+            out << line << '\n';
         }
         file.close();  // 关闭文件
         showlog("保存mac_sn文件成功");
@@ -1103,7 +1098,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
     // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
     // {                                                    //
     //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << endl;   // 将sn和mac写入文件
+    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
     //     file.close();                                    // 关闭文件
     // }
 
@@ -1288,18 +1283,7 @@ QString QFreeWork::generateDateCode() {
     QString dateCode = QString::number(year) + monthCode + dayCode;
     return dateCode;
 }
-QString QFreeWork::generateHexString(int productionNumber) {
-    // 构造生产数量字符串（4位数，不足位数前面补0）
-    // QString productionStr = QString("%1").arg(productionNumber, 4, 16, QChar('0'));
 
-    // // 构造十六进制字符串
-    // QString hexString = sku;           // 固定部分
-    // hexString += generateDateCode();   // 日期部分
-    // hexString += productionStr;        // 生产数量
-    // qDebug() << getIndex() << "nfc的序列号: " << hexString;
-
-    return "hexString";
-}
 void QFreeWork::on_nfc_write_read_clicked() {
     // TODO: 在此添加控件通知处理程序代码
     HANDLE icdev = (HANDLE)-1;
@@ -1316,7 +1300,7 @@ void QFreeWork::on_nfc_write_read_clicked() {
     QString hexString;
 
     static int productionNumber = ui->nfc_count->text().toInt();  // 记录生产数量
-    // QString text = generateHexString(productionNumber++);//自己生
+
     QString text = ui->nfc_sn->text();  // 外部给
     ui->nfc_count->setText(QString::number(productionNumber));
 

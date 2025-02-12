@@ -3,7 +3,7 @@
 #include <QMainWindow>
 #include <QThread>
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 #include "qpb.h"
@@ -94,7 +94,7 @@ public:
     unsigned short* calib_result = 0;
     unsigned int temperature = 0;
 
-    typedef struct {
+    typedef struct press_calib_para_set_t {
         press_module_e f_module[CHANNEL_MAX];
         unsigned int upper_limit;  // 校准系数上限
         unsigned int lower_limit;  // 校准系数下限

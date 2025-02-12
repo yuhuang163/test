@@ -6,10 +6,11 @@
 #include <QVBoxLayout>
 
 #include "QDesktopWidget"
+#include "ageing.h"
 #include "ui_ageingbox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 ageingbox::ageingbox(QWidget* parent) : box_base(parent), ui(new Ui::ageingbox) {
@@ -19,8 +20,6 @@ ageingbox::ageingbox(QWidget* parent) : box_base(parent), ui(new Ui::ageingbox) 
     recoverCustom();
     ShowData(this);
     ui->statusbar->addPermanentWidget(new QLabel(AGE_VER + QString(__DATE__) + " " + QString(__TIME__)));
-
-
 }
 
 ageingbox::~ageingbox() { delete ui; }

@@ -9,7 +9,7 @@
 #include "ui_pcbaform.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 #include <QInputDialog>
@@ -45,7 +45,7 @@ public:
     Ui::PcbaForm* ui;
     int firstconnectbrush = 1;
     bool mac_retry_flag = false;
-    bool isPcbaTestContinue = false;
+
     void startTask() override;
     void overTask() override;
     void startTest() override;
@@ -92,14 +92,12 @@ private slots:
     void on_start_scan_clicked();
     void on_pick_device_textActivated(const QString& arg1);
 
-protected:
-    void closeEvent(QCloseEvent*) override;
 
 private:
     QStringList erroContent;
     int ble_wait_time = 0;
     int wifi_connect_waittime = 0;
-    QTime TestTime;
+    QElapsedTimer TestTime;
     int wifi_wait_time = 0;
     bool isbleovertime = 0;   // 是否开始发送校验结果
     bool iswifiovertime = 0;  // 是否开始发送校验结果

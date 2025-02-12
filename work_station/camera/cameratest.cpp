@@ -4,13 +4,12 @@
 #include <QColor>
 #include <QPainter>
 
-#include "ImageWindow.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_cameratest.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 void cameratest::on_pushButton_clicked() {
@@ -72,7 +71,7 @@ void cameratest::on_pushButton_clicked() {
 
     viewercamrea->updateImage();  // 更新视图
 }
-cameratest::cameratest(int index, QWidget* parent) : ui(new Ui::cameratest) {
+cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new Ui::cameratest) {
     m_index = index;
     pack.mechines = getIndex();
     dongleOutTime = 5;  // 太快会死锁
@@ -280,7 +279,7 @@ void cameratest::solve_picture_frame(QByteArray picturedata) {
             }
             packetMap.clear();
             picturedata.clear();
-            memset(&head, 0, PICTURE_PHY_LAYER_HEAD_SIZE);
+            memset(head, 0, PICTURE_PHY_LAYER_HEAD_SIZE);
 
         } else {
             qDebug() << "数据流错误寻找下一帧";
@@ -450,7 +449,7 @@ void cameratest::on_macInput_returnPressed() {
     }
     waitWork(WAITTIME);
     // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
@@ -606,7 +605,7 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
 
 void cameratest::startTask() {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
 
@@ -779,6 +778,8 @@ void cameratest::startTask() {
                 isTestContinue = false;
                 state = STATE_IDLE;
                 break;
+            case STATE_BANDING:
+            case STATE_PROCESS_INSPECTION: break;
         }
 
         //  QCoreApplication::processEvents();
@@ -805,7 +806,7 @@ void cameratest::getTestValue(const int mechines, const QString value) {
     QString mesmacAddress;
     if (pack.factory == "hq") {
         // 定义正则表达式，匹配MAC地址的模式
-        QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+        static const QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
 
         // 在数据中查找匹配的内容
         QRegularExpressionMatch match = regex.match(value);
@@ -1651,7 +1652,7 @@ QByteArray cameratest::reassembleData() {
 void cameratest::getPictureSendOver(FacPictureDataAck x) {
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
-    qDebug() << "错误个数" + QString::number(faultData.size());
+    qDebug() << "错误个数" + QString::number(faultData.size()) << x.send_data_over;
     //   showlog("错误个数"+QString::number(faultData.size()));
     emit send_fault_data_packet(faultData.size(), faultData);
 }

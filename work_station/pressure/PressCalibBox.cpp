@@ -12,7 +12,7 @@
 #include "ui_PressCalibBox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 PressCalibBox::PressCalibBox(QWidget* parent) : box_base(parent), ui(new Ui::PressCalibBox) {
@@ -94,7 +94,8 @@ void PressCalibBox::display_on_screen(int instruct) {
 }
 
 PressCalibBox::~PressCalibBox() {
-    SETTINGS.setValue(QString("mechine/FixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+    if (Fixture_uart_ui != NULL)
+        SETTINGS.setValue(QString("mechine/FixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
     delete ui;
 }

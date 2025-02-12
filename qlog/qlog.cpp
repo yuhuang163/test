@@ -1,6 +1,6 @@
 ﻿#include "qlog.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 Qlog::Qlog() {}
 
@@ -79,7 +79,7 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
         QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
         out << detailedTimestamp << "\n" << data << "\n";
 
-        //   out << data << endl;
+        //   out << data << '\n';
         logFile.close();
     } else {
         qDebug() << "无法打开牙刷日志文件：" << fileName;

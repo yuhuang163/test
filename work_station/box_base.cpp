@@ -10,7 +10,7 @@
 #include "test_base.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
@@ -26,6 +26,7 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 }
 void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
+     qDebug() << "远程 provideAuthentication reply:" << reply;
     authenticator->setUser("usmilejig");
     authenticator->setPassword("Starspulse@123");
 }
@@ -105,7 +106,7 @@ void box_base::checkAndUpdateFile() {
                             if (file.open(QIODevice::WriteOnly)) {
                                 file.write(downloadReply->readAll());
                                 file.close();
-                                sendBoxLog("文件升级成功");
+                              emit   sendBoxLog("文件升级成功");
                                 QProcess::startDetached(savePath);
                                 QString batFileName = "./delete_self.bat";
                                 QFile batFile(batFileName);
@@ -134,16 +135,16 @@ void box_base::checkAndUpdateFile() {
                                 qDebug() << "无法打开文件进行写入:" << savePath;
                             }
                         } else {
-                            sendBoxLog("下载失败:" + downloadReply->errorString());
+                          emit   sendBoxLog("下载失败:" + downloadReply->errorString());
                         }
                         downloadReply->deleteLater();
                     });
                 }
             } else {
-                sendBoxLog("本地文件已经是最新的");
+                emit sendBoxLog("本地文件已经是最新的");
             }
         } else {
-            sendBoxLog("获取远程文件列表失败");
+           emit  sendBoxLog("获取远程文件列表失败");
             qDebug() << "获取远程文件列表失败:" << reply->errorString();
         }
         reply->deleteLater();
@@ -259,7 +260,7 @@ void box_base::closeEvent(QCloseEvent*) {
 void box_base::startAllReturnPressed() {
     for (int i = 0; i < testList.size(); i++) {
         qDebug() << "全部上位机敲回车";
-        testList[i]->macInputLineEdit()->returnPressed();
+        emit testList[i]->macInputLineEdit()->returnPressed();
     }
 }
 

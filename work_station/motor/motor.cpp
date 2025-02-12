@@ -11,7 +11,7 @@
 #include "ui_motor.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 void motor::on_pushButton_2_clicked() {
     // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
@@ -23,7 +23,7 @@ void motor::on_pushButton_2_clicked() {
     // ui->macInput->setText("74:4D:BD:95:80:7e");
     on_macInput_returnPressed();
 }
-motor::motor(int index, QWidget* parent) : ui(new Ui::motor) {
+motor::motor(int index, QWidget* parent) : test_base(parent), ui(new Ui::motor) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = MOTOR_VER;
@@ -430,7 +430,7 @@ void motor::canGoNextMechine(int x) {
 
 void motor::startTask() {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 refreshMotorCaliMsg("开始测试");

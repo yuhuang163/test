@@ -34,7 +34,8 @@ typedef enum {
 class test_base : public QWidget {
     Q_OBJECT
 public:
-    test_base();
+     explicit test_base(QWidget* parent = nullptr);
+
     virtual void startTest(){};
     virtual void overTask(){};
     virtual void startTask() = 0;
@@ -140,7 +141,10 @@ public:
     int m_index = 0;
 
 public slots:
-    void set_independent_state(STATE_INDEPENDENT_E state) {   qDebug() << "independent_state状态被设置" << state;independent_state = state; };
+    void set_independent_state(STATE_INDEPENDENT_E state) {
+        qDebug() << "independent_state状态被设置" << state;
+        independent_state = state;
+    };
     STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };  //获取当前上位机状态
     void solveGetBrushResponse(int);
     int getIndex();
@@ -200,6 +204,8 @@ public slots:
     virtual void refreshProductUartState(int){};
     virtual void processReceivedData(const QByteArray&){};
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
 private slots:
     void getDongleVer(QString);
     void refreshMesState(int state);

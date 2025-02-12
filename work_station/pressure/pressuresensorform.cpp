@@ -15,7 +15,7 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 // y20p
@@ -52,7 +52,7 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 #define ADC_THRESHOLD_P30P_KEY 40
 #define COUNT_THRESHOLD_P30P_KEY 200
 
-PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::PressureSensorForm) {
+PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::PressureSensorForm) {
     m_index = index;
     pack.mechines = getIndex();
 
@@ -126,6 +126,8 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : ui(new Ui::
     });
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
     testResultTableInit();
+
+    connect(this, SIGNAL(dataReady()), this, SLOT(updateGraphs()));
 }
 
 void PressureSensorForm::graph_init(MODEL_ID_E model) {
@@ -668,8 +670,7 @@ void PressureSensorForm::on_connectButton_clicked() {
     openDongleSerialPort();
 }
 
-void PressureSensorForm::save_press_test_data_to_csv(const QString& macAddress, const QString& resultunsigned,
-                                                     press_calib_data_t cali_result) {
+void PressureSensorForm::save_press_test_data_to_csv(const QString& macAddress, press_calib_data_t cali_result) {
     QDateTime datatime = QDateTime::currentDateTime();
     QString Year_M_D_H = datatime.toString("yyyy-MM-dd_hh") + "_00";
 
@@ -746,11 +747,6 @@ void PressureSensorForm::save_press_test_data_to_csv(const QString& macAddress, 
         ui->msgEdit->appendPlainText("文件没关或者其他问题");
         qDebug() << "文件没关或者其他问题";
     }
-}
-
-void PressureSensorForm::closeEvent(QCloseEvent*) {
-    qDebug() << "已经关闭";
-    isTestContinue = false;
 }
 
 void PressureSensorForm::clear_display() {
@@ -997,119 +993,130 @@ void PressureSensorForm::graph_reset(uint8_t argument) {
     counter = 0;
 }
 
+void PressureSensorForm::updateGraphs() {
+    int need_sensor_data = total_sensor;
+    if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO)
+        need_sensor_data = 2;
+    else
+        need_sensor_data = 1;
+    // 从队列中取出数据并更新图表
+    while (!adcDataQueue.isEmpty()) {
+        auto adcData = adcDataQueue.dequeue();
+        auto valueData = valueDataQueue.dequeue();
+
+        uint32_t timestamp = adcData.first;
+        const QVector<int16_t>& adcValues = adcData.second;
+        const QVector<int16_t>& valueValues = valueData.second;
+
+        for (uint8_t channel = 0; channel < total_sensor; channel++) {
+            for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
+                int index = channel + need_sensor_count;
+                if (index >= adcValues.size() || index >= valueValues.size())
+                    continue;
+
+                int adc = adcValues[index];
+                int value = valueValues[index];
+
+                graph_adc_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, adc);
+                graph_value_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, value);
+
+                // 更新图表范围
+                uint32_t x_min = 0;
+                if (counter >= 20000) {
+                    x_min = counter - 20000;
+                }
+                graph_adc_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+                graph_adc_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
+                graph_adc_vector[channel + need_sensor_count]->replot();
+
+                graph_value_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+                graph_value_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
+                graph_value_vector[channel + need_sensor_count]->replot();
+
+                // 更新 UI 文本
+                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
+                    case MODULE_BTH:
+                        ui->brush_adc->setText("刷头adc：" + QString::number(adc));
+                        ui->brush_value->setText("刷头压力：" + QString::number(value));
+                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
+                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
+                        break;
+                    case MODULE_MODE_BUTTON:
+                        ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
+                        ui->botton_value1->setText("模式按键压力：" + QString::number(value));
+                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("模式按键ADC值");
+                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("模式按键压力值");
+                        break;
+                    case MODULE_POWER_BUTTON:
+                        ui->power_adc->setText("电源按键adc：" + QString::number(adc));
+                        ui->power_value->setText("电源按键压力：" + QString::number(value));
+                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电源按键ADC值");
+                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电源按键压力值");
+                        break;
+                    case MODULE_ASSISTANT_COMPONENT:
+                        ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(adc));
+                        ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(value));
+                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件ADC值");
+                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件压力值");
+                        break;
+                }
+            }
+        }
+
+        // 处理帧率显示和倒计时
+        send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / adcValues.size()));
+        transTime.restart();
+        ui->countdown->display((actual_wait_time - countdowntime.elapsed()) / 1000);
+    }
+}
 void PressureSensorForm::graph_update(FacUploadPresSensor x) {
     if (graph_set_argu <= GRAPH_SET_CLOSE) {
         return;
     }
-    int need_sensor_data = total_sensor;  //表示一个channel有几个传感器数据
+
+    int need_sensor_data = total_sensor;
     if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO)
         need_sensor_data = 2;
     else
         need_sensor_data = 1;
 
     for (int i = 0; i < x.sensor_data_count; i++) {
-        // qDebug() << "x.sensor_data[i].timestamp;"<<x.sensor_data[i].timestamp;
-        int botton_adc = int16_t(x.sensor_data[i].mode_button.adc);
-        int botton_value = int16_t(x.sensor_data[i].mode_button.value);
+        QVector<int16_t> adcValues;
+        QVector<int16_t> valueValues;
 
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
                 switch (sensor_v[channel].para.f_module[need_sensor_count]) {
                     case MODULE_BTH:
-                        adc_c[channel + need_sensor_count] = x.sensor_data[i].brush_head.adc;
-                        value_c[channel + need_sensor_count] = x.sensor_data[i].brush_head.value;
+                        adcValues.append(x.sensor_data[i].brush_head.adc);
+                        valueValues.append(x.sensor_data[i].brush_head.value);
                         break;
                     case MODULE_MODE_BUTTON:
-                        adc_c[channel + need_sensor_count] = x.sensor_data[i].mode_button.adc;
-                        value_c[channel + need_sensor_count] = x.sensor_data[i].mode_button.value;
+                        adcValues.append(x.sensor_data[i].mode_button.adc);
+                        valueValues.append(x.sensor_data[i].mode_button.value);
                         break;
                     case MODULE_POWER_BUTTON:
-                        adc_c[channel + need_sensor_count] = x.sensor_data[i].power_button.adc;
-                        value_c[channel + need_sensor_count] = x.sensor_data[i].power_button.value;
+                        adcValues.append(x.sensor_data[i].power_button.adc);
+                        valueValues.append(x.sensor_data[i].power_button.value);
                         break;
                     case MODULE_ASSISTANT_COMPONENT:
-                        adc_c[channel + need_sensor_count] = x.sensor_data[i].assistant_component.adc;
-                        value_c[channel + need_sensor_count] = x.sensor_data[i].assistant_component.value;
+                        adcValues.append(x.sensor_data[i].assistant_component.adc);
+                        valueValues.append(x.sensor_data[i].assistant_component.value);
                         break;
-                    case MODULE_INVALID: break;
+                    case MODULE_INVALID:
                     case MODULE_MAX: break;
                 }
             }
         }
 
+        // 使用 counter 作为时间戳，将数据构造成 QPair 后入队
+        adcDataQueue.enqueue(qMakePair(counter, adcValues));
+        valueDataQueue.enqueue(qMakePair(counter, valueValues));
+        // 发射信号
+        emit dataReady();
+
         counter += 10;
-        for (uint8_t chan = 0; chan < graph_adc_vector.size(); chan++) {
-            uint32_t x_min = 0;
-            if (counter >= 20000) {
-                x_min = counter - 20000;
-            }
-            graph_adc_vector[chan]->graph(0)->rescaleValueAxis();
-            graph_adc_vector[chan]->xAxis->setRange(x_min, counter);
-
-            graph_value_vector[chan]->graph(0)->rescaleValueAxis();
-            graph_value_vector[chan]->xAxis->setRange(x_min, counter);
-        }
-
-        for (uint8_t channel = 0; channel < total_sensor; channel++) {
-            for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
-                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
-                    case MODULE_BTH:
-                        ui->brush_adc->setText("刷头adc：" +
-                                               QString::number(int16_t(adc_c[channel + need_sensor_count])));
-                        ui->brush_value->setText("刷头压力：" +
-                                                 QString::number(int16_t(value_c[channel + need_sensor_count])));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
-                        break;
-
-                    case MODULE_MODE_BUTTON:
-                        ui->botton_adc->setText("模式按键adc：" +
-                                                QString::number(int16_t(adc_c[channel + need_sensor_count])));
-                        ui->botton_value1->setText("模式按键压力：" +
-                                                   QString::number(int16_t(value_c[channel + need_sensor_count])));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("模式按键ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("模式按键压力值");
-                        break;
-
-                    case MODULE_POWER_BUTTON:
-                        ui->power_adc->setText("电源按键adc：" +
-                                               QString::number(int16_t(adc_c[channel + need_sensor_count])));
-                        ui->power_value->setText("电源按键压力：" +
-                                                 QString::number(int16_t(value_c[channel + need_sensor_count])));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电源按键ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电源按键压力值");
-                        break;
-
-                    case MODULE_ASSISTANT_COMPONENT:
-                        ui->assistant_botton_adc->setText(
-                            "辅助元件adc：" + QString::number(int16_t(x.sensor_data[i].assistant_component.adc)));
-                        ui->assistant_botton_value->setText(
-                            "辅助元件压力：" + QString::number(int16_t(x.sensor_data[i].assistant_component.value)));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件压力值");
-                        break;
-                }
-                graph_adc_vector[channel + need_sensor_count]->graph(0)->addData(counter,
-                                                                                 adc_c[channel + need_sensor_count]);
-                graph_value_vector[channel + need_sensor_count]->graph(0)->addData(
-                    counter, value_c[channel + need_sensor_count]);
-            }
-        }
-
-        for (uint8_t channel = 0; channel < need_sensor_data * total_sensor; channel++) {
-            // graph_adc_vector[channel]->graph(0)->addData(counter, adc_c[channel]);
-            graph_adc_vector[channel]->replot();
-            graph_value_vector[channel]->replot();
-            // delay_msec(1);
-        }
-        // ui->botton_adc_diff->setText("adc_diff:" + QString::number(int16_t(sensor_v[calib_chan].para.first_adc[1] -
-        // x.sensor_data[i].mode_button.adc)));
     }
-
-    ui->countdown->display((actual_wait_time - countdowntime.elapsed()) / 1000);
-
-    send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / x.sensor_data_count));
-    transTime.restart();
 }
 
 void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
@@ -1367,7 +1374,6 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
             ui->msgEdit->appendPlainText(cali_result_fail);
             caliResultFailFlag = true;
 
-            int need_sensor_data = total_sensor;
             if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO) {
                 ui->msgEdit->appendPlainText(sensor_v[calib_chan].ui_msg_err[0] +
                                              QString::number(sensor_v[calib_chan].err[0]));
@@ -2143,6 +2149,7 @@ void PressureSensorForm::U7_fixture(State state, int argument) {
 }
 
 void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument) {
+     qDebug() << "ui_msg_show参数" << model << state << argument;
     switch (model) {
         case MODEL_ID_Y30PS:
             if (state == STATE_CALIB_CH_X) {
@@ -2226,7 +2233,7 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
 
 void PressureSensorForm::startTask() {
     if (isTestContinue) {
-        // ui->test_time->display(TestTime.elapsed() / 1000);
+        // ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 reset_all();
@@ -2628,7 +2635,7 @@ void PressureSensorForm::startTask() {
                     }
                 }
                 set_fixture_movement(product_model, STATE_SAVE_RESULT, 0);
-                save_press_test_data_to_csv(macAddress, result, cali_result);
+                save_press_test_data_to_csv(macAddress, cali_result);
                 isTestContinue = false;
                 // ui->msgEdit->appendPlainText("压感测试完毕");
 

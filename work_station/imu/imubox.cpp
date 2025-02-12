@@ -9,7 +9,7 @@
 #include "ui_imubox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {

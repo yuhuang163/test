@@ -2,7 +2,7 @@
 #include "ui_mainwindow.h"
 #include "xlsxdocument.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 QString MainWindow::getMotorStateString(FacMotoState state) {
     switch (state) {
@@ -148,32 +148,6 @@ void MainWindow::updateHIDComboBox(QComboBox* comboBox) {
     qDebug() << "设备个数" << currentItems.size();
 }
 void MainWindow::processTheDatagram(QByteArray& datagram) {
-    if (ui->quicklz_picture->isChecked()) {
-        // 调用解压缩函数
-        uint32_t decompressed_size =
-            quicklz_decompress(reinterpret_cast<uint8_t*>(datagram.data()), datagram.size(), my_write_cb, my_read_cb);
-
-        // 检查解压缩结果
-        if (decompressed_size > 0) {
-            qDebug() << "解压缩成功，解压后的数据大小为" << decompressed_size << "字节。";
-            showlog("解压缩成功");
-
-            // 读取解压后的数据并处理
-            QFile file("output.dat");
-            if (file.open(QIODevice::ReadOnly)) {
-                datagram = file.readAll();
-                file.close();
-
-                // 处理解压后的数据
-                qDebug() << "解压后的数据内容：" << datagram;
-            } else {
-                showlog("无法打开解压后的数据文件。");
-            }
-        } else {
-            showlog("解压缩失败。");
-        }
-    }
-
     // qDebug() << "Received datagram with length: " << datagram.size();
 
     uint8_t* data = reinterpret_cast<uint8_t*>(datagram.data());
@@ -949,7 +923,7 @@ void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
         qDebug() << "文件夹不存在";
         return;
     }
-    QTime TestTime;
+    QElapsedTimer TestTime;
     // 获取文件夹中所有文件的列表
     QStringList files = folder.entryList(QDir::Files, QDir::Name);
     int fileCount = files.size();
@@ -1042,7 +1016,7 @@ void MainWindow::sendPicture(const QString& url, const QString& filePath) {
     });
     timer.start();
     // 连接请求完成信号和事件循环退出
-    QObject::connect(reply, &QNetworkReply::finished, [&loop, reply, filePath, ui = this->ui, this]() {
+    QObject::connect(reply, &QNetworkReply::finished, [&loop, reply, filePath, this]() {
         // 如果请求响应完成，打印响应结果
         if (reply->error() == QNetworkReply::NoError) {
             showlog("发送完成" + filePath);
@@ -1573,7 +1547,7 @@ void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
     QFile file("mac_sn.txt");                                   // 创建一个文件对象
     if (file.open(QIODevice::ReadWrite | QIODevice::Append)) {  // 打开文件
         QTextStream out(&file);                                 // 创建一个文本流对象
-        out << bandingsn << "," << bandingmac << endl;          // 将sn和mac写入文件
+        out << bandingsn << "," << bandingmac << '\n';          // 将sn和mac写入文件
         file.close();                                           // 关闭文件
     }
 }
@@ -2188,7 +2162,6 @@ QString MainWindow::getValueBySN(const QString& sn) {
     else
         truncatedSN = sn.left(9);
 
-
     showlog("truncatedSN:" + truncatedSN);
 
     QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
@@ -2702,7 +2675,7 @@ void MainWindow::downloadMyApp(const QString& urlStr, const QString& savePath) {
     QNetworkRequest request(url);
 
     QNetworkReply* reply = updatamanager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, savePath]() {
+    connect(reply, &QNetworkReply::finished, this, [reply, savePath]() {
         if (reply->error() == QNetworkReply::NoError) {
             QFile file(savePath);
             if (file.open(QIODevice::WriteOnly)) {
@@ -2721,6 +2694,7 @@ void MainWindow::downloadMyApp(const QString& urlStr, const QString& savePath) {
 }
 
 void MainWindow::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
+    qDebug() << "远程 provideAuthentication reply:" << reply;
     authenticator->setUser("usmilejig");
     authenticator->setPassword("Starspulse@123");
 }
@@ -2947,7 +2921,7 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
         showlog("文件夹不存在");
         return;
     }
-    QTime TestTime;
+    QElapsedTimer TestTime;
     // 获取文件夹中所有文件的列表
     QStringList files = folder.entryList(QDir::Files, QDir::Name);
     int fileCount = files.size();

@@ -4,7 +4,7 @@
 #include "qserialportinfo.h"
 #include "ui_imucali.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 void imucali::on_pushButton_clicked() {
     // emit send_end_test(getIndex());
@@ -21,7 +21,7 @@ void imucali::on_pushButton_clicked() {
     on_macInput_returnPressed();
 }
 imucali::imucali(int index, QWidget* parent) :
-    ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
+    test_base(parent), ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = IMU_VER;
@@ -328,10 +328,6 @@ void imucali::on_connectButton_clicked() {
     openDongleSerialPort();
 }
 
-void imucali::closeEvent(QCloseEvent*) {
-    qDebug() << getIndex() << "开始关闭";
-    isTestContinue = false;
-}
 void imucali::refreshSn(FacDevInfo data) {
     stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
     qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
@@ -911,7 +907,7 @@ void imucali::startTest() { on_macInput_returnPressed(); };
 void imucali::startTask()  // 编写六轴校准的代码
 {
     if (isTestContinue) {
-        ui->test_time->display(TestTime.elapsed() / 1000);
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 showlog("开始测试");

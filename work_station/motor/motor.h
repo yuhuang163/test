@@ -71,7 +71,7 @@ private:
         MOTOR_WAIT_TESTING,
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
-    QTime TestTime;
+    QElapsedTimer TestTime;
     State state = STATE_IDLE;
     State test_state = STATE_IDLE;
     QByteArray sn;

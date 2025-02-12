@@ -108,10 +108,8 @@ private:
         STATE_END,
     } State;
     State state = STATE_IDLE;
-    QTime TestTime;
+    QElapsedTimer TestTime;
 
-protected:
-    void closeEvent(QCloseEvent*) override;
 
 private slots:
 

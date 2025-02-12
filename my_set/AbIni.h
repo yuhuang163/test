@@ -3,7 +3,7 @@
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 #include <qserialport.h>      // 串口通信类
 #include <qserialportinfo.h>  // 串口信息类

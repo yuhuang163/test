@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <cmath>
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+    #pragma execution_character_set(push, "utf-8")
 #endif
 Qusb::Qusb(QSerialPort *parent) :
 QSerialPort(parent), serialPort(parent)

@@ -63,7 +63,7 @@ private:
 
     QTimer* waittime = new QTimer(this);
     QTimer* comparewaittime = new QTimer(this);
-    QTime TestTime;
+    QElapsedTimer TestTime;
     QString productName;
     QString ReadNfcData = "";
     QString sku = "55040701";
@@ -88,9 +88,6 @@ private:
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
 
-protected:
-    // virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
 private slots:
     int findNfcDevicePort(QString name);
 
@@ -142,7 +139,7 @@ private slots:
     // nfc部分
     void on_nfc_write_read_clicked();
     void on_clear_nfc_data_clicked();
-    QString generateHexString(int productionNumber);
+
     QString generateDateCode();
     void on_getMac_returnPressed();
 

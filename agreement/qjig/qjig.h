@@ -8,7 +8,7 @@
 #include "my_set/my_typedef.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 class Qjig : public QSerialPort {
     Q_OBJECT

@@ -4,7 +4,7 @@
 #include "test_base.h"
 #include "ui_quiescent_current.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set("utf-8")
+#    pragma execution_character_set(push, "utf-8")
 #endif
 
 #include "Abini.h"
@@ -16,8 +16,7 @@ namespace Ui {
 
 class quiescent_current : public test_base {
     Q_OBJECT
-protected:
-    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
+
 public:
     explicit quiescent_current(int index, QWidget* parent = nullptr);
     ~quiescent_current();
@@ -57,7 +56,7 @@ private:
     double LowCurrent;
     QString M_USERNO;
     QString stringsn;
-    bool isquiescent_currentContinue = false;
+
     QLabel* bleStatusLabel;
     QLabel* uartStatusLabel;
     QLabel* frame_rate;
@@ -87,7 +86,7 @@ private:
         STATE_WATI_GET_PERIPHERAL_STATE,  // 等待获取外设状态
         STATE_SAVE_RESULT                 // 保存结果在本地
     } State;
-    QTime TestTime;
+    QElapsedTimer TestTime;
     State state = STATE_IDLE;
     // 操作员工号
     // 设备编号

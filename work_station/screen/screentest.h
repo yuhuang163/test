@@ -32,7 +32,7 @@ private:
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
     State state = STATE_IDLE;
-    QTime TestTime;
+    QElapsedTimer TestTime;
     bool is_canGoNext = 0;
     QString stringsn;
     QString macAddress = "没有mac地址";
@@ -44,9 +44,6 @@ private:
     QByteArray writesn;
     QString product = "";
 
-protected:
-    //  virtual void closeEvent(QCloseEvent *);
-    void closeEvent(QCloseEvent* event) override;  // 添加 override 关键字
 
 private slots:
 

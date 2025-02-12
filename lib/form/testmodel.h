@@ -4,7 +4,7 @@
 #include <QStandardItemModel >
 
 #if _MSC_VER >= 1600
-    #pragma execution_character_set("utf-8")
+    #pragma execution_character_set(push, "utf-8")
 #endif
 
 class TestItems : public QObject

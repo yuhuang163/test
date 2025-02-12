@@ -63,7 +63,7 @@ private:
 
     QTimer* waittime = new QTimer(this);
     QTimer* comparewaittime = new QTimer(this);
-    QTime TestTime;
+    QElapsedTimer TestTime;
     QString productName;
     QString ReadNfcData = "";
     QString TestResult = "";
@@ -110,7 +110,7 @@ private:
     QVector<int> testIndexes;  // 存储索引的容器
     QVBoxLayout* conFiglayout;
     QGridLayout* canUselayout;
-    int canUserRow;
+    size_t canUserRow;
     int canUserCol;
     int singleCheckBoxHeight;
     int singleCheckBoxWidth;
@@ -126,9 +126,6 @@ private:
     };
     void createTestFunctions();
     std::vector<NamedFunction> testFunctions;
-
-protected:
-    void closeEvent(QCloseEvent* event) override;
 
 private slots:
     void initDate();
@@ -156,7 +153,7 @@ private slots:
     void refreshWifiState(int state);
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
-    void updateComboBox();
+    void updateComboBox() override;
     void getmacadress(const QByteArray& byte);
     void processInspection(QString stringsn);
     void processGetMesTestValue();
@@ -165,13 +162,13 @@ private slots:
     void on_pushButton_clicked();
     void on_disconnectwifi_clicked();
     void on_connectwifi_clicked();
-    void refreshAmmeterData(QString data);
+    void refreshAmmeterData(QString data) override;
     void on_get_battery_clicked();
 
     // nfc部分
     void on_nfc_write_read_clicked();
     void on_clear_nfc_data_clicked();
-    QString generateHexString(int productionNumber);
+
     QString generateDateCode();
     void on_nfc_sn_returnPressed();
     void on_getMac_returnPressed();

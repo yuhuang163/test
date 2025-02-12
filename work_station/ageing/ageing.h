@@ -52,7 +52,7 @@ private:
     State state = STATE_IDLE;
     QString stringsn;
     QString stringsubpid;
-        QString stringSkuid;
+    QString stringSkuid;
     QString macAddress = "没有mac地址";
     QByteArray writesn;
     QByteArray last_sn = QByteArray::number(22);
@@ -63,28 +63,28 @@ private:
     int subpidCompareOk = 0;
     int flash_state = 0;
     int refresh_periph_times;
-    QTime TestTime;
-
-protected:
-    virtual void closeEvent(QCloseEvent*);
+    QElapsedTimer TestTime;
 
 private slots:
 
     void refreshSn(FacDevInfo data) override;
     void refreshPeriphData(FacGetPeriphState) override;
     void refreshBattaryData(FacDevInfo adc) override;
+    void refreshDongleUartState(int state) override;
+    void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
+    void processInspection(QString stringsn);
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
-    void getTestValue(const int mechines, const QString value) override;
+
     void on_macInput_returnPressed();
-    void refreshDongleUartState(int state);
+
     void on_pushButton_clicked();
     void on_enterBurningMode_clicked();
     void on_exitBurningMode_clicked();
     void on_getMac_returnPressed();
     void on_snInput_returnPressed();
-    void processInspection(QString stringsn);
+
     void on_stopTest_clicked();
 
 signals:
