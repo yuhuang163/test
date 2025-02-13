@@ -82,6 +82,9 @@
 // [CAMERA_VER] 设置每次打开上位机都显示tab的第一页,增加对q30的适配，以及配网反初始化，测试完成重启手柄，wifi在总设置里面配置，测试的时候会自动加载wif设备名字密码ip端口，不用重启上位机
 // [AGE_VER] 设置每次打开上位机都显示tab的第一页
 
+// [PCBA_VER] 适配新的电机测试功能
+// [DEBUG_VER] 增加ai的功能
+//
 
 // [PRESSURE_VER] 做y20po和y25s的压感治具适配
 // [DEBUG_VER] 增加音频预览的python脚本，以及适配一般手柄的subpid

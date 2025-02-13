@@ -95,6 +95,7 @@ SOURCES += \
     work_station/ageing/ageingbox.cpp \
     work_station/camera/camerabox.cpp \
     work_station/camera/cameratest.cpp \
+    work_station/common_class.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/testFunction.cpp \
@@ -156,6 +157,7 @@ HEADERS += \
     work_station/ageing/ageingbox.h \
     work_station/camera/camerabox.h \
     work_station/camera/cameratest.h \
+    work_station/common_class.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
     work_station/imu/imubox.h \

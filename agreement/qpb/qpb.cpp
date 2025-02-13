@@ -1720,6 +1720,7 @@ void Qpb::process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage& f) {
     if (x.type == FacMotoControlType_motor_test) {
         qDebug() << "电机测试操作";
         emit sendGetBrushResponse(1);
+        is_motor_test_state = 1;
     }
     if (x.type == FacMotoControlType_damping_state) {
         qDebug() << "电机阻尼操作";

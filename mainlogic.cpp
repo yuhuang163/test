@@ -2949,3 +2949,174 @@ void MainWindow::getPresscalidata(FacPreSensorCalibResult x) {
     showlog("温度" + QString::number(x.temperature));
     showlog("辅助元器件" + QString::number(x.assistant_component));
 }
+
+void MainWindow::sendAiMessage() {
+    // 设置API访问令牌和机器人ID
+    QString apiAccessToken = "pat_4hyfblhdZ5HGEUkarguhzVrQxqOXyoabuG80QfKYDjZWxk89FvD0oD38PZNw8Ins";
+    QString chatBotId = "7470353780475740195";
+    QString url = "https://api.coze.cn/open_api/v2/chat";
+
+    // 构造请求头
+    QNetworkRequest request((QUrl(url)));
+    request.setRawHeader("Authorization", QString("Bearer %1").arg(apiAccessToken).toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // 构造请求体
+    QJsonObject payload;
+    payload["bot_id"] = chatBotId;
+    payload["user"] = "123123123";  // 你可以修改这个 user
+    payload["query"] = ui->AITestLine->text();
+    payload["stream"] = false;
+
+    QJsonDocument doc(payload);
+    QByteArray data = doc.toJson();
+
+    // 发送POST请求
+    manager->post(request, data);
+}
+
+void MainWindow::onRequestFinished(QNetworkReply* reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "请求失败：" << reply->errorString();
+        return;
+    }
+
+    // 解析返回的JSON数据
+    QByteArray responseData = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (doc.isObject()) {
+        QJsonObject jsonResponse = doc.object();
+        QJsonArray messages = jsonResponse["messages"].toArray();
+
+        for (const QJsonValue& message : messages) {
+            QJsonObject msgObj = message.toObject();
+            QString messageContent = msgObj["content"].toString();
+            QString type = msgObj["type"].toString();
+
+            // qDebug() << "messageContent" << messageContent;
+            // qDebug() << "msgObj" << msgObj;
+
+            if (!messageContent.startsWith("{") && !messageContent.startsWith("RPCError")) {
+                if (type == "answer") {
+                    showlog(messageContent);
+
+                    QStringList segments = messageContent.split(',');
+                    // 遍历分割后的列表并输出
+                    for (const QString& segment : segments) {
+                        executor.executeFunctionByName(segment);
+                    }
+                }
+            }
+        }
+    }
+
+    reply->deleteLater();
+}
+void MainWindow::myAudioRecorde() {
+
+    // 获取可用的音频输入设备列表
+    QList<QAudioDeviceInfo> devices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+    // 询问用户要使用哪个音频设备，并显示设备信息
+    QStringList deviceList;
+    for (const QAudioDeviceInfo& deviceInfo : devices) {
+        deviceList.append(deviceInfo.deviceName());
+    }
+    bool ok;
+    QString deviceName =
+        QInputDialog::getItem(this, tr("选择音频输入设备"), tr("音频输入设备:"), deviceList, 0, false, &ok);
+    if (!ok) {
+        // 如果用户取消了选择设备，则退出函数
+        return;
+    }
+    qDebug() << "Selected device: " << deviceName;
+    // 查找选择的设备并设置为录音设备
+    QAudioDeviceInfo selectedDevice;
+    for (const QAudioDeviceInfo& deviceInfo : devices) {
+        if (deviceInfo.deviceName() == deviceName) {
+            selectedDevice = deviceInfo;
+            break;
+        }
+    }
+    if (selectedDevice.isNull()) {
+        qDebug() << "Selected device not found!";
+        return;
+    }
+
+    // 初始化 QAudioRecorder
+    audioRecorder = new QAudioRecorder(this);
+    // 设置音频配置
+    QAudioEncoderSettings audioSettings;
+    audioSettings.setCodec("audio/pcm");
+    audioSettings.setSampleRate(44100);
+    audioSettings.setBitRate(16);
+    audioSettings.setChannelCount(1);
+    audioSettings.setQuality(QMultimedia::HighQuality);
+    audioRecorder->setEncodingSettings(audioSettings);
+    // 设置录音设备
+    audioRecorder->setAudioInput(selectedDevice.deviceName());
+    // 设置输出路径并开始录制
+    // audioRecorder->setOutputLocation(QUrl::fromLocalFile(generateOutputFilePath()));
+    // 构建输出文件路径
+    QString outputFilePath = QDir::current().filePath("音乐/MUSIC.wav");
+
+    // 设置输出位置
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(outputFilePath));
+
+
+    music_time = ui->music_time->text().toInt();
+    QTimer::singleShot(music_time, this, SLOT(stopRecording()));
+    showlog("开始录音中");
+    audioRecorder->record();
+}
+
+
+void MainWindow::uploadFile(const QString &filePath)
+{
+    // 创建网络访问管理器
+    QNetworkAccessManager *manager = new QNetworkAccessManager();
+    QString apiAccessToken = "pat_4hyfblhdZ5HGEUkarguhzVrQxqOXyoabuG80QfKYDjZWxk89FvD0oD38PZNw8Ins";
+
+    // 设置请求 URL
+    QUrl url("https://api.coze.cn/v1/files/upload");
+    QNetworkRequest request(url);
+
+    // 设置授权头
+    QString bearerToken = "Bearer " + apiAccessToken;
+    request.setRawHeader("Authorization", bearerToken.toUtf8());
+
+    // 创建多部分对象
+    QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+
+    // 创建文件部分
+    QHttpPart filePart;
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(filePath).fileName() + "\""));
+
+    // 打开文件
+    QFile *file = new QFile(filePath);
+    if (!file->open(QIODevice::ReadOnly)) {
+        qWarning("无法打开文件");
+        return;
+    }
+    filePart.setBodyDevice(file);
+    file->setParent(multiPart); // 当 multiPart 被删除时，file 也会被删除
+
+    // 将文件部分添加到多部分对象
+    multiPart->append(filePart);
+
+    // 发送 POST 请求
+    QNetworkReply *reply = manager->post(request, multiPart);
+    multiPart->setParent(reply); // 当 reply 被删除时，multiPart 也会被删除
+
+    // 处理响应
+    QObject::connect(reply, &QNetworkReply::finished, [reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray response = reply->readAll();
+            // 处理成功响应
+            qDebug() << "上传成功：" << response;
+        } else {
+            // 处理错误
+            qWarning() << "上传失败：" << reply->errorString();
+        }
+        reply->deleteLater();
+    });
+}

@@ -57,7 +57,7 @@ void MainWindow::on_pushButton_3_clicked() {
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
     at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
-    nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
+    nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     updateMainStyle("Ubuntu.qss");
@@ -403,6 +403,9 @@ MainWindow::MainWindow(QWidget* parent) :
     if (!SETTINGS.value("SYSTEM/setting").toInt()) {
         setting->setVisible(false);
     }
+
+    manager = new QNetworkAccessManager(this);
+    connect(manager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {
@@ -816,55 +819,10 @@ void MainWindow::on_exitBurningMode_clicked() {
 }
 
 void MainWindow::on_music_play_clicked() {
+    myAudioRecorde();
     QString musicFileName = ui->music_combo->currentText();
     qDebug() << "文件名为" << musicFileName;
     QByteArray musicFileNameBytes = musicFileName.toUtf8();
-    // 获取可用的音频输入设备列表
-    QList<QAudioDeviceInfo> devices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-    // 询问用户要使用哪个音频设备，并显示设备信息
-    QStringList deviceList;
-    for (const QAudioDeviceInfo& deviceInfo : devices) {
-        deviceList.append(deviceInfo.deviceName());
-    }
-    bool ok;
-    QString deviceName =
-        QInputDialog::getItem(this, tr("选择音频输入设备"), tr("音频输入设备:"), deviceList, 0, false, &ok);
-    if (!ok) {
-        // 如果用户取消了选择设备，则退出函数
-        return;
-    }
-    qDebug() << "Selected device: " << deviceName;
-    // 查找选择的设备并设置为录音设备
-    QAudioDeviceInfo selectedDevice;
-    for (const QAudioDeviceInfo& deviceInfo : devices) {
-        if (deviceInfo.deviceName() == deviceName) {
-            selectedDevice = deviceInfo;
-            break;
-        }
-    }
-    if (selectedDevice.isNull()) {
-        qDebug() << "Selected device not found!";
-        return;
-    }
-
-    // 初始化 QAudioRecorder
-    audioRecorder = new QAudioRecorder(this);
-    // 设置音频配置
-    QAudioEncoderSettings audioSettings;
-    audioSettings.setCodec("audio/pcm");
-    audioSettings.setSampleRate(44100);
-    audioSettings.setBitRate(16);
-    audioSettings.setChannelCount(1);
-    audioSettings.setQuality(QMultimedia::HighQuality);
-    audioRecorder->setEncodingSettings(audioSettings);
-    // 设置录音设备
-    audioRecorder->setAudioInput(selectedDevice.deviceName());
-    // 设置输出路径并开始录制
-    audioRecorder->setOutputLocation(QUrl::fromLocalFile(generateOutputFilePath()));
-    music_time = ui->music_time->text().toInt();
-    QTimer::singleShot(music_time, this, SLOT(stopRecording()));
-    showlog("开始录音中");
-    audioRecorder->record();
     pb->set_music(musicFileNameBytes);
 }
 
@@ -3489,4 +3447,11 @@ void MainWindow::on_set_press_info_clicked() {
     cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = ui->calibValue_auxComponent->text().toInt();
 
     pb->set_press_cali_result(cali_result);
+}
+
+void MainWindow::on_AITestLine_returnPressed() { sendAiMessage(); }
+
+void MainWindow::on_speakAi_clicked() {
+    myAudioRecorde();
+    uploadFile("音乐/MUSIC.wav");
 }

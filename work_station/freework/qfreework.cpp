@@ -367,20 +367,6 @@ void QFreeWork::saveIndexesToConfig(const QVector<int>& indexes) {
 QFreeWork::State QFreeWork::getNextState(State currentState) {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
 }
-// 定义一个函数，用于执行具有特定名称的函数
-void QFreeWork::executeFunctionByName(const QString functionName) {
-    // 在 functions 向量中查找具有特定名称的函数对象
-    for (const auto& namedFunction : testFunctions) {
-        if (namedFunction.name == functionName) {
-            // 执行找到的函数对象
-            namedFunction.function();
-            return;  // 执行完成后直接返回
-        }
-    }
-
-    // 如果没有找到匹配的函数名，则输出错误信息
-    qDebug() << "Error: Function with name " << functionName << " not found!";
-}
 
 void QFreeWork::startTask() {
     if (isTestContinue) {

@@ -34,7 +34,7 @@ typedef enum {
 class test_base : public QWidget {
     Q_OBJECT
 public:
-     explicit test_base(QWidget* parent = nullptr);
+    explicit test_base(QWidget* parent = nullptr);
 
     virtual void startTest(){};
     virtual void overTask(){};
@@ -100,7 +100,6 @@ public:
     QVector<TestItem> testItems;
     MesPacketData pack;
     QString snPattern;
-    int testState = 0;
 
 public:
     void signalAndslot();

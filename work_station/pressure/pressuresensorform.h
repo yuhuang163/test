@@ -106,7 +106,7 @@ public:
 signals:
 
     // uart
-    void sendMessage(QString s);
+
     void send_data_to_mechine(FixturePacketData);
 
     // mes

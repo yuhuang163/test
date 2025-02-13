@@ -694,7 +694,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
             retryCount = 0;
             getRespone = 0;
             canGoNext = 1;
-            testState++;
+
             showlog("sendCommandWithRetry完成，收到牙刷响应");
             return 1;
         }

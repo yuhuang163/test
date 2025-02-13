@@ -1513,8 +1513,11 @@ void PcbaForm::startTask() {
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
-                            showlog("跑的是P30P");
-                            pb->set_sevor_motor_param(3500, 14000, 10, 380);
+                            // showlog("跑的是P30P");
+                            // pb->set_sevor_motor_param(3500, 14000, 10, 380);
+
+                               showlog("跑的是统一电机参数");
+                             pb->set_motor_test_state(1);
                         } else {
                             showlog("跑的是q20");
                             pb->set_motor_param(270, 60);
@@ -1569,8 +1572,11 @@ void PcbaForm::startTask() {
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
-                            showlog("跑的是P30P");
-                            pb->set_sevor_motor_param(3500, 14000, 10, 380);
+                            // showlog("跑的是P30P");
+                            // pb->set_sevor_motor_param(3500, 14000, 10, 380);
+
+                            showlog("跑的是统一电机参数");
+                            pb->set_motor_test_state(1);
                         } else {
                             showlog("跑的是q20");
                             pb->set_motor_param(270, 60);

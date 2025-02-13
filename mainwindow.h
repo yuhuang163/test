@@ -35,6 +35,7 @@
 #include <algorithm>
 
 #include "Abini.h"
+#include "common_class.h"
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
 #include "sensor_hub.h"
@@ -178,7 +179,9 @@ private:
     std::atomic<bool> running;
     QFuture<void> future;
     Qpb* pb;
+
     Qat* at;
+    TestFunctionExecutor executor;
     typedef enum {
         STATE_IDLE,             // 休眠状态
         STATE_WATI_CONNECT,     // 等待连接
@@ -236,10 +239,17 @@ private:
     QTimer* bleotatimer = new QTimer(this);
     int currentChunk = 0;
 
+private:
+    QNetworkAccessManager* manager;
+
 protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+    void uploadFile(const QString &filePath);
+    void myAudioRecorde();
+    void sendAiMessage();
+    void onRequestFinished(QNetworkReply* reply);
     void renameAduioFilesInFolder(const QString& folderPath);
     void processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb,
                       const QString& play_speed);
@@ -512,6 +522,10 @@ private slots:
     void on_get_press_info_clicked();
 
     void on_set_press_info_clicked();
+
+    void on_AITestLine_returnPressed();
+
+    void on_speakAi_clicked();
 
 signals:
     void send_uart_state(int data);
