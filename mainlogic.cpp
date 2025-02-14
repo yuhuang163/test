@@ -871,6 +871,18 @@ void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const 
     // 创建输出文件路径
     //  QString outputFilePath = outputDir.absoluteFilePath(outputFileName);
     QString outputFilePath = outputDir.filePath(outputFileName);
+
+    // 确保目标文件所在的子目录存在
+    QFileInfo fileInfo(outputFilePath);
+    QString targetDir = fileInfo.path();  // 这将返回 "output/1"
+    QDir dir;
+    if (!dir.exists(targetDir)) {
+        if (!dir.mkpath(targetDir)) {
+            qDebug() << "无法创建输出子目录：" << targetDir;
+            return;
+        }
+    }
+
     // 打开输出文件
     QFile file(outputFilePath);
     if (!file.open(QIODevice::WriteOnly)) {
@@ -916,6 +928,77 @@ bool compareFileNames(const QString& fileName1, const QString& fileName2) {
     int number2 = fileName2.left(fileName2.indexOf('.')).toInt();
     return number1 < number2;
 }
+void MainWindow::renameAndProcessFolders(const QString& directoryPath) {
+    QDir directory(directoryPath);
+    if (!directory.exists()) {
+        qDebug() << "目录不存在:" << directoryPath;
+        return;
+    }
+
+    // 获取目录下的所有文件夹
+    QStringList folderNames = directory.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+
+    qDebug() << "文件夹列表:" << folderNames;
+
+    int folderCount = folderNames.size();
+
+    // 获取当前目录下所有的文件
+    QStringList fileList = directory.entryList(QDir::Files, QDir::Name);
+
+    // 如果没有子文件夹，但当前目录中有文件
+    if (folderCount == 0 && !fileList.isEmpty()) {
+        // 定义目标输出文件夹路径：当前目录下的 "output/1"
+        QString targetFolderPath = directoryPath + QDir::separator() + "output" + QDir::separator() + "1";
+        QDir targetDir(targetFolderPath);
+        // 如果目标文件夹不存在，则创建整个路径
+        if (!targetDir.exists()) {
+            if (!QDir().mkpath(targetFolderPath)) {
+                qDebug() << "无法创建输出目录:" << targetFolderPath;
+                return;
+            }
+        }
+
+        // 将当前目录下的所有文件移动到目标文件夹中
+        for (const QString& fileName : fileList) {
+            QString oldFilePath = directory.filePath(fileName);
+            QString newFilePath = targetDir.filePath(fileName);
+            if (!QFile::rename(oldFilePath, newFilePath)) {
+                qDebug() << "移动文件" << oldFilePath << "到" << newFilePath << "失败";
+            } else {
+                qDebug() << "移动文件" << oldFilePath << "到" << newFilePath << "成功";
+            }
+        }
+        // 处理目标文件夹中的图片重命名和处理
+        renamePictureFilesInFolder(targetFolderPath);
+        return;
+    }
+
+    // 按顺序重命名文件夹
+    for (int i = 0; i < folderCount; ++i) {
+        QString oldFolderName = folderNames.at(i);
+        QString oldFolderPath = directory.filePath(oldFolderName);
+
+        QString newFolderName = QString::number(i + 1);
+        QString newFolderPath = directory.filePath(newFolderName);
+
+        // 检查新文件夹名是否已经存在
+        if (QDir(newFolderPath).exists()) {
+            qDebug() << "文件夹" << newFolderPath << "已经存在，跳过重命名";
+            renamePictureFilesInFolder(newFolderPath);
+            continue;
+        }
+
+        if (!QDir().rename(oldFolderPath, newFolderPath)) {
+            qDebug() << "重命名文件夹" << oldFolderPath << "失败";
+            continue;
+        }
+
+        qDebug() << "文件夹" << oldFolderPath << "重命名为" << newFolderPath;
+
+        // 依次打开文件夹进行操作
+        renamePictureFilesInFolder(newFolderPath);
+    }
+}
 
 void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
     QDir folder(folderPath);
@@ -923,6 +1006,8 @@ void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
         qDebug() << "文件夹不存在";
         return;
     }
+    QString folderName = folder.dirName();
+    qDebug() << "文件夹名称:" << folderName;
     QElapsedTimer TestTime;
     // 获取文件夹中所有文件的列表
     QStringList files = folder.entryList(QDir::Files, QDir::Name);
@@ -944,7 +1029,7 @@ void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
         // 检查新文件名是否已经存在
         if (QFile::exists(newFilePath)) {
             qDebug() << "文件" << newFilePath << "已经存在，跳过重命名";
-            convertImageTo16BitPaletteHigh(newFilePath, newFileName);
+            convertImageTo16BitPaletteHigh(newFilePath, folderName + "/" + newFileName);
             continue;
         }
 
@@ -952,7 +1037,7 @@ void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
         ui->active_picture->setPixmap(QPixmap::fromImage(image));
         if (!QFile::rename(filePath, newFilePath)) {
             qDebug() << "重命名文件" << filePath << "失败";
-            convertImageTo16BitPaletteHigh(newFilePath, newFileName);
+            convertImageTo16BitPaletteHigh(newFilePath, folderName + "/" + newFileName);
             continue;
         }
 
@@ -2611,7 +2696,7 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
                     } else {
                         showlog("准备删除active_picture");
                         on_clear_picture_clicked();
-                        renamePictureFilesInFolder(path);
+                        renameAndProcessFolders(path);
                     }
 
                 } else if (ui->high_speed_tp->underMouse()) {  // 如果拖到了high_speed_tp上
@@ -2954,7 +3039,8 @@ void MainWindow::sendAiMessage() {
     // 设置API访问令牌和机器人ID
     QString apiAccessToken = "pat_4hyfblhdZ5HGEUkarguhzVrQxqOXyoabuG80QfKYDjZWxk89FvD0oD38PZNw8Ins";
     QString chatBotId = "7470353780475740195";
-    QString url = "https://api.coze.cn/open_api/v2/chat";
+    // QString url = "https://api.coze.cn/v3/chat?conversation_id=" + chatBotId;
+    QString url = "https://api.coze.cn/v3/chat";
 
     // 构造请求头
     QNetworkRequest request((QUrl(url)));
@@ -2964,15 +3050,26 @@ void MainWindow::sendAiMessage() {
     // 构造请求体
     QJsonObject payload;
     payload["bot_id"] = chatBotId;
-    payload["user"] = "123123123";  // 你可以修改这个 user
-    payload["query"] = ui->AITestLine->text();
-    payload["stream"] = false;
+    payload["user_id"] = "123123123";  // 你可以修改这个 user
+
+    payload["stream"] = true;
+    payload["auto_save_history"] = true;
+
+    QJsonArray additionalMessages;
+    QJsonObject msg;
+    msg["role"] = "user";
+    msg["content"] = ui->AITestLine->text();
+    msg["content_type"] = "text";
+    additionalMessages.append(msg);
+    payload["additional_messages"] = additionalMessages;
 
     QJsonDocument doc(payload);
     QByteArray data = doc.toJson();
 
     // 发送POST请求
-    manager->post(request, data);
+    aimanager->post(request, data);
+
+    qDebug() << "已经发送请求" << payload;
 }
 
 void MainWindow::onRequestFinished(QNetworkReply* reply) {
@@ -2981,39 +3078,57 @@ void MainWindow::onRequestFinished(QNetworkReply* reply) {
         return;
     }
 
-    // 解析返回的JSON数据
+    // 获取返回的完整数据
     QByteArray responseData = reply->readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(responseData);
-    if (doc.isObject()) {
-        QJsonObject jsonResponse = doc.object();
-        QJsonArray messages = jsonResponse["messages"].toArray();
+    // qDebug() << "Raw Response data:" << responseData;
 
-        for (const QJsonValue& message : messages) {
-            QJsonObject msgObj = message.toObject();
-            QString messageContent = msgObj["content"].toString();
-            QString type = msgObj["type"].toString();
+    QString responseString = QString::fromUtf8(responseData);
 
-            // qDebug() << "messageContent" << messageContent;
-            // qDebug() << "msgObj" << msgObj;
+    QString accumulatedContent;  // 用于存储流式的content数据
+    // 按换行符分割原始数据
+    QStringList lines = responseString.split("\n");
+    QString eventType;
+    for (const QString& line : lines) {
+        if (line.startsWith("event:")) {
+            eventType = line.mid(6).trimmed();
+            // qDebug() << "Event Type:" << eventType;
+        } else if (line.startsWith("data:")) {
+            QString jsonData = line.mid(5).trimmed();
 
-            if (!messageContent.startsWith("{") && !messageContent.startsWith("RPCError")) {
-                if (type == "answer") {
-                    showlog(messageContent);
+            // 使用 QJsonDocument 解析 JSON 数据
+            QJsonDocument doc = QJsonDocument::fromJson(jsonData.toUtf8());
+            if (!doc.isNull()) {
+                QJsonObject jsonObject = doc.object();
+                qDebug() << "解析后的:" << jsonObject;
+                QString type = jsonObject["type"].toString();
 
-                    QStringList segments = messageContent.split(',');
-                    // 遍历分割后的列表并输出
-                    for (const QString& segment : segments) {
-                        executor.executeFunctionByName(segment);
-                    }
+                if (type == "answer" && eventType == "conversation.message.completed") {
+                    accumulatedContent = jsonObject["content"].toString();
+                    qDebug() << "你需要的是:" << accumulatedContent;
+                    tts->say(accumulatedContent);
                 }
+
+            } else {
+                qDebug() << "Invalid JSON data";
             }
+        }
+    }
+
+    // 处理完整的 accumulatedContent
+    if (!accumulatedContent.isEmpty()) {
+        showlog(accumulatedContent);
+
+        // 解析命令
+        QStringList segments = accumulatedContent.split(',');
+        for (const QString& segment : segments) {
+            executor.executeFunctionByName(segment);
         }
     }
 
     reply->deleteLater();
 }
-void MainWindow::myAudioRecorde() {
 
+void MainWindow::myAudioRecorde(bool delay) {
     // 获取可用的音频输入设备列表
     QList<QAudioDeviceInfo> devices = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     // 询问用户要使用哪个音频设备，并显示设备信息
@@ -3021,13 +3136,21 @@ void MainWindow::myAudioRecorde() {
     for (const QAudioDeviceInfo& deviceInfo : devices) {
         deviceList.append(deviceInfo.deviceName());
     }
-    bool ok;
-    QString deviceName =
-        QInputDialog::getItem(this, tr("选择音频输入设备"), tr("音频输入设备:"), deviceList, 0, false, &ok);
-    if (!ok) {
-        // 如果用户取消了选择设备，则退出函数
+    // bool ok;
+    // QString deviceName =
+    //     QInputDialog::getItem(this, tr("选择音频输入设备"), tr("音频输入设备:"), deviceList, 0, false, &ok);
+    // if (!ok) {
+    //     // 如果用户取消了选择设备，则退出函数
+    //     return;
+    // }
+
+    QString deviceName = deviceList.isEmpty() ? QString() : deviceList.first();
+
+    if (deviceName.isEmpty()) {
+        QMessageBox::warning(this, tr("错误"), tr("未找到音频输入设备"));
         return;
     }
+
     qDebug() << "Selected device: " << deviceName;
     // 查找选择的设备并设置为录音设备
     QAudioDeviceInfo selectedDevice;
@@ -3056,24 +3179,41 @@ void MainWindow::myAudioRecorde() {
     audioRecorder->setAudioInput(selectedDevice.deviceName());
     // 设置输出路径并开始录制
     // audioRecorder->setOutputLocation(QUrl::fromLocalFile(generateOutputFilePath()));
-    // 构建输出文件路径
-    QString outputFilePath = QDir::current().filePath("音乐/MUSIC.wav");
 
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+    QString fileName = "音乐/录音.wav";
+
+    // 构建输出文件路径
+    QString outputFilePath = QDir::current().filePath(fileName);
+    qDebug() << "Output file path:" << outputFilePath;
+    // 获取文件夹路径
+    QString directory = QFileInfo(outputFilePath).absolutePath();
+
+    // 创建 QDir 对象
+    QDir dir;
+
+    // 检查文件夹是否存在，如果不存在则创建
+    if (!dir.exists(directory)) {
+        if (dir.mkpath(directory)) {
+            qDebug() << "文件夹创建成功";
+        } else {
+            qDebug() << "文件夹创建失败";
+            return;  // 文件夹创建失败，退出函数
+        }
+    }
     // 设置输出位置
     audioRecorder->setOutputLocation(QUrl::fromLocalFile(outputFilePath));
 
-
     music_time = ui->music_time->text().toInt();
-    QTimer::singleShot(music_time, this, SLOT(stopRecording()));
-    showlog("开始录音中");
+    if (delay)
+        QTimer::singleShot(music_time, this, SLOT(stopRecording()));
+    showlog("开始录音");
     audioRecorder->record();
 }
 
-
-void MainWindow::uploadFile(const QString &filePath)
-{
+void MainWindow::uploadFile(const QString& filePath) {
     // 创建网络访问管理器
-    QNetworkAccessManager *manager = new QNetworkAccessManager();
+    QNetworkAccessManager* manager = new QNetworkAccessManager();
     QString apiAccessToken = "pat_4hyfblhdZ5HGEUkarguhzVrQxqOXyoabuG80QfKYDjZWxk89FvD0oD38PZNw8Ins";
 
     // 设置请求 URL
@@ -3085,38 +3225,108 @@ void MainWindow::uploadFile(const QString &filePath)
     request.setRawHeader("Authorization", bearerToken.toUtf8());
 
     // 创建多部分对象
-    QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
 
     // 创建文件部分
     QHttpPart filePart;
-    filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(filePath).fileName() + "\""));
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant("form-data; name=\"file\"; filename=\"" + QFileInfo(filePath).fileName() + "\""));
 
     // 打开文件
-    QFile *file = new QFile(filePath);
+    QFile* file = new QFile(filePath);
     if (!file->open(QIODevice::ReadOnly)) {
         qWarning("无法打开文件");
         return;
     }
     filePart.setBodyDevice(file);
-    file->setParent(multiPart); // 当 multiPart 被删除时，file 也会被删除
+    file->setParent(multiPart);  // 当 multiPart 被删除时，file 也会被删除
 
     // 将文件部分添加到多部分对象
     multiPart->append(filePart);
 
     // 发送 POST 请求
-    QNetworkReply *reply = manager->post(request, multiPart);
-    multiPart->setParent(reply); // 当 reply 被删除时，multiPart 也会被删除
+    QNetworkReply* reply = manager->post(request, multiPart);
+    multiPart->setParent(reply);  // 当 reply 被删除时，multiPart 也会被删除
 
     // 处理响应
-    QObject::connect(reply, &QNetworkReply::finished, [reply]() {
+    QObject::connect(reply, &QNetworkReply::finished, [reply, this]() {
         if (reply->error() == QNetworkReply::NoError) {
             QByteArray response = reply->readAll();
             // 处理成功响应
             qDebug() << "上传成功：" << response;
+
+            // 解析 JSON 响应
+            QJsonDocument jsonDoc = QJsonDocument::fromJson(response);
+            if (jsonDoc.isObject()) {
+                QJsonObject jsonObject = jsonDoc.object();
+
+                // 提取 "data" 对象
+                QJsonObject data = jsonObject.value("data").toObject();
+
+                // 获取 "id" 值
+                QString file_id = data.value("id").toString();
+                qDebug() << "解析到的 ID: " << file_id;
+                sendAifile(file_id);
+            }
+
         } else {
             // 处理错误
             qWarning() << "上传失败：" << reply->errorString();
         }
         reply->deleteLater();
     });
+}
+void MainWindow::sendAifile(QString file_id) {
+    // 设置API访问令牌和机器人ID
+    QString apiAccessToken = "pat_4hyfblhdZ5HGEUkarguhzVrQxqOXyoabuG80QfKYDjZWxk89FvD0oD38PZNw8Ins";
+    QString chatBotId = "7470353780475740195";
+    // QString url = "https://api.coze.cn/v3/chat?conversation_id=" + chatBotId;
+    QString url = "https://api.coze.cn/v3/chat";
+
+    // 构造请求头
+    QNetworkRequest request((QUrl(url)));
+    request.setRawHeader("Authorization", QString("Bearer %1").arg(apiAccessToken).toUtf8());
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // 构造请求体
+    QJsonObject payload;
+    payload["bot_id"] = chatBotId;
+    payload["user_id"] = "123123123";  // 你可以修改这个 user
+    payload["stream"] = true;
+    payload["auto_save_history"] = true;
+
+    // 构建 additionalMessages
+    QJsonArray additionalMessages;
+
+    QJsonObject msg;
+    msg["role"] = "user";
+
+    QJsonObject msgtxt;
+    msgtxt["type"] = "text";
+    msgtxt["text"] = "帮我分析音频内容，并根据音频的内容作为工作流的输入";
+
+    QJsonObject msgfile;
+    msgfile["type"] = "file";
+    msgfile["file_id"] = file_id;  // 替换为实际的文件ID
+
+    QJsonArray object_string;
+    object_string.append(msgtxt);
+    object_string.append(msgfile);
+
+    // 将数组转换为 JSON 字符串
+    QJsonDocument objectDoc(object_string);
+    QString objectString = QString(objectDoc.toJson(QJsonDocument::Compact));
+
+    msg["content"] = objectString;
+    msg["content_type"] = "object_string";
+    additionalMessages.append(msg);
+    payload["additional_messages"] = additionalMessages;
+
+    QJsonDocument doc(payload);
+    QByteArray data = doc.toJson();
+
+    // 发送POST请求
+    aimanager->post(request, data);
+
+    qDebug() << "已经发送请求";  //<< data;
 }

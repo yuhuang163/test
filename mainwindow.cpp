@@ -54,11 +54,14 @@ void MainWindow::on_pushButton_3_clicked() {
 
     // pb->set_servo_motor_info();
 }
+
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
     at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
+    tts = new QTextToSpeech();
+
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     updateMainStyle("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
@@ -404,8 +407,8 @@ MainWindow::MainWindow(QWidget* parent) :
         setting->setVisible(false);
     }
 
-    manager = new QNetworkAccessManager(this);
-    connect(manager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
+    aimanager = new QNetworkAccessManager(this);
+    connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {
@@ -819,7 +822,7 @@ void MainWindow::on_exitBurningMode_clicked() {
 }
 
 void MainWindow::on_music_play_clicked() {
-    myAudioRecorde();
+    myAudioRecorde(1);
     QString musicFileName = ui->music_combo->currentText();
     qDebug() << "文件名为" << musicFileName;
     QByteArray musicFileNameBytes = musicFileName.toUtf8();
@@ -3451,7 +3454,14 @@ void MainWindow::on_set_press_info_clicked() {
 
 void MainWindow::on_AITestLine_returnPressed() { sendAiMessage(); }
 
-void MainWindow::on_speakAi_clicked() {
-    myAudioRecorde();
-    uploadFile("音乐/MUSIC.wav");
+void MainWindow::on_speakAi_released() {
+    ui->speakAi->setText("长按语音输入");
+    stopRecording();
+    uploadFile("音乐/录音.wav");
+}
+
+void MainWindow::on_speakAi_pressed() {
+    myAudioRecorde(0);
+
+    ui->speakAi->setText("请说话");  // 设置按钮文本
 }

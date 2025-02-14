@@ -83,7 +83,7 @@
 // [AGE_VER] 设置每次打开上位机都显示tab的第一页
 
 // [PCBA_VER] 适配新的电机测试功能
-// [DEBUG_VER] 增加ai的功能
+// [DEBUG_VER] 增加v3的ai，允许语音输入控制牙刷。支持ui预览多组动图传输
 //
 
 // [PRESSURE_VER] 做y20po和y25s的压感治具适配

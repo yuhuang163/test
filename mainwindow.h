@@ -23,6 +23,7 @@
 #include <QNetworkRequest>
 #include <QPixmap>
 #include <QQmlApplicationEngine>
+#include <QTextToSpeech>
 #include <QUdpSocket>
 #include <QUrl>
 #include <QVector>
@@ -232,7 +233,7 @@ private:
     QString csvmac;
     QComboBox* comNameCombo;
     QUdpSocket* udpSocket = new QUdpSocket(this);
-
+    QTextToSpeech* tts;
     QString result = "";
     bool otaFinish = false;
     QStringList otaResults;
@@ -240,14 +241,16 @@ private:
     int currentChunk = 0;
 
 private:
-    QNetworkAccessManager* manager;
+    QNetworkAccessManager* aimanager;
 
 protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
-    void uploadFile(const QString &filePath);
-    void myAudioRecorde();
+    void sendAifile(QString file_id);
+    void renameAndProcessFolders(const QString& directoryPath);
+    void uploadFile(const QString& filePath);
+    void myAudioRecorde(bool delay);
     void sendAiMessage();
     void onRequestFinished(QNetworkReply* reply);
     void renameAduioFilesInFolder(const QString& folderPath);
@@ -525,7 +528,9 @@ private slots:
 
     void on_AITestLine_returnPressed();
 
-    void on_speakAi_clicked();
+    void on_speakAi_released();
+
+    void on_speakAi_pressed();
 
 signals:
     void send_uart_state(int data);

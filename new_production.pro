@@ -1,4 +1,4 @@
-QT       += core gui axcontainer concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
+QT       += core gui texttospeech axcontainer concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
 
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets

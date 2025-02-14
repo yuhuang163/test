@@ -37,7 +37,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -552,6 +552,9 @@
                </item>
                <item row="0" column="1">
                 <widget class="QLineEdit" name="ssid_lineEdit">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="text">
                   <string>WIFI_TEST_8DE5</string>
                  </property>
@@ -566,6 +569,9 @@
                </item>
                <item row="1" column="1">
                 <widget class="QLineEdit" name="password_lineEdit">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="text">
                   <string>usmile123</string>
                  </property>
