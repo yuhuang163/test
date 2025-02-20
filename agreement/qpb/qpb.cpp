@@ -1009,7 +1009,7 @@ void Qpb::get_sn(FacDevInfoType which_sn) {
         qDebug() << "未知的 which_sn 值";
         return;
     }
-
+    qDebug() << "主动获取" << which_sn;
     sendShortPack(pack);
 }
 
@@ -1845,7 +1845,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
         emit send_sn_data(x);
-        qDebug() << "获取到回应尾盖的sn" << x.dev_info[0].value_item.tail_sn;
+        qDebug() << "获取到回复尾盖的sn" << x.dev_info[0].value_item.tail_sn;
         emit sendGetBrushResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
@@ -1968,7 +1968,7 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
 
     if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN) {
         is_banding_ok = 1;
-        qDebug() << "已经收到尾盖的sn回应";
+        qDebug() << "已经收到写入尾盖的sn回应";
         emit sendGetBrushResponse(1);
     }
 

@@ -75,13 +75,25 @@ PB_BIND(LightCustomInfo, LightCustomInfo, 2)
 PB_BIND(LightRGBInfo, LightRGBInfo, AUTO)
 
 
-PB_BIND(OralArchivesData, OralArchivesData, 4)
+PB_BIND(OralArchivesData, OralArchivesData, 2)
 
 
 PB_BIND(ProblemTeethData, ProblemTeethData, AUTO)
 
 
 PB_BIND(ProblemTeethInfo, ProblemTeethInfo, AUTO)
+
+
+PB_BIND(UserBackupData, UserBackupData, 2)
+
+
+PB_BIND(UserBackupItem, UserBackupItem, AUTO)
+
+
+PB_BIND(BackupFileInfo, BackupFileInfo, AUTO)
+
+
+PB_BIND(BackupConfigInfo, BackupConfigInfo, AUTO)
 
 
 PB_BIND(AlgorithmPro, AlgorithmPro, AUTO)
@@ -186,6 +198,9 @@ PB_BIND(RotasResultReq, RotasResultReq, AUTO)
 PB_BIND(RotasResultRsp, RotasResultRsp, AUTO)
 
 
+PB_BIND(FileHandleInfo, FileHandleInfo, AUTO)
+
+
 PB_BIND(PlanInfo, PlanInfo, 2)
 
 
@@ -196,6 +211,8 @@ PB_BIND(PlanModelInfo, PlanModelInfo, AUTO)
 
 
 PB_BIND(CustomPlanGroupInfo, CustomPlanGroupInfo, 2)
+
+
 
 
 

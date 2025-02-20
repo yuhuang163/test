@@ -409,8 +409,7 @@ void quiescent_current::refreshSn(FacDevInfo data) {
     // ui->board_sn->setText("板子sn:"+board_sn_string);
     ui->tail_sn->setText("尾盖sn:" + tail_sn_string);
 
-    ui->snInput->clear();
-    ui->macInput->clear();
+    showlog("尾盖sn:" + tail_sn_string);
 }
 
 void quiescent_current::on_snInput_returnPressed() {
@@ -425,7 +424,7 @@ void quiescent_current::on_snInput_returnPressed() {
     // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
         showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
         showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
@@ -893,7 +892,7 @@ void quiescent_current::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
 
-                showlog("测试结束");
+                showlog("测试结束，sn为：" + ui->snInput->text());
                 ui->macInput->clear();
                 ui->snInput->clear();
 
@@ -1052,68 +1051,10 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     } else {
         showlog("保存mac_sn文件失败");
     }
-
-    // if (pack.factory == "hq" )
-
-    //     QFile
-    //     file("ftp:\\101003931@172.19.250.89/MD1%B9%A4%B3%CC%B6%FE%BF%C6/PE/P20%BE%B2%CC%AC%B5%E7%C1%F7%B1%A3%B4%E6MAC/mac_sn.txt");
-    //     // 创建一个文件对象 QString ftpUrl =
-    //     "ftp://101003931@172.19.250.89/MD1%B9%A4%B3%CC%B6%FE%BF%C6/PE/P20saveMAC/mac_sn.txt"; //
-    //     FTP 服务器上的文件路径 QString data = bandingsn + "," + bandingmac;         //
-    //     要上传的数据
-
-    //     QUrl ftpQUrl(ftpUrl);
-    //     QNetworkRequest request(ftpQUrl);
-
-    //     request.setSslConfiguration(QSslConfiguration::defaultConfiguration());
-
-    //     QNetworkAccessManager nam;
-    //     QObject::connect(&nam, &QNetworkAccessManager::authenticationRequired, [](QNetworkReply
-    //     *reply, QAuthenticator *authenticator) {
-    //         authenticator->setUser("101003931");  // 添加 FTP 服务器的用户名
-    //         authenticator->setPassword("mcl45609");  // 添加 FTP 服务器的密码
-    //     });
-
-    //     QNetworkReply *reply = nam.put(request, data.toUtf8());
-
-    //     QObject::connect(reply, &QNetworkReply::finished, [&]() {
-
-    //     });
-
-    //     // 创建事件循环
-    //     QEventLoop loop;
-
-    //     // 连接请求完成信号和事件循环退出
-    //     QObject::connect(reply, &QNetworkReply::finished,
-    //                      [&loop, reply, ui = this->ui]()
-    //                      {
-    //         if (reply->error() == QNetworkReply::NoError) {
-    //             qDebug() << "Data uploaded successfully";
-    //         } else {
-    //             qDebug() << "Error: " << reply->errorString();
-    //         }
-    //         reply->deleteLater();
-    //                          // 退出事件循环
-    //                          loop.quit();
-    //                      });
-
-    //     // 开始事件循环，等待请求完成
-    //     loop.exec();
-    // #else
-    // QFile file("mac_sn.txt");   // 创建一个文件对象
-    // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
-    // {                                                    //
-    //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
-    //     file.close();                                    // 关闭文件
-    // }else{
-
-    //     showlog("保存mac_sn文件失败");
-    // }
-    // #endif
 }
 
 void quiescent_current::on_stopTest_clicked() {
+    showlog("触发停止测试");
     usblogwaittime->stop();
     ui->macInput->clear();
     ui->snInput->clear();

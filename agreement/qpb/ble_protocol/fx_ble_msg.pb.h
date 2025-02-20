@@ -36,6 +36,8 @@ typedef enum _CommandId {
     CommandId_SET_PROFESSIONAL_INFO = 21, 
     CommandId_GET_POWER_DETAIL_INFO = 22, 
     CommandId_SET_POWER_DETAIL_INFO = 23, 
+    CommandId_GET_LANGUAGE_INFO = 24, 
+    CommandId_SET_LANGUAGE_INFO = 25, 
     /* User Service 0x20 */
     CommandId_GET_USER_INFO = 33, 
     CommandId_SET_USER_INFO = 34, 
@@ -45,6 +47,8 @@ typedef enum _CommandId {
     CommandId_SET_LIGHT_CUSTOM_INFO = 38, 
     CommandId_GET_ORAL_ARCHIVES = 39, 
     CommandId_SET_ORAL_ARCHIVES = 40, 
+    CommandId_BACKUP_USER_DATA = 41, 
+    CommandId_RESTORE_USER_DATA = 42, 
     /* Algorithm Service 0x30 */
     CommandId_ALGORITHM_PRO = 49, 
     CommandId_ALGORITHM_SETTING = 50, 
@@ -72,6 +76,7 @@ typedef enum _CommandId {
     CommandId_ROTAS_RESULT_RSP = 86, 
     CommandId_FILE_SEND_DONE_RSP = 87, 
     CommandId_MULTI_FILE_STATUS_REQ = 88, 
+    CommandId_FILE_HANDLE_INFO = 89, 
     /* Debug Service 0x60 */
     CommandId_GET_DEBUG_INFO = 97, 
     CommandId_SET_DEBUG_INFO = 98, 
@@ -95,20 +100,20 @@ typedef enum _OperationType {
 
 typedef enum _KeyType { 
     KeyType_DEFAULT_KEY = 0, 
-    KeyType_VEC_BRUSH_TIME_RAW = 1, /* ï¿½ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½Ç°) */
-    KeyType_VEC_BRUSH_TIME_CORRECTED = 2, /* ï¿½ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½ï¿½ï¿½) */
-    KeyType_VEC_OP_TIME_RAW = 3, /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½Ç°) */
-    KeyType_VEC_OP_TIME_CORRECTED = 4, /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½ï¿½ï¿½) */
-    KeyType_VEC_HB_TIME_RAW = 5, /* ï¿½ï¿½ï¿½ï¿½ï¿½Ë¢Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½Ç°) */
-    KeyType_VEC_HB_TIME_CORRECTED = 6 /* ï¿½ï¿½ï¿½ï¿½ï¿½Ë¢Ê±ï¿½ï¿½ (Ð£ï¿½ï¿½ï¿½ï¿½) */
+    KeyType_VEC_BRUSH_TIME_RAW = 1, /* ÇøÓòË¢ÑÀÊ±³¤ (Ð£ÕýÇ°) */
+    KeyType_VEC_BRUSH_TIME_CORRECTED = 2, /* ÇøÓòË¢ÑÀÊ±³¤ (Ð£Õýºó) */
+    KeyType_VEC_OP_TIME_RAW = 3, /* ÇøÓò¹ýÑ¹Ê±³¤ (Ð£ÕýÇ°) */
+    KeyType_VEC_OP_TIME_CORRECTED = 4, /* ÇøÓò¹ýÑ¹Ê±³¤ (Ð£Õýºó) */
+    KeyType_VEC_HB_TIME_RAW = 5, /* ÇøÓòºáË¢Ê±³¤ (Ð£ÕýÇ°) */
+    KeyType_VEC_HB_TIME_CORRECTED = 6 /* ÇøÓòºáË¢Ê±³¤ (Ð£Õýºó) */
 } KeyType;
 
 typedef enum _SwitchType { 
-    SwitchType_BRUSHING_REAL_TIME = 0, /* Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ */
-    SwitchType_OP_TIME = 1, /* ï¿½ï¿½Ñ¹Ê±ï¿½ï¿½ */
-    SwitchType_HB_TIME = 2, /* ï¿½ï¿½Ë¢Ê±ï¿½ï¿½ */
-    SwitchType_COVERAGE = 3, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    SwitchType_PLAQUE_RESIDUE = 4 /* ï¿½ï¿½ï¿½ß²ï¿½ï¿½ï¿½ */
+    SwitchType_BRUSHING_REAL_TIME = 0, /* Ë¢ÑÀÊ±³¤ */
+    SwitchType_OP_TIME = 1, /* ¹ýÑ¹Ê±³¤ */
+    SwitchType_HB_TIME = 2, /* ºáË¢Ê±³¤ */
+    SwitchType_COVERAGE = 3, /* ¸²¸ÇÂÊ */
+    SwitchType_PLAQUE_RESIDUE = 4 /* ¾ú°ß²ÐÁô */
 } SwitchType;
 
 typedef enum _Button { 
@@ -172,7 +177,7 @@ typedef enum _ErrorCode {
     ErrorCode_SUCCESS = 0, 
     ErrorCode_CRC_ERROR = 1, 
     ErrorCode_PB_ERROR = 2, 
-    ErrorCode_FAIL = 3, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    ErrorCode_FAIL = 3, /* ÆäËû´íÎó */
     ErrorCode_NOT_SUPPORT = 4, 
     ErrorCode_SUPPORT = 5, 
     ErrorCode_ALGORITHM_CRASH = 6, 
@@ -182,11 +187,12 @@ typedef enum _ErrorCode {
     ErrorCode_MODEL_OPTIMIZING = 10, 
     ErrorCode_EXPERT_MODEL_IN_USE = 11, 
     ErrorCode_NOT_DOWNLOADED = 12, 
-    ErrorCode_WIFI_NOT_FOUND = 13, /* ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    ErrorCode_WIFI_PASSWORD_ERROR = 14, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    ErrorCode_WIFI_NOT_FOUND = 13, /* ÕÒ²»µ½ÍøÂç */
+    ErrorCode_WIFI_PASSWORD_ERROR = 14, /* ÃÜÂë´íÎó */
     ErrorCode_DOWNLOADING = 15, 
     ErrorCode_WIFI_DISABLE = 16, 
-    ErrorCode_PROTOCOL_ID_ERROR = 17 
+    ErrorCode_PROTOCOL_ID_ERROR = 17, 
+    ErrorCode_ERROR_LOW_BATTERY = 18 
 } ErrorCode;
 
 typedef enum _DeviceInfoItem { 
@@ -226,7 +232,9 @@ typedef enum _DeviceInfoItem {
     DeviceInfoItem_MUSIC_PURE_ENJOY_MODEL_INFO = 33, 
     DeviceInfoItem_MUSIC_VARIATION_MODEL_INFO = 34, 
     DeviceInfoItem_FILL_BRUSH_SWITCH = 35, 
-    DeviceInfoItem_NOVICE_MODEL_INFO = 36 
+    DeviceInfoItem_NOVICE_MODEL_INFO = 36, 
+    DeviceInfoItem_DAY_NIGHT_MODEL_INFO = 37, 
+    DeviceInfoItem_CARE_MODEL_INFO = 38 
 } DeviceInfoItem;
 
 typedef enum _DebugInfoItem { 
@@ -272,7 +280,10 @@ typedef enum _RemindType {
     RemindType_FILL_BRUSH_REMIND = 20, 
     RemindType_INTO_MOUTH_CHECK = 21, 
     RemindType_INTO_MOUTH_STATE = 22, 
-    RemindType_CAMERA_AVAILABLE_STATE = 23 
+    RemindType_CAMERA_AVAILABLE_STATE = 23, 
+    RemindType_BATTERY_PERCENT_VALUE = 24, 
+    RemindType_REGULAR_REMINDER = 25, 
+    RemindType_BRUSH_CLEAN_OR_REGULAR = 26 
 } RemindType;
 
 typedef enum _ChargingState { 
@@ -295,11 +306,17 @@ typedef enum _ProductId {
     ProductId_QF1 = 33, 
     ProductId_S10 = 34, 
     ProductId_Q20 = 35, 
+    ProductId_Q30 = 36, 
     ProductId_Y10 = 49, 
     ProductId_Y10_PRO = 50, 
     ProductId_Y20 = 51, 
     ProductId_Y20_PRO = 52, 
+    ProductId_Y21 = 53, 
+    ProductId_Y25 = 54, 
+    ProductId_P20_PROS = 65, 
     ProductId_P20_PRO = 66, 
+    ProductId_P30_PRO = 67, 
+    ProductId_P30_Ultra = 68, 
     ProductId_P3A = 85, 
     ProductId_F1 = 86, 
     ProductId_SDC_01 = 87, 
@@ -345,12 +362,18 @@ typedef enum _ProtocolId {
     ProtocolId_V2146 = 2146, 
     ProtocolId_V2147 = 2147, 
     ProtocolId_V2148 = 2148, 
+    ProtocolId_V2149 = 2149, 
     ProtocolId_V2151 = 2151, 
+    ProtocolId_V2152 = 2152, 
     ProtocolId_V2161 = 2161, 
     ProtocolId_V2162 = 2162, 
     ProtocolId_V2163 = 2163, 
     ProtocolId_V2164 = 2164, 
-    ProtocolId_V2171 = 2171 
+    ProtocolId_V2165 = 2165, 
+    ProtocolId_V2171 = 2171, 
+    ProtocolId_V2172 = 2172, 
+    ProtocolId_V2173 = 2173, 
+    ProtocolId_V2200 = 2200 
 } ProtocolId;
 
 typedef enum _BrushHandHabit { 
@@ -442,14 +465,14 @@ typedef enum _TeethNumber {
 
 typedef enum _ProblemTeeth { 
     ProblemTeeth_NO_PROBLEM = 0, 
-    ProblemTeeth_SENSITIVE_TEETH = 1, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    ProblemTeeth_DENTAL_IMPLANTS = 2, /* ï¿½ï¿½Ö²ï¿½ï¿½ */
-    ProblemTeeth_ORTHODONTICS_TEETH = 3, /* ï¿½ï¿½ï¿½ï¿½ */
-    ProblemTeeth_MISSING_TEETH = 4, /* È±ï¿½ï¿½ */
-    ProblemTeeth_WISDOM_TEETH = 5, /* È£ï¿½ï¿½ï¿½ï¿½ */
-    ProblemTeeth_STONE_TEETH = 6, /* ï¿½ï¿½Ê¯ï¿½ï¿½ */
-    ProblemTeeth_PIGMENT_TEETH = 7, /* É«ï¿½ï¿½ï¿½ï¿½ */
-    ProblemTeeth_BACTERIAL_PLAQUE = 8 /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    ProblemTeeth_SENSITIVE_TEETH = 1, /* Ãô¸ÐÑÀ */
+    ProblemTeeth_DENTAL_IMPLANTS = 2, /* ÖÖÖ²ÑÀ */
+    ProblemTeeth_ORTHODONTICS_TEETH = 3, /* Õý»û */
+    ProblemTeeth_MISSING_TEETH = 4, /* È±ÑÀ */
+    ProblemTeeth_WISDOM_TEETH = 5, /* È£³ÝÑÀ */
+    ProblemTeeth_STONE_TEETH = 6, /* ½áÊ¯ÑÀ */
+    ProblemTeeth_PIGMENT_TEETH = 7, /* É«ËØÑÀ */
+    ProblemTeeth_BACTERIAL_PLAQUE = 8 /* ÑÀ¾ú°ß */
 } ProblemTeeth;
 
 typedef enum _BrushTotalArea { 
@@ -484,6 +507,11 @@ typedef enum _BrushSide {
     BrushSide_LEFT_DOWN_OUT_F1 = 13, 
     BrushSide_LEFT_DOWN_IN_F2 = 14, 
     BrushSide_LEFT_DOWN_MIDDLE_F3 = 15, 
+    BrushSide_MIDDLE_UP_MIDDLE_B3 = 16, 
+    BrushSide_MIDDLE_DOWN_MIDDLE_E3 = 17, 
+    BrushSide_LEFT_OUT = 18, 
+    BrushSide_MIDDLE_OUT = 19, 
+    BrushSide_RIGHT_OUT = 20, 
     BrushSide_ALL_SIDE = 100 
 } BrushSide;
 
@@ -505,7 +533,8 @@ typedef enum _PowerState {
     PowerState_SLEEP = 2, 
     PowerState_FLIGHT_MODE = 3, 
     PowerState_NIGHT_UPGRADE = 4, 
-    PowerState_ALARM_DISCONNECT_BLE = 5 
+    PowerState_ALARM_DISCONNECT_BLE = 5, 
+    PowerState_WIFI_STATE = 6 
 } PowerState;
 
 typedef enum _SwitchState { 
@@ -549,7 +578,8 @@ typedef enum _ModelState {
     ModelState_NON_DELETABLE = 1, 
     ModelState_NON_MOVE = 2, 
     ModelState_NON_DELETABLE_MOVE = 3, 
-    ModelState_NON_DISPLAY = 4 
+    ModelState_NON_DISPLAY = 4, 
+    ModelState_NON_DELETABLE_ITEM = 5 
 } ModelState;
 
 typedef enum _BrushingModel { 
@@ -571,7 +601,9 @@ typedef enum _BrushingModel {
     BrushingModel_MOTHPROOF = 15, 
     BrushingModel_MUSIC_PURE_ENJOY = 16, 
     BrushingModel_MUSIC_VARIATION = 17, 
-    BrushingModel_NOVICE_ADAPTATION = 18 
+    BrushingModel_NOVICE_ADAPTATION = 18, 
+    BrushingModel_DAY_NIGHT_EFFECTS = 19, 
+    BrushingModel_CARE = 20 
 } BrushingModel;
 
 typedef enum _BrushingPower { 
@@ -678,6 +710,21 @@ typedef enum _LightType {
     LightType_PUSH_LIGHT = 2, 
     LightType_CUSTOM_LIGHT = 3 
 } LightType;
+
+typedef enum _BackupCode { 
+    BackupCode_NO_BACKUP = 0, 
+    BackupCode_SETTINGS = 1, 
+    BackupCode_AI_LEARNING = 2, 
+    BackupCode_ORAL_ARCHIVES = 3 
+} BackupCode;
+
+typedef enum _WifiState { 
+    WifiState_NO_STATA = 0, 
+    WifiState_DISABLE = 1, 
+    WifiState_NO_CONFIG = 2, 
+    WifiState_NO_CONNECT = 3, 
+    WifiState_CONNECTED = 4 
+} WifiState;
 
 typedef enum _DeviceItem { 
     DeviceItem_ALL = 0, 
@@ -787,7 +834,8 @@ typedef enum _RotaFileStatus {
     RotaFileStatus_ROTA_PAUSE = 1, 
     RotaFileStatus_ROTA_STOP = 2, 
     RotaFileStatus_ROTA_RESET = 3, 
-    RotaFileStatus_FORCE_START = 4 
+    RotaFileStatus_FORCE_START = 4, 
+    RotaFileStatus_GET_FILE_START = 5 
 } RotaFileStatus;
 
 typedef enum _RotasUpdateFile { 
@@ -801,13 +849,19 @@ typedef enum _RotasUpdateFile {
     RotasUpdateFile_WIFI_MUSIC_ENJOY = 7, 
     RotasUpdateFile_MOTOR_RESOURCE = 8, 
     RotasUpdateFile_WIFI_LIGHT_CUSTOM = 9, 
-    RotasUpdateFile_BLE_FIRMWARE = 10 
+    RotasUpdateFile_BLE_FIRMWARE = 10, 
+    RotasUpdateFile_BACKUP_SETTING = 11, 
+    RotasUpdateFile_BACKUP_AI_LEARNING = 12, 
+    RotasUpdateFile_RESTORE_SETTING = 13, 
+    RotasUpdateFile_RESTORE_AI_LEARNING = 14, 
+    RotasUpdateFile_BACKUP_ORAL_ARCHIVES = 15, 
+    RotasUpdateFile_RESTORE_ORAL_ARCHIVES = 16 
 } RotasUpdateFile;
 
 typedef enum _RotaErrorCode { 
     RotaErrorCode_ROTA_SUCCESS = 0, 
     RotaErrorCode_GENERAL = 1, 
-    RotaErrorCode_LOW_BATTERY = 2, /* ï¿½Íµï¿½ï¿½ï¿½ */
+    RotaErrorCode_LOW_BATTERY = 2, /* µÍµçÁ¿ */
     RotaErrorCode_OTA_ALREADY = 3, 
     RotaErrorCode_FILE_TOO_LAGER = 4, 
     RotaErrorCode_MD5_FAIL = 5, 
@@ -817,18 +871,18 @@ typedef enum _RotaErrorCode {
     RotaErrorCode_TRANS_TIMEOUT = 9, 
     RotaErrorCode_TRANS_OVER_RANGE = 10, 
     RotaErrorCode_DOWNLOAD_SUCCESS = 11, 
-    RotaErrorCode_DOWNLOAD_FAIL = 12, /* ï¿½ï¿½È¡ï¿½Ä¼ï¿½Ê§ï¿½ï¿½ */
-    RotaErrorCode_NO_NETWORK_CONFIG = 13, /* Ã»ï¿½ï¿½ï¿½ï¿½ */
-    RotaErrorCode_NETWORK_CONN_FAIL = 14, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½ï¿½ */
-    RotaErrorCode_GET_FILE_INFO_FAIL = 15, /* ï¿½ï¿½È¡ï¿½Ä¼ï¿½URLÊ§ï¿½ï¿½ */
-    RotaErrorCode_DOWNLOAD_CHECKOUT = 16, /* ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½Ê§ï¿½ï¿½ */
-    RotaErrorCode_INSTALL_FAIL = 17, /* ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½Ø°ï¿½×°Ê§ï¿½ï¿½ */
-    RotaErrorCode_OTA_WIFI_NOT_FOUND = 18, /* ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    RotaErrorCode_OTA_WIFI_PASSWORD_ERROR = 19, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    RotaErrorCode_OTA_DOWNLOADING = 20, /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ */
-    RotaErrorCode_OTA_WIFI_DISABLE = 21, /* WIFIï¿½Ñ½ï¿½ï¿½ï¿½ */
-    RotaErrorCode_RESOURCE_UPDATING = 22, /* ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    RotaErrorCode_FLASH_NOT_ENOUGH = 23 /* ï¿½æ´¢ï¿½Õ¼ä²»ï¿½ï¿½ */
+    RotaErrorCode_DOWNLOAD_FAIL = 12, /* »ñÈ¡ÎÄ¼þÊ§°Ü */
+    RotaErrorCode_NO_NETWORK_CONFIG = 13, /* Ã»ÅäÍø */
+    RotaErrorCode_NETWORK_CONN_FAIL = 14, /* ÍøÂçÁ¬½ÓÊ§°Ü */
+    RotaErrorCode_GET_FILE_INFO_FAIL = 15, /* »ñÈ¡ÎÄ¼þURLÊ§°Ü */
+    RotaErrorCode_DOWNLOAD_CHECKOUT = 16, /* ÎÄ¼þÏÂÔØÐ£ÑéÊ§°Ü */
+    RotaErrorCode_INSTALL_FAIL = 17, /* ÎÄ¼þÏÂÔØ°²×°Ê§°Ü */
+    RotaErrorCode_OTA_WIFI_NOT_FOUND = 18, /* ÕÒ²»µ½ÍøÂç */
+    RotaErrorCode_OTA_WIFI_PASSWORD_ERROR = 19, /* ÃÜÂë´íÎó */
+    RotaErrorCode_OTA_DOWNLOADING = 20, /* ÕýÔÚÏÂÔØÎÄ¼þÖÐ */
+    RotaErrorCode_OTA_WIFI_DISABLE = 21, /* WIFIÒÑ½ûÓÃ */
+    RotaErrorCode_RESOURCE_UPDATING = 22, /* ×ÊÔ´¸üÐÂÖÐ */
+    RotaErrorCode_FLASH_NOT_ENOUGH = 23 /* ´æ´¢¿Õ¼ä²»×ã */
 } RotaErrorCode;
 
 /* ############################# 0x70 Plan Service Start ################################### */
@@ -884,13 +938,15 @@ typedef struct _AlgorithmCollect {
     float magnetism_z; 
     int32_t horizontal_brush; 
     pb_size_t area_brush_time_count;
-    uint32_t area_brush_time[6]; 
+    uint32_t area_brush_time[16]; 
     int32_t gravity_orient; 
     pb_size_t coverage_rate_count;
-    uint32_t coverage_rate[6]; 
+    uint32_t coverage_rate[16]; 
     int32_t score; 
     BrushingState brushing_state; 
     BrushSide brushing_side; 
+    pb_size_t algo_remind_count;
+    int32_t algo_remind[2]; 
 } AlgorithmCollect;
 
 typedef struct _AlgorithmPro { 
@@ -943,10 +999,35 @@ typedef struct _AudioDataInfo {
 typedef struct _AudioRemindState { 
     RemindType remind_type; 
     SwitchState remind_switch; 
+    uint32_t select_item; 
+    pb_size_t which_state_value;
+    union {
+        uint32_t type_value;
+    } state_value; 
 } AudioRemindState;
 
+typedef PB_BYTES_ARRAY_T(64) BackupConfigInfo_byte_data_t;
+typedef struct _BackupConfigInfo { 
+    uint32_t backup_code; /* BackupCode: 1:ÉèÖÃÏî£¬2:AIÑ§Ï°£¬3:ÆäËûÀ©Õ¹ */
+    pb_size_t which_config_data;
+    union {
+        BackupConfigInfo_byte_data_t byte_data;
+        char string_data[64];
+        uint32_t uint32_data;
+        uint64_t uint64_data;
+    } config_data; 
+} BackupConfigInfo;
+
+typedef struct _BackupFileInfo { 
+    uint32_t backup_code; /* BackupCode: 1:ÉèÖÃÏî£¬2:AIÑ§Ï°£¬3:ÆäËûÀ©Õ¹ */
+    char file_name[32]; 
+    uint32_t file_size; 
+    uint32_t file_id; 
+    char file_url[128]; 
+} BackupFileInfo;
+
 typedef PB_BYTES_ARRAY_T(6) ConnectPro_mac_address_t;
-typedef PB_BYTES_ARRAY_T(15) ConnectPro_sn_id_t;
+typedef PB_BYTES_ARRAY_T(64) ConnectPro_sn_id_t;
 typedef struct _ConnectPro { 
     ConnectType connect_type; 
     uint32_t version_code; 
@@ -964,6 +1045,7 @@ typedef struct _ConnectPro {
     pb_callback_t voice_res_id; 
     char device_id[15]; 
     uint32_t motor_res_id; 
+    uint32_t sku_id; 
 } ConnectPro;
 
 typedef struct _CustomButtonContent { 
@@ -989,6 +1071,11 @@ typedef struct _DeviceStateInfo {
     ErrorCode setting_result; 
     PowerState set_power_state; 
 } DeviceStateInfo;
+
+typedef struct _FileHandleInfo { 
+    RotasUpdateFile file_type; 
+    RotaFileStatus file_state; 
+} FileHandleInfo;
 
 typedef struct _FillBrushData { 
     uint32_t time; 
@@ -1119,7 +1206,7 @@ typedef struct _RotasResultRsp {
     RotaFileStatus rotaStatus; 
 } RotasResultRsp;
 
-typedef PB_BYTES_ARRAY_T(15) SnInfo_sn_id_t;
+typedef PB_BYTES_ARRAY_T(64) SnInfo_sn_id_t;
 typedef struct _SnInfo { 
     SnInfo_sn_id_t sn_id; 
     ErrorCode setting_result; 
@@ -1185,12 +1272,13 @@ typedef struct _WifiInfo {
     char device_name[32]; 
     char device_secret[64]; 
     WifiInfo_ip_address_t ip_address; 
+    char iot_url[128]; 
 } WifiInfo;
 
 typedef struct _AlgoOtherData { 
     pb_size_t other_data_list_count;
     AlgoOtherDataResult other_data_list[6]; 
-    uint32_t pause_count; /* 2ï¿½ï¿½10ï¿½ï¿½ó´¥·ï¿½ï¿½ï¿½ï¿½ï¿½Í£"ï¿½ï¿½ï¿½ï¿½ */
+    uint32_t pause_count; /* 2·Ö10Ãëºó´¥·¢¡°ÔÝÍ£"´ÎÊý */
 } AlgoOtherData;
 
 typedef struct _AlgorithmCollectList { 
@@ -1198,6 +1286,7 @@ typedef struct _AlgorithmCollectList {
     AlgorithmCollect algorithm_collect[10]; 
 } AlgorithmCollectList;
 
+typedef PB_BYTES_ARRAY_T(16) AlgorithmRealTime_all_brushing_coverage_t;
 typedef struct _AlgorithmRealTime { 
     SwitchState motor_state; 
     BrushingState brushing_state; 
@@ -1212,6 +1301,7 @@ typedef struct _AlgorithmRealTime {
     pb_size_t which_algo_data;
     union {
         AlgorithmCollect algorithm_collect;
+        AlgorithmRealTime_all_brushing_coverage_t all_brushing_coverage;
     } algo_data; 
 } AlgorithmRealTime;
 
@@ -1429,37 +1519,45 @@ typedef struct _SimpleReport {
     uint32_t plaque_residue_percent; 
 } SimpleReport;
 
+typedef struct _UserBackupItem { 
+    pb_size_t which_backup_data;
+    union {
+        BackupFileInfo backup_file_info;
+        BackupConfigInfo backup_config_info;
+    } backup_data; 
+} UserBackupItem;
+
 typedef PB_BYTES_ARRAY_T(5) AlgoResultFusion_param_switch_t;
 typedef PB_BYTES_ARRAY_T(4) AlgoResultFusion_factor_switch_t;
 typedef PB_BYTES_ARRAY_T(256) AlgoResultFusion_other_data_bytes_t;
 typedef struct _AlgoResultFusion { 
-    AlgoResultFusion_param_switch_t param_switch; /* È«ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ë³ï¿½ï¿½Ê¹ï¿½ï¿½SwitchType */
-    AlgoResultFusion_factor_switch_t factor_switch; /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ Ë³ï¿½ï¿½Ê¹ï¿½ï¿½SwitchType */
-    uint32_t time_op; /* È«ï¿½Ú¹ï¿½Ñ¹Ê±ï¿½ï¿½ */
-    uint32_t time_hb; /* È«ï¿½Úºï¿½Ë¢Ê±ï¿½ï¿½ */
-    uint32_t plaque_residue; /* È«ï¿½Ú¾ï¿½ï¿½ß²ï¿½ï¿½ï¿½ */
-    uint32_t n_area; /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    uint32_t n_facet; /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    AlgoResultFusion_param_switch_t param_switch; /* È«¿Ú²ÎÊý¿ª¹Ø Ë³ÐòÊ¹ÓÃSwitchType */
+    AlgoResultFusion_factor_switch_t factor_switch; /* ÇøÓòÑÀÄ£¿ª¹Ø Ë³ÐòÊ¹ÓÃSwitchType */
+    uint32_t time_op; /* È«¿Ú¹ýÑ¹Ê±³¤ */
+    uint32_t time_hb; /* È«¿ÚºáË¢Ê±³¤ */
+    uint32_t plaque_residue; /* È«¿Ú¾ú°ß²ÐÁô */
+    uint32_t n_area; /* ³ÝÇøÊýÁ¿ */
+    uint32_t n_facet; /* ³ÝÃæÊýÁ¿ */
     pb_size_t vec_time_display_count;
-    int32_t vec_time_display[16]; /* ï¿½ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ö°Ù·Ö±ï¿½ */
+    int32_t vec_time_display[16]; /* ÇøÓòË¢ÑÀÊ±³¤³ÊÏÖ°Ù·Ö±È */
     pb_size_t vec_time_op_display_count;
-    int32_t vec_time_op_display[16]; /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ö°Ù·Ö±ï¿½ */
+    int32_t vec_time_op_display[16]; /* ÇøÓò¹ýÑ¹Ê±³¤³ÊÏÖ°Ù·Ö±È */
     pb_size_t vec_time_hb_display_count;
-    int32_t vec_time_hb_display[16]; /* ï¿½ï¿½ï¿½ï¿½ï¿½Ë¢Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ö°Ù·Ö±ï¿½ */
+    int32_t vec_time_hb_display[16]; /* ÇøÓòºáË¢Ê±³¤³ÊÏÖ°Ù·Ö±È */
     pb_size_t vec_coverage_count;
-    uint32_t vec_coverage[16]; /* ï¿½ï¿½ï¿½ò¸²¸ï¿½ï¿½ï¿½ */
-    uint32_t algo_ver; /* ï¿½ã·¨ï¿½æ±¾ï¿½ï¿½ */
-    uint32_t protocol_ver; /* Ð­ï¿½ï¿½ï¿½ï¿½ */
-    uint32_t timestamp_end; /* Ë¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ */
+    uint32_t vec_coverage[16]; /* ÇøÓò¸²¸ÇÂÊ */
+    uint32_t algo_ver; /* Ëã·¨°æ±¾ºÅ */
+    uint32_t protocol_ver; /* Ð­Òé±àºÅ */
+    uint32_t timestamp_end; /* Ë¢ÑÀ½áÊøÊ±¼ä */
     pb_size_t vec_brush_time_raw_count;
-    uint32_t vec_brush_time_raw[16]; /* ï¿½ï¿½ï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ */
+    uint32_t vec_brush_time_raw[16]; /* ÇøÓòË¢ÑÀÊ±³¤³ÊÏÖÖµ */
     pb_size_t vec_op_time_raw_count;
-    uint32_t vec_op_time_raw[16]; /* ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ */
+    uint32_t vec_op_time_raw[16]; /* ÇøÓò¹ýÑ¹Ë¢ÑÀÊ±³¤³ÊÏÖÖµ */
     pb_size_t which_other_data;
     union {
         AlgoOtherData other_data_result;
         AlgoResultFusion_other_data_bytes_t other_data_bytes;
-    } other_data; /* ï¿½Ð¾ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    } other_data; /* ÑÐ¾¿Êý¾Ý */
 } AlgoResultFusion;
 
 typedef struct _DeviceInfo { 
@@ -1490,19 +1588,30 @@ typedef struct _DeviceUp {
 typedef struct _OralArchivesData { 
     ApplianceType appliance_type; 
     pb_size_t oral_info_list_count;
-    ProblemTeethData oral_info_list[28]; 
+    ProblemTeethData oral_info_list[8]; 
+    ErrorCode setting_result; 
 } OralArchivesData;
 
+typedef struct _UserBackupData { 
+    uint32_t sync_type; /* TimeSyncType */
+    uint32_t backup_timestamp; 
+    bool is_last_backup; 
+    uint32_t total_size; 
+    pb_size_t backup_item_list_count;
+    UserBackupItem backup_item_list[5]; 
+    ErrorCode setting_result; 
+} UserBackupData;
+
 typedef struct _ReportData { 
-    uint32_t timestamp; /* Ë¢ï¿½ï¿½ï¿½ï¿½Ê¼Ê±ï¿½ï¿½ */
-    BrushingModel brushing_model; /* Ë¢ï¿½ï¿½Ä£Ê½ */
-    uint32_t brushing_power_level; /* Ë¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    uint32_t brushing_time; /* Ë¢ï¿½ï¿½Í£Ö¹Ê±ï¿½ï¿½ */
-    uint32_t brushing_real_time; /* Êµï¿½ï¿½Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ */
-    uint32_t brushing_time_score; /* Ë¢ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ */
-    uint32_t coverage_rate_score; /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ */
-    uint32_t brushing_score; /* Ë¢ï¿½ï¿½ï¿½Ü·ï¿½ï¿½ï¿½ */
-    uint32_t pressure_sensor_score; /* Ñ¹ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ÜµÃ·ï¿½ */
+    uint32_t timestamp; /* Ë¢ÑÀ¿ªÊ¼Ê±¼ä */
+    BrushingModel brushing_model; /* Ë¢ÑÀÄ£Ê½ */
+    uint32_t brushing_power_level; /* Ë¢ÑÀÁ¦¶È */
+    uint32_t brushing_time; /* Ë¢ÑÀÍ£Ö¹Ê±³¤ */
+    uint32_t brushing_real_time; /* Êµ¼ÊË¢ÑÀÊ±³¤ */
+    uint32_t brushing_time_score; /* Ë¢ÑÀÊ±³¤×Ü·ÖÊý */
+    uint32_t coverage_rate_score; /* ¸²¸ÇÂÊ×Ü·ÖÊý */
+    uint32_t brushing_score; /* Ë¢ÑÀ×Ü·ÖÊý */
+    uint32_t pressure_sensor_score; /* Ñ¹Á¦¸ÐÓ¦×ÜµÃ·Ö */
     pb_size_t which_add_data;
     union {
         AlgorithmReport algorithm_report;
@@ -1553,6 +1662,8 @@ typedef struct _DataPackage {
         LightCustomInfo set_light_custom_info;
         OralArchivesData get_oral_archives;
         OralArchivesData set_oral_archives;
+        UserBackupData backup_user_data;
+        UserBackupData restore_user_data;
         AlgorithmPro algorithm_pro;
         AlgorithmPro algorithm_setting;
         AlgorithmRealTime algorithm_real_time;
@@ -1577,6 +1688,7 @@ typedef struct _DataPackage {
         RotasResultRsp rota_result_rsp;
         RotasResultRsp file_send_done_rsp;
         MultiFileStatusReq multi_file_status_req;
+        FileHandleInfo file_handle_info;
         DebugInfo get_debug_info;
         DebugInfo set_debug_info;
         DebugFileStatus debug_file_status;
@@ -1588,6 +1700,7 @@ typedef struct _DataPackage {
         CustomPlanGroupInfo get_custom_group_info;
         CustomPlanGroupInfo set_custom_group_info;
     } command_data; /* 0x01 */
+    ErrorCode command_result; /* 0x02 */
 } DataPackage;
 
 
@@ -1637,12 +1750,12 @@ typedef struct _DataPackage {
 #define _UpgradeType_ARRAYSIZE ((UpgradeType)(UpgradeType_NORMAL_BLE+1))
 
 #define _ErrorCode_MIN ErrorCode_SUCCESS
-#define _ErrorCode_MAX ErrorCode_PROTOCOL_ID_ERROR
-#define _ErrorCode_ARRAYSIZE ((ErrorCode)(ErrorCode_PROTOCOL_ID_ERROR+1))
+#define _ErrorCode_MAX ErrorCode_ERROR_LOW_BATTERY
+#define _ErrorCode_ARRAYSIZE ((ErrorCode)(ErrorCode_ERROR_LOW_BATTERY+1))
 
 #define _DeviceInfoItem_MIN DeviceInfoItem_ALL_INFO
-#define _DeviceInfoItem_MAX DeviceInfoItem_NOVICE_MODEL_INFO
-#define _DeviceInfoItem_ARRAYSIZE ((DeviceInfoItem)(DeviceInfoItem_NOVICE_MODEL_INFO+1))
+#define _DeviceInfoItem_MAX DeviceInfoItem_CARE_MODEL_INFO
+#define _DeviceInfoItem_ARRAYSIZE ((DeviceInfoItem)(DeviceInfoItem_CARE_MODEL_INFO+1))
 
 #define _DebugInfoItem_MIN DebugInfoItem_ALL_DEBUG_INFO
 #define _DebugInfoItem_MAX DebugInfoItem_PLAQUE_TOO_MUCH
@@ -1653,8 +1766,8 @@ typedef struct _DataPackage {
 #define _DemoType_ARRAYSIZE ((DemoType)(DemoType_UNIMPROVED_7D+1))
 
 #define _RemindType_MIN RemindType_OVER_PRESSURE
-#define _RemindType_MAX RemindType_CAMERA_AVAILABLE_STATE
-#define _RemindType_ARRAYSIZE ((RemindType)(RemindType_CAMERA_AVAILABLE_STATE+1))
+#define _RemindType_MAX RemindType_BRUSH_CLEAN_OR_REGULAR
+#define _RemindType_ARRAYSIZE ((RemindType)(RemindType_BRUSH_CLEAN_OR_REGULAR+1))
 
 #define _ChargingState_MIN ChargingState_NOT_CHARGING
 #define _ChargingState_MAX ChargingState_FULLY_CHARGED
@@ -1673,8 +1786,8 @@ typedef struct _DataPackage {
 #define _HardwareId_ARRAYSIZE ((HardwareId)(HardwareId_T3+1))
 
 #define _ProtocolId_MIN ProtocolId_PROTOCOL_NONE
-#define _ProtocolId_MAX ProtocolId_V2171
-#define _ProtocolId_ARRAYSIZE ((ProtocolId)(ProtocolId_V2171+1))
+#define _ProtocolId_MAX ProtocolId_V2200
+#define _ProtocolId_ARRAYSIZE ((ProtocolId)(ProtocolId_V2200+1))
 
 #define _BrushHandHabit_MIN BrushHandHabit_RIGHT
 #define _BrushHandHabit_MAX BrushHandHabit_LEFT
@@ -1721,8 +1834,8 @@ typedef struct _DataPackage {
 #define _BrushOrder_ARRAYSIZE ((BrushOrder)(BrushOrder_ANTICLOCKWISE+1))
 
 #define _PowerState_MIN PowerState_SHUTDOWN
-#define _PowerState_MAX PowerState_ALARM_DISCONNECT_BLE
-#define _PowerState_ARRAYSIZE ((PowerState)(PowerState_ALARM_DISCONNECT_BLE+1))
+#define _PowerState_MAX PowerState_WIFI_STATE
+#define _PowerState_ARRAYSIZE ((PowerState)(PowerState_WIFI_STATE+1))
 
 #define _SwitchState_MIN SwitchState_CLOSE
 #define _SwitchState_MAX SwitchState_NON_SUPPORT
@@ -1741,12 +1854,12 @@ typedef struct _DataPackage {
 #define _BrushingTime_ARRAYSIZE ((BrushingTime)(BrushingTime_SIX_MIN+1))
 
 #define _ModelState_MIN ModelState_NORMAL_STATE
-#define _ModelState_MAX ModelState_NON_DISPLAY
-#define _ModelState_ARRAYSIZE ((ModelState)(ModelState_NON_DISPLAY+1))
+#define _ModelState_MAX ModelState_NON_DELETABLE_ITEM
+#define _ModelState_ARRAYSIZE ((ModelState)(ModelState_NON_DELETABLE_ITEM+1))
 
 #define _BrushingModel_MIN BrushingModel_MODE_RESERVE
-#define _BrushingModel_MAX BrushingModel_NOVICE_ADAPTATION
-#define _BrushingModel_ARRAYSIZE ((BrushingModel)(BrushingModel_NOVICE_ADAPTATION+1))
+#define _BrushingModel_MAX BrushingModel_CARE
+#define _BrushingModel_ARRAYSIZE ((BrushingModel)(BrushingModel_CARE+1))
 
 #define _BrushingPower_MIN BrushingPower_POWER_RESERVE
 #define _BrushingPower_MAX BrushingPower_POWER_SMART
@@ -1796,6 +1909,14 @@ typedef struct _DataPackage {
 #define _LightType_MAX LightType_CUSTOM_LIGHT
 #define _LightType_ARRAYSIZE ((LightType)(LightType_CUSTOM_LIGHT+1))
 
+#define _BackupCode_MIN BackupCode_NO_BACKUP
+#define _BackupCode_MAX BackupCode_ORAL_ARCHIVES
+#define _BackupCode_ARRAYSIZE ((BackupCode)(BackupCode_ORAL_ARCHIVES+1))
+
+#define _WifiState_MIN WifiState_NO_STATA
+#define _WifiState_MAX WifiState_CONNECTED
+#define _WifiState_ARRAYSIZE ((WifiState)(WifiState_CONNECTED+1))
+
 #define _DeviceItem_MIN DeviceItem_ALL
 #define _DeviceItem_MAX DeviceItem_VOICE_GUIDANCE_TYPE
 #define _DeviceItem_ARRAYSIZE ((DeviceItem)(DeviceItem_VOICE_GUIDANCE_TYPE+1))
@@ -1825,12 +1946,12 @@ typedef struct _DataPackage {
 #define _PlayMode_ARRAYSIZE ((PlayMode)(PlayMode_LIST+1))
 
 #define _RotaFileStatus_MIN RotaFileStatus_ROTA_START
-#define _RotaFileStatus_MAX RotaFileStatus_FORCE_START
-#define _RotaFileStatus_ARRAYSIZE ((RotaFileStatus)(RotaFileStatus_FORCE_START+1))
+#define _RotaFileStatus_MAX RotaFileStatus_GET_FILE_START
+#define _RotaFileStatus_ARRAYSIZE ((RotaFileStatus)(RotaFileStatus_GET_FILE_START+1))
 
 #define _RotasUpdateFile_MIN RotasUpdateFile_UNKNOWN_TYPE
-#define _RotasUpdateFile_MAX RotasUpdateFile_BLE_FIRMWARE
-#define _RotasUpdateFile_ARRAYSIZE ((RotasUpdateFile)(RotasUpdateFile_BLE_FIRMWARE+1))
+#define _RotasUpdateFile_MAX RotasUpdateFile_RESTORE_ORAL_ARCHIVES
+#define _RotasUpdateFile_ARRAYSIZE ((RotasUpdateFile)(RotasUpdateFile_RESTORE_ORAL_ARCHIVES+1))
 
 #define _RotaErrorCode_MIN RotaErrorCode_ROTA_SUCCESS
 #define _RotaErrorCode_MAX RotaErrorCode_FLASH_NOT_ENOUGH
@@ -1858,8 +1979,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define DataPackage_init_default                 {_CommandId_MIN, 0, {ConnectPro_init_default}}
-#define ConnectPro_init_default                  {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0}
+#define DataPackage_init_default                 {_CommandId_MIN, 0, {ConnectPro_init_default}, _ErrorCode_MIN}
+#define ConnectPro_init_default                  {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
 #define ServicePro_init_default                  {_ServiceId_MIN, 0, {SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default}}
 #define SupportData_init_default                 {0, {_ServiceId_MIN}, _ErrorCode_MIN}
 #define CommandPro_init_default                  {_CommandId_MIN, 0, {SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default}, _ErrorCode_MIN}
@@ -1881,9 +2002,13 @@ extern "C" {
 #define UserThemeInfo_init_default               {0, {0, 0, 0, 0, 0}, 0, 0, 0, 0, 0, 0, _ErrorCode_MIN}
 #define LightCustomInfo_init_default             {0, {{NULL}, NULL}, 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default}, _ErrorCode_MIN}
 #define LightRGBInfo_init_default                {0, _AlgoFacet_MIN}
-#define OralArchivesData_init_default            {_ApplianceType_MIN, 0, {ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default}}
+#define OralArchivesData_init_default            {_ApplianceType_MIN, 0, {ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default}, _ErrorCode_MIN}
 #define ProblemTeethData_init_default            {_ProblemTeeth_MIN, 0, {ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default}, 0}
 #define ProblemTeethInfo_init_default            {_TimeSyncType_MIN, _TeethNumber_MIN}
+#define UserBackupData_init_default              {0, 0, 0, 0, 0, {UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default}, _ErrorCode_MIN}
+#define UserBackupItem_init_default              {0, {BackupFileInfo_init_default}}
+#define BackupFileInfo_init_default              {0, "", 0, 0, ""}
+#define BackupConfigInfo_init_default            {0, 0, {{0, {0}}}}
 #define AlgorithmPro_init_default                {_BrushHandHabit_MIN, _BrushArea_MIN, _CommonSide_MIN, _BrushOrder_MIN, _BrushTotalArea_MIN, _BrushTotalSide_MIN, _ErrorCode_MIN, 0, 0, 0, 0, 0, 0, 0, 0, _AlgoType_MIN, 0}
 #define AlgorithmRealTime_init_default           {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, {AlgorithmCollect_init_default}}
 #define AlgorithmReport_init_default             {_BrushTotalArea_MIN, _BrushTotalSide_MIN, _FillBrushState_MIN, 0, 0, 0, 0, {FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default}, 0, {RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default}, 0, {RemindSingleResult_init_default, RemindSingleResult_init_default, RemindSingleResult_init_default}, 0, 0, 0}
@@ -1893,8 +2018,8 @@ extern "C" {
 #define RemindSingleResult_init_default          {_RemindType_MIN, {0, {0}}}
 #define AlgorithmRemind_init_default             {_RemindType_MIN, 0, {_RemindValue_MIN}, 0, _BrushSide_MIN}
 #define AlgorithmCollectList_init_default        {0, {AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default}}
-#define AlgorithmCollect_init_default            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN}
-#define WifiInfo_init_default                    {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}}
+#define AlgorithmCollect_init_default            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
+#define WifiInfo_init_default                    {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, ""}
 #define DeviceStateInfo_init_default             {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN}
 #define CustomButtonInfo_init_default            {0, {CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default}, _ErrorCode_MIN}
 #define CustomButtonContent_init_default         {_DeviceOrientation_MIN, _Button_MIN, _ButtonType_MIN, _ButtonFunction_MIN}
@@ -1910,7 +2035,7 @@ extern "C" {
 #define VideoReportData_init_default             {0, 0, 0, 0, 0, 0, 0}
 #define AudioDataInfo_init_default               {_AudioRemindType_MIN, 0, 0, _SwitchState_MIN, 0, 0, _ErrorCode_MIN}
 #define AudioRemindData_init_default             {0, {AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default, AudioRemindState_init_default}, 0, _ErrorCode_MIN}
-#define AudioRemindState_init_default            {_RemindType_MIN, _SwitchState_MIN}
+#define AudioRemindState_init_default            {_RemindType_MIN, _SwitchState_MIN, 0, 0, {0}}
 #define MultiFileStatusReq_init_default          {0, {RotasFileStatusReq_init_default, RotasFileStatusReq_init_default}}
 #define RotasFileStatusReq_init_default          {_RotaFileStatus_MIN, _RotasUpdateFile_MIN, 0, 0, 0, 0, 0, {0, {0}}, {0, {0}}, 0, 0}
 #define RotasFileStatusRsp_init_default          {_RotasUpdateFile_MIN, _RotaErrorCode_MIN, 0}
@@ -1918,12 +2043,13 @@ extern "C" {
 #define RotasDataRsp_init_default                {_RotasUpdateFile_MIN, 0, _RotaErrorCode_MIN, 0}
 #define RotasResultReq_init_default              {_RotasUpdateFile_MIN, 0, _RotaErrorCode_MIN, 0}
 #define RotasResultRsp_init_default              {_RotasUpdateFile_MIN, _RotaErrorCode_MIN, _RotaFileStatus_MIN}
+#define FileHandleInfo_init_default              {_RotasUpdateFile_MIN, _RotaFileStatus_MIN}
 #define PlanInfo_init_default                    {0, {_PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN}, 0, _PlanId_MIN, 0, 0, 0, 0, 0, 0, {PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default}, _ErrorCode_MIN}
 #define RecommendInfo_init_default               {0, {_PlanInfoType_MIN, _PlanInfoType_MIN}, _BrushingModel_MIN, 0, _TimeSyncType_MIN, 0, {0}, _ErrorCode_MIN}
 #define PlanModelInfo_init_default               {_TimeType_MIN, _BrushingModel_MIN, _BrushingTime_MIN, 0, 0}
 #define CustomPlanGroupInfo_init_default         {_PlanId_MIN, 0, 0, 0, {PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default}, _ErrorCode_MIN}
-#define DataPackage_init_zero                    {_CommandId_MIN, 0, {ConnectPro_init_zero}}
-#define ConnectPro_init_zero                     {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0}
+#define DataPackage_init_zero                    {_CommandId_MIN, 0, {ConnectPro_init_zero}, _ErrorCode_MIN}
+#define ConnectPro_init_zero                     {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
 #define ServicePro_init_zero                     {_ServiceId_MIN, 0, {SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero}}
 #define SupportData_init_zero                    {0, {_ServiceId_MIN}, _ErrorCode_MIN}
 #define CommandPro_init_zero                     {_CommandId_MIN, 0, {SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero}, _ErrorCode_MIN}
@@ -1945,9 +2071,13 @@ extern "C" {
 #define UserThemeInfo_init_zero                  {0, {0, 0, 0, 0, 0}, 0, 0, 0, 0, 0, 0, _ErrorCode_MIN}
 #define LightCustomInfo_init_zero                {0, {{NULL}, NULL}, 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero}, _ErrorCode_MIN}
 #define LightRGBInfo_init_zero                   {0, _AlgoFacet_MIN}
-#define OralArchivesData_init_zero               {_ApplianceType_MIN, 0, {ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero}}
+#define OralArchivesData_init_zero               {_ApplianceType_MIN, 0, {ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero}, _ErrorCode_MIN}
 #define ProblemTeethData_init_zero               {_ProblemTeeth_MIN, 0, {ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero}, 0}
 #define ProblemTeethInfo_init_zero               {_TimeSyncType_MIN, _TeethNumber_MIN}
+#define UserBackupData_init_zero                 {0, 0, 0, 0, 0, {UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero}, _ErrorCode_MIN}
+#define UserBackupItem_init_zero                 {0, {BackupFileInfo_init_zero}}
+#define BackupFileInfo_init_zero                 {0, "", 0, 0, ""}
+#define BackupConfigInfo_init_zero               {0, 0, {{0, {0}}}}
 #define AlgorithmPro_init_zero                   {_BrushHandHabit_MIN, _BrushArea_MIN, _CommonSide_MIN, _BrushOrder_MIN, _BrushTotalArea_MIN, _BrushTotalSide_MIN, _ErrorCode_MIN, 0, 0, 0, 0, 0, 0, 0, 0, _AlgoType_MIN, 0}
 #define AlgorithmRealTime_init_zero              {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, {AlgorithmCollect_init_zero}}
 #define AlgorithmReport_init_zero                {_BrushTotalArea_MIN, _BrushTotalSide_MIN, _FillBrushState_MIN, 0, 0, 0, 0, {FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero}, 0, {RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero}, 0, {RemindSingleResult_init_zero, RemindSingleResult_init_zero, RemindSingleResult_init_zero}, 0, 0, 0}
@@ -1957,8 +2087,8 @@ extern "C" {
 #define RemindSingleResult_init_zero             {_RemindType_MIN, {0, {0}}}
 #define AlgorithmRemind_init_zero                {_RemindType_MIN, 0, {_RemindValue_MIN}, 0, _BrushSide_MIN}
 #define AlgorithmCollectList_init_zero           {0, {AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero}}
-#define AlgorithmCollect_init_zero               {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN}
-#define WifiInfo_init_zero                       {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}}
+#define AlgorithmCollect_init_zero               {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
+#define WifiInfo_init_zero                       {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, ""}
 #define DeviceStateInfo_init_zero                {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN}
 #define CustomButtonInfo_init_zero               {0, {CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero}, _ErrorCode_MIN}
 #define CustomButtonContent_init_zero            {_DeviceOrientation_MIN, _Button_MIN, _ButtonType_MIN, _ButtonFunction_MIN}
@@ -1974,7 +2104,7 @@ extern "C" {
 #define VideoReportData_init_zero                {0, 0, 0, 0, 0, 0, 0}
 #define AudioDataInfo_init_zero                  {_AudioRemindType_MIN, 0, 0, _SwitchState_MIN, 0, 0, _ErrorCode_MIN}
 #define AudioRemindData_init_zero                {0, {AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero, AudioRemindState_init_zero}, 0, _ErrorCode_MIN}
-#define AudioRemindState_init_zero               {_RemindType_MIN, _SwitchState_MIN}
+#define AudioRemindState_init_zero               {_RemindType_MIN, _SwitchState_MIN, 0, 0, {0}}
 #define MultiFileStatusReq_init_zero             {0, {RotasFileStatusReq_init_zero, RotasFileStatusReq_init_zero}}
 #define RotasFileStatusReq_init_zero             {_RotaFileStatus_MIN, _RotasUpdateFile_MIN, 0, 0, 0, 0, 0, {0, {0}}, {0, {0}}, 0, 0}
 #define RotasFileStatusRsp_init_zero             {_RotasUpdateFile_MIN, _RotaErrorCode_MIN, 0}
@@ -1982,6 +2112,7 @@ extern "C" {
 #define RotasDataRsp_init_zero                   {_RotasUpdateFile_MIN, 0, _RotaErrorCode_MIN, 0}
 #define RotasResultReq_init_zero                 {_RotasUpdateFile_MIN, 0, _RotaErrorCode_MIN, 0}
 #define RotasResultRsp_init_zero                 {_RotasUpdateFile_MIN, _RotaErrorCode_MIN, _RotaFileStatus_MIN}
+#define FileHandleInfo_init_zero                 {_RotasUpdateFile_MIN, _RotaFileStatus_MIN}
 #define PlanInfo_init_zero                       {0, {_PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN, _PlanInfoType_MIN}, 0, _PlanId_MIN, 0, 0, 0, 0, 0, 0, {PlanModelInfo_init_zero, PlanModelInfo_init_zero, PlanModelInfo_init_zero}, _ErrorCode_MIN}
 #define RecommendInfo_init_zero                  {0, {_PlanInfoType_MIN, _PlanInfoType_MIN}, _BrushingModel_MIN, 0, _TimeSyncType_MIN, 0, {0}, _ErrorCode_MIN}
 #define PlanModelInfo_init_zero                  {_TimeType_MIN, _BrushingModel_MIN, _BrushingTime_MIN, 0, 0}
@@ -2008,6 +2139,7 @@ extern "C" {
 #define AlgorithmCollect_score_tag               16
 #define AlgorithmCollect_brushing_state_tag      17
 #define AlgorithmCollect_brushing_side_tag       18
+#define AlgorithmCollect_algo_remind_tag         19
 #define AlgorithmPro_brush_hand_habit_tag        1
 #define AlgorithmPro_brush_start_area_tag        2
 #define AlgorithmPro_brush_start_side_tag        3
@@ -2045,6 +2177,18 @@ extern "C" {
 #define AudioDataInfo_setting_result_tag         100
 #define AudioRemindState_remind_type_tag         1
 #define AudioRemindState_remind_switch_tag       2
+#define AudioRemindState_select_item_tag         3
+#define AudioRemindState_type_value_tag          10
+#define BackupConfigInfo_backup_code_tag         1
+#define BackupConfigInfo_byte_data_tag           10
+#define BackupConfigInfo_string_data_tag         11
+#define BackupConfigInfo_uint32_data_tag         12
+#define BackupConfigInfo_uint64_data_tag         13
+#define BackupFileInfo_backup_code_tag           1
+#define BackupFileInfo_file_name_tag             2
+#define BackupFileInfo_file_size_tag             3
+#define BackupFileInfo_file_id_tag               4
+#define BackupFileInfo_file_url_tag              5
 #define ConnectPro_connect_type_tag              1
 #define ConnectPro_version_code_tag              2
 #define ConnectPro_model_id_tag                  3
@@ -2061,6 +2205,7 @@ extern "C" {
 #define ConnectPro_voice_res_id_tag              14
 #define ConnectPro_device_id_tag                 15
 #define ConnectPro_motor_res_id_tag              16
+#define ConnectPro_sku_id_tag                    17
 #define CustomButtonContent_device_orientation_tag 1
 #define CustomButtonContent_button_tag           2
 #define CustomButtonContent_select_button_type_tag 3
@@ -2073,6 +2218,8 @@ extern "C" {
 #define DeviceStateInfo_set_state_tag            1
 #define DeviceStateInfo_setting_result_tag       2
 #define DeviceStateInfo_set_power_state_tag      3
+#define FileHandleInfo_file_type_tag             1
+#define FileHandleInfo_file_state_tag            2
 #define FillBrushData_time_tag                   1
 #define FillBrushData_area_tag                   2
 #define FillBrushData_side_tag                   3
@@ -2180,6 +2327,7 @@ extern "C" {
 #define WifiInfo_device_name_tag                 5
 #define WifiInfo_device_secret_tag               6
 #define WifiInfo_ip_address_tag                  7
+#define WifiInfo_iot_url_tag                     8
 #define AlgoOtherData_other_data_list_tag        1
 #define AlgoOtherData_pause_count_tag            2
 #define AlgorithmCollectList_algorithm_collect_tag 100
@@ -2194,6 +2342,7 @@ extern "C" {
 #define AlgorithmRealTime_plaque_residue_percent_tag 9
 #define AlgorithmRealTime_brushing_coverage_tag  10
 #define AlgorithmRealTime_algorithm_collect_tag  100
+#define AlgorithmRealTime_all_brushing_coverage_tag 101
 #define AlgorithmReport_brush_total_area_tag     1
 #define AlgorithmReport_brush_total_side_tag     2
 #define AlgorithmReport_fill_brush_state_tag     3
@@ -2329,6 +2478,8 @@ extern "C" {
 #define SimpleReport_brush_total_side_tag        2
 #define SimpleReport_remind_single_result_tag    3
 #define SimpleReport_plaque_residue_percent_tag  4
+#define UserBackupItem_backup_file_info_tag      1
+#define UserBackupItem_backup_config_info_tag    2
 #define AlgoResultFusion_param_switch_tag        1
 #define AlgoResultFusion_factor_switch_tag       2
 #define AlgoResultFusion_time_op_tag             3
@@ -2357,6 +2508,13 @@ extern "C" {
 #define DeviceUp_up_value_tag                    3
 #define OralArchivesData_appliance_type_tag      1
 #define OralArchivesData_oral_info_list_tag      2
+#define OralArchivesData_setting_result_tag      100
+#define UserBackupData_sync_type_tag             1
+#define UserBackupData_backup_timestamp_tag      2
+#define UserBackupData_is_last_backup_tag        3
+#define UserBackupData_total_size_tag            4
+#define UserBackupData_backup_item_list_tag      5
+#define UserBackupData_setting_result_tag        100
 #define ReportData_timestamp_tag                 1
 #define ReportData_brushing_model_tag            2
 #define ReportData_brushing_power_level_tag      3
@@ -2403,6 +2561,8 @@ extern "C" {
 #define DataPackage_set_light_custom_info_tag    38
 #define DataPackage_get_oral_archives_tag        39
 #define DataPackage_set_oral_archives_tag        40
+#define DataPackage_backup_user_data_tag         41
+#define DataPackage_restore_user_data_tag        42
 #define DataPackage_algorithm_pro_tag            49
 #define DataPackage_algorithm_setting_tag        50
 #define DataPackage_algorithm_real_time_tag      51
@@ -2427,6 +2587,7 @@ extern "C" {
 #define DataPackage_rota_result_rsp_tag          86
 #define DataPackage_file_send_done_rsp_tag       87
 #define DataPackage_multi_file_status_req_tag    88
+#define DataPackage_file_handle_info_tag         89
 #define DataPackage_get_debug_info_tag           97
 #define DataPackage_set_debug_info_tag           98
 #define DataPackage_debug_file_status_tag        99
@@ -2437,6 +2598,7 @@ extern "C" {
 #define DataPackage_set_recommend_info_tag       116
 #define DataPackage_get_custom_group_info_tag    117
 #define DataPackage_set_custom_group_info_tag    118
+#define DataPackage_command_result_tag           256
 
 /* Struct field encoding specification for nanopb */
 #define DataPackage_FIELDLIST(X, a) \
@@ -2471,6 +2633,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_light_custom_info,command_d
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_light_custom_info,command_data.set_light_custom_info),  38) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_oral_archives,command_data.get_oral_archives),  39) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_oral_archives,command_data.set_oral_archives),  40) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,backup_user_data,command_data.backup_user_data),  41) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,restore_user_data,command_data.restore_user_data),  42) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,algorithm_pro,command_data.algorithm_pro),  49) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,algorithm_setting,command_data.algorithm_setting),  50) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,algorithm_real_time,command_data.algorithm_real_time),  51) \
@@ -2495,6 +2659,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,rota_result_req,command_data.ro
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,rota_result_rsp,command_data.rota_result_rsp),  86) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,file_send_done_rsp,command_data.file_send_done_rsp),  87) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,multi_file_status_req,command_data.multi_file_status_req),  88) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,file_handle_info,command_data.file_handle_info),  89) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_debug_info,command_data.get_debug_info),  97) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_debug_info,command_data.set_debug_info),  98) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,debug_file_status,command_data.debug_file_status),  99) \
@@ -2504,7 +2669,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_plan_info,command_data.set_
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_recommend_info,command_data.get_recommend_info), 115) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_recommend_info,command_data.set_recommend_info), 116) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_custom_group_info,command_data.get_custom_group_info), 117) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_custom_group_info,command_data.set_custom_group_info), 118)
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_custom_group_info,command_data.set_custom_group_info), 118) \
+X(a, STATIC,   SINGULAR, UENUM,    command_result,  256)
 #define DataPackage_CALLBACK NULL
 #define DataPackage_DEFAULT NULL
 #define DataPackage_command_data_connect_pro_MSGTYPE ConnectPro
@@ -2537,6 +2703,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_custom_group_info,command_d
 #define DataPackage_command_data_set_light_custom_info_MSGTYPE LightCustomInfo
 #define DataPackage_command_data_get_oral_archives_MSGTYPE OralArchivesData
 #define DataPackage_command_data_set_oral_archives_MSGTYPE OralArchivesData
+#define DataPackage_command_data_backup_user_data_MSGTYPE UserBackupData
+#define DataPackage_command_data_restore_user_data_MSGTYPE UserBackupData
 #define DataPackage_command_data_algorithm_pro_MSGTYPE AlgorithmPro
 #define DataPackage_command_data_algorithm_setting_MSGTYPE AlgorithmPro
 #define DataPackage_command_data_algorithm_real_time_MSGTYPE AlgorithmRealTime
@@ -2561,6 +2729,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_custom_group_info,command_d
 #define DataPackage_command_data_rota_result_rsp_MSGTYPE RotasResultRsp
 #define DataPackage_command_data_file_send_done_rsp_MSGTYPE RotasResultRsp
 #define DataPackage_command_data_multi_file_status_req_MSGTYPE MultiFileStatusReq
+#define DataPackage_command_data_file_handle_info_MSGTYPE FileHandleInfo
 #define DataPackage_command_data_get_debug_info_MSGTYPE DebugInfo
 #define DataPackage_command_data_set_debug_info_MSGTYPE DebugInfo
 #define DataPackage_command_data_debug_file_status_MSGTYPE DebugFileStatus
@@ -2588,7 +2757,8 @@ X(a, STATIC,   SINGULAR, UENUM,    upgrade_type,     12) \
 X(a, STATIC,   SINGULAR, UENUM,    res_upgrade_type,  13) \
 X(a, CALLBACK, REPEATED, UINT32,   voice_res_id,     14) \
 X(a, STATIC,   SINGULAR, STRING,   device_id,        15) \
-X(a, STATIC,   SINGULAR, UINT32,   motor_res_id,     16)
+X(a, STATIC,   SINGULAR, UINT32,   motor_res_id,     16) \
+X(a, STATIC,   SINGULAR, UINT32,   sku_id,           17)
 #define ConnectPro_CALLBACK pb_default_field_callback
 #define ConnectPro_DEFAULT NULL
 
@@ -2852,7 +3022,8 @@ X(a, STATIC,   SINGULAR, UENUM,    algo_facet,        2)
 
 #define OralArchivesData_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    appliance_type,    1) \
-X(a, STATIC,   REPEATED, MESSAGE,  oral_info_list,    2)
+X(a, STATIC,   REPEATED, MESSAGE,  oral_info_list,    2) \
+X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
 #define OralArchivesData_CALLBACK NULL
 #define OralArchivesData_DEFAULT NULL
 #define OralArchivesData_oral_info_list_MSGTYPE ProblemTeethData
@@ -2870,6 +3041,43 @@ X(a, STATIC,   SINGULAR, UENUM,    setting_type,      1) \
 X(a, STATIC,   SINGULAR, UENUM,    teeth_facet,       2)
 #define ProblemTeethInfo_CALLBACK NULL
 #define ProblemTeethInfo_DEFAULT NULL
+
+#define UserBackupData_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UINT32,   sync_type,         1) \
+X(a, STATIC,   SINGULAR, UINT32,   backup_timestamp,   2) \
+X(a, STATIC,   SINGULAR, BOOL,     is_last_backup,    3) \
+X(a, STATIC,   SINGULAR, UINT32,   total_size,        4) \
+X(a, STATIC,   REPEATED, MESSAGE,  backup_item_list,   5) \
+X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
+#define UserBackupData_CALLBACK NULL
+#define UserBackupData_DEFAULT NULL
+#define UserBackupData_backup_item_list_MSGTYPE UserBackupItem
+
+#define UserBackupItem_FIELDLIST(X, a) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (backup_data,backup_file_info,backup_data.backup_file_info),   1) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (backup_data,backup_config_info,backup_data.backup_config_info),   2)
+#define UserBackupItem_CALLBACK NULL
+#define UserBackupItem_DEFAULT NULL
+#define UserBackupItem_backup_data_backup_file_info_MSGTYPE BackupFileInfo
+#define UserBackupItem_backup_data_backup_config_info_MSGTYPE BackupConfigInfo
+
+#define BackupFileInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UINT32,   backup_code,       1) \
+X(a, STATIC,   SINGULAR, STRING,   file_name,         2) \
+X(a, STATIC,   SINGULAR, UINT32,   file_size,         3) \
+X(a, STATIC,   SINGULAR, UINT32,   file_id,           4) \
+X(a, STATIC,   SINGULAR, STRING,   file_url,          5)
+#define BackupFileInfo_CALLBACK NULL
+#define BackupFileInfo_DEFAULT NULL
+
+#define BackupConfigInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UINT32,   backup_code,       1) \
+X(a, STATIC,   ONEOF,    BYTES,    (config_data,byte_data,config_data.byte_data),  10) \
+X(a, STATIC,   ONEOF,    STRING,   (config_data,string_data,config_data.string_data),  11) \
+X(a, STATIC,   ONEOF,    UINT32,   (config_data,uint32_data,config_data.uint32_data),  12) \
+X(a, STATIC,   ONEOF,    UINT64,   (config_data,uint64_data,config_data.uint64_data),  13)
+#define BackupConfigInfo_CALLBACK NULL
+#define BackupConfigInfo_DEFAULT NULL
 
 #define AlgorithmPro_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    brush_hand_habit,   1) \
@@ -2903,7 +3111,8 @@ X(a, STATIC,   SINGULAR, UINT32,   brushing_side_downtime,   7) \
 X(a, STATIC,   SINGULAR, ENUM,     brushing_side,     8) \
 X(a, STATIC,   SINGULAR, UINT32,   plaque_residue_percent,   9) \
 X(a, STATIC,   SINGULAR, UINT32,   brushing_coverage,  10) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (algo_data,algorithm_collect,algo_data.algorithm_collect), 100)
+X(a, STATIC,   ONEOF,    MESSAGE,  (algo_data,algorithm_collect,algo_data.algorithm_collect), 100) \
+X(a, STATIC,   ONEOF,    BYTES,    (algo_data,all_brushing_coverage,algo_data.all_brushing_coverage), 101)
 #define AlgorithmRealTime_CALLBACK NULL
 #define AlgorithmRealTime_DEFAULT NULL
 #define AlgorithmRealTime_algo_data_algorithm_collect_MSGTYPE AlgorithmCollect
@@ -2995,7 +3204,8 @@ X(a, STATIC,   SINGULAR, INT32,    gravity_orient,   14) \
 X(a, STATIC,   REPEATED, UINT32,   coverage_rate,    15) \
 X(a, STATIC,   SINGULAR, INT32,    score,            16) \
 X(a, STATIC,   SINGULAR, UENUM,    brushing_state,   17) \
-X(a, STATIC,   SINGULAR, ENUM,     brushing_side,    18)
+X(a, STATIC,   SINGULAR, ENUM,     brushing_side,    18) \
+X(a, STATIC,   REPEATED, INT32,    algo_remind,      19)
 #define AlgorithmCollect_CALLBACK NULL
 #define AlgorithmCollect_DEFAULT NULL
 
@@ -3006,7 +3216,8 @@ X(a, STATIC,   SINGULAR, UENUM,    setting_result,    3) \
 X(a, STATIC,   SINGULAR, STRING,   product_key,       4) \
 X(a, STATIC,   SINGULAR, STRING,   device_name,       5) \
 X(a, STATIC,   SINGULAR, STRING,   device_secret,     6) \
-X(a, STATIC,   SINGULAR, BYTES,    ip_address,        7)
+X(a, STATIC,   SINGULAR, BYTES,    ip_address,        7) \
+X(a, STATIC,   SINGULAR, STRING,   iot_url,           8)
 #define WifiInfo_CALLBACK NULL
 #define WifiInfo_DEFAULT NULL
 
@@ -3150,7 +3361,9 @@ X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
 
 #define AudioRemindState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    remind_type,       1) \
-X(a, STATIC,   SINGULAR, UENUM,    remind_switch,     2)
+X(a, STATIC,   SINGULAR, UENUM,    remind_switch,     2) \
+X(a, STATIC,   SINGULAR, UINT32,   select_item,       3) \
+X(a, STATIC,   ONEOF,    UINT32,   (state_value,type_value,state_value.type_value),  10)
 #define AudioRemindState_CALLBACK NULL
 #define AudioRemindState_DEFAULT NULL
 
@@ -3211,6 +3424,12 @@ X(a, STATIC,   SINGULAR, UENUM,    result,            2) \
 X(a, STATIC,   SINGULAR, UENUM,    rotaStatus,        3)
 #define RotasResultRsp_CALLBACK NULL
 #define RotasResultRsp_DEFAULT NULL
+
+#define FileHandleInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    file_type,         1) \
+X(a, STATIC,   SINGULAR, UENUM,    file_state,        2)
+#define FileHandleInfo_CALLBACK NULL
+#define FileHandleInfo_DEFAULT NULL
 
 #define PlanInfo_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, UENUM,    plan_info_type,    1) \
@@ -3284,6 +3503,10 @@ extern const pb_msgdesc_t LightRGBInfo_msg;
 extern const pb_msgdesc_t OralArchivesData_msg;
 extern const pb_msgdesc_t ProblemTeethData_msg;
 extern const pb_msgdesc_t ProblemTeethInfo_msg;
+extern const pb_msgdesc_t UserBackupData_msg;
+extern const pb_msgdesc_t UserBackupItem_msg;
+extern const pb_msgdesc_t BackupFileInfo_msg;
+extern const pb_msgdesc_t BackupConfigInfo_msg;
 extern const pb_msgdesc_t AlgorithmPro_msg;
 extern const pb_msgdesc_t AlgorithmRealTime_msg;
 extern const pb_msgdesc_t AlgorithmReport_msg;
@@ -3318,6 +3541,7 @@ extern const pb_msgdesc_t RotasDataReq_msg;
 extern const pb_msgdesc_t RotasDataRsp_msg;
 extern const pb_msgdesc_t RotasResultReq_msg;
 extern const pb_msgdesc_t RotasResultRsp_msg;
+extern const pb_msgdesc_t FileHandleInfo_msg;
 extern const pb_msgdesc_t PlanInfo_msg;
 extern const pb_msgdesc_t RecommendInfo_msg;
 extern const pb_msgdesc_t PlanModelInfo_msg;
@@ -3350,6 +3574,10 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define OralArchivesData_fields &OralArchivesData_msg
 #define ProblemTeethData_fields &ProblemTeethData_msg
 #define ProblemTeethInfo_fields &ProblemTeethInfo_msg
+#define UserBackupData_fields &UserBackupData_msg
+#define UserBackupItem_fields &UserBackupItem_msg
+#define BackupFileInfo_fields &BackupFileInfo_msg
+#define BackupConfigInfo_fields &BackupConfigInfo_msg
 #define AlgorithmPro_fields &AlgorithmPro_msg
 #define AlgorithmRealTime_fields &AlgorithmRealTime_msg
 #define AlgorithmReport_fields &AlgorithmReport_msg
@@ -3384,6 +3612,7 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define RotasDataRsp_fields &RotasDataRsp_msg
 #define RotasResultReq_fields &RotasResultReq_msg
 #define RotasResultRsp_fields &RotasResultRsp_msg
+#define FileHandleInfo_fields &FileHandleInfo_msg
 #define PlanInfo_fields &PlanInfo_msg
 #define RecommendInfo_fields &RecommendInfo_msg
 #define PlanModelInfo_fields &PlanModelInfo_msg
@@ -3396,15 +3625,17 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define AlgoOtherDataResult_size                 98
 #define AlgoOtherData_size                       606
 #define AlgoResultFusion_size                    1503
-#define AlgorithmCollectList_size                1820
-#define AlgorithmCollect_size                    178
+#define AlgorithmCollectList_size                3260
+#define AlgorithmCollect_size                    322
 #define AlgorithmPro_size                        81
-#define AlgorithmRealTime_size                   231
+#define AlgorithmRealTime_size                   375
 #define AlgorithmRemind_size                     32
 #define AlgorithmReport_size                     591
 #define AudioDataInfo_size                       31
-#define AudioRemindData_size                     57
-#define AudioRemindState_size                    4
+#define AudioRemindData_size                     153
+#define AudioRemindState_size                    16
+#define BackupConfigInfo_size                    72
+#define BackupFileInfo_size                      181
 #define BrushingReport_size                      7803
 #define CommandPro_size                          285
 #define CustomButtonContent_size                 8
@@ -3421,13 +3652,14 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define DeviceState_size                         56
 #define DeviceUp_size                            27
 #define DeviceValue_size                         16
+#define FileHandleInfo_size                      4
 #define FillBrushData_size                       19
 #define FrequencyBand_size                       12
 #define LightRGBInfo_size                        8
 #define ModelInfo_size                           17
 #define MultiFileStatusReq_size                  362
 #define NoBrushingRemindInfo_size                14
-#define OralArchivesData_size                    5014
+#define OralArchivesData_size                    1437
 #define PlanInfo_size                            120
 #define PlanModelInfo_size                       19
 #define ProblemTeethData_size                    176
@@ -3446,14 +3678,16 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define RotasResultRsp_size                      6
 #define ServicePro_size                          38
 #define SimpleReport_size                        98
-#define SnInfo_size                              19
+#define SnInfo_size                              68
 #define SupportData_size                         5
 #define Temperature_size                         12
 #define TimeSync_size                            21
+#define UserBackupData_size                      958
+#define UserBackupItem_size                      184
 #define UserInfo_size                            31
 #define UserThemeInfo_size                       69
 #define VideoReportData_size                     42
-#define WifiInfo_size                            265
+#define WifiInfo_size                            395
 
 #ifdef __cplusplus
 } /* extern "C" */

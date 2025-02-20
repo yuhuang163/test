@@ -157,7 +157,7 @@ void hqmes::MesGetGlobalInfo_hq() {
         } else {
             if (jsonObj.contains("H_MSG")) {
                 QString resultMsg = jsonObj.value("H_MSG").toString();
-                qDebug() << "LogIn failed. Error: " << resultMsg;
+                qDebug() << "MesGetGlobalInfo_hq failed. Error: " << resultMsg;
                 emit operateMesError(1, "检查失败：" + resultMsg);
             } else {
                 emit operateMesError(1, "检查失败，没有报错信息");
@@ -244,7 +244,7 @@ void hqmes::ProcessInspection(MesPacketData pack) {
             } else {
                 if (jsonObj.contains("H_MSG")) {
                     QString resultMsg = jsonObj.value("H_MSG").toString();
-                    qDebug() << "LogIn failed. Error: " << resultMsg;
+                    qDebug() << "ProcessInspection failed. Error: " << resultMsg;
                     emit operateMesError(pack.mechines, "站前检查失败：" + resultMsg);
                 } else {
                     emit operateMesError(pack.mechines, "站前检查失败，没有报错信息");
@@ -284,6 +284,7 @@ void hqmes::TestPass(MesPacketData pack) {
         main["G_OP_LINE"] = pack.line;
         main["G_OP_PC"] = hostName;
         main["G_OP_SHIFT"] = "D";
+        qDebug() << "请求main内容" << main;
 
         QJsonArray errorArray;
         QJsonObject errorObject;
@@ -358,7 +359,7 @@ void hqmes::TestPass(MesPacketData pack) {
             } else {
                 if (jsonObj.contains("H_MSG")) {
                     QString resultMsg = jsonObj.value("H_MSG").toString();
-                    qDebug() << "LogIn failed. Error: " << resultMsg;
+                    qDebug() << "TestPass failed. Error: " << resultMsg;
                     emit operateMesError(pack.mechines, "测试上传失败：" + resultMsg);
                 } else {
                     emit operateMesError(pack.mechines, "测试上传失败，没有报错信息");

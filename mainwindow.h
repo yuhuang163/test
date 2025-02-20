@@ -247,6 +247,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
+
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
     void uploadFile(const QString& filePath);

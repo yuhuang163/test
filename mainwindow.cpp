@@ -44,7 +44,8 @@ void MainWindow::on_pushButton_clicked() {
     qDebug() << "Converted localString:" << localString;
 }
 void MainWindow::on_pushButton_3_clicked() {
-    pb->set_i_am_app();
+    // printOtaDeviceKeys();
+    // pb->set_i_am_app();
     // RotasFileStatusReq RotasFiledata;
     // RotasFiledata.fileType = RotasUpdateFile_BLE_FIRMWARE;
 
@@ -90,7 +91,7 @@ MainWindow::MainWindow(QWidget* parent) :
     initPeriphState();
     OTAGroup->addButton(ui->product_ver, 0);  // 分组1、序号0
     OTAGroup->addButton(ui->test_ver, 1);     // 分组1、序号1
-
+    OTAGroup->addButton(ui->csv_ver, 2);
     WifiStatusLabel = new QLabel("wifi连接：<font color='red'>失败</font>");
     bleStatusLabel = new QLabel("蓝牙连接：<font color='red'>失败</font>");
     uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
@@ -1687,33 +1688,49 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     // 更新license
     ProductLicense& license = ProductLicense::getInstance();
     ProductLicense& Testlicense = ProductLicense::getTestInstance();
+    ProductLicense& Csvlicense = ProductLicense::getTestInstance();
 
-    LicensePair pair = license.getLicense();
-    LicensePair testpair = Testlicense.getTestLicense();
     WifiInfo info;
     QString name = ui->wifiUserName_2->text();
     QString password = ui->wifiPassword_2->text();
     QString deviceSecret;
     QString deviceName;
     QString productName;
+    QString iotUrl = ui->iot_url->text();
+
     if (OTAGroup->checkedId() == 0)  // 生产版本
     {
+        LicensePair pair = license.getLicense();
         ui->testMsg->appendPlainText("正在运行生产版本OTA");
         productName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
+        ui->testMsg->appendPlainText("密钥号：" + QString::number(license.counter));
+
     } else if (OTAGroup->checkedId() == 1)  // 测试版本
     {
-        ui->testMsg->appendPlainText("正在运行测试版本OTA");
-        productName = testpair.product_name;
-        deviceName = testpair.device_key;
-        deviceSecret = testpair.device_secret;
         if (ui->ota_secret->text() != "usmile123") {
             QMessageBox::warning(NULL, "警告", "密码错误\r\n");
             return;
         }
+        LicensePair testpair = Testlicense.getTestLicense();
+        ui->testMsg->appendPlainText("正在运行测试版本OTA");
+        productName = testpair.product_name;
+        deviceName = testpair.device_key;
+        deviceSecret = testpair.device_secret;
+        ui->testMsg->appendPlainText("密钥号：" + QString::number(Testlicense.counter));
 
-    } else {
+    } else if (OTAGroup->checkedId() == 2) {
+        LicensePair csvpair = Csvlicense.getNextOtaDevice();
+        ui->testMsg->appendPlainText("正在运行csv文件OTA");
+        productName = csvpair.product_name;
+        deviceName = csvpair.device_key;
+        deviceSecret = csvpair.device_secret;
+        ui->testMsg->appendPlainText("密钥号：" + QString::number(Csvlicense.otaDeviceIndex));
+
+    }
+
+    else {
         QMessageBox::warning(NULL, "警告", " 请选择ota环境\r\n");
         return;
     }
@@ -1747,6 +1764,13 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     memcpy(info.product_key, productName.toUtf8(), productName.size());
     memcpy(info.device_name, deviceName.toUtf8(), deviceName.size());
     memcpy(info.device_secret, deviceSecret.toUtf8(), deviceSecret.size());
+    memcpy(info.iot_url, iotUrl.toUtf8(), iotUrl.size());
+
+    QString msg = QString("发送升级的信息：\n") + "WiFi 名称: " + name + "\n" + "WiFi 密码: " + password + "\n" +
+                  "Product Key: " + productName + "\n" + "Device Name: " + deviceName + "\n" +
+                  "Device Secret: " + deviceSecret + "\n" + "IoT URL: " + iotUrl;
+
+    ui->testMsg->appendPlainText(msg);
 
     pb->set_config_network_app(info);
     waitWork(1000);

@@ -4,6 +4,10 @@
 
  ** ---------------------Revision History: ----------------------
  **  <author>     <data>       <version >           <desc>
+ **   zhangkq     2023/11/28      2.1.4.2          support Y20, Y20P
+ **   zhangkq     2024/2/20       2.1.5.1          support P20P
+ **   zhangkq     2024/2/21       2.1.6.1          support Q20
+ **   zhangkq     2024/2/21       2.1.7.1          support F20, F20U
  ***************************************************************/
 
 syntax = "proto3";
@@ -28,8 +32,21 @@ message RequestPackage {
         UserThemeInfoVO theme_info_vo = 110;
         UserGiftInfoVO gift_theme_info = 111;
         FileInfo file_info = 112;
-        UsGiftDetail us_gift_detail = 113;
+        UsGiftDetailVO us_gift_detail_vo = 113;
+        DeviceLog device_log = 114;
+        SensorData sensor_data = 115;
+        ProfessionalModelInfoVO professional_info_vo = 116;
+        LightCustomInfoVO light_info_list_vo = 117;
+        PushConfigVO push_config_vo = 118;
     }
+}
+
+message SensorData {
+    uint32 timestamp = 1;
+    uint32 packet_total = 2;
+    uint32 packet_index = 3;
+    string md5 = 4 [(nanopb).max_size = 64];
+    bytes data_block = 5;
 }
 
 ///服务器返回数据
@@ -37,6 +54,7 @@ message ResponsePackage {
     bool flag = 1;
     uint32 code = 2;
     string message = 3 [(nanopb).max_size = 128];
+    repeated ResponseParam response_param = 4 [(nanopb).max_count = 4];
     oneof response_data {
         WifiInfo get_wifi_info = 101;
         BrushingReport upload_brush_report = 102;
@@ -50,13 +68,19 @@ message ResponsePackage {
         UserThemeInfoVO theme_info_vo = 110;
         UserGiftInfoVO gift_theme_info = 111;
         FileInfo file_info = 112;
-        UsGiftDetail us_gift_detail = 113;
+        UsGiftDetailVO us_gift_detail_vo = 113;
+        DeviceLog device_log = 114;
+        SensorData sensor_data = 115;
+        ProfessionalModelInfoVO professional_info_vo = 116;
+        LightCustomInfoVO light_info_list_vo = 117;
+        PushConfigVO push_config_vo = 118;
     }
 }
 
 message UsGiftDetailVO {
     repeated UsGiftDetail us_gift_detail_list = 1;
 }
+
 message UsGiftDetail {
     uint32 id = 1;
     string sender_meb_id = 2;
@@ -66,6 +90,10 @@ message UsGiftDetail {
     uint32 theme_detail_id = 6;
     uint32 status = 7;
     uint32 file_id = 8;
+    uint32 create_time = 9;
+    string gift_text = 10;
+    uint32 gift_gif_file_id = 11;
+    uint32 record_duration = 12;
 }
 
 message FileInfo {
@@ -88,17 +116,22 @@ message UserThemeOption {
     string name = 1 [(nanopb).max_size = 32];;
     UserThemeInfo user_theme_info = 2;
     string preview_img_file_url = 3 [(nanopb).max_size = 256];
+    uint32 push_time = 4;
+    string preview_gif_file_url = 5 [(nanopb).max_size = 256];
 }
 
 message AudioDataInfoVO {
     repeated AudioDataOption audio_option_list = 1 [(nanopb).max_count = 2];
+    repeated string tags = 2;
 }
 
 message AudioDataOption {
-    string name = 1 [(nanopb).max_count = 64];
+    string name = 1 [(nanopb).max_size = 64];
     AudioDataInfo audio_data_info = 2;
     string preview_file_url = 3 [(nanopb).max_size = 256];;
     string preview_img_file_url = 4 [(nanopb).max_size = 256];
+    string tag = 5 [(nanopb).max_size = 20];
+    uint32 sub_type = 6;
 }
 
 message CustomPlanGroupInfoVO {
@@ -118,16 +151,26 @@ message Setting {
     uint32 setting_id = 1;
     oneof setting_data {
         // Connect Service 0x10
-        DeviceInfo get_device_info = 7;           // 0x06
-        DeviceStateInfo device_state_set = 15;    // 0x0E
+        DeviceInfo get_device_info = 7;           // 0x0601、0x0602 ...
+        DeviceRemind get_device_remind = 14;      // 0x0E10、0x0E11
+        DeviceStateInfo device_state_set = 15;    // 0x0E03、0x0E04
         CustomButtonInfo get_custom_button_info = 17; // 0x11
+        ProfessionalModelInfo get_professional_info = 20;
+
         // User Service 0x20
         UserThemeInfo  get_user_theme_info = 0x23;
+        LightCustomInfo get_light_custom_info = 0x25;
+
         // Algorithm Service 0x30
         AlgorithmPro algorithm_pro = 0x31;
 
         // Video linkage service 0x40
+        DeviceState get_device_state = 0x41; // 0x4110、0x4111
         AudioDataInfo get_audio_info = 0x46;
+        AudioDataInfo get_music_info = 0x48;
+
+        // Large file ota  0x50
+        RotasFileStatusReq rota_file_status_req = 0x51;
 
         // Plan Service 0x70
         PlanInfo get_plan_info = 0x71;
@@ -149,6 +192,18 @@ message RequestParam {
         string user_id = 1 [(nanopb).max_size = 64];
         string device_id = 2 [(nanopb).max_size = 64];
         uint32 connect_type = 3; // ConnectType
+        string lang = 4;
+        uint32 model_id = 5;
+        uint32 protocol_id = 6;
+        uint32 timestamp = 7;
+        uint32 push_state = 8;
+    }
+}
+
+message ResponseParam {
+    oneof response_param {
+        uint32 timestamp = 1;
+        uint32 end_timestamp = 2;
     }
 }
 
@@ -161,7 +216,7 @@ message OtaUpdateInfo {
     uint32 firmware_id = 6;
     uint32 version_code_min = 7;
     uint32 version_code_max = 8;
-    repeated MetaData meta_data = 100 [(nanopb).max_count = 6];
+    repeated MetaData meta_data = 100 [(nanopb).max_count = 5];
 }
 
 message MetaData {
@@ -170,4 +225,40 @@ message MetaData {
     string url = 3 [(nanopb).max_size = 128];
     string md5 = 4 [(nanopb).max_size = 64];
     uint32 size = 5;
+}
+
+message DeviceLog {
+    uint32 model_id = 1;
+    string log_info = 2 [(nanopb).max_size = 128];
+}
+
+message ProfessionalModelInfoVO {
+    uint32 update_time = 1;
+    repeated ProfessionalInfo professional_info_list = 2 [(nanopb).max_count = 2];;
+}
+
+message LightCustomInfoVO {
+    repeated LightCustomOption light_info_list = 1 [(nanopb).max_count = 3];
+}
+
+message LightCustomOption {
+    string light_name = 1 [(nanopb).max_size = 64];
+    string pic_url = 2 [(nanopb).max_size = 128];
+    LightCustomInfo light_custom_info = 3;
+    uint32 push_time = 4;
+}
+
+message PushConfigVO {
+    repeated PushConfig push_config_list = 1 [(nanopb).max_count = 3];
+}
+
+message PushConfig {
+    uint32 push_time = 1;
+    uint32 config_item_id = 2;
+    oneof config_item_data {
+        uint32 int_value = 100;
+        string string_value = 101;
+        bool bool_value = 102;
+        SwitchState switch_value = 103;
+    }
 }

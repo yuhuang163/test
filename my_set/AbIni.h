@@ -66,6 +66,9 @@
 #define PCBA_VER "电刷板子测试   V1.4.8"
 #define PRESSURE_VER "压感校测工站   V1.3.4"
 
+// [DEBUG_VER] 添加完成ota升级ioturl的功能，以及本地文件配置密钥的方式ota
+// [QC_VER] 修复静态电流概率sn消失问题
+//
 
 // [AGE_VER] 修改版本判断比对方式
 // [CAMERA_VER] 修改版本判断比对方式

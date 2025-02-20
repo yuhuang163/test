@@ -105,129 +105,180 @@ static const LicensePair license[] = {
 
 const static LicensePair testlicense[] = {
     // 测试版本
-    {"k0fylgHIxtf","STELC7xlGNx6lQaiYLDb","fa518c234b3c976a8a1a88fb53fcae1b"},
-    {"k0fylgHIxtf","PDLF2oThxepT1HJ9f6YX","c09f4fd01befeb39e7f0b84fe331410d"},
-    {"k0fylgHIxtf","4NUTw7FyK2tAPTm3MBcj","64589bdb34bed3561d03633e8fc22fe2"},
-    {"k0fylgHIxtf","KbdLOgi6yHRaLfHIfD0V","8e42f61bbc6f9675ebeff85b95674fa0"},
-    {"k0fylgHIxtf","K138EmnxpqGh7IikbeVE","a2c1612675051ccda0cf4892cf3e4734"},
-    {"k0fylgHIxtf","aweV6bsCdAicSrXFANLV","27e7ebda586f488e8114664cdd9f059b"},
-    {"k0fylgHIxtf","PIxRd3GJ9umMxhYwm70p","d30a3fbc5e3574f112e62e5110da81c8"},
-    {"k0fylgHIxtf","hQ17eAmXJnCgqElBvgWL","d10370e6c134d3cf3272717e79cfee18"},
-    {"k0fylgHIxtf","HrMlLGcb5h9wQVZp2qvr","d9b5a08a9ca1b602c8f9d1dd2b0901af"},
-    {"k0fylgHIxtf","ZUz5PedZfijGRZjVCslk","b5d7e90d8cb8cf489dd3ef7983623671"},
-    {"k0fylgHIxtf","38ZaP4FLjgLJV4dCRgkT","53cf08561b70fa16519fc8c025683abb"},
-    {"k0fylgHIxtf","v2t9gZyPtlzL9NUDfXRs","fb1adb9b37659ede563d5cf22fb653b7"},
-    {"k0fylgHIxtf","ZcdSaS9A9aZJuajRG1B8","bce67d353c1d946a041ce963236d1107"},
-    {"k0fylgHIxtf","L8ELhObGJamGKNZGrQiH","87a9649a693a351406e822c904a60028"},
-    {"k0fylgHIxtf","FVSo1qCeqWsqxRtVLzGO","7381e2177376f476296ff9bf485bda9b"},
-    {"k0fylgHIxtf","KIheu2EWOjlsUKrgUtex","473cd973de21296283297bc7d32e30d7"},
-    {"k0fylgHIxtf","PmEOq7WEwqNbORsJxa29","7391167dc959236631289db87a179338"},
-    {"k0fylgHIxtf","q7OfPISSen0cvXs0tLdc","95f6b01b527f34124eaaf7b563bf5ce8"},
-    {"k0fylgHIxtf","Ibkwsppzd9w1zMuauUJh","600edcc7059c4905bad5f4fec6f061ac"},
-    {"k0fylgHIxtf","dK8shfhGG2QOF7Klpc3v","1590ff187682a4618794e47744f0bcb9"},
-    {"k0fylgHIxtf","Xlqyht1dzXAAHteTTROH","d5b989e983b11dba264978e4589657df"},
-    {"k0fylgHIxtf","wRxTYf7t1EbHTARhfZRP","9030963a196ebc2cdfd966db7f41c3e5"},
-    {"k0fylgHIxtf","wBWLwC8rP4KWeGkwg4xX","250aaf26ad00a712a2456ebe36d13635"},
-    {"k0fylgHIxtf","rPJ2CMb31hc9sv9Td1dC","9664be3ac3e5affbc666254be4be7ed0"},
-    {"k0fylgHIxtf","f7ljBEzkeZI9BrNSjndy","6707dc8abdd6b1d74fcf79491e28e9c3"},
-    {"k0fylgHIxtf","NkfvNPMCgRUZUO0PUCPn","df66ef5a18067691d6b5eb1f942bf85c"},
-    {"k0fylgHIxtf","CHoBXH6kOqQFlt6RKFbr","43ff3fd22a44ba296dec179e9426acf8"},
-    {"k0fylgHIxtf","HFZGtjQAHmkXvAERHQqt","692e85353f7e30c25b9beecf03d4077b"},
-    {"k0fylgHIxtf","d1j57hxg9LGO54qZEgeR","df24b5cd07e3cf68c95d8dca5c8d12a5"},
-    {"k0fylgHIxtf","QyX9DLZRf3tQcf7bVO6s","21ff0d0b46cf6413288831eadf66d619"},
-    {"k0fylgHIxtf","sHiOljDDt8yq9ibpsC6f","31a90fbb2b6ed33d51c0f480c3ffdb5e"},
-    {"k0fylgHIxtf","I9cdCrY0FvrjvAzVzgfk","069794acf3a7eb9aec4ace64434f2d35"},
-    {"k0fylgHIxtf","cXSYrTkROvfy1gdL1367","60dc0cd54c5d6487c52590dbf9cf99dc"},
-    {"k0fylgHIxtf","nf2rgWJmA7yksTpNo0rx","7358d5ca944aca8c3ab23f65ae03b6ca"},
-    {"k0fylgHIxtf","rh7HGhTsVshBnStftjSj","4e6b02ee01a2c9a99465795456a23a12"},
-    {"k0fylgHIxtf","L5pPr2v3XhTXMPRqEiMW","990e7c2f8fda171ef08e51bc7b749c9f"},
-    {"k0fylgHIxtf","wft9neIKQRBNOqVDfGZO","ffcceac64004e356830e8b5afa34d64b"},
-    {"k0fylgHIxtf","HgfgXunn69X6TYVW86MC","49cce3b86c83ad207b58b3e89edd0fb1"},
-    {"k0fylgHIxtf","IQzXD6Hq10qjuS5RGoUa","a7b5bc9db93a8b28312805809efbf142"},
-    {"k0fylgHIxtf","g8EFVc091RtVbZYXBDA8","e6576b8f5bf99122dbe546d6dd815295"},
-    {"k0fylgHIxtf","uqR65BYZ9W0nTCNDQ99B","78f9d0ff3a2c38d98c6790e80d2b7503"},
-    {"k0fylgHIxtf","dv5ekke8a4W8alsFj4EP","fbf95f38af17ba59e138b84e9d82f25f"},
-    {"k0fylgHIxtf","PfVXdsz9qM3PV1VRNlId","d41c98baf630952cdafc722b55117195"},
-    {"k0fylgHIxtf","IHhf6o7KKncTHcJ5aJrJ","22489f6c4b5ee5b0d6d13139e1425f52"},
-    {"k0fylgHIxtf","DBPbVl2D55365IWq3FLf","fc891df8ee62d5a863319d7c86b488e5"},
-    {"k0fylgHIxtf","TzbD4yYm94wyxSaVe4FO","2eb5ffcb4616bd0359e4901959960311"},
-    {"k0fylgHIxtf","X3s3eh1RmZxcqle8Srgk","ae5cb336e0b8544e4b8bfb20f7a8b69d"},
-    {"k0fylgHIxtf","XynVQzC3nJXvGatZi9qu","d52ecdb6223999cfefda5b55cc6e84f8"},
-    {"k0fylgHIxtf","yw528y8hetwzoAQL3lCq","26652b5fe5dba6cfa6e297634fb22152"},
-    {"k0fylgHIxtf","ABLLSMMKJoGE3g8td4Q8","6ec2f4e82c0e28ae2c3080efe418a087"},
-    {"k0fylgHIxtf","rlRpRqDkYmBKVtB118ZQ","356535e97113046a2ad8100d781dcdcb"},
-    {"k0fylgHIxtf","3rH4Xm2VPpY3hvdnRmz5","4294db174d74952bbea3874082e994ac"},
-    {"k0fylgHIxtf","XBXEx8bMBMSSozSW1r8f","273977e0a1b2675f1b5dc3a71cca7de0"},
-    {"k0fylgHIxtf","nr9p2rEdVcgOBQMHOwti","4c9d8feb0a7c72de2bb8fae83803fc66"},
-    {"k0fylgHIxtf","4IfaXBlW5MxcP4E8YGNm","e60aff7a0c0298d7a9be5585d9e43d80"},
-    {"k0fylgHIxtf","hYYACikOwD6jFAWKPMEu","749e90eba2c4cab0423ff737c5f5c752"},
-    {"k0fylgHIxtf","xmquOmNsjIGt27OmsBLb","39065e1a490182c443991801a5bd3e77"},
-    {"k0fylgHIxtf","UVA6g6saib9NWUSA6Fqz","dd67c177f7f5733b8be09b2d23bacaff"},
-    {"k0fylgHIxtf","o9Cq1kaRmkSePB6hi7lr","3cf8a4725240dbf9af1e340d7f813362"},
-    {"k0fylgHIxtf","VDvxutsIxiumzSqiKePe","83500a2d10474e7b89b29a408c7fdee1"},
-    {"k0fylgHIxtf","uzgGHCWSVZTiCgcuu7Jz","5f2d2507797dc9705eca00fd69ebee77"},
-    {"k0fylgHIxtf","C2RgjRbsKhnnbLjF9wNn","116e66469bfd943a573fef4ac766471b"},
-    {"k0fylgHIxtf","zThHtVyUMxxJ0gznBEIf","fa832fffec38b3802104429b6c5e5b8e"},
-    {"k0fylgHIxtf","KBgNa5DTIoxp7XcX8bEp","a90738ead848d546e22981dd27ff0023"},
-    {"k0fylgHIxtf","1Yy7iQtcEv2x9mr9C89A","e2fb444c34c126c38a75ee2ab7ea9332"},
-    {"k0fylgHIxtf","Qx6cf1ovMo6vYJrPKjbU","1064cd5f6a6212087132c164e81051d7"},
-    {"k0fylgHIxtf","cnjICfSjTWrl1BlChFMZ","5735037fddcd16987eb48f67309b3e39"},
-    {"k0fylgHIxtf","ipgXnRpFwN45w1rvTAnv","00562d3204da271d209f533ca51b9b93"},
-    {"k0fylgHIxtf","P46dlX3QV95tgtM7mIdi","8a2603e127903994dda0fdaed1dca4be"},
-    {"k0fylgHIxtf","dK10dXFMvUgZU0f8tQEq","f13275b8c5dc2ac63f795311bf045efe"},
-    {"k0fylgHIxtf","NvI6NuHuraqRIjM9dpJz","fd2c143be598cec8a9dd52ac874ad534"},
-    {"k0fylgHIxtf","cxmzJioMICP4CqqLvtOR","620cb21ba643d4a0fa06b62eeaa89ba6"},
-    {"k0fylgHIxtf","FodgQNQ2wDqVGKkX5fRN","d726111042545c9664295a177a0006e7"},
-    {"k0fylgHIxtf","SUHZ5Z4vRTF838437Qcn","cf25dd2a4a8e1672f43efaee28c3a65e"},
-    {"k0fylgHIxtf","QnHh7zokDib5gNNQhzSt","4e9c63405894389156b5d3e2456e84d3"},
-    {"k0fylgHIxtf","zqt495DiQ6KrTSp31RHH","31ad0d9a75137468406e00269fbae271"},
-    {"k0fylgHIxtf","4umxtyJE2po0QtHpm4PI","c44d88af0dd48f84f88428ff70f87011"},
-    {"k0fylgHIxtf","hFkjoNE5vO5UwybECRZQ","4f9d996e5e16b3253803ea353e3856d8"},
-    {"k0fylgHIxtf","SHWIoj9BK3gruUFrOiGa","76c3e4b0dccf62e14d0d940c45b1d9bc"},
-    {"k0fylgHIxtf","xyh7IVWwzTnZL6meeT6S","303243102695d67aa3ef686b766eaf97"},
-    {"k0fylgHIxtf","HRG7JiNpl1MbJCfUVT0t","dab099a0c6c09f36f4682edb7c4a842b"},
-    {"k0fylgHIxtf","mYSSh6MbbfBZbIDHVgh8","6a0433ffed05a8401806ffeb8bce82dc"},
-    {"k0fylgHIxtf","WHJuYsUkUslvF1Ceu5Cf","2f44aa953e3833a48416e29e919c8280"},
-    {"k0fylgHIxtf","p9W7EP7Z01gpjvfDDegi","f159fcae8004aeb9d75666435a52cdd6"},
-    {"k0fylgHIxtf","aXGvuJgrVlr790seIBVU","21e890ca9c99f41f9bbd61c4e3fa891f"},
-    {"k0fylgHIxtf","xrsckiaziMZddVa7NvBO","38e2bd3117a855216c949f9bc747c1dc"},
-    {"k0fylgHIxtf","1Ww3elXjuvtnYLk0phc4","d6165749303ec304dfbdb244bc5f3351"},
-    {"k0fylgHIxtf","1WZQ1KLiHsiNeGmi3h8I","fda77d6461753fe4fb6966b4ae4ab300"},
-    {"k0fylgHIxtf","nicDK960oN5Dorrhj3PJ","ce5c660e37f9cf3603dc61e3a2565e7c"},
-    {"k0fylgHIxtf","Ac99AzBHm7CkWVoJfNjt","a2171c4c9c6ddc07581c986e18c34c87"},
-    {"k0fylgHIxtf","aHxVUSlrdUG1LMgdygpY","5aa05d8fa5f81af76e423aa4b3c8c6b2"},
-    {"k0fylgHIxtf","nSrETXRiHpMmM3edC3Hz","703232882af3fa75046a91e9f5167c06"},
-    {"k0fylgHIxtf","04TbeMspbqi2GpyrRIOT","bee26879344bb6cfa3427f0b097451af"},
-    {"k0fylgHIxtf","ryDmNxlNxpSQmREH5I4A","464c71f02e4f9aeb3ec3c2dfa27cc952"},
-    {"k0fylgHIxtf","MZhtg523AozGHsBaCMXv","0091947b707c227d94083b00e0161e79"},
-    {"k0fylgHIxtf","o4mh92IIgBG1rpCCjZBf","36798f71152ded33e9c892543d80dff7"},
-    {"k0fylgHIxtf","sjdqivlwEJAfvzIc1b4f","bbb94f8bc26daddd16fa0e255c3bde97"},
-    {"k0fylgHIxtf","HUTnVwKKCxYzR4PZJiPC","bcc0ed71e12699715d0848279b1165fc"},
-    {"k0fylgHIxtf","bzfIMCf2s1SBaigiPU8O","91b40243ca84dfffb124f66629648c68"},
-    {"k0fylgHIxtf","ncj1o3iUELzSUdMluxaF","8b495673ab867614e1ae97bc2519e547"},
+    {"k0fylgHIxtf", "STELC7xlGNx6lQaiYLDb", "fa518c234b3c976a8a1a88fb53fcae1b"},
+    {"k0fylgHIxtf", "PDLF2oThxepT1HJ9f6YX", "c09f4fd01befeb39e7f0b84fe331410d"},
+    {"k0fylgHIxtf", "4NUTw7FyK2tAPTm3MBcj", "64589bdb34bed3561d03633e8fc22fe2"},
+    {"k0fylgHIxtf", "KbdLOgi6yHRaLfHIfD0V", "8e42f61bbc6f9675ebeff85b95674fa0"},
+    {"k0fylgHIxtf", "K138EmnxpqGh7IikbeVE", "a2c1612675051ccda0cf4892cf3e4734"},
+    {"k0fylgHIxtf", "aweV6bsCdAicSrXFANLV", "27e7ebda586f488e8114664cdd9f059b"},
+    {"k0fylgHIxtf", "PIxRd3GJ9umMxhYwm70p", "d30a3fbc5e3574f112e62e5110da81c8"},
+    {"k0fylgHIxtf", "hQ17eAmXJnCgqElBvgWL", "d10370e6c134d3cf3272717e79cfee18"},
+    {"k0fylgHIxtf", "HrMlLGcb5h9wQVZp2qvr", "d9b5a08a9ca1b602c8f9d1dd2b0901af"},
+    {"k0fylgHIxtf", "ZUz5PedZfijGRZjVCslk", "b5d7e90d8cb8cf489dd3ef7983623671"},
+    {"k0fylgHIxtf", "38ZaP4FLjgLJV4dCRgkT", "53cf08561b70fa16519fc8c025683abb"},
+    {"k0fylgHIxtf", "v2t9gZyPtlzL9NUDfXRs", "fb1adb9b37659ede563d5cf22fb653b7"},
+    {"k0fylgHIxtf", "ZcdSaS9A9aZJuajRG1B8", "bce67d353c1d946a041ce963236d1107"},
+    {"k0fylgHIxtf", "L8ELhObGJamGKNZGrQiH", "87a9649a693a351406e822c904a60028"},
+    {"k0fylgHIxtf", "FVSo1qCeqWsqxRtVLzGO", "7381e2177376f476296ff9bf485bda9b"},
+    {"k0fylgHIxtf", "KIheu2EWOjlsUKrgUtex", "473cd973de21296283297bc7d32e30d7"},
+    {"k0fylgHIxtf", "PmEOq7WEwqNbORsJxa29", "7391167dc959236631289db87a179338"},
+    {"k0fylgHIxtf", "q7OfPISSen0cvXs0tLdc", "95f6b01b527f34124eaaf7b563bf5ce8"},
+    {"k0fylgHIxtf", "Ibkwsppzd9w1zMuauUJh", "600edcc7059c4905bad5f4fec6f061ac"},
+    {"k0fylgHIxtf", "dK8shfhGG2QOF7Klpc3v", "1590ff187682a4618794e47744f0bcb9"},
+    {"k0fylgHIxtf", "Xlqyht1dzXAAHteTTROH", "d5b989e983b11dba264978e4589657df"},
+    {"k0fylgHIxtf", "wRxTYf7t1EbHTARhfZRP", "9030963a196ebc2cdfd966db7f41c3e5"},
+    {"k0fylgHIxtf", "wBWLwC8rP4KWeGkwg4xX", "250aaf26ad00a712a2456ebe36d13635"},
+    {"k0fylgHIxtf", "rPJ2CMb31hc9sv9Td1dC", "9664be3ac3e5affbc666254be4be7ed0"},
+    {"k0fylgHIxtf", "f7ljBEzkeZI9BrNSjndy", "6707dc8abdd6b1d74fcf79491e28e9c3"},
+    {"k0fylgHIxtf", "NkfvNPMCgRUZUO0PUCPn", "df66ef5a18067691d6b5eb1f942bf85c"},
+    {"k0fylgHIxtf", "CHoBXH6kOqQFlt6RKFbr", "43ff3fd22a44ba296dec179e9426acf8"},
+    {"k0fylgHIxtf", "HFZGtjQAHmkXvAERHQqt", "692e85353f7e30c25b9beecf03d4077b"},
+    {"k0fylgHIxtf", "d1j57hxg9LGO54qZEgeR", "df24b5cd07e3cf68c95d8dca5c8d12a5"},
+    {"k0fylgHIxtf", "QyX9DLZRf3tQcf7bVO6s", "21ff0d0b46cf6413288831eadf66d619"},
+    {"k0fylgHIxtf", "sHiOljDDt8yq9ibpsC6f", "31a90fbb2b6ed33d51c0f480c3ffdb5e"},
+    {"k0fylgHIxtf", "I9cdCrY0FvrjvAzVzgfk", "069794acf3a7eb9aec4ace64434f2d35"},
+    {"k0fylgHIxtf", "cXSYrTkROvfy1gdL1367", "60dc0cd54c5d6487c52590dbf9cf99dc"},
+    {"k0fylgHIxtf", "nf2rgWJmA7yksTpNo0rx", "7358d5ca944aca8c3ab23f65ae03b6ca"},
+    {"k0fylgHIxtf", "rh7HGhTsVshBnStftjSj", "4e6b02ee01a2c9a99465795456a23a12"},
+    {"k0fylgHIxtf", "L5pPr2v3XhTXMPRqEiMW", "990e7c2f8fda171ef08e51bc7b749c9f"},
+    {"k0fylgHIxtf", "wft9neIKQRBNOqVDfGZO", "ffcceac64004e356830e8b5afa34d64b"},
+    {"k0fylgHIxtf", "HgfgXunn69X6TYVW86MC", "49cce3b86c83ad207b58b3e89edd0fb1"},
+    {"k0fylgHIxtf", "IQzXD6Hq10qjuS5RGoUa", "a7b5bc9db93a8b28312805809efbf142"},
+    {"k0fylgHIxtf", "g8EFVc091RtVbZYXBDA8", "e6576b8f5bf99122dbe546d6dd815295"},
+    {"k0fylgHIxtf", "uqR65BYZ9W0nTCNDQ99B", "78f9d0ff3a2c38d98c6790e80d2b7503"},
+    {"k0fylgHIxtf", "dv5ekke8a4W8alsFj4EP", "fbf95f38af17ba59e138b84e9d82f25f"},
+    {"k0fylgHIxtf", "PfVXdsz9qM3PV1VRNlId", "d41c98baf630952cdafc722b55117195"},
+    {"k0fylgHIxtf", "IHhf6o7KKncTHcJ5aJrJ", "22489f6c4b5ee5b0d6d13139e1425f52"},
+    {"k0fylgHIxtf", "DBPbVl2D55365IWq3FLf", "fc891df8ee62d5a863319d7c86b488e5"},
+    {"k0fylgHIxtf", "TzbD4yYm94wyxSaVe4FO", "2eb5ffcb4616bd0359e4901959960311"},
+    {"k0fylgHIxtf", "X3s3eh1RmZxcqle8Srgk", "ae5cb336e0b8544e4b8bfb20f7a8b69d"},
+    {"k0fylgHIxtf", "XynVQzC3nJXvGatZi9qu", "d52ecdb6223999cfefda5b55cc6e84f8"},
+    {"k0fylgHIxtf", "yw528y8hetwzoAQL3lCq", "26652b5fe5dba6cfa6e297634fb22152"},
+    {"k0fylgHIxtf", "ABLLSMMKJoGE3g8td4Q8", "6ec2f4e82c0e28ae2c3080efe418a087"},
+    {"k0fylgHIxtf", "rlRpRqDkYmBKVtB118ZQ", "356535e97113046a2ad8100d781dcdcb"},
+    {"k0fylgHIxtf", "3rH4Xm2VPpY3hvdnRmz5", "4294db174d74952bbea3874082e994ac"},
+    {"k0fylgHIxtf", "XBXEx8bMBMSSozSW1r8f", "273977e0a1b2675f1b5dc3a71cca7de0"},
+    {"k0fylgHIxtf", "nr9p2rEdVcgOBQMHOwti", "4c9d8feb0a7c72de2bb8fae83803fc66"},
+    {"k0fylgHIxtf", "4IfaXBlW5MxcP4E8YGNm", "e60aff7a0c0298d7a9be5585d9e43d80"},
+    {"k0fylgHIxtf", "hYYACikOwD6jFAWKPMEu", "749e90eba2c4cab0423ff737c5f5c752"},
+    {"k0fylgHIxtf", "xmquOmNsjIGt27OmsBLb", "39065e1a490182c443991801a5bd3e77"},
+    {"k0fylgHIxtf", "UVA6g6saib9NWUSA6Fqz", "dd67c177f7f5733b8be09b2d23bacaff"},
+    {"k0fylgHIxtf", "o9Cq1kaRmkSePB6hi7lr", "3cf8a4725240dbf9af1e340d7f813362"},
+    {"k0fylgHIxtf", "VDvxutsIxiumzSqiKePe", "83500a2d10474e7b89b29a408c7fdee1"},
+    {"k0fylgHIxtf", "uzgGHCWSVZTiCgcuu7Jz", "5f2d2507797dc9705eca00fd69ebee77"},
+    {"k0fylgHIxtf", "C2RgjRbsKhnnbLjF9wNn", "116e66469bfd943a573fef4ac766471b"},
+    {"k0fylgHIxtf", "zThHtVyUMxxJ0gznBEIf", "fa832fffec38b3802104429b6c5e5b8e"},
+    {"k0fylgHIxtf", "KBgNa5DTIoxp7XcX8bEp", "a90738ead848d546e22981dd27ff0023"},
+    {"k0fylgHIxtf", "1Yy7iQtcEv2x9mr9C89A", "e2fb444c34c126c38a75ee2ab7ea9332"},
+    {"k0fylgHIxtf", "Qx6cf1ovMo6vYJrPKjbU", "1064cd5f6a6212087132c164e81051d7"},
+    {"k0fylgHIxtf", "cnjICfSjTWrl1BlChFMZ", "5735037fddcd16987eb48f67309b3e39"},
+    {"k0fylgHIxtf", "ipgXnRpFwN45w1rvTAnv", "00562d3204da271d209f533ca51b9b93"},
+    {"k0fylgHIxtf", "P46dlX3QV95tgtM7mIdi", "8a2603e127903994dda0fdaed1dca4be"},
+    {"k0fylgHIxtf", "dK10dXFMvUgZU0f8tQEq", "f13275b8c5dc2ac63f795311bf045efe"},
+    {"k0fylgHIxtf", "NvI6NuHuraqRIjM9dpJz", "fd2c143be598cec8a9dd52ac874ad534"},
+    {"k0fylgHIxtf", "cxmzJioMICP4CqqLvtOR", "620cb21ba643d4a0fa06b62eeaa89ba6"},
+    {"k0fylgHIxtf", "FodgQNQ2wDqVGKkX5fRN", "d726111042545c9664295a177a0006e7"},
+    {"k0fylgHIxtf", "SUHZ5Z4vRTF838437Qcn", "cf25dd2a4a8e1672f43efaee28c3a65e"},
+    {"k0fylgHIxtf", "QnHh7zokDib5gNNQhzSt", "4e9c63405894389156b5d3e2456e84d3"},
+    {"k0fylgHIxtf", "zqt495DiQ6KrTSp31RHH", "31ad0d9a75137468406e00269fbae271"},
+    {"k0fylgHIxtf", "4umxtyJE2po0QtHpm4PI", "c44d88af0dd48f84f88428ff70f87011"},
+    {"k0fylgHIxtf", "hFkjoNE5vO5UwybECRZQ", "4f9d996e5e16b3253803ea353e3856d8"},
+    {"k0fylgHIxtf", "SHWIoj9BK3gruUFrOiGa", "76c3e4b0dccf62e14d0d940c45b1d9bc"},
+    {"k0fylgHIxtf", "xyh7IVWwzTnZL6meeT6S", "303243102695d67aa3ef686b766eaf97"},
+    {"k0fylgHIxtf", "HRG7JiNpl1MbJCfUVT0t", "dab099a0c6c09f36f4682edb7c4a842b"},
+    {"k0fylgHIxtf", "mYSSh6MbbfBZbIDHVgh8", "6a0433ffed05a8401806ffeb8bce82dc"},
+    {"k0fylgHIxtf", "WHJuYsUkUslvF1Ceu5Cf", "2f44aa953e3833a48416e29e919c8280"},
+    {"k0fylgHIxtf", "p9W7EP7Z01gpjvfDDegi", "f159fcae8004aeb9d75666435a52cdd6"},
+    {"k0fylgHIxtf", "aXGvuJgrVlr790seIBVU", "21e890ca9c99f41f9bbd61c4e3fa891f"},
+    {"k0fylgHIxtf", "xrsckiaziMZddVa7NvBO", "38e2bd3117a855216c949f9bc747c1dc"},
+    {"k0fylgHIxtf", "1Ww3elXjuvtnYLk0phc4", "d6165749303ec304dfbdb244bc5f3351"},
+    {"k0fylgHIxtf", "1WZQ1KLiHsiNeGmi3h8I", "fda77d6461753fe4fb6966b4ae4ab300"},
+    {"k0fylgHIxtf", "nicDK960oN5Dorrhj3PJ", "ce5c660e37f9cf3603dc61e3a2565e7c"},
+    {"k0fylgHIxtf", "Ac99AzBHm7CkWVoJfNjt", "a2171c4c9c6ddc07581c986e18c34c87"},
+    {"k0fylgHIxtf", "aHxVUSlrdUG1LMgdygpY", "5aa05d8fa5f81af76e423aa4b3c8c6b2"},
+    {"k0fylgHIxtf", "nSrETXRiHpMmM3edC3Hz", "703232882af3fa75046a91e9f5167c06"},
+    {"k0fylgHIxtf", "04TbeMspbqi2GpyrRIOT", "bee26879344bb6cfa3427f0b097451af"},
+    {"k0fylgHIxtf", "ryDmNxlNxpSQmREH5I4A", "464c71f02e4f9aeb3ec3c2dfa27cc952"},
+    {"k0fylgHIxtf", "MZhtg523AozGHsBaCMXv", "0091947b707c227d94083b00e0161e79"},
+    {"k0fylgHIxtf", "o4mh92IIgBG1rpCCjZBf", "36798f71152ded33e9c892543d80dff7"},
+    {"k0fylgHIxtf", "sjdqivlwEJAfvzIc1b4f", "bbb94f8bc26daddd16fa0e255c3bde97"},
+    {"k0fylgHIxtf", "HUTnVwKKCxYzR4PZJiPC", "bcc0ed71e12699715d0848279b1165fc"},
+    {"k0fylgHIxtf", "bzfIMCf2s1SBaigiPU8O", "91b40243ca84dfffb124f66629648c68"},
+    {"k0fylgHIxtf", "ncj1o3iUELzSUdMluxaF", "8b495673ab867614e1ae97bc2519e547"},
 
 };
 
-LicensePair ProductLicense::getLicense()
-{
+LicensePair ProductLicense::getLicense() {
     counter++;
-    if (counter >= max)
-    {
+    if (counter >= max) {
         counter = 0;
     }
     return license[counter];
 }
-LicensePair ProductLicense::getTestLicense()
-{
+LicensePair ProductLicense::getTestLicense() {
     testcounter++;
-    if (testcounter >= testmax)
-    {
+    if (testcounter >= testmax) {
         testcounter = 0;
     }
     return testlicense[testcounter];
 }
-ProductLicense::ProductLicense() : counter(0), testcounter(0)
-{
+ProductLicense::ProductLicense() : counter(0), testcounter(0) {
     max = sizeof(license) / sizeof(LicensePair);
     testmax = sizeof(testlicense) / sizeof(LicensePair);
+    loadOtaDeviceKeys("IOT导出测试证书.csv");
+}
+void ProductLicense::loadOtaDeviceKeys(const QString& filePath) {
+    QFile otaFile(filePath);
+    if (!otaFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "无法打开ota证书文件";
+        return;
+    }
+
+    QTextStream in(&otaFile);
+    QString otaHeader = in.readLine();           // 读取标题行
+    QStringList otaKeys = otaHeader.split(",");  // 根据实际 CSV 格式修改分隔符
+
+    while (!in.atEnd()) {
+        QString otaLine = in.readLine();
+        QStringList otaValues = otaLine.split(",");
+
+        if (otaValues.size() == otaKeys.size()) {
+            QMap<QString, QString> otaDevice;
+            for (int i = 0; i < otaKeys.size(); ++i) {
+                otaDevice[otaKeys[i]] = otaValues[i];
+            }
+            otaDeviceList.append(otaDevice);
+
+        }
+    }
+
+    otaFile.close();
+}
+
+void ProductLicense::printOtaDeviceKeys() {
+    for (const auto& otaDevice : otaDeviceList) {
+        qDebug() << "DeviceName:" << otaDevice["DeviceName"] << "DeviceSecret:" << otaDevice["DeviceSecret"]
+                 << "ProductKey:" << otaDevice["ProductKey"];
+    }
+}
+LicensePair ProductLicense::getNextOtaDevice() {
+    QMap<QString, QString> otaDevice;
+
+    LicensePair licensePair;  // 创建一个 LicensePair 对象
+
+    if (otaDeviceList.isEmpty()) {
+        return licensePair;  // 返回一个空的 LicensePair
+    }
+
+    otaDevice = otaDeviceList[otaDeviceIndex];
+
+    // 将 QMap 中的数据赋值给 LicensePair 对象
+    licensePair.product_name = otaDevice["ProductKey"];     // 假设 ProductKey 对应 product_name
+    licensePair.device_key = otaDevice["DeviceName"];       // 假设 DeviceName 对应 device_key
+    licensePair.device_secret = otaDevice["DeviceSecret"];  // 假设 DeviceSecret 对应 device_secret
+
+    // 递增索引，并在超出范围时重置为 0
+    otaDeviceIndex = (otaDeviceIndex + 1) % otaDeviceList.size();
+
+    return licensePair;  // 返回 LicensePair 对象
 }

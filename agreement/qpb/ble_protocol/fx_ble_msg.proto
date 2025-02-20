@@ -52,6 +52,8 @@ enum CommandId {
     SET_PROFESSIONAL_INFO = 0x15;
     GET_POWER_DETAIL_INFO = 0x16;
     SET_POWER_DETAIL_INFO = 0x17;
+    GET_LANGUAGE_INFO = 0x18;
+    SET_LANGUAGE_INFO = 0x19;
 
     // User Service 0x20
     GET_USER_INFO = 0x21;
@@ -62,6 +64,8 @@ enum CommandId {
     SET_LIGHT_CUSTOM_INFO = 0x26;
     GET_ORAL_ARCHIVES = 0x27;
     SET_ORAL_ARCHIVES = 0x28;
+    BACKUP_USER_DATA = 0x29;
+    RESTORE_USER_DATA = 0x2A;
 
     // Algorithm Service 0x30
     ALGORITHM_PRO = 0x31;
@@ -92,6 +96,7 @@ enum CommandId {
     ROTAS_RESULT_RSP = 0x56;
     FILE_SEND_DONE_RSP = 0x57;
     MULTI_FILE_STATUS_REQ = 0x58;
+    FILE_HANDLE_INFO = 0x59;
 
     // Debug Service 0x60
     GET_DEBUG_INFO = 0x61;
@@ -212,6 +217,7 @@ enum ErrorCode {
     DOWNLOADING = 15;
     WIFI_DISABLE = 16;
     PROTOCOL_ID_ERROR = 17;
+    ERROR_LOW_BATTERY = 18;
 }
 
 enum DeviceInfoItem {
@@ -252,6 +258,8 @@ enum DeviceInfoItem {
     MUSIC_VARIATION_MODEL_INFO = 34;
     FILL_BRUSH_SWITCH = 35;
     NOVICE_MODEL_INFO = 36;
+    DAY_NIGHT_MODEL_INFO = 37;
+    CARE_MODEL_INFO = 38;
 }
 
 enum DebugInfoItem {
@@ -298,6 +306,9 @@ enum RemindType {
     INTO_MOUTH_CHECK = 21;
     INTO_MOUTH_STATE = 22;
     CAMERA_AVAILABLE_STATE = 23;
+    BATTERY_PERCENT_VALUE = 24;
+    REGULAR_REMINDER = 25;
+    BRUSH_CLEAN_OR_REGULAR = 26;
 }
 
 enum ChargingState {
@@ -320,11 +331,17 @@ enum ProductId {
     QF1 = 0x21;
     S10 = 0x22;
     Q20 = 0x23;
+    Q30 = 0x24;
     Y10 = 0x31;
     Y10_PRO = 0x32;
     Y20 = 0x33;
     Y20_PRO = 0x34;
+    Y21 = 0x35;
+    Y25 = 0x36;
+    P20_PROS = 0x41;
     P20_PRO = 0x42;
+    P30_PRO = 0x43;
+    P30_Ultra = 0x44;
     P3A = 0x55;
     F1 = 0x56;
     SDC_01 = 0x57;
@@ -370,12 +387,18 @@ enum ProtocolId {
     V2146 = 2146;
     V2147 = 2147;
     V2148 = 2148;
+    V2149 = 2149;
     V2151 = 2151;
+    V2152 = 2152;
     V2161 = 2161;
     V2162 = 2162;
     V2163 = 2163;
     V2164 = 2164;
+    V2165 = 2165;
     V2171 = 2171;
+    V2172 = 2172;
+    V2173 = 2173;    
+    V2200 = 2200;
 }
 
 enum BrushHandHabit {
@@ -510,6 +533,11 @@ enum BrushSide {
     LEFT_DOWN_OUT_F1 = 13;
     LEFT_DOWN_IN_F2 = 14;
     LEFT_DOWN_MIDDLE_F3 = 15;
+    MIDDLE_UP_MIDDLE_B3 = 16;
+    MIDDLE_DOWN_MIDDLE_E3 = 17;
+    LEFT_OUT = 18;
+    MIDDLE_OUT = 19;
+    RIGHT_OUT = 20;
     ALL_SIDE = 100;
 }
 
@@ -532,6 +560,7 @@ enum PowerState {
     FLIGHT_MODE = 3;
     NIGHT_UPGRADE = 4;
     ALARM_DISCONNECT_BLE = 5;
+    WIFI_STATE = 6;
 }
 
 enum SwitchState {
@@ -576,6 +605,7 @@ enum ModelState {
     NON_MOVE = 2;
     NON_DELETABLE_MOVE = 3;
     NON_DISPLAY = 4;
+    NON_DELETABLE_ITEM = 5;
 }
 
 enum BrushingModel {
@@ -598,6 +628,8 @@ enum BrushingModel {
     MUSIC_PURE_ENJOY = 16;
     MUSIC_VARIATION = 17;
     NOVICE_ADAPTATION = 18;
+    DAY_NIGHT_EFFECTS = 19;
+    CARE = 20;
 }
 
 enum BrushingPower {
@@ -704,6 +736,21 @@ enum LightType {
     OFFICIAL_LIGHT = 1;
     PUSH_LIGHT = 2;
     CUSTOM_LIGHT = 3;
+}
+
+enum BackupCode {
+    NO_BACKUP = 0;
+    SETTINGS = 1;
+    AI_LEARNING = 2;
+    ORAL_ARCHIVES = 3;
+}
+
+enum WifiState {
+    NO_STATA = 0;
+    DISABLE = 1;
+    NO_CONFIG = 2;
+    NO_CONNECT = 3;
+    CONNECTED = 4;
 }
 
 //############################# 0x40 Audio/Video Linkage Service Start ###########################
@@ -818,6 +865,7 @@ enum RotaFileStatus {
     ROTA_STOP = 2;
     ROTA_RESET = 3;
     FORCE_START = 4;
+    GET_FILE_START = 5;
 }
 
 enum RotasUpdateFile {
@@ -832,6 +880,12 @@ enum RotasUpdateFile {
     MOTOR_RESOURCE = 8;
     WIFI_LIGHT_CUSTOM = 9;
     BLE_FIRMWARE = 10;
+    BACKUP_SETTING = 11;
+    BACKUP_AI_LEARNING = 12;
+    RESTORE_SETTING = 13;
+    RESTORE_AI_LEARNING = 14;
+    BACKUP_ORAL_ARCHIVES = 15;
+    RESTORE_ORAL_ARCHIVES = 16;
 }
 
 enum RotaErrorCode {
@@ -931,6 +985,8 @@ message DataPackage {
         LightCustomInfo set_light_custom_info = 0x26;
         OralArchivesData get_oral_archives = 0x27;
         OralArchivesData set_oral_archives = 0x28;
+        UserBackupData backup_user_data = 0x29;
+        UserBackupData restore_user_data = 0x2A;
 
         // Algorithm Service 0x30
         AlgorithmPro algorithm_pro = 0x31;
@@ -961,6 +1017,7 @@ message DataPackage {
         RotasResultRsp rota_result_rsp = 0x56;
         RotasResultRsp file_send_done_rsp = 0x57;
         MultiFileStatusReq multi_file_status_req = 0x58;
+        FileHandleInfo file_handle_info = 0x59;
 
         // Debug Service 0x60
         DebugInfo get_debug_info = 0x61;
@@ -976,6 +1033,7 @@ message DataPackage {
         CustomPlanGroupInfo get_custom_group_info = 0x75;
         CustomPlanGroupInfo set_custom_group_info = 0x76;
     }
+    ErrorCode command_result = 0x100;
 }
 
 message ConnectPro {
@@ -987,7 +1045,7 @@ message ConnectPro {
     uint32 firmware_id = 6;
     uint32 firmware_type = 7;
     HardwareId hardware_id = 8;
-    bytes sn_id = 9 [(nanopb).max_size= 15];
+    bytes sn_id = 9 [(nanopb).max_size= 64];
     StatementType agree_statement_type = 10;
     uint32 ui_res_id = 11;
     UpgradeType upgrade_type = 12;
@@ -995,6 +1053,7 @@ message ConnectPro {
     repeated uint32 voice_res_id = 14;
     string device_id = 15 [(nanopb).max_size= 15];
     uint32 motor_res_id = 16;
+    uint32 sku_id = 17;
 }
 
 message ServicePro {
@@ -1094,7 +1153,7 @@ message ModelInfo {
 }
 
 message SnInfo {
-    bytes sn_id = 1 [(nanopb).max_size= 15];
+    bytes sn_id = 1 [(nanopb).max_size= 64];
     ErrorCode setting_result = 2;
 }
 
@@ -1218,7 +1277,8 @@ message LightRGBInfo {
 
 message OralArchivesData {
     ApplianceType appliance_type = 1;
-    repeated ProblemTeethData oral_info_list = 2 [(nanopb).max_count = 28];
+    repeated ProblemTeethData oral_info_list = 2 [(nanopb).max_count = 8];
+    ErrorCode setting_result = 100;
 }
 
 message ProblemTeethData {
@@ -1230,6 +1290,41 @@ message ProblemTeethData {
 message ProblemTeethInfo {
     TimeSyncType setting_type = 1;
     TeethNumber teeth_facet = 2;
+}
+
+message UserBackupData {
+    uint32 sync_type = 1; // TimeSyncType
+    uint32 backup_timestamp = 2;
+    bool is_last_backup = 3;
+    uint32 total_size = 4;
+    repeated UserBackupItem backup_item_list = 5 [(nanopb).max_count = 5];
+
+    ErrorCode setting_result = 100;
+}
+
+message UserBackupItem {
+    oneof backup_data {
+        BackupFileInfo backup_file_info = 1;
+        BackupConfigInfo backup_config_info = 2;
+    }
+}
+
+message BackupFileInfo {
+    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:其他扩展
+    string file_name = 2 [(nanopb).max_size= 32];
+    uint32 file_size = 3;
+    uint32 file_id = 4;
+    string file_url = 5 [(nanopb).max_size= 128];
+}
+
+message BackupConfigInfo {
+    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:其他扩展
+    oneof config_data { // 配置项备份数据：1设置项使用settingV0
+        bytes byte_data = 10 [(nanopb).max_size= 64];
+        string string_data = 11 [(nanopb).max_size= 64];
+        uint32 uint32_data = 12;
+        uint64 uint64_data = 13;
+    }
 }
 
 message AlgorithmPro {
@@ -1265,6 +1360,7 @@ message AlgorithmRealTime {
     uint32 brushing_coverage = 10;
     oneof algo_data {
         AlgorithmCollect algorithm_collect = 100;
+        bytes all_brushing_coverage = 101 [(nanopb).max_size= 16];
     }
 }
 
@@ -1340,12 +1436,13 @@ message AlgorithmCollect {
     float magnetism_y = 10;
     float magnetism_z = 11;
     int32 horizontal_brush = 12;
-    repeated uint32 area_brush_time = 13 [(nanopb).max_count = 6];
+    repeated uint32 area_brush_time = 13 [(nanopb).max_count = 16];
     int32 gravity_orient = 14;
-    repeated uint32 coverage_rate = 15 [(nanopb).max_count = 6];
+    repeated uint32 coverage_rate = 15 [(nanopb).max_count = 16];
     int32 score = 16;
     BrushingState brushing_state = 17;
     BrushSide brushing_side = 18;
+    repeated int32 algo_remind = 19 [(nanopb).max_count = 2];
 }
 
 message WifiInfo {
@@ -1356,6 +1453,7 @@ message WifiInfo {
     string device_name = 5 [(nanopb).max_size = 32];
     string device_secret = 6 [(nanopb).max_size = 64];
     bytes ip_address = 7 [(nanopb).max_size = 32];
+    string iot_url = 8 [(nanopb).max_size = 128];
 }
 
 message DeviceStateInfo {
@@ -1478,6 +1576,10 @@ message AudioRemindData {
 message AudioRemindState {
     RemindType remind_type = 1;
     SwitchState remind_switch = 2;
+    uint32 select_item = 3;
+    oneof state_value {
+        uint32 type_value = 10;
+    }
 }
 
 //############################# 0x40 Audio/Video Linkage Service End #############################
@@ -1531,6 +1633,11 @@ message RotasResultRsp {
     RotasUpdateFile fileType = 1;
     RotaErrorCode result = 2;
     RotaFileStatus rotaStatus = 3;
+}
+
+message FileHandleInfo {
+    RotasUpdateFile file_type = 1;
+    RotaFileStatus file_state = 2;
 }
 
 //############################# 0x50 Large File ROTA End ###################################
