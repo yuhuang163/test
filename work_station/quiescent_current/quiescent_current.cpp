@@ -151,18 +151,18 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
         bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
 
-        if ((!isAlgoTest || algorithmVersion.contains(data.algo_version)) &&
-            (!isHwTest || hardwareVersion.contains(data.hw_version)) &&
-            (!isPresureTest || pressureSenseVersion.contains(data.presure_version)) &&
-            (!isProductTest || productName.contains(data.product_name)) &&
-            (!isAppProtocolTest || appProtocolVersion.contains(QString::number(data.pb_phone_ver))) &&
-            (!isFactoryProtocolTest || factoryProtocolVersion.contains(QString::number(data.pb_factory_ver))) &&
-            (!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
-            (!isResourceTest || resourceVersion.contains(data.res_version)) &&
-            (!isMotorTest || motorVersion.contains(data.motor_version)) &&
-            (!isImuTest || imuId.contains(QString::number(data.imu_id))) &&
-            (!isBleTest || bleVersion.contains(data.ble_version)) &&
-            (!isCameraTest || camera_id.contains(data.camera_version))) {
+        if ((!isAlgoTest || compareVersions(algorithmVersion, data.algo_version)) &&
+            (!isHwTest || compareVersions(hardwareVersion, data.hw_version)) &&
+            (!isPresureTest || compareVersions(pressureSenseVersion, data.presure_version)) &&
+            (!isProductTest || compareVersions(productName, data.product_name)) &&
+            (!isAppProtocolTest || compareVersions(appProtocolVersion, QString::number(data.pb_phone_ver))) &&
+            (!isFactoryProtocolTest || compareVersions(factoryProtocolVersion, QString::number(data.pb_factory_ver))) &&
+            (!isSoftwareTest || compareVersions(softwareVersion, data.soft_version)) &&
+            (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
+            (!isMotorTest || compareVersions(motorVersion, data.motor_version)) &&
+            (!isImuTest || compareVersions(imuId, QString::number(data.imu_id))) &&
+            (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
+            (!isCameraTest || compareVersions(camera_id, data.camera_version))) {
             base_state = 1;
         } else {
             base_state = 2;
@@ -302,10 +302,11 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
     bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
     bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
 
-    if ((!checkFlash || flashStatus.contains(flashStateStr)) && (!checkIMU || imuStatus.contains(imuStateStr)) &&
-        (!checkAudio || audioState.contains(audioStateStr)) &&
-        (!checkPressure || pressureStatus.contains(pressStateStr)) &&
-        (!checkMagnetic || magneticStatus.contains(magnetStateStr))) {
+    if ((!checkFlash || compareVersions(flashStatus, flashStateStr)) &&
+        (!checkIMU || compareVersions(imuStatus, imuStateStr)) &&
+        (!checkAudio || compareVersions(audioState, audioStateStr)) &&
+        (!checkPressure || compareVersions(pressureStatus, pressStateStr)) &&
+        (!checkMagnetic || compareVersions(magneticStatus, magnetStateStr))) {
         periph_state = 1;
     } else {
         periph_state = 2;

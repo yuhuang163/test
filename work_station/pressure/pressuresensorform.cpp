@@ -785,30 +785,6 @@ void PressureSensorForm::on_macInput_returnPressed() {
     }
 }
 
-void PressureSensorForm::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
-        QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {             // 至少需要两个字段
-                QString sn = fields.at(0);         // 第一个字段是sn
-                QString mac = fields.at(1);        // 第二个字段是mac
-                if (sn == sn_to_search) {          // 检查是否是待检索的sn
-                    ui->macInput->setText(mac);
-                    on_macInput_returnPressed();
-                    qDebug() << "The corresponding mac is: " << mac;
-                    break;
-                }
-            } else {
-                ui->msgEdit->appendPlainText("存在没有逗号分开的" + QString::number(fields.count()) + line);
-            }
-        }
-        file.close();  // 关闭文件
-    }
-}
-
 void PressureSensorForm::on_getMac_returnPressed() {
     testResultTableInit();
     ui->log->clear();
@@ -2149,7 +2125,7 @@ void PressureSensorForm::U7_fixture(State state, int argument) {
 }
 
 void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument) {
-     qDebug() << "ui_msg_show参数" << model << state << argument;
+    qDebug() << "ui_msg_show参数" << model << state << argument;
     switch (model) {
         case MODEL_ID_Y30PS:
             if (state == STATE_CALIB_CH_X) {

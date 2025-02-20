@@ -287,12 +287,10 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
     bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
 
-    if ((!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
-        (!isResourceTest || resourceVersion.contains(data.res_version)) &&
-        (!isBleTest || bleVersion.contains(data.ble_version)) &&
-        (!isMotorTest || motorVersion.contains(data.motor_version)))
-
-    {
+    if ((!isSoftwareTest || compareVersions(softwareVersion, data.soft_version)) &&
+        (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
+        (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
+        (!isMotorTest || compareVersions(motorVersion, data.motor_version))) {
         showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
         showlog("资源版本正确" + QString::fromUtf8(data.res_version));
         showlog("电机版本正确" + QString::fromUtf8(data.motor_version));

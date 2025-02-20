@@ -93,6 +93,8 @@ wifibletest::wifibletest(int index, QWidget* parent) : test_base(parent), ui(new
     testResultTableInit();
 
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+
+    // qDebug() << "比较结果" << compareVersions("101=102", "102");
 }
 
 wifibletest::~wifibletest() { delete ui; }
@@ -193,12 +195,12 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         bool isAgeStatet = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
 
         // 检查软件版本、资源版本和老化状态是否匹配
-        if ((!isSoftwareTest || softwareVersion.contains(data.soft_version)) &&
-            (!isResourceTest || resourceVersion.contains(data.res_version)) &&
-            (!isBleTest || bleVersion.contains(data.ble_version)) &&
-            (!isPresureTest || pressureSenseVersion.contains(data.presure_version)) &&
-            (!isMotorTest || motorVersion.contains(data.motor_version)) &&
-            (!isAgeStatet || ageState.contains(QString::number(data.ageing_state)))) {
+        if ((!isSoftwareTest || compareVersions(softwareVersion, data.soft_version)) &&
+            (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
+            (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
+            (!isPresureTest || compareVersions(pressureSenseVersion, data.presure_version)) &&
+            (!isMotorTest || compareVersions(motorVersion, data.motor_version)) &&
+            (!isAgeStatet || compareVersions(ageState, QString::number(data.ageing_state)))) {
             showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
             showlog("资源版本正确" + QString::fromUtf8(data.res_version));
             showlog("老化状态正确" + QString::number(data.ageing_state));
@@ -234,8 +236,6 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             ui->test_result->setStyleSheet(
                 "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                 "border-radius: 10px; padding: 10px; text-align: center; ");
-
-            // on_stopTest_clicked();
         }
 
         TestItem test;

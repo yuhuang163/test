@@ -842,6 +842,18 @@ void QFreeWork::on_macInput_returnPressed() {
         return;
     } else {
         macAddress = ui->macInput->text();
+        if (ui->just_banding->checkState()) {
+            bandingMacSn(macAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
+            ui->test_result->setText("PASS");
+            ui->test_result->setStyleSheet(
+                "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                "border-radius: 10px; padding: 10px; text-align: center;");
+            ui->getMac->clear();
+            ui->getMac->setFocus();
+
+            return;
+        }
+
         ui->macLabel->setText("蓝牙mac: " + macAddress);
 
         ui->test_result->setText("WAIT");
@@ -1034,15 +1046,13 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
     if (bandingsn == "" || bandingmac == "")
         bandingresult = false;
 
-    QString path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
-    QFileInfo checkPath(path);
-    if (checkPath.exists() && checkPath.isDir()) {
-        path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
-        qDebug() << "The network path exists and is a directory.";
-    } else {
+    // 将网络路径转换为 QFile 能够处理的格式
+    QString path;
+    if (pack.factory == "xwd")
+        path = "\\\\172.30.189.83\\sgpub\\LTC\\MAC\\mac_sn.txt";
+
+    else
         path = "mac_sn.txt";
-        qDebug() << "The network path does not exist or is not a directory.";
-    }
 
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
@@ -1080,15 +1090,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         showlog("保存mac_sn文件失败");
     }
 
-    // QFile file("mac_sn.txt");   // 创建一个文件对象
-    // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
-    // {                                                    //
-    //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
-    //     file.close();                                    // 关闭文件
-    // }
-
-    bandingMacSn_mes(bandingmac, bandingsn);
+    // bandingMacSn_mes(bandingmac, bandingsn);
 }
 
 void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
@@ -1174,8 +1176,6 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             on_macInput_returnPressed();
         }
     }
-
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 void QFreeWork::on_clear_nfc_data_clicked() {
     // TODO: 在此添加控件通知处理程序代码

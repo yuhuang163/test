@@ -563,15 +563,9 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
     // 读取软件版本字符串
     QString Camera_Id = SETTINGS.value("ProductInfo/Camera_Id").toString();
     qDebug() << "Read Camera_Id:" << Camera_Id;
-    QStringList Camera_Id_List = Camera_Id.split('=');
-
-    // 输出软件版本列表
-    for (const QString& version : Camera_Id_List) {
-        qDebug() << "Camera_Id:" << version.trimmed();
-    }
 
     // 检查软件版本、资源版本和老化状态是否匹配
-    if (Camera_Id_List.contains(data.camera_version)) {
+    if (compareVersions(Camera_Id, data.camera_version)) {
         showlog("摄像头id正确" + QString::fromUtf8(data.camera_version));
 
         TestItem test;

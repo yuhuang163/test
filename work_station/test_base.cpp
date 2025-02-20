@@ -768,7 +768,18 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
 void test_base::updateTestData(QVector<TestItem>& testItems) {
     for (auto& item : testItems) {
         QStringList expectedValueList = item.ask.split('=');
-        if (expectedValueList.contains(item.testData)) {
+        bool found = false;
+
+        // 遍历 expectedValueList 列表中的每个元素，检查是否与 item.testData 相等
+        for (const auto& expectedValue : expectedValueList) {
+            if (expectedValue == item.testData) {
+                found = true;
+                break;  // 一旦找到匹配的值，就跳出循环
+            }
+        }
+
+        // 根据 found 标志设置 testResult
+        if (found) {
             item.testResult = passValue;
         } else {
             item.testResult = failValue;
@@ -942,4 +953,19 @@ void test_base::refreshMesState(int state) {
         showlog("mes登录成功");
     else
         showlog("mes登录失败");
+}
+
+
+bool test_base::compareVersions(const QString& versionList, const QString& versionToCompare) {
+    // 按照等号分割第一个版本文本
+    QStringList versionParts = versionList.split("=");
+
+    // 遍历所有的版本，检查是否与要比较的版本相等
+    for (const QString& version : versionParts) {
+        if (version.trimmed() == versionToCompare.trimmed()) {
+            return true;  // 如果有匹配的版本，返回true
+        }
+    }
+
+    return false;  // 如果没有匹配的版本，返回false
 }

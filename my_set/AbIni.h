@@ -53,19 +53,29 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.4.9"
-#define CAMERA_VER "摄像测试工站   V1.3.5"
-#define AGE_VER "老化测试工站   V1.3.2"
-#define MOTOR_VER "电机校准工站   V1.3.2"
-#define QC_VER "静态电流测试   V1.4.9"
+#define DEBUG_VER "电刷产测工具   V1.5.0"
+#define CAMERA_VER "摄像测试工站   V1.3.7"
+#define AGE_VER "老化测试工站   V1.3.4"
+#define MOTOR_VER "电机校准工站   V1.3.3"
+#define QC_VER "静态电流测试   V1.5.0"
 #define SCREEN_VER "屏幕测试工站   V1.2.2"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
-#define SINGLE_VER "信号测试工站   V1.5.2"
-#define FREE_VER "自由测试工站   V1.1.4"
+#define SINGLE_VER "信号测试工站   V1.5.3"
+#define FREE_VER "自由测试工站   V1.1.5"
 #define IMU_VER "IMU校准工站    V1.5.4"
-#define PCBA_VER "电刷板子测试   V1.4.6"
-#define PRESSURE_VER "压感校测工站   V1.3.2"
+#define PCBA_VER "电刷板子测试   V1.4.8"
+#define PRESSURE_VER "压感校测工站   V1.3.4"
 
+
+// [AGE_VER] 修改版本判断比对方式
+// [CAMERA_VER] 修改版本判断比对方式
+// [FREE_VER] 增加绑定功能
+// [MOTOR_VER] 修改版本判断比对方式
+// [PCBA_VER] 修改版本判断比对方式
+// [QC_VER] 修改版本判断比对方式
+// [SINGLE_VER]  修改版本判断比对方式
+// [PRESSURE_VER] 删除冗余代码
+//
 
 // [QC_VER] 静态电流显示异常
 // [AGE_VER] 适配正常手柄的设备skuid
@@ -80,7 +90,7 @@
 // [IMU_VER] 设置每次打开上位机都显示tab的第一页
 // [FREE_VER]  设置每次打开上位机都显示tab的第一页
 // [CAMERA_VER] 设置每次打开上位机都显示tab的第一页,增加对q30的适配，以及配网反初始化，测试完成重启手柄，wifi在总设置里面配置，测试的时候会自动加载wif设备名字密码ip端口，不用重启上位机
-// [AGE_VER] 设置每次打开上位机都显示tab的第一页
+
 
 // [PCBA_VER] 适配新的电机测试功能
 // [DEBUG_VER] 增加v3的ai，允许语音输入控制牙刷。支持ui预览多组动图传输

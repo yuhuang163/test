@@ -21,7 +21,7 @@
      </property>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -562,10 +562,17 @@
         <string>配置页</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
-        <item row="0" column="0">
+        <item row="1" column="0">
          <widget class="QPushButton" name="save_config">
           <property name="text">
            <string>保存当前配置区内容</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="just_banding">
+          <property name="text">
+           <string>是否单纯想要绑定mac_sn文件</string>
           </property>
          </widget>
         </item>

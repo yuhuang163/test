@@ -320,7 +320,6 @@ private slots:
 
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
-    void getMac(QString sn_to_search);
 
     void on_button_get_calib_factor_clicked();
     QString ReadNfcDataProcess();

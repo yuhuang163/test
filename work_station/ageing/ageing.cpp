@@ -42,7 +42,8 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         // 现在可以将 QString 类型的状态用于你的条件判断
         bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
 
-        if ((!checkFlash || flashStatus.contains(flashStateStr))) {
+
+            if ((!checkFlash || compareVersions(flashStatus, flashStateStr))) {
             flash_state = 1;
         } else {
             flash_state = 2;
