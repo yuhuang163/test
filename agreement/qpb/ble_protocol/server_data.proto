@@ -38,6 +38,7 @@ message RequestPackage {
         ProfessionalModelInfoVO professional_info_vo = 116;
         LightCustomInfoVO light_info_list_vo = 117;
         PushConfigVO push_config_vo = 118;
+        EventTrackVO event_track_vo = 119;
     }
 }
 
@@ -74,6 +75,8 @@ message ResponsePackage {
         ProfessionalModelInfoVO professional_info_vo = 116;
         LightCustomInfoVO light_info_list_vo = 117;
         PushConfigVO push_config_vo = 118;
+        EventTrackVO event_track_vo = 119;
+        WifiInfo set_wifi_info = 121;
     }
 }
 
@@ -118,6 +121,10 @@ message UserThemeOption {
     string preview_img_file_url = 3 [(nanopb).max_size = 256];
     uint32 push_time = 4;
     string preview_gif_file_url = 5 [(nanopb).max_size = 256];
+    repeated string file_url_list = 6 [(nanopb).max_size = 10];
+    repeated string verbal_content_list = 7 [(nanopb).max_size = 10];
+    SwitchState speech_state_switch = 8;
+    SwitchState verbal_content_switch = 9;
 }
 
 message AudioDataInfoVO {
@@ -132,6 +139,8 @@ message AudioDataOption {
     string preview_img_file_url = 4 [(nanopb).max_size = 256];
     string tag = 5 [(nanopb).max_size = 20];
     uint32 sub_type = 6;
+    string task_id = 7 [(nanopb).max_size = 10];
+    string voice_id = 8 [(nanopb).max_size = 10];
 }
 
 message CustomPlanGroupInfoVO {
@@ -149,12 +158,14 @@ message SettingVO {
 
 message Setting {
     uint32 setting_id = 1;
+    uint32 push_state = 2;
     oneof setting_data {
         // Connect Service 0x10
         DeviceInfo get_device_info = 7;           // 0x0601、0x0602 ...
         DeviceRemind get_device_remind = 14;      // 0x0E10、0x0E11
         DeviceStateInfo device_state_set = 15;    // 0x0E03、0x0E04
         CustomButtonInfo get_custom_button_info = 17; // 0x11
+        WifiInfo get_wifi_info = 19;                  // 0x13
         ProfessionalModelInfo get_professional_info = 20;
 
         // User Service 0x20
@@ -260,5 +271,17 @@ message PushConfig {
         string string_value = 101;
         bool bool_value = 102;
         SwitchState switch_value = 103;
+    }
+}
+
+message EventTrackVO {
+    repeated EventTrackInfo event_list = 1 [(nanopb).max_count = 6];
+}
+
+message EventTrackInfo {
+    uint32 func_id = 1;
+    uint32 event_id = 2;
+    oneof data {
+        uint32 run_times = 10;
     }
 }

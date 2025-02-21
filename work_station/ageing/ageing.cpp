@@ -42,8 +42,7 @@ void ageing::refreshPeriphData(FacGetPeriphState data) {
         // 现在可以将 QString 类型的状态用于你的条件判断
         bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
 
-
-            if ((!checkFlash || compareVersions(flashStatus, flashStateStr))) {
+        if ((!checkFlash || compareVersions(flashStatus, flashStateStr))) {
             flash_state = 1;
         } else {
             flash_state = 2;
@@ -191,7 +190,7 @@ void ageing::on_macInput_returnPressed() {
     }
     waitWork(WAITTIME);
     // 检查是否是mac格式
-     static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
@@ -374,6 +373,7 @@ void ageing::startTask() {
                 flash_state = 0;
                 refresh_periph_times = 1;
                 subpidCompareOk = 0;
+                waitWork(500);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 state = STATE_WATI_CONNECT;

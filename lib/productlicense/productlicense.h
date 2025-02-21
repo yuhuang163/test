@@ -18,6 +18,8 @@ public:
     QList<QMap<QString, QString>> otaDeviceList;  // 存储 OTA 设备密钥信息
     int otaDeviceIndex = 0;
         int counter;
+
+    int testcounter;
     static ProductLicense &getInstance()
     {
         static ProductLicense instance;
@@ -38,7 +40,6 @@ private:
     ProductLicense &operator=(const ProductLicense &) = delete;
 
 
-    int testcounter;
     int max;
     int testmax;
 };

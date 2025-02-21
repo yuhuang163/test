@@ -6,7 +6,7 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(DataPackage, DataPackage, 4)
+PB_BIND(DataPackage, DataPackage, 2)
 
 
 PB_BIND(ConnectPro, ConnectPro, AUTO)
@@ -48,7 +48,7 @@ PB_BIND(DeviceRemind, DeviceRemind, AUTO)
 PB_BIND(NoBrushingRemindInfo, NoBrushingRemindInfo, AUTO)
 
 
-PB_BIND(BrushingReport, BrushingReport, 4)
+PB_BIND(BrushingReport, BrushingReport, 2)
 
 
 PB_BIND(ReportData, ReportData, 2)
@@ -57,7 +57,7 @@ PB_BIND(ReportData, ReportData, 2)
 PB_BIND(AlgoResultFusion, AlgoResultFusion, 2)
 
 
-PB_BIND(AlgoOtherData, AlgoOtherData, 2)
+PB_BIND(AlgoOtherData, AlgoOtherData, AUTO)
 
 
 PB_BIND(AlgoOtherDataResult, AlgoOtherDataResult, AUTO)
@@ -144,6 +144,15 @@ PB_BIND(ProfessionalModelInfo, ProfessionalModelInfo, 2)
 PB_BIND(ProfessionalInfo, ProfessionalInfo, AUTO)
 
 
+PB_BIND(LanguageInfo, LanguageInfo, AUTO)
+
+
+PB_BIND(DisplaySettingInfo, DisplaySettingInfo, AUTO)
+
+
+PB_BIND(DisplayContent, DisplayContent, AUTO)
+
+
 PB_BIND(DeviceState, DeviceState, AUTO)
 
 
@@ -211,6 +220,8 @@ PB_BIND(PlanModelInfo, PlanModelInfo, AUTO)
 
 
 PB_BIND(CustomPlanGroupInfo, CustomPlanGroupInfo, 2)
+
+
 
 
 

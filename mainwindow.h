@@ -222,7 +222,10 @@ private:
     bool isovertime = 0;             // 是否开始发送校验结果
     bool isfirstsavedata = 0;        // 是否开始按键200校准
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
-    bool isContinue = true;
+    bool isWifiContinue = true;
+       int otaTesttimes = 1;
+       int wifiotatimes = 1;
+           QTime totalwifiOtaTime;
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;
     QVector<int> faultData;
@@ -247,7 +250,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
-
+    void appendAndSaveWifiOtaLog(const QString &msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
     void uploadFile(const QString& filePath);
@@ -389,7 +392,7 @@ private slots:
     void on_pushButton_2_clicked();
     void on_mac_combo_textActivated(const QString& arg1);
     void on_bleTestPushButton_clicked();
-    void on_macInput_7_returnPressed();
+    void on_wifiOtaMacInput_returnPressed();
     void on_stopTestPushButton_clicked();
     void on_configWifiPushButton_clicked();
     void on_getInfoPushButton_clicked();

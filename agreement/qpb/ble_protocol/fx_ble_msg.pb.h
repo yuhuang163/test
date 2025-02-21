@@ -38,6 +38,8 @@ typedef enum _CommandId {
     CommandId_SET_POWER_DETAIL_INFO = 23, 
     CommandId_GET_LANGUAGE_INFO = 24, 
     CommandId_SET_LANGUAGE_INFO = 25, 
+    CommandId_GET_DISPLAY_SETTING_INFO = 26, 
+    CommandId_SET_DISPLAY_SETTING_INFO = 27, 
     /* User Service 0x20 */
     CommandId_GET_USER_INFO = 33, 
     CommandId_SET_USER_INFO = 34, 
@@ -234,7 +236,9 @@ typedef enum _DeviceInfoItem {
     DeviceInfoItem_FILL_BRUSH_SWITCH = 35, 
     DeviceInfoItem_NOVICE_MODEL_INFO = 36, 
     DeviceInfoItem_DAY_NIGHT_MODEL_INFO = 37, 
-    DeviceInfoItem_CARE_MODEL_INFO = 38 
+    DeviceInfoItem_CARE_MODEL_INFO = 38, 
+    DeviceInfoItem_FRESH_MODEL_INFO = 39, 
+    DeviceInfoItem_GENTLE_MODEL_INFO = 40 
 } DeviceInfoItem;
 
 typedef enum _DebugInfoItem { 
@@ -306,17 +310,14 @@ typedef enum _ProductId {
     ProductId_QF1 = 33, 
     ProductId_S10 = 34, 
     ProductId_Q20 = 35, 
-    ProductId_Q30 = 36, 
     ProductId_Y10 = 49, 
     ProductId_Y10_PRO = 50, 
     ProductId_Y20 = 51, 
     ProductId_Y20_PRO = 52, 
-    ProductId_Y21 = 53, 
-    ProductId_Y25 = 54, 
+    ProductId_Y30_PROS = 53, 
+    ProductId_Y30_PRO = 54, 
     ProductId_P20_PROS = 65, 
     ProductId_P20_PRO = 66, 
-    ProductId_P30_PRO = 67, 
-    ProductId_P30_Ultra = 68, 
     ProductId_P3A = 85, 
     ProductId_F1 = 86, 
     ProductId_SDC_01 = 87, 
@@ -324,9 +325,10 @@ typedef enum _ProductId {
     ProductId_F10 = 89, 
     ProductId_F10_PRO = 90, 
     ProductId_F20 = 91, 
-    ProductId_F20_Ultra = 92, 
+    ProductId_T10 = 97, 
     ProductId_U7 = 113, 
-    ProductId_U7_PRO = 114, 
+    ProductId_U7_Pro = 114, 
+    ProductId_Y20_PROS = 129, 
     ProductId_M62 = 162 
 } ProductId;
 
@@ -507,11 +509,6 @@ typedef enum _BrushSide {
     BrushSide_LEFT_DOWN_OUT_F1 = 13, 
     BrushSide_LEFT_DOWN_IN_F2 = 14, 
     BrushSide_LEFT_DOWN_MIDDLE_F3 = 15, 
-    BrushSide_MIDDLE_UP_MIDDLE_B3 = 16, 
-    BrushSide_MIDDLE_DOWN_MIDDLE_E3 = 17, 
-    BrushSide_LEFT_OUT = 18, 
-    BrushSide_MIDDLE_OUT = 19, 
-    BrushSide_RIGHT_OUT = 20, 
     BrushSide_ALL_SIDE = 100 
 } BrushSide;
 
@@ -603,7 +600,9 @@ typedef enum _BrushingModel {
     BrushingModel_MUSIC_VARIATION = 17, 
     BrushingModel_NOVICE_ADAPTATION = 18, 
     BrushingModel_DAY_NIGHT_EFFECTS = 19, 
-    BrushingModel_CARE = 20 
+    BrushingModel_CARE = 20, 
+    BrushingModel_FRESH = 21, 
+    BrushingModel_GENTLE = 22 
 } BrushingModel;
 
 typedef enum _BrushingPower { 
@@ -691,7 +690,8 @@ typedef enum _AlgoType {
     AlgoType_GUIDE_AREA = 1, 
     AlgoType_GUIDE_SIDE = 2, 
     AlgoType_RECOGNITION_AREA = 3, 
-    AlgoType_RECOGNITION_SIDE = 4 
+    AlgoType_RECOGNITION_SIDE = 4, 
+    AlgoType_NO_ALGO_DISPLAY = 5 
 } AlgoType;
 
 typedef enum _ThemeType { 
@@ -725,6 +725,20 @@ typedef enum _WifiState {
     WifiState_NO_CONNECT = 3, 
     WifiState_CONNECTED = 4 
 } WifiState;
+
+typedef enum _DisplayState { 
+    DisplayState_NOT_STATE = 0, 
+    DisplayState_BRUSH_BEFORE = 1, 
+    DisplayState_BRUSHING = 2, 
+    DisplayState_BRUSH_AFTER = 3 
+} DisplayState;
+
+typedef enum _DisplayStyle { 
+    DisplayStyle_NOT_DISPLAY = 0, 
+    DisplayStyle_TEETH_ICON = 1, 
+    DisplayStyle_REPORT_TEXT = 2, 
+    DisplayStyle_DISPLAY_TIMER = 3 
+} DisplayStyle;
 
 typedef enum _DeviceItem { 
     DeviceItem_ALL = 0, 
@@ -850,10 +864,10 @@ typedef enum _RotasUpdateFile {
     RotasUpdateFile_MOTOR_RESOURCE = 8, 
     RotasUpdateFile_WIFI_LIGHT_CUSTOM = 9, 
     RotasUpdateFile_BLE_FIRMWARE = 10, 
-    RotasUpdateFile_BACKUP_SETTING = 11, 
-    RotasUpdateFile_BACKUP_AI_LEARNING = 12, 
-    RotasUpdateFile_RESTORE_SETTING = 13, 
-    RotasUpdateFile_RESTORE_AI_LEARNING = 14, 
+    RotasUpdateFile_BACKUP_CONFIG = 11, 
+    RotasUpdateFile_BACKUP_FILE = 12, 
+    RotasUpdateFile_RESTORE_CONFIG = 13, 
+    RotasUpdateFile_RESTORE_FILE = 14, 
     RotasUpdateFile_BACKUP_ORAL_ARCHIVES = 15, 
     RotasUpdateFile_RESTORE_ORAL_ARCHIVES = 16 
 } RotasUpdateFile;
@@ -866,8 +880,8 @@ typedef enum _RotaErrorCode {
     RotaErrorCode_FILE_TOO_LAGER = 4, 
     RotaErrorCode_MD5_FAIL = 5, 
     RotaErrorCode_FILE_NO_SUPPORT = 6, 
-    RotaErrorCode_FLASH_ERR = 7, 
-    RotaErrorCode_NO_MEMORY = 8, 
+    RotaErrorCode_FLASH_ERR = 7, /* 存储异常 */
+    RotaErrorCode_NO_MEMORY = 8, /* 内存不足 */
     RotaErrorCode_TRANS_TIMEOUT = 9, 
     RotaErrorCode_TRANS_OVER_RANGE = 10, 
     RotaErrorCode_DOWNLOAD_SUCCESS = 11, 
@@ -921,7 +935,7 @@ typedef enum _TimeType {
 typedef struct _AlgoOtherDataResult { 
     KeyType key; 
     pb_size_t values_count;
-    uint32_t values[16]; 
+    uint32_t values[6]; 
 } AlgoOtherDataResult;
 
 typedef struct _AlgorithmCollect { 
@@ -938,10 +952,10 @@ typedef struct _AlgorithmCollect {
     float magnetism_z; 
     int32_t horizontal_brush; 
     pb_size_t area_brush_time_count;
-    uint32_t area_brush_time[16]; 
+    uint32_t area_brush_time[6]; 
     int32_t gravity_orient; 
     pb_size_t coverage_rate_count;
-    uint32_t coverage_rate[16]; 
+    uint32_t coverage_rate[6]; 
     int32_t score; 
     BrushingState brushing_state; 
     BrushSide brushing_side; 
@@ -1008,7 +1022,7 @@ typedef struct _AudioRemindState {
 
 typedef PB_BYTES_ARRAY_T(64) BackupConfigInfo_byte_data_t;
 typedef struct _BackupConfigInfo { 
-    uint32_t backup_code; /* BackupCode: 1:设置项，2:AI学习，3:其他扩展 */
+    uint32_t backup_code; /* BackupCode: 1:设置项，2:AI学习，3:口腔档案 */
     pb_size_t which_config_data;
     union {
         BackupConfigInfo_byte_data_t byte_data;
@@ -1027,7 +1041,7 @@ typedef struct _BackupFileInfo {
 } BackupFileInfo;
 
 typedef PB_BYTES_ARRAY_T(6) ConnectPro_mac_address_t;
-typedef PB_BYTES_ARRAY_T(64) ConnectPro_sn_id_t;
+typedef PB_BYTES_ARRAY_T(32) ConnectPro_sn_id_t;
 typedef struct _ConnectPro { 
     ConnectType connect_type; 
     uint32_t version_code; 
@@ -1036,7 +1050,7 @@ typedef struct _ConnectPro {
     uint32_t protocol_id; 
     uint32_t firmware_id; 
     uint32_t firmware_type; 
-    HardwareId hardware_id; 
+    uint32_t hardware_id; 
     ConnectPro_sn_id_t sn_id; 
     StatementType agree_statement_type; 
     uint32_t ui_res_id; 
@@ -1070,7 +1084,16 @@ typedef struct _DeviceStateInfo {
     SwitchState set_state; 
     ErrorCode setting_result; 
     PowerState set_power_state; 
+    pb_size_t which_state_value;
+    union {
+        WifiState wifi_state;
+    } state_value; 
 } DeviceStateInfo;
+
+typedef struct _DisplayContent { 
+    DisplayState display_state; 
+    DisplayStyle display_style; 
+} DisplayContent;
 
 typedef struct _FileHandleInfo { 
     RotasUpdateFile file_type; 
@@ -1087,6 +1110,11 @@ typedef struct _FrequencyBand {
     uint32_t min_frequency; /* 0.8MHz : 800 KMHz */
     uint32_t max_frequency; /* 2.45MHz: 2450KMHz */
 } FrequencyBand;
+
+typedef struct _LanguageInfo { 
+    char language_code[10]; 
+    ErrorCode setting_result; 
+} LanguageInfo;
 
 typedef struct _LightRGBInfo { 
     uint32_t rgb_value; 
@@ -1206,7 +1234,7 @@ typedef struct _RotasResultRsp {
     RotaFileStatus rotaStatus; 
 } RotasResultRsp;
 
-typedef PB_BYTES_ARRAY_T(64) SnInfo_sn_id_t;
+typedef PB_BYTES_ARRAY_T(15) SnInfo_sn_id_t;
 typedef struct _SnInfo { 
     SnInfo_sn_id_t sn_id; 
     ErrorCode setting_result; 
@@ -1273,6 +1301,7 @@ typedef struct _WifiInfo {
     char device_secret[64]; 
     WifiInfo_ip_address_t ip_address; 
     char iot_url[128]; 
+    WifiState wifi_state; 
 } WifiInfo;
 
 typedef struct _AlgoOtherData { 
@@ -1298,6 +1327,7 @@ typedef struct _AlgorithmRealTime {
     BrushSide brushing_side; 
     uint32_t plaque_residue_percent; 
     uint32_t brushing_coverage; 
+    uint32_t brushing_coverage_total; 
     pb_size_t which_algo_data;
     union {
         AlgorithmCollect algorithm_collect;
@@ -1333,7 +1363,7 @@ typedef struct _AudioRemindData {
 typedef struct _CommandPro { 
     CommandId command_id; 
     pb_size_t command_support_list_count;
-    SupportData command_support_list[40]; 
+    SupportData command_support_list[20]; 
     ErrorCode error_code; 
 } CommandPro;
 
@@ -1398,6 +1428,10 @@ typedef struct _DeviceInfoValue {
         ModelInfo music_variation_model_info;
         SwitchState fill_brush_switch;
         ModelInfo novice_model_info;
+        ModelInfo day_night_model_info;
+        ModelInfo care_model_info;
+        ModelInfo fresh_model_info;
+        ModelInfo gentle_model_info;
     } value_item; 
     uint32_t timestamp; 
 } DeviceInfoValue;
@@ -1454,9 +1488,15 @@ typedef struct _DeviceValue {
     } value_item; 
 } DeviceValue;
 
+typedef struct _DisplaySettingInfo { 
+    pb_size_t display_content_count;
+    DisplayContent display_content[5]; 
+    ErrorCode setting_result; 
+} DisplaySettingInfo;
+
 typedef struct _LightCustomInfo { 
     uint32_t light_id; 
-    pb_callback_t light_param; 
+    char light_param[1]; 
     uint32_t file_id; 
     uint32_t light_type; 
     uint32_t start_time; 
@@ -1491,15 +1531,15 @@ typedef struct _PlanInfo {
 
 typedef struct _ProblemTeethData { 
     ProblemTeeth problem_teeth_type; 
-    pb_size_t teeth_facet_count;
-    ProblemTeethInfo teeth_facet[28]; 
+    pb_size_t problem_teeth_list_count;
+    ProblemTeethInfo problem_teeth_list[28]; 
     uint32_t xy_index; 
 } ProblemTeethData;
 
 typedef struct _ProfessionalModelInfo { 
     BrushingModel brushing_model; 
     pb_size_t professional_info_list_count;
-    ProfessionalInfo professional_info_list[16]; 
+    ProfessionalInfo professional_info_list[1]; 
     SwitchState enter_debug_switch; 
     SwitchState facet_custom_switch; 
     ErrorCode setting_result; 
@@ -1539,20 +1579,20 @@ typedef struct _AlgoResultFusion {
     uint32_t n_area; /* 齿区数量 */
     uint32_t n_facet; /* 齿面数量 */
     pb_size_t vec_time_display_count;
-    int32_t vec_time_display[16]; /* 区域刷牙时长呈现百分比 */
+    int32_t vec_time_display[6]; /* 区域刷牙时长呈现百分比 */
     pb_size_t vec_time_op_display_count;
-    int32_t vec_time_op_display[16]; /* 区域过压时长呈现百分比 */
+    int32_t vec_time_op_display[6]; /* 区域过压时长呈现百分比 */
     pb_size_t vec_time_hb_display_count;
-    int32_t vec_time_hb_display[16]; /* 区域横刷时长呈现百分比 */
+    int32_t vec_time_hb_display[6]; /* 区域横刷时长呈现百分比 */
     pb_size_t vec_coverage_count;
-    uint32_t vec_coverage[16]; /* 区域覆盖率 */
+    uint32_t vec_coverage[6]; /* 区域覆盖率 */
     uint32_t algo_ver; /* 算法版本号 */
     uint32_t protocol_ver; /* 协议编号 */
     uint32_t timestamp_end; /* 刷牙结束时间 */
     pb_size_t vec_brush_time_raw_count;
-    uint32_t vec_brush_time_raw[16]; /* 区域刷牙时长呈现值 */
+    uint32_t vec_brush_time_raw[6]; /* 区域刷牙时长呈现值 */
     pb_size_t vec_op_time_raw_count;
-    uint32_t vec_op_time_raw[16]; /* 区域过压刷牙时长呈现值 */
+    uint32_t vec_op_time_raw[6]; /* 区域过压刷牙时长呈现值 */
     pb_size_t which_other_data;
     union {
         AlgoOtherData other_data_result;
@@ -1598,7 +1638,7 @@ typedef struct _UserBackupData {
     bool is_last_backup; 
     uint32_t total_size; 
     pb_size_t backup_item_list_count;
-    UserBackupItem backup_item_list[5]; 
+    UserBackupItem backup_item_list[2]; 
     ErrorCode setting_result; 
 } UserBackupData;
 
@@ -1654,6 +1694,10 @@ typedef struct _DataPackage {
         ProfessionalModelInfo set_professional_info;
         ProfessionalModelInfo get_power_detail_info;
         ProfessionalModelInfo set_power_detail_info;
+        LanguageInfo get_language_info;
+        LanguageInfo set_language_info;
+        DisplaySettingInfo get_display_setting_info;
+        DisplaySettingInfo set_display_setting_info;
         UserInfo get_user_info;
         UserInfo set_user_info;
         UserThemeInfo get_user_theme_info;
@@ -1754,8 +1798,8 @@ typedef struct _DataPackage {
 #define _ErrorCode_ARRAYSIZE ((ErrorCode)(ErrorCode_ERROR_LOW_BATTERY+1))
 
 #define _DeviceInfoItem_MIN DeviceInfoItem_ALL_INFO
-#define _DeviceInfoItem_MAX DeviceInfoItem_CARE_MODEL_INFO
-#define _DeviceInfoItem_ARRAYSIZE ((DeviceInfoItem)(DeviceInfoItem_CARE_MODEL_INFO+1))
+#define _DeviceInfoItem_MAX DeviceInfoItem_GENTLE_MODEL_INFO
+#define _DeviceInfoItem_ARRAYSIZE ((DeviceInfoItem)(DeviceInfoItem_GENTLE_MODEL_INFO+1))
 
 #define _DebugInfoItem_MIN DebugInfoItem_ALL_DEBUG_INFO
 #define _DebugInfoItem_MAX DebugInfoItem_PLAQUE_TOO_MUCH
@@ -1858,8 +1902,8 @@ typedef struct _DataPackage {
 #define _ModelState_ARRAYSIZE ((ModelState)(ModelState_NON_DELETABLE_ITEM+1))
 
 #define _BrushingModel_MIN BrushingModel_MODE_RESERVE
-#define _BrushingModel_MAX BrushingModel_CARE
-#define _BrushingModel_ARRAYSIZE ((BrushingModel)(BrushingModel_CARE+1))
+#define _BrushingModel_MAX BrushingModel_GENTLE
+#define _BrushingModel_ARRAYSIZE ((BrushingModel)(BrushingModel_GENTLE+1))
 
 #define _BrushingPower_MIN BrushingPower_POWER_RESERVE
 #define _BrushingPower_MAX BrushingPower_POWER_SMART
@@ -1898,8 +1942,8 @@ typedef struct _DataPackage {
 #define _ThemeResId_ARRAYSIZE ((ThemeResId)(ThemeResId_CUSTOM_T5+1))
 
 #define _AlgoType_MIN AlgoType_NO_ALGO
-#define _AlgoType_MAX AlgoType_RECOGNITION_SIDE
-#define _AlgoType_ARRAYSIZE ((AlgoType)(AlgoType_RECOGNITION_SIDE+1))
+#define _AlgoType_MAX AlgoType_NO_ALGO_DISPLAY
+#define _AlgoType_ARRAYSIZE ((AlgoType)(AlgoType_NO_ALGO_DISPLAY+1))
 
 #define _ThemeType_MIN ThemeType_DEFAULT_RES
 #define _ThemeType_MAX ThemeType_USER_CUSTOM_RES
@@ -1916,6 +1960,14 @@ typedef struct _DataPackage {
 #define _WifiState_MIN WifiState_NO_STATA
 #define _WifiState_MAX WifiState_CONNECTED
 #define _WifiState_ARRAYSIZE ((WifiState)(WifiState_CONNECTED+1))
+
+#define _DisplayState_MIN DisplayState_NOT_STATE
+#define _DisplayState_MAX DisplayState_BRUSH_AFTER
+#define _DisplayState_ARRAYSIZE ((DisplayState)(DisplayState_BRUSH_AFTER+1))
+
+#define _DisplayStyle_MIN DisplayStyle_NOT_DISPLAY
+#define _DisplayStyle_MAX DisplayStyle_DISPLAY_TIMER
+#define _DisplayStyle_ARRAYSIZE ((DisplayStyle)(DisplayStyle_DISPLAY_TIMER+1))
 
 #define _DeviceItem_MIN DeviceItem_ALL
 #define _DeviceItem_MAX DeviceItem_VOICE_GUIDANCE_TYPE
@@ -1980,10 +2032,10 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define DataPackage_init_default                 {_CommandId_MIN, 0, {ConnectPro_init_default}, _ErrorCode_MIN}
-#define ConnectPro_init_default                  {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
+#define ConnectPro_init_default                  {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, 0, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
 #define ServicePro_init_default                  {_ServiceId_MIN, 0, {SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default}}
 #define SupportData_init_default                 {0, {_ServiceId_MIN}, _ErrorCode_MIN}
-#define CommandPro_init_default                  {_CommandId_MIN, 0, {SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default}, _ErrorCode_MIN}
+#define CommandPro_init_default                  {_CommandId_MIN, 0, {SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default, SupportData_init_default}, _ErrorCode_MIN}
 #define TimeSync_init_default                    {0, 0, _ErrorCode_MIN, _TimeSyncType_MIN}
 #define DeviceInfo_init_default                  {0, {DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default, DeviceInfoValue_init_default}, _ErrorCode_MIN}
 #define DebugInfo_init_default                   {0, {DebugInfoValue_init_default, DebugInfoValue_init_default, DebugInfoValue_init_default, DebugInfoValue_init_default, DebugInfoValue_init_default}, _ErrorCode_MIN}
@@ -1995,22 +2047,22 @@ extern "C" {
 #define NoBrushingRemindInfo_init_default        {_SwitchState_MIN, 0, 0}
 #define BrushingReport_init_default              {0, 0, {ReportData_init_default, ReportData_init_default, ReportData_init_default, ReportData_init_default, ReportData_init_default}, _ErrorCode_MIN}
 #define ReportData_init_default                  {0, _BrushingModel_MIN, 0, 0, 0, 0, 0, 0, 0, 0, {AlgorithmReport_init_default}}
-#define AlgoResultFusion_init_default            {{0, {0}}, {0, {0}}, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {AlgoOtherData_init_default}}
+#define AlgoResultFusion_init_default            {{0, {0}}, {0, {0}}, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {AlgoOtherData_init_default}}
 #define AlgoOtherData_init_default               {0, {AlgoOtherDataResult_init_default, AlgoOtherDataResult_init_default, AlgoOtherDataResult_init_default, AlgoOtherDataResult_init_default, AlgoOtherDataResult_init_default, AlgoOtherDataResult_init_default}, 0}
-#define AlgoOtherDataResult_init_default         {_KeyType_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+#define AlgoOtherDataResult_init_default         {_KeyType_MIN, 0, {0, 0, 0, 0, 0, 0}}
 #define UserInfo_init_default                    {0, _ErrorCode_MIN, 0, 0, 0}
 #define UserThemeInfo_init_default               {0, {0, 0, 0, 0, 0}, 0, 0, 0, 0, 0, 0, _ErrorCode_MIN}
-#define LightCustomInfo_init_default             {0, {{NULL}, NULL}, 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default}, _ErrorCode_MIN}
+#define LightCustomInfo_init_default             {0, "", 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default, LightRGBInfo_init_default}, _ErrorCode_MIN}
 #define LightRGBInfo_init_default                {0, _AlgoFacet_MIN}
 #define OralArchivesData_init_default            {_ApplianceType_MIN, 0, {ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default, ProblemTeethData_init_default}, _ErrorCode_MIN}
 #define ProblemTeethData_init_default            {_ProblemTeeth_MIN, 0, {ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default, ProblemTeethInfo_init_default}, 0}
 #define ProblemTeethInfo_init_default            {_TimeSyncType_MIN, _TeethNumber_MIN}
-#define UserBackupData_init_default              {0, 0, 0, 0, 0, {UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default, UserBackupItem_init_default}, _ErrorCode_MIN}
+#define UserBackupData_init_default              {0, 0, 0, 0, 0, {UserBackupItem_init_default, UserBackupItem_init_default}, _ErrorCode_MIN}
 #define UserBackupItem_init_default              {0, {BackupFileInfo_init_default}}
 #define BackupFileInfo_init_default              {0, "", 0, 0, ""}
 #define BackupConfigInfo_init_default            {0, 0, {{0, {0}}}}
 #define AlgorithmPro_init_default                {_BrushHandHabit_MIN, _BrushArea_MIN, _CommonSide_MIN, _BrushOrder_MIN, _BrushTotalArea_MIN, _BrushTotalSide_MIN, _ErrorCode_MIN, 0, 0, 0, 0, 0, 0, 0, 0, _AlgoType_MIN, 0}
-#define AlgorithmRealTime_init_default           {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, {AlgorithmCollect_init_default}}
+#define AlgorithmRealTime_init_default           {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, 0, {AlgorithmCollect_init_default}}
 #define AlgorithmReport_init_default             {_BrushTotalArea_MIN, _BrushTotalSide_MIN, _FillBrushState_MIN, 0, 0, 0, 0, {FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default, FillBrushData_init_default}, 0, {RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default, RemindResult_init_default}, 0, {RemindSingleResult_init_default, RemindSingleResult_init_default, RemindSingleResult_init_default}, 0, 0, 0}
 #define SimpleReport_init_default                {_BrushTotalArea_MIN, _BrushTotalSide_MIN, 0, {RemindSingleResult_init_default, RemindSingleResult_init_default, RemindSingleResult_init_default, RemindSingleResult_init_default}, 0}
 #define FillBrushData_init_default               {0, _BrushArea_MIN, _BrushSide_MIN}
@@ -2018,13 +2070,16 @@ extern "C" {
 #define RemindSingleResult_init_default          {_RemindType_MIN, {0, {0}}}
 #define AlgorithmRemind_init_default             {_RemindType_MIN, 0, {_RemindValue_MIN}, 0, _BrushSide_MIN}
 #define AlgorithmCollectList_init_default        {0, {AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default, AlgorithmCollect_init_default}}
-#define AlgorithmCollect_init_default            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
-#define WifiInfo_init_default                    {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, ""}
-#define DeviceStateInfo_init_default             {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN}
+#define AlgorithmCollect_init_default            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
+#define WifiInfo_init_default                    {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, "", _WifiState_MIN}
+#define DeviceStateInfo_init_default             {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN, 0, {_WifiState_MIN}}
 #define CustomButtonInfo_init_default            {0, {CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default, CustomButtonContent_init_default}, _ErrorCode_MIN}
 #define CustomButtonContent_init_default         {_DeviceOrientation_MIN, _Button_MIN, _ButtonType_MIN, _ButtonFunction_MIN}
-#define ProfessionalModelInfo_init_default       {_BrushingModel_MIN, 0, {ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default, ProfessionalInfo_init_default}, _SwitchState_MIN, _SwitchState_MIN, _ErrorCode_MIN}
+#define ProfessionalModelInfo_init_default       {_BrushingModel_MIN, 0, {ProfessionalInfo_init_default}, _SwitchState_MIN, _SwitchState_MIN, _ErrorCode_MIN}
 #define ProfessionalInfo_init_default            {_CommonSide_MIN, 0, 0, 0, 0, 0, 0, {_BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN}}
+#define LanguageInfo_init_default                {"", _ErrorCode_MIN}
+#define DisplaySettingInfo_init_default          {0, {DisplayContent_init_default, DisplayContent_init_default, DisplayContent_init_default, DisplayContent_init_default, DisplayContent_init_default}, _ErrorCode_MIN}
+#define DisplayContent_init_default              {_DisplayState_MIN, _DisplayStyle_MIN}
 #define DeviceState_init_default                 {0, {DeviceValue_init_default, DeviceValue_init_default, DeviceValue_init_default}, _ErrorCode_MIN}
 #define DeviceValue_init_default                 {_DeviceItem_MIN, 0, {0}}
 #define FrequencyBand_init_default               {0, 0}
@@ -2049,10 +2104,10 @@ extern "C" {
 #define PlanModelInfo_init_default               {_TimeType_MIN, _BrushingModel_MIN, _BrushingTime_MIN, 0, 0}
 #define CustomPlanGroupInfo_init_default         {_PlanId_MIN, 0, 0, 0, {PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default, PlanModelInfo_init_default}, _ErrorCode_MIN}
 #define DataPackage_init_zero                    {_CommandId_MIN, 0, {ConnectPro_init_zero}, _ErrorCode_MIN}
-#define ConnectPro_init_zero                     {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, _HardwareId_MIN, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
+#define ConnectPro_init_zero                     {_ConnectType_MIN, 0, 0, {0, {0}}, 0, 0, 0, 0, {0, {0}}, _StatementType_MIN, 0, _UpgradeType_MIN, _UpgradeType_MIN, {{NULL}, NULL}, "", 0, 0}
 #define ServicePro_init_zero                     {_ServiceId_MIN, 0, {SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero}}
 #define SupportData_init_zero                    {0, {_ServiceId_MIN}, _ErrorCode_MIN}
-#define CommandPro_init_zero                     {_CommandId_MIN, 0, {SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero}, _ErrorCode_MIN}
+#define CommandPro_init_zero                     {_CommandId_MIN, 0, {SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero, SupportData_init_zero}, _ErrorCode_MIN}
 #define TimeSync_init_zero                       {0, 0, _ErrorCode_MIN, _TimeSyncType_MIN}
 #define DeviceInfo_init_zero                     {0, {DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero, DeviceInfoValue_init_zero}, _ErrorCode_MIN}
 #define DebugInfo_init_zero                      {0, {DebugInfoValue_init_zero, DebugInfoValue_init_zero, DebugInfoValue_init_zero, DebugInfoValue_init_zero, DebugInfoValue_init_zero}, _ErrorCode_MIN}
@@ -2064,22 +2119,22 @@ extern "C" {
 #define NoBrushingRemindInfo_init_zero           {_SwitchState_MIN, 0, 0}
 #define BrushingReport_init_zero                 {0, 0, {ReportData_init_zero, ReportData_init_zero, ReportData_init_zero, ReportData_init_zero, ReportData_init_zero}, _ErrorCode_MIN}
 #define ReportData_init_zero                     {0, _BrushingModel_MIN, 0, 0, 0, 0, 0, 0, 0, 0, {AlgorithmReport_init_zero}}
-#define AlgoResultFusion_init_zero               {{0, {0}}, {0, {0}}, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, {AlgoOtherData_init_zero}}
+#define AlgoResultFusion_init_zero               {{0, {0}}, {0, {0}}, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, {0, 0, 0, 0, 0, 0}, 0, {AlgoOtherData_init_zero}}
 #define AlgoOtherData_init_zero                  {0, {AlgoOtherDataResult_init_zero, AlgoOtherDataResult_init_zero, AlgoOtherDataResult_init_zero, AlgoOtherDataResult_init_zero, AlgoOtherDataResult_init_zero, AlgoOtherDataResult_init_zero}, 0}
-#define AlgoOtherDataResult_init_zero            {_KeyType_MIN, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+#define AlgoOtherDataResult_init_zero            {_KeyType_MIN, 0, {0, 0, 0, 0, 0, 0}}
 #define UserInfo_init_zero                       {0, _ErrorCode_MIN, 0, 0, 0}
 #define UserThemeInfo_init_zero                  {0, {0, 0, 0, 0, 0}, 0, 0, 0, 0, 0, 0, _ErrorCode_MIN}
-#define LightCustomInfo_init_zero                {0, {{NULL}, NULL}, 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero}, _ErrorCode_MIN}
+#define LightCustomInfo_init_zero                {0, "", 0, 0, 0, 0, _SwitchState_MIN, 0, {LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero, LightRGBInfo_init_zero}, _ErrorCode_MIN}
 #define LightRGBInfo_init_zero                   {0, _AlgoFacet_MIN}
 #define OralArchivesData_init_zero               {_ApplianceType_MIN, 0, {ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero, ProblemTeethData_init_zero}, _ErrorCode_MIN}
 #define ProblemTeethData_init_zero               {_ProblemTeeth_MIN, 0, {ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero, ProblemTeethInfo_init_zero}, 0}
 #define ProblemTeethInfo_init_zero               {_TimeSyncType_MIN, _TeethNumber_MIN}
-#define UserBackupData_init_zero                 {0, 0, 0, 0, 0, {UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero, UserBackupItem_init_zero}, _ErrorCode_MIN}
+#define UserBackupData_init_zero                 {0, 0, 0, 0, 0, {UserBackupItem_init_zero, UserBackupItem_init_zero}, _ErrorCode_MIN}
 #define UserBackupItem_init_zero                 {0, {BackupFileInfo_init_zero}}
 #define BackupFileInfo_init_zero                 {0, "", 0, 0, ""}
 #define BackupConfigInfo_init_zero               {0, 0, {{0, {0}}}}
 #define AlgorithmPro_init_zero                   {_BrushHandHabit_MIN, _BrushArea_MIN, _CommonSide_MIN, _BrushOrder_MIN, _BrushTotalArea_MIN, _BrushTotalSide_MIN, _ErrorCode_MIN, 0, 0, 0, 0, 0, 0, 0, 0, _AlgoType_MIN, 0}
-#define AlgorithmRealTime_init_zero              {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, {AlgorithmCollect_init_zero}}
+#define AlgorithmRealTime_init_zero              {_SwitchState_MIN, _BrushingState_MIN, _BrushingModel_MIN, _BrushingPower_MIN, 0, 0, 0, _BrushSide_MIN, 0, 0, 0, 0, {AlgorithmCollect_init_zero}}
 #define AlgorithmReport_init_zero                {_BrushTotalArea_MIN, _BrushTotalSide_MIN, _FillBrushState_MIN, 0, 0, 0, 0, {FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero, FillBrushData_init_zero}, 0, {RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero, RemindResult_init_zero}, 0, {RemindSingleResult_init_zero, RemindSingleResult_init_zero, RemindSingleResult_init_zero}, 0, 0, 0}
 #define SimpleReport_init_zero                   {_BrushTotalArea_MIN, _BrushTotalSide_MIN, 0, {RemindSingleResult_init_zero, RemindSingleResult_init_zero, RemindSingleResult_init_zero, RemindSingleResult_init_zero}, 0}
 #define FillBrushData_init_zero                  {0, _BrushArea_MIN, _BrushSide_MIN}
@@ -2087,13 +2142,16 @@ extern "C" {
 #define RemindSingleResult_init_zero             {_RemindType_MIN, {0, {0}}}
 #define AlgorithmRemind_init_zero                {_RemindType_MIN, 0, {_RemindValue_MIN}, 0, _BrushSide_MIN}
 #define AlgorithmCollectList_init_zero           {0, {AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero, AlgorithmCollect_init_zero}}
-#define AlgorithmCollect_init_zero               {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
-#define WifiInfo_init_zero                       {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, ""}
-#define DeviceStateInfo_init_zero                {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN}
+#define AlgorithmCollect_init_zero               {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0, 0, {0, 0, 0, 0, 0, 0}, 0, _BrushingState_MIN, _BrushSide_MIN, 0, {0, 0}}
+#define WifiInfo_init_zero                       {"", "", _ErrorCode_MIN, "", "", "", {0, {0}}, "", _WifiState_MIN}
+#define DeviceStateInfo_init_zero                {_SwitchState_MIN, _ErrorCode_MIN, _PowerState_MIN, 0, {_WifiState_MIN}}
 #define CustomButtonInfo_init_zero               {0, {CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero, CustomButtonContent_init_zero}, _ErrorCode_MIN}
 #define CustomButtonContent_init_zero            {_DeviceOrientation_MIN, _Button_MIN, _ButtonType_MIN, _ButtonFunction_MIN}
-#define ProfessionalModelInfo_init_zero          {_BrushingModel_MIN, 0, {ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero, ProfessionalInfo_init_zero}, _SwitchState_MIN, _SwitchState_MIN, _ErrorCode_MIN}
+#define ProfessionalModelInfo_init_zero          {_BrushingModel_MIN, 0, {ProfessionalInfo_init_zero}, _SwitchState_MIN, _SwitchState_MIN, _ErrorCode_MIN}
 #define ProfessionalInfo_init_zero               {_CommonSide_MIN, 0, 0, 0, 0, 0, 0, {_BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN, _BrushSide_MIN}}
+#define LanguageInfo_init_zero                   {"", _ErrorCode_MIN}
+#define DisplaySettingInfo_init_zero             {0, {DisplayContent_init_zero, DisplayContent_init_zero, DisplayContent_init_zero, DisplayContent_init_zero, DisplayContent_init_zero}, _ErrorCode_MIN}
+#define DisplayContent_init_zero                 {_DisplayState_MIN, _DisplayStyle_MIN}
 #define DeviceState_init_zero                    {0, {DeviceValue_init_zero, DeviceValue_init_zero, DeviceValue_init_zero}, _ErrorCode_MIN}
 #define DeviceValue_init_zero                    {_DeviceItem_MIN, 0, {0}}
 #define FrequencyBand_init_zero                  {0, 0}
@@ -2218,6 +2276,9 @@ extern "C" {
 #define DeviceStateInfo_set_state_tag            1
 #define DeviceStateInfo_setting_result_tag       2
 #define DeviceStateInfo_set_power_state_tag      3
+#define DeviceStateInfo_wifi_state_tag           10
+#define DisplayContent_display_state_tag         1
+#define DisplayContent_display_style_tag         2
 #define FileHandleInfo_file_type_tag             1
 #define FileHandleInfo_file_state_tag            2
 #define FillBrushData_time_tag                   1
@@ -2225,6 +2286,8 @@ extern "C" {
 #define FillBrushData_side_tag                   3
 #define FrequencyBand_min_frequency_tag          1
 #define FrequencyBand_max_frequency_tag          2
+#define LanguageInfo_language_code_tag           1
+#define LanguageInfo_setting_result_tag          10
 #define LightRGBInfo_rgb_value_tag               1
 #define LightRGBInfo_algo_facet_tag              2
 #define ModelInfo_brushing_time_tag              1
@@ -2328,6 +2391,7 @@ extern "C" {
 #define WifiInfo_device_secret_tag               6
 #define WifiInfo_ip_address_tag                  7
 #define WifiInfo_iot_url_tag                     8
+#define WifiInfo_wifi_state_tag                  9
 #define AlgoOtherData_other_data_list_tag        1
 #define AlgoOtherData_pause_count_tag            2
 #define AlgorithmCollectList_algorithm_collect_tag 100
@@ -2341,6 +2405,7 @@ extern "C" {
 #define AlgorithmRealTime_brushing_side_tag      8
 #define AlgorithmRealTime_plaque_residue_percent_tag 9
 #define AlgorithmRealTime_brushing_coverage_tag  10
+#define AlgorithmRealTime_brushing_coverage_total_tag 11
 #define AlgorithmRealTime_algorithm_collect_tag  100
 #define AlgorithmRealTime_all_brushing_coverage_tag 101
 #define AlgorithmReport_brush_total_area_tag     1
@@ -2407,6 +2472,10 @@ extern "C" {
 #define DeviceInfoValue_music_variation_model_info_tag 35
 #define DeviceInfoValue_fill_brush_switch_tag    36
 #define DeviceInfoValue_novice_model_info_tag    37
+#define DeviceInfoValue_day_night_model_info_tag 38
+#define DeviceInfoValue_care_model_info_tag      39
+#define DeviceInfoValue_fresh_model_info_tag     40
+#define DeviceInfoValue_gentle_model_info_tag    41
 #define DeviceInfoValue_timestamp_tag            100
 #define DeviceRemind_remind_type_tag             1
 #define DeviceRemind_wakeup_value_tag            2
@@ -2444,6 +2513,8 @@ extern "C" {
 #define DeviceValue_music_model_switch_tag       17
 #define DeviceValue_music_enjoy_model_switch_tag 18
 #define DeviceValue_voice_guidance_type_tag      19
+#define DisplaySettingInfo_display_content_tag   1
+#define DisplaySettingInfo_setting_result_tag    10
 #define LightCustomInfo_light_id_tag             1
 #define LightCustomInfo_light_param_tag          2
 #define LightCustomInfo_file_id_tag              3
@@ -2465,7 +2536,7 @@ extern "C" {
 #define PlanInfo_plan_info_list_tag              9
 #define PlanInfo_setting_result_tag              100
 #define ProblemTeethData_problem_teeth_type_tag  1
-#define ProblemTeethData_teeth_facet_tag         2
+#define ProblemTeethData_problem_teeth_list_tag  2
 #define ProblemTeethData_xy_index_tag            3
 #define ProfessionalModelInfo_brushing_model_tag 1
 #define ProfessionalModelInfo_professional_info_list_tag 2
@@ -2553,6 +2624,10 @@ extern "C" {
 #define DataPackage_set_professional_info_tag    21
 #define DataPackage_get_power_detail_info_tag    22
 #define DataPackage_set_power_detail_info_tag    23
+#define DataPackage_get_language_info_tag        24
+#define DataPackage_set_language_info_tag        25
+#define DataPackage_get_display_setting_info_tag 26
+#define DataPackage_set_display_setting_info_tag 27
 #define DataPackage_get_user_info_tag            33
 #define DataPackage_set_user_info_tag            34
 #define DataPackage_get_user_theme_info_tag      35
@@ -2625,6 +2700,10 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_professional_info,command_d
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_professional_info,command_data.set_professional_info),  21) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_power_detail_info,command_data.get_power_detail_info),  22) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_power_detail_info,command_data.set_power_detail_info),  23) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_language_info,command_data.get_language_info),  24) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_language_info,command_data.set_language_info),  25) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_display_setting_info,command_data.get_display_setting_info),  26) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_display_setting_info,command_data.set_display_setting_info),  27) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_user_info,command_data.get_user_info),  33) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_user_info,command_data.set_user_info),  34) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,get_user_theme_info,command_data.get_user_theme_info),  35) \
@@ -2695,6 +2774,10 @@ X(a, STATIC,   SINGULAR, UENUM,    command_result,  256)
 #define DataPackage_command_data_set_professional_info_MSGTYPE ProfessionalModelInfo
 #define DataPackage_command_data_get_power_detail_info_MSGTYPE ProfessionalModelInfo
 #define DataPackage_command_data_set_power_detail_info_MSGTYPE ProfessionalModelInfo
+#define DataPackage_command_data_get_language_info_MSGTYPE LanguageInfo
+#define DataPackage_command_data_set_language_info_MSGTYPE LanguageInfo
+#define DataPackage_command_data_get_display_setting_info_MSGTYPE DisplaySettingInfo
+#define DataPackage_command_data_set_display_setting_info_MSGTYPE DisplaySettingInfo
 #define DataPackage_command_data_get_user_info_MSGTYPE UserInfo
 #define DataPackage_command_data_set_user_info_MSGTYPE UserInfo
 #define DataPackage_command_data_get_user_theme_info_MSGTYPE UserThemeInfo
@@ -2749,7 +2832,7 @@ X(a, STATIC,   SINGULAR, BYTES,    mac_address,       4) \
 X(a, STATIC,   SINGULAR, UINT32,   protocol_id,       5) \
 X(a, STATIC,   SINGULAR, UINT32,   firmware_id,       6) \
 X(a, STATIC,   SINGULAR, UINT32,   firmware_type,     7) \
-X(a, STATIC,   SINGULAR, UENUM,    hardware_id,       8) \
+X(a, STATIC,   SINGULAR, UINT32,   hardware_id,       8) \
 X(a, STATIC,   SINGULAR, BYTES,    sn_id,             9) \
 X(a, STATIC,   SINGULAR, UENUM,    agree_statement_type,  10) \
 X(a, STATIC,   SINGULAR, UINT32,   ui_res_id,        11) \
@@ -2844,6 +2927,10 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,music_pure_enjoy_model_info,value
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,music_variation_model_info,value_item.music_variation_model_info),  35) \
 X(a, STATIC,   ONEOF,    UENUM,    (value_item,fill_brush_switch,value_item.fill_brush_switch),  36) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,novice_model_info,value_item.novice_model_info),  37) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,day_night_model_info,value_item.day_night_model_info),  38) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,care_model_info,value_item.care_model_info),  39) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,fresh_model_info,value_item.fresh_model_info),  40) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,gentle_model_info,value_item.gentle_model_info),  41) \
 X(a, STATIC,   SINGULAR, UINT32,   timestamp,       100)
 #define DeviceInfoValue_CALLBACK NULL
 #define DeviceInfoValue_DEFAULT NULL
@@ -2865,6 +2952,10 @@ X(a, STATIC,   SINGULAR, UINT32,   timestamp,       100)
 #define DeviceInfoValue_value_item_music_pure_enjoy_model_info_MSGTYPE ModelInfo
 #define DeviceInfoValue_value_item_music_variation_model_info_MSGTYPE ModelInfo
 #define DeviceInfoValue_value_item_novice_model_info_MSGTYPE ModelInfo
+#define DeviceInfoValue_value_item_day_night_model_info_MSGTYPE ModelInfo
+#define DeviceInfoValue_value_item_care_model_info_MSGTYPE ModelInfo
+#define DeviceInfoValue_value_item_fresh_model_info_MSGTYPE ModelInfo
+#define DeviceInfoValue_value_item_gentle_model_info_MSGTYPE ModelInfo
 
 #define DebugInfoValue_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    info_item,         1) \
@@ -3002,7 +3093,7 @@ X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
 
 #define LightCustomInfo_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   light_id,          1) \
-X(a, CALLBACK, SINGULAR, STRING,   light_param,       2) \
+X(a, STATIC,   SINGULAR, STRING,   light_param,       2) \
 X(a, STATIC,   SINGULAR, UINT32,   file_id,           3) \
 X(a, STATIC,   SINGULAR, UINT32,   light_type,        4) \
 X(a, STATIC,   SINGULAR, UINT32,   start_time,        5) \
@@ -3010,7 +3101,7 @@ X(a, STATIC,   SINGULAR, UINT32,   cycle_time,        6) \
 X(a, STATIC,   SINGULAR, UENUM,    light_loop_switch,   7) \
 X(a, STATIC,   REPEATED, MESSAGE,  light_rgb_list,    8) \
 X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
-#define LightCustomInfo_CALLBACK pb_default_field_callback
+#define LightCustomInfo_CALLBACK NULL
 #define LightCustomInfo_DEFAULT NULL
 #define LightCustomInfo_light_rgb_list_MSGTYPE LightRGBInfo
 
@@ -3030,11 +3121,11 @@ X(a, STATIC,   SINGULAR, UENUM,    setting_result,  100)
 
 #define ProblemTeethData_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    problem_teeth_type,   1) \
-X(a, STATIC,   REPEATED, MESSAGE,  teeth_facet,       2) \
+X(a, STATIC,   REPEATED, MESSAGE,  problem_teeth_list,   2) \
 X(a, STATIC,   SINGULAR, UINT32,   xy_index,          3)
 #define ProblemTeethData_CALLBACK NULL
 #define ProblemTeethData_DEFAULT NULL
-#define ProblemTeethData_teeth_facet_MSGTYPE ProblemTeethInfo
+#define ProblemTeethData_problem_teeth_list_MSGTYPE ProblemTeethInfo
 
 #define ProblemTeethInfo_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    setting_type,      1) \
@@ -3111,6 +3202,7 @@ X(a, STATIC,   SINGULAR, UINT32,   brushing_side_downtime,   7) \
 X(a, STATIC,   SINGULAR, ENUM,     brushing_side,     8) \
 X(a, STATIC,   SINGULAR, UINT32,   plaque_residue_percent,   9) \
 X(a, STATIC,   SINGULAR, UINT32,   brushing_coverage,  10) \
+X(a, STATIC,   SINGULAR, UINT32,   brushing_coverage_total,  11) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (algo_data,algorithm_collect,algo_data.algorithm_collect), 100) \
 X(a, STATIC,   ONEOF,    BYTES,    (algo_data,all_brushing_coverage,algo_data.all_brushing_coverage), 101)
 #define AlgorithmRealTime_CALLBACK NULL
@@ -3217,14 +3309,16 @@ X(a, STATIC,   SINGULAR, STRING,   product_key,       4) \
 X(a, STATIC,   SINGULAR, STRING,   device_name,       5) \
 X(a, STATIC,   SINGULAR, STRING,   device_secret,     6) \
 X(a, STATIC,   SINGULAR, BYTES,    ip_address,        7) \
-X(a, STATIC,   SINGULAR, STRING,   iot_url,           8)
+X(a, STATIC,   SINGULAR, STRING,   iot_url,           8) \
+X(a, STATIC,   SINGULAR, UENUM,    wifi_state,        9)
 #define WifiInfo_CALLBACK NULL
 #define WifiInfo_DEFAULT NULL
 
 #define DeviceStateInfo_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    set_state,         1) \
 X(a, STATIC,   SINGULAR, UENUM,    setting_result,    2) \
-X(a, STATIC,   SINGULAR, UENUM,    set_power_state,   3)
+X(a, STATIC,   SINGULAR, UENUM,    set_power_state,   3) \
+X(a, STATIC,   ONEOF,    UENUM,    (state_value,wifi_state,state_value.wifi_state),  10)
 #define DeviceStateInfo_CALLBACK NULL
 #define DeviceStateInfo_DEFAULT NULL
 
@@ -3263,6 +3357,25 @@ X(a, STATIC,   SINGULAR, UINT32,   param_index,       6) \
 X(a, STATIC,   REPEATED, ENUM,     brush_side,        7)
 #define ProfessionalInfo_CALLBACK NULL
 #define ProfessionalInfo_DEFAULT NULL
+
+#define LanguageInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   language_code,     1) \
+X(a, STATIC,   SINGULAR, UENUM,    setting_result,   10)
+#define LanguageInfo_CALLBACK NULL
+#define LanguageInfo_DEFAULT NULL
+
+#define DisplaySettingInfo_FIELDLIST(X, a) \
+X(a, STATIC,   REPEATED, MESSAGE,  display_content,   1) \
+X(a, STATIC,   SINGULAR, UENUM,    setting_result,   10)
+#define DisplaySettingInfo_CALLBACK NULL
+#define DisplaySettingInfo_DEFAULT NULL
+#define DisplaySettingInfo_display_content_MSGTYPE DisplayContent
+
+#define DisplayContent_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    display_state,     1) \
+X(a, STATIC,   SINGULAR, UENUM,    display_style,     2)
+#define DisplayContent_CALLBACK NULL
+#define DisplayContent_DEFAULT NULL
 
 #define DeviceState_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, MESSAGE,  state_value,       1) \
@@ -3523,6 +3636,9 @@ extern const pb_msgdesc_t CustomButtonInfo_msg;
 extern const pb_msgdesc_t CustomButtonContent_msg;
 extern const pb_msgdesc_t ProfessionalModelInfo_msg;
 extern const pb_msgdesc_t ProfessionalInfo_msg;
+extern const pb_msgdesc_t LanguageInfo_msg;
+extern const pb_msgdesc_t DisplaySettingInfo_msg;
+extern const pb_msgdesc_t DisplayContent_msg;
 extern const pb_msgdesc_t DeviceState_msg;
 extern const pb_msgdesc_t DeviceValue_msg;
 extern const pb_msgdesc_t FrequencyBand_msg;
@@ -3594,6 +3710,9 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define CustomButtonContent_fields &CustomButtonContent_msg
 #define ProfessionalModelInfo_fields &ProfessionalModelInfo_msg
 #define ProfessionalInfo_fields &ProfessionalInfo_msg
+#define LanguageInfo_fields &LanguageInfo_msg
+#define DisplaySettingInfo_fields &DisplaySettingInfo_msg
+#define DisplayContent_fields &DisplayContent_msg
 #define DeviceState_fields &DeviceState_msg
 #define DeviceValue_fields &DeviceValue_msg
 #define FrequencyBand_fields &FrequencyBand_msg
@@ -3621,14 +3740,13 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 /* Maximum encoded size of messages (where known) */
 /* DataPackage_size depends on runtime parameters */
 /* ConnectPro_size depends on runtime parameters */
-/* LightCustomInfo_size depends on runtime parameters */
-#define AlgoOtherDataResult_size                 98
-#define AlgoOtherData_size                       606
-#define AlgoResultFusion_size                    1503
-#define AlgorithmCollectList_size                3260
-#define AlgorithmCollect_size                    322
+#define AlgoOtherDataResult_size                 38
+#define AlgoOtherData_size                       246
+#define AlgoResultFusion_size                    633
+#define AlgorithmCollectList_size                2060
+#define AlgorithmCollect_size                    202
 #define AlgorithmPro_size                        81
-#define AlgorithmRealTime_size                   375
+#define AlgorithmRealTime_size                   261
 #define AlgorithmRemind_size                     32
 #define AlgorithmReport_size                     591
 #define AudioDataInfo_size                       31
@@ -3636,8 +3754,8 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define AudioRemindState_size                    16
 #define BackupConfigInfo_size                    72
 #define BackupFileInfo_size                      181
-#define BrushingReport_size                      7803
-#define CommandPro_size                          285
+#define BrushingReport_size                      3453
+#define CommandPro_size                          145
 #define CustomButtonContent_size                 8
 #define CustomButtonInfo_size                    83
 #define CustomPlanGroupInfo_size                 185
@@ -3648,13 +3766,17 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define DeviceRemindInfo_size                    19
 #define DeviceRemind_size                        18
 #define DeviceReport_size                        51
-#define DeviceStateInfo_size                     6
+#define DeviceStateInfo_size                     8
 #define DeviceState_size                         56
 #define DeviceUp_size                            27
 #define DeviceValue_size                         16
+#define DisplayContent_size                      4
+#define DisplaySettingInfo_size                  32
 #define FileHandleInfo_size                      4
 #define FillBrushData_size                       19
 #define FrequencyBand_size                       12
+#define LanguageInfo_size                        13
+#define LightCustomInfo_size                     97
 #define LightRGBInfo_size                        8
 #define ModelInfo_size                           17
 #define MultiFileStatusReq_size                  362
@@ -3665,11 +3787,11 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define ProblemTeethData_size                    176
 #define ProblemTeethInfo_size                    4
 #define ProfessionalInfo_size                    213
-#define ProfessionalModelInfo_size               3465
+#define ProfessionalModelInfo_size               226
 #define RecommendInfo_size                       24
 #define RemindResult_size                        19
 #define RemindSingleResult_size                  20
-#define ReportData_size                          1556
+#define ReportData_size                          686
 #define RotasDataReq_size                        251
 #define RotasDataRsp_size                        16
 #define RotasFileStatusReq_size                  178
@@ -3678,16 +3800,16 @@ extern const pb_msgdesc_t CustomPlanGroupInfo_msg;
 #define RotasResultRsp_size                      6
 #define ServicePro_size                          38
 #define SimpleReport_size                        98
-#define SnInfo_size                              68
+#define SnInfo_size                              19
 #define SupportData_size                         5
 #define Temperature_size                         12
 #define TimeSync_size                            21
-#define UserBackupData_size                      958
+#define UserBackupData_size                      397
 #define UserBackupItem_size                      184
 #define UserInfo_size                            31
 #define UserThemeInfo_size                       69
 #define VideoReportData_size                     42
-#define WifiInfo_size                            395
+#define WifiInfo_size                            397
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -8,13 +8,13 @@
 #include <unordered_map>
 
 #include "Abini.h"
+#include "PressCalibBox.h"
 #include "ageingbox.h"
 #include "camerabox.h"
 #include "imubox.h"
 #include "mainwindow.h"
 #include "motorbox.h"
 #include "pcbabox.h"
-#include "PressCalibBox.h"
 #include "qfreeworkbox.h"
 #include "quiescent_current_box.h"
 #include "screenbox.h"
@@ -64,7 +64,7 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
                           .append(QString::number(context.line).append(" 日志内容：" + msg));
     // .append(" version:").append(QString::number(context.version)));
 
-    QString folderName = "上位机log";
+    QString folderName = "所有log/上位机log";
     QDir dir;
 
     // 检查并创建目录
@@ -131,10 +131,10 @@ int main(int argc, char* argv[]) {
     // #AGE_TEST
     // #MAIN_TEST
 
-    std::unordered_map<QString, int> map = {
-        {"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2}, {"IMU_CALI", 3},  {"SCREEN_TEST", 4}, {"CAMERA_TEST", 5},
-        {"WIFIBLE_TEST", 6},      {"AGE_TEST", 7},   {"PCBA_TEST", 8}, {"PRESS_TEST", 9},   {"FREE_WORK", 10},
-        {"MAIN_TEST", 11}};
+    std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
+                                            {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},
+                                            {"AGE_TEST", 7},          {"PCBA_TEST", 8},   {"PRESS_TEST", 9},
+                                            {"FREE_WORK", 10},        {"MAIN_TEST", 11}};
 
     switch (map[station]) {
         case 1: {

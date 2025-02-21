@@ -348,7 +348,7 @@ void MainWindow::readPendingDatagrams() {
     }
 }
 void MainWindow::saveblackbox(QString data) {
-    QString folderName = "牙刷黑盒的log";
+    QString folderName = "所有log/牙刷黑盒的log";
     QDir dir;
 
     // 检查并创建目录
@@ -460,7 +460,7 @@ QString toHex(const QByteArray& data) {
     return hexStr.trimmed();  // 去掉最后的空格
 }
 void MainWindow::saveDongleUartLog(QString data) {
-    QString folderName = "dongle的log";
+    QString folderName = "所有log/dongle的log";
     QDir dir;
 
     // 检查并创建目录
@@ -1677,8 +1677,8 @@ void MainWindow::getMac(QString sn_to_search) {
                     if (ui->is_start_ota->checkState()) {
                         ui->getMac->clear();
                         ui->getMac->setFocus();
-                        ui->macInput_7->setText(mac);
-                        on_macInput_7_returnPressed();
+                        ui->wifiOtaMacInput->setText(mac);
+                        on_wifiOtaMacInput_returnPressed();
                         showlog("开始ota升级");
                     } else if (ui->is_start_bleota->checkState()) {
                         ui->getMac->clear();
@@ -2461,6 +2461,8 @@ void MainWindow::saveCustom() {
     // 保存COM口相关信息
     SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
     SETTINGS.setValue("Window/otaFilePath", ui->otaFilePath->text());
+    SETTINGS.setValue("WIFI/otaWifiName", ui->wifiUserName_2->text());
+    SETTINGS.setValue("WIFI/otaWifiPassword", ui->wifiPassword_2->text());
 
     qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }
@@ -2472,6 +2474,10 @@ void MainWindow::recoverCustom() {
     restoreState(SETTINGS.value("Window/windowState").toByteArray());
     ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
+
+    ui->wifiUserName_2->setText(SETTINGS.value("WIFI/otaWifiName", "请输入后关闭自动保存").toString());
+    ui->wifiPassword_2->setText(SETTINGS.value("WIFI/otaWifiPassword", "请输入后关闭自动保存").toString());
+
     QString baseKey = QString("mechine/%1").arg(0);
     QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
     ui->comNameCombo->setCurrentText(comName);
@@ -3329,4 +3335,29 @@ void MainWindow::sendAifile(QString file_id) {
     aimanager->post(request, data);
 
     qDebug() << "已经发送请求";  //<< data;
+}
+void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
+    ui->testMsg->appendPlainText(msg);
+
+    QString logDir = "所有log/ota升级压测/";
+    QString logFilePath = logDir + "ota升级log.txt";
+
+    // 确保目录存在
+    QDir dir;
+    if (!dir.exists(logDir)) {
+        if (!dir.mkpath(logDir)) {  // 递归创建目录
+            qDebug() << "无法创建日志目录：" << logDir;
+            return;
+        }
+    }
+
+    QFile logFile(logFilePath);
+    if (logFile.open(QIODevice::Append | QIODevice::Text)) {  // 追加模式
+        QTextStream out(&logFile);
+        out.setCodec("UTF-8");  // 确保兼容中文
+        out << msg << "\n";
+        logFile.close();
+    } else {
+        qDebug() << "无法打开日志文件：" << logFilePath;
+    }
 }

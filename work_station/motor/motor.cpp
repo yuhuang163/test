@@ -262,7 +262,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
 
     showlog("当前连接设备的mac地址" + mac);
 
-    if (macAddress != mac) {
+    if (macAddress.toUpper() != mac.toUpper()) {
         isTestContinue = false;
         showlog("停止运行");
         QMessageBox::warning(NULL, "严重警告", " 当前连接设备与获取的mac不同\t\r\n");

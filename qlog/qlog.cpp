@@ -51,7 +51,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
 }
 
 void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
-    QString folderName = "牙刷log";
+    QString folderName = "所有log/牙刷log";
     QDir dir;
 
     // 检查并创建目录

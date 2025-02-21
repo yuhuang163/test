@@ -21,11 +21,9 @@
  **   zhangkq     2024/2/21       2.1.6.1          support Q20
  **   zhangkq     2024/5/31       2.1.7.1          support U7, U7P
  ***************************************************************/
-
 syntax = "proto3";
 import "nanopb.proto";
 import "data_collection.proto";
-
 
 enum CommandId {
     // Connect Service 0x10
@@ -54,6 +52,8 @@ enum CommandId {
     SET_POWER_DETAIL_INFO = 0x17;
     GET_LANGUAGE_INFO = 0x18;
     SET_LANGUAGE_INFO = 0x19;
+    GET_DISPLAY_SETTING_INFO= 0x1A;
+    SET_DISPLAY_SETTING_INFO= 0x1B;
 
     // User Service 0x20
     GET_USER_INFO = 0x21;
@@ -260,6 +260,8 @@ enum DeviceInfoItem {
     NOVICE_MODEL_INFO = 36;
     DAY_NIGHT_MODEL_INFO = 37;
     CARE_MODEL_INFO = 38;
+    FRESH_MODEL_INFO = 39;
+    GENTLE_MODEL_INFO = 40;
 }
 
 enum DebugInfoItem {
@@ -331,17 +333,14 @@ enum ProductId {
     QF1 = 0x21;
     S10 = 0x22;
     Q20 = 0x23;
-    Q30 = 0x24;
     Y10 = 0x31;
     Y10_PRO = 0x32;
     Y20 = 0x33;
     Y20_PRO = 0x34;
-    Y21 = 0x35;
-    Y25 = 0x36;
+    Y30_PROS = 0x35;
+    Y30_PRO = 0x36;
     P20_PROS = 0x41;
     P20_PRO = 0x42;
-    P30_PRO = 0x43;
-    P30_Ultra = 0x44;
     P3A = 0x55;
     F1 = 0x56;
     SDC_01 = 0x57;
@@ -349,9 +348,10 @@ enum ProductId {
     F10 = 0x59;
     F10_PRO = 0x5A;
     F20 = 0x5B;
-    F20_Ultra = 0x5C;
+    T10 = 0x61;
     U7 = 0x71;
-    U7_PRO = 0x72;
+    U7_Pro = 0x72;
+    Y20_PROS = 0x81;
     M62 = 0xA2;
 }
 
@@ -397,7 +397,7 @@ enum ProtocolId {
     V2165 = 2165;
     V2171 = 2171;
     V2172 = 2172;
-    V2173 = 2173;    
+    V2173 = 2173;
     V2200 = 2200;
 }
 
@@ -498,7 +498,6 @@ enum ProblemTeeth {
     STONE_TEETH = 6; // 结石牙
     PIGMENT_TEETH = 7; // 色素牙
     BACTERIAL_PLAQUE = 8; // 牙菌斑
-
 }
 
 enum BrushTotalArea {
@@ -533,11 +532,6 @@ enum BrushSide {
     LEFT_DOWN_OUT_F1 = 13;
     LEFT_DOWN_IN_F2 = 14;
     LEFT_DOWN_MIDDLE_F3 = 15;
-    MIDDLE_UP_MIDDLE_B3 = 16;
-    MIDDLE_DOWN_MIDDLE_E3 = 17;
-    LEFT_OUT = 18;
-    MIDDLE_OUT = 19;
-    RIGHT_OUT = 20;
     ALL_SIDE = 100;
 }
 
@@ -630,6 +624,8 @@ enum BrushingModel {
     NOVICE_ADAPTATION = 18;
     DAY_NIGHT_EFFECTS = 19;
     CARE = 20;
+    FRESH = 21;
+    GENTLE = 22;
 }
 
 enum BrushingPower {
@@ -718,8 +714,8 @@ enum AlgoType {
     GUIDE_SIDE = 2;
     RECOGNITION_AREA = 3;
     RECOGNITION_SIDE = 4;
+    NO_ALGO_DISPLAY = 5;
 }
-
 
 enum ThemeType {
     DEFAULT_RES = 0;
@@ -751,6 +747,20 @@ enum WifiState {
     NO_CONFIG = 2;
     NO_CONNECT = 3;
     CONNECTED = 4;
+}
+
+enum DisplayState {
+    NOT_STATE = 0;
+    BRUSH_BEFORE = 1;
+    BRUSHING = 2;
+    BRUSH_AFTER = 3;
+}
+
+enum DisplayStyle {
+    NOT_DISPLAY = 0;
+    TEETH_ICON = 1;
+    REPORT_TEXT = 2;
+    DISPLAY_TIMER = 3;
 }
 
 //############################# 0x40 Audio/Video Linkage Service Start ###########################
@@ -880,10 +890,10 @@ enum RotasUpdateFile {
     MOTOR_RESOURCE = 8;
     WIFI_LIGHT_CUSTOM = 9;
     BLE_FIRMWARE = 10;
-    BACKUP_SETTING = 11;
-    BACKUP_AI_LEARNING = 12;
-    RESTORE_SETTING = 13;
-    RESTORE_AI_LEARNING = 14;
+    BACKUP_CONFIG = 11;
+    BACKUP_FILE = 12;
+    RESTORE_CONFIG = 13;
+    RESTORE_FILE = 14;
     BACKUP_ORAL_ARCHIVES = 15;
     RESTORE_ORAL_ARCHIVES = 16;
 }
@@ -896,8 +906,8 @@ enum RotaErrorCode {
     FILE_TOO_LAGER = 4;
     MD5_FAIL = 5;
     FILE_NO_SUPPORT = 6;
-    FLASH_ERR = 7;
-    NO_MEMORY = 8;
+    FLASH_ERR = 7; // 存储异常
+    NO_MEMORY = 8; // 内存不足
     TRANS_TIMEOUT = 9;
     TRANS_OVER_RANGE = 10;
     DOWNLOAD_SUCCESS = 11;
@@ -948,7 +958,6 @@ enum TimeType {
 }
 //############################# 0x70 Plan Service End ###################################
 
-
 message DataPackage {
     CommandId command_id = 1;
     oneof command_data {
@@ -966,7 +975,7 @@ message DataPackage {
         DeviceRemind device_remind = 12;          // 0x0B
         TimeSync brush_head_time_sync = 13;       // 0x0C
         DeviceRemind get_device_remind = 14;      // 0x0D
-        DeviceStateInfo device_state_set = 15;    // 0x0E	
+        DeviceStateInfo device_state_set = 15;    // 0x0E
         DeviceStateInfo device_state_remind = 16; // 0x0F
         CustomButtonInfo get_custom_button_info = 0x11;
         CustomButtonInfo set_custom_button_info = 0x12;
@@ -975,6 +984,10 @@ message DataPackage {
         ProfessionalModelInfo set_professional_info = 0x15;
         ProfessionalModelInfo get_power_detail_info = 0x16;
         ProfessionalModelInfo set_power_detail_info = 0x17;
+        LanguageInfo get_language_info = 0x18;
+        LanguageInfo set_language_info = 0x19;
+        DisplaySettingInfo get_display_setting_info = 0x1A;
+        DisplaySettingInfo set_display_setting_info = 0x1B;
 
         // User Service 0x20
         UserInfo get_user_info = 0x21;
@@ -1044,8 +1057,8 @@ message ConnectPro {
     uint32 protocol_id = 5;
     uint32 firmware_id = 6;
     uint32 firmware_type = 7;
-    HardwareId hardware_id = 8;
-    bytes sn_id = 9 [(nanopb).max_size= 64];
+    uint32 hardware_id = 8;
+    bytes sn_id = 9 [(nanopb).max_size= 32];
     StatementType agree_statement_type = 10;
     uint32 ui_res_id = 11;
     UpgradeType upgrade_type = 12;
@@ -1071,7 +1084,7 @@ message SupportData {
 
 message CommandPro {
     CommandId command_id = 1;
-    repeated SupportData command_support_list = 2 [(nanopb).max_count = 40];
+    repeated SupportData command_support_list = 2 [(nanopb).max_count = 20];
     ErrorCode error_code = 3;
 }
 
@@ -1131,6 +1144,10 @@ message DeviceInfoValue {
         ModelInfo music_variation_model_info = 35;
         SwitchState fill_brush_switch = 36;
         ModelInfo novice_model_info = 37;
+        ModelInfo day_night_model_info = 38;
+        ModelInfo care_model_info = 39;
+        ModelInfo fresh_model_info = 40;
+        ModelInfo gentle_model_info = 41;
     }
     uint32 timestamp = 100;
 }
@@ -1153,7 +1170,7 @@ message ModelInfo {
 }
 
 message SnInfo {
-    bytes sn_id = 1 [(nanopb).max_size= 64];
+    bytes sn_id = 1 [(nanopb).max_size= 15];
     ErrorCode setting_result = 2;
 }
 
@@ -1214,15 +1231,15 @@ message AlgoResultFusion {
     uint32 plaque_residue = 5; // 全口菌斑残留
     uint32 n_area = 6; // 齿区数量
     uint32 n_facet = 7; // 齿面数量
-    repeated int32 vec_time_display = 8 [(nanopb).max_count = 16]; // 区域刷牙时长呈现百分比
-    repeated int32 vec_time_op_display = 9 [(nanopb).max_count = 16]; // 区域过压时长呈现百分比
-    repeated int32 vec_time_hb_display = 10 [(nanopb).max_count = 16]; //区域横刷时长呈现百分比
-    repeated uint32 vec_coverage = 11 [(nanopb).max_count = 16]; // 区域覆盖率
+    repeated int32 vec_time_display = 8 [(nanopb).max_count = 6]; // 区域刷牙时长呈现百分比
+    repeated int32 vec_time_op_display = 9 [(nanopb).max_count = 6]; // 区域过压时长呈现百分比
+    repeated int32 vec_time_hb_display = 10 [(nanopb).max_count = 6]; //区域横刷时长呈现百分比
+    repeated uint32 vec_coverage = 11 [(nanopb).max_count = 6]; // 区域覆盖率
     uint32 algo_ver = 12; // 算法版本号
     uint32 protocol_ver = 13; // 协议编号
     uint32 timestamp_end = 14; // 刷牙结束时间
-    repeated uint32 vec_brush_time_raw = 15 [(nanopb).max_count = 16]; // 区域刷牙时长呈现值
-    repeated uint32 vec_op_time_raw  = 16 [(nanopb).max_count = 16]; // 区域过压刷牙时长呈现值
+    repeated uint32 vec_brush_time_raw = 15 [(nanopb).max_count = 6]; // 区域刷牙时长呈现值
+    repeated uint32 vec_op_time_raw  = 16 [(nanopb).max_count = 6]; // 区域过压刷牙时长呈现值
     oneof other_data {
         AlgoOtherData other_data_result = 100; // 研究数据
         bytes other_data_bytes = 101 [(nanopb).max_size= 256]; // 研究数据byte流
@@ -1236,7 +1253,7 @@ message AlgoOtherData {
 
 message AlgoOtherDataResult {
     KeyType key = 1;
-    repeated uint32 values = 2 [(nanopb).max_count = 16];
+    repeated uint32 values = 2 [(nanopb).max_count = 6];
 }
 
 message UserInfo {
@@ -1260,7 +1277,7 @@ message UserThemeInfo {
 
 message LightCustomInfo {
     uint32 light_id = 1;
-    string light_param = 2;
+    string light_param = 2 [(nanopb).max_size= 1];
     uint32 file_id = 3;
     uint32 light_type = 4;
     uint32 start_time = 5;
@@ -1283,7 +1300,7 @@ message OralArchivesData {
 
 message ProblemTeethData {
     ProblemTeeth problem_teeth_type = 1;
-    repeated ProblemTeethInfo teeth_facet = 2 [(nanopb).max_count = 28];
+    repeated ProblemTeethInfo problem_teeth_list = 2 [(nanopb).max_count = 28];
     uint32 xy_index = 3;
 }
 
@@ -1297,7 +1314,7 @@ message UserBackupData {
     uint32 backup_timestamp = 2;
     bool is_last_backup = 3;
     uint32 total_size = 4;
-    repeated UserBackupItem backup_item_list = 5 [(nanopb).max_count = 5];
+    repeated UserBackupItem backup_item_list = 5 [(nanopb).max_count = 2];
 
     ErrorCode setting_result = 100;
 }
@@ -1318,7 +1335,7 @@ message BackupFileInfo {
 }
 
 message BackupConfigInfo {
-    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:其他扩展
+    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:口腔档案
     oneof config_data { // 配置项备份数据：1设置项使用settingV0
         bytes byte_data = 10 [(nanopb).max_size= 64];
         string string_data = 11 [(nanopb).max_size= 64];
@@ -1358,6 +1375,7 @@ message AlgorithmRealTime {
     BrushSide brushing_side = 8;
     uint32 plaque_residue_percent = 9;
     uint32 brushing_coverage = 10;
+    uint32 brushing_coverage_total = 11;
     oneof algo_data {
         AlgorithmCollect algorithm_collect = 100;
         bytes all_brushing_coverage = 101 [(nanopb).max_size= 16];
@@ -1436,9 +1454,9 @@ message AlgorithmCollect {
     float magnetism_y = 10;
     float magnetism_z = 11;
     int32 horizontal_brush = 12;
-    repeated uint32 area_brush_time = 13 [(nanopb).max_count = 16];
+    repeated uint32 area_brush_time = 13 [(nanopb).max_count = 6];
     int32 gravity_orient = 14;
-    repeated uint32 coverage_rate = 15 [(nanopb).max_count = 16];
+    repeated uint32 coverage_rate = 15 [(nanopb).max_count = 6];
     int32 score = 16;
     BrushingState brushing_state = 17;
     BrushSide brushing_side = 18;
@@ -1454,12 +1472,16 @@ message WifiInfo {
     string device_secret = 6 [(nanopb).max_size = 64];
     bytes ip_address = 7 [(nanopb).max_size = 32];
     string iot_url = 8 [(nanopb).max_size = 128];
+    WifiState wifi_state = 9;
 }
 
 message DeviceStateInfo {
     SwitchState set_state = 1;
     ErrorCode setting_result = 2;
     PowerState set_power_state = 3;
+    oneof state_value {
+        WifiState wifi_state = 10;
+    }
 }
 
 message CustomButtonInfo {
@@ -1476,7 +1498,7 @@ message CustomButtonContent {
 
 message ProfessionalModelInfo {
     BrushingModel brushing_model = 1;
-    repeated ProfessionalInfo professional_info_list = 2 [(nanopb).max_count = 16];
+    repeated ProfessionalInfo professional_info_list = 2 [(nanopb).max_count = 1];
     SwitchState enter_debug_switch = 3;
     SwitchState facet_custom_switch = 4;
     ErrorCode setting_result = 100;
@@ -1489,7 +1511,22 @@ message ProfessionalInfo {
     float sweep_range = 4;
     float sweep_frequency = 5;
     uint32 param_index = 6;
-    repeated BrushSide brush_side = 7 [(nanopb).max_count = 16];
+	repeated BrushSide brush_side = 7 [(nanopb).max_count = 16];
+}
+
+message LanguageInfo {
+    string language_code = 1 [(nanopb).max_size= 10];
+    ErrorCode setting_result = 10;
+}
+
+message DisplaySettingInfo {
+    repeated DisplayContent display_content = 1 [(nanopb).max_count = 5];
+    ErrorCode setting_result = 10;
+}
+
+message DisplayContent {
+    DisplayState display_state = 1;
+    DisplayStyle display_style = 2;
 }
 
 //############################# 0x40 Audio/Video Linkage Service Start ###########################
@@ -1531,6 +1568,7 @@ message Temperature {
     uint32 left_temperature = 1; // FACE, EYE, EMS
     uint32 right_temperature = 2; // EMS
 }
+
 
 message DeviceUp {
     DeviceUseState device_use_state = 1;

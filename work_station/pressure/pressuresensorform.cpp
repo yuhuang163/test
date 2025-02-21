@@ -1744,7 +1744,7 @@ void PressureSensorForm::reset_all() {
     memset(&start_calib_channel, 0, sizeof(start_calib_channel));  // 是否开始刷头200校准
 
     emit operator_instruct(getIndex());  //核对
-
+  waitWork(1000);//给开机时间
     set_independent_state(STATE_INVALID);
     at->sendMac(ui->macInput->text());
     ui->msgEdit->appendPlainText("开始测试");

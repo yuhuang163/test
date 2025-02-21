@@ -221,7 +221,7 @@ int Fixture_uart::ext_ble_find_next_frame(void) {
 
 // 1是发送的，0是接收的
 void Fixture_uart::save_Fixture_uart_log(int txrx, QByteArray data) {
-    QString folderName = "治具log";
+    QString folderName = "所有log/治具log";
     QDir dir;
 
     // 检查并创建目录

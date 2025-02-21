@@ -198,6 +198,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 is_canGoNext = 0;
                 is_lcd_control = 0;
                 TestTime.start();
+                waitWork(1000);//给开机时间保险
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 snCompareOk = 0;

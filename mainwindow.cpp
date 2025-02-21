@@ -169,30 +169,25 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, &Qpb::send_pb_info, [&](QString s) {
-        ui->testMsg->appendPlainText(" ");
-        ui->testMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-        ui->testMsg->appendPlainText(s);
+        appendAndSaveWifiOtaLog(" ");
+        appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + s);
 
         ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-        ui->bleOtaMsg->appendPlainText(s);
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) + s);
     });
 
     connect(pb, &Qpb::send_ota_result, [&](int r) {
-        ui->testMsg->appendPlainText(" ");
-        ui->testMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-
-        ui->testMsg->appendPlainText("OTA 结果 : ");
-        ui->testMsg->appendPlainText(otaResults[r]);
+        appendAndSaveWifiOtaLog(" ");
+        appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + "OTA 结果 : " + otaResults[r]);
 
         ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-        ui->bleOtaMsg->appendPlainText("OTA 结果 : ");
-        ui->bleOtaMsg->appendPlainText(otaResults[r]);
-
-        otaFinish = true;
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                       "OTA 结果 : " + otaResults[r]);
 
         if (r == 11) {
+            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotatimes++) +
+                                    QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
+            ui->wifiota_times->setText(QString("升级次数:%1").arg(wifiotatimes));
             ui->bleotaresult->setText("PASS");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                             "black; border: 2px solid #00FF00; border-radius: "
@@ -200,6 +195,9 @@ MainWindow::MainWindow(QWidget* parent) :
             on_disconnectButton_clicked();
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
+            } else if (ui->is_wifiota_press->checkState()) {
+                on_wifiOtaMacInput_returnPressed();
+
             } else {
                 if (ui->is_clear_mac->checkState()) {
                     ui->bleotamacInput->clear();
@@ -208,6 +206,9 @@ MainWindow::MainWindow(QWidget* parent) :
             }
 
         } else if (r == 12) {
+            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotatimes++) +
+                                    QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
+            ui->wifiota_times->setText(QString("升级次数:%1").arg(wifiotatimes));
             on_stopBleOta_clicked();
             on_disconnectButton_clicked();
             ui->bleotaresult->setText("FAIL");
@@ -216,6 +217,9 @@ MainWindow::MainWindow(QWidget* parent) :
                                             "10px; padding: 10px; text-align: center; ");
             if (ui->is_bleota_press->checkState()) {
                 on_bleotamacInput_returnPressed();
+            } else if (ui->is_wifiota_press->checkState()) {
+                on_wifiOtaMacInput_returnPressed();
+
             } else {
                 if (ui->is_clear_mac->checkState()) {
                     ui->bleotamacInput->clear();
@@ -410,6 +414,8 @@ MainWindow::MainWindow(QWidget* parent) :
 
     aimanager = new QNetworkAccessManager(this);
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
+    ui->wifiotaprogress->setMaximum(100);
+    connect(pb, &Qpb::send_ota_progress, [&](int s) { ui->wifiotaprogress->setValue(s); });
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {
@@ -494,11 +500,12 @@ MainWindow::~MainWindow() {
     is_motor_continue = false;
     isimuCaliContinue = false;
     isrssiContinue = false;
-    isContinue = false;
+    isWifiContinue = false;
     delete ui;
 }
 
 void MainWindow::closeEvent(QCloseEvent*) {
+    qDebug() << "关闭上位机";
     on_stopBleOta_clicked();
     running.store(false);
     // 等待线程结束
@@ -568,7 +575,7 @@ void MainWindow::openDongleSerialPort() {
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
                 &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
     } else {
-        ui->testMsg->appendPlainText("串口被占用！");
+        appendAndSaveWifiOtaLog("串口被占用！");
         // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
         // showlog("打开错误");
     }
@@ -1376,13 +1383,13 @@ void MainWindow::on_motor_cali_clicked() {
 }
 
 void MainWindow::on_bleTestPushButton_clicked() {
-    isContinue = true;
+    isWifiContinue = true;
     ui->bleTestPushButton->setEnabled(false);
     ui->configWifiPushButton->setEnabled(false);
     ui->otaTestPushButton->setEnabled(false);
     int times = 0;
 
-    while (isContinue) {
+    while (isWifiContinue) {
         if (!dongleSerialPort->isOpen()) {
             on_connectButton_clicked();
         }
@@ -1402,9 +1409,9 @@ void MainWindow::on_bleTestPushButton_clicked() {
 
         waitWork(ui->testPeriodSpin->value() * 1000);
 
-        ui->testMsg->appendPlainText(QString(""));
-        ui->testMsg->appendPlainText(QString("%1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
-        ui->testMsg->appendPlainText(QString("test times:%1").arg(times++));
+        appendAndSaveWifiOtaLog(QString(""));
+        appendAndSaveWifiOtaLog(QString("%1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
+        appendAndSaveWifiOtaLog(QString("test times:%1").arg(times++));
     }
 
     ui->bleTestPushButton->setEnabled(true);
@@ -1413,19 +1420,19 @@ void MainWindow::on_bleTestPushButton_clicked() {
 }
 
 void MainWindow::on_stopTestPushButton_clicked() {
-    isContinue = false;
+    isWifiContinue = false;
     ui->bleTestPushButton->setEnabled(true);
     ui->configWifiPushButton->setEnabled(true);
     ui->otaTestPushButton->setEnabled(true);
 }
-
+//压测接口
 void MainWindow::on_otaTestPushButton_clicked() {
-    isContinue = true;
+    isWifiContinue = true;
     ui->bleTestPushButton->setEnabled(false);
     ui->configWifiPushButton->setEnabled(false);
     ui->otaTestPushButton->setEnabled(false);
     ui->otaTestPushButton_2->setEnabled(false);
-    int times = 1;
+
     bool finish = false;
     QTime timeout;
     QTime totalTime;
@@ -1433,17 +1440,17 @@ void MainWindow::on_otaTestPushButton_clicked() {
     bool result = false;
     bool isStart = false;
     at->resetConnected();
-    at->sendotaMac(ui->macInput_7->text());
+    at->sendotaMac(ui->wifiOtaMacInput->text());
     pb->setPbMode(0);
     timeout.start();
 
     while (at->getConnected() == false) {
         waitWork(100);
         if (timeout.elapsed() > 1000 * 30) {
-            ui->testMsg->appendPlainText("蓝牙连接超时");
-            isContinue = false;
+            appendAndSaveWifiOtaLog("otaTestPushButton蓝牙连接超时");
+            isWifiContinue = false;
         }
-        if (isContinue == false)
+        if (isWifiContinue == false)
             break;
     }
     waitWork(1000);
@@ -1456,7 +1463,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
         ui->progressBar->setValue(s);
         refresh = true;
         if (s == 100) {
-            ui->testMsg->appendPlainText(QString("ota time:%1s").arg(totalTime.elapsed() / 1000));
+            appendAndSaveWifiOtaLog(QString("ota time:%1s").arg(totalTime.elapsed() / 1000));
             finish = true;
         }
     });
@@ -1476,7 +1483,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
         }
     });
 
-    while (isContinue) {
+    while (isWifiContinue) {
         if (!dongleSerialPort->isOpen()) {
             on_connectButton_clicked();
         }
@@ -1486,8 +1493,8 @@ void MainWindow::on_otaTestPushButton_clicked() {
         pb->set_start_ota_app(RotasFiledata);
         timeout.restart();
         isStart = false;
-        ui->testMsg->appendPlainText("----------------");
-        ui->testMsg->appendPlainText("OTA启动，开始计时");
+
+        appendAndSaveWifiOtaLog("启动OTA，开始计时");
         int counter = 0;
         while (timeout.elapsed() < 30 * 3000) {
             if (counter % 2 == 0) {
@@ -1500,12 +1507,12 @@ void MainWindow::on_otaTestPushButton_clicked() {
             }
             waitWork(1000);
             counter++;
-            if (isContinue == false)
+            if (isWifiContinue == false)
                 break;
         }
         if (isStart == false) {
-            isContinue = false;
-            ui->testMsg->appendPlainText("设备无法接收蓝牙指令");
+            isWifiContinue = false;
+            appendAndSaveWifiOtaLog("设备无法接收蓝牙指令");
         }
 
         totalTime.start();
@@ -1514,12 +1521,12 @@ void MainWindow::on_otaTestPushButton_clicked() {
 
         while (finish == false) {
             if (timeout.elapsed() > 3 * 60 * 1000) {
-                ui->testMsg->appendPlainText("下载超时");
+                appendAndSaveWifiOtaLog("下载超时");
                 finish = true;
                 break;
             }
             waitWork(200);
-            if (isContinue == false)
+            if (isWifiContinue == false)
                 break;
             if (refresh) {
                 refresh = false;
@@ -1531,12 +1538,12 @@ void MainWindow::on_otaTestPushButton_clicked() {
             ui->lcdNumber->display(totalTime.elapsed() / 1000);
         }
 
-        ui->testMsg->appendPlainText(QString("升级次数:%1").arg(times++));
-        ui->testMsg->appendPlainText(QString("耗时:%1 s").arg(totalTime.elapsed() / 1000));
+        appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(otaTesttimes++));
+        appendAndSaveWifiOtaLog(QString("耗时:%1 s").arg(totalTime.elapsed() / 1000));
         if (result == false) {
-            ui->testMsg->appendPlainText("升级失败");
+            appendAndSaveWifiOtaLog("升级失败");
         } else {
-            ui->testMsg->appendPlainText("升级成功");
+            appendAndSaveWifiOtaLog("升级成功");
         }
 
         waitWork(ui->testPeriodSpin->value() * 1000);
@@ -1546,11 +1553,11 @@ void MainWindow::on_otaTestPushButton_clicked() {
                 waitWork(3000);
                 at->getConnected();
                 if (timeout.elapsed() > 1000 * 60 * 2) {
-                    ui->testMsg->appendPlainText("蓝牙连接超时");
-                    isContinue = false;
+                    appendAndSaveWifiOtaLog("otaTestPushButton蓝牙连接超时");
+                    isWifiContinue = false;
                 }
 
-                if (isContinue == false)
+                if (isWifiContinue == false)
                     break;
             }
         }
@@ -1607,79 +1614,34 @@ void MainWindow::on_sweeping_angle_returnPressed() {
     pb->set_sevor_motor_param(ui->sweeping_angle->text().toUInt(), ui->vibrate_angle->text().toFloat(),
                               ui->sweeping_freq->text().toFloat(), ui->vibrate_freq->text().toUInt());
 }
+//单次ota接口
 void MainWindow::on_otaTestPushButton_2_clicked() {
-    isContinue = true;
-    ui->bleTestPushButton->setEnabled(false);
-    ui->configWifiPushButton->setEnabled(false);
-    ui->otaTestPushButton->setEnabled(false);
-    ui->otaTestPushButton_2->setEnabled(false);
-    int times = 1;
     QTime timeout;
-    QTime totalTime;
-    bool refresh = false;
 
-    // at->resetConnected();//注释
-    // at->sendotaMac(ui->macInput_7->text());
-    pb->setPbMode(0);
+    if (!ui->is_wifiota_press->checkState())
+        ui->wifiOtaMacInput->clear();
+
+    appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + "OTA启动，开始计时");
+    totalwifiOtaTime.start();
     timeout.start();
-
-    while (at->getConnected() == false) {
-        waitWork(100);
-        if (timeout.elapsed() > 1000 * 30) {
-            ui->testMsg->appendPlainText("蓝牙连接超时");
-            isContinue = false;
-        }
-        if (isContinue == false)
+    ui->wifiotaprogress->setValue(0);
+    RotasFileStatusReq RotasFiledata;
+    RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
+    pb->set_start_ota_app(RotasFiledata);
+    isWifiContinue = true;
+    while (isWifiContinue) {
+        if (timeout.elapsed() > 3 * 60 * 1000) {  //下载超时退出
+            appendAndSaveWifiOtaLog("下载超时");
             break;
-    }
-    waitWork(1000);
-
-    waitWork(100);
-    ui->macInput_7->clear();
-    // ui->macInput_7->setFocus();
-    while (isContinue) {
-        if (!dongleSerialPort->isOpen()) {
-            on_connectButton_clicked();
         }
-        ui->progressBar->setValue(0);
-        RotasFileStatusReq RotasFiledata;
-        RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
-        pb->set_start_ota_app(RotasFiledata);
-        timeout.start();
-        ui->testMsg->appendPlainText("----------------");
-        ui->testMsg->appendPlainText("OTA启动，开始计时");
-        totalTime.start();
-        otaFinish = false;
-        while (otaFinish == false) {
-            if (timeout.elapsed() > 3 * 60 * 1000) {
-                ui->testMsg->appendPlainText("下载超时");
-                otaFinish = true;
-                break;
-            }
-            if (at->getConnected() == false) {
-                otaFinish = true;
-            }
-            waitWork(200);
-            if (isContinue == false)
-                break;
-
-            if (refresh) {
-                refresh = false;
-                timeout.restart();
-            }
-            ui->lcdNumber->display(totalTime.elapsed() / 1000);
+        if (at->getConnected() == false) {  //蓝牙断开退出
+            appendAndSaveWifiOtaLog("蓝牙断开退出");
+            break;
         }
 
-        ui->testMsg->appendPlainText(QString("升级次数:%1").arg(times++));
-        ui->testMsg->appendPlainText(QString("耗时:%1 s").arg(totalTime.elapsed() / 1000));
-        waitWork(ui->testPeriodSpin->value() * 1000);
-        break;
+        ui->lcdNumber->display(totalwifiOtaTime.elapsed() / 1000);
+        waitWork(200);
     }
-    ui->otaTestPushButton_2->setEnabled(true);
-    ui->progressBar->hide();
-    ui->bleTestPushButton->setEnabled(true);
-    ui->configWifiPushButton->setEnabled(true);
-    ui->otaTestPushButton->setEnabled(true);
 }
 
 void MainWindow::on_configWifiPushButton_2_clicked() {
@@ -1696,16 +1658,17 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     QString deviceSecret;
     QString deviceName;
     QString productName;
-    QString iotUrl = ui->iot_url->text();
+    QString iotUrl;
 
     if (OTAGroup->checkedId() == 0)  // 生产版本
     {
         LicensePair pair = license.getLicense();
-        ui->testMsg->appendPlainText("正在运行生产版本OTA");
+        appendAndSaveWifiOtaLog("");
+        appendAndSaveWifiOtaLog("正在运行生产版本OTA，密钥号：" + QString::number(license.counter));
         productName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
-        ui->testMsg->appendPlainText("密钥号：" + QString::number(license.counter));
+        iotUrl = ui->iot_url_product->text();
 
     } else if (OTAGroup->checkedId() == 1)  // 测试版本
     {
@@ -1714,19 +1677,21 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             return;
         }
         LicensePair testpair = Testlicense.getTestLicense();
-        ui->testMsg->appendPlainText("正在运行测试版本OTA");
+        appendAndSaveWifiOtaLog("");
+        appendAndSaveWifiOtaLog("开始运行测试版本OTA，密钥号：" + QString::number(Testlicense.testcounter));
         productName = testpair.product_name;
         deviceName = testpair.device_key;
         deviceSecret = testpair.device_secret;
-        ui->testMsg->appendPlainText("密钥号：" + QString::number(Testlicense.counter));
+        iotUrl = ui->iot_url_test->text();
 
     } else if (OTAGroup->checkedId() == 2) {
         LicensePair csvpair = Csvlicense.getNextOtaDevice();
-        ui->testMsg->appendPlainText("正在运行csv文件OTA");
+        appendAndSaveWifiOtaLog("");
+        appendAndSaveWifiOtaLog("正在运行csv文件OTA，密钥号：" + QString::number(Csvlicense.otaDeviceIndex));
         productName = csvpair.product_name;
         deviceName = csvpair.device_key;
         deviceSecret = csvpair.device_secret;
-        ui->testMsg->appendPlainText("密钥号：" + QString::number(Csvlicense.otaDeviceIndex));
+        iotUrl = ui->iot_url_test->text();
 
     }
 
@@ -1734,23 +1699,23 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         QMessageBox::warning(NULL, "警告", " 请选择ota环境\r\n");
         return;
     }
-
+    waitWork(1000);
     at->resetConnected();
-    at->sendbleMac(ui->macInput_7->text());
+    at->sendbleMac(ui->wifiOtaMacInput->text());
     pb->setPbMode(0);  // app
     timeout.start();
-    isContinue = true;
+    isWifiContinue = true;
     while (at->getConnected() == false) {
         waitWork(100);
-        if (timeout.elapsed() > 1000 * 30) {
-            ui->testMsg->appendPlainText("蓝牙连接超时");
-            isContinue = false;
+        if (timeout.elapsed() > 1000 * 60) {
+            appendAndSaveWifiOtaLog("configWifiPushButton_2蓝牙连接超时");
+            isWifiContinue = false;
         }
-        if (isContinue == false)
+        if (isWifiContinue == false)
             break;
     }
-    waitWork(1000);
-    if (isContinue == false) {
+
+    if (isWifiContinue == false) {
         ui->configWifiPushButton_2->setEnabled(true);
         return;
     }
@@ -1766,17 +1731,26 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     memcpy(info.device_secret, deviceSecret.toUtf8(), deviceSecret.size());
     memcpy(info.iot_url, iotUrl.toUtf8(), iotUrl.size());
 
-    QString msg = QString("发送升级的信息：\n") + "WiFi 名称: " + name + "\n" + "WiFi 密码: " + password + "\n" +
-                  "Product Key: " + productName + "\n" + "Device Name: " + deviceName + "\n" +
-                  "Device Secret: " + deviceSecret + "\n" + "IoT URL: " + iotUrl;
-
-    ui->testMsg->appendPlainText(msg);
+    QString msg = QString("发送升级的信息：\n"
+                          "------------------------------------\n"
+                          "📶 WiFi 名称    : %1\n"
+                          "🔑 WiFi 密码    : %2\n"
+                          "🏷️ Product Key  : %3\n"
+                          "📛 Device Name  : %4\n"
+                          "🔒 Device Secret : %5\n"
+                          "🌐 IoT URL       : %6\n"
+                          "------------------------------------")
+                      .arg(name)
+                      .arg(password)
+                      .arg(productName)
+                      .arg(deviceName)
+                      .arg(deviceSecret)
+                      .arg(iotUrl);
+    appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + msg);
 
     pb->set_config_network_app(info);
-    waitWork(1000);
-    waitWork(1000);
-    ui->testMsg->appendPlainText("已配置网络");
-    // ui->testMsg->appendPlainText(name+password);
+    appendAndSaveWifiOtaLog("已配置网络");
+    // appendAndSaveWifiOtaLog(name+password);
 
     ui->configWifiPushButton_2->setEnabled(true);
 }
@@ -1800,8 +1774,8 @@ void MainWindow::on_open_press_collect_clicked() {
 }
 
 void MainWindow::on_close_press_collect_clicked() { pb->set_press_collect_param(FacSwitch_CLOSE); }
-void MainWindow::on_app_connect_clicked() { at->sendotaMac(ui->macInput_7->text()); }
-void MainWindow::on_macInput_7_returnPressed() {
+void MainWindow::on_app_connect_clicked() { at->sendotaMac(ui->wifiOtaMacInput->text()); }
+void MainWindow::on_wifiOtaMacInput_returnPressed() {
     // on_macInput_returnPressed();
     // ui->testMsg->clear();
     if (!dongleSerialPort->isOpen()) {
@@ -1810,16 +1784,17 @@ void MainWindow::on_macInput_7_returnPressed() {
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
-    if (!macRegex.match(ui->macInput_7->text()).hasMatch()) {
+    if (!macRegex.match(ui->wifiOtaMacInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
-        macAddress = ui->macInput_7->text();
+        macAddress = ui->wifiOtaMacInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
-        // at->sendbleMac(ui->macInput_7->text());   // 开始连接
         pb->setPbMode(0);
         on_configWifiPushButton_2_clicked();
-        on_otaTestPushButton_2_clicked();
+        if (isWifiContinue == true) {
+            on_otaTestPushButton_2_clicked();
+        }
     }
 }
 

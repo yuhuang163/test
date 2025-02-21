@@ -281,78 +281,83 @@ void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
              << "press_state" << data.press_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "audio_state" << data.audio_state;
+    if (refresh_periph_times) {
+        qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
+                 << "refresh_periph_times" << refresh_periph_times;
+        refresh_periph_times = 0;
 
-    QString imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toString();
-    QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
-    QString magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
-    QString pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
-    QString audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toString();
+        QString imuStatus = SETTINGS.value("PeripheralStatus/IMU_Status").toString();
+        QString flashStatus = SETTINGS.value("PeripheralStatus/Flash_Status").toString();
+        QString magneticStatus = SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
+        QString pressureStatus = SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
+        QString audioState = SETTINGS.value("PeripheralStatus/Audio_Status").toString();
 
-    // 将布尔值转换为 QString
-    QString flashStateStr = QString::number(data.flash_state);
-    QString imuStateStr = QString::number(data.imu_state);
-    QString audioStateStr = QString::number(data.audio_state);
-    QString pressStateStr = QString::number(data.press_state);
-    QString magnetStateStr = QString::number(data.magnet_state);
+        // 将布尔值转换为 QString
+        QString flashStateStr = QString::number(data.flash_state);
+        QString imuStateStr = QString::number(data.imu_state);
+        QString audioStateStr = QString::number(data.audio_state);
+        QString pressStateStr = QString::number(data.press_state);
+        QString magnetStateStr = QString::number(data.magnet_state);
 
-    // 现在可以将 QString 类型的状态用于你的条件判断
-    bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
-    bool checkIMU = SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool();
-    bool checkAudio = SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool();
-    bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
-    bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
+        // 现在可以将 QString 类型的状态用于你的条件判断
+        bool checkFlash = SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool();
+        bool checkIMU = SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool();
+        bool checkAudio = SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool();
+        bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
+        bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
 
-    if ((!checkFlash || compareVersions(flashStatus, flashStateStr)) &&
-        (!checkIMU || compareVersions(imuStatus, imuStateStr)) &&
-        (!checkAudio || compareVersions(audioState, audioStateStr)) &&
-        (!checkPressure || compareVersions(pressureStatus, pressStateStr)) &&
-        (!checkMagnetic || compareVersions(magneticStatus, magnetStateStr))) {
-        periph_state = 1;
-    } else {
-        periph_state = 2;
+        if ((!checkFlash || compareVersions(flashStatus, flashStateStr)) &&
+            (!checkIMU || compareVersions(imuStatus, imuStateStr)) &&
+            (!checkAudio || compareVersions(audioState, audioStateStr)) &&
+            (!checkPressure || compareVersions(pressureStatus, pressStateStr)) &&
+            (!checkMagnetic || compareVersions(magneticStatus, magnetStateStr))) {
+            periph_state = 1;
+        } else {
+            periph_state = 2;
+        }
+
+        TestItem test;
+
+        if (SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool()) {
+            test.testItem = "功放状态";
+            test.testData = QString::number(data.audio_state);
+            test.ask = audioState;
+            testItems.append(test);
+        }
+
+        if (SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool()) {
+            test.testItem = "内存状态";
+            test.testData = QString::number(data.flash_state);
+            test.ask = flashStatus;
+            testItems.append(test);
+        }
+
+        if (SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool()) {
+            test.testItem = "imu状态";
+            test.testData = QString::number(data.imu_state);
+            test.ask = imuStatus;
+            testItems.append(test);
+        }
+
+        if (SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool()) {
+            if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
+                test.testItem = "马达状态";
+            else
+                test.testItem = "地磁状态";
+            test.testData = QString::number(data.magnet_state);
+            test.ask = magneticStatus;
+            testItems.append(test);
+        }
+
+        if (SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool()) {
+            test.testItem = "压感状态";
+            test.testData = QString::number(data.press_state);
+            test.ask = pressureStatus;
+            testItems.append(test);
+        }
+
+        updateTestData(testItems);
     }
-
-    TestItem test;
-
-    if (SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool()) {
-        test.testItem = "功放状态";
-        test.testData = QString::number(data.audio_state);
-        test.ask = audioState;
-        testItems.append(test);
-    }
-
-    if (SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool()) {
-        test.testItem = "内存状态";
-        test.testData = QString::number(data.flash_state);
-        test.ask = flashStatus;
-        testItems.append(test);
-    }
-
-    if (SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool()) {
-        test.testItem = "imu状态";
-        test.testData = QString::number(data.imu_state);
-        test.ask = imuStatus;
-        testItems.append(test);
-    }
-
-    if (SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool()) {
-        if (SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool())
-            test.testItem = "马达状态";
-        else
-            test.testItem = "地磁状态";
-        test.testData = QString::number(data.magnet_state);
-        test.ask = magneticStatus;
-        testItems.append(test);
-    }
-
-    if (SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool()) {
-        test.testItem = "压感状态";
-        test.testData = QString::number(data.press_state);
-        test.ask = pressureStatus;
-        testItems.append(test);
-    }
-
-    updateTestData(testItems);
 }
 
 void quiescent_current::refreshAmmeterData(QString data) {
@@ -647,6 +652,7 @@ void quiescent_current::startTask() {
                 isovertime = 0;
                 refresh_base_times = 1;
                 refresh_periph_times = 1;
+
                 totalresult = "";
                 at->resetConnected();
                 measure_ammeter = 0;

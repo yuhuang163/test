@@ -214,7 +214,7 @@ void Qjig::sendjigData(jigState fixstate) {
     }
 }
 void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
-    QString folderName = "治具log";
+    QString folderName = "所有log/治具log";
     QDir dir;
 
     // 检查并创建目录

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1406</width>
-    <height>1116</height>
+    <height>1117</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -171,6 +171,9 @@
               </widget>
              </widget>
              <widget class="QTabWidget" name="tabWidget">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
               <property name="currentIndex">
                <number>9</number>
               </property>
@@ -3020,6 +3023,118 @@
                 <string>云端OTA</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_10">
+                <item row="4" column="2" colspan="2">
+                 <widget class="QProgressBar" name="wifiotaprogress">
+                  <property name="value">
+                   <number>24</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="1,10">
+                  <item>
+                   <widget class="QLabel" name="label_27">
+                    <property name="text">
+                     <string>耗时(s)：</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="lcdNumber">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>50</height>
+                     </size>
+                    </property>
+                    <property name="digitCount">
+                     <number>5</number>
+                    </property>
+                    <property name="segmentStyle">
+                     <enum>QLCDNumber::Filled</enum>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_92">
+                  <item>
+                   <widget class="QLabel" name="label_89">
+                    <property name="text">
+                     <string>wifi 账号</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="wifiUserName_2">
+                    <property name="text">
+                     <string>AX3 Pro_2.4G</string>
+                    </property>
+                    <property name="readOnly">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_90">
+                    <property name="text">
+                     <string>wifi 密码</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="wifiPassword_2">
+                    <property name="text">
+                     <string>1234567890</string>
+                    </property>
+                    <property name="frame">
+                     <bool>true</bool>
+                    </property>
+                    <property name="echoMode">
+                     <enum>QLineEdit::Normal</enum>
+                    </property>
+                    <property name="readOnly">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="3" column="0" colspan="4">
+                 <widget class="QPlainTextEdit" name="testMsg">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_97">
+                  <item>
+                   <widget class="QLabel" name="label_103">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="iot_url_product">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>mqtt.myusmile.online:1883</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
                 <item row="0" column="0" colspan="4">
                  <layout class="QHBoxLayout" name="horizontalLayout_42">
                   <item>
@@ -3031,6 +3146,9 @@
                   </item>
                   <item>
                    <widget class="QLineEdit" name="ota_secret">
+                    <property name="text">
+                     <string>usmile123</string>
+                    </property>
                     <property name="echoMode">
                      <enum>QLineEdit::Password</enum>
                     </property>
@@ -3044,7 +3162,7 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QLineEdit" name="macInput_7">
+                   <widget class="QLineEdit" name="wifiOtaMacInput">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                       <horstretch>0</horstretch>
@@ -3055,7 +3173,7 @@
                      <string/>
                     </property>
                     <property name="text">
-                     <string/>
+                     <string>28:37:2f:e4:c7:8e</string>
                     </property>
                     <property name="placeholderText">
                      <string>切换英文输入再扫码</string>
@@ -3081,7 +3199,7 @@
                   </item>
                  </layout>
                 </item>
-                <item row="1" column="0" colspan="2">
+                <item row="1" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_74">
                   <property name="topMargin">
                    <number>0</number>
@@ -3109,100 +3227,40 @@
                   </item>
                  </layout>
                 </item>
-                <item row="4" column="0" colspan="4">
-                 <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="1,10">
-                  <item>
-                   <widget class="QLabel" name="label_27">
-                    <property name="text">
-                     <string>耗时(s)：</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="lcdNumber">
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>50</height>
-                     </size>
-                    </property>
-                    <property name="digitCount">
-                     <number>5</number>
-                    </property>
-                    <property name="segmentStyle">
-                     <enum>QLCDNumber::Filled</enum>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="3" column="0" colspan="4">
-                 <widget class="QPlainTextEdit" name="testMsg">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="is_wifiota_press">
+                  <property name="text">
+                   <string>OTA压测</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="2" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_92">
-                  <item>
-                   <widget class="QLabel" name="label_89">
-                    <property name="text">
-                     <string>wifi 账号</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="wifiUserName_2">
-                    <property name="text">
-                     <string>usmile_guest</string>
-                    </property>
-                    <property name="readOnly">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_90">
-                    <property name="text">
-                     <string>wifi 密码</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="wifiPassword_2">
-                    <property name="text">
-                     <string>Starspulse#@2024</string>
-                    </property>
-                    <property name="frame">
-                     <bool>true</bool>
-                    </property>
-                    <property name="echoMode">
-                     <enum>QLineEdit::Normal</enum>
-                    </property>
-                    <property name="readOnly">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="2" column="0" colspan="4">
+                <item row="2" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_96">
                   <item>
                    <widget class="QLabel" name="label_102">
                     <property name="text">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota网络路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QLineEdit" name="iot_url"/>
+                   <widget class="QLineEdit" name="iot_url_test">
+                    <property name="enabled">
+                     <bool>true</bool>
+                    </property>
+                    <property name="text">
+                     <string>test-mqtt.myusmile.online:1883</string>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLabel" name="wifiota_times">
+                  <property name="text">
+                   <string>升级次数：0</string>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>

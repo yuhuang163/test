@@ -221,7 +221,7 @@ QString test_base::toHex(const QByteArray& data) {
     return hexStr.trimmed();  // 去掉最后的空格
 }
 void test_base::saveDongleUartLog(QString data) {
-    QString folderName = "dongle的log";
+    QString folderName = "所有log/dongle的log";
     QDir dir;
 
     // 检查并创建目录
@@ -954,7 +954,6 @@ void test_base::refreshMesState(int state) {
     else
         showlog("mes登录失败");
 }
-
 
 bool test_base::compareVersions(const QString& versionList, const QString& versionToCompare) {
     // 按照等号分割第一个版本文本
