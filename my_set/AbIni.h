@@ -66,7 +66,8 @@
 #define PCBA_VER "电刷板子测试   V1.4.8"
 #define PRESSURE_VER "压感校测工站   V1.3.4"
 
-// [DEBUG_VER] 添加wifiota的压测功能，保存过程日志功能，新增ioturl的功能，修改原先的ota流程
+// [DEBUG_VER] 添加成功和失败的ota显示，修复关闭不退出的问题
+//
 // [QC_VER] 修复设备外设信息多次获取问题
 // [AGE_VER] 给足开机时间
 // [SCREEN_VER] 给足开机时间

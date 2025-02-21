@@ -224,7 +224,8 @@ private:
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
     bool isWifiContinue = true;
        int otaTesttimes = 1;
-       int wifiotatimes = 1;
+       int wifiotaFaiTimes = 0;
+            int wifiotaSuctimes = 0;
            QTime totalwifiOtaTime;
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;

@@ -185,9 +185,9 @@ MainWindow::MainWindow(QWidget* parent) :
                                        "OTA 结果 : " + otaResults[r]);
 
         if (r == 11) {
-            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotatimes++) +
+            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaSuctimes++) +
                                     QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
-            ui->wifiota_times->setText(QString("升级次数:%1").arg(wifiotatimes));
+            ui->wifiota_suc_times->setText(QString("成功升级次数:%1").arg(wifiotaSuctimes));
             ui->bleotaresult->setText("PASS");
             ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                             "black; border: 2px solid #00FF00; border-radius: "
@@ -206,9 +206,9 @@ MainWindow::MainWindow(QWidget* parent) :
             }
 
         } else if (r == 12) {
-            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotatimes++) +
+            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaFaiTimes++) +
                                     QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
-            ui->wifiota_times->setText(QString("升级次数:%1").arg(wifiotatimes));
+            ui->wifiota_fai_times->setText(QString("失败升级次数:%1").arg(wifiotaFaiTimes));
             on_stopBleOta_clicked();
             on_disconnectButton_clicked();
             ui->bleotaresult->setText("FAIL");
@@ -512,6 +512,7 @@ void MainWindow::closeEvent(QCloseEvent*) {
     future.waitForFinished();
     saveCustom();
     isrssiContinue = false;
+    isWifiContinue = false;
     if (qsetting_ui != NULL)
         qsetting_ui->close();
 }
