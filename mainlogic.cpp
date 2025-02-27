@@ -1895,6 +1895,7 @@ void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool a
     }
     // 关闭文件
     file.close();
+    qDebug() << ("保存压感文件完成") << timestamp;
 }
 
 void MainWindow::sendBrushData(bool is_random) {
@@ -2461,6 +2462,8 @@ void MainWindow::saveCustom() {
     // 保存COM口相关信息
     SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
     SETTINGS.setValue("Window/otaFilePath", ui->otaFilePath->text());
+    SETTINGS.setValue("Window/otaFilePath_source", ui->otaFilePath_source->text());
+
     SETTINGS.setValue("WIFI/otaWifiName", ui->wifiUserName_2->text());
     SETTINGS.setValue("WIFI/otaWifiPassword", ui->wifiPassword_2->text());
 
@@ -2484,6 +2487,8 @@ void MainWindow::recoverCustom() {
 
     ui->otaFilePath->setText(SETTINGS.value("Window/otaFilePath").toString());
 
+    ui->otaFilePath_source->setText(SETTINGS.value("Window/otaFilePath_source").toString());
+
     qDebug() << "配置内容" << comName;
 }
 
@@ -2495,7 +2500,7 @@ void MainWindow::initBasicInfo() {
     };
 
     // 读取 ProductInfo 节下的键值对
-    productName = "=" + SETTINGS.value("ProductInfo/Product_Name").toString();
+    QString productName = "=" + SETTINGS.value("ProductInfo/Product_Name").toString();
     QString appProtocolVersion = "=" + SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
     QString factoryProtocolVersion = "=" + SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
     QString hardwareVersion = "=" + SETTINGS.value("ProductInfo/Hardware_Version").toString();
@@ -2545,6 +2550,8 @@ void MainWindow::initBasicInfo() {
     basicInfoModel->resetAllTestResult();
 
     QObject::connect(pb, &Qpb::send_base_data, this, [=](FacGetDevBaseInfo baseInfo) {
+        connectProductName = baseInfo.product_name;
+
         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
         basicInfoModel->getTestItemByName("algo_version")->setData(baseInfo.algo_version, Qt::DisplayRole);
         basicInfoModel->getTestItemByName("pb_phone_ver")

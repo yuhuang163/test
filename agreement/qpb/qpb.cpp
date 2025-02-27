@@ -4,7 +4,9 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
-
+extern "C" {
+#include "aes.h"  // 引入 tiny-AES-c 的头文件
+}
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
@@ -27,6 +29,98 @@
 Qpb::Qpb(QSerialPort* parent) : QSerialPort{parent} {
     serialPort = parent;
     registerCommand();
+}
+/*
+ * 函数：aes256Decrypt
+ * 说明：对输入数据使用 AES-256-CBC 模式进行解密，
+ *       解密前要求数据长度为16字节的倍数，
+ *       解密后会移除 PKCS#7 填充数据。
+ *
+ * 参数：
+ *    encrypted - 待解密的加密数据（二进制）
+ *
+ * 返回值：
+ *    解密后的原始数据；如果解密或填充校验失败，返回空 QByteArray。
+ */
+QByteArray Qpb::aes256Decrypt(const QByteArray& encrypted) {
+    // qDebug() << "aes256Decrypt encrypted:" << encrypted.toHex().toUpper();
+
+    static const uint8_t iv[16] = {0x51, 0x4C, 0xCA, 0x9B, 0xBC, 0x1A, 0x69, 0x16,
+                                   0x24, 0x8E, 0x19, 0x59, 0xC5, 0xF9, 0xA6, 0x6F};
+    uint8_t key[32] = {0x42, 0x93, 0x1A, 0x7D, 0xB6, 0xF9, 0x27, 0xCA, 0x4C, 0x13, 0xF2, 0x00, 0x19, 0x25, 0x79, 0x42,
+                       0x6E, 0x1A, 0x84, 0xAE, 0xE6, 0x90, 0x4C, 0x4F, 0x9E, 0xE7, 0x40, 0xB0, 0xEB, 0xE5, 0xB6, 0xE3};
+
+    // 加密数据长度必须为 16 字节的整数倍
+    int encryptedLen = encrypted.size();
+    if (encryptedLen % 16 != 0) {
+        qWarning() << "加密数据长度不是16字节的倍数";
+        return QByteArray();
+    }
+
+    // 拷贝一份数据用于就地解密
+    QByteArray decrypted = encrypted;
+
+    // 初始化 AES 上下文
+    AES_ctx ctx;
+    AES_init_ctx_iv(&ctx, key, iv);
+
+    // 执行 CBC 模式解密（解密结果直接写入 decrypted）
+    AES_CBC_decrypt_buffer(&ctx, reinterpret_cast<uint8_t*>(decrypted.data()), decrypted.size());
+
+    // 获取最后一个字节作为填充字节数
+    int padLen = static_cast<unsigned char>(decrypted.at(decrypted.size() - 1));
+    // 校验填充是否合法：填充值应该在 1 到 16 之间
+    if (padLen < 1 || padLen > 16) {
+        qWarning() << "无效的填充值:" << padLen;
+        return QByteArray();
+    }
+    // 校验最后 padLen 个字节是否均为 padLen
+    for (int i = decrypted.size() - padLen; i < decrypted.size(); ++i) {
+        if (static_cast<unsigned char>(decrypted.at(i)) != padLen) {
+            qWarning() << "填充校验失败";
+            return QByteArray();
+        }
+    }
+
+    // 移除填充字节
+    decrypted.chop(padLen);
+    return decrypted;
+}
+
+/*
+ * aes256Encrypt 函数与之前示例一致，用于加密数据（带 PKCS#7 补位）
+ */
+QByteArray Qpb::aes256Encrypt(const QByteArray& input) {
+    static const uint8_t iv[16] = {0x51, 0x4C, 0xCA, 0x9B, 0xBC, 0x1A, 0x69, 0x16,
+                                   0x24, 0x8E, 0x19, 0x59, 0xC5, 0xF9, 0xA6, 0x6F};
+    uint8_t key[32] = {0x42, 0x93, 0x1A, 0x7D, 0xB6, 0xF9, 0x27, 0xCA, 0x4C, 0x13, 0xF2, 0x00, 0x19, 0x25, 0x79, 0x42,
+                       0x6E, 0x1A, 0x84, 0xAE, 0xE6, 0x90, 0x4C, 0x4F, 0x9E, 0xE7, 0x40, 0xB0, 0xEB, 0xE5, 0xB6, 0xE3};
+
+    const int blockSize = 16;
+    int inputLen = input.size();
+    // 计算需要补位的字节数（PKCS#7 填充规则）
+    int padLen = blockSize - (inputLen % blockSize);
+    if (padLen == 0)
+        padLen = blockSize;  // 若刚好整数倍，则补一整块
+
+    // 对原始数据进行填充，每个补位字节的值为 padLen
+    QByteArray padded = input;
+    padded.append(QByteArray(padLen, char(padLen)));
+
+    // 输出加密结果（转换为大写十六进制字符串）
+    // qDebug() << "padded:" << padded.toHex().toUpper();
+
+    // 复制一份数据用于加密（加密函数就地操作）
+    QByteArray encrypted = padded;
+
+    // 初始化 AES 上下文
+    AES_ctx ctx;
+    AES_init_ctx_iv(&ctx, key, iv);
+
+    // 执行 CBC 模式加密
+    AES_CBC_encrypt_buffer(&ctx, reinterpret_cast<uint8_t*>(encrypted.data()), encrypted.size());
+
+    return encrypted;
 }
 
 uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {
@@ -115,6 +209,17 @@ void Qpb::parseCmd(const QByteArray& byte) {
                     // qDebug() << "收到的crc16" << crc16 << x;
 
                     if (crc16 == x) {
+                        if (NEEDAES) {
+                            QByteArray byteArray(reinterpret_cast<const char*>(ipack.data()),
+                                                 static_cast<int>(ipack.size()));
+
+                            // 调用解密函数，返回 QByteArray
+                            QByteArray decrypted_data = aes256Decrypt(byteArray);
+
+                            // 把解密后的 QByteArray 转换回 std::vector<uint8_t>
+                            ipack.assign(decrypted_data.begin(), decrypted_data.end());
+                        }
+
                         pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
                         if (pbChannel == PHY_CHANNEL_FAC) {
                             if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack)) {
@@ -178,8 +283,40 @@ void Qpb::sendMainPack(const DataPackage& pack) {
             qDebug() << "编码长度等于0";
             return;
         }
-        tx_buffer[0] = 0;
-        tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+
+        if (NEEDAES) {
+            // qDebug() << "笑容加发包前结果:"
+            //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1),
+            //                                             static_cast<int>(len))
+            //                         .toHex(' ')
+            //                         .toUpper());
+            // 只加密有效数据部分（去掉预留的第一个字节）
+            QByteArray encrypted_data = aes256Encrypt(
+                QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1), static_cast<int>(len)));
+            len = encrypted_data.size();
+            // qDebug() << "笑容加加密结果:" << encrypted_data.toHex().toUpper();
+
+            // 重新填充 tx_buffer，确保大小匹配（1 字节头 + 加密数据 + 1 字节 CRC）
+            tx_buffer.resize(encrypted_data.size() + 2);
+
+            // 保留预留字节
+            tx_buffer[0] = 0;
+
+            // 拷贝加密后的数据到 tx_buffer[1] 开始
+            std::copy(encrypted_data.begin(), encrypted_data.end(), tx_buffer.begin() + 1);
+
+            // 计算 CRC 并存放在最后一字节
+            tx_buffer.back() = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.end() - 1));
+            // qDebug() << "笑容加封包结果:"
+            //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data()),
+            //                                             static_cast<int>(tx_buffer.size()))
+            //                         .toHex(' ')
+            //                         .toUpper());
+
+        } else {
+            tx_buffer[0] = 0;
+            tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+        }
 
         std::vector<uint8_t> new_buffer;
         new_buffer.reserve(8 + 1 + 1 + len + 2);
@@ -224,8 +361,40 @@ void Qpb::sendShortPack(const DataPackage& pack) {
             qDebug() << "编码长度等于0";
             return;
         }
-        tx_buffer[0] = 0;
-        tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+
+        if (NEEDAES) {
+            // qDebug() << "笑容加发包前结果:"
+            //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1),
+            //                                             static_cast<int>(len))
+            //                         .toHex(' ')
+            //                         .toUpper());
+            // 只加密有效数据部分（去掉预留的第一个字节）
+            QByteArray encrypted_data = aes256Encrypt(
+                QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1), static_cast<int>(len)));
+            len = encrypted_data.size();
+            // qDebug() << "笑容加加密结果:" << encrypted_data.toHex().toUpper();
+
+            // 重新填充 tx_buffer，确保大小匹配（1 字节头 + 加密数据 + 1 字节 CRC）
+            tx_buffer.resize(encrypted_data.size() + 2);
+
+            // 保留预留字节
+            tx_buffer[0] = 0;
+
+            // 拷贝加密后的数据到 tx_buffer[1] 开始
+            std::copy(encrypted_data.begin(), encrypted_data.end(), tx_buffer.begin() + 1);
+
+            // 计算 CRC 并存放在最后一字节
+            tx_buffer.back() = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.end() - 1));
+            // qDebug() << "笑容加封包结果:"
+            //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data()),
+            //                                             static_cast<int>(tx_buffer.size()))
+            //                         .toHex(' ')
+            //                         .toUpper());
+
+        } else {
+            tx_buffer[0] = 0;
+            tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
+        }
 
         std::vector<uint8_t> new_buffer;
         new_buffer.reserve(8 + 1 + 1 + len + 2);
@@ -1583,6 +1752,8 @@ void Qpb::registerCommand() {
     factoryCommandList[FactroyCmd_LED_CONTROL] =
         std::bind(&Qpb::process_FactroyCmd_LED_CONTROL, this, std::placeholders::_1);  // 获取电量信息
 
+    factoryCommandList[FactroyCmd_GET_BUTTON_STATE] =
+        std::bind(&Qpb::process_FactroyCmd_GET_BUTTON_STATE, this, std::placeholders::_1);  // 获取电量信息
     factoryCommandList[FactroyCmd_GET_IMU_CALIB] =
         std::bind(&Qpb::process_FactroyCmd_GET_IMU_CALIB, this, std::placeholders::_1);  // 获取电量信息
 
@@ -1626,6 +1797,9 @@ void Qpb::registerCommand() {
     factoryCommandList[FactroyCmd_UPLOAD_PICTURE_DATA] =
         std::bind(&Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA, this, std::placeholders::_1);  // 获取电量信息
 }
+
+void Qpb::process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f) { qDebug() << "收到按键上报状态指令开关回应"; }
+
 void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     FacPictureDataAck x;
     memcpy(&x, &f.command_data, sizeof(x));
@@ -2037,7 +2211,7 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
       << "下载失败"
       << "没有配网"
       << "网络连接失败"
-      << "获取文件URL失败"
+      << "获取文件URL失败，可能是长度超了"
       << "文件下载校验失败"
       << "文件下载安装失败"
       << "找不到网络"
@@ -2104,6 +2278,26 @@ void Qpb::set_i_am_app() {
     pb_mode = CLIENT;
 }
 
+void Qpb::set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata) {
+    CommandId cmd = CommandId_MULTI_FILE_STATUS_REQ;
+    DataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.command_id = cmd;
+    pack.which_command_data = DataPackage_multi_file_status_req_tag;
+    pack.command_data.multi_file_status_req.file_status_list_count = 2;
+
+    pack.command_data.multi_file_status_req.file_status_list[0].fileType =
+        RotasFiledata[0].fileType;  // RotasUpdateFile_UI_RESOURCE;
+    pack.command_data.multi_file_status_req.file_status_list[0].fileSize = RotasFiledata[0].fileSize;
+    pack.command_data.multi_file_status_req.file_status_list[0].file_zip_md5 = RotasFiledata[0].file_zip_md5;
+
+    pack.command_data.multi_file_status_req.file_status_list[1].fileType =
+        RotasFiledata[1].fileType;  // RotasUpdateFile_BLE_FIRMWARE;
+    pack.command_data.multi_file_status_req.file_status_list[1].fileSize = RotasFiledata[1].fileSize;
+    pack.command_data.multi_file_status_req.file_status_list[1].file_zip_md5 = RotasFiledata[1].file_zip_md5;
+    sendShortPack(pack);
+}
+
 void Qpb::set_start_ota_app(RotasFileStatusReq RotasFiledata) {
     CommandId cmd = CommandId_ROTAS_FILE_STATUS_REQ;
     DataPackage pack;
@@ -2122,6 +2316,21 @@ void Qpb::set_start_ota_app(RotasFileStatusReq RotasFiledata) {
         case RotasUpdateFile_WIFI_FIRMWARE:
             pack.command_data.rota_file_status_req.fileType = RotasFiledata.fileType;
             break;
+        case RotasUpdateFile_UNKNOWN_TYPE:
+        case RotasUpdateFile_UI_RESOURCE:
+        case RotasUpdateFile_BP_RESOURCE:
+        case RotasUpdateFile_UI_AND_FIRMWARE:
+        case RotasUpdateFile_WIFI_VOICE_PACKET:
+        case RotasUpdateFile_WIFI_THEME:
+        case RotasUpdateFile_WIFI_MUSIC_ENJOY:
+        case RotasUpdateFile_MOTOR_RESOURCE:
+        case RotasUpdateFile_WIFI_LIGHT_CUSTOM:
+        case RotasUpdateFile_BACKUP_CONFIG:
+        case RotasUpdateFile_BACKUP_FILE:
+        case RotasUpdateFile_RESTORE_CONFIG:
+        case RotasUpdateFile_RESTORE_FILE:
+        case RotasUpdateFile_BACKUP_ORAL_ARCHIVES:
+        case RotasUpdateFile_RESTORE_ORAL_ARCHIVES: break;
     }
 
     sendShortPack(pack);

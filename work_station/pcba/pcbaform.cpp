@@ -761,7 +761,7 @@ void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
         bool checkAudio = SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool();
         bool checkPressure = SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool();
         bool checkMagnetic = SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool();
-        
+
         if ((!checkFlash || compareVersions(flashStatus, flashStateStr)) &&
             (!checkIMU || compareVersions(imuStatus, imuStateStr)) &&
             (!checkAudio || compareVersions(audioState, audioStateStr)) &&
@@ -1517,8 +1517,8 @@ void PcbaForm::startTask() {
                             // showlog("跑的是P30P");
                             // pb->set_sevor_motor_param(3500, 14000, 10, 380);
 
-                               showlog("跑的是统一电机参数");
-                             pb->set_motor_test_state(1);
+                            showlog("跑的是统一电机参数");
+                            pb->set_motor_test_state(1);
                         } else {
                             showlog("跑的是q20");
                             pb->set_motor_param(270, 60);
@@ -1590,6 +1590,7 @@ void PcbaForm::startTask() {
             case STATE_WATI_RETURN_TEST:
                 if (start_sleep) {
                     start_sleep = 0;
+                    pb->set_motor_test_state(0);
                     pb->set_forbid_sleep(FacSwitch_CLOSE);
                     showlog("已发送取消禁止休眠");
                     state = STATE_CLOSE_FORBID_SLEEP;

@@ -570,7 +570,7 @@ void wifibletest::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 initDate();
-                waitWork(500);          //给开机时间
+                waitWork(500);            //给开机时间
                 at->sendMac(macAddress);  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");
@@ -1087,6 +1087,7 @@ void wifibletest::on_mac_combo_textActivated(const QString& arg1) {
         // at->sendMac(macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
         bandingMacSn(macAddress, snbanding);
+        bandingMacSn_mes(macAddress, snbanding);
     }
     ui->snbanding->setFocus();
 }
@@ -1147,8 +1148,6 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
     //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
     //     file.close();                                    // 关闭文件
     // }
-
-    bandingMacSn_mes(bandingmac, bandingsn);
 }
 
 void wifibletest::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
@@ -1239,7 +1238,7 @@ void wifibletest::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    bandingMacSn(mesmacAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
 }
 void wifibletest::on_clear_nfc_data_clicked() {
     // TODO: 在此添加控件通知处理程序代码

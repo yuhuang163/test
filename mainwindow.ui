@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>9</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2201,6 +2201,13 @@
                      </item>
                     </layout>
                    </item>
+                   <item row="0" column="4">
+                    <widget class="QPushButton" name="get_botton_state">
+                     <property name="text">
+                      <string>获取按键状态</string>
+                     </property>
+                    </widget>
+                   </item>
                   </layout>
                  </widget>
                 </item>
@@ -3023,14 +3030,127 @@
                 <string>云端OTA</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_10">
-                <item row="4" column="4" colspan="2">
+                <item row="4" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_96">
+                  <item>
+                   <widget class="QLabel" name="label_102">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="iot_url_test">
+                    <property name="enabled">
+                     <bool>true</bool>
+                    </property>
+                    <property name="text">
+                     <string>test-mqtt.myusmile.online:1883</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="3" colspan="3">
+                 <layout class="QHBoxLayout" name="horizontalLayout_98">
+                  <item>
+                   <widget class="QLabel" name="label_104">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;北美测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="iot_url_america">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>test-mqtt.usmile.us:1883</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="6" column="4" colspan="3">
                  <widget class="QProgressBar" name="wifiotaprogress">
                   <property name="value">
                    <number>24</number>
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="0">
+                <item row="6" column="2" colspan="2">
+                 <widget class="QLabel" name="wifiota_fai_times">
+                  <property name="text">
+                   <string>失败升级次数：0</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0" colspan="7">
+                 <layout class="QHBoxLayout" name="horizontalLayout_42">
+                  <item>
+                   <widget class="QLabel" name="label_28">
+                    <property name="text">
+                     <string>测试环境密码：</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="ota_secret">
+                    <property name="text">
+                     <string>usmile123</string>
+                    </property>
+                    <property name="echoMode">
+                     <enum>QLineEdit::Password</enum>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_26">
+                    <property name="text">
+                     <string>输入MAC连接：</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="wifiOtaMacInput">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="inputMask">
+                     <string/>
+                    </property>
+                    <property name="text">
+                     <string>b4:3a:45:c7:5f:4e</string>
+                    </property>
+                    <property name="placeholderText">
+                     <string>切换英文输入再扫码</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="app_connect">
+                    <property name="text">
+                     <string>app的蓝牙连接</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="is_start_ota">
+                    <property name="text">
+                     <string>是否开启文件获取mac地址就OTA功能</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="6" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="1,10">
                   <item>
                    <widget class="QLabel" name="label_27">
@@ -3057,7 +3177,111 @@
                   </item>
                  </layout>
                 </item>
-                <item row="1" column="5">
+                <item row="4" column="1" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_97">
+                  <item>
+                   <widget class="QLabel" name="label_103">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="iot_url_product">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>mqtt.myusmile.online:1883</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="6">
+                 <layout class="QHBoxLayout" name="horizontalLayout_99">
+                  <item>
+                   <widget class="QLabel" name="label_105">
+                    <property name="text">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;北美生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="iot_url_america_product">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>test-mqtt.usmile.us:1883</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QLabel" name="wifiota_suc_times">
+                  <property name="text">
+                   <string>成功升级次数：0</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0" colspan="7">
+                 <widget class="QPlainTextEdit" name="testMsg">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0" colspan="7">
+                 <layout class="QHBoxLayout" name="horizontalLayout_74">
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <widget class="QRadioButton" name="csv_ver">
+                    <property name="text">
+                     <string>本地证书</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="test_ver">
+                    <property name="text">
+                     <string>测试环境</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="product_ver">
+                    <property name="text">
+                     <string>生产环境</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="america_ver">
+                    <property name="text">
+                     <string>北美测试（加密）</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="america_product_ver">
+                    <property name="text">
+                     <string>北美生产（加密）</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="3" column="0" colspan="4">
                  <layout class="QHBoxLayout" name="horizontalLayout_92">
                   <item>
                    <widget class="QLabel" name="label_89">
@@ -3101,173 +3325,12 @@
                   </item>
                  </layout>
                 </item>
-                <item row="3" column="0" colspan="6">
-                 <widget class="QPlainTextEdit" name="testMsg">
-                  <property name="enabled">
-                   <bool>true</bool>
-                  </property>
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="4" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_97">
-                  <item>
-                   <widget class="QLabel" name="label_103">
-                    <property name="text">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="iot_url_product">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="text">
-                     <string>mqtt.myusmile.online:1883</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="0" colspan="6">
-                 <layout class="QHBoxLayout" name="horizontalLayout_42">
-                  <item>
-                   <widget class="QLabel" name="label_28">
-                    <property name="text">
-                     <string>测试环境密码：</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="ota_secret">
-                    <property name="text">
-                     <string>usmile123</string>
-                    </property>
-                    <property name="echoMode">
-                     <enum>QLineEdit::Password</enum>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="label_26">
-                    <property name="text">
-                     <string>输入MAC连接：</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="wifiOtaMacInput">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="inputMask">
-                     <string/>
-                    </property>
-                    <property name="text">
-                     <string>28:37:2f:e4:c7:8e</string>
-                    </property>
-                    <property name="placeholderText">
-                     <string>切换英文输入再扫码</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="app_connect">
-                    <property name="text">
-                     <string>app的蓝牙连接</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="is_start_ota">
-                    <property name="text">
-                     <string>是否开启文件获取mac地址就OTA功能</string>
-                    </property>
-                    <property name="checked">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="1" column="4">
+                <item row="3" column="4">
                  <widget class="QCheckBox" name="is_wifiota_press">
                   <property name="text">
                    <string>OTA压测</string>
                   </property>
                  </widget>
-                </item>
-                <item row="4" column="2">
-                 <widget class="QLabel" name="wifiota_fai_times">
-                  <property name="text">
-                   <string>失败升级次数：0</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QLabel" name="wifiota_suc_times">
-                  <property name="text">
-                   <string>成功升级次数：0</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_74">
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QRadioButton" name="test_ver">
-                    <property name="text">
-                     <string>测试环境</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QRadioButton" name="product_ver">
-                    <property name="text">
-                     <string>生产环境</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QRadioButton" name="csv_ver">
-                    <property name="text">
-                     <string>本地证书</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="2" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_96">
-                  <item>
-                   <widget class="QLabel" name="label_102">
-                    <property name="text">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="iot_url_test">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="text">
-                     <string>test-mqtt.myusmile.online:1883</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
                 </item>
                </layout>
               </widget>
@@ -3276,17 +3339,78 @@
                 <string>蓝牙ota</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_14">
-                <item row="0" column="3" rowspan="8">
-                 <widget class="QLabel" name="bleotaresult">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
+                <item row="4" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                  <item>
+                   <widget class="QLabel" name="label_83">
+                    <property name="text">
+                     <string>发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
-                <item row="1" column="0" colspan="3">
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_100">
+                  <item>
+                   <widget class="QPushButton" name="selectPath_source">
+                    <property name="text">
+                     <string>选择资源OTA文件路径</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="otaFilePath_source">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/ota_res_23601_12b7f33788ec3eed2929357e8fdbd66b.bin</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="6" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
+                  <item>
+                   <widget class="QPushButton" name="selectPath">
+                    <property name="text">
+                     <string>选择固件OTA文件路径</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="otaFilePath">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/XJYD_FW_Y20PO_V_ESP32S3_108.bin</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="7" column="0" colspan="2">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                </item>
+                <item row="2" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_81">
                   <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_80">
@@ -3300,7 +3424,7 @@
                     <item>
                      <widget class="QLineEdit" name="bleotamacInput">
                       <property name="text">
-                       <string>b4:56:5d:bf:57:9d</string>
+                       <string>b4:3a:45:c7:5f:4e</string>
                       </property>
                      </widget>
                     </item>
@@ -3336,39 +3460,7 @@
                   </item>
                  </layout>
                 </item>
-                <item row="7" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_89">
-                  <item>
-                   <widget class="QLabel" name="label_88">
-                    <property name="text">
-                     <string>耗时</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="bleotalcdtime"/>
-                  </item>
-                 </layout>
-                </item>
-                <item row="5" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_83">
-                  <item>
-                   <widget class="QLabel" name="label_83">
-                    <property name="text">
-                     <string>发送进度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bel_ota_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="6" column="0" colspan="3">
+                <item row="5" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_84">
                   <item>
                    <widget class="QLabel" name="label_84">
@@ -3386,25 +3478,7 @@
                   </item>
                  </layout>
                 </item>
-                <item row="0" column="0" colspan="3">
-                 <layout class="QHBoxLayout" name="horizontalLayout_82">
-                  <item>
-                   <widget class="QPushButton" name="selectPath">
-                    <property name="text">
-                     <string>选择OTA文件路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="otaFilePath">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/upgrade.ota</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="2" column="0" colspan="3">
+                <item row="3" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_18">
                   <property name="topMargin">
                    <number>0</number>
@@ -3435,8 +3509,15 @@
                   </item>
                  </layout>
                 </item>
-                <item row="8" column="0" colspan="4">
-                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                <item row="0" column="1" rowspan="7">
+                 <widget class="QLabel" name="bleotaresult">
+                  <property name="text">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>

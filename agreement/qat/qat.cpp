@@ -101,7 +101,7 @@ void Qat::sendCmd(QString cmd) {
         qDebug() << "发送AT指令时候，未打开dongle串口，取消发送";
         return;
     }
-
+    qDebug() << "发送at指令为" << cmd;
     serialPort->write(cmd.toLocal8Bit());
 }
 void Qat::waitWork(int ms) {
@@ -129,6 +129,7 @@ void Qat::sendBLEDEVICELOG(int state) {
     QString s = "AT+BLEDEVICELOG=" + QString::number(state) + "\r\n";
     sendCmd(s);
 }
+//使用的时候需要延时1秒，防止和ota数据粘包了
 void Qat::sendOTADATA(int state) {
     QString s = "AT+OTADATA=" + QString::number(state) + "\r\n";
     sendCmd(s);

@@ -191,7 +191,7 @@ const static LicensePair testlicense[] = {
     {"k0fylgHIxtf", "p9W7EP7Z01gpjvfDDegi", "f159fcae8004aeb9d75666435a52cdd6"},
     {"k0fylgHIxtf", "aXGvuJgrVlr790seIBVU", "21e890ca9c99f41f9bbd61c4e3fa891f"},
     {"k0fylgHIxtf", "xrsckiaziMZddVa7NvBO", "38e2bd3117a855216c949f9bc747c1dc"},
-    {"k0fylgHIxtf", "1Ww3elXjuvtnYLk0phc4", "d6165749303ec304dfbdb244bc5f3351"},
+    // {"k0fylgHIxtf", "1Ww3elXjuvtnYLk0phc4", "d6165749303ec304dfbdb244bc5f3351"},
     {"k0fylgHIxtf", "1WZQ1KLiHsiNeGmi3h8I", "fda77d6461753fe4fb6966b4ae4ab300"},
     {"k0fylgHIxtf", "nicDK960oN5Dorrhj3PJ", "ce5c660e37f9cf3603dc61e3a2565e7c"},
     {"k0fylgHIxtf", "Ac99AzBHm7CkWVoJfNjt", "a2171c4c9c6ddc07581c986e18c34c87"},
@@ -205,6 +205,115 @@ const static LicensePair testlicense[] = {
     {"k0fylgHIxtf", "HUTnVwKKCxYzR4PZJiPC", "bcc0ed71e12699715d0848279b1165fc"},
     {"k0fylgHIxtf", "bzfIMCf2s1SBaigiPU8O", "91b40243ca84dfffb124f66629648c68"},
     {"k0fylgHIxtf", "ncj1o3iUELzSUdMluxaF", "8b495673ab867614e1ae97bc2519e547"},
+
+};
+
+const static LicensePair usaprolicense[] = {
+    {"k0fylgHIxtf", "a3Z0wKLIrFPwrC0LECt1", "DXrb114nwaS0GurrKktcRDbNmJ3i2StM"},
+};
+const static LicensePair usalicense[] = {
+    // 北美测试版本
+
+    {"k0fylgHIxtf", "a3Z0wKLIrFPwrC0LECt1", "DXrb114nwaS0GurrKktcRDbNmJ3i2StM"},
+    {"k0fylgHIxtf", "0XhoZrNWczITwHNPXvgi", "Jgb6am3hkaheHA5n3au9YcXMxBJD7NCE"},
+    {"k0fylgHIxtf", "8NKflbi10MedrLQtjovW", "sG7bbbaZOYs7ds7A17RHM6iAhqYIJYl4"},
+    {"k0fylgHIxtf", "p8g2z0xgbSMyYbzWclbG", "LFV3cp10lwxRPoOOivft8a1i85kHzo9i"},
+    {"k0fylgHIxtf", "GKaaAPCLW2cbz6Yk3EXp", "WbmxBJIzUno07vt6fNuvfSR6qLiiBvSq"},
+    {"k0fylgHIxtf", "809kk48pYkhvsLjPpbEL", "Zak0b0V8o62uzbKwcx2Luhqg1UaNcElb"},
+    {"k0fylgHIxtf", "PxLIgcuI6jBSwlZN7BMi", "oWHOwNaRGVkVCclISYUoPtTdR6cU83ER"},
+    {"k0fylgHIxtf", "LKMclV6be6zdeeCVM40J", "TZZOi9b9pb6LMCrRS6NxbqBNeECPcazj"},
+    {"k0fylgHIxtf", "PTTuip1GRogtiEJBR1Cs", "I880IdqohOfkKiGCBhabXHfl0aH2bvob"},
+    {"k0fylgHIxtf", "gir4yKAbwPk2Z2oi6asn", "8SSXDHogwWR7CDfD1bqfata71OJDniD9"},
+    {"k0fylgHIxtf", "jQNAaHloozIhLK79ob74", "fNxoHqQTQJcRHGlLkkQ8RLiaW167xJWL"},
+    {"k0fylgHIxtf", "cfqSCUTxigYGmDGVsgtD", "dqq0ZdZla452CjG67aka490K6k98Fqap"},
+    {"k0fylgHIxtf", "nOQckHSFmFxlqObmCTHc", "843g6JDb6JYUsYbPbK4gJY8PlKhOxnoQ"},
+    {"k0fylgHIxtf", "to3GMadiSisyG0ZNO3vg", "22fVX1bWaHOPcJc4PbEdbvatbPu3aei3"},
+    {"k0fylgHIxtf", "YAxIFNZRnbKp2REF24GH", "Ea8WADpoDbHGJ5F1ZFaWfRaYOAukyt8P"},
+    {"k0fylgHIxtf", "r0HGTCYWAW9VegEa0aMZ", "Bka3Q0h6vTcAWLUYzSfOo6A3ZxIwaziz"},
+    {"k0fylgHIxtf", "VS7ZcDUauUJS1ANPXSo5", "PscEwPEg5gpcJ1aIo2HS5L91WuMQmeqL"},
+    {"k0fylgHIxtf", "KueXDZUig9m2oe8jAGa7", "wblkbwVOuKArMEiJQVx48eL5NnEZUahF"},
+    {"k0fylgHIxtf", "l5w5ykNYmTQBbXwNUsDP", "z1uakiQvxDdGbxob0Bgov3EH9yZhWVj5"},
+    {"k0fylgHIxtf", "TaahiSzwjo83R9OWxBJr", "cfiFzSPN8IWPTEVIKLWXf3KbpIA5J5QF"},
+    {"k0fylgHIxtf", "IoN4bzKwF2NRsmiXvlVJ", "ufA8SiTkt9aNo7bxAdNMff0q26e5KgHH"},
+    {"k0fylgHIxtf", "S1Q4v6MopEbfwfxvQSaF", "X9gnQNZwpU8MG06lPeMl2BH6umBC0k8O"},
+    {"k0fylgHIxtf", "FWdJjMmcGnt7xoPlbbtg", "hVgViOwYMEuwD41PUBMV93ebsiEjaSUS"},
+    {"k0fylgHIxtf", "KedkLCHH9UfL2f3bzLjy", "6ilojsklWM1YQ1ag2qu65UZvnkHtowLu"},
+    {"k0fylgHIxtf", "SGS33E0rFhSdyJhyu9e3", "8YANfKtB563WQAe1S5OnxPP6279aKLBb"},
+    {"k0fylgHIxtf", "ULccIC6eeHg26ghGM8TK", "VloiWPOOOFUiKc0L3u6J0eRiK4sDUkPP"},
+    {"k0fylgHIxtf", "XLxD8gOwjrPZ3MFbsJ0q", "NSNbZ1pzG7Zlby6wS6M1PYoOTLitfdTy"},
+    {"k0fylgHIxtf", "74mbTMahilHb73BUfADS", "q4qHrDYrKFoAU9L8okBoxioXlc5D2fbb"},
+    {"k0fylgHIxtf", "Ma90dZGAB0wxwgBkdJyE", "U5mBcRRLt335FdvMMZrzZLQmHPp3B56W"},
+    {"k0fylgHIxtf", "rxlLaLJjWnsfab7Irft1", "qpgr6RwbGeZDJver40wlHUR1yxaHVRJu"},
+    {"k0fylgHIxtf", "OhCMffbWJ6zqs9QLLnx9", "71DYI3sT4a68AS6aFpmZ94cS1s6jggWP"},
+    {"k0fylgHIxtf", "ic1bocdfvUiDYc88kGA6", "v5KRHPhVXbEfWhVWUYAxkOaT7IQhcjm4"},
+    {"k0fylgHIxtf", "mxe1LwzVhpHLZu26Zxwa", "aSW1qIpg53rnQINIQGi0wwbHhoz1qYiy"},
+    {"k0fylgHIxtf", "w31B0uohJMZS7U1fa9xF", "DlXN6SrtOn7m4cqnBaDs4vUD2FRBOZeb"},
+    {"k0fylgHIxtf", "aeYhyl5a32MOX4PdYEes", "rtbOhnO7UcghS5MgPQaPKwkwnvHV1Xgx"},
+    {"k0fylgHIxtf", "tyDfc5hMPpbQ1WHcHADA", "QOrHpAy9gnvOtfa6HFyuRHzKat3UkNbx"},
+    {"k0fylgHIxtf", "NOp9jCIXlsSSabzlWvVK", "FFHS9c5Iu5UDWPqpToEHIT9KXpX3K9hn"},
+    {"k0fylgHIxtf", "Kr1bGaIkUmCZEWJdc3Q8", "utC3KFN57CLFcrBbi84RaEd2nacbQJLx"},
+    {"k0fylgHIxtf", "BjXXuD2rMmxAY5EleuFp", "fYr7gS4LGSWbXSfpJXu7P3sJSyh45B0M"},
+    {"k0fylgHIxtf", "tPd6YGJ7PTLlNG4J0xQQ", "ftB8M8loIkTGdJNa0fnXgUCGDFIVJSXS"},
+    {"k0fylgHIxtf", "Cf3t3VA7Magd5yKxmFK7", "YNOODQdUGaCESaKxtTR3hhwqpLXOJ0ys"},
+    {"k0fylgHIxtf", "rZcnz0DJcxVuxzNs9IOY", "XcmGyJfepiKMOumdEULeGzSpVm0l3Bby"},
+    {"k0fylgHIxtf", "q0Nd9DCavc4TnKxR3aIG", "juUPFFOYWT1UXx48WeOxSnhkX2LCupal"},
+    {"k0fylgHIxtf", "Lo3KYGZv8o5bc3RoQnQR", "wNfOJidncxAnJLXq2Cb4O8Ga98j6Uf6c"},
+    {"k0fylgHIxtf", "nRXYMviDabebYXLAdeS4", "sEhopU29Pq8Opbl6Xw7RnaJNy1b8Jtmb"},
+    {"k0fylgHIxtf", "MiHdAIxlOmt65EiJMVrN", "rd1R4atZndUJANHZaUmM6wFsJSG4A1na"},
+    {"k0fylgHIxtf", "0cqo6V3vlqJVtjZqeea1", "obsPvJr5OGrJWwmc3n74dGXSCvH2Z4dW"},
+    {"k0fylgHIxtf", "h4mPJE6Q6hNGpjgYkFoP", "FnBKOmlQYybUE16LVVMCY134t2ZInOYv"},
+    {"k0fylgHIxtf", "5FMpg5tqMBytLPbo16ug", "wVjBaKeEZq7WyKL8PlOpvrV7e2z8odbq"},
+    {"k0fylgHIxtf", "furhQNdYZKaS4kk94Rnn", "JmxOQrwDZNLIs60ZLb3bZt1ec8Zpggoa"},
+    {"k0fylgHIxtf", "nRgv1qeXuNDUZaiIoXb1", "RxZoYX5hXZyq4tJwbbA5r0C04mD54lAa"},
+    {"k0fylgHIxtf", "p0Y01mNSXJY3lKpAN0oZ", "tXFrdKS3UxyqnuQ2qJl3gbv7yOdfheFJ"},
+    {"k0fylgHIxtf", "xLgLN7oLb5DLZIwzQE3a", "0iQgoxQWHEO5QLfeU8anNtJbMlbi6aau"},
+    {"k0fylgHIxtf", "ZjzKibt0EfII3Jx7bx51", "haXdsAKrSJlR8Pyls9Si5GzteJ8zO04G"},
+    {"k0fylgHIxtf", "uMkKEsObwwo0Y8bXzIW1", "nKR2tpg2yB4Eh92GWs0mjf2P4WISdceL"},
+    {"k0fylgHIxtf", "CnHhZ5Kp8MDBFVJowtYr", "iyzVNbzb53IYjmRgjgaOyEhsx6HpbiKE"},
+    {"k0fylgHIxtf", "iNvDgNSzcgMSIMe0qJH3", "XdE66guwW8Wy6dNVyrVqef2d4kFkx9ph"},
+    {"k0fylgHIxtf", "lQrEQasJiUHqMYhZatIQ", "Z8AK4J5d5NKlfESu1BuuIbaPuRGGpOWz"},
+    {"k0fylgHIxtf", "QDEU4bz6NEFLrjlgA4cC", "UO56fhBXLM2vohxNr7qc1uzokZaNqhsB"},
+    {"k0fylgHIxtf", "sNywXnB3AHjqGs8L5KTH", "OEtOXYZ7fSXBnXtKxCsQUjM0zMcN7252"},
+    {"k0fylgHIxtf", "UrrTEXHL9NBC6LxyWiWD", "BuGjedhh5lxEbPdpxSIdaDwzvX6wPqL1"},
+    {"k0fylgHIxtf", "cVYxV8UBsb5MtSvUJSPD", "TN0hipFKc2WyEnImBIHJGqaoXgxs3saM"},
+    {"k0fylgHIxtf", "1zkvzho4IEIm6UwdwYpL", "oKRM34gkvTyDJTxGreOCsHF1cJiv1ET1"},
+    {"k0fylgHIxtf", "IQOiyeULbSu0yI7jkK8d", "p1e0oC4pnT7jboMZlCF8JaIQbHUqjuC0"},
+    {"k0fylgHIxtf", "s53SNY8uPwnC5QaDD3ff", "gXbyuvlBe8o8IrOg3U5APfhk3NqaIzjd"},
+    {"k0fylgHIxtf", "x2obeuCT2FCZEAIBtUmd", "GM8V4QENOLKEbOP3kj3eLOBc7akH4tzG"},
+    {"k0fylgHIxtf", "ZbBPoWeoebIOdFgxZySy", "SWOunWvNxiBWW4fAoakoOFKO24vNSc6y"},
+    {"k0fylgHIxtf", "jTzJKo19PaHjn37AW2s8", "ROR9Qb7pUSfWmh8fCKW0EvA35321XXya"},
+    {"k0fylgHIxtf", "NJjkNZRv23CksYLLdUE6", "pv7L2ZUoEy7JQJ4dYIlal8XD77UVltiD"},
+    {"k0fylgHIxtf", "4MbJ85EQBQFC1i3oi7h0", "SDD2BfoHW5C7zxbEecDc4ZfoymwHA7qU"},
+    {"k0fylgHIxtf", "OnNkNv5bgqKbDtL43fx0", "GRULsxEwOEXbRulVbAkgyBubjaxvzujT"},
+    {"k0fylgHIxtf", "fajctNBr5lKxmEa2lPfn", "HRJuvy7WQVmjtlyWM3riOMAmG8c12btU"},
+    {"k0fylgHIxtf", "DMTjjLaBUTp2Fk6dSwBX", "moYs1G6KBPkSm7cxtNuMbh5IF3HBvXKh"},
+    {"k0fylgHIxtf", "SwV1SdVszbacn91XZQ3r", "b9I31PuWY6bd8o1ibJKzAl1VNBBJBxw7"},
+    {"k0fylgHIxtf", "YgQIM9VULFyY5TSLuZGw", "EnE66qi2jKOWp88WnVDdatmNBZbXHvBZ"},
+    {"k0fylgHIxtf", "EGSkxjNUOdU8H6i5SjYU", "2OGtLpYVvHbHANDkoBXiDOhYQ80CivoE"},
+    {"k0fylgHIxtf", "PBWFc7ffPFxqONMDR8V8", "CabStPhoNopCKE6IbNqOU9vrGCIGbVP3"},
+    {"k0fylgHIxtf", "AAmSASSxdrOA6rVLbtzy", "dzIbiKrkzscZJOAvBPv7LcC3cHZgEr5G"},
+    {"k0fylgHIxtf", "YCXGj0oDx0sBKwod80GY", "YfIac5YJOPy73Rx07u5wrww6QmxgZRfr"},
+    {"k0fylgHIxtf", "VxBFwU1lWm0zqRYl1Sxa", "c8lTbHQ2XvIZ7oJawig2OJKnZxpy0Y5B"},
+    {"k0fylgHIxtf", "iti1IDjuVTdVFpPFOb0s", "vwS0wkkFzRrWegHnK4yFeyYaSMRkvMm8"},
+    {"k0fylgHIxtf", "DYhPjpJocOHQn3KP0eZa", "Si4On2yabWW2MekcQZHgarNCyev9PMc7"},
+    {"k0fylgHIxtf", "lMNzzASagn7khn0JLLrn", "XPp98b0xBcM1x02Bmyn6PxbstdCjcn23"},
+    {"k0fylgHIxtf", "BwXcRU9MsOXOJe4Ce68G", "8SojDbODiYnwIrJYz8L3zZ08s546Xizt"},
+    {"k0fylgHIxtf", "IzZLa4CfCYntaeZitrPw", "DKYAOxBi2Klvvry5abI5YTitVClga2jj"},
+    {"k0fylgHIxtf", "ahSXW1douwbj8DnXFpdE", "syFovhp6sIaeROX1Jec5mJUg8Ww6WB1f"},
+    {"k0fylgHIxtf", "k7JwaucuQRLCqRzMoIaa", "moIQJwHoUdpSoMO4MgyJ84wYV7a7Wcs9"},
+    {"k0fylgHIxtf", "NonKqRiKCEbaP6iwbhh4", "NKW8jjchjezN51lymeOBsafguFEyQvgJ"},
+    {"k0fylgHIxtf", "7zSzoS6QkJvwSWtLzulF", "FeSJjoUKxGZxrVc9O0bGXtzLUTbEEeSS"},
+    {"k0fylgHIxtf", "KINKSoEua0YQ0idJQert", "7bbizaNv2fbcua2sxgwPYyT3joCp3a3o"},
+    {"k0fylgHIxtf", "Or6UwsmXLZbT2CZwofcJ", "Nar93LiZWVbvFXUn8Ga4pPjcSCInUzWT"},
+    {"k0fylgHIxtf", "8wj4KWn3oKbaIj3AMIGa", "EBOCWOYUl29KorGu5jA3aObwE4zD8qHH"},
+    {"k0fylgHIxtf", "v8dSplKVVjvHgbWR3gvB", "axlbqUarIUpUq6bAa4wJK6cuM2gfavQi"},
+    {"k0fylgHIxtf", "hn3zMkUzTmD2VKbnCCBq", "Q5eP5rLD6InShV6olIwmBgxyWAEpwKA6"},
+    {"k0fylgHIxtf", "LQ3NR8C1G6yaAl7jcl4P", "eXFTwm0TU6rEB3ZSaA2GtyJG61Nwx3M8"},
+    {"k0fylgHIxtf", "aSibxgWnOHoLPaKnah4N", "s1qjLkTz0sbvJ5OL1VPq4nFuBCPGUQtI"},
+    {"k0fylgHIxtf", "VDZuvPGwDljqDVGpLz1c", "paOIjWFNLzjbBdSvjg1Lw54Q4Ci1mbWg"},
+    {"k0fylgHIxtf", "fC20yvi2HUFjrK6YrOo5", "RHajfMujY9hsSVPgfNKyksK3CURld0bL"},
+    {"k0fylgHIxtf", "zu8wlaMeTyLjSUQayMaL", "Wlzco4tYUQGEMRLcH9RzbkF3f2917b1z"},
+    {"k0fylgHIxtf", "Wx97tgAk0cSsE8yJC5sD", "lUIMobf9gQGO4jWhjzk0g1QqkRmVxn4n"}
 
 };
 
@@ -222,9 +331,25 @@ LicensePair ProductLicense::getTestLicense() {
     }
     return testlicense[testcounter];
 }
+LicensePair ProductLicense::getUsaLicense() {
+    usacounter++;
+    if (usacounter >= testmax) {
+        usacounter = 0;
+    }
+    return usalicense[usacounter];
+}
+LicensePair ProductLicense::getProUsaLicense() {
+    prousacounter++;
+    if (prousacounter >= testmax) {
+        prousacounter = 0;
+    }
+    return usaprolicense[usacounter];
+}
+
 ProductLicense::ProductLicense() : counter(0), testcounter(0) {
     max = sizeof(license) / sizeof(LicensePair);
     testmax = sizeof(testlicense) / sizeof(LicensePair);
+    usacounter = sizeof(usalicense) / sizeof(LicensePair);
     loadOtaDeviceKeys("IOT导出测试证书.csv");
 }
 void ProductLicense::loadOtaDeviceKeys(const QString& filePath) {
@@ -248,7 +373,6 @@ void ProductLicense::loadOtaDeviceKeys(const QString& filePath) {
                 otaDevice[otaKeys[i]] = otaValues[i];
             }
             otaDeviceList.append(otaDevice);
-
         }
     }
 

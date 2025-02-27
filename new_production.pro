@@ -33,6 +33,8 @@ INCLUDEPATH += my_set
 INCLUDEPATH += lib/form
 INCLUDEPATH += lib/imu
 INCLUDEPATH += lib/nfc
+INCLUDEPATH += lib/aes
+INCLUDEPATH += lib/md5
 INCLUDEPATH += lib/productlicense
 INCLUDEPATH += lib/qcustomplot
 INCLUDEPATH += work_station/ageing
@@ -83,6 +85,8 @@ SOURCES += \
     lib/form/testmodel.cpp \
     lib/imu/imu_calibrate.cpp \
     lib/imu/sensor_hub.cpp \
+       lib/aes/aes.c \
+              lib/md5/md5.c \
     lib/imu/us_eigen_nonsymmsquare.cpp \
     lib/productlicense/productlicense.cpp \
     lib/qcustomplot/qcustomplot.cpp \
@@ -146,6 +150,8 @@ HEADERS += \
     lib/imu/sensor_hub.h \
     lib/imu/us_eigen_nonsymmsquare.h \
     lib/nfc/dcrf32.h \
+        lib/aes/aes.h \
+          lib/md5/md5.h \
     lib/productlicense/productlicense.h \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \

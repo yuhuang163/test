@@ -66,6 +66,14 @@
 #define PCBA_VER "电刷板子测试   V1.4.8"
 #define PRESSURE_VER "压感校测工站   V1.3.4"
 
+
+
+// [PRESSURE_VER] 添加日志显示，修复变量命名错误
+// [PCBA_VER] 电机测试需要关闭p20ps
+// [DEBUG_VER] 增加北美的wifiota和bleota
+//
+
+
 // [DEBUG_VER] 添加成功和失败的ota显示，修复关闭不退出的问题
 //
 // [QC_VER] 修复设备外设信息多次获取问题
@@ -81,7 +89,7 @@
 // [PCBA_VER] 修改版本判断比对方式
 // [QC_VER] 修改版本判断比对方式
 // [SINGLE_VER]  修改版本判断比对方式
-// [PRESSURE_VER] 删除冗余代码
+// [PRESSURE_VER] 添加日志显示
 //
 
 // [QC_VER] 静态电流显示异常

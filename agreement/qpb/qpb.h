@@ -63,11 +63,15 @@ class Qpb : public QSerialPort {
     Q_OBJECT
 public:
     QString APP_VERSION;
+    bool NEEDAES=0;
     int shipCount = 0;
     explicit Qpb(QSerialPort* parent = nullptr);
     void parseCmd(const QByteArray& byte);
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
+    QByteArray aes256Decrypt(const QByteArray &encrypted);
+    QByteArray aes256Encrypt(const QByteArray &input);
+
 
     void sendMainPack(const DataPackage& pack);
     uint32_t sendlongPack(const FactoryDataPackage& pack);
@@ -232,7 +236,7 @@ public slots:
     void set_i_am_app();                                       // 骗牙刷是app
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
-
+    void set_start_multi_ble_ota_app(RotasFileStatusReq *RotasFiledata);
     void set_press_collect_param(FacSwitch sta);  // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);    // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
@@ -259,7 +263,7 @@ public slots:
     void get_servo_motor_info();           // 获取电机信息
     void get_bursh_backlog(int state);
 private slots:
-
+    void process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f);
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
     void process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f);
     void process_CommandId_GET_USER_INFO(DataPackage& f);

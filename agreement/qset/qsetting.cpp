@@ -655,6 +655,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "F20") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
@@ -662,7 +663,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Q20P") {
-        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
@@ -692,6 +693,7 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_PressWindow->setChecked(true);
     }
     if (ui->comboBox_productName->currentText() == "T10") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
@@ -699,6 +701,7 @@ void qsetting::RestoreProductDefaultSetting() {
 
     //华勤：欣旺达：依次扫码连接，不需要唤醒
     if (ui->comboBox_productName->currentText() == "Y20PO") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
@@ -726,6 +729,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试//原p30ps
     if (ui->comboBox_productName->currentText() == "Y25SE") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
@@ -733,6 +737,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y30PS") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
@@ -743,6 +748,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y30") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);
@@ -753,6 +759,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
 
     if (ui->comboBox_productName->currentText() == "P20PS") {
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
         ui->checkBox_SerialPortMAC->setChecked(true);

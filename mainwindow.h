@@ -1,4 +1,5 @@
-﻿#ifndef MAINWINDOW_H
+﻿
+#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include <QApplication>
 #include <QAudioDeviceInfo>
@@ -13,6 +14,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QHttpMultiPart>
+
 #include <QHttpPart>
 #include <QImage>
 #include <QInputDialog>
@@ -49,7 +51,9 @@
 #include <QGraphicsView>
 #include <QPixmap>
 #include <QWheelEvent>
-
+extern "C" {
+#include "md5.h"  // 引入 tiny-AES-c 的头文件
+}
 #include "camerabox.h"
 #include "usmile_ring_buffer.h"
 Q_DECLARE_METATYPE(FacErrorCode)
@@ -165,7 +169,7 @@ private:
     int BleHighRssi;
     int BleLowRssi;
     int RssiTestTime;
-    QString productName;
+    QString connectProductName;
     QLabel* bleStatusLabel = nullptr;
     QLabel* WifiStatusLabel = nullptr;
     QSerialPort* dongleSerialPort;  // dongle硬件层
@@ -223,10 +227,10 @@ private:
     bool isfirstsavedata = 0;        // 是否开始按键200校准
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
     bool isWifiContinue = true;
-       int otaTesttimes = 1;
-       int wifiotaFaiTimes = 0;
-            int wifiotaSuctimes = 0;
-           QTime totalwifiOtaTime;
+    int otaTesttimes = 1;
+    int wifiotaFaiTimes = 0;
+    int wifiotaSuctimes = 0;
+    QTime totalwifiOtaTime;
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;
     QVector<int> faultData;
@@ -251,7 +255,7 @@ protected:
     virtual void closeEvent(QCloseEvent*);
 
 private slots:
-    void appendAndSaveWifiOtaLog(const QString &msg);
+    void appendAndSaveWifiOtaLog(const QString& msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
     void uploadFile(const QString& filePath);
@@ -351,6 +355,7 @@ private slots:
     void refreshMusicState(FacDevInfo data);
     void getPresscalidata(FacPreSensorCalibResult x);
     void scanIpPorts();
+    void checkbutton(FacButtonState data);
 private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
@@ -536,6 +541,10 @@ private slots:
     void on_speakAi_released();
 
     void on_speakAi_pressed();
+
+    void on_get_botton_state_clicked();
+
+    void on_selectPath_source_clicked();
 
 signals:
     void send_uart_state(int data);

@@ -17,9 +17,10 @@ public:
     void printOtaDeviceKeys();  // 调试用
     QList<QMap<QString, QString>> otaDeviceList;  // 存储 OTA 设备密钥信息
     int otaDeviceIndex = 0;
-        int counter;
-
+    int counter;
     int testcounter;
+    int usacounter;
+    int prousacounter;
     static ProductLicense &getInstance()
     {
         static ProductLicense instance;
@@ -28,6 +29,9 @@ public:
 
     LicensePair getLicense();
     LicensePair getTestLicense();
+    LicensePair getUsaLicense();
+    LicensePair getProUsaLicense();
+
 
     static ProductLicense &getTestInstance()
     {
