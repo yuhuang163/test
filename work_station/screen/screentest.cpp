@@ -164,22 +164,62 @@ void screentest::refreshSn(FacDevInfo data) {
     ui->tail_sn->setText("芯片存储的尾盖sn:" + brushstringsn);
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        showlog("读取的subpid为" + brushstringSubpid);
-        showlog("扫描的subpid为" + stringsubpid);
+        ui->brush_subpid->setText("存储的subpid:" + brushstringSubpid);
 
-        if (stringsubpid == brushstringSubpid)
+        showlog("读取的subpid为" + brushstringSubpid);
+        showlog("写入的subpid为" + stringsubpid);
+
+        if (brushstringSubpid == stringsubpid) {
+            TestItem test;
+            test.testItem = "读取的suipid";
+            test.testData = brushstringSubpid;
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+
             subpidCompareOk = 1;
-        else
+
+        } else {
+            TestItem test;
+            test.testItem = "读取的suipid";
+            test.testData = brushstringSubpid;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+
             subpidCompareOk = 2;
+        }
     }
 
     if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
+        ui->tail_sn->setText("存储的尾盖sn:" + brushstringsn);
+
         showlog("读取的sn为" + brushstringsn);
-        showlog("扫描的sn为" + writesn);
-        if (brushstringsn == writesn)
+        showlog("写入的sn为" + stringsn);
+        if (brushstringsn == stringsn) {
+            TestItem test;
+            test.testItem = "读取的sn";
+            test.testData = brushstringsn;
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+
             snCompareOk = 1;
-        else
+
+        } else {
+            TestItem test;
+            test.testItem = "读取的sn";
+            test.testData = brushstringsn;
+            test.testResult = "失败";
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+
             snCompareOk = 2;
+        }
     }
 }
 void screentest::startTask()  // 编写六轴校准的代码
@@ -198,7 +238,7 @@ void screentest::startTask()  // 编写六轴校准的代码
                 is_canGoNext = 0;
                 is_lcd_control = 0;
                 TestTime.start();
-                waitWork(1000);//给开机时间保险
+                waitWork(1000);                     //给开机时间保险
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 snCompareOk = 0;
@@ -223,7 +263,15 @@ void screentest::startTask()  // 编写六轴校准的代码
                         testItems.append(test);
                         testResultTableUpdate(testItems);
                         showlog("sn已比对成功");
-                        state = STATE_DISABLE_SLEEP_1;
+
+                        if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
+                            showlog("已发送subpid");
+                            sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, writesubpid));
+                            state = STATE_WAIT_BANDING_SUBPID;
+                        } else {
+                            state = STATE_DISABLE_SLEEP_1;
+                        }
+
                     } else if (snCompareOk == 2) {
                         TestItem test;
                         test.testItem = "sn比对";
@@ -240,6 +288,28 @@ void screentest::startTask()  // 编写六轴校准的代码
                     }
                 }
                 break;
+            case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
+                if (canGoNext) {
+                    showlog("已绑定成功SUBPID");
+                    sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_SUB_PID));
+
+                    state = STATE_WAIT_CORRECT_BANDING_SUBPID;
+                }
+                break;
+            case STATE_WAIT_CORRECT_BANDING_SUBPID:  // 设置设备采集
+
+                if (canGoNext) {
+                    if (subpidCompareOk == 1) {
+                        state = STATE_DISABLE_SLEEP_1;
+                        showlog("subpid已比对成功");
+                    } else if (subpidCompareOk == 2) {
+                        showlog("subpid已比对失败");
+                        result = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                }
+                break;
+
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
@@ -418,10 +488,24 @@ void screentest::getTestValue(const int mechines, const QString value) {
         }
     }
 }
+QString screentest::getValueBySN(const QString& sn) {
+    QString truncatedSN;
 
+    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
+        truncatedSN = sn.left(8);
+    else
+        truncatedSN = sn.left(9);
+
+    showlog("truncatedSN:" + truncatedSN);
+
+    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
+    showlog("匹配到的subpid：" + value);
+
+    return value;
+}
 void screentest::on_getMac_returnPressed() {
     testResultTableInit();
-
+   writesubpid.clear();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);
@@ -448,7 +532,13 @@ void screentest::on_getMac_returnPressed() {
         return;
     }
     writesn = ui->getMac->text().toUtf8();
+    writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
 
+    if ("SUBPID_ERRO" == writesubpid) {
+        QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
+        return;
+    }
+    stringsubpid = writesubpid;
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测

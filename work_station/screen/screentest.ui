@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -284,6 +284,19 @@
        </property>
        <property name="text">
         <string>屏幕测试</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="brush_subpid">
+       <property name="geometry">
+        <rect>
+         <x>190</x>
+         <y>80</y>
+         <width>615</width>
+         <height>33</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>存储的subpid：</string>
        </property>
       </widget>
      </widget>

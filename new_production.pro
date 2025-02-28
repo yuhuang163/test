@@ -1,6 +1,7 @@
 QT       += core gui texttospeech axcontainer concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
 
 
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 # # 解决msvc构建套件下qtcreator控制台日志中文乱码问题
@@ -8,6 +9,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 #     QMAKE_CFLAGS += /utf-8
 #     QMAKE_CXXFLAGS += /utf-8
 # }
+
 
 
 CONFIG += c++17

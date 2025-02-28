@@ -403,13 +403,13 @@ void ageing::startTask() {
                             sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, writesubpid));
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
-                            if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
-                                showlog("已发送Skuid");
-                                sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writesubpid));
-                                state = STATE_WAIT_BANDING_SKUID;
-                            } else {
-                                state = STATE_DISABLE_SLEEP_1;
-                            }
+                            // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
+                            //     showlog("已发送Skuid");
+                            //     sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writeskuid));
+                            //     state = STATE_WAIT_BANDING_SKUID;
+                            // } else {
+                            state = STATE_DISABLE_SLEEP_1;
+                            // }
                         }
 
                         showlog("sn已比对成功");
@@ -433,13 +433,13 @@ void ageing::startTask() {
 
                 if (canGoNext) {
                     if (subpidCompareOk == 1) {
-                        if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
-                            showlog("已发送Skuid");
-                            sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writesubpid));
-                            state = STATE_WAIT_BANDING_SKUID;
-                        } else {
-                            state = STATE_DISABLE_SLEEP_1;
-                        }
+                        // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
+                        //     showlog("已发送Skuid");
+                        //     sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writeskuid));
+                        //     state = STATE_WAIT_BANDING_SKUID;
+                        // } else {
+                        state = STATE_DISABLE_SLEEP_1;
+                        // }
 
                         showlog("subpid已比对成功");
                     } else if (subpidCompareOk == 2) {

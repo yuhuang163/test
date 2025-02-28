@@ -1,4 +1,7 @@
-﻿#include <stdio.h>
+﻿
+// #include <Windows.h>  // 必须放在最前
+// #include <DbgHelp.h>  // 包含 Windows 头文件后再引入
+#include <stdio.h>
 
 #include <QApplication>
 #include <QFileInfo>
@@ -19,6 +22,7 @@
 #include "quiescent_current_box.h"
 #include "screenbox.h"
 #include "wifibox.h"
+// #include <Windows.h>
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -40,6 +44,7 @@
 // qWarning() << "This is a warning message.";
 // qCritical() << "This is a critical message.";
 // qFatal("This is a fatal message.");
+// drmemory.exe -- new_production_20250228.exe
 
 // 自定义消息处理函数
 void customMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
@@ -108,6 +113,7 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
 
 int main(int argc, char* argv[]) {
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    // QLoggingCategory::setFilterRules("*.debug=true");
 
     QApplication a(argc, argv);
     // 设置使用 UTF-8 编码

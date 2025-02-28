@@ -18,6 +18,14 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 QByteArray allPackets;
 
 void MainWindow::on_pushButton_clicked() {
+    // int* p = nullptr;
+    // *p = 42;  // 触发崩溃
+
+    // // 创建一个按钮
+    // QPushButton* button = nullptr;
+
+    // // 尝试访问空指针
+    // button->setText("Click Me");
     // ui->macInput->setText("B4:56:5D:BF:53:66");
     // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
     // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
@@ -43,14 +51,14 @@ void MainWindow::on_pushButton_clicked() {
     // qDebug() << "Converted decodedString:" << decodedString;
     // qDebug() << "Converted localString:" << localString;
 
-    at->sendOTADATA(1);
-    showlog("已发送OTA数据通道开启");
-    waitWork(1000);
-    QByteArray data;
-    for (int i = 0; i < 500; ++i) {
-        data.append(i % 256);  // 示例数据：0x00 ~ 0xFF 循环
-    }
-    dongleSerialPort->write(data);
+    // at->sendOTADATA(1);
+    // showlog("已发送OTA数据通道开启");
+    // waitWork(1000);
+    // QByteArray data;
+    // for (int i = 0; i < 500; ++i) {
+    //     data.append(i % 256);  // 示例数据：0x00 ~ 0xFF 循环
+    // }
+    // dongleSerialPort->write(data);
 }
 void MainWindow::on_pushButton_3_clicked() {
     // printOtaDeviceKeys();
@@ -1668,7 +1676,7 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
 
 void MainWindow::on_configWifiPushButton_2_clicked() {
     ui->configWifiPushButton_2->setEnabled(false);
-    QTime timeout;
+    QTime configWifitimeout;
     // 更新license
     ProductLicense& license = ProductLicense::getInstance();
     ProductLicense& Testlicense = ProductLicense::getTestInstance();
@@ -1747,13 +1755,21 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     at->resetConnected();
     at->sendbleMac(ui->wifiOtaMacInput->text());
     pb->setPbMode(0);  // app
-    timeout.start();
+    configWifitimeout.start();
     isWifiContinue = true;
     while (at->getConnected() == false) {
         waitWork(100);
-        if (timeout.elapsed() > 1000 * 60) {
+        if (configWifitimeout.elapsed() > 1000 * 60) {
+            configWifitimeout.start();
             appendAndSaveWifiOtaLog("configWifiPushButton_2蓝牙连接超时");
-            isWifiContinue = false;
+            ui->log->clear();
+            on_disconnectButton_clicked();
+            if (!dongleSerialPort->isOpen()) {
+                on_connectButton_clicked();
+            }
+            waitWork(500);
+
+            at->sendbleMac(ui->wifiOtaMacInput->text());
         }
         if (isWifiContinue == false)
             break;

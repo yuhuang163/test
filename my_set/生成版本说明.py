@@ -5,7 +5,7 @@ from datetime import datetime
 
 # 可配置的内容置顶,包括那天
 REPO_PATH = r"D:\new_production\new_production"
-SINCE_DATE = "2025-2-14"
+SINCE_DATE = "2025-2-21"
 UNTIL_DATE = "2026-12-31"
 
 # 定义头文件路径

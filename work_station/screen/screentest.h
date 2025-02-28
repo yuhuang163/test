@@ -22,6 +22,8 @@ private:
         STATE_IDLE,          // 休眠状态
         STATE_WATI_CONNECT,  // 等待连接
         STATE_WAIT_CORRECT_BANDING,
+        STATE_WAIT_BANDING_SUBPID,
+        STATE_WAIT_CORRECT_BANDING_SUBPID,
         STATE_DISABLE_SLEEP_1,     // 进入禁止休眠
         STATE_PROCESS_INSPECTION,  // 工序核对检查
         STATE_COLOR1,
@@ -43,10 +45,10 @@ private:
     int subpidCompareOk = 0;
     QByteArray writesn;
     QString product = "";
-
+    QByteArray writesubpid;
 
 private slots:
-
+    QString getValueBySN(const QString& mysn);
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
