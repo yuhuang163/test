@@ -22,7 +22,7 @@ private:
     bool allow_retry = 1;
     int measure_ammeter_counts;
     QString nfcdataHeadText = "";
-    QString getValueBySN(const QString& sn);
+
     QString receivedData = "";
     double voltage = 0;
     QString chargestate = "";

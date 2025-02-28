@@ -140,6 +140,7 @@ public:
     int m_index = 0;
 
 public slots:
+    QString getValueBySN(const QString& sn);
     bool compareVersions(const QString& versionList, const QString& versionToCompare);
     void set_independent_state(STATE_INDEPENDENT_E state) {
         qDebug() << "independent_state状态被设置" << state;

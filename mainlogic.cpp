@@ -2250,10 +2250,27 @@ QString MainWindow::getValueBySN(const QString& sn) {
 
     showlog("truncatedSN:" + truncatedSN);
 
-    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
-    showlog("匹配到的subpid：" + value);
+    QString fileName = "sn_subpid.txt";
+    // 在需要的地方使用这个变量创建 QFile 对象
+    QFile file(fileName);
+    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+        QTextStream in(&file);
+        while (!in.atEnd()) {                      // 逐行读取文件
+            QString line = in.readLine();          // 读取一行
+            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
+            if (fields.count() >= 2) {             // 至少需要两个字段
+                QString filesn = fields.at(0);     // 第一个字段是sn
+                QString subpid = fields.at(1);     // 第二个字段是subpid
+                if (filesn == truncatedSN) {       // 检查是否是待检索的sn
+                    showlog("文件匹配到的subpid：" + subpid);
+                    return subpid;
+                }
+            }
+        }
+        file.close();  // 关闭文件
+    }
 
-    return value;
+    return "SUBPID_ERRO";
 }
 
 void MainWindow::waitWork(int ms) {

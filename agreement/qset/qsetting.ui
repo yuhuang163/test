@@ -1791,7 +1791,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_SubPID_00"/>
+             <widget class="QLineEdit" name="lineEdit_SubPID_00">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -1805,7 +1809,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_SubPID_01"/>
+             <widget class="QLineEdit" name="lineEdit_SubPID_01">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -1819,7 +1827,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_SubPID_02"/>
+             <widget class="QLineEdit" name="lineEdit_SubPID_02">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -1833,7 +1845,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_SubPID_03"/>
+             <widget class="QLineEdit" name="lineEdit_SubPID_03">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

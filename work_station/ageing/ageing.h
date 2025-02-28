@@ -57,7 +57,7 @@ private:
     QByteArray writesn;
     QByteArray last_sn = QByteArray::number(22);
     QByteArray writesubpid;
-    QString getValueBySN(const QString& mysn);
+
     int snCompareOk = 0;
     int skuCompareOk = 0;
     int subpidCompareOk = 0;

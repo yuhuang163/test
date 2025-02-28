@@ -48,7 +48,7 @@ private:
     QByteArray writesubpid;
 
 private slots:
-    QString getValueBySN(const QString& mysn);
+
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };

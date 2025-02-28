@@ -488,24 +488,10 @@ void screentest::getTestValue(const int mechines, const QString value) {
         }
     }
 }
-QString screentest::getValueBySN(const QString& sn) {
-    QString truncatedSN;
 
-    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
-        truncatedSN = sn.left(8);
-    else
-        truncatedSN = sn.left(9);
-
-    showlog("truncatedSN:" + truncatedSN);
-
-    QString value = SETTINGS.value("SUBPID/" + truncatedSN, "SUBPID_ERRO").toString();
-    showlog("匹配到的subpid：" + value);
-
-    return value;
-}
 void screentest::on_getMac_returnPressed() {
     testResultTableInit();
-   writesubpid.clear();
+    writesubpid.clear();
     ui->log->clear();
     ui->msgEdit->clear();
     ui->getMac->setDisabled(1);

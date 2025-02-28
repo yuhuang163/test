@@ -968,3 +968,35 @@ bool test_base::compareVersions(const QString& versionList, const QString& versi
 
     return false;  // 如果没有匹配的版本，返回false
 }
+QString test_base::getValueBySN(const QString& sn) {
+    QString truncatedSN;
+
+    if (SETTINGS.value("Mes/Product_Name").toString() == "U7" || SETTINGS.value("Mes/Product_Name").toString() == "U7P")
+        truncatedSN = sn.left(8);
+    else
+        truncatedSN = sn.left(9);
+
+    showlog("truncatedSN:" + truncatedSN);
+
+    QString fileName = "sn_subpid.txt";
+    // 在需要的地方使用这个变量创建 QFile 对象
+    QFile file(fileName);
+    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+        QTextStream in(&file);
+        while (!in.atEnd()) {                      // 逐行读取文件
+            QString line = in.readLine();          // 读取一行
+            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
+            if (fields.count() >= 2) {             // 至少需要两个字段
+                QString filesn = fields.at(0);     // 第一个字段是sn
+                QString subpid = fields.at(1);     // 第二个字段是subpid
+                if (filesn == truncatedSN) {       // 检查是否是待检索的sn
+                    showlog("文件匹配到的subpid：" + subpid);
+                    return subpid;
+                }
+            }
+        }
+        file.close();  // 关闭文件
+    }
+
+    return "SUBPID_ERRO";
+}

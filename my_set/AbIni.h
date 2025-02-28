@@ -67,9 +67,10 @@
 #define PRESSURE_VER "压感校测工站   V1.3.5"
 
 
-// [AGE_VER] 注释掉skuid的写入
-// [SCREEN_VER] 增加对subpid的检查
-// [DEBUG_VER] 修复ota连接失败问题
+// [AGE_VER] 修改subpid读取方式为从文件获取
+// [SCREEN_VER] 修改subpid读取方式为从文件获取
+// [DEBUG_VER] 修改subpid读取方式为从文件获取
+// [SINGLE_VER] 修改subpid读取方式为从文件获取
 //
 
 // [PRESSURE_VER] 添加日志显示，修复变量命名错误
