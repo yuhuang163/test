@@ -570,7 +570,7 @@ void wifibletest::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
                 initDate();
-                waitWork(500);            //给开机时间
+                waitWork(1000);           //给开机时间
                 at->sendMac(macAddress);  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");

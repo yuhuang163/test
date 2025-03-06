@@ -980,56 +980,6 @@
                 <string>成品测试</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_4">
-                <item row="4" column="1">
-                 <widget class="QGroupBox" name="verticalGroupBox_3">
-                  <property name="title">
-                   <string>音乐测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_13">
-                   <property name="topMargin">
-                    <number>1</number>
-                   </property>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_19">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="just_music">
-                       <property name="text">
-                        <string>播放音乐</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="music_play">
-                       <property name="text">
-                        <string>播放音乐并录音</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_91">
-                       <property name="text">
-                        <string>录音时间</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="music_time">
-                       <property name="text">
-                        <string>3000</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QComboBox" name="music_combo"/>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
                 <item row="0" column="1">
                  <widget class="QGroupBox" name="groupBox_6">
                   <property name="sizePolicy">
@@ -1214,14 +1164,81 @@
                     </layout>
                    </item>
                    <item>
-                    <widget class="QCheckBox" name="show_bursh_log">
-                     <property name="text">
-                      <string>串口指令模式是否打开</string>
+                    <layout class="QHBoxLayout" name="horizontalLayout_102">
+                     <property name="topMargin">
+                      <number>0</number>
                      </property>
-                     <property name="checked">
-                      <bool>true</bool>
+                     <item>
+                      <widget class="QLabel" name="label_107">
+                       <property name="text">
+                        <string>设置设备模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="set_mode"/>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="show_bursh_log">
+                       <property name="text">
+                        <string>串口指令模式是否打开</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QGroupBox" name="verticalGroupBox_3">
+                  <property name="title">
+                   <string>音乐测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_13">
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_19">
+                     <property name="topMargin">
+                      <number>0</number>
                      </property>
-                    </widget>
+                     <item>
+                      <widget class="QPushButton" name="just_music">
+                       <property name="text">
+                        <string>播放音乐</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="music_play">
+                       <property name="text">
+                        <string>播放音乐并录音</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_91">
+                       <property name="text">
+                        <string>录音时间</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="music_time">
+                       <property name="text">
+                        <string>3000</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="music_combo"/>
                    </item>
                   </layout>
                  </widget>
@@ -2109,14 +2126,14 @@
                      <item>
                       <widget class="QPushButton" name="get_press_info">
                        <property name="text">
-                        <string>获取压感校准</string>
+                        <string>获取压感校准信息</string>
                        </property>
                       </widget>
                      </item>
                      <item>
                       <widget class="QPushButton" name="set_press_info">
                        <property name="text">
-                        <string>设置压感校准</string>
+                        <string>设置压感校准信息</string>
                        </property>
                       </widget>
                      </item>
@@ -3332,6 +3349,16 @@
                   </property>
                  </widget>
                 </item>
+                <item row="3" column="5">
+                 <widget class="QCheckBox" name="cloud_key">
+                  <property name="text">
+                   <string>是否启用一机一密</string>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
               <widget class="QWidget" name="tab_16">
@@ -3339,19 +3366,19 @@
                 <string>蓝牙ota</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_14">
-                <item row="4" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
                   <item>
-                   <widget class="QLabel" name="label_83">
+                   <widget class="QPushButton" name="selectPath">
                     <property name="text">
-                     <string>发送进度</string>
+                     <string>选择固件OTA文件路径</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QProgressBar" name="bel_ota_speed">
-                    <property name="value">
-                     <number>24</number>
+                   <widget class="QLineEdit" name="otaFilePath">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/XJYD_FW_Y20PO_V_ESP32S3_108.bin</string>
                     </property>
                    </widget>
                   </item>
@@ -3374,41 +3401,6 @@
                    </widget>
                   </item>
                  </layout>
-                </item>
-                <item row="6" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_89">
-                  <item>
-                   <widget class="QLabel" name="label_88">
-                    <property name="text">
-                     <string>耗时</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="bleotalcdtime"/>
-                  </item>
-                 </layout>
-                </item>
-                <item row="0" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_82">
-                  <item>
-                   <widget class="QPushButton" name="selectPath">
-                    <property name="text">
-                     <string>选择固件OTA文件路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="otaFilePath">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/XJYD_FW_Y20PO_V_ESP32S3_108.bin</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="7" column="0" colspan="2">
-                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
                 </item>
                 <item row="2" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_81">
@@ -3460,24 +3452,6 @@
                   </item>
                  </layout>
                 </item>
-                <item row="5" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_84">
-                  <item>
-                   <widget class="QLabel" name="label_84">
-                    <property name="text">
-                     <string>接收进度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bel_ota_receive_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
                 <item row="3" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_18">
                   <property name="topMargin">
@@ -3509,7 +3483,10 @@
                   </item>
                  </layout>
                 </item>
-                <item row="0" column="1" rowspan="7">
+                <item row="8" column="0" colspan="2">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                </item>
+                <item row="0" column="1" rowspan="4">
                  <widget class="QLabel" name="bleotaresult">
                   <property name="text">
                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -3518,6 +3495,74 @@
                    <set>Qt::AlignCenter</set>
                   </property>
                  </widget>
+                </item>
+                <item row="4" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_101">
+                  <item>
+                   <widget class="QLabel" name="label_106">
+                    <property name="text">
+                     <string>资源发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_source_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="5" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                  <item>
+                   <widget class="QLabel" name="label_83">
+                    <property name="text">
+                     <string>固件发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_fw_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="6" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_84">
+                  <item>
+                   <widget class="QLabel" name="label_84">
+                    <property name="text">
+                     <string>手柄接收进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_receive_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="7" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>
@@ -4601,7 +4646,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string>H</string>
                </property>
                <property name="placeholderText">
-                <string>输入筛选的设备信号强度</string>
+                <string>输入筛选的设备名字</string>
                </property>
               </widget>
              </item>
@@ -4611,7 +4656,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string>-60</string>
                </property>
                <property name="placeholderText">
-                <string>输入筛选的设备名字</string>
+                <string>输入筛选的设备信号强度</string>
                </property>
               </widget>
              </item>

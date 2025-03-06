@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QHttpMultiPart>
-
 #include <QHttpPart>
 #include <QImage>
 #include <QInputDialog>
@@ -226,7 +225,7 @@ private:
     bool isovertime = 0;             // 是否开始发送校验结果
     bool isfirstsavedata = 0;        // 是否开始按键200校准
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
-    bool isWifiContinue = true;
+    bool isWifiOtaContinue = true;
     int otaTesttimes = 1;
     int wifiotaFaiTimes = 0;
     int wifiotaSuctimes = 0;
@@ -252,7 +251,7 @@ private:
     QNetworkAccessManager* aimanager;
 
 protected:
-    virtual void closeEvent(QCloseEvent*);
+    void closeEvent(QCloseEvent*) override;
 
 private slots:
     void appendAndSaveWifiOtaLog(const QString& msg);
@@ -546,6 +545,8 @@ private slots:
 
     void on_selectPath_source_clicked();
 
+    void on_set_mode_returnPressed();
+
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);
@@ -558,6 +559,7 @@ signals:
     void send_fault_data_packet(int, const QVector<int>&);
     void sendPicture_speed(int);
     void sendBelOtaSpeed(int);
+    void sendBelSourceOtaSpeed(int);
 };
 
 #endif  // MAINWINDOW_H

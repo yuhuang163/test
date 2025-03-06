@@ -656,6 +656,7 @@ void quiescent_current::startTask() {
                 totalresult = "";
                 at->resetConnected();
                 measure_ammeter = 0;
+                waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("已经发送mac地址");

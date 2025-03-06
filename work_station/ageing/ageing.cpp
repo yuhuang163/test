@@ -373,7 +373,7 @@ void ageing::startTask() {
                 flash_state = 0;
                 refresh_periph_times = 1;
                 subpidCompareOk = 0;
-                waitWork(500);
+                waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 state = STATE_WATI_CONNECT;

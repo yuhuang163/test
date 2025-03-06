@@ -91,13 +91,8 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(p
     scanSerialPorts();
     ui->msgEdit->setStyleSheet("font-size: 10pt;");
 
-    mUserno = SETTINGS.value("Mes/mUserno").toString();
-    machineNo = SETTINGS.value("Mes/machineNo").toString();
-    showlog("mUserno=" + mUserno);
-    showlog("machineNo=" + machineNo);
-
-    actual_wait_time = SETTINGS.value("PRESSURE/TestTime").toInt();
-    measure_wait_time = actual_wait_time + 5000;
+    pressTestTime = SETTINGS.value("PRESSURE/TestTime").toInt();
+    measure_wait_time = SETTINGS.value("PRESSURE/CaliTime").toInt();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     product_model_init(pack.product);
 
@@ -142,6 +137,8 @@ void PressureSensorForm::graph_init(MODEL_ID_E model) {
     int chnal_num = 0;
     if (model == MODEL_ID_Y20P) {
         chnal_num = 2;
+    } else if (model == MODEL_ID_Y20) {
+        chnal_num = 1;
     } else if (model == MODEL_ID_F20) {
         chnal_num = 2;
     } else if (model == MODEL_ID_U7) {
@@ -210,6 +207,18 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
 
     qDebug() << "初始化压感模组容器";
 
+    if (model == MODEL_ID_Y20) {
+        ndt_sensor_cali y20_ch0_vector;
+        y20_ch0_vector.ui_msg_tip[0] = donotmove;
+        y20_ch0_vector.ui_msg_tip[1] = brush_placing_200_weights;
+        y20_ch0_vector.ui_msg_tip[2] = pack_weights;
+        y20_ch0_vector.ui_msg_err[0] = "刷头错误码为：";
+        y20_ch0_vector.ui_msg_test[0] = "人员：请放330g砝码";
+        y20_ch0_vector.ui_msg_test[1] = "人员：请放350g砝码";
+        y20_ch0_vector.ui_msg_test[2] = "人员：请放520g砝码";
+        y20_ch0_vector.para.f_module[0] = MODULE_BTH;
+        sensor_v.push_back(y20_ch0_vector);
+    }
     if (model == MODEL_ID_Y20P) {
         ndt_sensor_cali y20p_ch0_vector;
         y20p_ch0_vector.ui_msg_tip[0] = donotmove;
@@ -290,29 +299,6 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
 
         sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y30PS_CH0);
 
-        // ndt_sensor_cali Y25S_ch1_vector;  //假的为了显示图像
-        // Y25S_ch1_vector.ui_msg_tip[0] = donotmove;
-        // Y25S_ch1_vector.ui_msg_tip[1] = "按键放砝码";
-        // Y25S_ch1_vector.ui_msg_tip[2] = "拿走砝码";
-
-        // Y25S_ch1_vector.ui_msg_test[0] = "人员：请放50g砝码";
-        // Y25S_ch1_vector.ui_msg_test[1] = "人员：请放350g砝码";
-        // Y25S_ch1_vector.ui_msg_test[2] = "人员：请放450g砝码";
-
-        // Y25S_ch1_vector.ui_msg_err[0] = "按键错误码为：";
-
-        // Y25S_ch1_vector.para.adc_threshold = ADC_THRESHOLD_Y25S_KEY;
-        // Y25S_ch1_vector.para.count_threshold = COUNT_THRESHOLD_Y25S_KEY;
-
-        // Y25S_ch1_vector.para.f_module[1] = MODULE_ASSISTANT_COMPONENT;
-
-        // Y25S_ch1_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
-        // Y25S_ch1_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
-
-        // sensor_v.push_back(Y25S_ch1_vector);
-
-        // sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y25S_CH1);
-
     } else if (model == MODEL_ID_Y20PO) {
         ndt_sensor_cali Y20PO_ch0_vector;
         Y20PO_ch0_vector.ui_msg_tip[0] = donotmove;
@@ -336,29 +322,6 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         sensor_v.push_back(Y20PO_ch0_vector);
 
         sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y20PO_CH0);
-
-        // ndt_sensor_cali Y20PO_ch1_vector;  //假的
-        // Y20PO_ch1_vector.ui_msg_tip[0] = donotmove;
-        // Y20PO_ch1_vector.ui_msg_tip[1] = "按键放砝码";
-        // Y20PO_ch1_vector.ui_msg_tip[2] = "拿走砝码";
-
-        // Y20PO_ch1_vector.ui_msg_test[0] = "人员：请放50g砝码";
-        // Y20PO_ch1_vector.ui_msg_test[1] = "人员：请放350g砝码";
-        // Y20PO_ch1_vector.ui_msg_test[2] = "人员：请放450g砝码";
-
-        // Y20PO_ch1_vector.ui_msg_err[0] = "按键错误码为：";
-
-        // Y20PO_ch1_vector.para.adc_threshold = ADC_THRESHOLD_Y20PO_KEY;
-        // Y20PO_ch1_vector.para.count_threshold = COUNT_THRESHOLD_Y20PO_KEY;
-
-        // Y20PO_ch1_vector.para.f_module = MODULE_ASSISTANT_COMPONENT;
-
-        // Y20PO_ch1_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
-        // Y20PO_ch1_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
-
-        // sensor_v.push_back(Y20PO_ch1_vector);
-
-        // sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y20PO_CH1);
 
     }
 
@@ -435,7 +398,7 @@ void PressureSensorForm::system_cmd(QString command, system_command_e numb) {
 }
 
 void PressureSensorForm::getTestValue(const int mechines, const QString value) {
-    showlog(value);
+    // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq") {
         // 定义正则表达式，匹配MAC地址的模式
@@ -635,6 +598,7 @@ void PressureSensorForm::refreshDongleUartState(int state) {
 }
 
 void PressureSensorForm::send_start_command(machine_command_id_e command_id, int argument) {
+    // waitWork(3000);
     FixturePacketData packet_data;
 
     packet_data.machine_command_id = command_id;
@@ -940,6 +904,8 @@ void PressureSensorForm::product_model_init(QString model) {
 
     if (model == "Y20P") {
         product_model = MODEL_ID_Y20P;
+    } else if (model == "Y20") {
+        product_model = MODEL_ID_Y20;
     } else if (model == "F20") {
         product_model = MODEL_ID_F20;
     } else if (model == "U7" || model == "U7P") {
@@ -1044,7 +1010,8 @@ void PressureSensorForm::updateGraphs() {
         // 处理帧率显示和倒计时
         send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / adcValues.size()));
         transTime.restart();
-        ui->countdown->display((actual_wait_time - countdowntime.elapsed()) / 1000);
+
+        ui->countdown->display((pressTestTime * 10 - countdowntime.elapsed()) / 1000);
     }
 }
 void PressureSensorForm::graph_update(FacUploadPresSensor x) {
@@ -1090,11 +1057,11 @@ void PressureSensorForm::graph_update(FacUploadPresSensor x) {
         // 使用 counter 作为时间戳，将数据构造成 QPair 后入队
         adcDataQueue.enqueue(qMakePair(counter, adcValues));
         valueDataQueue.enqueue(qMakePair(counter, valueValues));
-        // 发射信号
-        emit dataReady();
 
         counter += 10;
     }
+    // 发射信号
+    emit dataReady();
 }
 
 void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
@@ -1430,13 +1397,6 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
         need_sensor_data = 1;
 
     for (int i = 0; i < x.sensor_data_count; i++) {
-        // int first_runing_suc_num = 0;
-        // int calib_suc_num = 0;
-        // int adc = int16_t(x.sensor_data[i].brush_head.adc);
-        // int value = int16_t(x.sensor_data[i].brush_head.value);
-        // int botton_adc = int16_t(x.sensor_data[i].mode_button.adc);
-        // int botton_value = int16_t(x.sensor_data[i].mode_button.value);
-
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
                 switch (sensor_v[channel].para.f_module[need_sensor_count]) {
@@ -1461,28 +1421,27 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                 if (sensor_v[test_chan].test_status == TEST_START) {
                     static uint8_t lock = 0;
                     if (pb->getisDevintowhitemode()) {
-                        sensor_v[test_chan].test_status = TEST_BTH_SHAKE;
-                        // #if 1
-                        //     sensor_v[test_chan].test_status = TEST_BTH_NORMAL;
-                        //     appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[0], QColor("black"));
-                        // #endif
                         set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
-                        delay_msec(200);
                         pb->set_brush_control(1);
-                        appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[0], QColor("black"));
                         showlog(sensor_v[test_chan].ui_msg_test[0]);
+                        appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[0], QColor("black"));
+                        if (product_model == MODEL_ID_Y20) {
+                            sensor_v[test_chan].test_status = TEST_BTH_NORMAL;
+                            showlog("当前是y20的测试");
+                            // showlog("放上350g砝码");
+                            countdowntime.start();
+                        } else {
+                            showlog("当前是正常测试");
+                            sensor_v[test_chan].test_status = TEST_BTH_SHAKE;
+                        }
+
                     } else if (lock == 0) {
                         lock = 1;
                         pb->set_device_mode(3);  // 清洁模式
-                        // pb->setDevintowhitemode();   // 进入亮白
-                        showlog("TEST_START");
+                        showlog("开始压感测试");
                         delay_msec(200);
                         lock = 0;
                     }
-#if 0  // Y20_PRESS_TEST
-                    showlog("放上350g砝码");
-                    countdowntime.start();
-#endif
                 }
                 // else if (sensor_v[test_chan].test_status == TEST_BTH_END) {
                 //     sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
@@ -1547,24 +1506,25 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
             }
             sensor_v[test_chan].test_result[0] = 350;
 
-#if 0  // Y20_PRESS_TEST
-            if (value_c[test_chan] < 5)   // 未过压
-            {
-                qDebug("TEST_BTH_NORMAL:%d",sensor_v[test_chan].para.current_count);
-                sensor_v[test_chan].para.current_count++;
-                if (sensor_v[test_chan].para.current_count >= (actual_wait_time / 10 * 8/10))
+            if (product_model == MODEL_ID_Y20) {
+                if (value_c[test_chan] < 5)  // 未过压
                 {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
-                    showlog("放上450g砝码");
+                    qDebug("TEST_BTH_NORMAL:%d", sensor_v[test_chan].para.current_count);
+                    sensor_v[test_chan].para.current_count++;
+                    if (sensor_v[test_chan].para.current_count >= pressTestTime) {
+                        sensor_v[test_chan].para.current_count = 0;
+                        sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
+                        showlog(sensor_v[test_chan].ui_msg_test[2]);
 
-                    countdowntime.restart();
+                        appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[2], QColor("black"));
+                        countdowntime.restart();
+                    }
+                } else if (value_c[test_chan] >= 5) {
+                    sensor_v[test_chan].para.current_count = 0;
+                    sensor_v[test_chan].test_status = TEST_FAIL;
                 }
-            } else if (value_c[test_chan] >= 5) {
-                sensor_v[test_chan].para.current_count = 0;
-                sensor_v[test_chan].test_status = TEST_FAIL;
             }
-#endif
+
         } else if (sensor_v[test_chan].test_status == TEST_BTH_OVERPRESS) {
             if (value_c[test_chan] > 450 - 0.1 * 450 && value_c[test_chan] < 450 + 0.1 * 450)  // 数据准确
             {
@@ -1576,18 +1536,18 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                 }
             }
             sensor_v[test_chan].test_result[0] = 450;
-#if 0  // Y20_PRESS_TEST
-            if (value_c[test_chan] >= 5)   // 过压
-            {
-                qDebug("TEST_BTH_OVERPRESS:%d",sensor_v[test_chan].para.current_count);
-                sensor_v[test_chan].para.current_count++;
-                if (sensor_v[test_chan].para.current_count >= 200)
+            if (product_model == MODEL_ID_Y20) {
+                if (value_c[test_chan] >= 5)  // 过压
                 {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_SUC;
+                    qDebug("TEST_BTH_OVERPRESS:%d", sensor_v[test_chan].para.current_count);
+                    sensor_v[test_chan].para.current_count++;
+                    if (sensor_v[test_chan].para.current_count >= 200) {
+                        sensor_v[test_chan].para.current_count = 0;
+                        sensor_v[test_chan].test_status = TEST_SUC;
+                    }
                 }
             }
-#endif
+
         } else if (sensor_v[test_chan].test_status == TEST_KEY_NORMAL) {
             qDebug("TEST_KEY_NORMAL:%d", sensor_v[test_chan].para.current_count);
             if (value_c[test_chan] > 200 - 30 && value_c[test_chan] < 200 + 30) {
@@ -1681,9 +1641,10 @@ void PressureSensorForm::checkbutton(FacButtonState x) {
 }
 
 void PressureSensorForm::delay_msec(unsigned int msec) {
-    QEventLoop loop;                                // 定义一个新的事件循环
-    QTimer::singleShot(msec, &loop, SLOT(quit()));  // 创建单次定时器，槽函数为事件循环的退出函数
-    loop.exec();  // 事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
+    // QEventLoop loop;                                // 定义一个新的事件循环
+    // QTimer::singleShot(msec, &loop, SLOT(quit()));  // 创建单次定时器，槽函数为事件循环的退出函数
+    // loop.exec();  // 事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
+    waitWork(msec);
 }
 
 void PressureSensorForm::refreshSn(FacDevInfo data) {
@@ -1774,6 +1735,10 @@ void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int
             if (getIndex() == 1)
                 Y20P_fixture(state, argument);
             break;
+        case MODEL_ID_Y20:
+            if (getIndex() == 1)
+                Y20P_fixture(state, argument);
+            break;
 
         case MODEL_ID_F20: F20_fixture(state, argument); break;
 
@@ -1828,9 +1793,7 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
             break;
 
         case STATE_WATI_ASKQR:
-
             send_start_command(COMMAND_ID_TRAY_IN, 0);
-
             send_start_command(COMMAND_ID_FIXED_BLOCK_DOWN, 0);
 
             break;
@@ -1960,7 +1923,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
 
             if (calib_chan + 1 == total_sensor) {
                 send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
-                // waitWork(3000);
+
                 send_start_command(COMMAND_ID_TRAY_OUT, 0);
             }
             break;
@@ -1969,9 +1932,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
 
             send_start_command(COMMAND_ID_TRAY_IN, 0);
 
-            waitWork(1500);
             send_start_command(COMMAND_ID_FIXED_BLOCK_DOWN, 0);
-            waitWork(1500);
 
             break;
 
@@ -1981,9 +1942,9 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
             if (SETTINGS.value("PRESSURE/PressMechine").toInt() == 1) {
                 //没有刷头去掉了
                 send_start_command(COMMAND_ID_KEY_UP, 0);
-                // waitWork(3000);
+
                 send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
-                // waitWork(3000);
+
                 send_start_command(COMMAND_ID_TRAY_OUT, 0);
             }
 
@@ -2166,6 +2127,15 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
 
             break;
 
+        case MODEL_ID_Y20:
+            if (state == STATE_CALIB_CH_X) {
+                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+            } else if (state == STATE_CALIB_CH_X_RESULT) {
+                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+            }
+
+            break;
+
         case MODEL_ID_F20:
             if (state == STATE_CALIB_CH_X) {
                 showlog(sensor_v[calib_chan].ui_msg_tip[1]);
@@ -2229,7 +2199,7 @@ void PressureSensorForm::startTask() {
                 calib_vector_init(product_model);
                 qDebug() << "sizeof(sensor_v)" << sensor_v.size();
 
-                showlog(ui->macInput->text());
+                showlog("当前mac地址为" + ui->macInput->text());
                 state = STATE_WATI_CONNECT;
                 break;
 
@@ -2266,7 +2236,9 @@ void PressureSensorForm::startTask() {
                 } else if (get_independent_state() == STATE_INVALID) {
                     set_independent_state(STATE_WAIT_START);
                     emit operator_instruct(getIndex());
-                    showlog("等待治具就绪");
+                    showlog("等待治具就绪" + SETTINGS.value("PRESSURE/functionSwitch", 1).toString());
+                    if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                        state = STATE_WAIT_STATIC;
                 }
 
                 break;
@@ -2642,7 +2614,11 @@ void PressureSensorForm::startTask() {
                 ui->getMac->clear();
 
                 showlog("流程结束");
+                if (pack.factory == "lx" && m_index == 1)
+                    ui->getMac->setFocus();
 
+                if (pack.factory == "hq" && m_index == 1)
+                    ui->getMac->setFocus();
                 state = STATE_IDLE;
 
                 break;
@@ -2652,7 +2628,6 @@ void PressureSensorForm::startTask() {
 
         //  QCoreApplication::processEvents();
     }
-    ui->macInput->setEnabled(true);
 }
 
 void PressureSensorForm::on_ClearGraph_clicked() { graph_reset(0); }
@@ -2885,16 +2860,4 @@ void PressureSensorForm::on_TestButton1_clicked() {
     // pb->get_base_info();  // 获取设备信息
 
     CheckNfcData();
-}
-
-void PressureSensorForm::on_SendCalib_clicked() {
-    return;
-
-    press_calib_data_t cali_result;
-    cali_result.calib_factor[MODULE_BTH] = 2666;
-    cali_result.calib_factor[MODULE_POWER_BUTTON] = 2666;
-    cali_result.calib_factor[MODULE_MODE_BUTTON] = 2666;
-    cali_result.temperature[MODULE_BTH] = 2666;
-
-    pb->set_press_cali_result(cali_result);
 }

@@ -58,7 +58,9 @@
         "xlocnum": "cpp",
         "xloctime": "cpp",
         "functional": "cpp",
-        "string.h": "c"
+        "string.h": "c",
+        "factory_msg.pb.h": "c",
+        "iostream": "cpp"
     },
     "clang-format.style": "file:C:\\Users\\heyj\\.vscode\\extensions\\ms-vscode.cpptools-1.21.4-win32-x64\\LLVM\\bin\\clang-format",
     "clang-format.executable": "C:\\Users\\heyj\\.vscode\\extensions\\ms-vscode.cpptools-1.21.4-win32-x64\\LLVM\\bin\\clang-format",

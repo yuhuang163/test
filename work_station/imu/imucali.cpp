@@ -912,6 +912,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_IDLE:  // 复位一切
                 showlog("开始测试");
                 dataInit();
+                   waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
 

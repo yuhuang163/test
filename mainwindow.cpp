@@ -21,11 +21,11 @@ void MainWindow::on_pushButton_clicked() {
     // int* p = nullptr;
     // *p = 42;  // 触发崩溃
 
-    // // 创建一个按钮
-    // QPushButton* button = nullptr;
+    // 创建一个按钮
+    QPushButton* button = nullptr;
 
-    // // 尝试访问空指针
-    // button->setText("Click Me");
+    // 尝试访问空指针
+    button->setText("Click Me");
     // ui->macInput->setText("B4:56:5D:BF:53:66");
     // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
     // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
@@ -104,6 +104,13 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanIpPorts()));
 
+    QButtonGroup* buttonGroup = new QButtonGroup();
+    buttonGroup->addButton(ui->is_wifiota_press);
+    buttonGroup->addButton(ui->is_bleota_press);
+
+    // 让 QCheckBox 互斥（默认为非互斥，需要手动启用）
+    buttonGroup->setExclusive(true);
+
     initBasicInfo();
     initPeriphState();
     OTAGroup->addButton(ui->product_ver, 0);  // 分组1、序号0
@@ -111,6 +118,7 @@ MainWindow::MainWindow(QWidget* parent) :
     OTAGroup->addButton(ui->csv_ver, 2);
     OTAGroup->addButton(ui->america_ver, 3);
     OTAGroup->addButton(ui->america_product_ver, 4);
+
     WifiStatusLabel = new QLabel("wifi连接：<font color='red'>失败</font>");
     bleStatusLabel = new QLabel("蓝牙连接：<font color='red'>失败</font>");
     uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
@@ -248,7 +256,9 @@ MainWindow::MainWindow(QWidget* parent) :
         }
     });
     connect(this, SIGNAL(sendPicture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
-    connect(this, SIGNAL(sendBelOtaSpeed(int)), ui->bel_ota_speed, SLOT(setValue(int)));
+    connect(this, SIGNAL(sendBelOtaSpeed(int)), ui->bel_fw_ota_speed, SLOT(setValue(int)));
+    connect(this, SIGNAL(sendBelSourceOtaSpeed(int)), ui->bel_source_ota_speed, SLOT(setValue(int)));
+
     connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
 
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
@@ -524,7 +534,7 @@ MainWindow::~MainWindow() {
     is_motor_continue = false;
     isimuCaliContinue = false;
     isrssiContinue = false;
-    isWifiContinue = false;
+    isWifiOtaContinue = false;
     delete ui;
 }
 
@@ -536,7 +546,7 @@ void MainWindow::closeEvent(QCloseEvent*) {
     future.waitForFinished();
     saveCustom();
     isrssiContinue = false;
-    isWifiContinue = false;
+    isWifiOtaContinue = false;
     if (qsetting_ui != NULL)
         qsetting_ui->close();
 }
@@ -1411,13 +1421,13 @@ void MainWindow::on_motor_cali_clicked() {
 }
 
 void MainWindow::on_bleTestPushButton_clicked() {
-    isWifiContinue = true;
+    isWifiOtaContinue = true;
     ui->bleTestPushButton->setEnabled(false);
     ui->configWifiPushButton->setEnabled(false);
     ui->otaTestPushButton->setEnabled(false);
     int times = 0;
 
-    while (isWifiContinue) {
+    while (isWifiOtaContinue) {
         if (!dongleSerialPort->isOpen()) {
             on_connectButton_clicked();
         }
@@ -1448,14 +1458,14 @@ void MainWindow::on_bleTestPushButton_clicked() {
 }
 
 void MainWindow::on_stopTestPushButton_clicked() {
-    isWifiContinue = false;
+    isWifiOtaContinue = false;
     ui->bleTestPushButton->setEnabled(true);
     ui->configWifiPushButton->setEnabled(true);
     ui->otaTestPushButton->setEnabled(true);
 }
 //压测接口
 void MainWindow::on_otaTestPushButton_clicked() {
-    isWifiContinue = true;
+    isWifiOtaContinue = true;
     ui->bleTestPushButton->setEnabled(false);
     ui->configWifiPushButton->setEnabled(false);
     ui->otaTestPushButton->setEnabled(false);
@@ -1476,9 +1486,9 @@ void MainWindow::on_otaTestPushButton_clicked() {
         waitWork(100);
         if (timeout.elapsed() > 1000 * 30) {
             appendAndSaveWifiOtaLog("otaTestPushButton蓝牙连接超时");
-            isWifiContinue = false;
+            isWifiOtaContinue = false;
         }
-        if (isWifiContinue == false)
+        if (isWifiOtaContinue == false)
             break;
     }
     waitWork(1000);
@@ -1511,7 +1521,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
         }
     });
 
-    while (isWifiContinue) {
+    while (isWifiOtaContinue) {
         if (!dongleSerialPort->isOpen()) {
             on_connectButton_clicked();
         }
@@ -1535,11 +1545,11 @@ void MainWindow::on_otaTestPushButton_clicked() {
             }
             waitWork(1000);
             counter++;
-            if (isWifiContinue == false)
+            if (isWifiOtaContinue == false)
                 break;
         }
         if (isStart == false) {
-            isWifiContinue = false;
+            isWifiOtaContinue = false;
             appendAndSaveWifiOtaLog("设备无法接收蓝牙指令");
         }
 
@@ -1554,7 +1564,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
                 break;
             }
             waitWork(200);
-            if (isWifiContinue == false)
+            if (isWifiOtaContinue == false)
                 break;
             if (refresh) {
                 refresh = false;
@@ -1582,10 +1592,10 @@ void MainWindow::on_otaTestPushButton_clicked() {
                 at->getConnected();
                 if (timeout.elapsed() > 1000 * 60 * 2) {
                     appendAndSaveWifiOtaLog("otaTestPushButton蓝牙连接超时");
-                    isWifiContinue = false;
+                    isWifiOtaContinue = false;
                 }
 
-                if (isWifiContinue == false)
+                if (isWifiOtaContinue == false)
                     break;
             }
         }
@@ -1658,8 +1668,8 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     RotasFileStatusReq RotasFiledata;
     RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
     pb->set_start_ota_app(RotasFiledata);
-    isWifiContinue = true;
-    while (isWifiContinue) {
+    isWifiOtaContinue = true;
+    while (isWifiOtaContinue) {
         if (timeout.elapsed() > 3 * 60 * 1000) {  //下载超时退出
             appendAndSaveWifiOtaLog("下载超时");
             break;
@@ -1683,7 +1693,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     ProductLicense& Csvlicense = ProductLicense::getTestInstance();
     ProductLicense& USAlicense = ProductLicense::getTestInstance();
     ProductLicense& USAProductlicense = ProductLicense::getTestInstance();
-
+    ProductLicense& Cloudelicense = ProductLicense::getTestInstance();
     WifiInfo info;
     QString name = ui->wifiUserName_2->text();
     QString password = ui->wifiPassword_2->text();
@@ -1694,7 +1704,12 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
 
     if (OTAGroup->checkedId() == 0)  // 生产版本
     {
-        LicensePair pair = license.getLicense();
+        LicensePair pair;
+        if (ui->cloud_key->isChecked())
+            pair = Cloudelicense.getCloudLicense("product", "k0fylisHJpn", macAddress);
+        else
+            pair = license.getLicense();
+
         appendAndSaveWifiOtaLog("");
         appendAndSaveWifiOtaLog("正在运行生产版本OTA，密钥号：" + QString::number(license.counter));
         wifiOtaProductName = pair.product_name;
@@ -1708,12 +1723,18 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             QMessageBox::warning(NULL, "警告", "密码错误\r\n");
             return;
         }
-        LicensePair testpair = Testlicense.getTestLicense();
+
+        LicensePair pair;
+        if (ui->cloud_key->isChecked())
+            pair = Cloudelicense.getCloudLicense("test", "k0fylgHIxtf", macAddress);
+        else
+            pair = Testlicense.getTestLicense();
+
         appendAndSaveWifiOtaLog("");
         appendAndSaveWifiOtaLog("开始运行测试版本OTA，密钥号：" + QString::number(Testlicense.testcounter));
-        wifiOtaProductName = testpair.product_name;
-        deviceName = testpair.device_key;
-        deviceSecret = testpair.device_secret;
+        wifiOtaProductName = pair.product_name;
+        deviceName = pair.device_key;
+        deviceSecret = pair.device_secret;
         iotUrl = ui->iot_url_test->text();
 
     } else if (OTAGroup->checkedId() == 2) {
@@ -1726,25 +1747,34 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         iotUrl = ui->iot_url_test->text();
 
     } else if (OTAGroup->checkedId() == 3) {
-        LicensePair usapair = USAlicense.getUsaLicense();
+        LicensePair pair;
+        if (ui->cloud_key->isChecked())
+            pair = Cloudelicense.getCloudLicense("usaTest", "k0fylgHIxtf", macAddress);
+        else
+            pair = USAlicense.getUsaLicense();
+
         appendAndSaveWifiOtaLog("");
         appendAndSaveWifiOtaLog("正在运行北美测试OTA，密钥号：" + QString::number(USAlicense.usacounter));
-        wifiOtaProductName = usapair.product_name;
-        deviceName = usapair.device_key;
-        deviceSecret = usapair.device_secret;
+        wifiOtaProductName = pair.product_name;
+        deviceName = pair.device_key;
+        deviceSecret = pair.device_secret;
         iotUrl = ui->iot_url_america->text();
         pb->NEEDAES = 1;
 
     } else if (OTAGroup->checkedId() == 4) {
-        LicensePair prousapair = USAProductlicense.getProUsaLicense();
+        LicensePair pair;
+        if (ui->cloud_key->isChecked())
+            pair = Cloudelicense.getCloudLicense("usaProduct", "k0fylgHIxtf", macAddress);
+        else
+            pair = USAProductlicense.getProUsaLicense();
+
         appendAndSaveWifiOtaLog("");
         appendAndSaveWifiOtaLog("正在运行北美生产OTA，密钥号：" + QString::number(USAProductlicense.prousacounter));
-        wifiOtaProductName = prousapair.product_name;
-        deviceName = prousapair.device_key;
-        deviceSecret = prousapair.device_secret;
+        wifiOtaProductName = pair.product_name;
+        deviceName = pair.device_key;
+        deviceSecret = pair.device_secret;
         iotUrl = ui->iot_url_america_product->text();
         pb->NEEDAES = 1;
-
     }
 
     else {
@@ -1756,10 +1786,10 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     at->sendbleMac(ui->wifiOtaMacInput->text());
     pb->setPbMode(0);  // app
     configWifitimeout.start();
-    isWifiContinue = true;
+    isWifiOtaContinue = true;
     while (at->getConnected() == false) {
         waitWork(100);
-        if (configWifitimeout.elapsed() > 1000 * 60) {
+        if (configWifitimeout.elapsed() > 1000 * 10) {
             configWifitimeout.start();
             appendAndSaveWifiOtaLog("configWifiPushButton_2蓝牙连接超时");
             ui->log->clear();
@@ -1771,12 +1801,16 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
 
             at->sendbleMac(ui->wifiOtaMacInput->text());
         }
-        if (isWifiContinue == false)
+        if (isWifiOtaContinue == false)
             break;
     }
 
-    if (isWifiContinue == false) {
+    if (isWifiOtaContinue == false) {
         ui->configWifiPushButton_2->setEnabled(true);
+        return;
+    }
+    if (deviceSecret == "") {
+        showlog("获取密钥失败");
         return;
     }
 
@@ -1853,7 +1887,7 @@ void MainWindow::on_wifiOtaMacInput_returnPressed() {
         macLabel->setText("蓝牙mac: " + macAddress);
         pb->setPbMode(0);
         on_configWifiPushButton_2_clicked();
-        if (isWifiContinue == true) {
+        if (isWifiOtaContinue == true) {
             on_otaTestPushButton_2_clicked();
         }
     }
@@ -3094,7 +3128,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
             }
             if (stopBleOta) {
                 showlog("停止测试");
-                stopBleOta = 0;
+
                 return;  // 停止测试
             }
         }
@@ -3160,8 +3194,9 @@ void MainWindow::on_startBleOta_clicked() {
         return;
     }
     QByteArray fileData_source;
-    if (connectProductName == "Y20PS") {
-        pb->NEEDAES = 1;
+    if (connectProductName != "U7" || connectProductName != "U7P") {
+        if (connectProductName == "Y20PS")
+            pb->NEEDAES = 1;
         QString filePath_source = ui->otaFilePath_source->text();
         if (filePath_source.isEmpty()) {
             QMessageBox::warning(this, "警告", "未选择资源OTA文件");
@@ -3188,14 +3223,14 @@ void MainWindow::on_startBleOta_clicked() {
         pb->set_i_am_app();  //假装是app
         waitWork(1000);
         if (stopBleOta) {
-            showlog("停止测试");
-            stopBleOta = 0;
+            showlog("停止测试getisSetIamApp");
+
             return;  // 停止测试
         }
     }
     showlog("假装app成功");
 
-    if (connectProductName == "Y20PS") {
+    if (connectProductName != "U7" || connectProductName != "U7P") {
         QString sourceMd5 = calculateMD5(fileData_source);
         QString FWMd5 = calculateMD5(fileData);
 
@@ -3219,7 +3254,7 @@ void MainWindow::on_startBleOta_clicked() {
             waitWork(2000);
             if (stopBleOta) {
                 showlog("停止测试");
-                stopBleOta = 0;
+
                 return;  // 停止测试
             }
         }
@@ -3236,7 +3271,7 @@ void MainWindow::on_startBleOta_clicked() {
             waitWork(2000);
             if (stopBleOta) {
                 showlog("停止测试");
-                stopBleOta = 0;
+
                 return;  // 停止测试
             }
         }
@@ -3248,7 +3283,7 @@ void MainWindow::on_startBleOta_clicked() {
     at->sendOTADATA(1);
     showlog("已发送OTA数据通道开启");
     waitWork(1000);
-    if (connectProductName == "Y20PS") {
+    if (connectProductName != "U7" || connectProductName != "U7P") {
         int totalSize = fileData_source.size();
         int offset = 0;
         int packetSize = 224;
@@ -3260,11 +3295,16 @@ void MainWindow::on_startBleOta_clicked() {
             waitWork(interval);
             // 等待允许发送下一包
             if (stopBleOta) {
-                showlog("停止测试");
-                stopBleOta = 0;
+                showlog("发送资源数据包停止测试");
+
                 return;  // 停止测试
             }
-            QByteArray packdata = pb->aes256Encrypt(packet);
+            QByteArray packdata;
+            if (connectProductName == "Y20PS")
+                packdata = pb->aes256Encrypt(packet);
+            else
+                packdata = packet;
+
             // 发送当前分包数据
             dongleSerialPort->write(packdata);
             showlog(QString("发送分包: %1/%2 字节").arg(offset + currentSize).arg(totalSize));
@@ -3273,19 +3313,24 @@ void MainWindow::on_startBleOta_clicked() {
 
             // 更新偏移量，准备下一包
             offset += currentSize;
+
+            float progressValue = ((float)(offset + currentSize) / totalSize) * 100;
+            int progressInt = (int)progressValue;
+
+            emit sendBelSourceOtaSpeed(progressInt);
         }
 
         showlog("所有数据包发送完成");
     }
     pb->reset_all_pb();
-    if (connectProductName == "Y20PS") {
+    if (connectProductName != "U7" || connectProductName != "U7P") {
         while (!pb->getisOtaStart()) {  //接收请求可以发送下一包
             showlog("等待手柄请求发送固件包!");
 
             waitWork(2000);
             if (stopBleOta) {
-                showlog("停止测试");
-                stopBleOta = 0;
+                showlog("停止测试getisOtaStart");
+
                 return;  // 停止测试
             }
         }
@@ -3646,4 +3691,10 @@ void MainWindow::on_selectPath_source_clicked() {
     if (!path.isEmpty()) {
         ui->otaFilePath_source->setText(path);
     }
+}
+
+void MainWindow::on_set_mode_returnPressed() {
+    showlog("当前发送的模式是" + ui->set_mode->text());
+
+    pb->set_device_mode(ui->set_mode->text().toInt());
 }

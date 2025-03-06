@@ -560,40 +560,43 @@ void cameratest::onTimeout() {
 }
 
 void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
-    // 读取软件版本字符串
-    QString Camera_Id = SETTINGS.value("ProductInfo/Camera_Id").toString();
-    qDebug() << "Read Camera_Id:" << Camera_Id;
+    if (refresh_times) {
+        refresh_times = 0;
+        // 读取软件版本字符串
+        QString Camera_Id = SETTINGS.value("ProductInfo/Camera_Id").toString();
+        qDebug() << "Read Camera_Id:" << Camera_Id;
 
-    // 检查软件版本、资源版本和老化状态是否匹配
-    if (compareVersions(Camera_Id, data.camera_version)) {
-        showlog("摄像头id正确" + QString::fromUtf8(data.camera_version));
+        // 检查软件版本、资源版本和老化状态是否匹配
+        if (compareVersions(Camera_Id, data.camera_version)) {
+            showlog("摄像头id正确" + QString::fromUtf8(data.camera_version));
 
-        TestItem test;
-        test.testItem = "摄像头id";
-        test.testData = QString::fromUtf8(data.camera_version);
-        test.testResult = "通过";
-        test.ask = Camera_Id;
-        testItems.append(test);
+            TestItem test;
+            test.testItem = "摄像头id";
+            test.testData = QString::fromUtf8(data.camera_version);
+            test.testResult = "通过";
+            test.ask = Camera_Id;
+            testItems.append(test);
 
-        testResultTableUpdate(testItems);
+            testResultTableUpdate(testItems);
 
-    } else {
-        TestItem test;
-        test.testItem = "摄像头id";
-        test.testData = QString::fromUtf8(data.camera_version);
-        test.testResult = "失败";
-        test.ask = Camera_Id;
-        testItems.append(test);
+        } else {
+            TestItem test;
+            test.testItem = "摄像头id";
+            test.testData = QString::fromUtf8(data.camera_version);
+            test.testResult = "失败";
+            test.ask = Camera_Id;
+            testItems.append(test);
 
-        testResultTableUpdate(testItems);
+            testResultTableUpdate(testItems);
 
-        showlog("状态错误");
-        showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
-        result = failValue;
-        isTestContinue = false;
-        showlog("停止运行");
+            showlog("状态错误");
+            showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
+            result = failValue;
+            isTestContinue = false;
+            showlog("停止运行");
 
-        on_stopTest_clicked();
+            on_stopTest_clicked();
+        }
     }
 }
 
@@ -605,7 +608,7 @@ void cameratest::startTask() {
 
                 showlog("开始测试");
                 pb->reset_all_pb();
-
+                refresh_times = 1;
                 at->resetConnected();
                 displayRectangles = false;
                 refreshBleState(0);
@@ -615,9 +618,10 @@ void cameratest::startTask() {
                 result = passValue;
                 is_canGoNext = 0;
                 is_camera_control = 0;
+                picutre_offset_times = 0;
                 can_start_dirty_test = 0;
                 TestTime.start();
-                waitWork(500);
+                waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
 
@@ -625,32 +629,24 @@ void cameratest::startTask() {
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    pb->set_camera_state(0);
                     qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                     waitWork(WAITTIME);
                     showlog("蓝牙连接成功");
-                    // pb->set_sn(FacDevInfoType_TAIL_SN, sn);
+                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
                     bandSnMacToCsv(macAddress, sn);
-                    // state = STATE_BANDING;
-
-                    pb->get_base_info();
-                    // showlog("sn已成功绑定保存");
-                    state = STATE_DISABLE_SLEEP_1;
+                    state = STATE_WATI_BASE_INFO;
                 }
                 break;
 
-            // case STATE_BANDING:
-            //     if (pb->get_is_banding_ok()) {
-            //         pb->get_base_info();
-            //         showlog("sn已成功绑定保存");
-            //         state = STATE_DISABLE_SLEEP_1;
-            //     } else {
-            //         waitWork(500);
-            //         pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-            //         showlog("正在重试sn绑定");
-            //     }
+            case STATE_WATI_BASE_INFO:
 
-            //     break;
+                if (canGoNext) {
+                    showlog("已获取到设备信息");
+                    pb->set_camera_state(0);
+                    state = STATE_DISABLE_SLEEP_1;
+                }
+
+                break;
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
@@ -764,7 +760,8 @@ void cameratest::startTask() {
                 pb->set_dev_reset();  //重启彻底断网，别发了
                 waitWork(500);
                 emit send_end_test(getIndex());
-
+                if (pack.factory == "lx" && m_index == 1)
+                    ui->getMac->setFocus();
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
                 on_disconnectButton_clicked();
@@ -772,7 +769,7 @@ void cameratest::startTask() {
                 isTestContinue = false;
                 state = STATE_IDLE;
                 break;
-            case STATE_BANDING:
+
             case STATE_PROCESS_INSPECTION: break;
         }
 
@@ -1158,7 +1155,8 @@ void cameratest::start_offset_test() {
     if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool()) {
         picutre_offset_times++;
         if (picutre_offset_times == 2) {
-            picutre_offset_times = 0;
+            qDebug() << "start_offset_test:" << picutre_offset_times;
+            picutre_offset_times = 4;
             on_ResolutionTestButton_clicked();
         }
     }

@@ -75,7 +75,9 @@ void PressCalibBox::display_on_screen(int instruct) {
                 return;
             }
         }
-        if (SETTINGS.value("SYSTEM/PressWindow").toBool()) {  //木星治具是比较简单的不需要对话
+
+        if (SETTINGS.value("SYSTEM/PressWindow").toBool() &&
+            SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2) {  //木星治具是比较简单的不需要对话
             QMessageBox::StandardButton reply;
             reply = QMessageBox::question(this, "压感校准", "是否开始校准", QMessageBox::Yes | QMessageBox::No);
 

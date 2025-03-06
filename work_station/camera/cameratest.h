@@ -175,7 +175,7 @@ private:
     typedef enum {
         STATE_IDLE,          // 休眠状态
         STATE_WATI_CONNECT,  // 等待连接
-        STATE_BANDING,
+        STATE_WATI_BASE_INFO,
         STATE_DISABLE_SLEEP_1,     // 进入禁止休眠
         STATE_PROCESS_INSPECTION,  // 工序核对检查
         STATE_NET_SET,             // 配网
@@ -196,6 +196,7 @@ private:
     bool can_start_dirty_test = 0;
     int picutre_dirty_times = 0;
     bool can_start_offset_test = 0;
+    int refresh_times = 1;
     int picutre_offset_times = 0;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };

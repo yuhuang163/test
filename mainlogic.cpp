@@ -2761,6 +2761,7 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
             return true;
         }
     }
+
     return QWidget::eventFilter(watched, event);
 }
 bool MainWindow::deleteCsvFile(const QString& filePath) {

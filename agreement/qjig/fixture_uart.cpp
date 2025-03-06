@@ -556,7 +556,7 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
 }
 
 void Fixture_uart::FixtureCommandInit(void) {
-#if 0
+#if 1
     // Y20Pro校准治具
     commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
     commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O\r\n"};

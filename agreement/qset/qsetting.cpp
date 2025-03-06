@@ -187,6 +187,8 @@ void qsetting::loadConfig() {
     // 加载压感参数
 
     ui->lineEdit_testWaitTime->setText(SETTINGS.value("PRESSURE/TestTime").toString());  // 压感测试时间
+    ui->lineEdit_caliWaitTime->setText(SETTINGS.value("PRESSURE/CaliTime").toString());  // 压感校准时间
+
     ui->comboBox_pressFunctionSwitch->setCurrentIndex(SETTINGS.value("PRESSURE/functionSwitch", 0).toInt());
     ui->comboBox_displayImageType->setCurrentIndex(SETTINGS.value("PRESSURE/Use_graph", 0).toInt());
     ui->comboBox_individualMode->setCurrentIndex(SETTINGS.value("PRESSURE/Module", 0).toInt());
@@ -470,6 +472,7 @@ void qsetting::saveConfig() {
 
     // 加载压感参数
 
+    SETTINGS.setValue("PRESSURE/CaliTime", ui->lineEdit_caliWaitTime->text());
     SETTINGS.setValue("PRESSURE/TestTime", ui->lineEdit_testWaitTime->text());
     SETTINGS.setValue("PRESSURE/functionSwitch", ui->comboBox_pressFunctionSwitch->currentIndex());
     SETTINGS.setValue("PRESSURE/Use_graph", ui->comboBox_displayImageType->currentIndex());

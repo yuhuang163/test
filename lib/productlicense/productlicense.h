@@ -2,27 +2,25 @@
 #define PRODUCTLICENSE_H
 #include <QtCore>
 
-struct LicensePair
-{
+struct LicensePair {
     QString product_name;
     QString device_key;
     QString device_secret;
 };
 
-class ProductLicense
-{
+class ProductLicense {
 public:
     LicensePair getNextOtaDevice();
-    void loadOtaDeviceKeys(const QString &filePath);
-    void printOtaDeviceKeys();  // 调试用
+    void loadOtaDeviceKeys(const QString& filePath);
+    void printOtaDeviceKeys();                    // 调试用
     QList<QMap<QString, QString>> otaDeviceList;  // 存储 OTA 设备密钥信息
     int otaDeviceIndex = 0;
     int counter;
     int testcounter;
     int usacounter;
     int prousacounter;
-    static ProductLicense &getInstance()
-    {
+
+    static ProductLicense& getInstance() {
         static ProductLicense instance;
         return instance;
     }
@@ -31,21 +29,20 @@ public:
     LicensePair getTestLicense();
     LicensePair getUsaLicense();
     LicensePair getProUsaLicense();
+    LicensePair getCloudLicense(const QString& environment,const QString& productKey, const QString& deviceIdMac);
 
-
-    static ProductLicense &getTestInstance()
-    {
+    static ProductLicense& getTestInstance() {
         static ProductLicense Testinstance;
         return Testinstance;
     }
+
 private:
     ProductLicense();
-    ProductLicense(const ProductLicense &) = delete;
-    ProductLicense &operator=(const ProductLicense &) = delete;
-
+    ProductLicense(const ProductLicense&) = delete;
+    ProductLicense& operator=(const ProductLicense&) = delete;
 
     int max;
     int testmax;
 };
 
-#endif   // PRODUCTLICENSE_H
+#endif  // PRODUCTLICENSE_H

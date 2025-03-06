@@ -946,7 +946,7 @@ void PcbaForm::processTestItem(const QString& testItem, int currentValue, int lo
     } else {
         test.testResult = "失败";
         totalresult = failValue;
-        erroContent << QString("|治具测试:失败");
+        erroContent << QString("|治具测试%1:失败").arg(testItem);
     }
 
     testItems.append(test);
@@ -962,7 +962,7 @@ void PcbaForm::processSimpleTestItem(const QString& testItem, int currentValue, 
     if (currentValue != expectedValue) {
         test.testResult = "失败";
         totalresult = failValue;
-        erroContent << QString("|治具测试:失败");
+        erroContent << QString("|治具测试%1:失败").arg(testItem);
     } else {
         test.testResult = "通过";
     }
@@ -973,22 +973,22 @@ void PcbaForm::processSimpleTestItem(const QString& testItem, int currentValue, 
 void PcbaForm::updateTestResultUI() {
     if (totalresult == failValue) {
         remain_ok = 2;
-        ui->ng_number->setText("NG:" + QString::number(ngnumber));
-        ui->ng_number->setStyleSheet("font-size: 15px; background-color: #ff557f; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 1px; text-align: center;");
-        ui->test_result->setText("FAIL");
-        ui->test_result->setStyleSheet("font-size: 40px; background-color: #FF0000; color: black; border: 2px solid "
-                                       "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
+        // ui->ng_number->setText("NG:" + QString::number(ngnumber));
+        // ui->ng_number->setStyleSheet("font-size: 15px; background-color: #ff557f; color: black; border: 2px solid "
+        //                              "#FF0000; border-radius: 10px; padding: 1px; text-align: center;");
+        // ui->test_result->setText("FAIL");
+        // ui->test_result->setStyleSheet("font-size: 40px; background-color: #FF0000; color: black; border: 2px solid "
+        //                                "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
-        isTestContinue = false;  // 结束
-        ui->getMac->clear();
-        ui->macInput->setDisabled(0);
-        if (pack.factory == "wks" || pack.factory == "ydm") {
-            ui->getMac->setDisabled(0);
-        }
-        on_disconnectButton_clicked();
+        // isTestContinue = false;  // 结束
+        // ui->getMac->clear();
+        // ui->macInput->setDisabled(0);
+        // if (pack.factory == "wks" || pack.factory == "ydm") {
+        //     ui->getMac->setDisabled(0);
+        // }
+        // on_disconnectButton_clicked();
 
-        emit send_end_test(getIndex());
+        // emit send_end_test(getIndex());
 
     } else {
         remain_ok = 1;
@@ -1105,7 +1105,7 @@ void PcbaForm::startTask() {
                 iswificonnectovertime = 0;
                 is_music_play_over_time = 0;
                 at->resetConnected();
-                waitWork(500);                      // 用于esp32启动等待时间
+                waitWork(1000);                     // 用于esp32启动等待时间
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 totalresult = passValue;
@@ -1643,7 +1643,6 @@ void PcbaForm::startTask() {
                     showlog("治具测试内容获取成功");
                     showlog("测试失败");
                     totalresult = failValue;
-                    erroContent << QString("|治具测试:失败");
                     state = STATE_SAVE_RESULT;
                 } else {
                     waitWork(100);

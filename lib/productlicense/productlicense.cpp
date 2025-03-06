@@ -317,19 +317,91 @@ const static LicensePair usalicense[] = {
 
 };
 
-LicensePair ProductLicense::getLicense() {
+LicensePair ProductLicense::getLicense() {  //生产
     counter++;
     if (counter >= max) {
         counter = 0;
     }
     return license[counter];
 }
-LicensePair ProductLicense::getTestLicense() {
+LicensePair ProductLicense::getTestLicense() {  //测试
     testcounter++;
     if (testcounter >= testmax) {
         testcounter = 0;
     }
     return testlicense[testcounter];
+}
+
+LicensePair ProductLicense::getCloudLicense(const QString& environment, const QString& productKey,
+                                            const QString& deviceIdMac) {
+    qDebug() << "Product Key:" << productKey;
+    qDebug() << "Device ID MAC:" << deviceIdMac;
+
+    QNetworkAccessManager manager;
+
+    QNetworkRequest request;
+
+    if (environment == "product")
+        request.setUrl(QUrl("https://myusmile.online/device/register"));
+    else if (environment == "test")
+        request.setUrl(QUrl("https://test.myusmile.online/device/register"));
+    else if (environment == "usaProduct")
+        ;
+    else if (environment == "usaTest")
+        request.setUrl(QUrl("https://test-cloud.usmile.us/device/register"));
+    else
+        qDebug() << "环境错误" << environment;
+
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    // 构造 JSON 请求体
+    QJsonObject json;
+    json["productKey"] = productKey;
+    json["deviceId"] = deviceIdMac;
+    QByteArray postData = QJsonDocument(json).toJson();
+    qDebug() << "POST Data:" << postData;
+
+    // 发送同步 POST 请求
+    QNetworkReply* reply = manager.post(request, postData);
+    QEventLoop loop;
+    QAbstractEventDispatcher::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    // 解析返回数据
+    LicensePair my;
+    my.product_name = productKey;
+
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray responseData = reply->readAll();
+        qDebug() << "Response Data:" << responseData;
+
+        QJsonDocument jsonResponse = QJsonDocument::fromJson(responseData);
+        if (jsonResponse.isObject()) {
+            QJsonObject jsonObj = jsonResponse.object();
+
+            // 先获取 "data" 对象
+            if (jsonObj.contains("data") && jsonObj["data"].isObject()) {
+                QJsonObject dataObj = jsonObj["data"].toObject();
+
+                // 获取 deviceKey 和 deviceSecret
+                my.device_key = dataObj["deviceKey"].toString();
+                my.device_secret = dataObj["deviceSecret"].toString();
+
+                qDebug() << "Parsed Device Key:" << my.device_key;
+                qDebug() << "Parsed Device Secret:" << my.device_secret;
+            } else {
+                qDebug() << "Response does not contain a valid 'data' object";
+            }
+        } else {
+            qDebug() << "Response is not a valid JSON object";
+        }
+    } else {
+        qDebug() << "Network Error:" << reply->errorString();
+    }
+
+    reply->deleteLater();
+    qDebug() << "Returning LicensePair:" << my.product_name << my.device_key << my.device_secret;
+    return my;
 }
 LicensePair ProductLicense::getUsaLicense() {
     usacounter++;

@@ -51,6 +51,7 @@ public:
     typedef enum {
         MODEL_ID_INVALID,
         MODEL_ID_Y20P,
+        MODEL_ID_Y20,
         MODEL_ID_Y21,
         MODEL_ID_F20,
         MODEL_ID_U7,
@@ -198,8 +199,8 @@ private:
     QTime transTime;
     QTime countdowntime;
     QTimer* waittime = new QTimer(this);
-    int actual_wait_time = 15000;
-    int measure_wait_time = actual_wait_time + 5000;
+    int pressTestTime = 5000; //测试时间
+    int measure_wait_time =  15000; //校准时间
     bool isovertime = 0;
 
     std::vector<QCustomPlot*> graph_adc_vector;
@@ -208,14 +209,6 @@ private:
 
     QString stringsn;
     QString macAddress = "没有mac地址";
-
-    QString mUserno = "";    // 操作员工号
-    QString line = "";       // 线体
-    QString machineNo = "";  // 设备编号
-    QString action = "";     // 动作
-
-    QString test_station = "";  // 制程
-    QString model = "";         // 机种
 
     QString readProduct = "";
     MODEL_ID_E product_model = MODEL_ID_INVALID;  // 产品型号
@@ -323,8 +316,6 @@ private slots:
 
     void on_button_get_calib_factor_clicked();
     QString ReadNfcDataProcess();
-
-    void on_SendCalib_clicked();
 
     void on_ClearGraph_clicked();
 

@@ -1,10 +1,12 @@
 ﻿
-// #include <Windows.h>  // 必须放在最前
 // #include <DbgHelp.h>  // 包含 Windows 头文件后再引入
+// #include <Windows.h>  // 必须放在最前
+
 #include <stdio.h>
 
 #include <QApplication>
 #include <QFileInfo>
+#include <QMessageBox>
 #include <QTextCodec>
 #include <QTextStream>
 #include <QtDebug>
@@ -110,12 +112,81 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     text_stream << message << "\r\n";
     file.close();
 }
+#include <dbghelp.h>
+#include <windows.h>
 
+#include <ctime>  // For time functions
+#include <iomanip>  // For setting time format
+#include <sstream>  // For string stream
+LONG ApplicationCrashHandler(EXCEPTION_POINTERS* pException) {
+    // 获取当前时间
+    time_t now = time(0);
+    tm* ltm = localtime(&now);
+
+    // 使用 stringstream 格式化时间为 YYYY-MM-DD_HH-MM-SS
+    std::stringstream ss;
+    ss << std::setw(4) << std::setfill('0') << (1900 + ltm->tm_year) << "-" << std::setw(2) << std::setfill('0')
+       << (1 + ltm->tm_mon) << "-" << std::setw(2) << std::setfill('0') << ltm->tm_mday << "_" << std::setw(2)
+       << std::setfill('0') << ltm->tm_hour << "-" << std::setw(2) << std::setfill('0') << ltm->tm_min << "-"
+       << std::setw(2) << std::setfill('0') << ltm->tm_sec;
+
+    // 获取时间戳字符串
+    std::string timeStr = ss.str();
+
+    // 目标文件夹路径
+    std::wstring folderPath = L"所有log";
+
+    // 确保文件夹存在
+    CreateDirectory(folderPath.c_str(), NULL);
+
+    // 生成 dump 文件的完整路径（添加时间戳）
+    std::wstring dumpFilePath = folderPath + L"\\" + std::wstring(timeStr.begin(), timeStr.end()) + L"_闪退记录.dmp";
+
+    // 创建 dump 文件
+    HANDLE hDumpFile =
+        CreateFile(dumpFilePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (hDumpFile != INVALID_HANDLE_VALUE) {
+        // Dump信息
+        MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
+        dumpInfo.ExceptionPointers = pException;
+        dumpInfo.ThreadId = GetCurrentThreadId();
+        dumpInfo.ClientPointers = TRUE;
+
+        // 写入Dump文件内容
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpNormal, &dumpInfo, NULL, NULL);
+        CloseHandle(hDumpFile);
+    }
+
+    MessageBoxW(NULL, L"上位机奔溃\r\n奔溃记录已保存", L"Error", MB_OK | MB_ICONERROR);
+
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+class MyApplication : public QApplication {
+public:
+    using QApplication::QApplication;
+
+    bool notify(QObject* receiver, QEvent* event) override {
+        __try {
+            return QApplication::notify(receiver, event);
+        } __except (ApplicationCrashHandler(GetExceptionInformation())) {
+            // 清空事件队列
+
+            QCoreApplication::processEvents(QEventLoop::AllEvents);
+            QCoreApplication::exit(-1);
+
+            return false;
+        }
+    }
+};
 int main(int argc, char* argv[]) {
+    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);  //注冊异常捕获函数
+
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     // QLoggingCategory::setFilterRules("*.debug=true");
 
-    QApplication a(argc, argv);
+    MyApplication a(argc, argv);
+
     // 设置使用 UTF-8 编码
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     // 安装自定义消息处理程序
@@ -127,15 +198,6 @@ int main(int argc, char* argv[]) {
     qDebug() << "工站为：" + station;
 
     qRegisterMetaType<FacErrorCode>("FacErrorCode");
-
-    // #QUIESCENT_CURRENT
-    // #MOTOR_TEST
-    // #IMU_CALI
-    // #SCREEN_TEST
-    // #CAMREA_TEST
-    // #WIFIBLE_TEST
-    // #AGE_TEST
-    // #MAIN_TEST
 
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},
@@ -227,6 +289,7 @@ int main(int argc, char* argv[]) {
 
         default:
             MainWindow h;  // 主测试
+
             h.show();
             return a.exec();
             break;

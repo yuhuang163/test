@@ -168,7 +168,7 @@
                    <property name="maximumSize">
                     <size>
                      <width>16777215</width>
-                     <height>10</height>
+                     <height>16777215</height>
                     </size>
                    </property>
                   </widget>
@@ -430,7 +430,7 @@
                   </size>
                  </property>
                  <property name="text">
-                  <string>b4:3a:45:07:b3:d6</string>
+                  <string>3c:84:27:0c:ee:ce</string>
                  </property>
                  <property name="placeholderText">
                   <string>切换英文输入扫码</string>
@@ -534,16 +534,6 @@
                  </property>
                  <property name="text">
                   <string>Test1</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="SendCalib">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="text">
-                  <string>发送校准系数</string>
                  </property>
                 </widget>
                </item>

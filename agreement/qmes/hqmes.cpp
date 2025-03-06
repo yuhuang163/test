@@ -210,6 +210,8 @@ void hqmes::ProcessInspection(MesPacketData pack) {
         requestData["HEAD"] = head;
         requestData["MAIN"] = main;
 
+        qDebug() << "ProcessInspection请求内容" << requestData;
+
         QJsonDocument jsonDoc(requestData);
         QByteArray jsonData = jsonDoc.toJson();
 
