@@ -197,6 +197,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_ButtonThresholdCount->setText(SETTINGS.value("PRESSURE/ButtonThresholdCount").toString());
     ui->lineEdit_BrushThreshold->setText(SETTINGS.value("PRESSURE/BrushThreshold").toString());
     ui->lineEdit_BrushThresholdCount->setText(SETTINGS.value("PRESSURE/BrushThresholdCount").toString());
+    ui->lineEdit_press_adc_shake->setText(SETTINGS.value("PRESSURE/ADCShakeValue").toString());
 
     ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
     ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
@@ -483,6 +484,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("PRESSURE/ButtonThresholdCount", ui->lineEdit_ButtonThresholdCount->text());
     SETTINGS.setValue("PRESSURE/BrushThreshold", ui->lineEdit_BrushThreshold->text());
     SETTINGS.setValue("PRESSURE/BrushThresholdCount", ui->lineEdit_BrushThresholdCount->text());
+    SETTINGS.setValue("PRESSURE/ADCShakeValue", ui->lineEdit_press_adc_shake->text());
 
     SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
     SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());
@@ -643,6 +645,9 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_SendMotorCalibration->setChecked(true);
         ui->checkBox_ServoMotorStart->setChecked(true);
         ui->checkBox_TestAudioCurrent->setChecked(true);
+
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("200");
     }
     //立讯：imu需要晃动唤醒（加快蓝牙连接），全扫码再测试
     if (ui->comboBox_productName->currentText() == "U7P") {
@@ -655,6 +660,9 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_SendMotorCalibration->setChecked(true);
         ui->checkBox_ServoMotorStart->setChecked(true);
         ui->checkBox_TestAudioCurrent->setChecked(true);
+
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("200");
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "F20") {
@@ -663,6 +671,10 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("60");
+        ui->lineEdit_ButtonThresholdCount->setText("300");
+        ui->lineEdit_BrushThreshold->setText("10");
+        ui->lineEdit_BrushThresholdCount->setText("200");
     }
     //立讯：imu需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Q20P") {
@@ -694,6 +706,10 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_PressWindow->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("30");
+        ui->lineEdit_ButtonThresholdCount->setText("400");
+        ui->lineEdit_BrushThreshold->setText("350");
+        ui->lineEdit_BrushThresholdCount->setText("300");
     }
     if (ui->comboBox_productName->currentText() == "T10") {
         ui->checkBox_NeedWriteSubpid->setChecked(true);
@@ -709,6 +725,8 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_PressWindow->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("400");
     }
 
     //欣旺达：依次扫标签码连接，需要唤醒
@@ -717,6 +735,8 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->checkBox_PressWindow->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("70");
+        ui->lineEdit_ButtonThresholdCount->setText("300");
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     //华勤：依次扫码连接，不需要唤醒
@@ -737,6 +757,8 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_SerialPortMAC->setChecked(true);
         ui->checkBox_LightTest->setChecked(true);
         ui->checkBox_uperMotor->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("200");
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y30PS") {
@@ -748,6 +770,8 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("200");
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y30") {
@@ -759,6 +783,8 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
         ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->lineEdit_ButtonThreshold->setText("40");
+        ui->lineEdit_ButtonThresholdCount->setText("200");
     }
 
     if (ui->comboBox_productName->currentText() == "P20PS") {

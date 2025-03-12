@@ -111,7 +111,6 @@ void Qat::waitWork(int ms) {
         QCoreApplication::processEvents();
 }
 void Qat::sendMac(QString mac) {
-    waitWork(500);
     QString s = "AT+MAC=" + mac + "\r\n";
     sendCmd(s);
 }

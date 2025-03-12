@@ -1117,7 +1117,7 @@ void PcbaForm::startTask() {
                 if (at->getConnected()) {
                     state = STATE_WATI_DISABLE_SLEEP;
                     if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
-                        pb->set_device_mode(4);    //进入纯享模式
+                        pb->set_device_mode(11);   //进入纯享模式
                         pb->set_brush_control(1);  //开始刷牙
                     }
                 }
@@ -1424,7 +1424,7 @@ void PcbaForm::startTask() {
                                 QByteArray musicFileNameBytes = musicFileName.toUtf8();
                                 showlog("正在播放音乐");
                                 pb->set_music(musicFileNameBytes);
-                                music_play_time->setInterval(5000);
+                                music_play_time->setInterval(6000);
                                 music_play_time->start();
                                 state = STATE_WATI_WORKING_TEST;
                             }
@@ -1475,7 +1475,7 @@ void PcbaForm::startTask() {
                                 QByteArray musicFileNameBytes = musicFileName.toUtf8();
                                 showlog("正在播放音乐");
                                 pb->set_music(musicFileNameBytes);
-                                music_play_time->setInterval(5000);
+                                music_play_time->setInterval(6000);
                                 music_play_time->start();
                                 state = STATE_WATI_WORKING_TEST;
                             }
@@ -1503,10 +1503,6 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_WORKING_TEST:
                 if (is_music_play_over_time) {
-                    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
-                        pb->set_device_mode(4);  //退出纯享模式
-                    }
-
                     is_music_play_over_time = 0;
                     showlog("播放结束");
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
@@ -1521,8 +1517,9 @@ void PcbaForm::startTask() {
                             pb->set_motor_test_state(1);
                         } else {
                             showlog("跑的是q20");
-                            pb->set_motor_param(270, 60);
-                            pb->set_motor_state(1);
+                            pb->set_device_mode(3);
+                            // pb->set_motor_param(270, 60);
+                            // pb->set_motor_state(1);
                         }
                         //   waitWork(1500);
                         //   pb->set_device_mode(3);
@@ -1561,6 +1558,9 @@ void PcbaForm::startTask() {
                             totalresult = failValue;
                         }
                     }
+                    // if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
+                    //     pb->set_brush_control(0);  //退出纯享模式
+                    // }
                     at->resetConnected();
                     showlog("等待治具请求休眠命令");
                     if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
@@ -1580,8 +1580,9 @@ void PcbaForm::startTask() {
                             pb->set_motor_test_state(1);
                         } else {
                             showlog("跑的是q20");
-                            pb->set_motor_param(270, 60);
-                            pb->set_motor_state(1);
+                            pb->set_device_mode(3);
+                            // pb->set_motor_param(270, 60);
+                            // pb->set_motor_state(1);
                         }
                     }
                 }

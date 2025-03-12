@@ -24,7 +24,7 @@
 #include <QNetworkRequest>
 #include <QPixmap>
 #include <QQmlApplicationEngine>
-#include <QTextToSpeech>
+// #include <QTextToSpeech>
 #include <QUdpSocket>
 #include <QUrl>
 #include <QVector>
@@ -240,7 +240,7 @@ private:
     QString csvmac;
     QComboBox* comNameCombo;
     QUdpSocket* udpSocket = new QUdpSocket(this);
-    QTextToSpeech* tts;
+    // QTextToSpeech* tts;
     QString result = "";
     bool otaFinish = false;
     QStringList otaResults;

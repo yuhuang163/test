@@ -18,42 +18,9 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
-// y20p
-#define ADC_THRESHOLD_Y20P_BTH 350  // 200g:150 400g:350
-#define ADC_THRESHOLD_Y20P_KEY 30
-
-#define COUNT_THRESHOLD_Y20P_BTH 300
-#define COUNT_THRESHOLD_Y20P_KEY 400
-
-// y20po
-#define ADC_THRESHOLD_Y20PO_KEY 40
-#define COUNT_THRESHOLD_Y20PO_KEY 400
-
-// f20
-#define ADC_THRESHOLD_F20_BTH 60
-#define ADC_THRESHOLD_F20_KEY 10
-
-#define COUNT_THRESHOLD_F20_BTH 300
-#define COUNT_THRESHOLD_F20_KEY 200
-
-// u7
-#define ADC_THRESHOLD_U7_KEY 40
-#define COUNT_THRESHOLD_U7_KEY 200
-
-// y25p
-#define ADC_THRESHOLD_Y30PS_KEY 40
-#define COUNT_THRESHOLD_Y30PS_KEY 200
-
-// y21
-#define ADC_THRESHOLD_Y21_BTH 70
-#define COUNT_THRESHOLD_Y21_BTH 300
-
-// p30p
-#define ADC_THRESHOLD_P30P_KEY 40
-#define COUNT_THRESHOLD_P30P_KEY 200
-
 PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::PressureSensorForm) {
     m_index = index;
+    qDebug() << "当前索引" << getIndex();
     pack.mechines = getIndex();
 
     dongleOutTime = 1;  // 太快会死锁
@@ -100,6 +67,7 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(p
 
     only_mode = ONLY_SET_E(SETTINGS.value("PRESSURE/Module", 1).toInt());
 
+    AdcShakeValue = SETTINGS.value("PRESSURE/ADCShakeValue", 100).toInt();
     function_switch = function_e(SETTINGS.value("PRESSURE/functionSwitch", 1).toInt());
     showlog("当前选择的功能是" + QString::number(function_switch));
     ui->mechine_number->setText(QString::number(getIndex()) + "号机");
@@ -122,7 +90,18 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(p
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
     testResultTableInit();
 
-    connect(this, SIGNAL(dataReady()), this, SLOT(updateGraphs()));
+    // connect(this, SIGNAL(dataReady()), this, SLOT(updateGraphs()));
+    // // 创建一个 QTimer 对象
+    // QTimer* graphtimer = new QTimer(this);
+
+    // // 设置定时器的间隔时间，这里设置为 1000 毫秒（即 1 秒），你可以根据需要调整
+    // graphtimer->setInterval(100);
+
+    // // 连接定时器的 timeout 信号到 updateGraphs() 槽函数
+    // connect(graphtimer, &QTimer::timeout, this, &PressureSensorForm::updateGraphs);
+
+    // // 启动定时器
+    // graphtimer->start();
 }
 
 void PressureSensorForm::graph_init(MODEL_ID_E model) {
@@ -196,7 +175,7 @@ void PressureSensorForm::graph_init(MODEL_ID_E model) {
 }
 
 void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
-    //先清空容器里的元素
+    // 先清空容器里的元素
     if (!sensor_v.empty()) {
         // 清空 sensor_v
         sensor_v.clear();
@@ -206,197 +185,245 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
     }
 
     qDebug() << "初始化压感模组容器";
+    if (model == MODEL_ID_F20) {
+        ndt_sensor_cali* y20p_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        y20p_ch0_vector->ui_msg_tip[0] = donotmove;
+        y20p_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
+        y20p_ch0_vector->ui_msg_tip[2] = pack_weights;
+        y20p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20p_ch0_vector->ui_msg_test[0] = "人员：请放50g砝码";
+        y20p_ch0_vector->ui_msg_test[1] = "人员：请放350g砝码";
+        y20p_ch0_vector->ui_msg_test[2] = "人员：请放450g砝码";
 
-    if (model == MODEL_ID_Y20) {
-        ndt_sensor_cali y20_ch0_vector;
-        y20_ch0_vector.ui_msg_tip[0] = donotmove;
-        y20_ch0_vector.ui_msg_tip[1] = brush_placing_200_weights;
-        y20_ch0_vector.ui_msg_tip[2] = pack_weights;
-        y20_ch0_vector.ui_msg_err[0] = "刷头错误码为：";
-        y20_ch0_vector.ui_msg_test[0] = "人员：请放330g砝码";
-        y20_ch0_vector.ui_msg_test[1] = "人员：请放350g砝码";
-        y20_ch0_vector.ui_msg_test[2] = "人员：请放520g砝码";
-        y20_ch0_vector.para.f_module[0] = MODULE_BTH;
-        sensor_v.push_back(y20_ch0_vector);
-    }
-    if (model == MODEL_ID_Y20P) {
-        ndt_sensor_cali y20p_ch0_vector;
-        y20p_ch0_vector.ui_msg_tip[0] = donotmove;
-        y20p_ch0_vector.ui_msg_tip[1] = brush_placing_200_weights;
-        y20p_ch0_vector.ui_msg_tip[2] = pack_weights;
-        y20p_ch0_vector.ui_msg_err[0] = "刷头错误码为：";
-        y20p_ch0_vector.ui_msg_test[0] = "人员：请放50g砝码";
-        y20p_ch0_vector.ui_msg_test[1] = "人员：请放350g砝码";
-        y20p_ch0_vector.ui_msg_test[2] = "人员：请放450g砝码";
+        ndt_sensor_cali* y20p_ch1_vector = new ndt_sensor_cali;  // 动态分配内存
+        y20p_ch1_vector->ui_msg_tip[0] = donotmove;
+        y20p_ch1_vector->ui_msg_tip[1] = botton_placing_200_weights;
+        y20p_ch1_vector->ui_msg_tip[2] = "拿走按键200g砝码";
+        y20p_ch1_vector->ui_msg_err[0] = "按键错误码为：";
+        y20p_ch1_vector->ui_msg_test[0] = "人员：按键请放230g砝码";
 
-        ndt_sensor_cali y20p_ch1_vector;
-        y20p_ch1_vector.ui_msg_tip[0] = donotmove;
-        y20p_ch1_vector.ui_msg_tip[1] = botton_placing_200_weights;
-        y20p_ch1_vector.ui_msg_tip[2] = "拿走按键200g砝码";
-        y20p_ch1_vector.ui_msg_err[0] = "按键错误码为：";
-        y20p_ch1_vector.ui_msg_test[0] = "人员：按键请放230g砝码";
-
-        y20p_ch1_vector.sensor_test_status_set(TEST_NOTEST);
+        y20p_ch1_vector->sensor_test_status_set(TEST_NOTEST);
 
         // test_data_init
         // y20p_ch0_vector.test_time = 2;
-        y20p_ch0_vector.para.test_grams[0] = 200;
-        y20p_ch0_vector.para.test_grams[1] = 400;
+        y20p_ch0_vector->para.test_grams[0] = 200;
+        y20p_ch0_vector->para.test_grams[1] = 400;
 
-        y20p_ch0_vector.para.test_tolerance[0] = 50;
-        y20p_ch0_vector.para.test_tolerance[1] = 50;
-        y20p_ch0_vector.para.test_count[0] = 300;
-        y20p_ch0_vector.para.test_count[1] = 300;
+        y20p_ch0_vector->para.test_tolerance[0] = 50;
+        y20p_ch0_vector->para.test_tolerance[1] = 50;
+        y20p_ch0_vector->para.test_count[0] = 300;
+        y20p_ch0_vector->para.test_count[1] = 300;
 
-        y20p_ch0_vector.para.adc_threshold = ADC_THRESHOLD_Y20P_BTH;
-        y20p_ch1_vector.para.adc_threshold = ADC_THRESHOLD_Y20P_KEY;
+        y20p_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/BrushThreshold", 350).toInt();
+        y20p_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/BrushThresholdCount", 300).toInt();
 
-        y20p_ch0_vector.para.count_threshold = COUNT_THRESHOLD_Y20P_BTH;
-        y20p_ch1_vector.para.count_threshold = COUNT_THRESHOLD_Y20P_KEY;
+        y20p_ch1_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold", 30).toInt();
+        y20p_ch1_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount", 400).toInt();
 
-        y20p_ch0_vector.para.f_module[0] = MODULE_BTH;
-        y20p_ch1_vector.para.f_module[0] = MODULE_MODE_BUTTON;
+        y20p_ch0_vector->para.f_module[0] = MODULE_BTH;
+        y20p_ch1_vector->para.f_module[0] = MODULE_MODE_BUTTON;
 
         // y20p_ch1_vector.test_time = 1;
-        y20p_ch1_vector.para.test_grams[0] = 200;
-        y20p_ch1_vector.para.test_tolerance[0] = 50;
-        y20p_ch1_vector.para.test_count[0] = 300;
+        y20p_ch1_vector->para.test_grams[0] = 200;
+        y20p_ch1_vector->para.test_tolerance[0] = 50;
+        y20p_ch1_vector->para.test_count[0] = 300;
 
-        y20p_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/bth_lower", "1000").toInt();
-        y20p_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/bth_upper", "3000").toInt();
+        y20p_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/bth_lower", "1000").toInt();
+        y20p_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/bth_upper", "3000").toInt();
 
-        y20p_ch1_vector.para.lower_limit = SETTINGS.value("Limit/model_button_lower", "1000").toInt();
-        y20p_ch1_vector.para.upper_limit = SETTINGS.value("Limit/model_button_upper", "3000").toInt();
+        y20p_ch1_vector->para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "1000").toInt();
+        y20p_ch1_vector->para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "3000").toInt();
 
         sensor_v.push_back(y20p_ch0_vector);
         sensor_v.push_back(y20p_ch1_vector);
 
-        sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y20_CH0);
-        sensor_v[1].Sensor_cali_Init(CAL_CHANNEL_Y20_CH1);
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_F20_CH0);
+
+        sensor_v[1]->Sensor_cali_Init(CAL_CHANNEL_F20_CH1);
+    }
+    if (model == MODEL_ID_Y20) {
+        ndt_sensor_cali* y20_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        y20_ch0_vector->ui_msg_tip[0] = donotmove;
+        y20_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
+        y20_ch0_vector->ui_msg_tip[2] = pack_weights;
+        y20_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20_ch0_vector->ui_msg_test[0] = "人员：请放330g砝码";
+        y20_ch0_vector->ui_msg_test[1] = "人员：请放350g砝码";
+        y20_ch0_vector->ui_msg_test[2] = "人员：请放520g砝码";
+        y20_ch0_vector->para.f_module[0] = MODULE_BTH;
+        sensor_v.push_back(y20_ch0_vector);
+    }
+    if (model == MODEL_ID_Y20P) {
+        ndt_sensor_cali* y20p_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        y20p_ch0_vector->ui_msg_tip[0] = donotmove;
+        y20p_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
+        y20p_ch0_vector->ui_msg_tip[2] = pack_weights;
+        y20p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20p_ch0_vector->ui_msg_test[0] = "人员：请放50g砝码";
+        y20p_ch0_vector->ui_msg_test[1] = "人员：请放350g砝码";
+        y20p_ch0_vector->ui_msg_test[2] = "人员：请放450g砝码";
+
+        ndt_sensor_cali* y20p_ch1_vector = new ndt_sensor_cali;  // 动态分配内存
+        y20p_ch1_vector->ui_msg_tip[0] = donotmove;
+        y20p_ch1_vector->ui_msg_tip[1] = botton_placing_200_weights;
+        y20p_ch1_vector->ui_msg_tip[2] = "拿走按键230g砝码";
+        y20p_ch1_vector->ui_msg_err[0] = "按键错误码为：";
+        y20p_ch1_vector->ui_msg_test[0] = "人员：按键请放230g砝码";
+
+        y20p_ch1_vector->sensor_test_status_set(TEST_NOTEST);
+
+        // test_data_init
+        // y20p_ch0_vector.test_time = 2;
+        y20p_ch0_vector->para.test_grams[0] = 200;
+        y20p_ch0_vector->para.test_grams[1] = 400;
+
+        y20p_ch0_vector->para.test_tolerance[0] = 50;
+        y20p_ch0_vector->para.test_tolerance[1] = 50;
+        y20p_ch0_vector->para.test_count[0] = 300;
+        y20p_ch0_vector->para.test_count[1] = 300;
+
+        // y20p_ch0_vector.para.adc_threshold = ADC_THRESHOLD_Y20P_BTH;
+        // y20p_ch1_vector.para.adc_threshold = ADC_THRESHOLD_Y20P_KEY;
+
+        // y20p_ch0_vector.para.count_threshold = COUNT_THRESHOLD_Y20P_BTH;
+        // y20p_ch1_vector.para.count_threshold = COUNT_THRESHOLD_Y20P_KEY;
+
+        y20p_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/BrushThreshold", 350).toInt();
+        y20p_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/BrushThresholdCount", 300).toInt();
+
+        y20p_ch1_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold", 30).toInt();
+        y20p_ch1_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount", 400).toInt();
+
+        y20p_ch0_vector->para.f_module[0] = MODULE_BTH;
+        y20p_ch1_vector->para.f_module[0] = MODULE_MODE_BUTTON;
+
+        // y20p_ch1_vector.test_time = 1;
+        y20p_ch1_vector->para.test_grams[0] = 200;
+        y20p_ch1_vector->para.test_tolerance[0] = 50;
+        y20p_ch1_vector->para.test_count[0] = 300;
+
+        y20p_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/bth_lower", "1000").toInt();
+        y20p_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/bth_upper", "3000").toInt();
+
+        y20p_ch1_vector->para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "1000").toInt();
+        y20p_ch1_vector->para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "3000").toInt();
+
+        qDebug() << " y20p_ch1_vector->para.lower_limit" << y20p_ch1_vector->para.lower_limit;
+
+        sensor_v.push_back(y20p_ch0_vector);
+        sensor_v.push_back(y20p_ch1_vector);
+        qDebug() << "CAL_CHANNEL_Y20_CH0";
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_Y20_CH0);
+        qDebug() << "CAL_CHANNEL_Y20_CH0";
+        sensor_v[1]->Sensor_cali_Init(CAL_CHANNEL_Y20_CH1);
+        qDebug() << "压感结果2" << sensor_v[0]->para.lower_limit << sensor_v[1]->para.lower_limit;
 
     } else if (model == MODEL_ID_Y30PS) {
-        ndt_sensor_cali Y30PS_ch0_vector;
-        Y30PS_ch0_vector.ui_msg_tip[0] = donotmove;
-        Y30PS_ch0_vector.ui_msg_tip[1] = "按键放400g砝码";
-        Y30PS_ch0_vector.ui_msg_tip[2] = "拿走砝码";
+        ndt_sensor_cali* Y30PS_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        Y30PS_ch0_vector->ui_msg_tip[0] = donotmove;
+        Y30PS_ch0_vector->ui_msg_tip[1] = "按键放400g砝码";
+        Y30PS_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        Y30PS_ch0_vector.ui_msg_test[0] = "测试200g不触发";
-        Y30PS_ch0_vector.ui_msg_test[1] = "测试400g触发";
+        Y30PS_ch0_vector->ui_msg_test[0] = "测试200g不触发";
+        Y30PS_ch0_vector->ui_msg_test[1] = "测试400g触发";
 
-        Y30PS_ch0_vector.ui_msg_err[0] = "按键错误码为：";
+        Y30PS_ch0_vector->ui_msg_err[0] = "按键错误码为：";
 
-        Y30PS_ch0_vector.para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
+        Y30PS_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
 
-        Y30PS_ch0_vector.para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
+        Y30PS_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
 
-        Y30PS_ch0_vector.para.f_module[0] = MODULE_MODE_BUTTON;
-        Y30PS_ch0_vector.para.f_module[1] = MODULE_ASSISTANT_COMPONENT;
+        Y30PS_ch0_vector->para.f_module[0] = MODULE_MODE_BUTTON;
+        Y30PS_ch0_vector->para.f_module[1] = MODULE_ASSISTANT_COMPONENT;
 
-        Y30PS_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
-        Y30PS_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
+        Y30PS_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
+        Y30PS_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
 
         sensor_v.push_back(Y30PS_ch0_vector);
 
-        sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y30PS_CH0);
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_Y30PS_CH0);
 
     } else if (model == MODEL_ID_Y20PO) {
-        ndt_sensor_cali Y20PO_ch0_vector;
-        Y20PO_ch0_vector.ui_msg_tip[0] = donotmove;
-        Y20PO_ch0_vector.ui_msg_tip[1] = "按键放砝码";
-        Y20PO_ch0_vector.ui_msg_tip[2] = "拿走砝码";
+        ndt_sensor_cali* Y20PO_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        Y20PO_ch0_vector->ui_msg_tip[0] = donotmove;
+        Y20PO_ch0_vector->ui_msg_tip[1] = "按键放砝码";
+        Y20PO_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        Y20PO_ch0_vector.ui_msg_test[0] = "测试100g不触发";
-        Y20PO_ch0_vector.ui_msg_test[1] = "测试300g触发";
+        Y20PO_ch0_vector->ui_msg_test[0] = "测试100g不触发";
+        Y20PO_ch0_vector->ui_msg_test[1] = "测试300g触发";
 
-        Y20PO_ch0_vector.ui_msg_err[0] = "按键错误码为：";
+        Y20PO_ch0_vector->ui_msg_err[0] = "按键错误码为：";
 
-        Y20PO_ch0_vector.para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
+        Y20PO_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
 
-        Y20PO_ch0_vector.para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
+        Y20PO_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
 
-        Y20PO_ch0_vector.para.f_module[0] = MODULE_MODE_BUTTON;
-        Y20PO_ch0_vector.para.f_module[1] = MODULE_ASSISTANT_COMPONENT;
-        Y20PO_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
-        Y20PO_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
+        Y20PO_ch0_vector->para.f_module[0] = MODULE_MODE_BUTTON;
+        Y20PO_ch0_vector->para.f_module[1] = MODULE_ASSISTANT_COMPONENT;
+        Y20PO_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
+        Y20PO_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
 
         sensor_v.push_back(Y20PO_ch0_vector);
 
-        sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_Y20PO_CH0);
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_Y20PO_CH0);
 
     }
 
     else if (model == MODEL_ID_U7) {
-        ndt_sensor_cali u7_ch0_vector;
-        u7_ch0_vector.ui_msg_tip[0] = donotmove;
-        u7_ch0_vector.ui_msg_tip[1] = "按键放300g砝码";
-        u7_ch0_vector.ui_msg_tip[2] = "拿走砝码";
+        ndt_sensor_cali* u7_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        u7_ch0_vector->ui_msg_tip[0] = donotmove;
+        u7_ch0_vector->ui_msg_tip[1] = "按键放300g砝码";
+        u7_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        u7_ch0_vector.ui_msg_test[0] = "测试100g不触发";
-        u7_ch0_vector.ui_msg_test[1] = "测试300g触发";
+        u7_ch0_vector->ui_msg_test[0] = "测试100g不触发";
+        u7_ch0_vector->ui_msg_test[1] = "测试300g触发";
 
-        u7_ch0_vector.ui_msg_err[0] = "按键错误码为：";
+        u7_ch0_vector->ui_msg_err[0] = "按键错误码为：";
 
-        u7_ch0_vector.para.adc_threshold = ADC_THRESHOLD_U7_KEY;
-        u7_ch0_vector.para.count_threshold = COUNT_THRESHOLD_U7_KEY;
+        u7_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
 
-        u7_ch0_vector.para.f_module[0] = MODULE_MODE_BUTTON;
+        u7_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
 
-        u7_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
-        u7_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
+        u7_ch0_vector->para.f_module[0] = MODULE_MODE_BUTTON;
+
+        u7_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/model_button_lower", "2500").toInt();
+        u7_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/model_button_upper", "4500").toInt();
 
         sensor_v.push_back(u7_ch0_vector);
 
-        sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_U7_CH0);
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_U7_CH0);
 
     } else if (model == MODEL_ID_P30P) {
-        ndt_sensor_cali p30p_ch0_vector;
-        p30p_ch0_vector.ui_msg_tip[0] = donotmove;
-        p30p_ch0_vector.ui_msg_tip[1] = "按键放300g砝码";
-        p30p_ch0_vector.ui_msg_tip[2] = "拿走砝码";
+        ndt_sensor_cali* p30p_ch0_vector = new ndt_sensor_cali;  // 动态分配内存
+        p30p_ch0_vector->ui_msg_tip[0] = donotmove;
+        p30p_ch0_vector->ui_msg_tip[1] = "按键放300g砝码";
+        p30p_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        p30p_ch0_vector.ui_msg_err[0] = "刷头错误码为：";
+        p30p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
 
-        p30p_ch0_vector.ui_msg_test[0] = "测试100g不触发";
-        p30p_ch0_vector.ui_msg_test[1] = "测试300g触发";
+        p30p_ch0_vector->ui_msg_test[0] = "测试100g不触发";
+        p30p_ch0_vector->ui_msg_test[1] = "测试300g触发";
 
-        p30p_ch0_vector.para.adc_threshold = ADC_THRESHOLD_P30P_KEY;
-        p30p_ch0_vector.para.count_threshold = COUNT_THRESHOLD_P30P_KEY;
+        p30p_ch0_vector->para.adc_threshold = SETTINGS.value("PRESSURE/ButtonThreshold").toInt();
 
-        p30p_ch0_vector.para.f_module[0] = MODULE_POWER_BUTTON;
+        p30p_ch0_vector->para.count_threshold = SETTINGS.value("PRESSURE/ButtonThresholdCount").toInt();
 
-        p30p_ch0_vector.para.lower_limit = SETTINGS.value("PRESSURE/power_button_lower", "500").toInt();
-        p30p_ch0_vector.para.upper_limit = SETTINGS.value("PRESSURE/power_button_upper", "4500").toInt();
+        p30p_ch0_vector->para.f_module[0] = MODULE_POWER_BUTTON;
+
+        p30p_ch0_vector->para.lower_limit = SETTINGS.value("PRESSURE/power_button_lower", "500").toInt();
+        p30p_ch0_vector->para.upper_limit = SETTINGS.value("PRESSURE/power_button_upper", "4500").toInt();
 
         sensor_v.push_back(p30p_ch0_vector);
 
-        sensor_v[0].Sensor_cali_Init(CAL_CHANNEL_P30P_CH0);
+        sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_P30P_CH0);
     }
 
     total_sensor = static_cast<int>(sensor_v.size());
     qDebug() << "model:" << model << "压感模组通道总数为：" << total_sensor;
+
+    for (int i = 0; i < total_sensor; i++)
+        connect(sensor_v[i], &ndt_sensor_cali::send_press_cali_msg, this, &PressureSensorForm::showlog);
 }
-
-void PressureSensorForm::system_cmd(QString command, system_command_e numb) {
-    QProcess process;
-    QString cmd = "test.bat";
-    QStringList args;
-
-    // args<< command;
-    args.append(system_command_list[numb]);
-    process.start(cmd, args);  // 启动可执行程序
-
-    // 读取返回内容
-
-    process.waitForStarted();
-    process.waitForFinished();
-    process.waitForReadyRead();
-    QByteArray qba = process.readAll();
-    QTextCodec* pTextCodec = QTextCodec::codecForName("System");
-    assert(pTextCodec != nullptr);
-    QString str = pTextCodec->toUnicode(qba);
-    showlog(str);
-}
-
 void PressureSensorForm::getTestValue(const int mechines, const QString value) {
     // showlog(value);
     QString mesmacAddress;
@@ -477,19 +504,8 @@ void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
         qDebug() << "辅助元器件" << LastCali.calib_factor[MODULE_ASSISTANT_COMPONENT];
     }
 
-    // if (x.assistant_component == (uint32_t)cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] &&
-    //     x.brush_head_adc == (uint32_t)cali_result.calib_factor[MODULE_BTH] &&
-    //     x.mode_button_adc == (uint32_t)cali_result.calib_factor[MODULE_MODE_BUTTON] &&
-    //     x.power_button_adc == (uint32_t)cali_result.calib_factor[MODULE_POWER_BUTTON] &&
-    //     (x.temperature == (uint32_t)cali_result.temperature[MODULE_BTH] ||
-    //      x.temperature == (uint32_t)cali_result.temperature[MODULE_MODE_BUTTON])) {
-    //     qDebug() << "校准数据核对成功";
-    //     is_calib_suc = 1;
-    // }
-
     //校准值是0就不比对
     if (
-
         /* (cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] == 0 ||
           x.assistant_component == (uint32_t)cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT]) &&*/
         (cali_result.calib_factor[MODULE_BTH] == 0 ||
@@ -601,9 +617,11 @@ void PressureSensorForm::send_start_command(machine_command_id_e command_id, int
     // waitWork(3000);
     FixturePacketData packet_data;
 
-    packet_data.machine_command_id = command_id;
+    packet_data.machine_command_id = command_id;  //命令治具状态
     packet_data.argument = argument;
     packet_data.machineNumber = getIndex() - 1;
+
+    qDebug() << "getIndex():" << getIndex();
 
     qDebug() << "command_id:" << command_id << "argument:" << argument << "  packet_data.machineNumber"
              << packet_data.machineNumber;
@@ -695,13 +713,13 @@ void PressureSensorForm::save_press_test_data_to_csv(const QString& macAddress, 
             }
 
             // 写入测试结果
-            rowData << QString::number(sensor_v[test_chan].test_result[0]);
+            rowData << QString::number(sensor_v[test_chan]->test_result[0]);
         } else if (result == failValue) {
             // 写入错误码
             for (int i = 0; i < total_sensor; i++) {  //双通道共用一个校准结果
-                rowData << QString::number(sensor_v[i].err[0]);
+                rowData << QString::number(sensor_v[i]->err[0]);
             }
-            rowData << QString("测试失败：%1").arg(sensor_v[test_chan].test_result[0]);
+            rowData << QString("测试失败：%1").arg(sensor_v[test_chan]->test_result[0]);
         }
         stream << rowData.join(",") << "\n";
 
@@ -939,81 +957,205 @@ void PressureSensorForm::graph_reset(uint8_t argument) {
 
 void PressureSensorForm::updateGraphs() {
     int need_sensor_data = total_sensor;
-    if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO)
+    if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO) {
         need_sensor_data = 2;
-    else
+    } else {
         need_sensor_data = 1;
+    }
+
     // 从队列中取出数据并更新图表
     while (!adcDataQueue.isEmpty()) {
+        if (adcDataQueue.isEmpty() || valueDataQueue.isEmpty()) {
+            qDebug() << "Queue is empty, skipping iteration";
+            continue;
+        }
+
         auto adcData = adcDataQueue.dequeue();
         auto valueData = valueDataQueue.dequeue();
+
+        // 检查 QPair 的内容是否有效
+        if (adcData.second.isEmpty() || valueData.second.isEmpty()) {
+            qDebug() << "Data is empty, skipping";
+            continue;
+        }
 
         uint32_t timestamp = adcData.first;
         const QVector<int16_t>& adcValues = adcData.second;
         const QVector<int16_t>& valueValues = valueData.second;
 
-        for (uint8_t channel = 0; channel < total_sensor; channel++) {
-            for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
+        for (uint8_t channel = 0; channel < total_sensor; ++channel) {
+            for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; ++need_sensor_count) {
                 int index = channel + need_sensor_count;
-                if (index >= adcValues.size() || index >= valueValues.size())
+                if (index >= adcValues.size() || index >= valueValues.size()) {
+                    qDebug() << "Index out of bounds, skipping index" << index;
                     continue;
+                }
 
                 int adc = adcValues[index];
                 int value = valueValues[index];
 
-                graph_adc_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, adc);
-                graph_value_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, value);
+                if (graph_adc_vector[channel + need_sensor_count] && graph_value_vector[channel + need_sensor_count]) {
+                    graph_adc_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, adc);
+                    graph_value_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, value);
 
-                // 更新图表范围
-                uint32_t x_min = 0;
-                if (counter >= 20000) {
-                    x_min = counter - 20000;
-                }
-                graph_adc_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
-                graph_adc_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
-                graph_adc_vector[channel + need_sensor_count]->replot();
+                    // 更新图表范围
+                    uint32_t x_min = 0;
+                    if (counter >= 20000) {
+                        x_min = counter - 20000;
+                    }
+                    graph_adc_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+                    graph_adc_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
 
-                graph_value_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
-                graph_value_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
-                graph_value_vector[channel + need_sensor_count]->replot();
+                    graph_value_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+                    graph_value_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
 
-                // 更新 UI 文本
-                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
-                    case MODULE_BTH:
-                        ui->brush_adc->setText("刷头adc：" + QString::number(adc));
-                        ui->brush_value->setText("刷头压力：" + QString::number(value));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
-                        break;
-                    case MODULE_MODE_BUTTON:
-                        ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
-                        ui->botton_value1->setText("模式按键压力：" + QString::number(value));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("模式按键ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("模式按键压力值");
-                        break;
-                    case MODULE_POWER_BUTTON:
-                        ui->power_adc->setText("电源按键adc：" + QString::number(adc));
-                        ui->power_value->setText("电源按键压力：" + QString::number(value));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电源按键ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电源按键压力值");
-                        break;
-                    case MODULE_ASSISTANT_COMPONENT:
-                        ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(adc));
-                        ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(value));
-                        graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件ADC值");
-                        graph_value_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件压力值");
-                        break;
+                    // 更新 UI 文本
+                    switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
+                        case MODULE_BTH:
+                            ui->brush_adc->setText("刷头adc：" + QString::number(adc));
+                            ui->brush_value->setText("刷头压力：" + QString::number(value));
+                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
+                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
+                            break;
+                        case MODULE_MODE_BUTTON:
+                            ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
+                            ui->botton_value1->setText("模式按键压力：" + QString::number(value));
+                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("模式按键ADC值");
+                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("模式按键压力值");
+                            break;
+                        case MODULE_POWER_BUTTON:
+                            ui->power_adc->setText("电源按键adc：" + QString::number(adc));
+                            ui->power_value->setText("电源按键压力：" + QString::number(value));
+                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电源按键ADC值");
+                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电源按键压力值");
+                            break;
+                        case MODULE_ASSISTANT_COMPONENT:
+                            ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(adc));
+                            ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(value));
+                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件ADC值");
+                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件压力值");
+                            break;
+                        default:
+                            qDebug() << "Unknown module type:" << sensor_v[channel]->para.f_module[need_sensor_count];
+                    }
+                } else {
+                    qDebug() << "Graph vector is null, skipping update for channel:" << channel + need_sensor_count;
                 }
             }
         }
 
         // 处理帧率显示和倒计时
-        send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / adcValues.size()));
+        if (transTime.isValid()) {
+            send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / adcValues.size()));
+        } else {
+            qDebug() << "transTime is not valid";
+        }
         transTime.restart();
 
-        ui->countdown->display((pressTestTime * 10 - countdowntime.elapsed()) / 1000);
+        if (ui->countdown) {
+            ui->countdown->display((pressTestTime * 10 - countdowntime.elapsed()) / 1000);
+        } else {
+            qDebug() << "countdown widget is null";
+        }
+    }
+
+    for (uint8_t channel = 0; channel < total_sensor; ++channel) {
+        for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; ++need_sensor_count) {
+            if (graph_value_vector[channel + need_sensor_count]) {
+                graph_value_vector[channel + need_sensor_count]->replot();
+            } else {
+                qDebug() << "graph_value_vector is null, skipping replot for channel:" << channel + need_sensor_count;
+            }
+            if (graph_adc_vector[channel + need_sensor_count]) {
+                graph_adc_vector[channel + need_sensor_count]->replot();
+            } else {
+                qDebug() << "graph_adc_vector is null, skipping replot for channel:" << channel + need_sensor_count;
+            }
+        }
     }
 }
+// void PressureSensorForm::updateGraphs() {
+//     int need_sensor_data = total_sensor;
+//     if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO)
+//         need_sensor_data = 2;
+//     else
+//         need_sensor_data = 1;
+//     // 从队列中取出数据并更新图表
+//     while (!adcDataQueue.isEmpty()) {
+//         auto adcData = adcDataQueue.dequeue();
+//         auto valueData = valueDataQueue.dequeue();
+
+//         uint32_t timestamp = adcData.first;
+//         const QVector<int16_t>& adcValues = adcData.second;
+//         const QVector<int16_t>& valueValues = valueData.second;
+
+//         for (uint8_t channel = 0; channel < total_sensor; channel++) {
+//             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
+//                 int index = channel + need_sensor_count;
+//                 if (index >= adcValues.size() || index >= valueValues.size())
+//                     continue;
+
+//                 int adc = adcValues[index];
+//                 int value = valueValues[index];
+
+//                 graph_adc_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, adc);
+//                 graph_value_vector[channel + need_sensor_count]->graph(0)->addData(timestamp, value);
+
+//                 // 更新图表范围
+//                 uint32_t x_min = 0;
+//                 if (counter >= 20000) {
+//                     x_min = counter - 20000;
+//                 }
+//                 graph_adc_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+//                 graph_adc_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
+
+//                 graph_value_vector[channel + need_sensor_count]->xAxis->setRange(x_min, counter);
+//                 graph_value_vector[channel + need_sensor_count]->graph(0)->rescaleValueAxis();
+
+//                 // 更新 UI 文本
+//                 switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
+//                     case MODULE_BTH:
+//                         ui->brush_adc->setText("刷头adc：" + QString::number(adc));
+//                         ui->brush_value->setText("刷头压力：" + QString::number(value));
+//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
+//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
+//                         break;
+//                     case MODULE_MODE_BUTTON:
+//                         ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
+//                         ui->botton_value1->setText("模式按键压力：" + QString::number(value));
+//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("模式按键ADC值");
+//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("模式按键压力值");
+//                         break;
+//                     case MODULE_POWER_BUTTON:
+//                         ui->power_adc->setText("电源按键adc：" + QString::number(adc));
+//                         ui->power_value->setText("电源按键压力：" + QString::number(value));
+//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电源按键ADC值");
+//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电源按键压力值");
+//                         break;
+//                     case MODULE_ASSISTANT_COMPONENT:
+//                         ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(adc));
+//                         ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(value));
+//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件ADC值");
+//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("辅助元件压力值");
+//                         break;
+//                 }
+//             }
+//         }
+
+//         // 处理帧率显示和倒计时
+//         send_frame_rate(QString("%1 ms").arg(transTime.elapsed() / adcValues.size()));
+//         transTime.restart();
+
+//         ui->countdown->display((pressTestTime * 10 - countdowntime.elapsed()) / 1000);
+//     }
+//     for (uint8_t channel = 0; channel < total_sensor; channel++) {
+//         for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
+//             graph_value_vector[channel + need_sensor_count]->replot();
+//             graph_adc_vector[channel + need_sensor_count]->replot();
+//         }
+//     }
+// }
+
 void PressureSensorForm::graph_update(FacUploadPresSensor x) {
     if (graph_set_argu <= GRAPH_SET_CLOSE) {
         return;
@@ -1031,7 +1173,7 @@ void PressureSensorForm::graph_update(FacUploadPresSensor x) {
 
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
-                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
+                switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
                     case MODULE_BTH:
                         adcValues.append(x.sensor_data[i].brush_head.adc);
                         valueValues.append(x.sensor_data[i].brush_head.value);
@@ -1061,7 +1203,8 @@ void PressureSensorForm::graph_update(FacUploadPresSensor x) {
         counter += 10;
     }
     // 发射信号
-    emit dataReady();
+    // emit dataReady();
+    updateGraphs();
 }
 
 void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
@@ -1097,40 +1240,40 @@ void PressureSensorForm::calib_send_result(void) {
     if (isStartSendCaliResult) {  // 是否发送出去
 
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
-            switch (sensor_v[channel].para.f_module[0]) {
+            switch (sensor_v[channel]->para.f_module[0]) {
                 case MODULE_BTH:
-                    cali_result.calib_factor[MODULE_BTH] = sensor_v[channel].calib_result[0];
-                    cali_result.temperature[MODULE_BTH] = sensor_v[channel].temperature;
+                    cali_result.calib_factor[MODULE_BTH] = sensor_v[channel]->calib_result[0];
+                    cali_result.temperature[MODULE_BTH] = sensor_v[channel]->temperature;
                     showlog(QString("写入刷头校准系数：") + QString::number(cali_result.calib_factor[MODULE_BTH]));
                     showlog(QString("写入温度校准系数：") + QString::number(cali_result.temperature[MODULE_BTH]));
                     qDebug() << "刷头校准系数：" << cali_result.calib_factor[MODULE_BTH];
                     break;
                 case MODULE_MODE_BUTTON:
-                    cali_result.calib_factor[MODULE_MODE_BUTTON] = sensor_v[channel].calib_result[0];
-                    cali_result.temperature[MODULE_MODE_BUTTON] = sensor_v[channel].temperature;
+                    cali_result.calib_factor[MODULE_MODE_BUTTON] = sensor_v[channel]->calib_result[0];
+                    cali_result.temperature[MODULE_MODE_BUTTON] = sensor_v[channel]->temperature;
                     showlog(QString("写入模式按键校准系数：") +
                             QString::number(cali_result.calib_factor[MODULE_MODE_BUTTON]));
-                    if (sensor_v[channel].temperature != 0) {
+                    if (sensor_v[channel]->temperature != 0) {
                         showlog(QString("写入温度校准系数：") +
                                 QString::number(cali_result.temperature[MODULE_MODE_BUTTON]));
                     }
                     qDebug() << "模式按键校准系数：" << cali_result.calib_factor[MODULE_MODE_BUTTON];
 
                     if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO) {
-                        cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = sensor_v[channel].calib_result[1];
+                        cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = sensor_v[channel]->calib_result[1];
                         showlog(QString("写入辅助器件校准系数：") +
                                 QString::number(cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT]));
                     }
 
                     break;
                 case MODULE_POWER_BUTTON:
-                    cali_result.calib_factor[MODULE_POWER_BUTTON] = sensor_v[channel].calib_result[0];
+                    cali_result.calib_factor[MODULE_POWER_BUTTON] = sensor_v[channel]->calib_result[0];
                     showlog(QString("写入电源按键校准系数：") +
                             QString::number(cali_result.calib_factor[MODULE_POWER_BUTTON]));
                     qDebug() << "电源按键校准系数：" << cali_result.calib_factor[MODULE_POWER_BUTTON];
                     break;
                 case MODULE_ASSISTANT_COMPONENT:
-                    cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = sensor_v[channel].calib_result[0];
+                    cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = sensor_v[channel]->calib_result[0];
                     showlog(QString("写入辅助器件校准系数：") +
                             QString::number(cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT]));
 
@@ -1170,7 +1313,8 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
         qDebug("错误的传感器数量:%d", total_sensor);
         return;
     }
-
+    short last_brush_adc = x.sensor_data[0].brush_head.adc;
+    short last_botton_adc = x.sensor_data[0].mode_button.adc;
     for (int i = 0; i < x.sensor_data_count; i++) {
         int first_runing_suc_num = 0;
 
@@ -1182,7 +1326,7 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
 
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
-                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
+                switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
                     case MODULE_BTH: adc_c[channel + need_sensor_count] = x.sensor_data[i].brush_head.adc; break;
                     case MODULE_MODE_BUTTON:
                         adc_c[channel + need_sensor_count] = x.sensor_data[i].mode_button.adc;
@@ -1197,92 +1341,102 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
             }
         }
 
-        isStartcali = 1;  // 开始测试
+        isStartcali = 1;  // 开始校准
         if (first_start_test) {
             for (int i = 0; i < total_sensor; i++) {
-                // qDebug() << "i" << i << "gs32SensorFlag" << sensor_v[i].gs32SensorFlag;
-                if (sensor_v[i].gs32SensorFlag < 2) {
-                    sensor_v[i].ndt_sensor_cali_process(x.sensor_data_count, adc_c + i);  // 需要跑一hui
-                } else if (sensor_v[i].gs32SensorFlag == 2) {
+                // qDebug() << "i" << i << "gs32SensorFlag" << sensor_v[i]->gs32SensorFlag;
+                if (sensor_v[i]->gs32SensorFlag < 2) {
+                    sensor_v[i]->ndt_sensor_cali_process(x.sensor_data_count, adc_c + i);  // 需要跑一hui
+                } else if (sensor_v[i]->gs32SensorFlag == 2) {
                     first_runing_suc_num++;
                 }
             }
             if (first_runing_suc_num == total_sensor) {  //要所有通道都OK
                 first_start_test = 0;
                 for (int i = 0; i < total_sensor; i++) {
-                    sensor_v[i].para.first_adc = adc_c[i];
-                    showlog("记录初始adc值" + QString::number(sensor_v[i].para.first_adc));
+                    sensor_v[i]->para.first_adc = adc_c[i];
+                    showlog("记录初始adc值" + QString::number(sensor_v[i]->para.first_adc) + "通道" +
+                            QString::number(i));
                 }
             }
             continue;
         }
         // 避免刷头给按键校准造成干扰需要检查 brush_head.value < 50，即刷头值较小时才进行校准，避免干扰
-        if (sensor_v[calib_chan].para.f_module[0] == MODULE_MODE_BUTTON) {
-            if (x.sensor_data[i].brush_head.value < 50) {
-                // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan].para.first_adc
-                //          << " ADC 阈值: " << sensor_v[calib_chan].para.adc_threshold
+        if (sensor_v[calib_chan]->para.f_module[0] == MODULE_MODE_BUTTON) {
+            if ((short)x.sensor_data[i].brush_head.value < 50) {
+                // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc
+                //          << " ADC 阈值: " << sensor_v[calib_chan]->para.adc_threshold
                 //          << " 校准是否已开始: " << start_calib_channel[calib_chan] << " 校准通道: " << calib_chan
-                //          << " 初始 ADC 值: " << sensor_v[calib_chan].para.first_adc;
+                //          << " 初始 ADC 值: " << sensor_v[calib_chan]->para.first_adc
+                //          << " adc_c[calib_chan]: " << (adc_c[calib_chan]) << " last_botton_adc: " <<
+                //          (last_botton_adc)
+                //          << " 稳定差值: " << adc_c[calib_chan] - last_botton_adc;
 
-                if ((adc_c[calib_chan] - sensor_v[calib_chan].para.first_adc) >
-                        sensor_v[calib_chan].para.adc_threshold &&
-                    !start_calib_channel[calib_chan] && sensor_v[calib_chan].para.first_adc != 0) {
+                if ((adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc) >
+                        sensor_v[calib_chan]->para.adc_threshold &&
+                    !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
+                    qAbs(adc_c[calib_chan] - last_botton_adc) < AdcShakeValue
+
+                ) {
                     brush_before_calib_count++;
-                    qDebug() << getIndex() << "合法值个数" << brush_before_calib_count << "要求个数"
-                             << sensor_v[calib_chan].para.count_threshold;
-                    if (brush_before_calib_count > sensor_v[calib_chan].para.count_threshold) {
+                    qDebug() << getIndex() << "按键合法值个数" << brush_before_calib_count << "要求个数"
+                             << sensor_v[calib_chan]->para.count_threshold;
+                    if (brush_before_calib_count > sensor_v[calib_chan]->para.count_threshold) {
                         start_calib_channel[calib_chan] = 1;
                         brush_before_calib_count = 0;
                     }
                 }
             }
         } else {
-            // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan].para.first_adc
-            //          << " ADC 阈值: " << sensor_v[calib_chan].para.adc_threshold
+            // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc
+            //          << " ADC 阈值: " << sensor_v[calib_chan]->para.adc_threshold
             //          << " 校准是否已开始: " << start_calib_channel[calib_chan] << " 校准通道: " << calib_chan
-            //          << " 初始 ADC 值: " << sensor_v[calib_chan].para.first_adc;
+            //          << " 初始 ADC 值: " << sensor_v[calib_chan]->para.first_adc
+            //          << " adc_c[calib_chan]: " << (adc_c[calib_chan]) << " last_brush_adc: " << (last_brush_adc)
+            //          << " 稳定差值: " << (adc_c[calib_chan] - last_brush_adc);
 
-            if ((adc_c[calib_chan] - sensor_v[calib_chan].para.first_adc) > sensor_v[calib_chan].para.adc_threshold &&
-                !start_calib_channel[calib_chan] && sensor_v[calib_chan].para.first_adc != 0) {
+            if ((adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc) > sensor_v[calib_chan]->para.adc_threshold &&
+                !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
+                qAbs(adc_c[calib_chan] - last_brush_adc) < AdcShakeValue) {
                 brush_before_calib_count++;
-                qDebug() << getIndex() << "合法值个数" << brush_before_calib_count << "要求个数"
-                         << sensor_v[calib_chan].para.count_threshold;
-                if (brush_before_calib_count > sensor_v[calib_chan].para.count_threshold) {
+                qDebug() << getIndex() << "刷头合法值个数" << brush_before_calib_count << "要求个数"
+                         << sensor_v[calib_chan]->para.count_threshold;
+                if (brush_before_calib_count > sensor_v[calib_chan]->para.count_threshold) {
                     start_calib_channel[calib_chan] = 1;
                     brush_before_calib_count = 0;
                 }
             }
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 1) {
-            // sensor_v[calib_chan].ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
+        if (sensor_v[calib_chan]->gs32SensorFlag == 1) {
+            // sensor_v[calib_chan]->ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
         }
 
-        // qDebug() << "Condition met: gs32SensorFlag == 2" << sensor_v[calib_chan].gs32SensorFlag
+        // qDebug() << "Condition met: gs32SensorFlag == 2" << sensor_v[calib_chan]->gs32SensorFlag
         //          << "start_calib_channel == " << start_calib_channel[calib_chan]
-        //          << ", calib_status == " << sensor_v[calib_chan].calib_status;
-        if (sensor_v[calib_chan].gs32SensorFlag == 2 && start_calib_channel[calib_chan] &&
-            sensor_v[calib_chan].calib_status != CALIB_NOCALIB) {
-            sensor_v[calib_chan].ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
+        //          << ", calib_status == " << sensor_v[calib_chan]->calib_status;
+        if (sensor_v[calib_chan]->gs32SensorFlag == 2 && start_calib_channel[calib_chan] &&
+            sensor_v[calib_chan]->calib_status != CALIB_NOCALIB) {
+            sensor_v[calib_chan]->ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 3) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 3) {
             unsigned short* cali_ok =
-                sensor_v[calib_chan].ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
+                sensor_v[calib_chan]->ndt_sensor_cali_process(x.sensor_data_count, adc_c + calib_chan);
 
-            sensor_v[calib_chan].calib_status = CALIB_SUC;
+            sensor_v[calib_chan]->calib_status = CALIB_SUC;
             // qDebug() << "cali_ok[0] " << cali_ok[0];
 
             // qDebug() << "calib_chan " << calib_chan;
-            // qDebug() << " sensor_v[calib_chan]calib_status" << sensor_v[calib_chan].calib_status;
-            //  qDebug() << " sensor_v[calib_chan].calib_result[1]" << sensor_v[calib_chan].calib_result[1];
-            // qDebug() << " sensor_v[calib_chan].calib_result[0]" << sensor_v[calib_chan].calib_result[0];
+            // qDebug() << " sensor_v[calib_chan]calib_status" << sensor_v[calib_chan]->calib_status;
+            //  qDebug() << " sensor_v[calib_chan]->calib_result[1]" << sensor_v[calib_chan]->calib_result[1];
+            // qDebug() << " sensor_v[calib_chan]->calib_result[0]" << sensor_v[calib_chan]->calib_result[0];
 
             if (cali_ok[0] != 0) {
-                sensor_v[calib_chan].calib_result = cali_ok;
+                sensor_v[calib_chan]->calib_result = cali_ok;
 
-                sensor_v[calib_chan].temperature = x.sensor_data[i].temperature;
-                sensor_v[calib_chan].sensor_cali_set(0);
+                sensor_v[calib_chan]->temperature = x.sensor_data[i].temperature;
+                sensor_v[calib_chan]->sensor_cali_set(0);
             }
             if (calib_chan + 1 == total_sensor) {
                 isCaliOk = 1;  // 校准完成的标志
@@ -1290,38 +1444,38 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
         }
 
         // 在函数内使用标志，确保每个条件只运行一次
-        if (sensor_v[calib_chan].gs32SensorFlag == 1 && !donotmoveFlag) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 1 && !donotmoveFlag) {
             // showlog(donotmove);
             donotmoveFlag = true;
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 2 && !brushPlacingFlag && is_get_ready_command) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 2 && !brushPlacingFlag && is_get_ready_command) {
             brushPlacingFlag = true;
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 3 && !packWeightsFlag) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 3 && !packWeightsFlag) {
             packWeightsFlag = true;
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 4 && !bottonPlacingFlag) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 4 && !bottonPlacingFlag) {
             showlog(botton_placing_200_weights);
             bottonPlacingFlag = true;
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 5 && !caliResultOkFlag) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 5 && !caliResultOkFlag) {
             showlog(cali_result_ok);
             caliResultOkFlag = true;
         }
 
-        if (sensor_v[calib_chan].gs32SensorFlag == 6 && !caliResultFailFlag) {
+        if (sensor_v[calib_chan]->gs32SensorFlag == 6 && !caliResultFailFlag) {
             showlog(cali_result_fail);
             caliResultFailFlag = true;
 
             if (product_model == MODEL_ID_Y30PS || product_model == MODEL_ID_Y20PO) {
-                showlog(sensor_v[calib_chan].ui_msg_err[0] + QString::number(sensor_v[calib_chan].err[0]));
-                showlog(sensor_v[calib_chan].ui_msg_err[0] + QString::number(sensor_v[calib_chan].err[1]));
+                showlog(sensor_v[calib_chan]->ui_msg_err[0] + QString::number(sensor_v[calib_chan]->err[0]));
+                showlog(sensor_v[calib_chan]->ui_msg_err[0] + QString::number(sensor_v[calib_chan]->err[1]));
             } else {
-                showlog(sensor_v[calib_chan].ui_msg_err[0] + QString::number(sensor_v[calib_chan].err[0]));
+                showlog(sensor_v[calib_chan]->ui_msg_err[0] + QString::number(sensor_v[calib_chan]->err[0]));
             }
         }
     }
@@ -1399,7 +1553,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
     for (int i = 0; i < x.sensor_data_count; i++) {
         for (uint8_t channel = 0; channel < total_sensor; channel++) {
             for (uint8_t need_sensor_count = 0; need_sensor_count < need_sensor_data; need_sensor_count++) {
-                switch (sensor_v[channel].para.f_module[need_sensor_count]) {
+                switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
                     case MODULE_BTH:
                         adc_c[channel + need_sensor_count] = x.sensor_data[i].brush_head.adc;
                         value_c[channel + need_sensor_count] = x.sensor_data[i].brush_head.value;
@@ -1416,23 +1570,23 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
             }
         }
 
-        switch (sensor_v[test_chan].para.f_module[0]) {
+        switch (sensor_v[test_chan]->para.f_module[0]) {
             case MODULE_BTH:
-                if (sensor_v[test_chan].test_status == TEST_START) {
+                if (sensor_v[test_chan]->test_status == TEST_START) {
                     static uint8_t lock = 0;
                     if (pb->getisDevintowhitemode()) {
                         set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                         pb->set_brush_control(1);
-                        showlog(sensor_v[test_chan].ui_msg_test[0]);
-                        appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[0], QColor("black"));
+                        showlog(sensor_v[test_chan]->ui_msg_test[0]);
+                        appendFormattedText(ui->tip, sensor_v[test_chan]->ui_msg_test[0], QColor("black"));
                         if (product_model == MODEL_ID_Y20) {
-                            sensor_v[test_chan].test_status = TEST_BTH_NORMAL;
+                            sensor_v[test_chan]->test_status = TEST_BTH_NORMAL;
                             showlog("当前是y20的测试");
                             // showlog("放上350g砝码");
                             countdowntime.start();
                         } else {
                             showlog("当前是正常测试");
-                            sensor_v[test_chan].test_status = TEST_BTH_SHAKE;
+                            sensor_v[test_chan]->test_status = TEST_BTH_SHAKE;
                         }
 
                     } else if (lock == 0) {
@@ -1443,26 +1597,26 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                         lock = 0;
                     }
                 }
-                // else if (sensor_v[test_chan].test_status == TEST_BTH_END) {
-                //     sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
+                // else if (sensor_v[test_chan]->test_status == TEST_BTH_END) {
+                //     sensor_v[test_chan]->test_status = TEST_BTH_OVERPRESS;
                 // }
                 break;
 
             case MODULE_MODE_BUTTON:
             case MODULE_POWER_BUTTON:
 #if 0  // USE_KEY_CLICK_TEST // 按键测试 0:使用按键是否响应的方案 1：使用200g砝码值比对的方案
-                if (sensor_v[test_chan].test_status == TEST_START) {
-                    sensor_v[test_chan].test_status = TEST_KEY_NORMAL;
-                    showlog(sensor_v[test_chan].ui_msg_test[0]);
+                if (sensor_v[test_chan]->test_status == TEST_START) {
+                    sensor_v[test_chan]->test_status = TEST_KEY_NORMAL;
+                    showlog(sensor_v[test_chan]->ui_msg_test[0]);
                     qDebug() << "TEST_KEY_NORMAL";
                 }
 #else
-                if (sensor_v[test_chan].test_status == TEST_START) {
+                if (sensor_v[test_chan]->test_status == TEST_START) {
                     qDebug() << "请求获取按键状态上报" << i;
                     pb->get_button_state(1);
-                    sensor_v[test_chan].test_status = TEST_KEY_NO_CLICK;
+                    sensor_v[test_chan]->test_status = TEST_KEY_NO_CLICK;
                     qDebug() << "set_fixture_movement:key_test";
-                    showlog(sensor_v[test_chan].ui_msg_test[0]);
+                    showlog(sensor_v[test_chan]->ui_msg_test[0]);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     qDebug() << "TEST_KEY_NO_CLICK";
                 }
@@ -1470,138 +1624,138 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                 break;
         }
 
-        if (sensor_v[test_chan].test_status == TEST_BTH_SHAKE) {
+        if (sensor_v[test_chan]->test_status == TEST_BTH_SHAKE) {
             if (value_c[test_chan] > 50 - 10 && value_c[test_chan] < 50 + 10)  // 数据准确
             {
-                qDebug("TEST_BTH_SHAKE:%d", sensor_v[test_chan].para.current_count);
-                sensor_v[test_chan].para.current_count++;
-                if (sensor_v[test_chan].para.current_count >= 200) {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_BTH_NORMAL;
+                qDebug("TEST_BTH_SHAKE:%d", sensor_v[test_chan]->para.current_count);
+                sensor_v[test_chan]->para.current_count++;
+                if (sensor_v[test_chan]->para.current_count >= 200) {
+                    sensor_v[test_chan]->para.current_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_BTH_NORMAL;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
-                    appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[1], QColor("black"));
-                    showlog(sensor_v[test_chan].ui_msg_test[1]);
+                    appendFormattedText(ui->tip, sensor_v[test_chan]->ui_msg_test[1], QColor("black"));
+                    showlog(sensor_v[test_chan]->ui_msg_test[1]);
                 }
             }
-            sensor_v[test_chan].test_result[0] = 50;
-        } else if (sensor_v[test_chan].test_status == TEST_BTH_NORMAL) {
+            sensor_v[test_chan]->test_result[0] = 50;
+        } else if (sensor_v[test_chan]->test_status == TEST_BTH_NORMAL) {
             if (value_c[test_chan] > 350 - 0.1 * 350 && value_c[test_chan] < 350 + 0.1 * 350)  // 数据准确
             {
-                qDebug("TEST_BTH_NORMAL:%d", sensor_v[test_chan].para.current_count);
-                sensor_v[test_chan].para.current_count++;
+                qDebug("TEST_BTH_NORMAL:%d", sensor_v[test_chan]->para.current_count);
+                sensor_v[test_chan]->para.current_count++;
 
-                if (sensor_v[test_chan].para.current_count >= 200) {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
+                if (sensor_v[test_chan]->para.current_count >= 200) {
+                    sensor_v[test_chan]->para.current_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_BTH_OVERPRESS;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
-                    appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[2], QColor("black"));
-                    showlog(sensor_v[test_chan].ui_msg_test[2]);
+                    appendFormattedText(ui->tip, sensor_v[test_chan]->ui_msg_test[2], QColor("black"));
+                    showlog(sensor_v[test_chan]->ui_msg_test[2]);
                 }
             } else if (value_c[test_chan] > 400) {  // 不该过压的时候过压
-                sensor_v[test_chan].para.error_count++;
-                if (sensor_v[test_chan].para.error_count >= 80) {
-                    sensor_v[test_chan].para.error_count = 0;
-                    sensor_v[test_chan].test_status = TEST_FAIL;
+                sensor_v[test_chan]->para.error_count++;
+                if (sensor_v[test_chan]->para.error_count >= 80) {
+                    sensor_v[test_chan]->para.error_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_FAIL;
                 }
             }
-            sensor_v[test_chan].test_result[0] = 350;
+            sensor_v[test_chan]->test_result[0] = 350;
 
             if (product_model == MODEL_ID_Y20) {
                 if (value_c[test_chan] < 5)  // 未过压
                 {
-                    qDebug("TEST_BTH_NORMAL:%d", sensor_v[test_chan].para.current_count);
-                    sensor_v[test_chan].para.current_count++;
-                    if (sensor_v[test_chan].para.current_count >= pressTestTime) {
-                        sensor_v[test_chan].para.current_count = 0;
-                        sensor_v[test_chan].test_status = TEST_BTH_OVERPRESS;
-                        showlog(sensor_v[test_chan].ui_msg_test[2]);
+                    qDebug("TEST_BTH_NORMAL:%d", sensor_v[test_chan]->para.current_count);
+                    sensor_v[test_chan]->para.current_count++;
+                    if (sensor_v[test_chan]->para.current_count >= pressTestTime) {
+                        sensor_v[test_chan]->para.current_count = 0;
+                        sensor_v[test_chan]->test_status = TEST_BTH_OVERPRESS;
+                        showlog(sensor_v[test_chan]->ui_msg_test[2]);
 
-                        appendFormattedText(ui->tip, sensor_v[test_chan].ui_msg_test[2], QColor("black"));
+                        appendFormattedText(ui->tip, sensor_v[test_chan]->ui_msg_test[2], QColor("black"));
                         countdowntime.restart();
                     }
                 } else if (value_c[test_chan] >= 5) {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_FAIL;
+                    sensor_v[test_chan]->para.current_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_FAIL;
                 }
             }
 
-        } else if (sensor_v[test_chan].test_status == TEST_BTH_OVERPRESS) {
+        } else if (sensor_v[test_chan]->test_status == TEST_BTH_OVERPRESS) {
             if (value_c[test_chan] > 450 - 0.1 * 450 && value_c[test_chan] < 450 + 0.1 * 450)  // 数据准确
             {
-                qDebug("TEST_BTH_OVERPRESS:%d", sensor_v[test_chan].para.current_count);
-                sensor_v[test_chan].para.current_count++;
-                if (sensor_v[test_chan].para.current_count >= 300) {
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_SUC;
+                qDebug("TEST_BTH_OVERPRESS:%d", sensor_v[test_chan]->para.current_count);
+                sensor_v[test_chan]->para.current_count++;
+                if (sensor_v[test_chan]->para.current_count >= 300) {
+                    sensor_v[test_chan]->para.current_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_SUC;
                 }
             }
-            sensor_v[test_chan].test_result[0] = 450;
+            sensor_v[test_chan]->test_result[0] = 450;
             if (product_model == MODEL_ID_Y20) {
                 if (value_c[test_chan] >= 5)  // 过压
                 {
-                    qDebug("TEST_BTH_OVERPRESS:%d", sensor_v[test_chan].para.current_count);
-                    sensor_v[test_chan].para.current_count++;
-                    if (sensor_v[test_chan].para.current_count >= 200) {
-                        sensor_v[test_chan].para.current_count = 0;
-                        sensor_v[test_chan].test_status = TEST_SUC;
+                    qDebug("TEST_BTH_OVERPRESS:%d", sensor_v[test_chan]->para.current_count);
+                    sensor_v[test_chan]->para.current_count++;
+                    if (sensor_v[test_chan]->para.current_count >= 200) {
+                        sensor_v[test_chan]->para.current_count = 0;
+                        sensor_v[test_chan]->test_status = TEST_SUC;
                     }
                 }
             }
 
-        } else if (sensor_v[test_chan].test_status == TEST_KEY_NORMAL) {
-            qDebug("TEST_KEY_NORMAL:%d", sensor_v[test_chan].para.current_count);
+        } else if (sensor_v[test_chan]->test_status == TEST_KEY_NORMAL) {
+            qDebug("TEST_KEY_NORMAL:%d", sensor_v[test_chan]->para.current_count);
             if (value_c[test_chan] > 200 - 30 && value_c[test_chan] < 200 + 30) {
-                sensor_v[test_chan].para.current_count++;
-                if (sensor_v[test_chan].para.current_count >= 200) {
-                    sensor_v[test_chan].test_result[0] = value_c[test_chan];
-                    sensor_v[test_chan].para.current_count = 0;
-                    sensor_v[test_chan].test_status = TEST_SUC;
+                sensor_v[test_chan]->para.current_count++;
+                if (sensor_v[test_chan]->para.current_count >= 200) {
+                    sensor_v[test_chan]->test_result[0] = value_c[test_chan];
+                    sensor_v[test_chan]->para.current_count = 0;
+                    sensor_v[test_chan]->test_status = TEST_SUC;
                 }
             }
-        } else if (sensor_v[test_chan].test_status == TEST_KEY_NO_CLICK) {
-            qDebug("TEST_KEY_NO_CLICK:%d", sensor_v[test_chan].para.current_count);
+        } else if (sensor_v[test_chan]->test_status == TEST_KEY_NO_CLICK) {
+            qDebug("TEST_KEY_NO_CLICK:%d", sensor_v[test_chan]->para.current_count);
 
 #if 0  // 打开就无视电容触发
-            if (sensor_v[test_chan].para.no_click_max < value_c[test_chan]) {
-                sensor_v[test_chan].para.no_click_max = value_c[test_chan];
+            if (sensor_v[test_chan]->para.no_click_max < value_c[test_chan]) {
+                sensor_v[test_chan]->para.no_click_max = value_c[test_chan];
             }
-            if (sensor_v[test_chan].para.no_click_max > 200) {
-                sensor_v[test_chan].para.button_state = 1;
+            if (sensor_v[test_chan]->para.no_click_max > 200) {
+                sensor_v[test_chan]->para.button_state = 1;
             }
 #endif
-            if (sensor_v[test_chan].send_state == 1) {
-                sensor_v[test_chan].send_state = 0;  //复位治具状态
-                if (sensor_v[test_chan].para.button_state == 0) {
-                    // sensor_v[test_chan].test_result[0] = 100;
-                    sensor_v[test_chan].para.button_state = 0;
-                    sensor_v[test_chan].test_status = TEST_KEY_CLICK;
-                    showlog(sensor_v[test_chan].ui_msg_test[1]);
+            if (sensor_v[test_chan]->send_state == 1) {
+                sensor_v[test_chan]->send_state = 0;  //复位治具状态
+                if (sensor_v[test_chan]->para.button_state == 0) {
+                    // sensor_v[test_chan]->test_result[0] = 100;
+                    sensor_v[test_chan]->para.button_state = 0;
+                    sensor_v[test_chan]->test_status = TEST_KEY_CLICK;
+                    showlog(sensor_v[test_chan]->ui_msg_test[1]);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
-                } else if (sensor_v[test_chan].para.button_state == 1) {
-                    sensor_v[test_chan].test_status = TEST_FAIL;
+                } else if (sensor_v[test_chan]->para.button_state == 1) {
+                    sensor_v[test_chan]->test_status = TEST_FAIL;
                     showlog("测试失败：不需要触发，按键触发");
                 }
             }
-        } else if (sensor_v[test_chan].test_status == TEST_KEY_CLICK) {
-            qDebug("TEST_KEY_CLICK:%d", sensor_v[test_chan].para.current_count);
+        } else if (sensor_v[test_chan]->test_status == TEST_KEY_CLICK) {
+            qDebug("TEST_KEY_CLICK:%d", sensor_v[test_chan]->para.current_count);
 // 无视电容触发
 #if 0
-            if (sensor_v[test_chan].para.click_max < value_c[test_chan]) {
-                sensor_v[test_chan].para.click_max = value_c[test_chan];
+            if (sensor_v[test_chan]->para.click_max < value_c[test_chan]) {
+                sensor_v[test_chan]->para.click_max = value_c[test_chan];
             }
-            if (sensor_v[test_chan].para.click_max > 250) {
-                sensor_v[test_chan].para.button_state = 1;
+            if (sensor_v[test_chan]->para.click_max > 250) {
+                sensor_v[test_chan]->para.button_state = 1;
             }
 #endif
-            if (sensor_v[test_chan].send_state == 1) {
-                sensor_v[test_chan].send_state = 0;
-                if (sensor_v[test_chan].para.button_state == 1) {
-                    // sensor_v[test_chan].test_result[0] = 0;
-                    sensor_v[test_chan].para.button_state = 0;
-                    sensor_v[test_chan].test_status = TEST_SUC;
+            if (sensor_v[test_chan]->send_state == 1) {
+                sensor_v[test_chan]->send_state = 0;
+                if (sensor_v[test_chan]->para.button_state == 1) {
+                    // sensor_v[test_chan]->test_result[0] = 0;
+                    sensor_v[test_chan]->para.button_state = 0;
+                    sensor_v[test_chan]->test_status = TEST_SUC;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
-                } else if (sensor_v[test_chan].para.button_state == 0) {
-                    sensor_v[test_chan].test_status = TEST_FAIL;
+                } else if (sensor_v[test_chan]->para.button_state == 0) {
+                    sensor_v[test_chan]->test_status = TEST_FAIL;
                     showlog("测试失败：需要触发，按键未触发");
                 }
             }
@@ -1619,22 +1773,22 @@ void PressureSensorForm::getPressSensorData(FacUploadPresSensor x) {
 void PressureSensorForm::checkbutton(FacButtonState x) {
     showlog("获取到按键上报个数" + QString::number(x.button_state_count));
     qDebug() << "product_model=" << product_model;
-    qDebug() << "nsor_v[0].para.f_module[0]" << sensor_v[0].para.f_module[0];
+    qDebug() << "nsor_v[0].para.f_module[0]" << sensor_v[0]->para.f_module[0];
 
     for (int i = 0; i < x.button_state_count; i++) {
-        if (sensor_v[0].para.f_module[0] == MODULE_MODE_BUTTON && (product_model != MODEL_ID_U7) &&
+        if (sensor_v[0]->para.f_module[0] == MODULE_MODE_BUTTON && (product_model != MODEL_ID_U7) &&
             (product_model != MODEL_ID_Y30PS)) {
             showlog("模式状态" + QString::number(x.button_state[1].command_data.mode_button.button_state_now));
             if (x.button_state[1].command_data.mode_button.button_state_now == ButtonState_PRESSED) {
-                sensor_v[test_chan].para.button_state = 1;
+                sensor_v[test_chan]->para.button_state = 1;
             }
         }
-        if (sensor_v[0].para.f_module[0] == MODULE_POWER_BUTTON || (product_model == MODEL_ID_U7) ||
+        if (sensor_v[0]->para.f_module[0] == MODULE_POWER_BUTTON || (product_model == MODEL_ID_U7) ||
             (product_model == MODEL_ID_Y30PS)) {
             showlog("电源状态" + QString::number(x.button_state[0].command_data.power_button.button_state_now));
 
             if (x.button_state[0].command_data.power_button.button_state_now == ButtonState_PRESSED) {
-                sensor_v[test_chan].para.button_state = 1;
+                sensor_v[test_chan]->para.button_state = 1;
             }
         }
     }
@@ -1716,9 +1870,10 @@ void PressureSensorForm::reset_all() {
     memset(&LastCali, 0, sizeof(press_calib_data_t));
     memset(&start_calib_channel, 0, sizeof(start_calib_channel));  // 是否开始刷头200校准
 
-    emit operator_instruct(getIndex());  //核对
-    waitWork(1000);                      //给开机时间
+    // emit operator_instruct(getIndex());  //核对
+
     set_independent_state(STATE_INVALID);
+    waitWork(1000);  //给开机时间
     at->sendMac(ui->macInput->text());
     showlog("开始测试");
 }
@@ -1729,16 +1884,10 @@ void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int
         return;
     }
 
-    qDebug() << "设置治具参数" << model << state << argument;
+    qDebug() << getIndex() << "设置治具参数" << model << state << argument;
     switch (model) {
-        case MODEL_ID_Y20P:
-            if (getIndex() == 1)
-                Y20P_fixture(state, argument);
-            break;
-        case MODEL_ID_Y20:
-            if (getIndex() == 1)
-                Y20P_fixture(state, argument);
-            break;
+        case MODEL_ID_Y20P: Y20P_fixture(state, argument); break;
+        case MODEL_ID_Y20: Y20P_fixture(state, argument); break;
 
         case MODEL_ID_F20: F20_fixture(state, argument); break;
 
@@ -1765,7 +1914,7 @@ void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int
 void PressureSensorForm::Y20P_fixture(State state, int argument) {
     switch (state) {
         case STATE_CALIB_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
                     set_independent_state(STATE_CALIB_CH0);
                     send_start_command(COMMAND_ID_BTH_DOWN_200, 0);
@@ -1776,11 +1925,12 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
             break;
 
         case STATE_CALIB_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
 
                     set_independent_state(STATE_CALIB_CH1);
                     send_start_command(COMMAND_ID_BTH_UP, 0);
+
                     break;
 
                 case MODULE_MODE_BUTTON: send_start_command(COMMAND_ID_KEY_UP, 0); break;
@@ -1816,9 +1966,9 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
             break;
 
         case STATE_TEST_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
-                    switch (sensor_v[test_chan].test_status) {
+                    switch (sensor_v[test_chan]->test_status) {
                         case TEST_BTH_SHAKE: send_start_command(COMMAND_ID_BTH_PRESS_50, 0); break;
 
                         case TEST_BTH_NORMAL: send_start_command(COMMAND_ID_BTH_PRESS_350, 0); break;
@@ -1830,7 +1980,7 @@ void PressureSensorForm::Y20P_fixture(State state, int argument) {
             break;
 
         case STATE_TEST_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH: send_start_command(COMMAND_ID_BTH_PRESS_UP, 0); break;
             }
             break;
@@ -1846,7 +1996,7 @@ void PressureSensorForm::F20_fixture(State state, int argument) {
 
         case STATE_CALIB_CH_X:
         case STATE_TEST_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH: set_independent_state(STATE_CALIB_CH0); break;
 
                 case MODULE_MODE_BUTTON:
@@ -1865,7 +2015,7 @@ void PressureSensorForm::F20_fixture(State state, int argument) {
 
         case STATE_CALIB_CH_X_RESULT:
         case STATE_TEST_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH: set_independent_state(STATE_CALIB_CH1); break;
 
                 case MODULE_MODE_BUTTON:
@@ -1885,7 +2035,7 @@ void PressureSensorForm::F20_fixture(State state, int argument) {
             set_independent_state(STATE_CALIB_RESULT);
 
             send_start_command(COMMAND_ID_KEY_UP, 0);
-            // system_cmd("none", SYSTEM_COMMAND_ZERO);
+
             delay_msec(500);
             send_start_command(COMMAND_ID_F20_UNFIXED, 0);
             break;
@@ -1900,7 +2050,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
     }
     switch (state) {
         case STATE_CALIB_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
                     set_independent_state(STATE_CALIB_CH0);
                     send_start_command(COMMAND_ID_BTH_DOWN_200, 0);
@@ -1911,7 +2061,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
             break;
 
         case STATE_CALIB_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
 
                     set_independent_state(STATE_CALIB_CH1);
@@ -1932,7 +2082,9 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
 
             send_start_command(COMMAND_ID_TRAY_IN, 0);
 
+            waitWork(2500);
             send_start_command(COMMAND_ID_FIXED_BLOCK_DOWN, 0);
+            waitWork(1500);
 
             break;
 
@@ -1956,9 +2108,9 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
             break;
 
         case STATE_TEST_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH:
-                    switch (sensor_v[test_chan].test_status) {
+                    switch (sensor_v[test_chan]->test_status) {
                         case TEST_BTH_SHAKE: send_start_command(COMMAND_ID_BTH_PRESS_50, 0); break;
 
                         case TEST_BTH_NORMAL: send_start_command(COMMAND_ID_BTH_PRESS_350, 0); break;
@@ -1970,7 +2122,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
             break;
 
         case STATE_TEST_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_BTH: send_start_command(COMMAND_ID_BTH_PRESS_UP, 0); break;
             }
             break;
@@ -1978,30 +2130,30 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
 
     // switch (state) {
     // case STATE_CALIB_CH_X:
-    //     switch (sensor_v[argument].para.f_module[0]) {
+    //     switch (sensor_v[argument]->para.f_module[0]) {
     //     case MODULE_MODE_BUTTON:
     //     case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_O, 0); break;
     //     }
     //     break;
 
     // case STATE_CALIB_CH_X_RESULT:
-    //     switch (sensor_v[argument].para.f_module[0]) {
+    //     switch (sensor_v[argument]->para.f_module[0]) {
     //     case MODULE_MODE_BUTTON:
     //     case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
     //     }
     //     break;
 
     // case STATE_TEST_CH_X:
-    //     switch (sensor_v[argument].para.f_module[0]) {
+    //     switch (sensor_v[argument]->para.f_module[0]) {
     //     case MODULE_MODE_BUTTON:
     //     case MODULE_POWER_BUTTON:
-    //         switch (sensor_v[test_chan].test_status) {
+    //         switch (sensor_v[test_chan]->test_status) {
     //         case TEST_KEY_NO_CLICK:
     //             send_start_command(COMMAND_ID_FAMA_100_O, 0);
     //             delay_msec(500);
     //             send_start_command(COMMAND_ID_FAMA_100_C, 0);
     //             delay_msec(500);
-    //             sensor_v[test_chan].send_state = 1;
+    //             sensor_v[test_chan]->send_state = 1;
     //             break;
 
     //         case TEST_KEY_CLICK:
@@ -2009,7 +2161,7 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
     //             delay_msec(500);
     //             send_start_command(COMMAND_ID_FAMA_300_C, 0);
     //             delay_msec(500);
-    //             sensor_v[test_chan].send_state = 1;
+    //             sensor_v[test_chan]->send_state = 1;
     //             break;
     //         }
     //         break;
@@ -2017,14 +2169,14 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
     //     break;
 
     // case STATE_TEST_CH_X_RESULT:
-    //     switch (sensor_v[argument].para.f_module[0]) {
+    //     switch (sensor_v[argument]->para.f_module[0]) {
     //     case MODULE_MODE_BUTTON:
     //     case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
     //     }
     //     break;
 
     // case STATE_SAVE_RESULT:
-    //     switch (sensor_v[argument].para.f_module[0]) {
+    //     switch (sensor_v[argument]->para.f_module[0]) {
     //     case MODULE_MODE_BUTTON:
     //     case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
     //     }
@@ -2042,30 +2194,30 @@ void PressureSensorForm::U7_fixture(State state, int argument) {
 
     switch (state) {
         case STATE_CALIB_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_MODE_BUTTON:
                 case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_O, 0); break;
             }
             break;
 
         case STATE_CALIB_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_MODE_BUTTON:
                 case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
             }
             break;
 
         case STATE_TEST_CH_X:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_MODE_BUTTON:
                 case MODULE_POWER_BUTTON:
-                    switch (sensor_v[test_chan].test_status) {
+                    switch (sensor_v[test_chan]->test_status) {
                         case TEST_KEY_NO_CLICK:
                             send_start_command(COMMAND_ID_FAMA_100_O, 0);
                             delay_msec(500);
                             send_start_command(COMMAND_ID_FAMA_100_C, 0);
                             delay_msec(500);
-                            sensor_v[test_chan].send_state = 1;
+                            sensor_v[test_chan]->send_state = 1;
                             break;
 
                         case TEST_KEY_CLICK:
@@ -2073,7 +2225,7 @@ void PressureSensorForm::U7_fixture(State state, int argument) {
                             delay_msec(500);
                             send_start_command(COMMAND_ID_FAMA_300_C, 0);
                             delay_msec(1000);
-                            sensor_v[test_chan].send_state = 1;
+                            sensor_v[test_chan]->send_state = 1;
                             break;
                     }
                     break;
@@ -2081,14 +2233,14 @@ void PressureSensorForm::U7_fixture(State state, int argument) {
             break;
 
         case STATE_TEST_CH_X_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_MODE_BUTTON:
                 case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
             }
             break;
 
         case STATE_SAVE_RESULT:
-            switch (sensor_v[argument].para.f_module[0]) {
+            switch (sensor_v[argument]->para.f_module[0]) {
                 case MODULE_MODE_BUTTON:
                 case MODULE_POWER_BUTTON: send_start_command(COMMAND_ID_FAMA_300_C, 0); break;
             }
@@ -2103,52 +2255,52 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
     switch (model) {
         case MODEL_ID_Y30PS:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             }
 
             break;
         case MODEL_ID_Y20PO:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             }
 
             break;
 
         case MODEL_ID_Y20P:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             }
 
             break;
 
         case MODEL_ID_Y20:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             }
 
             break;
 
         case MODEL_ID_F20:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             }
             break;
 
         case MODEL_ID_U7:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             } else if (state == STATE_TEST_CH_X) {
                 showlog(QString("测试通道%1:按键").arg(test_chan));
             } else if (state == STATE_TEST_CH_X_RESULT) {
@@ -2160,9 +2312,9 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
 
         case MODEL_ID_Y21:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             } else if (state == STATE_TEST_CH_X) {
                 showlog(QString("测试通道%1:按键").arg(test_chan));
             } else if (state == STATE_TEST_CH_X_RESULT) {
@@ -2174,9 +2326,9 @@ void PressureSensorForm::ui_msg_show(MODEL_ID_E model, State state, int argument
 
         case MODEL_ID_P30P:
             if (state == STATE_CALIB_CH_X) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[1]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[1]);
             } else if (state == STATE_CALIB_CH_X_RESULT) {
-                showlog(sensor_v[calib_chan].ui_msg_tip[2]);
+                showlog(sensor_v[calib_chan]->ui_msg_tip[2]);
             } else if (state == STATE_TEST_CH_X) {
                 showlog(QString("测试通道%1:按键").arg(test_chan));
             } else if (state == STATE_TEST_CH_X_RESULT) {
@@ -2215,15 +2367,12 @@ void PressureSensorForm::startTask() {
             case STATE_DISABLE_SLEEP_CALIB:  // 禁止休眠
                 delay_msec(100);
                 if (pb->getDisableSleep()) {
-                    delay_msec(200);
                     showlog("已进入禁止休眠");
                     pb->set_press_collect_param(FacSwitch_START);
-                    delay_msec(200);
                     state = STATE_WATI_ASKQR;
                 } else {
-                    delay_msec(100);
+                    delay_msec(500);
                     pb->set_forbid_sleep(FacSwitch_OPEN);
-                    delay_msec(200);
                     showlog("再次发送禁止休眠");
                 }
                 break;
@@ -2231,11 +2380,13 @@ void PressureSensorForm::startTask() {
             case STATE_WATI_ASKQR:
                 if (get_independent_state() == STATE_CALIB_START) {
                     set_independent_state(STATE_CALIB_STATIC_WAIT);
+                    showlog("上位机开始请求治具控制");
                     set_fixture_movement(product_model, STATE_WATI_ASKQR, 0);
                     state = STATE_WAIT_STATIC;
                 } else if (get_independent_state() == STATE_INVALID) {
                     set_independent_state(STATE_WAIT_START);
                     emit operator_instruct(getIndex());
+
                     showlog("等待治具就绪" + SETTINGS.value("PRESSURE/functionSwitch", 1).toString());
                     if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
                         state = STATE_WAIT_STATIC;
@@ -2259,7 +2410,7 @@ void PressureSensorForm::startTask() {
                     if (function_switch == FUNCTION_CALIB_TEST || function_switch == FUNCTION_CALIB) {
                         showlog(donotmove);
                         for (int i = 0; i < sensor_v.size(); i++) {
-                            sensor_v[i].sensor_cali_set(1);
+                            sensor_v[i]->sensor_cali_set(1);
                         }
                         state = STATE_CALIB_CH_X;
                     } else if (function_switch == FUNCTION_TEST) {
@@ -2276,7 +2427,7 @@ void PressureSensorForm::startTask() {
 
             case STATE_CALIB_CH_X:  //开始校准,治具动作
 
-                if (sensor_v[calib_chan].gs32SensorFlag == 2 && sensor_v[calib_chan].calib_status != CALIB_NOCALIB) {
+                if (sensor_v[calib_chan]->gs32SensorFlag == 2 && sensor_v[calib_chan]->calib_status != CALIB_NOCALIB) {
                     set_fixture_movement(product_model, STATE_CALIB_CH_X, calib_chan);
                     ui_msg_show(product_model, STATE_CALIB_CH_X, calib_chan);
                     waittime->setInterval(measure_wait_time);  // 超时判断计时开始
@@ -2284,20 +2435,20 @@ void PressureSensorForm::startTask() {
                     showlog("校准超时计时开始,时间：" + QString::number(measure_wait_time));
 
                     state = STATE_CALIB_CH_X_RESULT;
-                } else if (sensor_v[calib_chan].calib_status == CALIB_NOCALIB) {
-                    if (LastCali.calib_factor[sensor_v[calib_chan].para.f_module[0]] != 0) {
-                        switch (sensor_v[calib_chan].para.f_module[0]) {
+                } else if (sensor_v[calib_chan]->calib_status == CALIB_NOCALIB) {
+                    if (LastCali.calib_factor[sensor_v[calib_chan]->para.f_module[0]] != 0) {
+                        switch (sensor_v[calib_chan]->para.f_module[0]) {
                             case MODULE_BTH:
-                                sensor_v[calib_chan].calib_result[0] = LastCali.calib_factor[MODULE_BTH];
-                                sensor_v[calib_chan].temperature = LastCali.temperature[MODULE_BTH];
+                                sensor_v[calib_chan]->calib_result[0] = LastCali.calib_factor[MODULE_BTH];
+                                sensor_v[calib_chan]->temperature = LastCali.temperature[MODULE_BTH];
                                 break;
 
                             case MODULE_MODE_BUTTON:
-                                sensor_v[calib_chan].calib_result[0] = LastCali.calib_factor[MODULE_MODE_BUTTON];
+                                sensor_v[calib_chan]->calib_result[0] = LastCali.calib_factor[MODULE_MODE_BUTTON];
                                 break;
 
                             case MODULE_POWER_BUTTON:
-                                sensor_v[calib_chan].calib_result[0] = LastCali.calib_factor[MODULE_POWER_BUTTON];
+                                sensor_v[calib_chan]->calib_result[0] = LastCali.calib_factor[MODULE_POWER_BUTTON];
                                 break;
                             case MODULE_INVALID:
                             case MODULE_ASSISTANT_COMPONENT:
@@ -2314,8 +2465,8 @@ void PressureSensorForm::startTask() {
 
             case STATE_CALIB_CH_X_RESULT:  //开始校准，等待完成
 
-                if (sensor_v[calib_chan].calib_status == CALIB_SUC ||
-                    sensor_v[calib_chan].calib_status == CALIB_NOCALIB) {
+                if (sensor_v[calib_chan]->calib_status == CALIB_SUC ||
+                    sensor_v[calib_chan]->calib_status == CALIB_NOCALIB) {
                     ui_msg_show(product_model, STATE_CALIB_CH_X_RESULT, calib_chan);
                     showlog(QString("通道%1已校准完毕").arg(calib_chan));
                     set_fixture_movement(product_model, STATE_CALIB_CH_X_RESULT, calib_chan);
@@ -2329,7 +2480,7 @@ void PressureSensorForm::startTask() {
                     }
                     waittime->stop();
                     qDebug() << "waittime->stop();";
-                } else if (sensor_v[calib_chan].gs32SensorFlag == 6) {
+                } else if (sensor_v[calib_chan]->gs32SensorFlag == 6) {
                     pb->set_press_collect_param(FacSwitch_STOP);
                     delay_msec(200);
                     showlog("压感校准失败");
@@ -2347,19 +2498,19 @@ void PressureSensorForm::startTask() {
 
             case STATE_CHECK_CAIL_RESULT:  // 检查校准结果
                 for (int chan = 0; chan < total_sensor; chan++) {
-                    if (sensor_v[chan].para.lower_limit <= sensor_v[chan].calib_result[0] &&
-                        sensor_v[chan].para.upper_limit >= sensor_v[chan].calib_result[0]) {
+                    if (sensor_v[chan]->para.lower_limit <= sensor_v[chan]->calib_result[0] &&
+                        sensor_v[chan]->para.upper_limit >= sensor_v[chan]->calib_result[0]) {
                         showlog(QString("校准值在阈值范围内:%1-%2")
-                                    .arg(sensor_v[chan].para.lower_limit)
-                                    .arg(sensor_v[chan].para.upper_limit));
+                                    .arg(sensor_v[chan]->para.lower_limit)
+                                    .arg(sensor_v[chan]->para.upper_limit));
                         state = STATE_SEND_CAIL_RESULT;
                     } else {
                         pb->set_press_collect_param(FacSwitch_STOP);
                         delay_msec(200);
                         showlog(QString("校准系数超阈值:%1(%2-%3)")
-                                    .arg(sensor_v[chan].calib_result[0])
-                                    .arg(sensor_v[chan].para.lower_limit)
-                                    .arg(sensor_v[chan].para.upper_limit));
+                                    .arg(sensor_v[chan]->calib_result[0])
+                                    .arg(sensor_v[chan]->para.lower_limit)
+                                    .arg(sensor_v[chan]->para.upper_limit));
                         result = failValue;
                         state = STATE_SAVE_RESULT;
                         break;
@@ -2478,19 +2629,21 @@ void PressureSensorForm::startTask() {
             case STATE_TEST_PARM_LIMIT:  // 开始第二次采集参数
                 if (LastCali.calib_factor[MODULE_BTH] != 0) {
                     for (int chan = 0; chan < total_sensor; chan++) {
-                        if (sensor_v[chan].para.lower_limit <= LastCali.calib_factor[chan + 1] &&
-                            sensor_v[chan].para.upper_limit >= LastCali.calib_factor[chan + 1]) {
-                            showlog(QString("校准值在阈值范围内:%1-%2")
-                                        .arg(sensor_v[chan].para.lower_limit)
-                                        .arg(sensor_v[chan].para.upper_limit));
+                        if (sensor_v[chan]->para.lower_limit <= LastCali.calib_factor[chan + 1] &&
+                            sensor_v[chan]->para.upper_limit >= LastCali.calib_factor[chan + 1]) {
+                            showlog(QString("通道%3校准值在阈值范围内:%1-%2")
+                                        .arg(sensor_v[chan]->para.lower_limit)
+                                        .arg(sensor_v[chan]->para.upper_limit)
+                                        .arg(chan));
                             state = STATE_TEST_CH_X;
                         } else {
                             pb->set_press_collect_param(FacSwitch_STOP);
                             delay_msec(200);
-                            showlog(QString("校准系数超阈值:%1(%2-%3)")
+                            showlog(QString("通道%3校准系数超阈值:%1(%2-%3)")
                                         .arg(LastCali.calib_factor[chan])
-                                        .arg(sensor_v[chan].para.lower_limit)
-                                        .arg(sensor_v[chan].para.upper_limit));
+                                        .arg(sensor_v[chan]->para.lower_limit)
+                                        .arg(sensor_v[chan]->para.upper_limit)
+                                        .arg(chan));
                             result = failValue;
                             state = STATE_SAVE_RESULT;
                             break;
@@ -2501,9 +2654,9 @@ void PressureSensorForm::startTask() {
 
             case STATE_TEST_CH_X:  //测试通道x
 
-                if (sensor_v[test_chan].test_status == TEST_INVALID) {
+                if (sensor_v[test_chan]->test_status == TEST_INVALID) {
                     showlog("设置为start");
-                    sensor_v[test_chan].sensor_test_status_set(TEST_START);
+                    sensor_v[test_chan]->sensor_test_status_set(TEST_START);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     ui_msg_show(product_model, STATE_TEST_CH_X, test_chan);
 
@@ -2511,7 +2664,7 @@ void PressureSensorForm::startTask() {
                     waittime->start();
 
                     state = STATE_TEST_CH_X_RESULT;
-                } else if (sensor_v[test_chan].test_status == TEST_NOTEST) {
+                } else if (sensor_v[test_chan]->test_status == TEST_NOTEST) {
                     state = STATE_TEST_CH_X_RESULT;
                 }
 
@@ -2519,7 +2672,7 @@ void PressureSensorForm::startTask() {
 
             case STATE_TEST_CH_X_RESULT:  //测试通道x结果
 
-                if (sensor_v[test_chan].test_status == TEST_SUC || sensor_v[test_chan].test_status == TEST_NOTEST) {
+                if (sensor_v[test_chan]->test_status == TEST_SUC || sensor_v[test_chan]->test_status == TEST_NOTEST) {
                     waittime->stop();
                     ui_msg_show(product_model, STATE_TEST_CH_X_RESULT, test_chan);
                     set_fixture_movement(product_model, STATE_TEST_CH_X_RESULT, test_chan);
@@ -2531,7 +2684,7 @@ void PressureSensorForm::startTask() {
                         state = STATE_TEST_ALL_RESULT;
                         showlog("所有通道测试完毕");
                     }
-                } else if (sensor_v[test_chan].test_status == TEST_FAIL) {
+                } else if (sensor_v[test_chan]->test_status == TEST_FAIL) {
                     waittime->stop();
                     pb->set_press_collect_param(FacSwitch_STOP);
                     delay_msec(200);
@@ -2851,7 +3004,6 @@ void PressureSensorForm::refreshBaseData(FacGetDevBaseInfo data) {
     readProduct = data.product_name;
     qDebug() << "refreshBaseData";
     showlog("获取到当前型号为：" + readProduct);
-    showlog(data.product_name);
 }
 
 void PressureSensorForm::on_TestButtonNFC_clicked() { QString ReadNfcData = ReadNfcDataProcess(); }
@@ -2860,4 +3012,6 @@ void PressureSensorForm::on_TestButton1_clicked() {
     // pb->get_base_info();  // 获取设备信息
 
     CheckNfcData();
+
+    qDebug() << "压感结果" << sensor_v[0]->para.lower_limit << sensor_v[1]->para.lower_limit;
 }

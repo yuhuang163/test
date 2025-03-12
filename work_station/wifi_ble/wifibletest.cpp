@@ -153,6 +153,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
 
         // 读取老化状态字符串
         QString ageState = SETTINGS.value("ProductInfo/Age_State").toString();
+
         // 读取蓝牙版本字符串
         QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
 

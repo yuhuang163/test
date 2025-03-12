@@ -405,14 +405,14 @@ LicensePair ProductLicense::getCloudLicense(const QString& environment, const QS
 }
 LicensePair ProductLicense::getUsaLicense() {
     usacounter++;
-    if (usacounter >= testmax) {
+    if (usacounter >= usacountermax) {
         usacounter = 0;
     }
     return usalicense[usacounter];
 }
 LicensePair ProductLicense::getProUsaLicense() {
     prousacounter++;
-    if (prousacounter >= testmax) {
+    if (prousacounter >= usaprocountermax) {
         prousacounter = 0;
     }
     return usaprolicense[usacounter];
@@ -421,7 +421,8 @@ LicensePair ProductLicense::getProUsaLicense() {
 ProductLicense::ProductLicense() : counter(0), testcounter(0) {
     max = sizeof(license) / sizeof(LicensePair);
     testmax = sizeof(testlicense) / sizeof(LicensePair);
-    usacounter = sizeof(usalicense) / sizeof(LicensePair);
+    usacountermax = sizeof(usalicense) / sizeof(LicensePair);
+    usaprocountermax = sizeof(usaprolicense) / sizeof(LicensePair);
     loadOtaDeviceKeys("IOT导出测试证书.csv");
 }
 void ProductLicense::loadOtaDeviceKeys(const QString& filePath) {

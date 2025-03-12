@@ -78,8 +78,11 @@ MainWindow::MainWindow(QWidget* parent) :
     at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
-    tts = new QTextToSpeech();
-
+    // tts = new QTextToSpeech(this);
+    // if (!tts) {
+    //     qDebug() << "Failed to initialize QTextToSpeech.";
+    //     return;
+    // }
     // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     updateMainStyle("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
@@ -1670,7 +1673,7 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     pb->set_start_ota_app(RotasFiledata);
     isWifiOtaContinue = true;
     while (isWifiOtaContinue) {
-        if (timeout.elapsed() > 3 * 60 * 1000) {  //下载超时退出
+        if (timeout.elapsed() > 5 * 60 * 1000) {  //下载超时退出
             appendAndSaveWifiOtaLog("下载超时");
             break;
         }
@@ -1810,7 +1813,8 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         return;
     }
     if (deviceSecret == "") {
-        showlog("获取密钥失败");
+        isWifiOtaContinue = false;
+        QMessageBox::warning(NULL, "警告", " 获取密钥失败\r\n检查网络是否被（王一）配置好\r\n");
         return;
     }
 
@@ -2050,6 +2054,7 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
+        pb->NEEDAES=0;
         macAddress = arg1;
         at->sendMac(macAddress);  // 发送mac地址
     }
@@ -3193,8 +3198,9 @@ void MainWindow::on_startBleOta_clicked() {
         QMessageBox::critical(this, "错误", "无法打开固件OTA文件");
         return;
     }
+    qDebug() << "当前ota产品为" << connectProductName;
     QByteArray fileData_source;
-    if (connectProductName != "U7" || connectProductName != "U7P") {
+    if (connectProductName != "U7" && connectProductName != "U7P") {
         if (connectProductName == "Y20PS")
             pb->NEEDAES = 1;
         QString filePath_source = ui->otaFilePath_source->text();
@@ -3230,7 +3236,7 @@ void MainWindow::on_startBleOta_clicked() {
     }
     showlog("假装app成功");
 
-    if (connectProductName != "U7" || connectProductName != "U7P") {
+    if (connectProductName != "U7" && connectProductName != "U7P") {
         QString sourceMd5 = calculateMD5(fileData_source);
         QString FWMd5 = calculateMD5(fileData);
 
@@ -3283,7 +3289,7 @@ void MainWindow::on_startBleOta_clicked() {
     at->sendOTADATA(1);
     showlog("已发送OTA数据通道开启");
     waitWork(1000);
-    if (connectProductName != "U7" || connectProductName != "U7P") {
+    if (connectProductName != "U7" && connectProductName != "U7P") {
         int totalSize = fileData_source.size();
         int offset = 0;
         int packetSize = 224;
@@ -3323,7 +3329,7 @@ void MainWindow::on_startBleOta_clicked() {
         showlog("所有数据包发送完成");
     }
     pb->reset_all_pb();
-    if (connectProductName != "U7" || connectProductName != "U7P") {
+    if (connectProductName != "U7" && connectProductName != "U7P") {
         while (!pb->getisOtaStart()) {  //接收请求可以发送下一包
             showlog("等待手柄请求发送固件包!");
 

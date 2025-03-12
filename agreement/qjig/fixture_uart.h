@@ -122,6 +122,7 @@ namespace Ui {
 class Fixture_uart : public QWidget {
     Q_OBJECT
 public:
+    qint64 last_sent_timestamp = 0;
     std::atomic<bool> running;
     QFuture<void> future;
     // void closeEvent(QCloseEvent *)override;
@@ -132,10 +133,10 @@ public:
     void sendFixtureData(FixtureState fixstate);
 
     const char* commands[COMMAND_ID_MAX][6];
-#if 0  // !IS_INDEPENDENT
+
     machine_command_id_e last_commid = COMMAND_ID_MAX;
     qint64 last_commid_timestamp = 0;
-#endif
+
     void FixtureCommandInit(void);
     void send_command_to_machine(int command_id, int numb);
     void delay_msec(unsigned int msec);
@@ -193,7 +194,6 @@ private:
     QSerialPort* fixtureSerialPort;
     QTimer* fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;
-    qint64 last_sent_timestamp = 0;
 
 signals:
     void send_data_to_mechine(const FixturePacketData datapack);

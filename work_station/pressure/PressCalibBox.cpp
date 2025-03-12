@@ -126,7 +126,97 @@ void PressCalibBox::checkAllover(int fixtureNumber) {
         reset_display_state();
     }
 }
+// void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
+//     qDebug() << "开始发送到治具";
+//     Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, PacketData.machineNumber);
+// }
 void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
-    qDebug() << "开始发送到治具";
-    Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, PacketData.machineNumber);
+    qDebug() << "开始发送到治具" << PacketData.machine_command_id << SETTINGS.value("Mes/Product_Name").toString();
+    if (SETTINGS.value("Mes/Product_Name").toString() == "Y20P") {
+        if (1)  //默认y20p非独立
+        {
+            qDebug() << "当前是"
+                     << "Y20P";
+            switch (PacketData.machine_command_id) {
+                case COMMAND_ID_TRAY_IN:
+                case COMMAND_ID_FIXED_BLOCK_DOWN:
+                    for (int i = 0; i < testList.size(); i++) {
+                        //只要有一个不在状态就返回
+                        if (testList[i]->get_independent_state() < STATE_CALIB_STATIC_WAIT) {
+                            qDebug() << "STATE_CALIB_STATIC_WAIT这个还不满足" << i;
+                            return;
+                        }
+                    }
+                    break;
+
+                case COMMAND_ID_BTH_DOWN_200:
+                    for (int i = 0; i < testList.size(); i++) {
+                        if (testList[i]->get_independent_state() < STATE_CALIB_CH0) {
+                            qDebug() << "STATE_CALIB_CH0这个还不满足" << i;
+                            return;
+                        }
+                    }
+                    break;
+
+                case COMMAND_ID_KEY_DOWN_200:
+                case COMMAND_ID_BTH_UP:
+                    for (int i = 0; i < testList.size(); i++) {
+                        if (testList[i]->get_independent_state() < STATE_CALIB_CH1) {
+                            qDebug() << "STATE_CALIB_CH1这个还不满足" << i;
+                            return;
+                        }
+                    }
+                    break;
+
+                case COMMAND_ID_KEY_UP:
+                case COMMAND_ID_FIXED_BLOCK_UP:
+                case COMMAND_ID_TRAY_OUT:
+                    for (int i = 0; i < testList.size(); i++) {
+                        if (testList[i]->get_independent_state() < STATE_CALIB_RESULT) {
+                            qDebug() << "STATE_CALIB_RESULT这个还不满足" << i;
+                            return;
+                        }
+                    }
+                    break;
+            }
+
+            qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
+            qint64 last_sent_timestamp = Fixture_uart_ui->last_commid_timestamp;
+
+            // 此处处理是为了等治具到位之后才进行下一步
+            switch (Fixture_uart_ui->last_commid) {
+                case COMMAND_ID_TRAY_IN:
+                case COMMAND_ID_TRAY_OUT:
+                    if (current_timestamp - last_sent_timestamp < 3000 && last_sent_timestamp != 0) {
+                        Fixture_uart_ui->delay_msec(3000);
+                    }
+                    break;
+
+                case COMMAND_ID_FIXED_BLOCK_DOWN:
+                case COMMAND_ID_FIXED_BLOCK_UP:
+                case COMMAND_ID_BTH_DOWN_200:
+                case COMMAND_ID_KEY_DOWN_200:
+                case COMMAND_ID_BTH_UP:
+                case COMMAND_ID_KEY_UP:
+                    if (current_timestamp - last_sent_timestamp < 2000 && last_sent_timestamp != 0) {
+                        Fixture_uart_ui->delay_msec(2000);
+                    }
+                    break;
+            }
+
+            Fixture_uart_ui->last_commid = PacketData.machine_command_id;
+
+            qDebug() << "machine_command_id" << PacketData.machine_command_id << PacketData.machineNumber;
+            Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, 0);
+
+            if (PacketData.machine_command_id == COMMAND_ID_FIXED_BLOCK_DOWN) {
+                Fixture_uart_ui->delay_msec(3000);
+                for (int i = 0; i < testList.size(); i++) {
+                    testList[i]->set_independent_state(STATE_CALIB_STATIC_START);
+                }
+            }
+        }
+    } else {
+        Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, PacketData.machineNumber);
+    }
 }

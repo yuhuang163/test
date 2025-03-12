@@ -475,8 +475,12 @@ void ageing::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
+#if 0
                     pb->get_battery();
                     state = STATE_GETBATTERY;
+#endif
+                    state = STATE_CHECK_FLASH;
+
                 } else {
                     waitWork(500);
                     pb->set_forbid_sleep(FacSwitch_OPEN);

@@ -181,9 +181,6 @@ private:
         FUNCTION_MAX,
     } function_e;
 
-    QStringList system_command_list = {"/c:zero", "/c:-21000s", "/c:200g", "/c:250g", "/c:350g"};
-    void system_cmd(QString command, system_command_e numb);
-
     State state = STATE_IDLE;
 
     void clear_display();
@@ -199,13 +196,14 @@ private:
     QTime transTime;
     QTime countdowntime;
     QTimer* waittime = new QTimer(this);
-    int pressTestTime = 5000; //测试时间
-    int measure_wait_time =  15000; //校准时间
+    int pressTestTime = 5000;       //测试时间
+    int measure_wait_time = 15000;  //校准时间
     bool isovertime = 0;
+    int AdcShakeValue = 100;
 
     std::vector<QCustomPlot*> graph_adc_vector;
     std::vector<QCustomPlot*> graph_value_vector;
-    std::vector<ndt_sensor_cali> sensor_v;
+    std::vector<ndt_sensor_cali*> sensor_v;
 
     QString stringsn;
     QString macAddress = "没有mac地址";

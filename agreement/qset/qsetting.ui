@@ -1871,211 +1871,13 @@
          </layout>
         </widget>
        </item>
-       <item row="0" column="6" rowspan="6" colspan="2">
+       <item row="0" column="6" rowspan="7" colspan="2">
         <widget class="QGroupBox" name="pressureSettingsWidget">
          <property name="title">
           <string>压感相关设置</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_5">
-          <item row="14" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_9">
-            <item>
-             <widget class="QLabel" name="pressSignalStrengthLabel_3">
-              <property name="text">
-               <string>电源校准系数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressUpperLimitLayout_3">
-              <item>
-               <widget class="QLabel" name="pressUpperLimitLabel_3">
-                <property name="text">
-                 <string>上限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="powerPressUpperLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressLowerLimitLayout_3">
-              <item>
-               <widget class="QLabel" name="pressLowerLimitLabel_3">
-                <property name="text">
-                 <string>下限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="powerPressLowerLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-          <item row="11" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_16">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_BrushThresholdCount">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>刷头阈值个数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_BrushThresholdCount"/>
-            </item>
-           </layout>
-          </item>
-          <item row="12" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_6">
-            <item>
-             <widget class="QLabel" name="pressSignalStrengthLabel">
-              <property name="text">
-               <string>刷头校准系数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressUpperLimitLayout">
-              <item>
-               <widget class="QLabel" name="pressUpperLimitLabel">
-                <property name="text">
-                 <string>上限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="bthPressUpperLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressLowerLimitLayout">
-              <item>
-               <widget class="QLabel" name="pressLowerLimitLabel">
-                <property name="text">
-                 <string>下限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="bthPressLowerLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-          <item row="3" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_displayImageType">
-            <item>
-             <widget class="QLabel" name="label_displayImageType">
-              <property name="text">
-               <string>显示图像类型</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_displayImageType"/>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
-            <item>
-             <widget class="QLabel" name="label_testWaitTime">
-              <property name="text">
-               <string>测试等待时间</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
-            </item>
-           </layout>
-          </item>
-          <item row="7" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_2">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>压感治具第几代</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_PressMechine"/>
-            </item>
-           </layout>
-          </item>
-          <item row="9" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_18">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_ButtonThresholdCount">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>按键阈值个数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_ButtonThresholdCount"/>
-            </item>
-           </layout>
-          </item>
-          <item row="10" column="0" colspan="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_19">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_BrushThreshold">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>刷头阈值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
-            </item>
-           </layout>
-          </item>
-          <item row="13" column="0" colspan="2">
+          <item row="12" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
              <widget class="QLabel" name="pressSignalStrengthLabel_2">
@@ -2114,7 +1916,83 @@
             </item>
            </layout>
           </item>
-          <item row="6" column="0" colspan="2">
+          <item row="7" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_18">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_ButtonThresholdCount">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>按键adc阈值个数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_ButtonThresholdCount"/>
+            </item>
+           </layout>
+          </item>
+          <item row="11" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <item>
+             <widget class="QLabel" name="pressSignalStrengthLabel">
+              <property name="text">
+               <string>刷头校准系数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressUpperLimitLayout">
+              <item>
+               <widget class="QLabel" name="pressUpperLimitLabel">
+                <property name="text">
+                 <string>上限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="bthPressUpperLimitLineEdit"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressLowerLimitLayout">
+              <item>
+               <widget class="QLabel" name="pressLowerLimitLabel">
+                <property name="text">
+                 <string>下限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="bthPressLowerLimitLineEdit"/>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_individualMode">
+            <item>
+             <widget class="QLabel" name="label_individualMode">
+              <property name="text">
+               <string>单独哪个模式</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_individualMode"/>
+            </item>
+           </layout>
+          </item>
+          <item row="4" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_individualMode_2">
             <item>
              <widget class="QLabel" name="label_individualMode_2">
@@ -2128,7 +2006,58 @@
             </item>
            </layout>
           </item>
-          <item row="8" column="0" colspan="2">
+          <item row="0" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
+            <item>
+             <widget class="QLabel" name="label_testWaitTime">
+              <property name="text">
+               <string>测试等待时间</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
+            </item>
+           </layout>
+          </item>
+          <item row="3" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_displayImageType">
+            <item>
+             <widget class="QLabel" name="label_displayImageType">
+              <property name="text">
+               <string>显示图像类型</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_displayImageType"/>
+            </item>
+           </layout>
+          </item>
+          <item row="8" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_19">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_BrushThreshold">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>刷头adc阈值</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
+            </item>
+           </layout>
+          </item>
+          <item row="6" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_17">
             <property name="topMargin">
              <number>0</number>
@@ -2142,12 +2071,51 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>按键阈值</string>
+               <string>按键adc阈值</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_ButtonThreshold"/>
+            </item>
+           </layout>
+          </item>
+          <item row="13" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_9">
+            <item>
+             <widget class="QLabel" name="pressSignalStrengthLabel_3">
+              <property name="text">
+               <string>电源校准系数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressUpperLimitLayout_3">
+              <item>
+               <widget class="QLabel" name="pressUpperLimitLabel_3">
+                <property name="text">
+                 <string>上限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="powerPressUpperLimitLineEdit"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressLowerLimitLayout_3">
+              <item>
+               <widget class="QLabel" name="pressLowerLimitLabel_3">
+                <property name="text">
+                 <string>下限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="powerPressLowerLimitLineEdit"/>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -2165,17 +2133,76 @@
             </item>
            </layout>
           </item>
-          <item row="2" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_individualMode">
+          <item row="5" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
             <item>
-             <widget class="QLabel" name="label_individualMode">
+             <widget class="QLabel" name="label_2">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="text">
-               <string>单独哪个模式</string>
+               <string>压感治具第几代</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_individualMode"/>
+             <widget class="QLineEdit" name="lineEdit_PressMechine"/>
+            </item>
+           </layout>
+          </item>
+          <item row="9" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_16">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_BrushThresholdCount">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>刷头adc阈值个数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BrushThresholdCount"/>
+            </item>
+           </layout>
+          </item>
+          <item row="10" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_20">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_BrushThresholdCount_2">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>adc值震荡幅度</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_press_adc_shake">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

@@ -53,9 +53,9 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.5.4"
+#define DEBUG_VER "电刷产测工具   V1.5.5"
 #define CAMERA_VER "摄像测试工站   V1.3.8"
-#define AGE_VER "老化测试工站   V1.3.5"
+#define AGE_VER "老化测试工站   V1.3.6"
 #define MOTOR_VER "电机校准工站   V1.3.4"
 #define QC_VER "静态电流测试   V1.5.2"
 #define SCREEN_VER "屏幕测试工站   V1.2.3"
@@ -63,17 +63,21 @@
 #define SINGLE_VER "信号测试工站   V1.5.3"
 #define FREE_VER "自由测试工站   V1.1.5"
 #define IMU_VER "IMU校准工站    V1.5.4"
-#define PCBA_VER "电刷板子测试   V1.5.0"
-#define PRESSURE_VER "压感校测工站   V1.3.6"
+#define PCBA_VER "电刷板子测试   V1.5.1"
+#define PRESSURE_VER "压感校测工站   V1.3.7"
 
 
 
-// [DEBUG_VER] 增加dmp闪退报告记录，ota压测互斥勾选，蓝牙ota的资源固件的进度条，开发一机一秘云端ota，适配更多的产品bleota
-// [PRESSURE_VER] 增加压感测试的超时时间设置
-// [CAMERA_VER] 摄像头测试重复获取设备信息
+// [DEBUG_VER] 移除ttl音频功能（部分用户会闪退）修复u7ota的兼容问题，关闭加密通信当正常连接的时候，ota密钥数字显示修复
+// [PRESSURE_VER] 增加压感校准震荡限制，ndt校准不良原因打印，修改不同设备的结构，默认参数选择产品自动配置出现
+// [AGE_VER] 移除电量检测
+// [PCBA_VER] 适配q20 141的工作电流测试
+//
+
+// [CAMERA_VER] 摄像头测试重复获取设备信息 
 // [PCBA_VER] mes上报内容修改，y20机械压感测试
 //
-// [AGE_VER] 修改subpid读取方式为从文件获取
+
 // [SCREEN_VER] 修改subpid读取方式为从文件获取
 
 // [SINGLE_VER] 修改subpid读取方式为从文件获取

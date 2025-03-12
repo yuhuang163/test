@@ -556,7 +556,7 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
 }
 
 void Fixture_uart::FixtureCommandInit(void) {
-#if 1
+#if 0
     // Y20Pro校准治具
     commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
     commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O\r\n"};
@@ -642,9 +642,8 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
     }
     last_sent_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
 
-#if 0  //! IS_INDEPENDENT
+
     last_commid_timestamp = last_sent_timestamp;
-#endif
 
     if (command_id >= COMMAND_ID_INVALID && command_id < COMMAND_ID_MAX && numb >= 0 && numb < 4) {
         qDebug() << "command_id:" << command_id << "numb" << numb;

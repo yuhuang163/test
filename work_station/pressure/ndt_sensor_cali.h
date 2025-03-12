@@ -89,7 +89,10 @@ typedef enum {
     cal_ch1_leave_flag,
     cal_finally_flag
 } CAL_FLAG_STATE;
-class ndt_sensor_cali {
+
+class ndt_sensor_cali : public QObject {
+    Q_OBJECT
+
 public:
     unsigned short* calib_result = 0;
     unsigned int temperature = 0;
@@ -100,7 +103,7 @@ public:
         unsigned int lower_limit;  // 校准系数下限
         int16_t adc_threshold;     // adc变化量阈值，达到阈值之后才开始校准
         int16_t count_threshold;   // 超过adc阈值之后开始计数，超过该阈值之后才开始校准
-        int32_t first_adc=0;         // 第一次的adc值
+        int32_t first_adc = 0;     // 第一次的adc值
 
         int16_t test_grams[3] = {0};      // 测试压力
         int16_t test_tolerance[3] = {0};  // 测试容差
@@ -146,7 +149,7 @@ public:
     QString ui_msg_test[3];
 
     // send_state
-    int32_t send_state = 0;//治具发送完毕状态
+    int32_t send_state = 0;  //治具发送完毕状态
 
 private:
     QString donotmove = "人员：别移动牙刷";
@@ -184,9 +187,11 @@ private:
     short noisePeak[CHANNEL_MAX] = {0};
     short noiseStd[CHANNEL_MAX] = {0};
     short noiseLoopTime = 0;
-    int noiseAdcBuf[CHANNEL_MAX][NOISE_BUF_COUNT] = {0};
+    int noiseAdcBuf[CHANNEL_MAX][NOISE_BUF_COUNT] = {{0}};
     int noiseAdcBufSum[CHANNEL_MAX] = {0};
     int noiseAdcDiffSum[CHANNEL_MAX] = {0};
+signals:
+    void send_press_cali_msg(QString msg);
 };
 
 #endif  // sensor_cali_H

@@ -91,117 +91,82 @@ void ndt_sensor_cali::sensor_cali_set(uint8_t stat)  // 开关
 
 void ndt_sensor_cali::sensor_test_status_set(TEST_STATUS_E t_status) { test_status = t_status; }
 
-void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine)  // 根据不同机型进行初始化
-{
-    switch (machine) {
-        case CAL_CHANNEL_F20_CH0:  // f20_bth
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-            CAL_SIGNAL_CH0 = 70;   // 差异值刷头
-            CAL_WEIGHT_CH0 = 200;  // 刷头校准质量(g)
+struct CalibConfig {
+    int channel_num;
+    int signal_ch0;
+    int signal_ch1;
+    int weight_ch0;
+    int weight_ch1;
+    int lower_limit;
+    int upper_limit;
+    std::vector<std::string> ui_msg_tip;
+    std::vector<std::string> ui_msg_test;
+};
 
-            para.lower_limit = 1000;
-            para.upper_limit = 9000;
+// 预定义不同机型的校准参数
+const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
+    {CAL_CHANNEL_F20_CH0,
+     {1,
+      70,
+      0,
+      200,
+      0,
+      1000,
+      9000,
+      {"请勿移动", "人员：刷头放400g砝码", "人员：拿走砝码"},
+      {"人员：请放50g砝码", "人员：请放350g砝码", "人员：请放450g砝码"}}},
 
-            ui_msg_tip[0] = donotmove;
-            ui_msg_tip[1] = "人员：刷头放砝码";
-            ui_msg_tip[2] = "人员：拿走砝码";
+    {CAL_CHANNEL_F20_CH1,
+     {1, 10, 0, 200, 0, 1000, 15000, {"请勿移动", "人员：模式按键放300g砝码", "人员：拿走砝码"}, {"开始测试模式按键"}}},
 
-            // 测试的msg提醒
-            ui_msg_test[0] = "人员：请放50g砝码";
-            ui_msg_test[1] = "人员：请放350g砝码";
-            ui_msg_test[2] = "人员：请放450g砝码";
-            break;
+    {CAL_CHANNEL_F20_CH2,
+     {1, 10, 0, 200, 0, 1000, 15000, {"请勿移动", "人员：电源按键放砝码", "人员：拿走砝码"}, {"开始测试电源按键"}}},
 
-        case CAL_CHANNEL_F20_CH1:  // f20_key1
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-            CAL_SIGNAL_CH0 = 10;   // 差异值按键
-            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
+    {CAL_CHANNEL_Y20_CH0, {1, 300, 0, 400, 0, 0, 0, {}, {}}},
+    {CAL_CHANNEL_Y20_CH1, {1, 40, 0, 200, 0, 0, 0, {}, {}}},
+    {CAL_CHANNEL_U7_CH0, {1, 40, 0, 300, 0, 0, 0, {}, {}}},
+    {CAL_CHANNEL_Y21_CH0, {1, 250, 0, 400, 0, 0, 0, {}, {}}},
+    {CAL_CHANNEL_P30P_CH0, {1, 40, 0, 300, 0, 0, 0, {}, {}}},
 
-            para.lower_limit = 1000;
-            para.upper_limit = 15000;
+    {CAL_CHANNEL_Y30PS_CH0, {1, 80, 80 / 5, 400, 400, 0, 0, {}, {}}},
+    {CAL_CHANNEL_Y20PO_CH0, {1, 20, 20 / 5, 200, 200, 0, 0, {}, {}}}};
 
-            ui_msg_tip[0] = donotmove;
-            ui_msg_tip[1] = "人员：模式按键放砝码";
-            ui_msg_tip[2] = "人员：拿走砝码";
+void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
+    auto it = calib_table.find(machine);
+    if (it == calib_table.end())
+        return;  // 无匹配机型，直接返回
 
-            // 测试的msg提醒
-            ui_msg_test[0] = "开始测试模式按键";
-            break;
+    const CalibConfig& config = it->second;
 
-        case CAL_CHANNEL_F20_CH2:  // f20_key2
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-            CAL_SIGNAL_CH0 = 10;   // 差异值按键
-            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
+    // 统一赋值
+    CAL_CHANNEL_NUM = config.channel_num;
+    CAL_SIGNAL_CH0 = config.signal_ch0;
+    CAL_SIGNAL_CH1 = config.signal_ch1;
+    CAL_WEIGHT_CH0 = config.weight_ch0;
+    CAL_WEIGHT_CH1 = config.weight_ch1;
+    // para.lower_limit = config.lower_limit;
+    // para.upper_limit = config.upper_limit;
 
-            para.lower_limit = 1000;
-            para.upper_limit = 15000;
+    if (!config.ui_msg_tip.empty()) {
+        size_t count = std::min(config.ui_msg_tip.size(), size_t(3));  // 防止数组越界
+        for (size_t i = 0; i < count; ++i) {
+            ui_msg_tip[i] = QString::fromStdString(config.ui_msg_tip[i]);
+        }
+    }
 
-            ui_msg_tip[0] = donotmove;
-            ui_msg_tip[1] = "人员：电源按键放砝码";
-            ui_msg_tip[2] = "人员：拿走砝码";
+    if (!config.ui_msg_test.empty()) {
+        size_t count = std::min(config.ui_msg_test.size(), size_t(3));
+        for (size_t i = 0; i < count; ++i) {
+            ui_msg_test[i] = QString::fromStdString(config.ui_msg_test[i]);
+        }
+    }
 
-            // 测试的msg提醒
-            ui_msg_test[0] = "开始测试电源按键";
-            break;
-
-        case CAL_CHANNEL_Y20_CH0:  // y20p_bth
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-
-            CAL_SIGNAL_CH0 = 300;  // 差异值刷头
-
-            CAL_WEIGHT_CH0 = 400;  // 刷头校准质量(g)
-            break;
-
-        case CAL_CHANNEL_Y20_CH1:  // y20p_key
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-
-            CAL_SIGNAL_CH0 = 40;  // 差异值按键
-
-            CAL_WEIGHT_CH0 = 200;  // 按键校准质量(g)
-            break;
-
-        case CAL_CHANNEL_U7_CH0:
-            CAL_CHANNEL_NUM = 1;  // 校准通道数
-
-            CAL_SIGNAL_CH0 = 40;  // 差异值按键
-
-            CAL_WEIGHT_CH0 = 300;  // 按键校准质量(g)
-            break;
-
-        case CAL_CHANNEL_Y21_CH0:
-            CAL_CHANNEL_NUM = 1;  // 校准通道数
-
-            CAL_SIGNAL_CH0 = 250;  // 差异值刷头
-
-            CAL_WEIGHT_CH0 = 400;  // 按键刷头质量(g)
-            break;
-
-        case CAL_CHANNEL_P30P_CH0:
-            CAL_CHANNEL_NUM = 1;   // 校准通道数
-            CAL_SIGNAL_CH0 = 40;   // 差异值按键
-            CAL_WEIGHT_CH0 = 300;  // 按键刷头质量(g)
-            break;
-        case CAL_CHANNEL_Y30PS_CH0:
-            CAL_CHANNEL_NUM = 1;  // 校准通道数
-            product = CAL_CHANNEL_Y30PS_CH0;
-            CAL_SIGNAL_CH0 = 80;                  // 差异值按键
-            CAL_SIGNAL_CH1 = CAL_SIGNAL_CH0 / 5;  // 差异值辅助元器件
-            CAL_WEIGHT_CH0 = 400;                 // 按键刷头质量(g)
-            CAL_WEIGHT_CH1 = 400;                 // 按键刷头质量(g)
-            break;
-        case CAL_CHANNEL_Y20PO_CH0:
-            CAL_CHANNEL_NUM = 1;  // 校准通道数
-            product = CAL_CHANNEL_Y20PO_CH0;
-            CAL_SIGNAL_CH0 = 20;                  // 差异值按键
-            CAL_SIGNAL_CH1 = CAL_SIGNAL_CH0 / 5;  // 差异值辅助元器件
-            CAL_WEIGHT_CH0 = 200;                 // 按键刷头质量(g)
-            CAL_WEIGHT_CH1 = 200;                 // 按键刷头质量(g)
-
-            break;
-
-        default: break;
+    // 处理特定产品
+    if (machine == CAL_CHANNEL_Y30PS_CH0 || machine == CAL_CHANNEL_Y20PO_CH0) {
+        product = machine;
     }
 }
+
 /*
 * Description   : 校准流程
 * Paramter      : adc: 输入获取到的adc
@@ -302,10 +267,17 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_v2(short* adc, unsigned short
         }
     } else if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME)) {
         calProcessFlag = cal_finally_flag;
+
         if (singleFlag[CH0] == 0) {
-            err[CH0] = err[CH0] | 0x08;
+            err[CH0] = err[CH0] | 0x08;  // 0000 1000
+            QString errorMessage =
+                QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH0).arg(diffMaxFlag[CH0]);
+            send_press_cali_msg(errorMessage);
         }
         if (singleFlag[CH1] == 0) {
+            QString errorMessage =
+                QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH1).arg(diffMaxFlag[CH1]);
+            send_press_cali_msg(errorMessage);
             err[CH1] = err[CH1] | 0x08;
         }
     }
@@ -328,7 +300,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
     {
         Self_Checking_Proces(adc, err);
         calProcessFlag = cal_self_checking_flag;
-        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT) {
+        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT) {  // 180
             adcHeadSum[CH0] += adc[CH0];
             if (CAL_CHANNEL_NUM == 2) {
                 adcHeadSum[CH1] += adc[CH1];
@@ -372,7 +344,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
     if (CAL_CHANNEL_NUM == 2) {
         if (cycles < (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME) &&
             cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME)) {
-            diffData[CH1] = adc[CH1] - adcHead[CH1];
+            diffData[CH1] = adc[CH1] - adcHead[CH1];  //正常值减去平均值,差异值大于标准才可以通过
             if (diffData[CH1] > CAL_SIGNAL_CH1) {
                 diffMaxFlag[CH1]++;
             } else {
@@ -384,7 +356,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
                 calProcessFlag = cal_ch1_press_flag;
             }
 
-            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {
+            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {  //大于180
                 diffDataSum[CH1] += diffData[CH1];
                 // printf("diffData:%d\r\n",diffData[CH1]);
                 if (diffMaxFlag[CH1] == CAL_SIGNAL_TIME) {
@@ -400,9 +372,15 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
         if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME)) {
             calProcessFlag = cal_finally_flag;
             if (singleFlag[CH0] == 0) {
-                err[CH0] = err[CH0] | 0x08;
+                err[CH0] = err[CH0] | 0x08;  // 0000 1000
+                QString errorMessage =
+                    QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH0).arg(diffMaxFlag[CH0]);
+                send_press_cali_msg(errorMessage);
             }
             if (singleFlag[CH1] == 0) {
+                QString errorMessage =
+                    QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH1).arg(diffMaxFlag[CH1]);
+                send_press_cali_msg(errorMessage);
                 err[CH1] = err[CH1] | 0x08;
             }
         }
@@ -416,7 +394,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
     } else {
         qDebug() << "CAL_CHANNEL_NUM_error";
     }
-    qDebug() << "calProcessFlag=" << calProcessFlag;
+    // qDebug() << "calProcessFlag=" << calProcessFlag;
     return calProcessFlag;
 }
 /*
@@ -434,8 +412,8 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
             if (CAL_CHANNEL_NUM == 2) {
                 gSensorPressAdc[1] = adc[1];
             }
-            qDebug() << "按键的adc " << adc[0];       // 刷头
-            qDebug() << "辅助元器件的adc" << adc[1];  // 按键
+            // qDebug() << "按键的adc " << adc[0];       // 刷头
+            // qDebug() << "辅助元器件的adc" << adc[1];  // 按键
 
             // qDebug() << "CSU18M68, Cali BrushHead: PressAdc = " << gSensorPressAdc[0];  // 刷头
             // qDebug() << "CSU18M68, Cali Key: PressAdc =" << gSensorPressAdc[1];         // 按键
@@ -473,11 +451,11 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
                     }
                 }
             } else {
-                qDebug() << "单通道，ndt算法返回值" << gs32SensorFlag;
+                // qDebug() << "单通道，ndt算法返回值" << gs32SensorFlag;
                 if (gs32SensorFlag == cal_self_checking_flag) {
-                    qDebug() << "别移动,正在获取0点ADC";
+                    // qDebug() << "别移动,正在获取0点ADC";
                 } else if (gs32SensorFlag == cal_ch0_press_flag) {
-                    qDebug() << "校准通道0";
+                    // qDebug() << "校准通道0";
                 } else if (gs32SensorFlag == cal_ch0_leave_flag) {
                     if (CAL_CHANNEL_NUM == 1) {
                         qDebug() << "校准事件完成";
@@ -536,7 +514,11 @@ unsigned char ndt_sensor_cali::Self_Checking_Proces(short* adc, short* err) {
 
     for (ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
         if (adc[ch] < OFFSET_ADC_NEGATIVE || adc[ch] > OFFSET_ADC_POSITIVE) {
-            err[ch] = err[ch] | 0x01;
+            err[ch] = err[ch] | 0x01;  // 0000 0001
+
+            QString errorMessage =
+                QString("错误：adc值不在范围 [%1, %2]").arg(OFFSET_ADC_NEGATIVE).arg(OFFSET_ADC_POSITIVE);
+            send_press_cali_msg(errorMessage);
         }
     }
     if (Noise_CalProc(adc, noisePeak, noiseStd)) {
@@ -546,9 +528,19 @@ unsigned char ndt_sensor_cali::Self_Checking_Proces(short* adc, short* err) {
         for (ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
             if (noiseStd[ch] > NOISE_STD_STANDARD) {
                 err[ch] = err[ch] | 0x02;
+                QString errorMessage = QString("错误：通道 %1 的噪声标准差超过标准%2，当前为%3")
+                                           .arg(ch)
+                                           .arg(NOISE_STD_STANDARD)
+                                           .arg(noiseStd[ch]);
+                send_press_cali_msg(errorMessage);
             }
             if (noisePeak[ch] > NOISE_PEAK_STANDARD) {
                 err[ch] = err[ch] | 0x04;
+                QString errorMessage = QString("错误：通道 %1 的噪声峰值超过标准%2，当前为%3")
+                                           .arg(ch)
+                                           .arg(NOISE_PEAK_STANDARD)
+                                           .arg(noisePeak[ch]);
+                send_press_cali_msg(errorMessage);
             }
         }
         ret = 1;

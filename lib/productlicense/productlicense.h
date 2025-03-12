@@ -15,10 +15,10 @@ public:
     void printOtaDeviceKeys();                    // 调试用
     QList<QMap<QString, QString>> otaDeviceList;  // 存储 OTA 设备密钥信息
     int otaDeviceIndex = 0;
-    int counter;
-    int testcounter;
-    int usacounter;
-    int prousacounter;
+    int counter = 0;
+    int testcounter = 0;
+    int usacounter = 0;
+    int prousacounter = 0;
 
     static ProductLicense& getInstance() {
         static ProductLicense instance;
@@ -29,7 +29,7 @@ public:
     LicensePair getTestLicense();
     LicensePair getUsaLicense();
     LicensePair getProUsaLicense();
-    LicensePair getCloudLicense(const QString& environment,const QString& productKey, const QString& deviceIdMac);
+    LicensePair getCloudLicense(const QString& environment, const QString& productKey, const QString& deviceIdMac);
 
     static ProductLicense& getTestInstance() {
         static ProductLicense Testinstance;
@@ -43,6 +43,8 @@ private:
 
     int max;
     int testmax;
+    int usacountermax;
+    int usaprocountermax;
 };
 
 #endif  // PRODUCTLICENSE_H
