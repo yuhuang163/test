@@ -81,7 +81,15 @@ QByteArray Qpb::aes256Decrypt(const QByteArray& encrypted) {
             return QByteArray();
         }
     }
+    if (encrypted.size() == 240) {
+        QByteArray lastBlock = decrypted.right(16);
 
+        bool validPadding = std::all_of(lastBlock.begin(), lastBlock.end(), [](char c) { return c == 0x10; });
+        qDebug() << "aes256Decrypt validPadding" << validPadding;
+        if (!validPadding) {
+            qDebug() << "解密后数据末尾填充错误，完整数据:" << lastBlock.toHex().toUpper();
+        }
+    }
     // 移除填充字节
     decrypted.chop(padLen);
     return decrypted;
@@ -159,8 +167,19 @@ QByteArray Qpb::aes256Encrypt(const QByteArray& input) {
 
     // 执行 CBC 模式加密
     AES_CBC_encrypt_buffer(&ctx, reinterpret_cast<uint8_t*>(encrypted.data()), encrypted.size());
-    if (padLen != 16)
-        qDebug() << "加密前的数据大小" << input.size() << "加密后数据大小" << encrypted.size();
+
+    // 额外的解密验证逻辑
+    if (input.size() == 224) {
+        if (padLen != 16)
+            qDebug() << "加密前的数据大小" << input.size() << "加密后数据大小" << encrypted.size();
+        QByteArray lastBlock = padded.right(16);
+        bool validPadding = std::all_of(lastBlock.begin(), lastBlock.end(), [](char c) { return c == 0x10; });
+        qDebug() << "aes256Encrypt validPadding" << validPadding;
+        if (!validPadding) {
+            qDebug() << "加密前数据末尾填充错误，完整数据:" << lastBlock.toHex().toUpper();
+        }
+        aes256Decrypt(encrypted);
+    }
     return encrypted;
 }
 uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {

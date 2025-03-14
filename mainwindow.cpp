@@ -3140,6 +3140,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
                 return;  // 停止测试
             }
         }
+        pb->NEEDAES = 0;
         pb->setPbMode(1);  //为了区分收到的解包工厂接口
         on_getBasicInfoButton_clicked();
         waitWork(500);
