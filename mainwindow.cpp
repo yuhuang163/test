@@ -264,6 +264,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
 
+    connect(pb, SIGNAL(send_photosensitive_info(FacDevInfo)), this, SLOT(solve_photosensitive_info(FacDevInfo)));
+    connect(pb, SIGNAL(send_sd_info(FacDevInfo)), this, SLOT(solve_sd_info(FacDevInfo)));
+
     connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
             SLOT(getPictureSendOver(FacPictureDataAck)));
 
@@ -2054,7 +2057,7 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
-        pb->NEEDAES=0;
+        pb->NEEDAES = 0;
         macAddress = arg1;
         at->sendMac(macAddress);  // 发送mac地址
     }
@@ -3302,13 +3305,13 @@ void MainWindow::on_startBleOta_clicked() {
             // 等待允许发送下一包
             if (stopBleOta) {
                 showlog("发送资源数据包停止测试");
-
                 return;  // 停止测试
             }
             QByteArray packdata;
-            if (connectProductName == "Y20PS")
+            if (connectProductName == "Y20PS") {
                 packdata = pb->aes256Encrypt(packet);
-            else
+
+            } else
                 packdata = packet;
 
             // 发送当前分包数据
@@ -3362,15 +3365,20 @@ void MainWindow::on_startBleOta_clicked() {
         QByteArray chunk = fileData.mid(offset, size);
         if (currentChunk >= numChunks) {
             showlog("文件发送完毕!");
-            qDebug() << "ota write data" << chunk.size() << currentChunk << offset << totalBleSendData;
+            qDebug() << "ota write data will over" << chunk.size() << totalOtaSize << currentChunk << offset
+                     << totalBleSendData << numChunks;
             bleotatimer->stop();
             disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
             currentChunk = 0;
             return;
         }
-        if (connectProductName == "Y20PS")
-            dongleSerialPort->write(pb->aes256Encrypt(chunk));
-        else
+        if (connectProductName == "Y20PS") {
+            QByteArray packdata;
+            packdata = pb->aes256Encrypt(chunk);
+
+            dongleSerialPort->write(packdata);
+
+        } else
             dongleSerialPort->write(chunk);
         totalBleSendData = chunk.size() + totalBleSendData;
         if (currentChunk % 20 == 0) {
@@ -3704,3 +3712,15 @@ void MainWindow::on_set_mode_returnPressed() {
 
     pb->set_device_mode(ui->set_mode->text().toInt());
 }
+
+void MainWindow::on_btn_startRecording_clicked() { pb->set_mic_control(1); }
+
+void MainWindow::on_btn_stopRecording_clicked() { pb->set_mic_control(0); }
+
+void MainWindow::on_btn_startUpload_clicked() { pb->set_upload_record_data(1); }
+
+void MainWindow::on_btn_stopUpload_clicked() { pb->set_upload_record_data(0); }
+
+void MainWindow::on_btn_getSDCardStatus_clicked() { pb->get_sd_card_info(); }
+
+void MainWindow::on_btn_getLDRInfo_clicked() { pb->get_light_sensor_info(); }

@@ -48,6 +48,7 @@ typedef enum _FactroyCmd {
     FactroyCmd_SET_BRUSH_RECORD = 51, 
     FactroyCmd_WIFI_DEMAND = 52, 
     FactroyCmd_FAC_LOG = 53, 
+    FactroyCmd_MIC_CONTROL = 54, 
     FactroyCmd_INTERNET_OTA = 64 
 } FactroyCmd;
 
@@ -112,7 +113,10 @@ typedef enum _FacDevInfoType {
     FacDevInfoType_IF_QUALIFIED = 5, /* 工厂测试结果 */
     FacDevInfoType_SUB_PID = 6, 
     FacDevInfoType_SKUID = 7, 
-    FacDevInfoType_MUSIC_STATE = 8 
+    FacDevInfoType_MUSIC_STATE = 8, 
+    /* for aitag */
+    FacDevInfoType_LIGHT_SENSOR = 20, 
+    FacDevInfoType_SD_CARD = 21 
 } FacDevInfoType;
 
 typedef enum _FacChargeStateType { 
@@ -127,6 +131,16 @@ typedef enum _FacBatteryType {
     FacBatteryType_TWO_BATTERY = 0, 
     FacBatteryType_ONE_BATTERY = 1 
 } FacBatteryType;
+
+/* for aitag */
+typedef enum _FacSDCardCmd { 
+    FacSDCardCmd_NOTHING = 0, 
+    FacSDCardCmd_UMOUNT = 1, 
+    FacSDCardCmd_MOUNT = 2, 
+    FacSDCardCmd_FORMAT = 3, 
+    FacSDCardCmd_R = 4, 
+    FacSDCardCmd_W = 5 
+} FacSDCardCmd;
 
 /* ********************老化类区域***************** */
 typedef enum _FacAgeingTestType { 
@@ -378,6 +392,13 @@ typedef struct _FacLedColor {
     uint32_t B; 
 } FacLedColor;
 
+/* ********************麦克风相关区域***************** */
+typedef struct _FacMicControl { 
+    FacSwitch switch_record; 
+    FacSwitch upload_record_data; 
+    FacErrorCode result; 
+} FacMicControl;
+
 typedef struct _FacMotoParam { 
     uint32_t freq; 
     float gain_or_duty; 
@@ -412,6 +433,12 @@ typedef struct _FacRegisterConfig {
     uint32_t addr; 
     uint32_t value; 
 } FacRegisterConfig;
+
+/* for aitag */
+typedef struct _FacSDCardInfo { 
+    FacSDCardCmd cmd; 
+    char data[64]; 
+} FacSDCardInfo;
 
 typedef PB_BYTES_ARRAY_T(24) FacSetBrushRecord_work_time_t;
 typedef PB_BYTES_ARRAY_T(12) FacSetBrushRecord_pressure_time_t;
@@ -538,6 +565,8 @@ typedef struct _FacDevInfoValue {
         char sub_pid[64];
         char sku_id[64];
         uint32_t music_state;
+        uint32_t light_sensor;
+        FacSDCardInfo sdcard;
     } value_item; 
     char write_info[64]; 
 } FacDevInfoValue;
@@ -706,6 +735,7 @@ typedef struct _FactoryDataPackage {
         FacSetBrushRecord set_brush_record;
         FacWifiDemand wifi_demand;
         FacBrushLog fac_log;
+        FacMicControl mic_control;
         FacInternetOta internet_ota;
     } command_data; 
 } FactoryDataPackage;
@@ -737,8 +767,8 @@ typedef struct _FactoryDataPackage {
 #define _FacSwitch_ARRAYSIZE ((FacSwitch)(FacSwitch_START+1))
 
 #define _FacDevInfoType_MIN FacDevInfoType_WIFI_INFO
-#define _FacDevInfoType_MAX FacDevInfoType_MUSIC_STATE
-#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_MUSIC_STATE+1))
+#define _FacDevInfoType_MAX FacDevInfoType_SD_CARD
+#define _FacDevInfoType_ARRAYSIZE ((FacDevInfoType)(FacDevInfoType_SD_CARD+1))
 
 #define _FacChargeStateType_MIN FacChargeStateType_ERROR
 #define _FacChargeStateType_MAX FacChargeStateType_NO_BATT
@@ -747,6 +777,10 @@ typedef struct _FactoryDataPackage {
 #define _FacBatteryType_MIN FacBatteryType_TWO_BATTERY
 #define _FacBatteryType_MAX FacBatteryType_ONE_BATTERY
 #define _FacBatteryType_ARRAYSIZE ((FacBatteryType)(FacBatteryType_ONE_BATTERY+1))
+
+#define _FacSDCardCmd_MIN FacSDCardCmd_NOTHING
+#define _FacSDCardCmd_MAX FacSDCardCmd_W
+#define _FacSDCardCmd_ARRAYSIZE ((FacSDCardCmd)(FacSDCardCmd_W+1))
 
 #define _FacAgeingTestType_MIN FacAgeingTestType_AGEING_1
 #define _FacAgeingTestType_MAX FacAgeingTestType_AGEING_PRODUCTION_1
@@ -816,10 +850,12 @@ extern "C" {
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_default                 {"", "", {0, {0}}, 0}
+#define FacSDCardInfo_init_default               {_FacSDCardCmd_MIN, ""}
 #define FacDevInfoValue_init_default             {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_default}, ""}
 #define FacDevInfo_init_default                  {0, {FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default, FacDevInfoValue_init_default}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_default               {0, 0, 0, "", false, FacWifiInfo_init_default, 0, _FacErrorCode_MIN}
 #define FacBrushLog_init_default                 {_FacSwitch_MIN, _FacErrorCode_MIN}
+#define FacMicControl_init_default               {_FacSwitch_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacGetPeriphState_init_default           {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacAgeingTest_init_default               {_FacAgeingTestType_MIN, _FacSwitch_MIN, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacRegisterConfig_init_default           {0, 0}
@@ -859,10 +895,12 @@ extern "C" {
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
 #define FacWifiInfo_init_zero                    {"", "", {0, {0}}, 0}
+#define FacSDCardInfo_init_zero                  {_FacSDCardCmd_MIN, ""}
 #define FacDevInfoValue_init_zero                {_FacDevInfoType_MIN, 0, {FacWifiInfo_init_zero}, ""}
 #define FacDevInfo_init_zero                     {0, {FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero, FacDevInfoValue_init_zero}, _FacErrorCode_MIN}
 #define FacWifiDemand_init_zero                  {0, 0, 0, "", false, FacWifiInfo_init_zero, 0, _FacErrorCode_MIN}
 #define FacBrushLog_init_zero                    {_FacSwitch_MIN, _FacErrorCode_MIN}
+#define FacMicControl_init_zero                  {_FacSwitch_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacGetPeriphState_init_zero              {0, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacAgeingTest_init_zero                  {_FacAgeingTestType_MIN, _FacSwitch_MIN, 0, 0, 0, 0, _FacErrorCode_MIN}
 #define FacRegisterConfig_init_zero              {0, 0}
@@ -967,6 +1005,9 @@ extern "C" {
 #define FacLedColor_R_tag                        2
 #define FacLedColor_G_tag                        3
 #define FacLedColor_B_tag                        4
+#define FacMicControl_switch_record_tag          1
+#define FacMicControl_upload_record_data_tag     2
+#define FacMicControl_result_tag                 100
 #define FacMotoParam_freq_tag                    1
 #define FacMotoParam_gain_or_duty_tag            2
 #define FacMotoParam_volume_tag                  3
@@ -986,6 +1027,8 @@ extern "C" {
 #define FacPreSensorCalibResult_result_tag       100
 #define FacRegisterConfig_addr_tag               1
 #define FacRegisterConfig_value_tag              2
+#define FacSDCardInfo_cmd_tag                    1
+#define FacSDCardInfo_data_tag                   2
 #define FacSetBrushRecord_timestamp_tag          1
 #define FacSetBrushRecord_plaque_tag             2
 #define FacSetBrushRecord_work_time_tag          3
@@ -1060,6 +1103,8 @@ extern "C" {
 #define FacDevInfoValue_sub_pid_tag              8
 #define FacDevInfoValue_sku_id_tag               9
 #define FacDevInfoValue_music_state_tag          10
+#define FacDevInfoValue_light_sensor_tag         40
+#define FacDevInfoValue_sdcard_tag               41
 #define FacDevInfoValue_write_info_tag           50
 #define FacImuCalibResult_gyro_x_tag             1
 #define FacImuCalibResult_gyro_y_tag             2
@@ -1156,6 +1201,7 @@ extern "C" {
 #define FactoryDataPackage_set_brush_record_tag  51
 #define FactoryDataPackage_wifi_demand_tag       52
 #define FactoryDataPackage_fac_log_tag           53
+#define FactoryDataPackage_mic_control_tag       54
 #define FactoryDataPackage_internet_ota_tag      64
 
 /* Struct field encoding specification for nanopb */
@@ -1190,6 +1236,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,ageing,command_data.ageing),  5
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,set_brush_record,command_data.set_brush_record),  51) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,wifi_demand,command_data.wifi_demand),  52) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,fac_log,command_data.fac_log),  53) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,mic_control,command_data.mic_control),  54) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.internet_ota),  64)
 #define FactoryDataPackage_CALLBACK NULL
 #define FactoryDataPackage_DEFAULT NULL
@@ -1222,6 +1269,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (command_data,internet_ota,command_data.inter
 #define FactoryDataPackage_command_data_set_brush_record_MSGTYPE FacSetBrushRecord
 #define FactoryDataPackage_command_data_wifi_demand_MSGTYPE FacWifiDemand
 #define FactoryDataPackage_command_data_fac_log_MSGTYPE FacBrushLog
+#define FactoryDataPackage_command_data_mic_control_MSGTYPE FacMicControl
 #define FactoryDataPackage_command_data_internet_ota_MSGTYPE FacInternetOta
 
 #define FacGetDevBaseInfo_FIELDLIST(X, a) \
@@ -1287,6 +1335,12 @@ X(a, STATIC,   SINGULAR, UINT32,   port,              4)
 #define FacWifiInfo_CALLBACK NULL
 #define FacWifiInfo_DEFAULT NULL
 
+#define FacSDCardInfo_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    cmd,               1) \
+X(a, STATIC,   SINGULAR, STRING,   data,              2)
+#define FacSDCardInfo_CALLBACK NULL
+#define FacSDCardInfo_DEFAULT NULL
+
 #define FacDevInfoValue_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    info_item,         1) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,wifi_info,value_item.wifi_info),   2) \
@@ -1298,11 +1352,14 @@ X(a, STATIC,   ONEOF,    UENUM,    (value_item,if_qualified,value_item.if_qualif
 X(a, STATIC,   ONEOF,    STRING,   (value_item,sub_pid,value_item.sub_pid),   8) \
 X(a, STATIC,   ONEOF,    STRING,   (value_item,sku_id,value_item.sku_id),   9) \
 X(a, STATIC,   ONEOF,    UINT32,   (value_item,music_state,value_item.music_state),  10) \
+X(a, STATIC,   ONEOF,    UINT32,   (value_item,light_sensor,value_item.light_sensor),  40) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (value_item,sdcard,value_item.sdcard),  41) \
 X(a, STATIC,   SINGULAR, STRING,   write_info,       50)
 #define FacDevInfoValue_CALLBACK NULL
 #define FacDevInfoValue_DEFAULT NULL
 #define FacDevInfoValue_value_item_wifi_info_MSGTYPE FacWifiInfo
 #define FacDevInfoValue_value_item_battery_MSGTYPE FacBatteryInfo
+#define FacDevInfoValue_value_item_sdcard_MSGTYPE FacSDCardInfo
 
 #define FacDevInfo_FIELDLIST(X, a) \
 X(a, STATIC,   REPEATED, MESSAGE,  dev_info,          1) \
@@ -1328,6 +1385,13 @@ X(a, STATIC,   SINGULAR, UENUM,    switch_send_log,   1) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacBrushLog_CALLBACK NULL
 #define FacBrushLog_DEFAULT NULL
+
+#define FacMicControl_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    switch_record,     1) \
+X(a, STATIC,   SINGULAR, UENUM,    upload_record_data,   2) \
+X(a, STATIC,   SINGULAR, UENUM,    result,          100)
+#define FacMicControl_CALLBACK NULL
+#define FacMicControl_DEFAULT NULL
 
 #define FacGetPeriphState_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BOOL,     imu_state,         1) \
@@ -1653,10 +1717,12 @@ extern const pb_msgdesc_t FacSetDevBaseInfo_msg;
 extern const pb_msgdesc_t FacDevState_msg;
 extern const pb_msgdesc_t FacBatteryInfo_msg;
 extern const pb_msgdesc_t FacWifiInfo_msg;
+extern const pb_msgdesc_t FacSDCardInfo_msg;
 extern const pb_msgdesc_t FacDevInfoValue_msg;
 extern const pb_msgdesc_t FacDevInfo_msg;
 extern const pb_msgdesc_t FacWifiDemand_msg;
 extern const pb_msgdesc_t FacBrushLog_msg;
+extern const pb_msgdesc_t FacMicControl_msg;
 extern const pb_msgdesc_t FacGetPeriphState_msg;
 extern const pb_msgdesc_t FacAgeingTest_msg;
 extern const pb_msgdesc_t FacRegisterConfig_msg;
@@ -1698,10 +1764,12 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacDevState_fields &FacDevState_msg
 #define FacBatteryInfo_fields &FacBatteryInfo_msg
 #define FacWifiInfo_fields &FacWifiInfo_msg
+#define FacSDCardInfo_fields &FacSDCardInfo_msg
 #define FacDevInfoValue_fields &FacDevInfoValue_msg
 #define FacDevInfo_fields &FacDevInfo_msg
 #define FacWifiDemand_fields &FacWifiDemand_msg
 #define FacBrushLog_fields &FacBrushLog_msg
+#define FacMicControl_fields &FacMicControl_msg
 #define FacGetPeriphState_fields &FacGetPeriphState_msg
 #define FacAgeingTest_fields &FacAgeingTest_msg
 #define FacRegisterConfig_fields &FacRegisterConfig_msg
@@ -1759,6 +1827,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacLcdControl_size                       19
 #define FacLedColor_size                         20
 #define FacLedControl_size                       187
+#define FacMicControl_size                       7
 #define FacMotoControl_size                      266
 #define FacMotoParam_size                        17
 #define FacMotorCalibResult_size                 292
@@ -1766,6 +1835,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacPictureDataAck_size                   305
 #define FacPreSensorCalibResult_size             33
 #define FacRegisterConfig_size                   12
+#define FacSDCardInfo_size                       67
 #define FacSetBrushRecord_size                   66
 #define FacSetDevBaseInfo_size                   28
 #define FacSetTime_size                          12

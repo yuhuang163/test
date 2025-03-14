@@ -254,6 +254,8 @@ protected:
     void closeEvent(QCloseEvent*) override;
 
 private slots:
+    void solve_photosensitive_info(FacDevInfo x);
+    void solve_sd_info(FacDevInfo x) ;
     void appendAndSaveWifiOtaLog(const QString& msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
@@ -546,6 +548,18 @@ private slots:
     void on_selectPath_source_clicked();
 
     void on_set_mode_returnPressed();
+
+    void on_btn_startRecording_clicked();
+
+    void on_btn_stopRecording_clicked();
+
+    void on_btn_startUpload_clicked();
+
+    void on_btn_stopUpload_clicked();
+
+    void on_btn_getSDCardStatus_clicked();
+
+    void on_btn_getLDRInfo_clicked();
 
 signals:
     void send_uart_state(int data);

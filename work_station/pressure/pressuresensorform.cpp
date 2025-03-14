@@ -860,22 +860,29 @@ void PressureSensorForm::on_end_clicked() {
 }
 
 void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader) {
-    QString folderPath = "D:/测试结果";
-    // 如果 "测试结果" 文件夹不存在，则创建它
+    // 获取当前日期
+    QDate currentDate = QDate::currentDate();
+    QString dateFolder = currentDate.toString("yyyy-MM-dd");  // 获取当前日期字符串作为文件夹名
+
+    // 构建文件夹路径：在 "测试结果" 下新建 "压感数据" 文件夹，再在其中创建日期文件夹
+    QString folderPath = "D:/测试结果/压感数据/" + dateFolder;
+
+    // 如果 "压感数据" 文件夹或日期文件夹不存在，则创建它们
     if (!QDir(folderPath).exists()) {
         QDir().mkpath(folderPath);
     }
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + "_压感数据报告.csv";
+
+    // 使用 macAddress 来命名文件
+    QString fileName = macAddress.remove(":") + "_压感数据报告.csv";  // 使用 macAddress 作为文件名
     QString filePath = QDir(folderPath).filePath(fileName);
+
     // 打开文件，如果无法打开则返回
     QFile file(filePath);
     if (!file.open(QIODevice::Append | QIODevice::Text)) {
         qWarning("无法打开文件");
         return;
     }
+
     // 创建文本流对象
     QTextStream out(&file);
     if (file.pos() == 0 || appHeader) {
@@ -892,6 +899,7 @@ void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x
                 << "辅助元件压力";
         out << headers.join(",") << "\n";
     }
+
     // 获取当前时间戳
     QDateTime currentDateTime = QDateTime::currentDateTime();
     QString timestamp = currentDateTime.toString("yyyy-MM-dd hh:mm:ss");
@@ -910,9 +918,11 @@ void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x
 
         out << dataList.join(",") << "\n";
     }
+
     // 关闭文件
     file.close();
 }
+
 void PressureSensorForm::product_model_init(QString model) {
     showlog("product_model_init is " + model);
     if (model == NULL) {

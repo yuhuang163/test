@@ -112,12 +112,16 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     text_stream << message << "\r\n";
     file.close();
 }
-#include <dbghelp.h>
-#include <windows.h>
+#include <DbgHelp.h>
+#include <Windows.h>
 
-#include <ctime>  // For time functions
-#include <iomanip>  // For setting time format
-#include <sstream>  // For string stream
+#include <ctime>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
+// 处理应用程序崩溃时的函数
 LONG ApplicationCrashHandler(EXCEPTION_POINTERS* pException) {
     // 获取当前时间
     time_t now = time(0);
@@ -158,10 +162,69 @@ LONG ApplicationCrashHandler(EXCEPTION_POINTERS* pException) {
         CloseHandle(hDumpFile);
     }
 
+    // 记录堆栈跟踪信息
+    HANDLE hProcess = GetCurrentProcess();
+    HANDLE hThread = GetCurrentThread();
+    CONTEXT context;
+    RtlCaptureContext(&context);
+
+    STACKFRAME64 stackFrame;
+    memset(&stackFrame, 0, sizeof(STACKFRAME64));
+
+    stackFrame.AddrPC.Mode = AddrModeFlat;
+    stackFrame.AddrStack.Mode = AddrModeFlat;
+    stackFrame.AddrFrame.Mode = AddrModeFlat;
+
+// Initialize stack frame based on context
+#ifdef _M_IX86
+    stackFrame.AddrPC.Offset = context.Eip;
+    stackFrame.AddrStack.Offset = context.Esp;
+    stackFrame.AddrFrame.Offset = context.Ebp;
+#elif defined(_M_X64)
+    stackFrame.AddrPC.Offset = context.Rip;
+    stackFrame.AddrStack.Offset = context.Rsp;
+    stackFrame.AddrFrame.Offset = context.Rbp;
+#endif
+
+    // 打开DbgHelp库以获取符号信息
+    SymInitialize(hProcess, NULL, TRUE);
+
+    // 打印堆栈跟踪
+    std::wstring stackTrace = L"堆栈跟踪:\n";
+    while (StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, &context, NULL,
+                       SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
+        DWORD64 dwDisplacement = 0;
+        char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_PATH];
+        SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbolBuffer;
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        symbol->MaxNameLen = MAX_PATH;
+
+        if (SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &dwDisplacement, symbol)) {
+            stackTrace += std::wstring(symbol->Name, symbol->Name + strlen(symbol->Name)) + L"\n";
+        }
+    }
+
+    // 记录堆栈信息到 dump 文件中
+    std::wstring logFilePath = folderPath + L"\\" + std::wstring(timeStr.begin(), timeStr.end()) + L"_闪退堆栈.log";
+    std::ofstream logFile(logFilePath, std::ios::out | std::ios::trunc);
+
+    if (logFile.is_open()) {
+        logFile << "崩溃发生时的堆栈跟踪:\n";
+
+        // 将宽字符串 stackTrace 转换为窄字符串
+        logFile << std::string(stackTrace.begin(), stackTrace.end());
+
+        logFile.close();
+    }
+    // 打印堆栈跟踪到控制台
+    std::wcout << stackTrace;
+
+    // 弹出消息框
     MessageBoxW(NULL, L"上位机奔溃\r\n奔溃记录已保存", L"Error", MB_OK | MB_ICONERROR);
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
+
 class MyApplication : public QApplication {
 public:
     using QApplication::QApplication;

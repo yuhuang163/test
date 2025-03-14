@@ -90,9 +90,43 @@ QByteArray Qpb::aes256Decrypt(const QByteArray& encrypted) {
 /*
  * aes256Encrypt 函数与之前示例一致，用于加密数据（带 PKCS#7 补位）
  */
+// QByteArray Qpb::aes256Encrypt(const QByteArray& input) {
+//     static const uint8_t iv[16] = {0x51, 0x4C, 0xCA, 0x9B, 0xBC, 0x1A, 0x69, 0x16,
+//                                    0x24, 0x8E, 0x19, 0x59, 0xC5, 0xF9, 0xA6, 0x6F};
+//     uint8_t key[32] = {0x42, 0x93, 0x1A, 0x7D, 0xB6, 0xF9, 0x27, 0xCA, 0x4C, 0x13, 0xF2, 0x00, 0x19, 0x25, 0x79,
+//     0x42,
+//                        0x6E, 0x1A, 0x84, 0xAE, 0xE6, 0x90, 0x4C, 0x4F, 0x9E, 0xE7, 0x40, 0xB0, 0xEB, 0xE5, 0xB6,
+//                        0xE3};
+
+//     const int blockSize = 16;
+//     int inputLen = input.size();
+//     // 计算需要补位的字节数（PKCS#7 填充规则）
+//     int padLen = blockSize - (inputLen % blockSize);
+//     if (padLen == 0)
+//         padLen = blockSize;  // 若刚好整数倍，则补一整块
+
+//     // 对原始数据进行填充，每个补位字节的值为 padLen
+//     QByteArray padded = input;
+//     padded.append(QByteArray(padLen, char(padLen)));
+
+//     // 输出加密结果（转换为大写十六进制字符串）
+//     // qDebug() << "padded:" << padded.toHex().toUpper();
+
+//     // 复制一份数据用于加密（加密函数就地操作）
+//     QByteArray encrypted = padded;
+
+//     // 初始化 AES 上下文
+//     AES_ctx ctx;
+//     AES_init_ctx_iv(&ctx, key, iv);
+
+//     // 执行 CBC 模式加密
+//     AES_CBC_encrypt_buffer(&ctx, reinterpret_cast<uint8_t*>(encrypted.data()), encrypted.size());
+
+//     return encrypted;
+// }
 QByteArray Qpb::aes256Encrypt(const QByteArray& input) {
-    static const uint8_t iv[16] = {0x51, 0x4C, 0xCA, 0x9B, 0xBC, 0x1A, 0x69, 0x16,
-                                   0x24, 0x8E, 0x19, 0x59, 0xC5, 0xF9, 0xA6, 0x6F};
+    static const uint8_t iv_init[16] = {0x51, 0x4C, 0xCA, 0x9B, 0xBC, 0x1A, 0x69, 0x16,
+                                        0x24, 0x8E, 0x19, 0x59, 0xC5, 0xF9, 0xA6, 0x6F};
     uint8_t key[32] = {0x42, 0x93, 0x1A, 0x7D, 0xB6, 0xF9, 0x27, 0xCA, 0x4C, 0x13, 0xF2, 0x00, 0x19, 0x25, 0x79, 0x42,
                        0x6E, 0x1A, 0x84, 0xAE, 0xE6, 0x90, 0x4C, 0x4F, 0x9E, 0xE7, 0x40, 0xB0, 0xEB, 0xE5, 0xB6, 0xE3};
 
@@ -100,29 +134,35 @@ QByteArray Qpb::aes256Encrypt(const QByteArray& input) {
     int inputLen = input.size();
     // 计算需要补位的字节数（PKCS#7 填充规则）
     int padLen = blockSize - (inputLen % blockSize);
+
     if (padLen == 0)
         padLen = blockSize;  // 若刚好整数倍，则补一整块
 
+    if (padLen != 16)
+        qDebug() << "padLen:" << padLen;
+
     // 对原始数据进行填充，每个补位字节的值为 padLen
     QByteArray padded = input;
-    padded.append(QByteArray(padLen, char(padLen)));
-
+    // padded.append(QByteArray(padLen, char(padLen)));
+    padded.append(QByteArray(padLen, static_cast<char>(padLen)));  // 确保补位字节正确
     // 输出加密结果（转换为大写十六进制字符串）
     // qDebug() << "padded:" << padded.toHex().toUpper();
 
-    // 复制一份数据用于加密（加密函数就地操作）
-    QByteArray encrypted = padded;
-
+    QByteArray encrypted(padded.size(), Qt::Uninitialized);  // 避免QByteArray不连续
+    memcpy(encrypted.data(), padded.constData(), padded.size());
     // 初始化 AES 上下文
     AES_ctx ctx;
+
+    uint8_t iv[16];
+    memcpy(iv, iv_init, 16);  // 重新初始化 IV，防止被修改
     AES_init_ctx_iv(&ctx, key, iv);
 
     // 执行 CBC 模式加密
     AES_CBC_encrypt_buffer(&ctx, reinterpret_cast<uint8_t*>(encrypted.data()), encrypted.size());
-
+    if (padLen != 16)
+        qDebug() << "加密前的数据大小" << input.size() << "加密后数据大小" << encrypted.size();
     return encrypted;
 }
-
 uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {
     unsigned short crc = 0xFFFF;
 
@@ -961,6 +1001,34 @@ void Qpb::get_now_music_info() {
 
     sendShortPack(pack);
 }
+void Qpb::get_light_sensor_info() {
+    FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_get_dev_info_tag;
+    pack.command_data.get_dev_info.dev_info_count = 1;
+
+    pack.command_data.get_dev_info.dev_info[0].info_item = FacDevInfoType_LIGHT_SENSOR;
+
+    pack.command_data.get_dev_info.dev_info[0].which_value_item = FacDevInfoValue_light_sensor_tag;
+
+    sendShortPack(pack);
+}
+void Qpb::get_sd_card_info() {
+    FactroyCmd cmd = FactroyCmd_GET_DEVICE_INFO;
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_get_dev_info_tag;
+    pack.command_data.get_dev_info.dev_info_count = 1;
+
+    pack.command_data.get_dev_info.dev_info[0].info_item = FacDevInfoType_SD_CARD;
+
+    pack.command_data.get_dev_info.dev_info[0].which_value_item = FacDevInfoValue_sdcard_tag;
+
+    sendShortPack(pack);
+}
 //调试用，没啥用
 void Qpb::set_servo_motor_info() {
     FactoryDataPackage pack;
@@ -1178,7 +1246,7 @@ void Qpb::get_sn(FacDevInfoType which_sn) {
         qDebug() << "未知的 which_sn 值";
         return;
     }
-    qDebug() << "主动获取" << which_sn;
+    qDebug() << "主动获取sn" << which_sn;
     sendShortPack(pack);
 }
 
@@ -1250,6 +1318,39 @@ void Qpb::get_bursh_backlog(int state) {
 
     sendShortPack(pack);
     qDebug() << "已发送获取牙刷黑盒日志";
+}
+
+void Qpb::set_mic_control(int state) {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    FactroyCmd cmd = FactroyCmd_MIC_CONTROL;
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_mic_control_tag;
+
+    if (state) {
+        pack.command_data.mic_control.switch_record = FacSwitch_START;
+    } else {
+        pack.command_data.mic_control.switch_record = FacSwitch_STOP;
+    }
+
+    sendShortPack(pack);
+    qDebug() << "已发送设置麦克风录制" << state;
+}
+void Qpb::set_upload_record_data(int state) {
+    FactoryDataPackage pack;
+    memset(&pack, 0, sizeof(pack));
+    FactroyCmd cmd = FactroyCmd_MIC_CONTROL;
+    pack.cmd_id = cmd;
+    pack.which_command_data = FactoryDataPackage_mic_control_tag;
+
+    if (state) {
+        pack.command_data.mic_control.upload_record_data = FacSwitch_START;
+    } else {
+        pack.command_data.mic_control.upload_record_data = FacSwitch_STOP;
+    }
+
+    sendShortPack(pack);
+    qDebug() << "已发送设置麦克风记录数据上报状态" << state;
 }
 void Qpb::set_ship_mode(int state) {
     FactoryDataPackage pack;
@@ -1485,7 +1586,9 @@ void Qpb::set_forbid_sleep(FacSwitch state)  // 进入禁止休眠状态
     pack.which_command_data = FactoryDataPackage_set_dev_state_tag;
     pack.command_data.set_dev_state.dev_state_type = DevStateType_FORBID_SLEEP;
     pack.command_data.set_dev_state.state = state;
+    qDebug() << "已发送静止休眠1";
     sendShortPack(pack);
+    qDebug() << "已发送静止休眠3";
 }
 void Qpb::set_sleeep(FacSwitch state)  // 进入休眠状态
 {
@@ -2037,6 +2140,19 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         qDebug() << "获取到音乐状态回应" << x.dev_info[0].value_item.music_state;
         emit sendGetBrushResponse(1);
     }
+
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_sdcard_tag) {
+        emit send_sd_info(x);
+        qDebug() << "获取到sd卡命令" << x.dev_info[0].value_item.sdcard.cmd;
+        qDebug() << "获取到sd卡信息" << x.dev_info[0].value_item.sdcard.data;
+        emit sendGetBrushResponse(1);
+    }
+    if (x.dev_info[0].which_value_item == FacDevInfoValue_light_sensor_tag) {
+        emit send_photosensitive_info(x);
+        qDebug() << "获取到光敏电阻信息" << x.dev_info[0].value_item.light_sensor;
+        emit sendGetBrushResponse(1);
+    }
+
     emit send_pb_date("获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));
 }
 

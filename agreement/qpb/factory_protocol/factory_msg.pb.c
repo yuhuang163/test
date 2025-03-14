@@ -24,6 +24,9 @@ PB_BIND(FacBatteryInfo, FacBatteryInfo, AUTO)
 PB_BIND(FacWifiInfo, FacWifiInfo, AUTO)
 
 
+PB_BIND(FacSDCardInfo, FacSDCardInfo, AUTO)
+
+
 PB_BIND(FacDevInfoValue, FacDevInfoValue, AUTO)
 
 
@@ -34,6 +37,9 @@ PB_BIND(FacWifiDemand, FacWifiDemand, 2)
 
 
 PB_BIND(FacBrushLog, FacBrushLog, 2)
+
+
+PB_BIND(FacMicControl, FacMicControl, 2)
 
 
 PB_BIND(FacGetPeriphState, FacGetPeriphState, 2)
@@ -133,6 +139,7 @@ PB_BIND(FacOtaFileInfo, FacOtaFileInfo, 2)
 
 
 PB_BIND(FacInternetOta, FacInternetOta, 2)
+
 
 
 

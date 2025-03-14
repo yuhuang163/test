@@ -1019,7 +1019,6 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     QString path;
     if (pack.factory == "xwd")
         path = "\\\\172.30.189.83\\sgpub\\LTC\\MAC\\mac_sn.txt";
-
     else
         path = "mac_sn.txt";
 

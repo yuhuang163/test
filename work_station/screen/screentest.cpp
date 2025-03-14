@@ -41,7 +41,7 @@ screentest::screentest(int index, QWidget* parent) : test_base(parent), ui(new U
 }
 
 void screentest::refreshLcdControl(FacLcdControl style) {
-    qDebug() << getIndex() << style.result;
+    qDebug() << getIndex() << "屏幕控制回应" << style.result;
     is_lcd_control = 1;
 }
 
@@ -56,8 +56,7 @@ void screentest::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
-        showlog("已发送禁止休眠");
+
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         // showlog("蓝牙连接断开");
@@ -116,7 +115,7 @@ void screentest::set_screen_color(int x) {
 void screentest::canGoNextMechine(int x) {
     is_canGoNext = 1;
 
-    qDebug() << getIndex() << "得到信息" << getIndex();
+    qDebug() << getIndex() << "得到确认信息";
 
     if (x == getIndex()) {
         result = failValue;
@@ -247,11 +246,20 @@ void screentest::startTask()  // 编写六轴校准的代码
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
+                    sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                    showlog("已发送禁止休眠");
+                    state = STATE_WATI_DISABLE_SLEEP;
+                }
+                break;
+            case STATE_WATI_DISABLE_SLEEP:
+                if (canGoNext) {
                     stringsn = ui->getMac->text();
+                    showlog("开始获取sn");
                     sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN));
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
                 break;
+
             case STATE_WAIT_CORRECT_BANDING:
                 if (canGoNext) {
                     if (snCompareOk == 1) {
@@ -520,9 +528,11 @@ void screentest::on_getMac_returnPressed() {
     writesn = ui->getMac->text().toUtf8();
     writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
 
-    if ("SUBPID_ERRO" == writesubpid) {
-        QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
-        return;
+    if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
+        if ("SUBPID_ERRO" == writesubpid) {
+            QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
+            return;
+        }
     }
     stringsubpid = writesubpid;
     showlog("正在查询mac地址");

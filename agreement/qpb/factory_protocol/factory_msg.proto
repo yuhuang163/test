@@ -58,6 +58,9 @@ enum FactroyCmd {
     SET_BRUSH_RECORD = 0x33;
     WIFI_DEMAND = 0x34;
     FAC_LOG = 0x35;
+    MIC_CONTROL=0X36;
+
+
 
     INTERNET_OTA = 0x40;
 }
@@ -99,6 +102,7 @@ message FactoryDataPackage {
         FacSetBrushRecord set_brush_record = 0x33;
         FacWifiDemand wifi_demand = 0x34;
         FacBrushLog fac_log = 0x35;
+        FacMicControl mic_control = 0x36;
 
         //ota
         FacInternetOta internet_ota = 0x40;
@@ -206,6 +210,10 @@ enum DevStateType
     PRESS_SENSOR_TEMP = 7;//压感温度补偿开关
     MOTOR_ADC_MOS = 8;//电机adc采集的mos
     PRESS_CALIB_STATE = 9;//压感校准状态设置
+    
+
+
+
 }
 
 enum FacSwitch
@@ -243,8 +251,11 @@ enum FacDevInfoType
     IF_QUALIFIED = 5;//工厂测试结果
     SUB_PID = 6;
     SKUID = 7;
-    MUSIC_STATE = 8;
- 
+    MUSIC_STATE = 8;    
+    
+    // for aitag
+    LIGHT_SENSOR = 20;
+    SD_CARD = 21; 
 }
 
 enum FacChargeStateType
@@ -282,7 +293,22 @@ message FacWifiInfo {
     uint32 port = 4;
 }
 
+// for aitag
+enum FacSDCardCmd
+{
+    NOTHING = 0;
+    UMOUNT = 1;
+    MOUNT = 2;
+    FORMAT = 3;
+    R = 4;
+    W = 5;
+}
 
+// for aitag
+message FacSDCardInfo {
+    FacSDCardCmd cmd = 1;
+    string data = 2 [(nanopb).max_size = 64];
+}
 
 message FacDevInfoValue {
     FacDevInfoType info_item = 1;
@@ -296,7 +322,10 @@ message FacDevInfoValue {
         string sub_pid = 8 [(nanopb).max_size = 64];
         string sku_id = 9 [(nanopb).max_size = 64];
         uint32 music_state = 10;
-    
+
+        // for aitag
+        uint32 light_sensor=40;
+        FacSDCardInfo sdcard =41;
     }
      string  write_info= 50[(nanopb).max_size = 64];
 
@@ -344,6 +373,17 @@ message FacBrushLog
 
 
 
+/*********************麦克风相关区域******************/
+message FacMicControl
+{
+    FacSwitch switch_record = 1;
+    FacSwitch upload_record_data = 2;
+
+
+
+    FacErrorCode result = 100;
+}
+/*********************麦克风相关区域******************/
 
 
 

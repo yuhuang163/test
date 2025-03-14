@@ -1095,17 +1095,20 @@ void wifibletest::on_mac_combo_textActivated(const QString& arg1) {
 void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
     if (bandingsn == "" || bandingmac == "")
         bandingresult = false;
-
-    QString path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
-    QFileInfo checkPath(path);
-    if (checkPath.exists() && checkPath.isDir()) {
+    QString path;
+    if (SETTINGS.value("Mes/FACTORY").toString() == "xwd") {
         path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
-        qDebug() << "The network path exists and is a directory.";
+        QFileInfo checkPath(path);
+        if (checkPath.exists() && checkPath.isDir()) {
+            path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
+            qDebug() << "The network path exists and is a directory.";
+        } else {
+            path = "mac_sn.txt";
+            qDebug() << "The network path does not exist or is not a directory.";
+        }
     } else {
         path = "mac_sn.txt";
-        qDebug() << "The network path does not exist or is not a directory.";
     }
-
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
     QFile file(path);  // 创建一个文件对象

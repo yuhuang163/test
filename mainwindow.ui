@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>9</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3416,7 +3416,7 @@
                     <item>
                      <widget class="QLineEdit" name="bleotamacInput">
                       <property name="text">
-                       <string>b4:3a:45:c7:5f:4e</string>
+                       <string>28:37:2f:f3:15:da</string>
                       </property>
                      </widget>
                     </item>
@@ -3424,6 +3424,9 @@
                   </item>
                   <item>
                    <widget class="QPushButton" name="startBleOta">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
                     <property name="text">
                      <string>开始ota</string>
                     </property>
@@ -4409,6 +4412,77 @@ border-color: rgb(255, 165, 0)</string>
                  </layout>
                 </item>
                </layout>
+              </widget>
+              <widget class="QWidget" name="tab_17">
+               <attribute name="title">
+                <string>时光机</string>
+               </attribute>
+               <widget class="QWidget" name="layoutWidget_2">
+                <property name="geometry">
+                 <rect>
+                  <x>70</x>
+                  <y>60</y>
+                  <width>269</width>
+                  <height>106</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_Main">
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_Record">
+                   <item>
+                    <widget class="QPushButton" name="btn_startRecording">
+                     <property name="text">
+                      <string>开始录音</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btn_stopRecording">
+                     <property name="text">
+                      <string>结束录音</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_Upload">
+                   <item>
+                    <widget class="QPushButton" name="btn_startUpload">
+                     <property name="text">
+                      <string>开始上传录音文件</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btn_stopUpload">
+                     <property name="text">
+                      <string>停止上传录音文件</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_Status">
+                   <item>
+                    <widget class="QPushButton" name="btn_getSDCardStatus">
+                     <property name="text">
+                      <string>获取SD卡状态</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btn_getLDRInfo">
+                     <property name="text">
+                      <string>获取光敏电阻信息</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
               </widget>
               <widget class="QWidget" name="tab_14">
                <attribute name="title">

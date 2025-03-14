@@ -2337,10 +2337,22 @@ void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult) {
         qDebug() << "Error appending to file";
     }
 }
+
 void MainWindow::showlog(QString msg) {
+    if (msg.isEmpty()) {
+        qDebug() << "showlog: 收到空消息，跳过日志输出";
+        return;
+    }
+
+    if (!ui || !ui->msgEdit) {
+        qDebug() << "showlog: ui 或 msgEdit 未初始化";
+        return;
+    }
+
     ui->msgEdit->appendPlainText(msg);
     qDebug() << "mainwindow的" << msg;
 }
+
 void MainWindow::updateComboBox() {
     // 遍历设备信息，根据 rssi 的值进行过滤
     for (auto it = deviceMap.begin(); it != deviceMap.end(); ++it) {
@@ -2356,18 +2368,22 @@ void MainWindow::updateComboBox() {
                 ui->mac_combo->addItem(deviceAddress);
 
                 if (ui->is_scan_connect->checkState())
-                    at->sendMac(deviceAddress);  // 发送mac地址
 
-                // qDebug() << "有新增" << deviceAddress;
+                {   pb->NEEDAES = 0;
+                    at->sendMac(deviceAddress);  // 发送mac地址
+                    qDebug() << "开启了扫描到就连接的功能";
+                }
             }
             index = ui->pick_device->findText(deviceAddress);
 
             if (index == -1) {
                 ui->pick_device->addItem(deviceAddress);
-                if (ui->is_scan_connect->checkState())
+                if (ui->is_scan_connect->checkState()) {
                     pb->NEEDAES = 0;
-                at->sendMac(deviceAddress);  // 发送mac地址
-                pb->setPbMode(1);
+                    at->sendMac(deviceAddress);  // 发送mac地址
+                    pb->setPbMode(1);
+                    qDebug() << "开启了扫描到就连接的功能";
+                }
                 // qDebug() << "有新增" << deviceAddress;
             }
         }
@@ -3391,4 +3407,12 @@ void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
     } else {
         qDebug() << "无法打开日志文件：" << logFilePath;
     }
+}
+
+void MainWindow::solve_photosensitive_info(FacDevInfo x) {
+    showlog("获取到光敏电阻值：" + QString::number(x.dev_info[0].value_item.light_sensor));
+}
+void MainWindow::solve_sd_info(FacDevInfo x) {
+    showlog(QString("获取到 SD 卡命令: %1").arg((x.dev_info[0].value_item.sdcard.cmd)));
+    showlog(QString("获取到sd卡信息: ") + QString::fromUtf8(x.dev_info[0].value_item.sdcard.data));
 }

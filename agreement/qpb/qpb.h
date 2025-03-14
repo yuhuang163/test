@@ -63,15 +63,14 @@ class Qpb : public QSerialPort {
     Q_OBJECT
 public:
     QString APP_VERSION;
-    bool NEEDAES=0;
+    bool NEEDAES = 0;
     int shipCount = 0;
     explicit Qpb(QSerialPort* parent = nullptr);
     void parseCmd(const QByteArray& byte);
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
-    QByteArray aes256Decrypt(const QByteArray &encrypted);
-    QByteArray aes256Encrypt(const QByteArray &input);
-
+    QByteArray aes256Decrypt(const QByteArray& encrypted);
+    QByteArray aes256Encrypt(const QByteArray& input);
 
     void sendMainPack(const DataPackage& pack);
     uint32_t sendlongPack(const FactoryDataPackage& pack);
@@ -236,20 +235,24 @@ public slots:
     void set_i_am_app();                                       // 骗牙刷是app
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
-    void set_start_multi_ble_ota_app(RotasFileStatusReq *RotasFiledata);
+    void set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata);
     void set_press_collect_param(FacSwitch sta);  // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);    // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
     void set_battery(FacBatteryType type);  // 设置电池信息
     void set_servo_motor_info();
-    void get_now_music_info();
 
+    void set_mic_control(int state);
+    void set_upload_record_data(int state);
     void set_new_connect_wifi(const QByteArray& name, const QByteArray& password, const QString& ip,
                               const QString& port);  // 设置新的WiFi连接
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
                                uint32_t vibrate_freq);  // 设置舵机电机参数
 
 public slots:
+    void get_now_music_info();
+    void get_sd_card_info();
+    void get_light_sensor_info();
     void get_battery();                    // 获取电池信息
     void get_button_state(int state);      // 获取按钮状态
     void get_sn(FacDevInfoType which_sn);  // 获取SN码
@@ -294,6 +297,8 @@ private slots:
     void process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f);
     void process_FactroyCmd_FAC_LOG(FactoryDataPackage& f);
 signals:
+    void send_photosensitive_info(FacDevInfo);
+    void send_sd_info(FacDevInfo);
     void send_press_data(FacUploadPresSensor);
     void send_base_data(FacGetDevBaseInfo get_dev_base_info);
     void send_periph_data(FacGetPeriphState state);

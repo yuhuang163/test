@@ -21,6 +21,7 @@ private:
     typedef enum {
         STATE_IDLE,          // 休眠状态
         STATE_WATI_CONNECT,  // 等待连接
+        STATE_WATI_DISABLE_SLEEP,
         STATE_WAIT_CORRECT_BANDING,
         STATE_WAIT_BANDING_SUBPID,
         STATE_WAIT_CORRECT_BANDING_SUBPID,

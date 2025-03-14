@@ -912,7 +912,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_IDLE:  // 复位一切
                 showlog("开始测试");
                 dataInit();
-                   waitWork(1000);
+                waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
 
@@ -1122,7 +1122,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     showlog("六轴校准结束");
                     emit endcali(getIndex());
 
-                    if (ui->isusemes->checkState() && result == passValue) {
+                    if ((ui->isusemes->checkState()|| pack.factory == "无mes厂") &&  result == passValue) {
                         pb->set_fac_mode(0);
                         waitWork(100);
                         sendCommandWithRetry(std::bind(&Qpb::set_ship_mode, pb, 1));

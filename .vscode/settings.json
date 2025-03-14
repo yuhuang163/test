@@ -60,7 +60,8 @@
         "functional": "cpp",
         "string.h": "c",
         "factory_msg.pb.h": "c",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "fstream": "cpp"
     },
     "clang-format.style": "file:C:\\Users\\heyj\\.vscode\\extensions\\ms-vscode.cpptools-1.21.4-win32-x64\\LLVM\\bin\\clang-format",
     "clang-format.executable": "C:\\Users\\heyj\\.vscode\\extensions\\ms-vscode.cpptools-1.21.4-win32-x64\\LLVM\\bin\\clang-format",
