@@ -199,6 +199,13 @@ void qsetting::loadConfig() {
     ui->lineEdit_BrushThresholdCount->setText(SETTINGS.value("PRESSURE/BrushThresholdCount").toString());
     ui->lineEdit_press_adc_shake->setText(SETTINGS.value("PRESSURE/ADCShakeValue").toString());
 
+    // 加载摆幅限制设置
+    ui->checkBox_amplitudeLimit->setChecked(SETTINGS.value("Press/AmplitudeLimit", false).toBool());
+    ui->lineEdit_amplitudeLimitUpper->setText(SETTINGS.value("Press/AmplitudeLimitUpper", "0").toString());
+    ui->lineEdit_amplitudeLimitLower->setText(SETTINGS.value("Press/AmplitudeLimitLower", "0").toString());
+    // 加载摆幅误差值
+    ui->lineEdit_amplitudeError->setText(SETTINGS.value("Pressure/AmplitudeError", "0").toString());
+
     ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
     ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
 
@@ -487,6 +494,13 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("PRESSURE/BrushThreshold", ui->lineEdit_BrushThreshold->text());
     SETTINGS.setValue("PRESSURE/BrushThresholdCount", ui->lineEdit_BrushThresholdCount->text());
     SETTINGS.setValue("PRESSURE/ADCShakeValue", ui->lineEdit_press_adc_shake->text());
+
+    // 保存摆幅限制设置
+    SETTINGS.setValue("Press/AmplitudeLimit", ui->checkBox_amplitudeLimit->isChecked());
+    SETTINGS.setValue("Press/AmplitudeLimitUpper", ui->lineEdit_amplitudeLimitUpper->text());
+    SETTINGS.setValue("Press/AmplitudeLimitLower", ui->lineEdit_amplitudeLimitLower->text());
+    // 保存摆幅误差值
+    SETTINGS.setValue("Pressure/AmplitudeError", ui->lineEdit_amplitudeError->text());
 
     SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
     SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());

@@ -1583,6 +1583,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                         pb->set_brush_control(1);
                         showlog(sensor_v[test_chan]->ui_msg_test[0]);
                         appendFormattedText(ui->tip, sensor_v[test_chan]->ui_msg_test[0], QColor("black"));
+
                         if (product_model == MODEL_ID_Y20) {
                             sensor_v[test_chan]->test_status = TEST_BTH_NORMAL;
                             showlog("当前是y20的测试");
@@ -1838,7 +1839,8 @@ void PressureSensorForm::reset_all() {
     data_under_pressure_error_count = 0;
     data_350_true_count = 0;
     data_over_pressure_error_count = 0;
-
+    Amplitudetimes = 0;
+    Amplituderesult = 0;
     counter = 0;
     graph_reset(0);
     data_200_true_count = 0;
@@ -2725,11 +2727,25 @@ void PressureSensorForm::startTask() {
             case STATE_TEST_ALL_RESULT:  //测试ALL通道结果
                 if (1) {
                     ui_msg_show(product_model, STATE_TEST_ALL_RESULT, test_chan);
+                    jig->get_amplitude();
                     result = passValue;
-                    state = STATE_SAVE_RESULT;
+                    if (SETTINGS.value("Press/AmplitudeLimit", false).toBool())
+                        state = STATE_AMPLITUEDE;
+                    else
+                        state = STATE_SAVE_RESULT;
                 }
                 break;
+            case STATE_AMPLITUEDE:
+                if (Amplituderesult == 0) {
+                    jig->get_amplitude();
+                } else if (Amplituderesult == 1) {
+                    state = STATE_SAVE_RESULT;
+                } else {
+                    result = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
 
+                break;
             case STATE_OVERTIME_ERROR:
                 result = failValue;
                 state = STATE_SAVE_RESULT;
@@ -3040,4 +3056,28 @@ void PressureSensorForm::on_TestButton1_clicked() {
 
     jig->get_amplitude();
 }
-void PressureSensorForm::refreshAmplitudeData(QString data) { showlog("获取到摆幅为：" + data); }
+void PressureSensorForm::refreshAmplitudeData(QString data) {
+    showlog("获取到摆幅为：" + data);
+
+    // 检查是否启用了摆幅限制
+    if (SETTINGS.value("Press/AmplitudeLimit", false).toBool()) {
+        int amplitudeUpper = SETTINGS.value("Press/AmplitudeLimitUpper", 0).toInt();
+        int amplitudeLower = SETTINGS.value("Press/AmplitudeLimitLower", 0).toInt();
+        int currentAmplitude = data.toInt();
+
+        if (currentAmplitude < amplitudeLower || currentAmplitude > amplitudeUpper) {
+            showlog("摆幅超出限制范围：" + QString::number(amplitudeLower) + " 至 " + QString::number(amplitudeUpper));
+            Amplitudetimes++;
+
+            jig->get_amplitude();
+            if (Amplitudetimes > 3) {
+                Amplitudetimes = 0;
+                Amplituderesult = 2;
+            }
+
+        } else {
+            showlog("摆幅满足要求" + QString::number(amplitudeLower) + " 至 " + QString::number(amplitudeUpper));
+            Amplituderesult = 1;
+        }
+    }
+}

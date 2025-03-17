@@ -75,7 +75,7 @@
 
 // [SCREEN_VER] 增加日志
 // [SINGLE_VER] 修复wifi无响应问题
-// [PRESSURE_VER] 写好基本的硬件通信，接下来添加协议解析
+// [PRESSURE_VER] 摆幅测试完成开发
 //
 
 // [DEBUG_VER] 移除ttl音频功能（部分用户会闪退）修复u7ota的兼容问题，关闭加密通信当正常连接的时候，ota密钥数字显示修复

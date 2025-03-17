@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1721</width>
-    <height>1076</height>
+    <height>1090</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -60,7 +60,7 @@
          <item>
           <widget class="QCheckBox" name="checkBox_MusicState">
            <property name="text">
-            <string/>
+            <string>启用</string>
            </property>
           </widget>
          </item>
@@ -173,7 +173,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_ProductName">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -194,7 +194,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_HardwareVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -215,7 +215,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_SoftwareVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -236,7 +236,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_ResourceVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -257,7 +257,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_AgingStatus">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -278,7 +278,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_MotorVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -299,7 +299,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_BluetoothVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -320,7 +320,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_AppPB">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -341,7 +341,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_FactoryPB">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -362,7 +362,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_AlgorithmVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -383,7 +383,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_PressureVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -404,7 +404,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_ImuID">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -425,7 +425,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_CameraID">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -446,7 +446,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_FSensorVersion">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -501,52 +501,10 @@
           <string>产品差异化设置</string>
          </property>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="26" column="0">
-           <widget class="QCheckBox" name="checkBox_uperMotor">
-            <property name="text">
-             <string>是否是升级声波电机</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QCheckBox" name="checkBox_SimplePcbaTest">
-            <property name="text">
-             <string>是否执行简易测试</string>
-            </property>
-           </widget>
-          </item>
           <item row="25" column="0">
            <widget class="QCheckBox" name="checkBox_ServoMotorStart">
             <property name="text">
              <string>是否是伺服电机启动</string>
-            </property>
-           </widget>
-          </item>
-          <item row="30" column="0">
-           <widget class="QCheckBox" name="checkBox_PressIndependent">
-            <property name="text">
-             <string>每个产品校准是否独立</string>
-            </property>
-           </widget>
-          </item>
-          <item row="11" column="0">
-           <widget class="QCheckBox" name="checkBox_DisableSerialPortRx">
-            <property name="text">
-             <string>是否需要关闭串口接收功能</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QCheckBox" name="checkBox_ShowLocalOTAFunc">
-            <property name="text">
-             <string>界面是否显示牙刷本地ota功能</string>
-            </property>
-           </widget>
-          </item>
-          <item row="8" column="0">
-           <widget class="QCheckBox" name="checkBox_NeedWriteSubpid">
-            <property name="text">
-             <string>是否需要写入subpid</string>
             </property>
            </widget>
           </item>
@@ -557,20 +515,6 @@
             </property>
            </widget>
           </item>
-          <item row="27" column="0">
-           <widget class="QCheckBox" name="checkBox_IMUCalibrationWakeup">
-            <property name="text">
-             <string>是否imu校准需要晃动唤醒牙刷</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="checkBox_ShowUpperComputerOTAFunc">
-            <property name="text">
-             <string>界面是否显示上位机的ota功能</string>
-            </property>
-           </widget>
-          </item>
           <item row="13" column="0">
            <widget class="QCheckBox" name="checkBox_SerialPortMAC">
             <property name="text">
@@ -578,38 +522,10 @@
             </property>
            </widget>
           </item>
-          <item row="6" column="0">
-           <widget class="QCheckBox" name="checkBox_IMULastEnterStartTest">
+          <item row="31" column="0">
+           <widget class="QCheckBox" name="checkBox_PressWindow">
             <property name="text">
-             <string>imu最后一次回车开始测试</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QCheckBox" name="checkBox_SaveToothbrushLog">
-            <property name="text">
-             <string>是否抓牙刷日志时候保存</string>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="0">
-           <widget class="QCheckBox" name="checkBox_NeedWriteSkuid">
-            <property name="text">
-             <string>是否需要写入skuid</string>
-            </property>
-           </widget>
-          </item>
-          <item row="28" column="0">
-           <widget class="QCheckBox" name="checkBox_TestShippingCurrent">
-            <property name="text">
-             <string>是否测试船运电流</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QCheckBox" name="checkBox_TestWifiSignal">
-            <property name="text">
-             <string>是否需要测试wifi信号</string>
+             <string>是否需要压感弹窗</string>
             </property>
            </widget>
           </item>
@@ -620,17 +536,17 @@
             </property>
            </widget>
           </item>
-          <item row="24" column="0">
-           <widget class="QCheckBox" name="checkBox_BluetoothImageTransfer">
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="checkBox_ShowUpperComputerOTAFunc">
             <property name="text">
-             <string>是否通过蓝牙方式传图</string>
+             <string>界面是否显示上位机的ota功能</string>
             </property>
            </widget>
           </item>
-          <item row="15" column="0">
-           <widget class="QCheckBox" name="checkBox_TestAudioCurrent">
+          <item row="9" column="0">
+           <widget class="QCheckBox" name="checkBox_NeedWriteSkuid">
             <property name="text">
-             <string>是否测试音频电流</string>
+             <string>是否需要写入skuid</string>
             </property>
            </widget>
           </item>
@@ -641,10 +557,24 @@
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
-           <widget class="QCheckBox" name="checkBox_LockProductUI">
+          <item row="3" column="0">
+           <widget class="QCheckBox" name="checkBox_SaveToothbrushLog">
             <property name="text">
-             <string>是否锁定生产界面</string>
+             <string>是否抓牙刷日志时候保存</string>
+            </property>
+           </widget>
+          </item>
+          <item row="30" column="0">
+           <widget class="QCheckBox" name="checkBox_PressIndependent">
+            <property name="text">
+             <string>每个产品校准是否独立</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QCheckBox" name="checkBox_TestWifiSignal">
+            <property name="text">
+             <string>是否需要测试wifi信号</string>
             </property>
            </widget>
           </item>
@@ -655,6 +585,20 @@
             </property>
            </widget>
           </item>
+          <item row="15" column="0">
+           <widget class="QCheckBox" name="checkBox_TestAudioCurrent">
+            <property name="text">
+             <string>是否测试音频电流</string>
+            </property>
+           </widget>
+          </item>
+          <item row="24" column="0">
+           <widget class="QCheckBox" name="checkBox_BluetoothImageTransfer">
+            <property name="text">
+             <string>是否通过蓝牙方式传图</string>
+            </property>
+           </widget>
+          </item>
           <item row="17" column="0">
            <widget class="QCheckBox" name="checkBox_SendMotorCalibration">
             <property name="text">
@@ -662,10 +606,66 @@
             </property>
            </widget>
           </item>
-          <item row="31" column="0">
-           <widget class="QCheckBox" name="checkBox_PressWindow">
+          <item row="28" column="0">
+           <widget class="QCheckBox" name="checkBox_TestShippingCurrent">
             <property name="text">
-             <string>是否需要压感弹窗</string>
+             <string>是否测试船运电流</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QCheckBox" name="checkBox_SimplePcbaTest">
+            <property name="text">
+             <string>是否执行简易测试</string>
+            </property>
+           </widget>
+          </item>
+          <item row="26" column="0">
+           <widget class="QCheckBox" name="checkBox_uperMotor">
+            <property name="text">
+             <string>是否是升级声波电机</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QCheckBox" name="checkBox_LockProductUI">
+            <property name="text">
+             <string>是否锁定生产界面</string>
+            </property>
+           </widget>
+          </item>
+          <item row="27" column="0">
+           <widget class="QCheckBox" name="checkBox_IMUCalibrationWakeup">
+            <property name="text">
+             <string>是否imu校准需要晃动唤醒牙刷</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
+           <widget class="QCheckBox" name="checkBox_NeedWriteSubpid">
+            <property name="text">
+             <string>是否需要写入subpid</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="checkBox_ShowLocalOTAFunc">
+            <property name="text">
+             <string>界面是否显示牙刷本地ota功能</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QCheckBox" name="checkBox_IMULastEnterStartTest">
+            <property name="text">
+             <string>imu最后一次回车开始测试</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QCheckBox" name="checkBox_DisableSerialPortRx">
+            <property name="text">
+             <string>是否需要关闭串口接收功能</string>
             </property>
            </widget>
           </item>
@@ -693,7 +693,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_imu_status">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -714,7 +714,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_flash_status">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -742,7 +742,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_magnetic_status">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -770,7 +770,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_pressure_status">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -791,7 +791,7 @@
             <item>
              <widget class="QCheckBox" name="checkBox_audio_status">
               <property name="text">
-               <string/>
+               <string>启用</string>
               </property>
              </widget>
             </item>
@@ -1898,52 +1898,13 @@
           <string>压感相关设置</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_5">
-          <item row="12" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
-            <item>
-             <widget class="QLabel" name="pressSignalStrengthLabel_2">
-              <property name="text">
-               <string>模式校准系数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressUpperLimitLayout_2">
-              <item>
-               <widget class="QLabel" name="pressUpperLimitLabel_2">
-                <property name="text">
-                 <string>上限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="modelPressUpperLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="pressLowerLimitLayout_2">
-              <item>
-               <widget class="QLabel" name="pressLowerLimitLabel_2">
-                <property name="text">
-                 <string>下限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="modelPressLowerLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-          <item row="7" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_18">
+          <item row="5" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
             <property name="topMargin">
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="label_ButtonThresholdCount">
+             <widget class="QLabel" name="label_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -1951,12 +1912,12 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>按键adc阈值个数</string>
+               <string>压感治具第几代</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_ButtonThresholdCount"/>
+             <widget class="QLineEdit" name="lineEdit_PressMechine"/>
             </item>
            </layout>
           </item>
@@ -1999,108 +1960,6 @@
             </item>
            </layout>
           </item>
-          <item row="2" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_individualMode">
-            <item>
-             <widget class="QLabel" name="label_individualMode">
-              <property name="text">
-               <string>单独哪个模式</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_individualMode"/>
-            </item>
-           </layout>
-          </item>
-          <item row="4" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_individualMode_2">
-            <item>
-             <widget class="QLabel" name="label_individualMode_2">
-              <property name="text">
-               <string>功能选择（3种）</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_pressFunctionSwitch"/>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
-            <item>
-             <widget class="QLabel" name="label_testWaitTime">
-              <property name="text">
-               <string>测试等待时间</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
-            </item>
-           </layout>
-          </item>
-          <item row="3" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_displayImageType">
-            <item>
-             <widget class="QLabel" name="label_displayImageType">
-              <property name="text">
-               <string>显示图像类型</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_displayImageType"/>
-            </item>
-           </layout>
-          </item>
-          <item row="8" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_19">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_BrushThreshold">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>刷头adc阈值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
-            </item>
-           </layout>
-          </item>
-          <item row="6" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_17">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_ButtonThreshold">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>按键adc阈值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_ButtonThreshold"/>
-            </item>
-           </layout>
-          </item>
           <item row="13" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_9">
             <item>
@@ -2137,43 +1996,6 @@
                <widget class="QLineEdit" name="powerPressLowerLimitLineEdit"/>
               </item>
              </layout>
-            </item>
-           </layout>
-          </item>
-          <item row="1" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime_2">
-            <item>
-             <widget class="QLabel" name="label_caliWaitTime">
-              <property name="text">
-               <string>校准等待时间</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_caliWaitTime"/>
-            </item>
-           </layout>
-          </item>
-          <item row="5" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QLabel" name="label_2">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>压感治具第几代</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_PressMechine"/>
             </item>
            </layout>
           </item>
@@ -2224,6 +2046,229 @@
                <bool>true</bool>
               </property>
              </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime_2">
+            <item>
+             <widget class="QLabel" name="label_caliWaitTime">
+              <property name="text">
+               <string>校准等待时间</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_caliWaitTime"/>
+            </item>
+           </layout>
+          </item>
+          <item row="4" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_individualMode_2">
+            <item>
+             <widget class="QLabel" name="label_individualMode_2">
+              <property name="text">
+               <string>功能选择（3种）</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_pressFunctionSwitch"/>
+            </item>
+           </layout>
+          </item>
+          <item row="3" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_displayImageType">
+            <item>
+             <widget class="QLabel" name="label_displayImageType">
+              <property name="text">
+               <string>显示图像类型</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_displayImageType"/>
+            </item>
+           </layout>
+          </item>
+          <item row="8" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_19">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_BrushThreshold">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>刷头adc阈值</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
+            </item>
+           </layout>
+          </item>
+          <item row="2" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_individualMode">
+            <item>
+             <widget class="QLabel" name="label_individualMode">
+              <property name="text">
+               <string>单独哪个模式</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_individualMode"/>
+            </item>
+           </layout>
+          </item>
+          <item row="31" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_amplitude">
+            <item>
+             <widget class="QLabel" name="label_amplitude">
+              <property name="text">
+               <string>摆幅限制</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_amplitudeLimitUpper"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_amplitude_to">
+              <property name="text">
+               <string>至</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_amplitudeLimitLower"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_amplitudeLimit">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="32" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_amplitude_error">
+            <item>
+             <widget class="QLabel" name="label_amplitude_error">
+              <property name="text">
+               <string>摆幅误差值</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_amplitudeError"/>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
+            <item>
+             <widget class="QLabel" name="label_testWaitTime">
+              <property name="text">
+               <string>测试等待时间</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
+            </item>
+           </layout>
+          </item>
+          <item row="12" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_8">
+            <item>
+             <widget class="QLabel" name="pressSignalStrengthLabel_2">
+              <property name="text">
+               <string>模式校准系数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressUpperLimitLayout_2">
+              <item>
+               <widget class="QLabel" name="pressUpperLimitLabel_2">
+                <property name="text">
+                 <string>上限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="modelPressUpperLimitLineEdit"/>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="pressLowerLimitLayout_2">
+              <item>
+               <widget class="QLabel" name="pressLowerLimitLabel_2">
+                <property name="text">
+                 <string>下限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="modelPressLowerLimitLineEdit"/>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+          <item row="6" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_17">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_ButtonThreshold">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>按键adc阈值</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_ButtonThreshold"/>
+            </item>
+           </layout>
+          </item>
+          <item row="7" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout_18">
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_ButtonThresholdCount">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>按键adc阈值个数</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_ButtonThresholdCount"/>
             </item>
            </layout>
           </item>

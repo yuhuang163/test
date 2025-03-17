@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>10</number>
+               <number>4</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1600,14 +1600,14 @@
                      <item row="10" column="0">
                       <widget class="QPushButton" name="open_camera_picture">
                        <property name="text">
-                        <string>开启视频流</string>
+                        <string>开启ble视频流</string>
                        </property>
                       </widget>
                      </item>
                      <item row="10" column="1">
                       <widget class="QPushButton" name="close_camera_picture">
                        <property name="text">
-                        <string>关闭视频流</string>
+                        <string>关闭ble视频流</string>
                        </property>
                       </widget>
                      </item>
@@ -1625,7 +1625,7 @@
                           </sizepolicy>
                          </property>
                          <property name="text">
-                          <string>摄像头开</string>
+                          <string>wifi摄像头开</string>
                          </property>
                         </widget>
                        </item>
@@ -1638,7 +1638,7 @@
                           </sizepolicy>
                          </property>
                          <property name="text">
-                          <string>摄像头关</string>
+                          <string>wifi摄像头关</string>
                          </property>
                         </widget>
                        </item>

@@ -158,6 +158,8 @@ private:
         STATE_TEST_CH_X_RESULT,     //测试通道x结果
         STATE_TEST_ALL_RESULT,      //测试ALL通道结果
         STATE_OVERTIME_ERROR,       // 超时
+        STATE_AMPLITUEDE,//摆幅测试
+
         STATE_SAVE_RESULT,          // 复位牙刷
         STATE_END,                  // 上传mes
 
@@ -240,7 +242,8 @@ private:
     bool is_get_set_ok_command = false;
 
     bool isStartcali = 0;  // 是否开始校准
-
+ int Amplituderesult = 0;  // 只进行一次
+   int Amplitudetimes=0;
     bool first_start_test = 1;  // 只进行一次
     bool start_calib_channel[3] = {0};
     bool isfirstsavedata = 0;  // 是否开始按键200校准
@@ -280,7 +283,7 @@ private:
 
 private slots:
     void getPressSensorData(FacUploadPresSensor x) override;
-void refreshAmplitudeData(QString data) ;
+void refreshAmplitudeData(QString data)override;
     void receive_uart_data(int state);
 
     void send_frame_rate(QString data);

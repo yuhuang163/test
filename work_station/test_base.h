@@ -180,6 +180,8 @@ public slots:
     virtual void refreshCameraControl(FacCameraControl){};
     virtual void checkLedControlState(FacLedControl){};
     virtual void getPressSensorData(FacUploadPresSensor){};
+
+    virtual void refreshAmplitudeData(QString data){};
     virtual void checkbutton(FacButtonState){};
     virtual void checkBrushControlState(FacBrushControl){};
     virtual void refreshImuCaliResult(FacImuCalibResult){};
