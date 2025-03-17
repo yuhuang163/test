@@ -2200,7 +2200,7 @@
             <item>
              <widget class="QLineEdit" name="lineEdit_press_adc_shake">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
              </widget>
             </item>

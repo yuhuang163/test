@@ -70,9 +70,10 @@
 // [DEBUG_VER] 添加ota加密解密的log
 //
 // [IMU_VER] 增加无mes厂进船运的功能
-// [PRESSURE_VER] 增加保存压感数据的层级
+
 // [SCREEN_VER] 增加日志
 // [SINGLE_VER] 修复wifi无响应问题
+// [PRESSURE_VER] 增加日志，调整校准砝码
 //
 
 // [DEBUG_VER] 移除ttl音频功能（部分用户会闪退）修复u7ota的兼容问题，关闭加密通信当正常连接的时候，ota密钥数字显示修复

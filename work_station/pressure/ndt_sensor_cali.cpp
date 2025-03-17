@@ -129,7 +129,7 @@ const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
     {CAL_CHANNEL_P30P_CH0, {1, 40, 0, 300, 0, 0, 0, {}, {}}},
 
     {CAL_CHANNEL_Y30PS_CH0, {1, 80, 80 / 5, 400, 400, 0, 0, {}, {}}},
-    {CAL_CHANNEL_Y20PO_CH0, {1, 20, 20 / 5, 200, 200, 0, 0, {}, {}}}};
+    {CAL_CHANNEL_Y20PO_CH0, {1, 20, 20 / 5, 400, 400, 0, 0, {}, {}}}};
 
 void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
     auto it = calib_table.find(machine);

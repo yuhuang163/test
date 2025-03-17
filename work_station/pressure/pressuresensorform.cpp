@@ -1373,37 +1373,40 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
         }
         // 避免刷头给按键校准造成干扰需要检查 brush_head.value < 50，即刷头值较小时才进行校准，避免干扰
         if (sensor_v[calib_chan]->para.f_module[0] == MODULE_MODE_BUTTON) {
-            if ((short)x.sensor_data[i].brush_head.value < 50) {
-                // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc
-                //          << " ADC 阈值: " << sensor_v[calib_chan]->para.adc_threshold
-                //          << " 校准是否已开始: " << start_calib_channel[calib_chan] << " 校准通道: " << calib_chan
-                //          << " 初始 ADC 值: " << sensor_v[calib_chan]->para.first_adc
-                //          << " adc_c[calib_chan]: " << (adc_c[calib_chan]) << " last_botton_adc: " <<
-                //          (last_botton_adc)
-                //          << " 稳定差值: " << adc_c[calib_chan] - last_botton_adc;
+            if ((short)x.sensor_data[i].brush_head.value < 50)
+                if (1) {
+                    if ((adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc) >
+                            sensor_v[calib_chan]->para.adc_threshold &&
+                        !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
+                        qAbs(adc_c[calib_chan] - last_botton_adc) < AdcShakeValue
 
-                if ((adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc) >
-                        sensor_v[calib_chan]->para.adc_threshold &&
-                    !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
-                    qAbs(adc_c[calib_chan] - last_botton_adc) < AdcShakeValue
-
-                ) {
-                    brush_before_calib_count++;
-                    qDebug() << getIndex() << "按键合法值个数" << brush_before_calib_count << "要求个数"
-                             << sensor_v[calib_chan]->para.count_threshold;
-                    if (brush_before_calib_count > sensor_v[calib_chan]->para.count_threshold) {
-                        start_calib_channel[calib_chan] = 1;
-                        brush_before_calib_count = 0;
+                    ) {
+                        brush_before_calib_count++;
+                        qDebug() << getIndex() << "按键合法值个数" << brush_before_calib_count << "要求个数"
+                                 << sensor_v[calib_chan]->para.count_threshold;
+                        if (brush_before_calib_count > (sensor_v[calib_chan]->para.count_threshold - 200)) {
+                            start_calib_channel[calib_chan] = 1;
+                            brush_before_calib_count = 0;
+                        }
+                    } else {
+                        qDebug() << getIndex()
+                                 << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc
+                                 << " ADC 阈值: " << sensor_v[calib_chan]->para.adc_threshold
+                                 << " 校准是否已开始: " << start_calib_channel[calib_chan]
+                                 << " 校准通道: " << calib_chan
+                                 << " 初始 ADC 值: " << sensor_v[calib_chan]->para.first_adc
+                                 << " adc_c[calib_chan]: " << (adc_c[calib_chan])
+                                 << " last_botton_adc: " << (last_botton_adc)
+                                 << " 稳定差值: " << qAbs(adc_c[calib_chan] - last_botton_adc);
                     }
                 }
-            }
         } else {
             // qDebug() << "ADC 差值: " << adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc
             //          << " ADC 阈值: " << sensor_v[calib_chan]->para.adc_threshold
             //          << " 校准是否已开始: " << start_calib_channel[calib_chan] << " 校准通道: " << calib_chan
             //          << " 初始 ADC 值: " << sensor_v[calib_chan]->para.first_adc
             //          << " adc_c[calib_chan]: " << (adc_c[calib_chan]) << " last_brush_adc: " << (last_brush_adc)
-            //          << " 稳定差值: " << (adc_c[calib_chan] - last_brush_adc);
+            //          << " 稳定差值: " << qAbs(adc_c[calib_chan] - last_brush_adc);
 
             if ((adc_c[calib_chan] - sensor_v[calib_chan]->para.first_adc) > sensor_v[calib_chan]->para.adc_threshold &&
                 !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
@@ -2126,6 +2129,25 @@ void PressureSensorForm::Y20PO_fixture(State state, int argument) {
                         case TEST_BTH_NORMAL: send_start_command(COMMAND_ID_BTH_PRESS_350, 0); break;
 
                         case TEST_BTH_OVERPRESS: send_start_command(COMMAND_ID_BTH_PRESS_450, 0); break;
+                    }
+
+                case MODULE_MODE_BUTTON:
+                    switch (sensor_v[test_chan]->test_status) {
+                        case TEST_KEY_NO_CLICK:
+                            send_start_command(COMMAND_ID_FAMA_100_O, 0);
+                            delay_msec(500);
+                            send_start_command(COMMAND_ID_FAMA_100_C, 0);
+                            delay_msec(500);
+                            sensor_v[test_chan]->send_state = 1;
+                            break;
+
+                        case TEST_KEY_CLICK:
+                            send_start_command(COMMAND_ID_FAMA_300_O, 0);
+                            delay_msec(500);
+                            send_start_command(COMMAND_ID_FAMA_300_C, 0);
+                            delay_msec(1000);
+                            sensor_v[test_chan]->send_state = 1;
+                            break;
                     }
                     break;
             }
