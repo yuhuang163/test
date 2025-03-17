@@ -37,8 +37,11 @@ public:
     void set_cylinder_state(int state, int mechine);
     void waitWork(int ms);
     void set_relay_state(int state);
-
+    void get_amplitude();
     void save_Jig_uart_log(int txrx, QByteArray data);
+    void parseCmd(const QByteArray& byte);
+    signals:
+        void send_amplitude_data(QString);
 };
 
 #endif  // QJIG_H

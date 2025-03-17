@@ -279,9 +279,8 @@ private:
     QTimer graphUpdateTimer;
 
 private slots:
-    void readJigSerialPortData(void) override;
     void getPressSensorData(FacUploadPresSensor x) override;
-
+void refreshAmplitudeData(QString data) ;
     void receive_uart_data(int state);
 
     void send_frame_rate(QString data);

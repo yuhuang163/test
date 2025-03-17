@@ -33,13 +33,13 @@ PressureSensorForm::PressureSensorForm(int index, QWidget* parent) : test_base(p
     ui->macLabel->setText("蓝牙mac:                        ");
     ui->frame_rate->setText("数据帧率:            ");
 
-    //治具串口不可见
-    for (auto i = 0; i < ui->horizontalLayout_14->count(); i++) {
-        QWidget* w = ui->horizontalLayout_14->itemAt(i)->widget();
-        if (w != nullptr) {
-            w->setVisible(false);
-        }
-    }
+    // //治具串口不可见
+    // for (auto i = 0; i < ui->horizontalLayout_14->count(); i++) {
+    //     QWidget* w = ui->horizontalLayout_14->itemAt(i)->widget();
+    //     if (w != nullptr) {
+    //         w->setVisible(false);
+    //     }
+    // }
 
     ui->botton_adc_diff->hide();
 
@@ -564,15 +564,6 @@ void PressureSensorForm::receive_uart_data(int state) {
             set_independent_state(STATE_CALIB_START);
         }
     }
-}
-
-void PressureSensorForm::readJigSerialPortData() {
-    QByteArray dataTemp;
-    dataTemp = jigSerialPort->readAll();
-    // qusb->parseCmd(dataTemp);
-    qDebug() << QString::fromUtf8(dataTemp);
-    // 处理接收到的数据
-    processFixReceivedData(dataTemp);
 }
 
 void PressureSensorForm::processFixReceivedData(const QByteArray& data) {
@@ -3043,7 +3034,10 @@ void PressureSensorForm::on_TestButtonNFC_clicked() { QString ReadNfcData = Read
 void PressureSensorForm::on_TestButton1_clicked() {
     // pb->get_base_info();  // 获取设备信息
 
-    CheckNfcData();
+    // CheckNfcData();
 
-    qDebug() << "压感结果" << sensor_v[0]->para.lower_limit << sensor_v[1]->para.lower_limit;
+    // qDebug() << "压感结果" << sensor_v[0]->para.lower_limit << sensor_v[1]->para.lower_limit;
+
+    jig->get_amplitude();
 }
+void PressureSensorForm::refreshAmplitudeData(QString data) { showlog("获取到摆幅为：" + data); }

@@ -213,6 +213,74 @@ void Qjig::sendjigData(jigState fixstate) {
         }
     }
 }
+void Qjig::parseCmd(const QByteArray& byte) {
+    // 检查数据是否为空
+    if (byte.isEmpty()) {
+        return;
+    }
+    qDebug() << "byte" << byte;
+    // 将数据按行分割
+    QList<QByteArray> lines = byte.split('\n');
+    for (const QByteArray& line : lines) {
+        // 跳过空行
+        if (line.trimmed().isEmpty()) {
+            continue;
+        }
+        qDebug() << "line" << line;
+        // 检查是否是数据行
+        if (line.contains("数据")) {
+            QList<int> values;
+            int maxVal = 0;
+            int minVal = 99999;
+
+            // 解析数据行，提取数值
+            QList<QByteArray> parts = line.split(':');
+            if (parts.size() > 1) {
+                QString dataStr = QString::fromUtf8(parts[1].trimmed());
+                QStringList dataValues = dataStr.split(' ', Qt::SkipEmptyParts);
+
+                // 处理每个数值
+                for (const QString& val : dataValues) {
+                    bool ok;
+                    int value = val.toInt(&ok);
+                    if (ok) {
+                        values.append(value);
+                        // 更新最大值和最小值
+                        maxVal = qMax(maxVal, value);
+                        minVal = qMin(minVal, value);
+                    }
+                }
+
+                // 计算空缺值
+                // 假设每两个相邻值之间的差值超过某个阈值时，认为中间有空缺
+                int gapThreshold = 3;  // 可以根据实际情况调整阈值
+                int gapValue = 0;
+
+                for (int i = 0; i < values.size() - 1; i++) {
+                    int diff = qAbs(values[i + 1] - values[i]);
+                    if (diff > gapThreshold) {
+                        // 发现空缺，计算空缺值（取相邻两值的平均）
+                        gapValue += (values[i + 1] + values[i]) / 2;
+                    }
+                }
+
+                // 计算最终结果
+                int result = (maxVal - minVal + gapValue) * 6;
+                qDebug() << "发送结果";
+                // 发送结果
+                emit send_amplitude_data(QString::number(result));
+            }
+        }
+    }
+}
+void Qjig::get_amplitude() {
+    QByteArray dataToSend = QByteArray("Test1\r\n");
+    if (!dataToSend.isEmpty()) {
+        serialPort->write(dataToSend);
+        save_Jig_uart_log(1, dataToSend);
+    }
+}
+
 void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
     QString folderName = "所有log/治具log";
     QDir dir;

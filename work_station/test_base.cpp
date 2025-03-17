@@ -76,6 +76,7 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
+    connect(jig, SIGNAL(send_amplitude_data(QString)), this, SLOT(refreshAmplitudeData(QString)));
 
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
@@ -458,13 +459,13 @@ void test_base::readJigSerialPortData() {
     jigSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = jigSerialPortBuf;  // 读取缓冲区数据
 
-    // qDebug() << getIndex()<< "data len : " << dataTemp.size();
-    at->parseCmd(dataTemp);
-    pb->parseCmd(dataTemp);
+    qDebug() << getIndex() << "data len : " << dataTemp.size();
+    // at->parseCmd(dataTemp);
+    // pb->parseCmd(dataTemp);
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-
+    jig->parseCmd(dataTemp);
     jigSerialPortBuf.clear();  // 清除缓冲区
 }
 void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error) {
@@ -672,7 +673,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
                 if (commandFunc != nullptr && !(retryCount % 5)) {
-                    showlog("重新发送指令发送pb指令"+QString::number(retryCount));
+                    showlog("重新发送指令发送pb指令" + QString::number(retryCount));
                     commandFunc();  // 重新发送指令
                 }
                 retryCount++;
