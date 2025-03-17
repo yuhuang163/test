@@ -372,6 +372,7 @@ typedef struct _FacGetDevBaseInfo {
     char motor_version[24]; 
     char ble_version[24]; /* string */
     char camera_version[24]; /* string */
+    char fsensor_version[24]; 
     FacErrorCode result; 
 } FacGetDevBaseInfo;
 
@@ -845,7 +846,7 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define FactoryDataPackage_init_default          {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_default}}
-#define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
+#define FacGetDevBaseInfo_init_default           {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", "", _FacErrorCode_MIN}
 #define FacSetDevBaseInfo_init_default           {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_default                 {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_default              {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
@@ -890,7 +891,7 @@ extern "C" {
 #define FacOtaFileInfo_init_default              {0, 0, 0, "", ""}
 #define FacInternetOta_init_default              {0, {FacOtaFileInfo_init_default, FacOtaFileInfo_init_default}, _FacErrorCode_MIN}
 #define FactoryDataPackage_init_zero             {_FactroyCmd_MIN, 0, {FacGetDevBaseInfo_init_zero}}
-#define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", _FacErrorCode_MIN}
+#define FacGetDevBaseInfo_init_zero              {"", 0, _FacProtoId_MIN, "", "", "", "", "", {0, {0}}, {0, {0}}, 0, 0, "", "", "", "", _FacErrorCode_MIN}
 #define FacSetDevBaseInfo_init_zero              {_FacBasInfoType_MIN, 0, {""}}
 #define FacDevState_init_zero                    {_DevStateType_MIN, _FacSwitch_MIN, _FacErrorCode_MIN}
 #define FacBatteryInfo_init_zero                 {_FacChargeStateType_MIN, 0, 0, _FacBatteryType_MIN}
@@ -994,6 +995,7 @@ extern "C" {
 #define FacGetDevBaseInfo_motor_version_tag      13
 #define FacGetDevBaseInfo_ble_version_tag        14
 #define FacGetDevBaseInfo_camera_version_tag     15
+#define FacGetDevBaseInfo_fsensor_version_tag    16
 #define FacGetDevBaseInfo_result_tag             100
 #define FacGetPeriphState_imu_state_tag          1
 #define FacGetPeriphState_flash_state_tag        2
@@ -1288,6 +1290,7 @@ X(a, STATIC,   SINGULAR, BOOL,     ageing_state,     12) \
 X(a, STATIC,   SINGULAR, STRING,   motor_version,    13) \
 X(a, STATIC,   SINGULAR, STRING,   ble_version,      14) \
 X(a, STATIC,   SINGULAR, STRING,   camera_version,   15) \
+X(a, STATIC,   SINGULAR, STRING,   fsensor_version,  16) \
 X(a, STATIC,   SINGULAR, UENUM,    result,          100)
 #define FacGetDevBaseInfo_CALLBACK NULL
 #define FacGetDevBaseInfo_DEFAULT NULL
@@ -1820,7 +1823,7 @@ extern const pb_msgdesc_t FacInternetOta_msg;
 #define FacDevInfoValue_size                     180
 #define FacDevInfo_size                          918
 #define FacDevState_size                         7
-#define FacGetDevBaseInfo_size                   244
+#define FacGetDevBaseInfo_size                   270
 #define FacGetPeriphState_size                   13
 #define FacImuCalibResult_size                   86
 #define FacInternetOta_size                      691

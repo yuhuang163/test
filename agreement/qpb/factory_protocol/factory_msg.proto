@@ -142,6 +142,7 @@ message FacGetDevBaseInfo
     string motor_version = 13 [(nanopb).max_size= 24];
     string ble_version = 14 [(nanopb).max_size= 24];	//string
     string camera_version = 15 [(nanopb).max_size= 24];	//string
+    string fsensor_version = 16 [(nanopb).max_size= 24];
     FacErrorCode result = 100;
 }
 

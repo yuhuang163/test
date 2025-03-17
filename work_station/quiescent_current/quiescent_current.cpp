@@ -134,6 +134,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
         QString algorithmVersion = SETTINGS.value("ProductInfo/Algorithm_Version").toString();
         QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+        QString fsensorVersion = SETTINGS.value("ProductInfo/FSensor_Version").toString();
         QString imuId = SETTINGS.value("ProductInfo/IMU_ID").toString();
         QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
         QString camera_id = SETTINGS.value("ProductInfo/Camera_Id").toString();
@@ -147,6 +148,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
         bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
         bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
+        bool isFSensorTest = SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool();
         bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
         bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
         bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
@@ -154,6 +156,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         if ((!isAlgoTest || compareVersions(algorithmVersion, data.algo_version)) &&
             (!isHwTest || compareVersions(hardwareVersion, data.hw_version)) &&
             (!isPresureTest || compareVersions(pressureSenseVersion, data.presure_version)) &&
+            (!isFSensorTest || compareVersions(fsensorVersion, data.fsensor_version)) &&
             (!isProductTest || compareVersions(productName, data.product_name)) &&
             (!isAppProtocolTest || compareVersions(appProtocolVersion, QString::number(data.pb_phone_ver))) &&
             (!isFactoryProtocolTest || compareVersions(factoryProtocolVersion, QString::number(data.pb_factory_ver))) &&
@@ -231,6 +234,14 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
             test.testItem = "压感版本";
             test.testData = QString::fromUtf8(data.presure_version);
             test.ask = pressureSenseVersion;
+            testItems.append(test);
+        }
+
+        // Check for FSensor version
+        if (isFSensorTest) {
+            test.testItem = "刷头压感版本";
+            test.testData = QString::fromUtf8(data.fsensor_version);
+            test.ask = fsensorVersion;
             testItems.append(test);
         }
 

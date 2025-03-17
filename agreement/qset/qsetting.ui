@@ -431,6 +431,27 @@
             </item>
            </layout>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="layoutFSensorVersion">
+            <item>
+             <widget class="QLabel" name="labelFSensorVersion">
+              <property name="text">
+               <string>刷头压感</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_FSensorVersion"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_FSensorVersion">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </widget>
        </item>

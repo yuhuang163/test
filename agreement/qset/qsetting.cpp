@@ -235,6 +235,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_FactoryPB->setText(SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString());  // 厂测的pb
     ui->lineEdit_AlgorithmVersion->setText(SETTINGS.value("ProductInfo/Algorithm_Version").toString());  // 算法版本
     ui->lineEdit_PressureVersion->setText(SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString());  // 压感版本
+    ui->lineEdit_FSensorVersion->setText(SETTINGS.value("ProductInfo/FSensor_Version").toString());  // 刷头压感版本
     ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                            // imu的id
     ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());  // 摄像头的id
 
@@ -249,6 +250,7 @@ void qsetting::loadConfig() {
     ui->checkBox_FactoryPB->setChecked(SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool());
     ui->checkBox_AlgorithmVersion->setChecked(SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool());
     ui->checkBox_PressureVersion->setChecked(SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool());
+    ui->checkBox_FSensorVersion->setChecked(SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool());
     ui->checkBox_ImuID->setChecked(SETTINGS.value("ProductInfo/ImuID_checkBox").toBool());
     ui->checkBox_CameraID->setChecked(SETTINGS.value("ProductInfo/CameraID_checkBox").toBool());
 
@@ -523,6 +525,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/Factory_Protocol_Version", ui->lineEdit_FactoryPB->text());
     SETTINGS.setValue("ProductInfo/Algorithm_Version", ui->lineEdit_AlgorithmVersion->text());
     SETTINGS.setValue("ProductInfo/Pressure_Sense_Version", ui->lineEdit_PressureVersion->text());
+    SETTINGS.setValue("ProductInfo/FSensor_Version", ui->lineEdit_FSensorVersion->text());
     SETTINGS.setValue("ProductInfo/IMU_ID", ui->lineEdit_ImuID->text());
     SETTINGS.setValue("ProductInfo/Camera_Id", ui->lineEdit_CameraID->text());
 
@@ -537,6 +540,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/FactoryPB_checkBox", ui->checkBox_FactoryPB->isChecked());
     SETTINGS.setValue("ProductInfo/AlgorithmVersion_checkBox", ui->checkBox_AlgorithmVersion->isChecked());
     SETTINGS.setValue("ProductInfo/PressureVersion_checkBox", ui->checkBox_PressureVersion->isChecked());
+    SETTINGS.setValue("ProductInfo/FSensorVersion_checkBox", ui->checkBox_FSensorVersion->isChecked());
     SETTINGS.setValue("ProductInfo/ImuID_checkBox", ui->checkBox_ImuID->isChecked());
     SETTINGS.setValue("ProductInfo/CameraID_checkBox", ui->checkBox_CameraID->isChecked());
 

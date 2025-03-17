@@ -67,7 +67,9 @@
 #define PRESSURE_VER "压感校测工站   V1.3.8"
 
 
-// [DEBUG_VER] 添加ota加密解密的log
+// [DEBUG_VER] 添加轴压感版本
+// [SCREEN_VER] 添加轴压感版本
+// [PCBA_VER] 添加轴压感版本
 //
 // [IMU_VER] 增加无mes厂进船运的功能
 

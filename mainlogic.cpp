@@ -2545,6 +2545,7 @@ void MainWindow::initBasicInfo() {
     QString resourceVersion = "=" + SETTINGS.value("ProductInfo/Resource_Version").toString();
     QString algorithmVersion = "=" + SETTINGS.value("ProductInfo/Algorithm_Version").toString();
     QString pressureSenseVersion = "=" + SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
+    QString fsensorVersion = "=" + SETTINGS.value("ProductInfo/FSensor_Version").toString();
     QString imuId = "=" + SETTINGS.value("ProductInfo/IMU_ID").toString();
     QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
 
@@ -2564,6 +2565,7 @@ void MainWindow::initBasicInfo() {
                                   {"res_version", "资源版本号", resourceVersion},
                                   {"algo_version", "算法版本号", algorithmVersion},
                                   {"presure_version", "压感版本号", pressureSenseVersion},
+                                  {"fsensor_version", "轴压感版本号", fsensorVersion},
                                   {"ble_mac", "蓝牙的MAC", ""},
                                   {"wifi_mac", "WIFI的MAC", ""},
                                   {"imu_id", "IMU版本号", imuId},
@@ -2600,6 +2602,7 @@ void MainWindow::initBasicInfo() {
             ->setData(QString("%1").arg(baseInfo.soft_version), Qt::DisplayRole);
         basicInfoModel->getTestItemByName("res_version")->setData(baseInfo.res_version, Qt::DisplayRole);
         basicInfoModel->getTestItemByName("presure_version")->setData(baseInfo.presure_version, Qt::DisplayRole);
+        basicInfoModel->getTestItemByName("fsensor_version")->setData(baseInfo.fsensor_version, Qt::DisplayRole);
 
         QString mac;
 
@@ -2634,7 +2637,8 @@ void MainWindow::initBasicInfo() {
         writeDataToCSVFile();
 
         if (algorithmVersion.contains(baseInfo.algo_version) && hardwareVersion.contains(baseInfo.hw_version) &&
-            pressureSenseVersion.contains(baseInfo.presure_version) && productName.contains(baseInfo.product_name) &&
+            pressureSenseVersion.contains(baseInfo.presure_version) && fsensorVersion.contains(baseInfo.fsensor_version) &&
+            productName.contains(baseInfo.product_name) &&
             appProtocolVersion.contains(QString::number(baseInfo.pb_phone_ver)) &&
             factoryProtocolVersion.contains(QString::number(baseInfo.pb_factory_ver)) &&
             softwareVersion.contains(baseInfo.soft_version) && resourceVersion.contains(baseInfo.res_version) &&
