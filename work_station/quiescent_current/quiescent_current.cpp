@@ -115,7 +115,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
-
+        brushsoft_version = QString::fromUtf8(data.soft_version);
         qDebug() << getIndex() << "algo_version" << data.algo_version;
         qDebug() << getIndex() << "hw_version" << data.hw_version;
         qDebug() << getIndex() << "presure_version" << data.presure_version;
@@ -797,7 +797,7 @@ void quiescent_current::startTask() {
                     ble_waittime->stop();
                     waittime->stop();
                     waitWork(100);
-
+                    // pb->set_sleeep(FacSwitch_START);
                     sendCommandWithRetry(std::bind(&Qpb::set_sleeep, pb, FacSwitch_START));
 
                     state = STATE_SLEEP_OPEN;
@@ -825,8 +825,9 @@ void quiescent_current::startTask() {
                     QString mesresult = "NG";
                     //   QString mesmacAddress = macAddress.replace(":", "").toUpper();
 
-                    QString itemvalue =
-                        QString("|BTMAC:%1").arg(macAddress) + QString("|CURRENT:%1|").arg(measure_ammeter);
+                    QString itemvalue = QString("|SOFTVERSION:%1").arg(brushsoft_version) +
+                                        QString("|BTMAC:%1").arg(macAddress) +
+                                        QString("|CURRENT:%1|").arg(measure_ammeter);
                     pack.result = mesresult;
                     pack.itemvalue = itemvalue;
                     pack.instruct_num = "076";
@@ -855,8 +856,9 @@ void quiescent_current::startTask() {
                     QString mesresult = "PASS";
                     //  QString mesmacAddress = macAddress.replace(":", "").toUpper();
 
-                    QString itemvalue =
-                        QString("|BTMAC:%1").arg(macAddress) + QString("|CURRENT:%1|").arg(measure_ammeter);
+                    QString itemvalue = QString("|SOFTVERSION:%1").arg(brushsoft_version) +
+                                        QString("|BTMAC:%1").arg(macAddress) +
+                                        QString("|CURRENT:%1|").arg(measure_ammeter);
                     pack.result = mesresult;
 
                     pack.itemvalue = itemvalue;
@@ -884,9 +886,7 @@ void quiescent_current::startTask() {
                     if (pack.factory == "hq") {
                         usb->gethqMEASure();
                         waitWork(1000);
-                    }
-
-                    else if (pack.factory == "lx") {
+                    } else if (pack.factory == "lx") {
                         usb->getlxMEASure(1);
                         waitWork(1000);
                     } else {

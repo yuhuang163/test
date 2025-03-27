@@ -45,7 +45,13 @@ void Qjig::set_cylinder_state(int state, int mechine) {
                 sendjigData(STATE_RELAY_OPEN);
                 waitWork(50);
                 sendjigData(STATE_CYLINDER_OPEN);
-                waitWork(3000);
+
+                if (SETTINGS.value("Mes/Product_Name").toString() == "Y20PS" ||
+                    SETTINGS.value("Mes/Product_Name").toString() == "Y30" ||
+                    SETTINGS.value("Mes/Product_Name").toString() == "Y30S")
+                    waitWork(5000);
+                else
+                    waitWork(3000);
                 sendjigData(STATE_RELAY_RESET);
             } else {
                 set_relay_state(2);
@@ -218,10 +224,10 @@ void Qjig::parseCmd(const QByteArray& byte) {
         return;
     }
     qDebug() << "byte" << byte;
-    
-    QList<int> allValues;  // 存储所有行的数值
+
+    QList<int> allValues;    // 存储所有行的数值
     bool foundData = false;  // 标记是否找到数据行
-    
+
     // 将数据按行分割
     QList<QByteArray> lines = byte.split('\n');
     for (const QByteArray& line : lines) {
@@ -229,15 +235,17 @@ void Qjig::parseCmd(const QByteArray& byte) {
             continue;
         }
         qDebug() << "line" << line;
-        
+
         // 检查是否是数据行
         QByteArray searchPattern = QByteArray::fromHex("CAFDBEDD");  // "数据"的GBK编码
         if (line.contains(searchPattern)) {
             foundData = true;
             // 解析数据行，提取数值
-            QList<QByteArray> parts = line.split(':');
-            if (parts.size() > 1) {
-                QString dataStr = QString::fromUtf8(parts[1].trimmed());
+            QByteArray colon = QByteArray::fromHex("A3BA");  // 中文冒号的GBK编码
+            int colonPos = line.indexOf(colon);
+            if (colonPos != -1) {
+                QByteArray valuePart = line.mid(colonPos + colon.length());
+                QString dataStr = QString::fromUtf8(valuePart.trimmed());
                 bool ok;
                 int value = dataStr.toInt(&ok);
                 if (ok) {
@@ -246,14 +254,14 @@ void Qjig::parseCmd(const QByteArray& byte) {
             }
         }
     }
-    
+
     // 所有行遍历完成后，计算摆幅
     if (foundData && !allValues.isEmpty()) {
         // 找出非零值的最大值和最小值
         int maxVal = 0;
         int minVal = 99999;
         bool hasNonZeroValue = false;
-        
+
         for (int value : allValues) {
             if (value > 0) {
                 hasNonZeroValue = true;
@@ -261,10 +269,10 @@ void Qjig::parseCmd(const QByteArray& byte) {
                 minVal = qMin(minVal, value);
             }
         }
-        
+
         if (hasNonZeroValue) {
             // 计算摆幅：最大值减最小值
-            int amplitude = maxVal - minVal;
+            int amplitude = maxVal - minVal + 1;
             // 获取误差值
             int errorValue = SETTINGS.value("Pressure/AmplitudeError", 0).toInt();
             // 计算最终结果：摆幅加上误差值后乘以6

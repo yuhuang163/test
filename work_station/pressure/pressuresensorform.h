@@ -56,8 +56,10 @@ public:
         MODEL_ID_F20,
         MODEL_ID_U7,
         MODEL_ID_P30P,
-        MODEL_ID_Y30PS,
-        MODEL_ID_Y20PO,
+        MODEL_ID_Y30S,
+        MODEL_ID_Y20PS,
+        MODEL_ID_Y30P,
+
         MODEL_ID_MAX,
     } MODEL_ID_E;
 
@@ -158,10 +160,10 @@ private:
         STATE_TEST_CH_X_RESULT,     //测试通道x结果
         STATE_TEST_ALL_RESULT,      //测试ALL通道结果
         STATE_OVERTIME_ERROR,       // 超时
-        STATE_AMPLITUEDE,//摆幅测试
+        STATE_AMPLITUEDE,           //摆幅测试
 
-        STATE_SAVE_RESULT,          // 复位牙刷
-        STATE_END,                  // 上传mes
+        STATE_SAVE_RESULT,  // 复位牙刷
+        STATE_END,          // 上传mes
 
         STATE_TEST_1,
         STATE_TEST_2,
@@ -191,7 +193,7 @@ private:
     void Y20P_fixture(State state, int argument);
     void F20_fixture(State state, int argument);
     void U7_fixture(State state, int argument);
-    void Y20PO_fixture(State state, int argument);
+    void Y20PS_fixture(State state, int argument);
 
     void ui_msg_show(MODEL_ID_E model, State state, int argument);
 
@@ -214,7 +216,7 @@ private:
     MODEL_ID_E product_model = MODEL_ID_INVALID;  // 产品型号
 
     // ONLY_MODE 此处定义为了区分只校准测试刷头和只校准测试按键，目前只有F20用
-    QString only_mode = "";
+    ONLY_SET_E only_mode = SET_INVALID;
 
     // graph setting
     QString Is_use_graph = "";
@@ -241,9 +243,9 @@ private:
     bool is_get_ready_command = false;
     bool is_get_set_ok_command = false;
 
-    bool isStartcali = 0;  // 是否开始校准
- int Amplituderesult = 0;  // 只进行一次
-   int Amplitudetimes=0;
+    bool isStartcali = 0;     // 是否开始校准
+    int Amplituderesult = 0;  // 只进行一次
+    int Amplitudetimes = 0;
     bool first_start_test = 1;  // 只进行一次
     bool start_calib_channel[3] = {0};
     bool isfirstsavedata = 0;  // 是否开始按键200校准
@@ -283,7 +285,7 @@ private:
 
 private slots:
     void getPressSensorData(FacUploadPresSensor x) override;
-void refreshAmplitudeData(QString data)override;
+    void refreshAmplitudeData(QString data) override;
     void receive_uart_data(int state);
 
     void send_frame_rate(QString data);

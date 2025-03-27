@@ -981,6 +981,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     }
 
                     if (is_battary_test == 2) {
+                        pack.error = "SP03020";
                         showlog("出厂电压异常为" + QString::number(voltage));
                         result = failValue;
                         TestItem test;
@@ -1085,7 +1086,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     testItems.append(test);
 
                     testResultTableUpdate(testItems);
-
+                    pack.error = "SP03021";
                     showlog("六轴校准结束");
                     emit endcali(getIndex());
                     state = STATE_END;
@@ -1122,7 +1123,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     showlog("六轴校准结束");
                     emit endcali(getIndex());
 
-                    if ((ui->isusemes->checkState()|| pack.factory == "无mes厂") &&  result == passValue) {
+                    if ((ui->isusemes->checkState() || pack.factory == "无mes厂") && result == passValue) {
                         pb->set_fac_mode(0);
                         waitWork(100);
                         sendCommandWithRetry(std::bind(&Qpb::set_ship_mode, pb, 1));
@@ -1139,8 +1140,8 @@ void imucali::startTask()  // 编写六轴校准的代码
 
             case STATE_SHIP_MODE_CHECK:
                 if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
-                    if (!at->getConnected()) {
-                        showlog("检测到蓝牙已经断开");
+                    if (!at->getConnected() && canGoNext) {
+                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
                         showlog("说明已经成功进入船运模式");
                         TestItem test;
                         test.testItem = "船运测试";
@@ -1151,9 +1152,10 @@ void imucali::startTask()  // 编写六轴校准的代码
                         testResultTableUpdate(testItems);
                         state = STATE_END;
                     }
+
                 } else {
-                    if (!at->getConnected() && canGoNext) {
-                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
+                    if (!at->getConnected()) {
+                        showlog("检测到蓝牙已经断开");
                         showlog("说明已经成功进入船运模式");
                         TestItem test;
                         test.testItem = "船运测试";
@@ -1171,6 +1173,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.testData = "等待超时";
                     test.testResult = "失败";
                     test.ask = "通过";
+                    pack.error = "SP03022";
                     testItems.append(test);
                     testResultTableUpdate(testItems);
 

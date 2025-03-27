@@ -105,31 +105,41 @@ struct CalibConfig {
 
 // 预定义不同机型的校准参数
 const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
+
     {CAL_CHANNEL_F20_CH0,
      {1,
       70,
       0,
-      200,
+      400,
       0,
       1000,
       9000,
       {"请勿移动", "人员：刷头放400g砝码", "人员：拿走砝码"},
-      {"人员：请放50g砝码", "人员：请放350g砝码", "人员：请放450g砝码"}}},
+      {"人员：请放50g砝码", "人员：请放250g砝码", "人员：请放450g砝码"}}},
 
     {CAL_CHANNEL_F20_CH1,
-     {1, 10, 0, 200, 0, 1000, 15000, {"请勿移动", "人员：模式按键放300g砝码", "人员：拿走砝码"}, {"开始测试模式按键"}}},
+     {1, 10, 0, 300, 0, 1000, 15000, {"请勿移动", "人员：模式按键放300g砝码", "人员：拿走砝码"}, {"开始测试模式按键"}}},
 
     {CAL_CHANNEL_F20_CH2,
-     {1, 10, 0, 200, 0, 1000, 15000, {"请勿移动", "人员：电源按键放砝码", "人员：拿走砝码"}, {"开始测试电源按键"}}},
+     {1, 10, 0, 300, 0, 1000, 15000, {"请勿移动", "人员：电源按键放砝码", "人员：拿走砝码"}, {"开始测试电源按键"}}},
 
     {CAL_CHANNEL_Y20_CH0, {1, 300, 0, 400, 0, 0, 0, {}, {}}},
     {CAL_CHANNEL_Y20_CH1, {1, 40, 0, 200, 0, 0, 0, {}, {}}},
     {CAL_CHANNEL_U7_CH0, {1, 40, 0, 300, 0, 0, 0, {}, {}}},
     {CAL_CHANNEL_Y21_CH0, {1, 250, 0, 400, 0, 0, 0, {}, {}}},
     {CAL_CHANNEL_P30P_CH0, {1, 40, 0, 300, 0, 0, 0, {}, {}}},
-
-    {CAL_CHANNEL_Y30PS_CH0, {1, 80, 80 / 5, 400, 400, 0, 0, {}, {}}},
-    {CAL_CHANNEL_Y20PO_CH0, {1, 20, 20 / 5, 400, 400, 0, 0, {}, {}}}};
+    {CAL_CHANNEL_Y30P_CH0,
+     {1,
+      70,
+      0,
+      400,
+      0,
+      1000,
+      9000,
+      {"请勿移动", "人员：刷头放400g砝码", "人员：拿走砝码"},
+      {"人员：请放50g砝码", "人员：请放250g砝码", "人员：请放450g砝码"}}},
+    {CAL_CHANNEL_Y30S_CH0, {1, 80, 80 / 5, 400, 400, 0, 0, {}, {}}},
+    {CAL_CHANNEL_Y20PS_CH0, {1, 20, 20 / 5, 400, 400, 0, 0, {}, {}}}};
 
 void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
     auto it = calib_table.find(machine);
@@ -162,7 +172,7 @@ void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
     }
 
     // 处理特定产品
-    if (machine == CAL_CHANNEL_Y30PS_CH0 || machine == CAL_CHANNEL_Y20PO_CH0) {
+    if (machine == CAL_CHANNEL_Y30S_CH0 || machine == CAL_CHANNEL_Y20PS_CH0) {
         product = machine;
     }
 }
@@ -323,7 +333,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
             diffDataSum[CH0] = 0;
             diffMaxFlag[CH0] = 0;
         }
-        qDebug() << " singleFlag[CH0]" << singleFlag[CH0];
+        // qDebug() << " singleFlag[CH0]" << singleFlag[CH0];
         if (singleFlag[CH0] == 0) {
             calProcessFlag = cal_ch0_press_flag;
         }
@@ -420,15 +430,15 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
 
             // printf("CSU18M68, Cali Temperature: %d\r\n", tempFactor);
             // qDebug() << "product为" << product;
-            if (product == CAL_CHANNEL_Y30PS_CH0 || product == CAL_CHANNEL_Y20PO_CH0)
+            if (product == CAL_CHANNEL_Y30S_CH0 || product == CAL_CHANNEL_Y20PS_CH0)
                 gs32SensorFlag = Calibration_Proces_v2(adc, rawDataFactor, err);
             else
                 gs32SensorFlag = Calibration_Proces_ndt(adc, rawDataFactor, err);
 
-            if (product == CAL_CHANNEL_Y30PS_CH0 || product == CAL_CHANNEL_Y20PO_CH0) {
-                qDebug() << "双通道，ndt算法返回值" << gs32SensorFlag;
+            if (product == CAL_CHANNEL_Y30S_CH0 || product == CAL_CHANNEL_Y20PS_CH0) {
+                // qDebug() << "双通道，ndt算法返回值" << gs32SensorFlag;
                 if (gs32SensorFlag == cal_self_checking_flag) {
-                    qDebug() << "别移动,正在获取0点ADC";
+                    // qDebug() << "别移动,正在获取0点ADC";
                 } else if (gs32SensorFlag == cal_ch0_press_flag) {
                     qDebug() << "按键放200g砝码";
                 } else if (gs32SensorFlag == cal_ch0_leave_flag) {

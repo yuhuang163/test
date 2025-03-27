@@ -423,6 +423,7 @@ void motor::canGoNextMechine(int x) {
         refreshMotorCaliMsg("电机测试失败");
         state = STATE_SAVE_RESULT;
         showlog("电机测试失败");
+        pack.error="SP03006";
     }
 }
 
@@ -537,7 +538,7 @@ void motor::startTask() {
                 }
                 if (pb->getisHallCali() == 2) {
                     refreshMotorCaliMsg("霍尔校准失败");
-
+                    pack.error="SP03004";
                     result = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -567,6 +568,7 @@ void motor::startTask() {
                     state = STOP_MOTOR_CALI;
                 }
                 if (pb->getisZeroCali() == 2) {
+                     pack.error="SP03005";
                     result = failValue;
                     state = STATE_SAVE_RESULT;
                 }

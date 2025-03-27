@@ -245,7 +245,7 @@ public:
 int main(int argc, char* argv[]) {
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);  //注冊异常捕获函数
 
-    // QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     // QLoggingCategory::setFilterRules("*.debug=true");
 
     MyApplication a(argc, argv);

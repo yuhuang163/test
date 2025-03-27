@@ -221,7 +221,7 @@ void lxmes::TestPass(MesPacketData pack) {
                                .arg(pack.model)
                                .arg(pack.test_station)
                                .arg(pack.machineNo)
-                               .arg("123")  // error_code
+                               .arg(pack.error)  // error_code
                                .arg("")     // failure_message
                                .arg("0")    // 测试模式
                                .arg(pack.sn)

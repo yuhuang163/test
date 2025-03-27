@@ -213,6 +213,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             showlog("软件版本正确");
 
         } else {
+            pack.error = "SP03015";
             showlog("版本错误");
             showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersion);
             showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersion);
@@ -220,7 +221,8 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
             showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
                     pressureSenseVersion);
-            showlog("当前设备刷头压感版本" + QString::fromUtf8(data.fsensor_version) + "配置文件刷头压感要求" + fsensorVersion);
+            showlog("当前设备刷头压感版本" + QString::fromUtf8(data.fsensor_version) + "配置文件刷头压感要求" +
+                    fsensorVersion);
             showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersion);
 
             TestResult = failValue;
@@ -253,12 +255,18 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
 
         // Check for Pressure version
         if (isPresureTest) {
-            test.testItem = "压感版本";
+            test.testItem = "按键压感版本";
             test.testData = QString::fromUtf8(data.presure_version);
             test.ask = pressureSenseVersion;
             testItems.append(test);
         }
 
+        if (isFSensorTest) {
+            test.testItem = "轴压感版本";
+            test.testData = QString::fromUtf8(data.fsensor_version);
+            test.ask = fsensorVersion;
+            testItems.append(test);
+        }
         // Check for BLE version
         if (isBleTest) {
             test.testItem = "蓝牙版本";
@@ -358,6 +366,8 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.ask = "通过";
         testItems.append(test);
 
+        pack.error = "SP03016";
+
         testResultTableUpdate(testItems);
 
         showlog("充电状态不通过");
@@ -377,7 +387,7 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         testItems.append(test);
 
         testResultTableUpdate(testItems);
-
+        pack.error = "SP03013";
         showlog("电量测试不通过");
         voltageresult = "失败";
         charageresult = "通过";
@@ -391,7 +401,7 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
-
+        pack.error = "SP03013";
         testResultTableUpdate(testItems);
 
         showlog("电量和充电测试都不通过");
@@ -652,7 +662,7 @@ void wifibletest::startTask() {
                         if (rssitestfailcount >= RssiTestTime)  // 蓝牙信号不可以
                         {
                             TestItem test;
-
+                            pack.error = "SP03016";
                             test.testItem = "蓝牙信号强度测试";
                             test.testData = BLE_RSSI;
                             test.testResult = "失败";
@@ -787,7 +797,7 @@ void wifibletest::startTask() {
                     showlog("电流测量值为" + QString::number(measure_ammeter));
                     currentresult = "失败";
                     TestItem test;
-
+                    pack.error = "SP03014";
                     test.testItem = "充电电流";
                     test.testData = QString::number(measure_ammeter);
 
@@ -839,8 +849,8 @@ void wifibletest::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
 
                     pack.itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
-                                     QString("|WIFI_TEST:%1|").arg(intwifirssi) +
-                                     QString("BLE_TEST:%1").arg(intblerssi) +
+                                     QString("|WIFI_TEST:%1").arg(intwifirssi) +
+                                     QString("|BLE_TEST:%1").arg(intblerssi) +
                                      QString("|CHAR_TEST:%1|").arg(chargestate) + QString("VOL_TEST:%1|").arg(voltage);
                     pack.result = "NG";
 
@@ -857,8 +867,8 @@ void wifibletest::startTask() {
                     pack.result = "PASS";
 
                     pack.itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
-                                     QString("|WIFI_TEST:%1|").arg(intwifirssi) +
-                                     QString("BLE_TEST:%1").arg(intblerssi) +
+                                     QString("|WIFI_TEST:%1").arg(intwifirssi) +
+                                     QString("|BLE_TEST:%1").arg(intblerssi) +
                                      QString("|CHAR_TEST:%1|").arg(chargestate) + QString("VOL_TEST:%1|").arg(voltage);
                     pack.sn = ui->getMac->text();
 
@@ -1100,10 +1110,9 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
         bandingresult = false;
     QString path;
     if (SETTINGS.value("Mes/FACTORY").toString() == "xwd") {
-        path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
+        path = SETTINGS.value("MAC_SN/FilePath", "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt").toString();
         QFileInfo checkPath(path);
         if (checkPath.exists() && checkPath.isDir()) {
-            path = "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt";
             qDebug() << "The network path exists and is a directory.";
         } else {
             path = "mac_sn.txt";

@@ -131,8 +131,9 @@ void PressCalibBox::checkAllover(int fixtureNumber) {
 //     Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, PacketData.machineNumber);
 // }
 void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
-    qDebug() << "开始发送到治具" << PacketData.machine_command_id << SETTINGS.value("Mes/Product_Name").toString();
-    if (SETTINGS.value("Mes/Product_Name").toString() == "Y20P") {
+    qDebug() << "开始发送到治具" << PacketData.machineNumber<<PacketData.machine_command_id << SETTINGS.value("Mes/Product_Name").toString();
+    if (SETTINGS.value("Mes/Product_Name").toString() == "Y20P" ||
+        SETTINGS.value("Mes/Product_Name").toString() == "Y20PS") {
         if (1)  //默认y20p非独立
         {
             qDebug() << "当前是"

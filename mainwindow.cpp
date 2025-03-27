@@ -107,12 +107,31 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanIpPorts()));
 
-    QButtonGroup* buttonGroup = new QButtonGroup();
+    QButtonGroup* buttonGroup = new QButtonGroup(this);
     buttonGroup->addButton(ui->is_wifiota_press);
     buttonGroup->addButton(ui->is_bleota_press);
 
-    // 让 QCheckBox 互斥（默认为非互斥，需要手动启用）
-    buttonGroup->setExclusive(true);
+    // 禁用 QButtonGroup 的互斥行为
+    buttonGroup->setExclusive(false);
+
+    // 连接按钮的点击信号到槽函数
+    connect(ui->is_wifiota_press, &QCheckBox::toggled, this, [this, buttonGroup](bool checked) {
+        if (checked) {
+            // 如果当前按钮被选中，取消其他按钮的选中状态
+            ui->is_bleota_press->setChecked(false);
+        }
+    });
+
+    connect(ui->is_bleota_press, &QCheckBox::toggled, this, [this, buttonGroup](bool checked) {
+        if (checked) {
+            // 如果当前按钮被选中，取消其他按钮的选中状态
+            ui->is_wifiota_press->setChecked(false);
+        }
+    });
+
+    QStringList productList = {"Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
+                               "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
+    ui->name_range->addItems(productList);
 
     initBasicInfo();
     initPeriphState();
@@ -3315,6 +3334,8 @@ void MainWindow::on_startBleOta_clicked() {
             } else
                 packdata = packet;
 
+            if (offset == 0)
+                showlog(QString("资源包第一个字节为%1").arg(packdata[0]));
             // 发送当前分包数据
             dongleSerialPort->write(packdata);
             showlog(QString("发送分包: %1/%2 字节").arg(offset + currentSize).arg(totalSize));

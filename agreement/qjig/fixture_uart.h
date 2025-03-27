@@ -71,11 +71,22 @@ typedef enum {
     COMMAND_ID_KEY_PRESS_UP,
 
     // U7校准治具
+    COMMAND_ID_FAMA_50_O,
+    COMMAND_ID_FAMA_50_C,
+    COMMAND_ID_FAMA_200_O,
+    COMMAND_ID_FAMA_200_C,
+
     COMMAND_ID_FAMA_100_O,
     COMMAND_ID_FAMA_100_C,
     COMMAND_ID_FAMA_300_O,
     COMMAND_ID_FAMA_300_C,
+    COMMAND_ID_FAMA_UP,
+    COMMAND_ID_FAMA_DOWN,
 
+
+
+    COMMAND_ID_FAMA_400_O,
+    COMMAND_ID_FAMA_400_C,
     COMMAND_ID_RESET,
     COMMAND_ID_RESULT,
     COMMAND_ID_RESULT_SUC,
@@ -105,7 +116,7 @@ typedef struct FixturePacketData {
     uint staticCurrent = 0;
     uint workingCurrent = 0;
     uint chargingCurrent = 0;
-
+    uint8_t fixerro=0;
     uint machine_get_mac_state = 0;
     machine_command_id_e machine_command_id = COMMAND_ID_BASE;
     uint argument = 0;
@@ -179,6 +190,7 @@ private:
         uint8_t music_state;
         uint16_t musicCurrent;
         uint16_t shipCurrent;
+        uint8_t fixerro;
 
         uint8_t end;
     } ext_uart_phy_layer_t;

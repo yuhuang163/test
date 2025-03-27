@@ -1016,6 +1016,8 @@ void PcbaForm::logPacketData(const FixturePacketData& packetData) {
     showlog("按键1:" + QString(packetData.button1 ? "按下" : "松开"));
     showlog("按键2:" + QString(packetData.button2 ? "按下" : "松开"));
     showlog("充电电流:" + QString::number(packetData.chargingCurrent) + "ma");
+    showlog("治具错误码:" + QString::number(packetData.fixerro));
+
     showlog("船运电流:" + QString::number(packetData.shipCurrent) + "ua");
     showlog("音频电流:" + QString::number(packetData.musicCurrent) + "ma");
     showlog("产品为:" + QString(pack.product));

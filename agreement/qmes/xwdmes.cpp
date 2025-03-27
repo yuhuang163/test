@@ -179,6 +179,7 @@ void xwdmes::collectPass(const int mechines, const QString& sn, const QString& m
 //     const QString &itemvalue
 void xwdmes::TestPass(MesPacketData pack) {
     if (pack.factory == "xwd") {
+        qDebug() << "欣旺达开始测试过站";
         // 接口地址
         QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/wipTest";
 

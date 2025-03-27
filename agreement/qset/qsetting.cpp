@@ -21,8 +21,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"U7",    "U7P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
-                               "Y30PS", "Y21", "Y20PO", "T10", "P20PS", "Y25SE", "P20P"};
+    QStringList productList = {"U7",  "U7P",  "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P",
+                               "Y30", "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->comboBox_productName->addItems(productList);
 
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
@@ -243,8 +243,12 @@ void qsetting::loadConfig() {
     ui->lineEdit_AlgorithmVersion->setText(SETTINGS.value("ProductInfo/Algorithm_Version").toString());  // 算法版本
     ui->lineEdit_PressureVersion->setText(SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString());  // 压感版本
     ui->lineEdit_FSensorVersion->setText(SETTINGS.value("ProductInfo/FSensor_Version").toString());  // 刷头压感版本
-    ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                            // imu的id
-    ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());  // 摄像头的id
+    ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                    // imu的id
+    ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());              // 摄像头的id
+
+    // 加载 MAC-SN 文件路径
+    ui->lineEdit_mac_sn_path->setText(
+        SETTINGS.value("MAC_SN/FilePath", "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt").toString());
 
     ui->checkBox_ProductName->setChecked(SETTINGS.value("ProductInfo/ProductName_checkBox").toBool());
     ui->checkBox_HardwareVersion->setChecked(SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool());
@@ -543,6 +547,9 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/IMU_ID", ui->lineEdit_ImuID->text());
     SETTINGS.setValue("ProductInfo/Camera_Id", ui->lineEdit_CameraID->text());
 
+    // 保存 MAC-SN 文件路径
+    SETTINGS.setValue("MAC_SN/FilePath", ui->lineEdit_mac_sn_path->text());
+
     SETTINGS.setValue("ProductInfo/ProductName_checkBox", ui->checkBox_ProductName->isChecked());
     SETTINGS.setValue("ProductInfo/HardwareVersion_checkBox", ui->checkBox_HardwareVersion->isChecked());
     SETTINGS.setValue("ProductInfo/SoftwareVersion_checkBox", ui->checkBox_SoftwareVersion->isChecked());
@@ -737,7 +744,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
 
     //华勤：欣旺达：依次扫码连接，不需要唤醒
-    if (ui->comboBox_productName->currentText() == "Y20PO") {
+    if (ui->comboBox_productName->currentText() == "Y20PS") {
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         ui->checkBox_IMUCalibrationWakeup->setChecked(true);
         ui->checkBox_ShipModeResponse->setChecked(true);
@@ -779,7 +786,9 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->lineEdit_ButtonThresholdCount->setText("200");
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
-    if (ui->comboBox_productName->currentText() == "Y30PS") {
+    if (ui->comboBox_productName->currentText() == "Y30S") {
+        ui->checkBox_TestAudioCurrent->setChecked(true);
+        ui->checkBox_TestShippingCurrent->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
@@ -793,6 +802,8 @@ void qsetting::RestoreProductDefaultSetting() {
     }
     //立讯：imu不需要晃动唤醒，全扫码再测试
     if (ui->comboBox_productName->currentText() == "Y30") {
+        ui->checkBox_TestAudioCurrent->setChecked(true);
+        ui->checkBox_TestShippingCurrent->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);
@@ -803,6 +814,22 @@ void qsetting::RestoreProductDefaultSetting() {
         ui->checkBox_TestWifiSignal->setChecked(true);
         ui->lineEdit_ButtonThreshold->setText("40");
         ui->lineEdit_ButtonThresholdCount->setText("200");
+    }
+
+    //立讯：imu不需要晃动唤醒，全扫码再测试
+    if (ui->comboBox_productName->currentText() == "Y30P") {
+        ui->checkBox_TestAudioCurrent->setChecked(true);
+        ui->checkBox_TestShippingCurrent->setChecked(true);
+        ui->checkBox_NeedWriteSubpid->setChecked(true);
+        // ui->checkBox_NeedWriteSkuid->setChecked(true);
+        ui->checkBox_IMULastEnterStartTest->setChecked(true);
+        ui->checkBox_SerialPortMAC->setChecked(true);
+        ui->checkBox_uperMotor->setChecked(true);
+        ui->checkBox_IMUCalibrationWakeup->setChecked(true);
+        ui->checkBox_ShipModeResponse->setChecked(true);
+        ui->checkBox_TestWifiSignal->setChecked(true);
+        ui->lineEdit_BrushThreshold->setText("20");
+        ui->lineEdit_BrushThresholdCount->setText("200");
     }
 
     if (ui->comboBox_productName->currentText() == "P20PS") {

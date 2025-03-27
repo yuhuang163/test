@@ -342,7 +342,7 @@ void ageing::processInspection(QString stringsn) {
             emit sendProcessInspection(pack);
         }
     } else {
-        showlog("SN比对错误");
+        showlog("SN为空");
     }
 
     if (!ui->isusemes->checkState())  // 离线
@@ -414,7 +414,8 @@ void ageing::startTask() {
 
                         showlog("sn已比对成功");
                     } else if (snCompareOk == 2) {
-                        showlog("sn已比对失败");
+                        showlog("sn已比对失败"); pack.error="SP03011";
+
                         result = failValue;
                         state = STATE_SAVE_RESULT;
                     }
@@ -475,10 +476,10 @@ void ageing::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getDisableSleep()) {
                     showlog("已进入禁止休眠模式");
-#if 0
-                    pb->get_battery();
-                    state = STATE_GETBATTERY;
-#endif
+ if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
+                 {   pb->get_battery();
+                    state = STATE_GETBATTERY;}
+ else
                     state = STATE_CHECK_FLASH;
 
                 } else {
@@ -504,6 +505,7 @@ void ageing::startTask() {
 
                     if (is_battary_test == 2) {
                         showlog("当前电压低为" + QString::number(voltage));
+                        pack.error="SP03010";
                         TestItem test;
                         test.testItem = "当前电压";
                         test.testData = QString::number(voltage);

@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>5</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3366,43 +3366,25 @@
                 <string>蓝牙ota</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_14">
-                <item row="0" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_82">
+                <item row="7" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_84">
                   <item>
-                   <widget class="QPushButton" name="selectPath">
+                   <widget class="QLabel" name="label_84">
                     <property name="text">
-                     <string>选择固件OTA文件路径</string>
+                     <string>手柄接收进度</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QLineEdit" name="otaFilePath">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/XJYD_FW_Y20PO_V_ESP32S3_108.bin</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="1" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_100">
-                  <item>
-                   <widget class="QPushButton" name="selectPath_source">
-                    <property name="text">
-                     <string>选择资源OTA文件路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="otaFilePath_source">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PO_V_108_20250221_15/ota_res_23601_12b7f33788ec3eed2929357e8fdbd66b.bin</string>
+                   <widget class="QProgressBar" name="bel_ota_receive_speed">
+                    <property name="value">
+                     <number>24</number>
                     </property>
                    </widget>
                   </item>
                  </layout>
                 </item>
-                <item row="2" column="0">
+                <item row="3" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_81">
                   <item>
                    <layout class="QHBoxLayout" name="horizontalLayout_80">
@@ -3455,7 +3437,60 @@
                   </item>
                  </layout>
                 </item>
-                <item row="3" column="0">
+                <item row="6" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                  <item>
+                   <widget class="QLabel" name="label_83">
+                    <property name="text">
+                     <string>固件发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_fw_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
+                  <item>
+                   <widget class="QPushButton" name="selectPath">
+                    <property name="text">
+                     <string>选择固件OTA文件路径</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="otaFilePath">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PS_V_108_20250221_15/XJYD_FW_Y20PS_V_ESP32S3_108.bin</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="8" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
+                </item>
+                <item row="9" column="0" colspan="2">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                </item>
+                <item row="4" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_18">
                   <property name="topMargin">
                    <number>0</number>
@@ -3486,20 +3521,7 @@
                   </item>
                  </layout>
                 </item>
-                <item row="8" column="0" colspan="2">
-                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
-                </item>
-                <item row="0" column="1" rowspan="4">
-                 <widget class="QLabel" name="bleotaresult">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0" colspan="2">
+                <item row="5" column="0" colspan="2">
                  <layout class="QHBoxLayout" name="horizontalLayout_101">
                   <item>
                    <widget class="QLabel" name="label_106">
@@ -3517,55 +3539,33 @@
                   </item>
                  </layout>
                 </item>
-                <item row="5" column="0" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_83">
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_100">
                   <item>
-                   <widget class="QLabel" name="label_83">
+                   <widget class="QPushButton" name="selectPath_source">
                     <property name="text">
-                     <string>固件发送进度</string>
+                     <string>选择资源OTA文件路径</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QProgressBar" name="bel_fw_ota_speed">
-                    <property name="value">
-                     <number>24</number>
+                   <widget class="QLineEdit" name="otaFilePath_source">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PS_V_108_20250221_15/ota_res_23601_12b7f33788ec3eed2929357e8fdbd66b.bin</string>
                     </property>
                    </widget>
                   </item>
                  </layout>
                 </item>
-                <item row="6" column="0" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_84">
-                  <item>
-                   <widget class="QLabel" name="label_84">
-                    <property name="text">
-                     <string>手柄接收进度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bel_ota_receive_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="7" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_89">
-                  <item>
-                   <widget class="QLabel" name="label_88">
-                    <property name="text">
-                     <string>耗时</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="bleotalcdtime"/>
-                  </item>
-                 </layout>
+                <item row="0" column="1" rowspan="5">
+                 <widget class="QLabel" name="bleotaresult">
+                  <property name="text">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>
@@ -4715,12 +4715,15 @@ border-color: rgb(255, 165, 0)</string>
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="name_range">
-               <property name="text">
-                <string>H</string>
+              <widget class="QComboBox" name="name_range">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
                </property>
-               <property name="placeholderText">
-                <string>输入筛选的设备名字</string>
+               <property name="editable">
+                <bool>true</bool>
                </property>
               </widget>
              </item>

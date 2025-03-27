@@ -2361,7 +2361,7 @@ void MainWindow::updateComboBox() {
         QString deviceRssi = it.value()["Rssi"];
 
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
-        if (deviceName.contains(ui->name_range->text()) && deviceRssi.toInt() > ui->rssi_range->text().toInt() &&
+        if (deviceName.contains(ui->name_range->currentText()) && deviceRssi.toInt() > ui->rssi_range->text().toInt() &&
             deviceAddress.length() == 17) {
             int index = ui->mac_combo->findText(deviceAddress);
             if (index == -1) {
@@ -2369,7 +2369,8 @@ void MainWindow::updateComboBox() {
 
                 if (ui->is_scan_connect->checkState())
 
-                {   pb->NEEDAES = 0;
+                {
+                    pb->NEEDAES = 0;
                     at->sendMac(deviceAddress);  // 发送mac地址
                     qDebug() << "开启了扫描到就连接的功能";
                 }
@@ -2637,8 +2638,8 @@ void MainWindow::initBasicInfo() {
         writeDataToCSVFile();
 
         if (algorithmVersion.contains(baseInfo.algo_version) && hardwareVersion.contains(baseInfo.hw_version) &&
-            pressureSenseVersion.contains(baseInfo.presure_version) && fsensorVersion.contains(baseInfo.fsensor_version) &&
-            productName.contains(baseInfo.product_name) &&
+            pressureSenseVersion.contains(baseInfo.presure_version) &&
+            fsensorVersion.contains(baseInfo.fsensor_version) && productName.contains(baseInfo.product_name) &&
             appProtocolVersion.contains(QString::number(baseInfo.pb_phone_ver)) &&
             factoryProtocolVersion.contains(QString::number(baseInfo.pb_factory_ver)) &&
             softwareVersion.contains(baseInfo.soft_version) && resourceVersion.contains(baseInfo.res_version) &&

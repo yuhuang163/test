@@ -412,8 +412,8 @@ int new_imu_calibrate::acccalib_sensors_task() {
         printf("original loss = %f\n", loss);
         // LM iteration
         for (int x = 0; x < MAX_ITERATIONS; x++) {
-            printf("---\n");
-            printf("iter: %d\n", x);
+            // printf("---\n");
+            // printf("iter: %d\n", x);
             // update jacobian
             acccalib_jacobian(acccalib_jacobian_matrix, calib_datasets, imu_calib->acc_calib);
 
@@ -443,7 +443,7 @@ int new_imu_calibrate::acccalib_sensors_task() {
             last_loss = loss;
             loss = acccalib_vl(acccalib_value_matrix, acccalib_datasets_matrix);
 
-            qDebug() << "loss等于" << loss;
+            qDebug() << x << "loss等于" << loss;
             emit send_imu_cali_msg("loss等于" + QString::number(loss));
             qDebug() << "lambda_LM原始" << lambda_LM;
             // addjust penalty term lambda

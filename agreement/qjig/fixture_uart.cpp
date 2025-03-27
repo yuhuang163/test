@@ -41,6 +41,16 @@ Fixture_uart::~Fixture_uart() {
     running.store(false);
     // 等待线程结束
     future.waitForFinished();
+    // 清理命令数组
+    for (int i = 0; i < COMMAND_ID_MAX; i++) {
+        for (int j = 0; j < 6; j++) {
+            if (commands[i][j] != nullptr) {
+                free((void*)commands[i][j]);
+                commands[i][j] = nullptr;
+            }
+        }
+    }
+
     delete ui;
 }
 
@@ -395,6 +405,8 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     if (SETTINGS.value("SYSTEM/TestShippingCurrent").toBool()) {
         datapack.shipCurrent = (static_cast<uint8_t>(receivebuf.at(14)) << 8) | static_cast<uint8_t>(receivebuf.at(15));
     }
+    if (receivebuf.size() >= 17)
+        datapack.fixerro = receivebuf.at(16);
 
     // 在这里使用提取出的字段进行后续处理
     qDebug() << "机号:" << datapack.machineNumber;
@@ -404,6 +416,7 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     qDebug() << "按键1:" << datapack.button1;
     qDebug() << "按键2:" << datapack.button2;
     qDebug() << "充电电流:" << datapack.chargingCurrent << "ma";
+    qDebug() << "治具错误码:" << datapack.fixerro;
 
     if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
         qDebug() << "音频电流:" << datapack.musicCurrent;
@@ -556,6 +569,18 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
 }
 
 void Fixture_uart::FixtureCommandInit(void) {
+    // 先清理之前可能存在的命令
+    // for (int i = 0; i < COMMAND_ID_MAX; i++) {
+    //     for (int j = 0; j < 6; j++) {
+    //         if (commands[i][j] != nullptr) {
+    //             free((void*)commands[i][j]);
+    //             commands[i][j] = nullptr;
+    //         }
+    //     }
+    // }
+    // // 初始化命令数组
+    // memset(commands, 0, sizeof(commands));
+
 #if 0
     // Y20Pro校准治具
     commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
@@ -615,10 +640,28 @@ void Fixture_uart::FixtureCommandInit(void) {
     commands[COMMAND_ID_FAMA_100_C][0] = {"FAMA1_100G_C\r\n"};
     commands[COMMAND_ID_FAMA_300_O][0] = {"FAMA1_300G_O\r\n"};
     commands[COMMAND_ID_FAMA_300_C][0] = {"FAMA1_300G_C\r\n"};
+
     commands[COMMAND_ID_FAMA_100_O][1] = {"FAMA2_100G_O\r\n"};
     commands[COMMAND_ID_FAMA_100_C][1] = {"FAMA2_100G_C\r\n"};
     commands[COMMAND_ID_FAMA_300_O][1] = {"FAMA2_300G_O\r\n"};
     commands[COMMAND_ID_FAMA_300_C][1] = {"FAMA2_300G_C\r\n"};
+
+    commands[COMMAND_ID_FAMA_UP][0] = {"UP\r\n"};
+    commands[COMMAND_ID_FAMA_DOWN][0] = {"DOWN\r\n"};
+
+    // commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_O\r\n"};
+    // commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_C\r\n"};
+    // commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_O\r\n"};
+    // commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_C\r\n"};
+    // commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_O\r\n"};
+    // commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_C\r\n"};
+
+    commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_C\r\n"};
+    commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_O\r\n"};
+    commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_C\r\n"};
+    commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_O\r\n"};
+    commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_C\r\n"};
+    commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_O\r\n"};
 }
 
 void Fixture_uart::delay_msec(unsigned int msec) {
@@ -632,7 +675,12 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
         QMessageBox::warning(NULL, "警告", " 未打开串口\t\r\n  无法发送数据！\r\n");
         return;
     }
-
+    // 检查命令ID和编号的有效性
+    if (command_id < COMMAND_ID_INVALID || command_id >= COMMAND_ID_MAX || numb < 0 || numb >= 6 ||
+        commands[command_id][numb] == nullptr) {
+        qDebug() << "Invalid command parameters - command_id:" << command_id << "numb:" << numb;
+        return;
+    }
     // 每帧数据包之间添加时间间隔
     qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
     qDebug() << "last" << last_sent_timestamp << "current" << current_timestamp;
@@ -641,7 +689,6 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
         delay_msec(100);
     }
     last_sent_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
-
 
     last_commid_timestamp = last_sent_timestamp;
 
