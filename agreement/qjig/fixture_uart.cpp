@@ -41,16 +41,6 @@ Fixture_uart::~Fixture_uart() {
     running.store(false);
     // 等待线程结束
     future.waitForFinished();
-    // 清理命令数组
-    for (int i = 0; i < COMMAND_ID_MAX; i++) {
-        for (int j = 0; j < 6; j++) {
-            if (commands[i][j] != nullptr) {
-                free((void*)commands[i][j]);
-                commands[i][j] = nullptr;
-            }
-        }
-    }
-
     delete ui;
 }
 
@@ -417,7 +407,7 @@ void Fixture_uart::processReceivedData(const QByteArray& data) {
     qDebug() << "按键2:" << datapack.button2;
     qDebug() << "充电电流:" << datapack.chargingCurrent << "ma";
     qDebug() << "治具错误码:" << datapack.fixerro;
-
+    qDebug() << "船运电流:" << datapack.shipCurrent;
     if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
         qDebug() << "音频电流:" << datapack.musicCurrent;
     } else {
@@ -572,41 +562,41 @@ void Fixture_uart::FixtureCommandInit(void) {
     // 先清理之前可能存在的命令
     // for (int i = 0; i < COMMAND_ID_MAX; i++) {
     //     for (int j = 0; j < 6; j++) {
-    //         if (commands[i][j] != nullptr) {
-    //             free((void*)commands[i][j]);
-    //             commands[i][j] = nullptr;
+    //         if (press_commands[i][j] != nullptr) {
+    //             free((void*)press_commands[i][j]);
+    //             press_commands[i][j] = nullptr;
     //         }
     //     }
     // }
     // // 初始化命令数组
-    // memset(commands, 0, sizeof(commands));
+    // memset(press_commands, 0, sizeof(press_commands));
 
-#if 0
+#if 1
     // Y20Pro校准治具
-    commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
-    commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O\r\n"};
-    commands[COMMAND_ID_FIXED_BLOCK_UP][0] = {"PROD_U\r\n"};
-    commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] = {"PROD_D\r\n"};
-    commands[COMMAND_ID_KEY_UP][0] = {"FAMA_U\r\n"};
-    commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D\r\n"};
-    commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U\r\n"};
-    commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D\r\n"};
+    press_commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I\r\n"};
+    press_commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O\r\n"};
+    press_commands[COMMAND_ID_FIXED_BLOCK_UP][0] = {"PROD_U\r\n"};
+    press_commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] = {"PROD_D\r\n"};
+    press_commands[COMMAND_ID_KEY_UP][0] = {"FAMA_U\r\n"};
+    press_commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D\r\n"};
+    press_commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U\r\n"};
+    press_commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D\r\n"};
 #else
     // Y20Pro校准治具
-    commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I"};
-    commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O"};
-    commands[COMMAND_ID_FIXED_BLOCK_UP][0] = {"PROD_U"};
-    commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] = {"PROD_D"};
-    commands[COMMAND_ID_KEY_UP][0] = {"FAMA_U"};
-    commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D"};
-    commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U"};
-    commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D"};
+    press_commands[COMMAND_ID_TRAY_IN][0] = {"TARY_I"};
+    press_commands[COMMAND_ID_TRAY_OUT][0] = {"TARY_O"};
+    press_commands[COMMAND_ID_FIXED_BLOCK_UP][0] = {"PROD_U"};
+    press_commands[COMMAND_ID_FIXED_BLOCK_DOWN][0] = {"PROD_D"};
+    press_commands[COMMAND_ID_KEY_UP][0] = {"FAMA_U"};
+    press_commands[COMMAND_ID_KEY_DOWN_200][0] = {"FAMA_D"};
+    press_commands[COMMAND_ID_BTH_UP][0] = {"HEAD_U"};
+    press_commands[COMMAND_ID_BTH_DOWN_200][0] = {"HEAD_D"};
 #endif
 
     // Y20Pro测试治具
-    commands[COMMAND_ID_CHEAK_STATUS][0] = {"Check:Pass\r"};
-    commands[COMMAND_ID_RESULT][0] = {"End:1,1,1\r"};
-    commands[COMMAND_ID_RESULT][1] = {"End:1,1,1,1\r"};
+    press_commands[COMMAND_ID_CHEAK_STATUS][0] = {"Check:Pass\r"};
+    press_commands[COMMAND_ID_RESULT][0] = {"End:1,1,1\r"};
+    press_commands[COMMAND_ID_RESULT][1] = {"End:1,1,1,1\r"};
     for (int i = 0; i < 4; i++) {
         QString command1 = QString("Set:%1H,500\r").arg(i + 1);
         QString command2 = QString("Set:%1H:3500\r").arg(i + 1);
@@ -615,53 +605,73 @@ void Fixture_uart::FixtureCommandInit(void) {
         QString command5 = QString("Set:%1B:2300\r").arg(i + 1);
         QString command6 = QString("Rst:%1\r").arg(i + 1);
 
-        commands[COMMAND_ID_BTH_PRESS_50][i] = strdup(command1.toStdString().c_str());
-        commands[COMMAND_ID_BTH_PRESS_350][i] = strdup(command2.toStdString().c_str());
-        commands[COMMAND_ID_BTH_PRESS_450][i] = strdup(command3.toStdString().c_str());
-        commands[COMMAND_ID_BTH_PRESS_UP][i] = strdup(command4.toStdString().c_str());
-        commands[COMMAND_ID_KEY_PRESS_230][i] = strdup(command5.toStdString().c_str());
-        commands[COMMAND_ID_KEY_PRESS_UP][i] = strdup(command6.toStdString().c_str());
+        press_commands[COMMAND_ID_BTH_PRESS_50][i] = strdup(command1.toStdString().c_str());
+        press_commands[COMMAND_ID_BTH_PRESS_350][i] = strdup(command2.toStdString().c_str());
+        press_commands[COMMAND_ID_BTH_PRESS_450][i] = strdup(command3.toStdString().c_str());
+        press_commands[COMMAND_ID_BTH_PRESS_UP][i] = strdup(command4.toStdString().c_str());
+        press_commands[COMMAND_ID_KEY_PRESS_230][i] = strdup(command5.toStdString().c_str());
+        press_commands[COMMAND_ID_KEY_PRESS_UP][i] = strdup(command6.toStdString().c_str());
 
-        qDebug() << "commmmmmmm:" << commands[COMMAND_ID_BTH_PRESS_50][i];
+        qDebug() << "commmmmmmm:" << press_commands[COMMAND_ID_BTH_PRESS_50][i];
     }
 
 // F20校准测试治具
 #if 0  // F20项目取消
-    commands[COMMAND_ID_F20_FIXED][0] =         {"C"};  // 手柄夹具下压
-    commands[COMMAND_ID_F20_UNFIXED][0] =       {"O"};  // 手柄夹具上升
-    commands[COMMAND_ID_KEY_DOWN][0] =          {"F"};  // 按键下压
-    commands[COMMAND_ID_KEY_UP][0] =            {"G"};  // 按键上升
-    commands[COMMAND_ID_KEY_SWITCH_MODE][0] =   {"W"};  // 切换按键
-    commands[COMMAND_ID_KEY_SWITCH_POWER][0] =  {"M"};  // 切换按键
+    press_commands[COMMAND_ID_F20_FIXED][0] =         {"C"};  // 手柄夹具下压
+    press_commands[COMMAND_ID_F20_UNFIXED][0] =       {"O"};  // 手柄夹具上升
+    press_commands[COMMAND_ID_KEY_DOWN][0] =          {"F"};  // 按键下压
+    press_commands[COMMAND_ID_KEY_UP][0] =            {"G"};  // 按键上升
+    press_commands[COMMAND_ID_KEY_SWITCH_MODE][0] =   {"W"};  // 切换按键
+    press_commands[COMMAND_ID_KEY_SWITCH_POWER][0] =  {"M"};  // 切换按键
 #endif
 
     // U7、P30P校准测试治具
-    commands[COMMAND_ID_FAMA_100_O][0] = {"FAMA1_100G_O\r\n"};
-    commands[COMMAND_ID_FAMA_100_C][0] = {"FAMA1_100G_C\r\n"};
-    commands[COMMAND_ID_FAMA_300_O][0] = {"FAMA1_300G_O\r\n"};
-    commands[COMMAND_ID_FAMA_300_C][0] = {"FAMA1_300G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_O][0] = {"FAMA1_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][0] = {"FAMA1_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][0] = {"FAMA1_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][0] = {"FAMA1_300G_C\r\n"};
 
-    commands[COMMAND_ID_FAMA_100_O][1] = {"FAMA2_100G_O\r\n"};
-    commands[COMMAND_ID_FAMA_100_C][1] = {"FAMA2_100G_C\r\n"};
-    commands[COMMAND_ID_FAMA_300_O][1] = {"FAMA2_300G_O\r\n"};
-    commands[COMMAND_ID_FAMA_300_C][1] = {"FAMA2_300G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_O][1] = {"FAMA2_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][1] = {"FAMA2_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][1] = {"FAMA2_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][1] = {"FAMA2_300G_C\r\n"};
 
-    commands[COMMAND_ID_FAMA_UP][0] = {"UP\r\n"};
-    commands[COMMAND_ID_FAMA_DOWN][0] = {"DOWN\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_O][2] = {"FAMA3_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][2] = {"FAMA3_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][2] = {"FAMA3_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][2] = {"FAMA3_300G_C\r\n"};
 
-    // commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_O\r\n"};
-    // commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_C\r\n"};
-    // commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_O\r\n"};
-    // commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_C\r\n"};
-    // commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_O\r\n"};
-    // commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_O][3] = {"FAMA4_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][3] = {"FAMA4_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][3] = {"FAMA4_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][3] = {"FAMA4_300G_C\r\n"};
 
-    commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_C\r\n"};
-    commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_O\r\n"};
-    commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_C\r\n"};
-    commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_O\r\n"};
-    commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_C\r\n"};
-    commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_O][4] = {"FAMA5_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][4] = {"FAMA5_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][4] = {"FAMA5_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][4] = {"FAMA5_300G_C\r\n"};
+
+    press_commands[COMMAND_ID_FAMA_100_O][5] = {"FAMA6_100G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_100_C][5] = {"FAMA6_100G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_O][5] = {"FAMA6_300G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_300_C][5] = {"FAMA6_300G_C\r\n"};
+
+    press_commands[COMMAND_ID_FAMA_UP][0] = {"UP\r\n"};
+    press_commands[COMMAND_ID_FAMA_DOWN][0] = {"DOWN\r\n"};
+
+    // press_commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_O\r\n"};
+    // press_commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_C\r\n"};
+    // press_commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_O\r\n"};
+    // press_commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_C\r\n"};
+    // press_commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_O\r\n"};
+    // press_commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_C\r\n"};
+
+    press_commands[COMMAND_ID_FAMA_400_O][0] = {"FAMA1_400G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_400_C][0] = {"FAMA1_400G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_50_O][0] = {"FAMA1_50G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_50_C][0] = {"FAMA1_50G_O\r\n"};
+    press_commands[COMMAND_ID_FAMA_200_O][0] = {"FAMA1_200G_C\r\n"};
+    press_commands[COMMAND_ID_FAMA_200_C][0] = {"FAMA1_200G_O\r\n"};
 }
 
 void Fixture_uart::delay_msec(unsigned int msec) {
@@ -677,7 +687,7 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
     }
     // 检查命令ID和编号的有效性
     if (command_id < COMMAND_ID_INVALID || command_id >= COMMAND_ID_MAX || numb < 0 || numb >= 6 ||
-        commands[command_id][numb] == nullptr) {
+        press_commands[command_id][numb] == nullptr) {
         qDebug() << "Invalid command parameters - command_id:" << command_id << "numb:" << numb;
         return;
     }
@@ -692,11 +702,11 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
 
     last_commid_timestamp = last_sent_timestamp;
 
-    if (command_id >= COMMAND_ID_INVALID && command_id < COMMAND_ID_MAX && numb >= 0 && numb < 4) {
+    if (command_id >= COMMAND_ID_INVALID && command_id < COMMAND_ID_MAX && numb >= 0 && numb < 6) {
         qDebug() << "command_id:" << command_id << "numb" << numb;
-        fixtureSerialPort->write(commands[command_id][numb]);
-        qDebug() << "已发送命令" << commands[command_id][numb];
-        save_Fixture_uart_log(1, commands[command_id][numb]);
+        fixtureSerialPort->write(press_commands[command_id][numb]);
+        qDebug() << "已发送命令" << press_commands[command_id][numb];
+        save_Fixture_uart_log(1, press_commands[command_id][numb]);
     } else {
         qDebug() << "Invalid command index";
     }

@@ -83,8 +83,6 @@ typedef enum {
     COMMAND_ID_FAMA_UP,
     COMMAND_ID_FAMA_DOWN,
 
-
-
     COMMAND_ID_FAMA_400_O,
     COMMAND_ID_FAMA_400_C,
     COMMAND_ID_RESET,
@@ -116,7 +114,7 @@ typedef struct FixturePacketData {
     uint staticCurrent = 0;
     uint workingCurrent = 0;
     uint chargingCurrent = 0;
-    uint8_t fixerro=0;
+    uint8_t fixerro = 0;
     uint machine_get_mac_state = 0;
     machine_command_id_e machine_command_id = COMMAND_ID_BASE;
     uint argument = 0;
@@ -143,7 +141,7 @@ public:
     void sendimuData(imuFixtureState fixstate);
     void sendFixtureData(FixtureState fixstate);
 
-    const char* commands[COMMAND_ID_MAX][6];
+    const char* press_commands[COMMAND_ID_MAX][6];
 
     machine_command_id_e last_commid = COMMAND_ID_MAX;
     qint64 last_commid_timestamp = 0;

@@ -833,6 +833,7 @@ void qsetting::RestoreProductDefaultSetting() {
     }
 
     if (ui->comboBox_productName->currentText() == "P20PS") {
+        ui->checkBox_TestShippingCurrent->setChecked(true);
         ui->checkBox_NeedWriteSubpid->setChecked(true);
         // ui->checkBox_NeedWriteSkuid->setChecked(true);
         ui->checkBox_IMULastEnterStartTest->setChecked(true);

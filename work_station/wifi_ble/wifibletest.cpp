@@ -376,9 +376,7 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         TestResult = failValue;
     }
     if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary)
-
-    {
+        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
         TestItem test;
         test.testItem = "充电测试";
         test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";

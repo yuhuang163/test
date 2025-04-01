@@ -486,7 +486,7 @@ void Qpb::sendShortPack(const DataPackage& pack) {
 }
 
 void Qpb::sendShortPack(const FactoryDataPackage& pack) {
-    waitWork(20);
+    // waitWork(20);
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
 

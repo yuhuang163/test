@@ -390,8 +390,8 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         Y20PS_ch0_vector->ui_msg_tip[1] = "按键放砝码";
         Y20PS_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        Y20PS_ch0_vector->ui_msg_test[0] = "测试100g不触发";
-        Y20PS_ch0_vector->ui_msg_test[1] = "测试300g触发";
+        Y20PS_ch0_vector->ui_msg_test[0] = "测试300g不触发";
+        Y20PS_ch0_vector->ui_msg_test[1] = "测试500g触发";
 
         Y20PS_ch0_vector->ui_msg_err[0] = "按键错误码为：";
 
@@ -651,7 +651,7 @@ void PressureSensorForm::send_start_command(machine_command_id_e command_id, int
 
     packet_data.machine_command_id = command_id;  //命令治具状态
     packet_data.argument = argument;
-    packet_data.machineNumber = getIndex() - 1;
+    packet_data.machineNumber = getIndex() - 1;  //指令的数组从0开始跑的
 
     qDebug() << "getIndex():" << getIndex();
 
@@ -1812,6 +1812,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                     sensor_v[test_chan]->para.button_state = 0;
                     sensor_v[test_chan]->test_status = TEST_SUC;
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
+                    showlog("按键测试成功：成功触发");
                 } else if (sensor_v[test_chan]->para.button_state == 0) {
                     sensor_v[test_chan]->test_status = TEST_FAIL;
                     showlog("测试失败：需要触发，按键未触发");
@@ -1943,7 +1944,7 @@ void PressureSensorForm::set_fixture_movement(MODEL_ID_E model, State state, int
         return;
     }
 
-    qDebug() << getIndex() << "设置治具参数" << model << state << argument;
+    qDebug() << "设置治具参数" << model << state << argument;
     switch (model) {
         case MODEL_ID_Y20P: Y20P_fixture(state, argument); break;
         case MODEL_ID_Y30P: Y20P_fixture(state, argument); break;
@@ -2154,7 +2155,8 @@ void PressureSensorForm::Y20PS_fixture(State state, int argument) {
 
             if (calib_chan + 1 == total_sensor) {
                 send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
-
+                if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                    waitWork(3000);
                 send_start_command(COMMAND_ID_TRAY_OUT, 0);
             }
             break;
@@ -2162,7 +2164,8 @@ void PressureSensorForm::Y20PS_fixture(State state, int argument) {
         case STATE_WATI_ASKQR:
 
             send_start_command(COMMAND_ID_TRAY_IN, 0);
-
+            if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                waitWork(3000);
             // waitWork(2500);
             // send_start_command(COMMAND_ID_FIXED_BLOCK_DOWN, 0);
             // waitWork(1500);
@@ -2173,11 +2176,16 @@ void PressureSensorForm::Y20PS_fixture(State state, int argument) {
             set_independent_state(STATE_CALIB_RESULT);
 
             if (SETTINGS.value("PRESSURE/PressMechine").toInt() == 1) {
+                qDebug() << "治具结束";
                 //没有刷头去掉了
-                send_start_command(COMMAND_ID_KEY_UP, 0);
+                if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2)  //测试不需要
+                    send_start_command(COMMAND_ID_KEY_UP, 0);                   // FAMA_U
 
-                send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
+                if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2)  //测试不需要
+                    send_start_command(COMMAND_ID_FIXED_BLOCK_UP, 0);
 
+                if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)  //测试需要
+                    waitWork(3000);
                 send_start_command(COMMAND_ID_TRAY_OUT, 0);
             }
 
@@ -2203,17 +2211,23 @@ void PressureSensorForm::Y20PS_fixture(State state, int argument) {
                     switch (sensor_v[test_chan]->test_status) {
                         case TEST_KEY_NO_CLICK:
                             send_start_command(COMMAND_ID_FAMA_100_O, 0);
-                            delay_msec(500);
-                            send_start_command(COMMAND_ID_FAMA_100_C, 0);
-                            delay_msec(500);
+                            if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                                delay_msec(3000);
+
                             sensor_v[test_chan]->send_state = 1;
                             break;
 
                         case TEST_KEY_CLICK:
+
                             send_start_command(COMMAND_ID_FAMA_300_O, 0);
-                            delay_msec(500);
+                            if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                                delay_msec(3000);
                             send_start_command(COMMAND_ID_FAMA_300_C, 0);
-                            delay_msec(1000);
+                            if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                                delay_msec(3000);
+                            send_start_command(COMMAND_ID_FAMA_100_C, 0);
+                            if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                                delay_msec(6000);
                             sensor_v[test_chan]->send_state = 1;
                             break;
                     }
@@ -2495,8 +2509,8 @@ void PressureSensorForm::startTask() {
                     emit operator_instruct(getIndex());
 
                     showlog("等待治具就绪" + SETTINGS.value("PRESSURE/functionSwitch", 1).toString());
-                    if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
-                        state = STATE_WAIT_STATIC;
+                    // if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() == 2)
+                    //     state = STATE_WAIT_STATIC;
                 }
 
                 break;
@@ -2762,10 +2776,12 @@ void PressureSensorForm::startTask() {
             case STATE_TEST_CH_X:  //测试通道x
 
                 if (sensor_v[test_chan]->test_status == TEST_INVALID) {
-                    showlog("设置为start");
+                    showlog("设置为TEST_START");
                     sensor_v[test_chan]->sensor_test_status_set(TEST_START);
                     set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                     ui_msg_show(product_model, STATE_TEST_CH_X, test_chan);
+
+                    showlog("开始计时测试时间" + QString::number(measure_wait_time));
 
                     waittime->setInterval(measure_wait_time);
                     waittime->start();
@@ -2809,7 +2825,7 @@ void PressureSensorForm::startTask() {
             case STATE_TEST_ALL_RESULT:  //测试ALL通道结果
                 if (1) {
                     ui_msg_show(product_model, STATE_TEST_ALL_RESULT, test_chan);
-                    jig->get_amplitude();
+
                     result = passValue;
                     if (SETTINGS.value("Press/AmplitudeLimit", false).toBool()) {
                         state = STATE_AMPLITUEDE;
@@ -3154,7 +3170,6 @@ void PressureSensorForm::refreshAmplitudeData(QString data) {
             showlog("摆幅超出限制范围：" + QString::number(amplitudeLower) + " 至 " + QString::number(amplitudeUpper));
             Amplitudetimes++;
 
-            jig->get_amplitude();
             if (Amplitudetimes > 3) {
                 Amplitudetimes = 0;
                 Amplituderesult = 2;

@@ -77,9 +77,9 @@ void PressCalibBox::display_on_screen(int instruct) {
         }
 
         if (SETTINGS.value("SYSTEM/PressWindow").toBool() &&
-            SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2) {  //木星治具是比较简单的不需要对话
+            SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 0) {  //木星治具是比较简单的不需要对话
             QMessageBox::StandardButton reply;
-            reply = QMessageBox::question(this, "压感校准", "是否开始校准", QMessageBox::Yes | QMessageBox::No);
+            reply = QMessageBox::question(this, "压感校准测试", "是否开始", QMessageBox::Yes | QMessageBox::No);
 
             if (reply == QMessageBox::Yes) {
                 for (int i = 0; i < testList.size(); i++) {
@@ -131,9 +131,11 @@ void PressCalibBox::checkAllover(int fixtureNumber) {
 //     Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, PacketData.machineNumber);
 // }
 void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
-    qDebug() << "开始发送到治具" << PacketData.machineNumber<<PacketData.machine_command_id << SETTINGS.value("Mes/Product_Name").toString();
-    if (SETTINGS.value("Mes/Product_Name").toString() == "Y20P" ||
-        SETTINGS.value("Mes/Product_Name").toString() == "Y20PS") {
+    qDebug() << "开始发送到治具" << PacketData.machineNumber << PacketData.machine_command_id
+             << SETTINGS.value("Mes/Product_Name").toString();
+    if ((SETTINGS.value("Mes/Product_Name").toString() == "Y20P" ||
+         SETTINGS.value("Mes/Product_Name").toString() == "Y20PS") &&
+        SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2) {
         if (1)  //默认y20p非独立
         {
             qDebug() << "当前是"

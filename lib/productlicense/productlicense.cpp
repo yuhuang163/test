@@ -383,6 +383,8 @@ LicensePair ProductLicense::getCloudLicense(const QString& environment, const QS
             if (jsonObj.contains("data") && jsonObj["data"].isObject()) {
                 QJsonObject dataObj = jsonObj["data"].toObject();
 
+                my.product_name = dataObj["productKey"].toString();
+
                 // 获取 deviceKey 和 deviceSecret
                 my.device_key = dataObj["deviceKey"].toString();
                 my.device_secret = dataObj["deviceSecret"].toString();

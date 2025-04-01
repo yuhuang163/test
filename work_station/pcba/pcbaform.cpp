@@ -1129,7 +1129,9 @@ void PcbaForm::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     state = STATE_WATI_DISABLE_SLEEP;
-                    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
+                    if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool() &&
+                        (SETTINGS.value("Mes/Product_Name").toString() == "Q20" ||
+                         SETTINGS.value("Mes/Product_Name").toString() == "Q20P")) {
                         pb->set_device_mode(11);   //进入纯享模式
                         pb->set_brush_control(1);  //开始刷牙
                     }
@@ -1518,6 +1520,7 @@ void PcbaForm::startTask() {
                 if (is_music_play_over_time) {
                     is_music_play_over_time = 0;
                     showlog("播放结束");
+                    pb->set_fac_mode(1);
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
                         pb->set_sevor_motor_param(14, 12, 5.2, 190);
                         showlog("已经发送电机测试指令");
