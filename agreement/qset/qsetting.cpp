@@ -41,6 +41,9 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     loadConfig();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+
+
+    ui->groupBox_SubPIDSettings->hide();
 }
 
 void qsetting::readSubPIDAndFilter() {

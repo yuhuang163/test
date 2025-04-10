@@ -251,22 +251,22 @@ void motor::processInspection(QString stringsn) {
 }
 
 void motor::refreshBaseData(FacGetDevBaseInfo data) {
-    QString mac;
+    // QString mac;
 
-    for (int var = data.ble_mac.size - 1; var >= 0; --var) {
-        mac += QString("%1").arg(data.ble_mac.bytes[var], 2, 16, QChar('0'));
-        if (var > 0) {
-            mac += ":";
-        }
-    }
+    // for (int var = data.ble_mac.size - 1; var >= 0; --var) {
+    //     mac += QString("%1").arg(data.ble_mac.bytes[var], 2, 16, QChar('0'));
+    //     if (var > 0) {
+    //         mac += ":";
+    //     }
+    // }
 
-    showlog("当前连接设备的mac地址" + mac);
+    // showlog("当前连接设备的mac地址" + mac.toUpper());
 
-    if (macAddress.toUpper() != mac.toUpper()) {
-        isTestContinue = false;
-        showlog("停止运行");
-        QMessageBox::warning(NULL, "严重警告", " 当前连接设备与获取的mac不同\t\r\n");
-    }
+    // if (macAddress.toUpper() != mac.toUpper()) {
+    //     isTestContinue = false;
+    //     showlog("停止运行");
+    //     QMessageBox::warning(NULL, "严重警告", " 当前连接设备与获取的mac不同\t\r\n");
+    // }
 
     // 读取软件版本字符串
     QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
@@ -412,7 +412,7 @@ void motor::refreshBattaryData(FacDevInfo adc) {
 
 void motor::canGoNextMechine(int x) {
     is_canGoNext = 1;
-    qDebug() << getIndex() << "得到信息" << getIndex();
+    qDebug() << getIndex() << "得到信息" << x;
 
     if (x == getIndex()) {
         result = failValue;
@@ -421,9 +421,9 @@ void motor::canGoNextMechine(int x) {
         ui->test_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
         refreshMotorCaliMsg("电机测试失败");
+        pack.error = "SP03006";
         state = STATE_SAVE_RESULT;
         showlog("电机测试失败");
-        pack.error="SP03006";
     }
 }
 
@@ -443,7 +443,7 @@ void motor::startTask() {
                 stringsn = "";
                 result = passValue;
                 TestTime.start();
-                 waitWork(1000);
+                waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 is_battary_test = 0;
@@ -532,13 +532,14 @@ void motor::startTask() {
             case MOTOR_CALI1:
                 if (pb->getisHallCali() == 1) {
                     refreshMotorCaliMsg("霍尔校准完成");
+                    qDebug() << getIndex() << "发射霍尔校准完成";
                     emit send_go_next_test(getIndex());
 
                     state = MOTOR_WAIT_CALI1;
                 }
                 if (pb->getisHallCali() == 2) {
                     refreshMotorCaliMsg("霍尔校准失败");
-                    pack.error="SP03004";
+                    pack.error = "SP03004";
                     result = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -559,6 +560,7 @@ void motor::startTask() {
                     refreshMotorCaliMsg("零点校准完成");
                     // showlog("零点校准完成");
                     if (pack.factory == "lx") {
+                        qDebug() << getIndex() << "发射零点校准完成";
                         emit send_go_next_test(getIndex());
                         state = MOTOR_WAIT_CALI2;
                         break;
@@ -568,7 +570,7 @@ void motor::startTask() {
                     state = STOP_MOTOR_CALI;
                 }
                 if (pb->getisZeroCali() == 2) {
-                     pack.error="SP03005";
+                    pack.error = "SP03005";
                     result = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -583,6 +585,7 @@ void motor::startTask() {
                 break;
 
             case STOP_MOTOR_CALI:
+                qDebug() << "当前状态是" << state;
                 if (pb->get_is_stop_motor_cali()) {
                     refreshMotorCaliMsg("正在进行电机测试");
                     // showlog("正在进行电机测试");
@@ -595,9 +598,11 @@ void motor::startTask() {
                     refreshMotorCaliMsg("重发关闭校准流程");
                     waitWork(500);
                 }
-
+                 break;
             case MOTOR_TESTING:
                 if (pb->get_is_motor_test_state()) {
+
+                    qDebug() << getIndex() << "发射电机测试完成";
                     emit send_go_next_test(getIndex());
                     state = MOTOR_WAIT_TESTING;
                 } else {

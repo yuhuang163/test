@@ -1789,7 +1789,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     } else if (OTAGroup->checkedId() == 4) {
         LicensePair pair;
         if (ui->cloud_key->isChecked())
-            pair = Cloudelicense.getCloudLicense("usaProduct", "k0fylgHIxtf", macAddress);
+            pair = Cloudelicense.getCloudLicense("usaProduct", "RasGSJYMEnQ", macAddress);
         else
             pair = USAProductlicense.getProUsaLicense();
 

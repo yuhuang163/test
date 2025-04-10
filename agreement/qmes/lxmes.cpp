@@ -147,6 +147,8 @@ void lxmes::GetTestData(MesPacketData pack) {
 
         // 发送POST请求
         QNetworkReply* reply = manager.post(request, postData);
+
+        qDebug() << "上位机发送的请求" << postData;
         QEventLoop loop;
         QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         loop.exec();
@@ -222,8 +224,8 @@ void lxmes::TestPass(MesPacketData pack) {
                                .arg(pack.test_station)
                                .arg(pack.machineNo)
                                .arg(pack.error)  // error_code
-                               .arg("")     // failure_message
-                               .arg("0")    // 测试模式
+                               .arg("")          // failure_message
+                               .arg("0")         // 测试模式
                                .arg(pack.sn)
                                .arg(pack.itemvalue);
 

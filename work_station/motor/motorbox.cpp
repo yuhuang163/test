@@ -30,7 +30,7 @@ motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
 
     //      }
     //      Fixture_uart_ui->show();
-   // Fixture_uart_ui->raise();
+    // Fixture_uart_ui->raise();
     //      Fixture_uart_ui->activateWindow();
 
     //  });
@@ -64,6 +64,7 @@ void motorbox::checkAllTest(int fixtureNumber) {
                 motor_cali_stage = 3;
             }
             QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
+            qDebug() << "弹窗：请把所有刷头置于0位";
             emit go_screen_next(0);  // 没问题
             return;
         }
@@ -71,6 +72,7 @@ void motorbox::checkAllTest(int fixtureNumber) {
         if (motor_cali_stage == 2) {
             motor_cali_stage++;
             QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
+            qDebug() << "弹窗：校准完成,请取出电机";
             emit go_screen_next(0);  // 没问题
             return;
         }
@@ -79,6 +81,8 @@ void motorbox::checkAllTest(int fixtureNumber) {
             motor_cali_stage = 1;
             QMessageBox::StandardButton reply;
             reply = QMessageBox::question(this, "电机测试", "电机是否都震动吗？", QMessageBox::Yes | QMessageBox::No);
+
+            qDebug() << "弹窗：电机是否都震动吗？";
             if (reply == QMessageBox::No) {
                 bool ok;
                 QString text =

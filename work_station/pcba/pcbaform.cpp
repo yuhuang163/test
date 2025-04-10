@@ -1425,7 +1425,12 @@ void PcbaForm::startTask() {
                                     QString::number(rssitestcount));
                             rssitestcount = 0;
                             at->sendBLELOG(0);  // 日志关
-                            waitWork(100);      // 防止发送给治具粘包
+
+                            waitWork(50);  // 防止发送给治具粘包
+                            emit overtask(getIndex());
+                            waitWork(50);  // 防止发送给治具粘包
+                            emit overtask(getIndex());
+                            waitWork(50);  // 防止发送给治具粘包
                             emit overtask(getIndex());
                             showlog("6、等待治具测试");
                             if (SETTINGS.value("SYSTEM/LightTest").toBool()) {
@@ -1475,8 +1480,11 @@ void PcbaForm::startTask() {
 
                             at->sendBLELOG(0);  // 日志关
                             rssitestfailcount = 0;
-
-                            waitWork(100);  // 防止发送给治具粘包
+                            waitWork(50);  // 防止发送给治具粘包
+                            emit overtask(getIndex());
+                            waitWork(50);  // 防止发送给治具粘包
+                            emit overtask(getIndex());
+                            waitWork(50);  // 防止发送给治具粘包
                             emit overtask(getIndex());
                             showlog("6、等待治具测试");
 

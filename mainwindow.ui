@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>5</number>
+               <number>9</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3230,7 +3230,7 @@
                      <bool>false</bool>
                     </property>
                     <property name="text">
-                     <string>test-mqtt.usmile.us:1883</string>
+                     <string>mqtt.usmile.us:1883</string>
                     </property>
                    </widget>
                   </item>

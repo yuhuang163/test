@@ -188,12 +188,18 @@ void MainWindow::processTheDatagram(QByteArray& datagram) {
     // imageBytes.size());
 
     // 尝试将 QByteArray 转换为 QImage
-    QImage image(reinterpret_cast<const uchar*>(imageBytes.data()), static_cast<unsigned char>(datagram[8]),
-                 static_cast<unsigned char>(datagram[12]), QImage::Format_Grayscale8);
+    // 从偏移量8读取4字节作为宽度（假设是小端序）
+    int width = *reinterpret_cast<const int*>(&data[8]);
+
+    // 从偏移量12读取4字节作为高度
+    int height = *reinterpret_cast<const int*>(&data[12]);
+
+    // 创建QImage
+    QImage image(reinterpret_cast<const uchar*>(imageBytes.data()), width, height, QImage::Format_Grayscale8);
 
     if (image.isNull()) {
-        qWarning() << " datagram[8]" << static_cast<unsigned char>(datagram[8]);
-        qWarning() << " datagram[11]" << static_cast<unsigned char>(datagram[12]);
+        qWarning() << " 宽度为" << static_cast<unsigned char>(datagram[8]);
+        qWarning() << " 高度为" << static_cast<unsigned char>(datagram[12]);
 
         // 打印图像数据的前20字节
         qDebug() << "图像数据前20字节:" << imageBytes.left(20).toHex();
@@ -212,8 +218,7 @@ void MainWindow::processTheDatagram(QByteArray& datagram) {
     // 继续处理加载成功的图像，例如显示在界面上
 
     // 检查图像大小是否符合预期
-    if (image.width() != static_cast<unsigned char>(datagram[8]) ||
-        image.height() != static_cast<unsigned char>(datagram[12])) {
+    if (image.width() != width || image.height() != height) {
         qWarning() << "Image size is not as expected (180x200).";
         return;
     }
