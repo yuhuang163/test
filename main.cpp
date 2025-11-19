@@ -242,6 +242,8 @@ public:
         }
     }
 };
+
+
 int main(int argc, char* argv[]) {
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);  //注冊异常捕获函数
 

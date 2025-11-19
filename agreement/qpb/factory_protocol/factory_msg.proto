@@ -253,7 +253,7 @@ enum FacDevInfoType
     SUB_PID = 6;
     SKUID = 7;
     MUSIC_STATE = 8;    
-    
+    qudao=9;
     // for aitag
     LIGHT_SENSOR = 20;
     SD_CARD = 21; 
@@ -323,6 +323,8 @@ message FacDevInfoValue {
         string sub_pid = 8 [(nanopb).max_size = 64];
         string sku_id = 9 [(nanopb).max_size = 64];
         uint32 music_state = 10;
+        string qudao = 11 [(nanopb).max_size = 64];
+
 
         // for aitag
         uint32 light_sensor=40;
