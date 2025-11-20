@@ -88,6 +88,7 @@ SOURCES += \
     agreement/qpb/qpb.cpp \
     agreement/qset/qsetting.cpp \
     agreement/qusb/qusb.cpp \
+    factory_analyzer.cpp \
     lib/form/testmodel.cpp \
     lib/imu/imu_calibrate.cpp \
     lib/imu/sensor_hub.cpp \
@@ -151,6 +152,7 @@ HEADERS += \
     agreement/qpb/qpb.h \
     agreement/qset/qsetting.h \
     agreement/qusb/qusb.h \
+    factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
     lib/imu/sensor_hub.h \
@@ -192,6 +194,7 @@ HEADERS += \
 FORMS += \
     agreement/qjig/fixture_uart.ui \
     agreement/qset/qsetting.ui \
+    factory_analyzer.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \
     work_station/ageing/ageingbox.ui \

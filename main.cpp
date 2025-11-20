@@ -24,6 +24,7 @@
 #include "quiescent_current_box.h"
 #include "screenbox.h"
 #include "wifibox.h"
+#include "factory_analyzer.h"
 // #include <Windows.h>
 
 #if _MSC_VER >= 1600
@@ -267,7 +268,7 @@ int main(int argc, char* argv[]) {
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},
                                             {"AGE_TEST", 7},          {"PCBA_TEST", 8},   {"PRESS_TEST", 9},
-                                            {"FREE_WORK", 10},        {"MAIN_TEST", 11}};
+                                            {"FREE_WORK", 10},        {"MAIN_TEST", 11},  {"dji_TEST", 12}};
 
     switch (map[station]) {
         case 1: {
@@ -351,11 +352,14 @@ int main(int argc, char* argv[]) {
             h.show();
             return a.exec();
         }
-
+        case 12: {
+            factory_analyzer dji;  // 主测试
+            dji.show();
+            return a.exec();
+        }
         default:
-            MainWindow h;  // 主测试
-
-            h.show();
+            factory_analyzer dji;  // 主测试
+            dji.show();
             return a.exec();
             break;
     }
