@@ -1,6 +1,7 @@
-QT       += core gui  axcontainer concurrent serialport printsupport network multimedia webengine qml quick widgets webenginewidgets
+QT       += core gui  axcontainer concurrent serialport printsupport network multimedia  qml quick widgets
 
 
+QMAKE_PROJECT_DEPTH = 0
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -155,8 +156,8 @@ HEADERS += \
     lib/imu/sensor_hub.h \
     lib/imu/us_eigen_nonsymmsquare.h \
     lib/nfc/dcrf32.h \
-        lib/aes/aes.h \
-          lib/md5/md5.h \
+    lib/aes/aes.h \
+    lib/md5/md5.h \
     lib/productlicense/productlicense.h \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \

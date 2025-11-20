@@ -28,12 +28,6 @@
 #include <QUdpSocket>
 #include <QUrl>
 #include <QVector>
-#include <QWebChannel>
-#include <QWebEnginePage>
-#include <QWebEngineProfile>
-#include <QWebEngineScript>
-#include <QWebEngineScriptCollection>
-#include <QWebEngineView>
 #include <algorithm>
 
 #include "Abini.h"
