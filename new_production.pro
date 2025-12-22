@@ -25,6 +25,7 @@ QMAKE_CXXFLAGS += /MP
 
 INCLUDEPATH += agreement
 INCLUDEPATH += agreement/qmes
+INCLUDEPATH += agreement/qadb
 INCLUDEPATH += agreement/qat
 INCLUDEPATH += agreement/qpb
 INCLUDEPATH += agreement/qset
@@ -33,6 +34,7 @@ INCLUDEPATH += agreement/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/qjig
 INCLUDEPATH += agreement/qbrush
+INCLUDEPATH += agreement/adb
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
 INCLUDEPATH += my_set
@@ -67,8 +69,10 @@ include(advance/xlsx/qtxlsx.pri)
 SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
+    agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
     agreement/qbrush/qproduct.cpp \
+    agreement/qbulk/qbulk.cpp \
     agreement/qjig/fixture_uart.cpp \
     agreement/qjig/qjig.cpp \
     agreement/qmes/hqmes.cpp \
@@ -130,8 +134,10 @@ SOURCES += \
 HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
+    agreement/qadb/qadb.h \
     agreement/qat/qat.h \
     agreement/qbrush/qproduct.h \
+    agreement/qbulk/qbulk.h \
     agreement/qjig/fixture_uart.h \
     agreement/qjig/qjig.h \
     agreement/qmes/hqmes.h \
@@ -229,7 +235,7 @@ CONFIG += AbIni
 # 指定要使用的预编译头文件
 PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 
-RC_ICONS = ./stytle/picture/usmile.ico
+RC_ICONS = ./stytle/picture/dji1.ico
 # 获取当前时间（Windows）
 current_time = $$system(powershell -command "(Get-Date).ToString('yyyyMMdd')")
 
@@ -245,8 +251,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 
-
 LIBS += -L$$PWD/lib/nfc/ -ldcrf32
+LIBS += -lwinusb
+LIBS += -lsetupapi
 
 DISTFILES += \
     agreement/qpb/ble_protocol/fx_ble_msg.proto \

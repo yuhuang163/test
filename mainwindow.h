@@ -177,7 +177,6 @@ private:
     std::atomic<bool> running;
     QFuture<void> future;
     Qpb* pb;
-
     Qat* at;
     TestFunctionExecutor executor;
     typedef enum {
