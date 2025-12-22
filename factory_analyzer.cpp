@@ -18,9 +18,10 @@
 #endif
 
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::factory_analyzer) {
+    : QMainWindow(parent),  adb(new Qadb),ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
+    adb->start();
     QCustomPlot *plot_value = new QCustomPlot;
     // 创建压力值曲线图
     plot_value->legend->setVisible(true); // 设置图例可见
@@ -108,21 +109,6 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     connect(ui->tableView, &QWidget::customContextMenuRequested,
             this, &factory_analyzer::onTableViewContextMenu);
 
-    // 初始化 adb shell 进程
-    adbShell = new QProcess(this);
-    adbShell->setProcessChannelMode(QProcess::MergedChannels); // stdout+stderr 合并
-
-    connect(adbShell, &QProcess::readyReadStandardOutput, this, &factory_analyzer::onAdbReadyRead);
-    connect(adbShell, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &factory_analyzer::onAdbFinished);
-
-    // 启动 adb shell（长连接）
-    adbShell->start("adb", {"shell"});
-    if (!adbShell->waitForStarted(3000)) {
-        qDebug() << "Failed to start adb shell!";
-    } else {
-        qDebug() << "adb shell started";
-    }
 
 }
 
@@ -186,66 +172,62 @@ void factory_analyzer::refreshTreeAfterDelete(const QString &remotePath)
     // 刷某个子目录
     loadRemoteDirectory(parentPath);
 }
+
 void factory_analyzer::loadRemoteDirectory(const QString &path)
 {
-    if(path.isEmpty())
+    if (path.isEmpty())
         return;
 
-    // adb ls
-    QProcess p;
-    p.start("adb", {"shell","ls","-l", path});
-    if(!p.waitForFinished(3000))
-        return;
+    // 使用 Qadb 发送命令
+    adb->sendCommand(QString("ls -l %1").arg(path),
+                     [this, path](const QString &output, qint64 elapsed) {
+                         qDebug() << "[ADB] ls output:" << output;
+                         qDebug() << "Elapsed:" << elapsed << "ms";
 
-    QString out = p.readAllStandardOutput().trimmed();
-    if(out.isEmpty())
-        return;
+                         if (output.trimmed().isEmpty()) {
+                             qDebug() << "目录为空或不可访问:" << path;
+                             return;
+                         }
 
-    parseFiles(path, out);
+                         // 调用原来的解析函数
+                         parseFiles(path, output);
+                     }, 5000); // 可选超时时间 5000ms
 }
 
 
 void factory_analyzer::adbDelete(const QString &remotePathOrigin)
 {
     QString remotePath = remotePathOrigin;
-    if(remotePath.isEmpty()){
-        QMessageBox::warning(this,"错误","远程路径为空！");
+    if (remotePath.isEmpty()) {
+        QMessageBox::warning(this, "错误", "远程路径为空！");
         return;
     }
 
-    if(QMessageBox::question(this,
+    if (QMessageBox::question(this,
                               "确认删除",
                               "确定要从设备删除？\n" + remotePath)
         != QMessageBox::Yes)
         return;
 
-    remotePath.replace("\\","/");
+    remotePath.replace("\\", "/");
 
-    QString program = "adb";
-    QStringList arguments;
-    arguments << "shell" << "rm" << "-rf" << remotePath;
+    QString cmd = QString("rm -rf %1").arg(remotePath);
+    qDebug() << "[ADB] delete command:" << cmd;
 
-    qDebug() << "[ADB] delete" << arguments;
+    adb->sendCommand(cmd,
+                     [this, remotePath](const QString &output, qint64 elapsed) {
+                         qDebug() << "[ADB] delete output:" << output;
+                         qDebug() << "Elapsed:" << elapsed << "ms";
 
-    QProcess *process = new QProcess(this);
-    process->setProcessChannelMode(QProcess::MergedChannels);
-
-    connect(process, QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),
-            [this, process, remotePath](int exitCode, QProcess::ExitStatus){
-
-                if(exitCode == 0){
-                    QMessageBox::information(nullptr,"成功","删除成功！");
-                      refreshTreeAfterDelete(remotePath);
-                }
-                else{
-                    QMessageBox::warning(nullptr,"失败",process->readAll());
-                }
-
-                process->deleteLater();
-            });
-
-    process->start(program, arguments);
+                         if (output.contains("No such file") || output.contains("Permission denied")) {
+                             QMessageBox::warning(nullptr, "失败", output);
+                         } else {
+                             QMessageBox::information(nullptr, "成功", "删除成功！");
+                             refreshTreeAfterDelete(remotePath);
+                         }
+                     }, 5000); // 超时时间可调
 }
+
 
 void factory_analyzer::onTreeViewContextMenu(const QPoint &pos)
 {
@@ -305,148 +287,127 @@ void factory_analyzer::on_pushButton_13_clicked()
 
 void factory_analyzer::loadRoot()
 {
-    QProcess p;
-    p.start("adb", {"shell", "ls", "-1", "/"});
-    p.waitForFinished();
+    if (!adb) return;
 
-    QString out = p.readAllStandardOutput().trimmed();
+    adb->sendCommand("ls -1 /", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "[ADB] loadRoot output:" << output;
+        qDebug() << "Elapsed:" << elapsed << "ms";
 
-    QStringList remoteList = out.split("\n", Qt::SkipEmptyParts);
-    remoteList.sort(Qt::CaseInsensitive);
+        if (output == "ADB不可用") {
+            QMessageBox::warning(this, "错误", "设备未连接或ADB不可用！");
+            return;
+        }
 
-    // 生成完整路径列表
-    QStringList remotePaths;
-    for(QString d : remoteList)
-        remotePaths.append("/" + d.trimmed());
+            QStringList remoteList = output.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
+        remoteList.sort(Qt::CaseInsensitive);
 
-    // 删除不存在的节点
-    for (int row = treeModel->rowCount() - 1; row >= 0; row--)
-    {
-        QString existPath = treeModel->item(row)->data(Qt::UserRole + 1).toString();
-        if (!remotePaths.contains(existPath))
-            treeModel->removeRow(row);
-    }
+        // 生成完整路径列表
+        QStringList remotePaths;
+        for (QString d : remoteList)
+            remotePaths.append("/" + d.trimmed());
 
-    // 添加缺失节点（有序）
-    for (const QString &fullPath : remotePaths)
-    {
-        bool found = false;
+        // 删除不存在的节点
+        for (int row = treeModel->rowCount() - 1; row >= 0; row--) {
+            QString existPath = treeModel->item(row)->data(Qt::UserRole + 1).toString();
+            if (!remotePaths.contains(existPath))
+                treeModel->removeRow(row);
+        }
 
-        for (int i = 0; i < treeModel->rowCount(); i++)
-        {
-            if (treeModel->item(i)->data(Qt::UserRole + 1).toString() == fullPath)
-            {
-                found = true;
-                break;
+        // 添加缺失节点（有序）
+        for (const QString &fullPath : remotePaths) {
+            bool found = false;
+
+            for (int i = 0; i < treeModel->rowCount(); i++) {
+                if (treeModel->item(i)->data(Qt::UserRole + 1).toString() == fullPath) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                QString name = fullPath.mid(1);
+                QStandardItem *item = new QStandardItem(name);
+                item->setData(fullPath, Qt::UserRole + 1);
+                treeModel->appendRow(item);
             }
         }
-
-        if (!found)
-        {
-            QString name = fullPath.mid(1);
-            QStandardItem *item = new QStandardItem(name);
-            item->setData(fullPath, Qt::UserRole + 1);
-            treeModel->appendRow(item);
-        }
-    }
+    }, 5000); // 5 秒超时，可调整
 }
+
 
 
 void factory_analyzer::on_treeView_clicked(const QModelIndex &index)
 {
-    QString path = index.data(Qt::UserRole + 1).toString().trimmed();  // 修正这里
-
-    // showlog("tree clicked path = [" + path + "]");
+    QString path = index.data(Qt::UserRole + 1).toString().trimmed();  // 获取路径
+    if (path.isEmpty()) return;
 
     int childCount = ui->treeView->model()->rowCount(index);
-    // showlog("child count = " + QString::number(childCount));
-
-    if (childCount == 0)
-    {
-        // showlog("loadFolder triggered!");
-        loadFolder(path);
+    if (childCount == 0) {
+        loadFolder(path); // 异步加载子节点
     }
 
-    QElapsedTimer timer;
-    timer.start();
+    if (!adb) return;
 
-    // showlog("start adb shell ls -l ...");
-    QProcess p;
-    p.start("adb", {"shell","ls","-l", path});
-    bool ok = p.waitForFinished();
-
-    // showlog("adb finished = " + QString(ok ? "true" : "false") +
-    //         ", cost = " + QString::number(timer.elapsed()) + "ms");
-
-    QString out = p.readAllStandardOutput().trimmed();  // 去掉末尾回车
-
-    // if (out.isEmpty())
-    //     showlog("ls output = EMPTY");
-    // else
-    //     showlog("ls output size = " + QString::number(out.size()));
-
-    parseFiles(path, out);
-}
-
-
-void factory_analyzer::loadFolder(QString path)
-{
-    // showlog("loadFolder path = " + path);
-
-    QElapsedTimer timer;
-    timer.start();
-
-    QProcess p;
-    p.start("adb", {"shell","ls","-p", path});
-    bool ok = p.waitForFinished();
-
-    // showlog("adb ls -p finished = " + QString(ok ? "true" : "false") +
-    //         ", cost = " + QString::number(timer.elapsed()) + "ms");
-
-    QString out = p.readAllStandardOutput();
-
-    if (out.isEmpty())
-    {
-        showlog("folder list is EMPTY!!");
-        return;
-    }
-
-    // 去掉 \r，同时忽略空行
-    QStringList list = out.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
-    // showlog("folder count = " + QString::number(list.size()));
-
-    QModelIndex idx = ui->treeView->currentIndex();
-    QStandardItem *parent = treeModel->itemFromIndex(idx);
-
-    if (!parent)
-    {
-        showlog("parent IS NULL ERROR!!");
-        return;
-    }
-
-    for (QString d : list)
-    {
-        d = d.trimmed();  // 去掉首尾空白，包括 \r
-
-        // showlog("read item = [" + d + "]");
-
-        if (!d.endsWith("/"))
-        {
-            // showlog("skip (not dir): " + d);
-            continue;
+    // 使用长连接异步获取目录
+    adb->sendCommand(QString("ls -l \"%1\"").arg(path), [this, path](const QString &output, qint64 elapsed){
+        qDebug() << "[ADB] ls -l" << path << "elapsed:" << elapsed << "ms";
+        if (output == "ADB不可用") {
+            QMessageBox::warning(this, "错误", "设备未连接或ADB不可用！");
+            return;
         }
 
-        d.chop(1); // 去掉末尾的 /
+        QString trimmedOutput = output.trimmed();
+        parseFiles(path, trimmedOutput);
+    }, 5000); // 5 秒超时
+}
 
-        auto *child = new QStandardItem(d);
-        child->setData(path + "/" + d, Qt::UserRole + 1);
 
-        parent->appendRow(child);
-        // showlog("append folder: " + d);
+void factory_analyzer::loadFolder(const QString &path)
+{
+    if (path.isEmpty()) return;
+
+    if (!adb) {
+        showlog("ADB不可用！");
+        return;
     }
 
-    // showlog("loadFolder END");
+    showlog("loadFolder path = " + path);
+
+    // 使用 adb 长连接异步获取目录
+    adb->sendCommand(QString("ls -p \"%1\"").arg(path), [this, path](const QString &output, qint64 elapsed) {
+        qDebug() << "[ADB] ls -p" << path << "elapsed:" << elapsed << "ms";
+
+        QString trimmedOutput = output.trimmed();
+        if (trimmedOutput.isEmpty()) {
+            showlog("folder list is EMPTY!!");
+            return;
+        }
+
+        QStringList list = trimmedOutput.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
+
+        QModelIndex idx = ui->treeView->currentIndex();
+        QStandardItem *parent = treeModel->itemFromIndex(idx);
+
+        if (!parent) {
+            showlog("parent IS NULL ERROR!!");
+            return;
+        }
+
+        for (QString d : list) {
+            d = d.trimmed();
+            if (!d.endsWith("/")) continue;
+
+            d.chop(1); // 去掉末尾的 /
+
+            auto *child = new QStandardItem(d);
+            child->setData(path + "/" + d, Qt::UserRole + 1);
+            parent->appendRow(child);
+        }
+
+
+    }, 5000); // 设置超时时间 5 秒
 }
+
 
 void factory_analyzer::parseFiles(QString path, QString data)
 {
@@ -489,50 +450,40 @@ void factory_analyzer::parseFiles(QString path, QString data)
     }
 }
 
-
 void factory_analyzer::updateAdbStatus()
 {
-    if (!adbProc) {
-        adbProc = new QProcess(this);
+    // qDebug() << "[factory_analyzer] 更新 ADB 状态...";
 
-        // 读取输出
-        connect(adbProc, &QProcess::readyReadStandardOutput, this, [this]() {
-            QString out = adbProc->readAllStandardOutput().trimmed();
-            // qDebug().noquote() << "[ADB] 输出:" << out;
+    // 启动 shell（不管是否成功，只是保证进程存在）
+    bool started = adb->start();
+    // qDebug() << "[factory_analyzer] adb shell start 返回:" << started;
 
-            // 缓存输出
-            adbLastOutput = out;
-        });
+    // 发送测试命令判断 ADB 是否可用
+    adb->sendCommand("echo success", [this](const QString &output, qint64 elapsed) {
+        // qDebug() << "[factory_analyzer] adb sendCommand 输出:" << output
+        //          << ", 耗时:" << elapsed << "ms";
 
-        // 命令结束
-        connect(adbProc,
-                QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                this,
-                [this](int code, QProcess::ExitStatus status) {
-                    // qDebug() << "[ADB] 结束 code =" << code << ", status =" << status;
+        if (!adbStatusLabel) {
+            qDebug() << "[factory_analyzer] adbStatusLabel为空";
+            return;
+        }
+        if (!adbStatusLabel->parent()) {
+            qDebug() << "[factory_analyzer] adbStatusLabel 已脱离 UI";
+            return;
+        }
 
-                    // 判断输出与退出状态
-                    if (adbStatusLabel && !adbStatusLabel->parent()) {
-                        // 已经脱离 UI 层级，大概率已被销毁
-                        return;
-                    }
-
-                    if (adbStatusLabel) {
-                        if (!adbLastOutput.isEmpty() && adbLastOutput == "success" && status == QProcess::NormalExit) {
-                            adbStatusLabel->setText("ADB连接：<font color='green'>成功</font>");
-                        } else {
-                            adbStatusLabel->setText("ADB连接：<font color='red'>失败</font>");
-                        }
-                    }
-
-                    // 清空缓存，下次检查重新记录
-                    adbLastOutput.clear();
-                });
-    }
-
-    // qDebug() << "[ADB] 执行检查命令：adb shell echo success";
-    adbProc->start("adb", QStringList() << "shell" << "echo success");
+        QString trimmed = output.trimmed();
+        if (trimmed == "success") {
+            adbStatusLabel->setText("ADB连接：<font color='green'>成功</font>");
+            // qDebug() << "[factory_analyzer] ADB连接成功";
+        } else {
+            adbStatusLabel->setText("ADB连接：<font color='red'>失败</font>");
+            // qDebug() << "[factory_analyzer] ADB连接失败";
+        }
+    });
 }
+
+
 
 
 
@@ -544,11 +495,7 @@ void factory_analyzer::graph_reset(uint8_t argument) {
     }
 }
 factory_analyzer::~factory_analyzer() {
-    if (adbProc) {
-        adbProc->disconnect(this);  // 断开所有信号槽
-        adbProc->kill();            // 或 terminate()
-        adbProc->waitForFinished(300);
-    }
+
     delete ui; }
 
 void factory_analyzer::showlog(const QString &msg) {
@@ -892,9 +839,17 @@ void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile) {
 // 批量执行 adb 命令（按钮4）
 void factory_analyzer::on_pushButton_4_clicked() {
     showlog("机器开始进老化");
-    QString cmd = "adb shell test_mp_stage.sh erase && adb shell "
-                  "test_mp_stage.sh aging_test 1800 && adb shell reboot";
-    runProcess("cmd.exe", {"/c", cmd}, "", nullptr);
+    QString cmd = "test_mp_stage.sh erase &&  "
+                  "test_mp_stage.sh aging_test 1800 &&  reboot";
+
+
+    adb->sendCommand(cmd, [](const QString &output, qint64 elapsed) {
+        qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+        qDebug() << "Output:" << output;
+    }, 15000); // 设置长一些的超时，比如 15 秒
+
+
+
 }
 
 // --------------------------
@@ -913,21 +868,22 @@ void factory_analyzer::on_pushButton_6_clicked() {
     showlog("开始同步机器时间，请保持机器唤醒USB连接");
 
     // 执行 bat 同步时间
-    runProcess(batPath, {}, appDir, [=](int, QProcess::ExitStatus) {
-        QProcess *adb = new QProcess(this);
-        QStringList args;
-        args << "shell" << "date";
+    runProcess(batPath, {}, appDir, [this](int, QProcess::ExitStatus) {
+        // 获取设备时间
+        QString cmd = "date"; // 或 "adb shell date" 看你的 sendCommand 实现
 
-        connect(adb, &QProcess::readyReadStandardOutput, this, [=]() {
-            QString time =
-                QString::fromLocal8Bit(adb->readAllStandardOutput()).trimmed();
+        adb->sendCommand(cmd, [this](const QString &output, qint64 elapsed) {
+            qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+            qDebug() << "Output:" << output;
+
+            QString time = output.trimmed();
+
             showlog("设置完成，当前设备时间: " + time);
             showlog("产线电脑时间和真实时间有一定差异，所以会差一两分钟等");
-        });
-
-        adb->start("adb", args);
+        }, 15000); // 超时 15 秒
     });
 }
+
 void deleteDirContent(const QString &path)
 {
     QDir dir(path);
@@ -1059,22 +1015,34 @@ void factory_analyzer::on_pushButton_7_clicked() {
     plot->rescaleAxes(true);
     plot->replot();
 }
-void factory_analyzer::updateForwardTable() {
-    table->setRowCount(0); // 清空表格
-  qDebug().noquote() << "ADB updateForwardTable";
-    QProcess proc;
-  proc.start("adb", QStringList()
-                          << "shell" << "duss_shell stat --show forward");
-    proc.waitForFinished(3000); // 最多等待3秒
-  QString output = proc.readAllStandardOutput();
-    QStringList lines = output.split("\n", QString::SkipEmptyParts);
+void factory_analyzer::updateForwardTable()
+{
+    if (!adb) return;
 
-  for (const QString &line : lines) {
-        if (line.contains("----msg:")) {
-          parseAndAddLine(line);
+    qDebug().noquote() << "ADB updateForwardTable";
+
+    // 使用长连接 shell
+    adb->sendCommand("duss_shell stat --show forward", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "[ADB] updateForwardTable elapsed:" << elapsed << "ms";
+
+        if (output == "ADB不可用") {
+            QMessageBox::warning(this, "错误", "设备未连接或ADB不可用！");
+            return;
         }
-  }
+
+        // 清空表格
+        table->setRowCount(0);
+
+        // 按行解析输出
+        QStringList lines = output.split(QRegExp("[\r\n]+"), Qt::SkipEmptyParts);
+        for (const QString &line : lines) {
+            if (line.contains("----msg:")) {
+                parseAndAddLine(line);
+            }
+        }
+    }, 5000); // 5 秒超时，可根据情况调整
 }
+
 QString translateId(const QString &raw)
 {    // 在类里或者函数外定义映射表
     const QMap<QString, QString> serviceMap = {
@@ -1173,6 +1141,9 @@ void factory_analyzer::parseAndAddLine(const QString &line) {
     auto createItem = [](const QString &text) {
         QTableWidgetItem *item = new QTableWidgetItem(text);
         item->setTextAlignment(Qt::AlignCenter); // 居中
+        QFont f = item->font();
+        f.setBold(true); // 字体加粗
+        item->setFont(f);
         return item;
     };
 
@@ -1183,8 +1154,8 @@ void factory_analyzer::parseAndAddLine(const QString &line) {
     // table->setItem(row, 1, createItem(from));
     // table->setItem(row, 2, createItem(to));
     // 可以显示在表格里
-    table->setItem(row, 1, new QTableWidgetItem(fromName));
-    table->setItem(row, 2, new QTableWidgetItem(toName));
+    table->setItem(row, 1, createItem(fromName));
+    table->setItem(row, 2, createItem(toName));
 
     table->setItem(row, 3, createItem(fail));
     table->setItem(row, 4, createItem(failLen));
@@ -1202,7 +1173,8 @@ void factory_analyzer::parseAndAddLine(const QString &line) {
         for (int c = 0; c < 9; ++c) {
             QTableWidgetItem *it = table->item(row, c);
             if (it) // 避免崩溃
-                it->setBackground(Qt::red);
+                it->setBackground(QBrush(QColor("#ffe0e0")));
+
         }
     }
     table->resizeColumnsToContents();
@@ -1279,6 +1251,8 @@ void factory_analyzer::on_pushButton_10_clicked()
     }
 
     runCmd("adb wait-for-device");
+
+
     if(ddr_press==false)
     {
         showlog("退出PRESS REBOOT");
@@ -1288,19 +1262,16 @@ void factory_analyzer::on_pushButton_10_clicked()
     showlog("===== START FINAL STEPS =====");
 
     // 3. 修改关机配置
-    runCmd("adb shell simulate_device -s DevicePowerUserIdleControlAutoShutdownTime 0");
+    QString cmd = "simulate_device -s DevicePowerUserIdleControlAutoShutdownTime 0";
+
+    adb->sendCommand(cmd, [](const QString &output, qint64 elapsed) {
+        qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+        qDebug() << "Output:" << output;
+    }, 15000); // 设置长一些的超时，比如 15 秒
+
     showlog(">>> Set AutoShutdownTime = 0");
 
-    // 4. 执行脚本
-    runCmd("adb shell test_mp_stage.sh erase");
-    showlog(">>> test_mp_stage.sh erase done");
-
-    runCmd("adb shell test_mp_stage.sh ddr_press 1800");
-    showlog(">>> ddr_press 1800 done");
-
-    // 5. 最终重启
-    runCmd("adb shell reboot");
-    showlog(">>> Final reboot complete");
+    on_pushButton_11_clicked();
 
     showlog("===== PASS =====");
 }
@@ -1309,10 +1280,15 @@ void factory_analyzer::on_pushButton_10_clicked()
 
 void factory_analyzer::on_pushButton_11_clicked()
 {
-    showlog("机器开始进老化");
-    QString cmd = "adb shell test_mp_stage.sh erase && adb shell "
-                  "test_mp_stage.sh ddr_press 1800 && adb shell reboot";
-    runProcess("cmd.exe", {"/c", cmd}, "", nullptr);
+
+    QString cmd = "test_mp_stage.sh erase && test_mp_stage.sh ddr_press 1800 &&reboot ";
+
+adb->sendCommand(cmd, [](const QString &output, qint64 elapsed) {
+    qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+    qDebug() << "Output:" << output;
+}, 15000); // 设置长一些的超时，比如 15 秒
+
+
 }
 
 
@@ -1328,42 +1304,85 @@ void factory_analyzer::on_pushButton_12_clicked()
 
 void factory_analyzer::on_pushButton_14_clicked()
 {
-    QString remoteFile = "/proc/version";
-    commandQueue.enqueue(QString("cat %1").arg(remoteFile));
-    if(!isProcessing) {
-        sendNextCommand();
+    adb->sendCommand("cat /proc/version", [](const QString &output, qint64 elapsed){
+        qDebug() << "Command output:" << output;
+        qDebug() << "Elapsed:" << elapsed << "ms";
+    });
+}
+
+void factory_analyzer::on_pushButton_15_clicked()
+{
+    adb->sendCommand("reboot", [](const QString &output, qint64 elapsed){
+        qDebug() << "Command output:" << output;
+        qDebug() << "Elapsed:" << elapsed << "ms";
+    });
+}
+void factory_analyzer::displayCmdline(QTableWidget *table, const QString &cmdline) {
+    // 清空旧数据
+    table->clear();
+    table->setRowCount(0);
+    table->setColumnCount(2);
+    table->setHorizontalHeaderLabels(QStringList() << "参数" << "值");
+
+    // 字体加粗 lambda
+    auto createItem = [](const QString &text) {
+        QTableWidgetItem *item = new QTableWidgetItem(text);
+        item->setTextAlignment(Qt::AlignCenter);
+        QFont f = item->font();
+        f.setBold(true);
+        item->setFont(f);
+        return item;
+    };
+
+    // 按空格拆分参数
+    QStringList params = cmdline.split(' ', Qt::SkipEmptyParts);
+
+    // 遍历每个参数 key=value
+    for (const QString &p : params) {
+        int idx = p.indexOf('=');
+        QString key = p;
+        QString value;
+        if (idx != -1) {
+            key = p.left(idx);
+            value = p.mid(idx + 1);
+        }
+
+        int row = table->rowCount();
+        table->insertRow(row);
+        table->setItem(row, 0, createItem(key));
+        table->setItem(row, 1, createItem(value));
+
+        // 高亮重要字段
+        if (
+            key.contains("mp_state", Qt::CaseInsensitive) ||
+            key.contains("production_sn", Qt::CaseInsensitive) ||
+            key.contains("board_sn", Qt::CaseInsensitive) ||
+            key.contains("androidboot.secure_debug", Qt::CaseInsensitive) ||
+              key.contains("loglevel", Qt::CaseInsensitive) ||
+            key.contains("boot_mode", Qt::CaseInsensitive)) {
+            for (int c = 0; c < 2; ++c) {
+                QTableWidgetItem *it = table->item(row, c);
+                if (it)
+                    it->setBackground(QColor("#ffe0e0")); // 浅红背景
+            }
+        }
     }
+
+    table->resizeColumnsToContents();
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
-// 发送队列中的命令
-void factory_analyzer::sendNextCommand()
+
+void factory_analyzer::on_pushButton_16_clicked()
 {
-    if(commandQueue.isEmpty()) {
-        isProcessing = false;
-        return;
-    }
+    adb->sendCommand("cat /proc/cmdline", [this](const QString &output, qint64 elapsed){
+        qDebug() << "Command output:" << output;
+        qDebug() << "Elapsed:" << elapsed << "ms";
 
-    QString cmd = commandQueue.dequeue();
-    isProcessing = true;
+        // 去掉多余换行和空格
+        QString cmdline = output;
+        cmdline = cmdline.simplified(); // 去掉多余空格/换行，连续空白合并为一个空格
 
-    qDebug() << "Sending command:" << cmd;
-    adbShell->write((cmd + "\n").toUtf8());
+        displayCmdline(ui->tableWidget_2, cmdline);
+    });
 }
 
-// adb shell 输出读取
-void factory_analyzer::onAdbReadyRead()
-{
-    QByteArray output = adbShell->readAllStandardOutput();
-    if(output.isEmpty()) return;
-
-    qDebug() << "adb output:\n" << output.trimmed();
-
-    // 命令结束标志：如果你知道输出固定格式，可以在这里判断
-    // 简单处理：每次输出结束就发送下一条命令
-    sendNextCommand();
-}
-
-// adb shell 进程结束
-void factory_analyzer::onAdbFinished(int exitCode, QProcess::ExitStatus exitStatus)
-{
-    qDebug() << "adb shell finished:" << exitCode << exitStatus;
-}

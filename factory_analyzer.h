@@ -1,6 +1,7 @@
 ﻿#ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
+#include "qadb.h"
 #include "qbulk/qbulk.h"
 #include "qcustomplot.h"
 #include <QDesktopServices>
@@ -31,19 +32,18 @@ public:
     QTableWidget *table;
     QLabel *adbStatusLabel = nullptr;
 
-    QProcess *adbProc = nullptr;
+
     QString adbLastOutput;
     bool ddr_press = false;
     void runCmd(const QString &cmd);
-
+    Qadb* adb;
     QStandardItemModel *treeModel;
     QStandardItemModel *fileModel;
-   QProcess *adbShell = nullptr;
+
     QQueue<QString> commandQueue;         // 命令队列
     bool isProcessing = false;            // 是否正在执行命令
 private slots:
-    void onAdbReadyRead();                // adb shell 输出读取
-    void onAdbFinished(int exitCode, QProcess::ExitStatus exitStatus);
+
     void updateForwardTable();
     void parseAndAddLine(const QString &line);
 
@@ -81,7 +81,7 @@ private slots:
     void on_pushButton_12_clicked();
 
     void loadRoot();
-    void loadFolder(QString path);
+    void loadFolder(const QString &path);
 
     void parseFiles(QString path, QString data);
 
@@ -92,12 +92,16 @@ private slots:
     void onTreeViewContextMenu(const QPoint &pos);
     void on_pushButton_14_clicked();
 
+    void on_pushButton_15_clicked();
+void displayCmdline(QTableWidget *table, const QString &cmdline);
+    void on_pushButton_16_clicked();
+
 private:
     void adbPull(const QString &remotePath);
     void adbDelete(const QString &remotePath);
 void refreshTreeAfterDelete(const QString &remotePath);
     void loadRemoteDirectory(const QString &path);
-    void sendNextCommand();               // 发送队列中的下一个命令
+
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     // 放下事件
