@@ -40,6 +40,7 @@ public:
     Qadb *adb;
     Qshell *shell;
 
+    Qshell *shellMonitor;
     QStandardItemModel *treeModel;
     QStandardItemModel *fileModel;
 
@@ -56,9 +57,11 @@ private slots:
 
     void updateForwardTable();
     void parseAndAddLine(const QString &line);
-
+    void execAdb(const QString &args,
+                                   std::function<void(const QString &output, qint64 elapsed)> callback,
+                 int timeout = 3000);
     void on_pushButton_clicked();
-
+QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_2_clicked();
 
     void on_pushButton_3_clicked();
@@ -124,6 +127,8 @@ private slots:
     void on_pushButton_22_clicked();
 
     void on_pushButton_23_clicked();
+
+    void on_pushButton_24_clicked();
 
 private:
     void adbPull(const QString &remotePath);

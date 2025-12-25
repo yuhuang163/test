@@ -18,8 +18,25 @@
 #endif
 void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
 
+    // shell->sendCommand(
+    //     "echo 哈哈哈",
+    //     [this](const QString &output, qint64 elapsed)  {
+    //         qDebug() << "Elapsed:" << elapsed << "ms"<<output;
+    //         showlog("完成");
+    //     }
+    //     ,3000);
+
+
     shell->sendCommand(
-        "echo 哈哈哈",
+        "cd E:/垃圾",
+        [this](const QString &output, qint64 elapsed)  {
+            qDebug() << "Elapsed:" << elapsed << "ms"<<output;
+            showlog("完成");
+        }
+        ,3000);
+
+    shell->sendCommand(
+        "[Console]::OutputEncoding",
         [this](const QString &output, qint64 elapsed)  {
             qDebug() << "Elapsed:" << elapsed << "ms"<<output;
             showlog("完成");
@@ -28,15 +45,45 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
 
 
 
+    // QProcess p;
+
+    // QString ps =
+    //     "[Console]::OutputEncoding = "
+    //     "[System.Text.UTF8Encoding]::new(); "
+    //     "echo 哈哈哈";
+
+    // p.start(
+    //     "powershell",
+    //     {
+    //         "-NoProfile",
+    //         "-NonInteractive",
+    //         "-Command",
+    //         ps
+    //     }
+    //     );
+
+    // p.waitForFinished();
+
+    // QByteArray raw = p.readAllStandardOutput();
+
+    // // ✅ UTF-8 解码（现在是对的）
+    // QString output = QString::fromUtf8(raw);
+
+    // qDebug().noquote() << "OUTPUT:" << output;
+
+
+
+
 
 }
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent), adb(new Qadb), shell(new Qshell),
+    : QMainWindow(parent), adb(new Qadb), shell(new Qshell), shellMonitor(new Qshell),
     ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
     adb->start();
     shell->start();
+    shellMonitor->start();
     QCustomPlot *plot_value = new QCustomPlot;
     // 创建压力值曲线图
     plot_value->legend->setVisible(true); // 设置图例可见
@@ -125,6 +172,66 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
     ui->lineEdit->installEventFilter(this);
 
+
+
+    execAdb("--version", [this](const QString &output, qint64 elapsed){
+        qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
+        showlog(output);
+    } ,3000);
+
+
+}
+// 在你的类里，比如 factory_analyzer
+void factory_analyzer::execAdb(const QString &args,
+                               std::function<void(const QString &output, qint64 elapsed)> callback,
+                               int timeout)
+{
+    QStringList commands = args.split("&&", Qt::SkipEmptyParts);
+    QStringList fullCommands;
+    for(auto &c : commands) {
+        QString trimmed = c.trimmed();
+        if(!trimmed.isEmpty()) {
+            fullCommands << QString("./factorydebugv4/adb/adb.exe %1").arg(trimmed);
+        }
+    }
+
+    // 用 ; 拼接成单条命令在 shell 执行
+    QString cmd = fullCommands.join(" ; ");
+
+    shell->sendCommand(
+        cmd,
+        [callback](const QString &output, qint64 elapsed){
+            if(callback) callback(output, elapsed);
+        },
+        timeout
+        );
+}
+QString factory_analyzer::execAdbBlocking(const QString &args, int timeout)
+{
+    QStringList commands = args.split("&&", Qt::SkipEmptyParts);
+    QStringList fullCommands;
+
+    for(auto &c : commands) {
+        QString trimmed = c.trimmed();
+        if(!trimmed.isEmpty()) {
+            fullCommands << QString("./factorydebugv4/adb/adb.exe %1").arg(trimmed);
+        }
+    }
+
+    // 用 ; 拼接成单条命令在 shell 执行
+    QString cmd = fullCommands.join(" ; ");
+
+    QString result;
+    QEventLoop loop;
+
+    // 使用 sendCommand 的异步接口，但通过事件循环阻塞
+    shell->sendCommand(cmd, [&](const QString &output, qint64 /*elapsed*/) {
+        result = output;
+        loop.quit();  // 命令执行完成，退出阻塞
+    }, timeout);
+
+    loop.exec(); // 阻塞等待命令完成
+    return result;
 }
 
 void factory_analyzer::adbPull(const QString &remotePathOrigin) {
@@ -136,32 +243,23 @@ void factory_analyzer::adbPull(const QString &remotePathOrigin) {
 
     remotePath.replace("\\", "/");
 
-    QString program = "adb";
-    QStringList arguments;
-    arguments << "pull" << remotePath;
+    QString cmd = QString("pull %1").arg(remotePath);
+    execAdb(cmd, [](const QString &output, qint64 elapsed){
+        QString out = QDir::currentPath(); // 保存路径
 
-    qDebug() << "[ADB] pull" << arguments;
+        if(output.contains("error", Qt::CaseInsensitive)) {
+            QMessageBox::warning(nullptr, "失败", output);
+        } else {
+            QMessageBox::information(nullptr, "成功",
+                                     "复制完成！数据在：\n" + out);
+            QDesktopServices::openUrl(QUrl::fromLocalFile(out));
+        }
 
-    QProcess *process = new QProcess(this);
-    process->setProcessChannelMode(QProcess::MergedChannels);
+        qDebug() << "[ADB pull] elapsed:" << elapsed << "ms";
+    });
 
-    connect(process,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [process](int exitCode, QProcess::ExitStatus) {
-                QString out = QDir::currentPath();
 
-                if (exitCode == 0) {
-                    QMessageBox::information(nullptr, "成功",
-                                             "复制完成！数据在：\n" + out);
-                    QDesktopServices::openUrl(QUrl::fromLocalFile(out));
-                } else {
-                    QMessageBox::warning(nullptr, "失败", process->readAll());
-                }
 
-                process->deleteLater();
-            });
-
-    process->start(program, arguments);
 }
 void factory_analyzer::refreshTreeAfterDelete(const QString &remotePath) {
     // 找到父路径
@@ -488,9 +586,9 @@ void factory_analyzer::parseFiles(QString path, QString data) {
 void factory_analyzer::updateAdbStatus() {
     // qDebug() << "[factory_analyzer] 更新 ADB 状态...";
 
-        updateBatteryLevel();
+    // updateBatteryLevel();
 
-   updateQualcommComStatus();
+    // updateQualcommComStatus();
 
     adb->startKeyMonitorAdbShell("/dev/input/event1", [this](const QString &keyName){
         showlog(QString("%1 被按下").arg(keyName));
@@ -583,7 +681,7 @@ void factory_analyzer::runProcess(
 // --------------------------
 void factory_analyzer::on_pushButton_clicked() {
   //   QString exeDir = QCoreApplication::applicationDirPath();
-  //   QString batDir = exeDir + "/产线调试包v4";
+  //   QString batDir = exeDir + "/factorydebugv4";
   //   QString batPath = batDir + "/系统公版拉日志v4.bat";
 
   //   if (!QFile::exists(batPath)) {
@@ -600,57 +698,60 @@ void factory_analyzer::on_pushButton_clicked() {
   // });
 
 showlog("开始拉日志");
-    // 2️⃣ 时间戳
-    QString timestamp = QDateTime::currentDateTime()
-                            .toString("yyyyMMddhhmmss");
+  // 时间戳
+  QString timestamp = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 
-    // 3️⃣ 获取 device_id
-    adb->sendCommand("cat /factory_data/device_id.txt", [this, timestamp](const QString &output, qint64) {
-        QString deviceId = output.trimmed();
-        QString logPath = QDir::currentPath()+ "/产线调试包v4" + "/log/" + timestamp + "_" + deviceId;
-
-        // 4️⃣ 创建固定目录
-        QStringList dirs = {"system", "camera", "gui", "amt", "aging_test_result"};
-        QDir().mkpath(logPath);
-        for (const QString &d : dirs) {
-            QDir().mkpath(logPath + "/" + d);
-        }
-
-        // 5️⃣ 拉固定模块
-        for (const QString &d : dirs) {
-
-            QString fullCmd = QString("cd "
-                                      "%1"
-                                      ";adb pull /blackbox/%2 ")
-                                  .arg(logPath, d);
-
-            // qDebug() << "[sendCommand] executing:" << fullCmd;
-            shell->sendCommand(
-                fullCmd,
-                [logPath](const QString &output, qint64 elapsed) {
-                    qDebug() << "[pullDirsSequential] 完成:" << output
-                             << "耗时:" << elapsed << "ms";
-                },
-                100000);
-        }
-
-        // 6️⃣ 拉动态 flightXXXX 目录
-        adb->sendCommand("ls /blackbox", [this, logPath](const QString &lsOut, qint64){
-            QStringList lines = lsOut.split('\n', Qt::SkipEmptyParts);
-            for (const QString &line : lines) {
-                if (!line.startsWith("flight"))
-                    continue;
-
-                QString localDir = logPath + "/" + line;
-                QDir().mkpath(localDir);
-
-                shell->sendCommand(QString("adb pull /blackbox/%1 %2").arg(line, localDir), [](const QString&, qint64){},10000);
-            }
-        },10000);
-    },10000);
+  // 1️⃣ 一次性执行获取 device_id + ls /blackbox
+  QString cmd = "deviceId=$(cat /factory_data/device_id.txt); echo DEVICE_ID=$deviceId; ls /blackbox";
 
 
-    showlog("拉日志结束");
+  adb->sendCommand(cmd, [this, timestamp](const QString &output, qint64) {
+      QStringList lines = output.split('\n', Qt::SkipEmptyParts);
+
+      // 2️⃣ 解析 deviceId
+      QString deviceId;
+      QStringList flightDirs;
+      for (const QString &line : lines) {
+          if (line.startsWith("DEVICE_ID=")) {
+              deviceId = line.mid(QString("DEVICE_ID=").length()).trimmed();
+          } else if (line.startsWith("flight")) {
+              flightDirs << line.trimmed();
+          }
+      }
+        qDebug() << "deviceId" << deviceId << "lines:" << lines<< "output:" << output;
+      // 3️⃣ 创建固定目录
+      QString logPath = QDir::currentPath() + "/factorydebugv4/log/" + timestamp + "_" + deviceId;
+      QStringList dirs = {"system", "camera", "gui", "amt", "aging_test_result"};
+      QDir().mkpath(logPath);
+      for (const QString &d : dirs) {
+          QDir().mkpath(logPath + "/" + d);
+      }
+
+      // 4️⃣ 拉固定模块
+      for (const QString &d : dirs) {
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2").arg(logPath, d,"./factorydebugv4/adb/adb.exe");
+          shell->sendCommand(fullCmd, [logPath, this](const QString &out, qint64 elapsed) {
+              qDebug() << "[pullDirsSequential] 完成:" << out << "耗时:" << elapsed << "ms";
+              showlog("完成:"+out);
+          }, 100000);
+      }
+
+      // 5️⃣ 拉 flightXXXX 目录
+      for (const QString &flight : flightDirs) {
+          QString localDir = logPath + "/" + flight;
+          QDir().mkpath(localDir);
+
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2").arg(localDir, flight,"./factorydebugv4/adb/adb.exe");
+          shell->sendCommand(fullCmd, [this](const QString &out, qint64 elapsed){
+          qDebug() << "[flightXXXX] 完成:" << out << "耗时:" << elapsed << "ms";
+       showlog("完成:"+out);
+          }, 10000);
+      }
+  }, 10000);
+
+
+
+
 }
 
 // --------------------------
@@ -658,7 +759,7 @@ showlog("开始拉日志");
 // --------------------------
 void factory_analyzer::runExeWithReport(const QString &exeName) {
     QString exeDir = QCoreApplication::applicationDirPath();
-    QString appDir = exeDir + "/产线调试包v4";
+    QString appDir = exeDir + "/factorydebugv4";
     QString exePath = appDir + "/" + exeName;
 
     if (!QFile::exists(exePath)) {
@@ -768,7 +869,7 @@ void factory_analyzer::on_pushButton_3_clicked() {
 
     showlog("开始修复清除日志失败");
     QString exeDir = QCoreApplication::applicationDirPath();
-    QString batDir = exeDir + "/产线调试包v4";
+    QString batDir = exeDir + "/factorydebugv4";
     QString batPath = batDir + "/修复清除日志失败问题.bat";
 
     if (!QFile::exists(batPath)) {
@@ -820,111 +921,169 @@ void factory_analyzer::dropEvent(QDropEvent *event) {
 // --------------------------
 // 推送文件到 adb 设备
 // --------------------------
-void factory_analyzer::pushFileToZiYanDevice(const QString &localFile) {
-    // 组合 adb 命令
+// void factory_analyzer::pushFileToZiYanDevice(const QString &localFile) {
+//     // 组合 adb 命令
+//     QFileInfo fi(localFile);
+//     QString fileName = fi.fileName(); // 拿到拖入文件的名字
+
+//     // 组合 adb 命令，推送到 /usr/bin/<fileName>，然后修改该文件权限
+//     QString cmd =
+//         QString("adb remount && "
+//                           "adb push %1 /system/bin/%2 && "
+//                           "adb shell chmod 777 /system/bin/%2")
+//                       .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+//                       .arg(fileName);
+
+//     qDebug().noquote() << "[ cmd]" << cmd;
+//     QProcess *process = new QProcess(this);
+
+//     // 捕获标准输出
+//     connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
+//         QByteArray data = process->readAllStandardOutput();
+//         QString text = QString::fromLocal8Bit(data); // GBK 中文解码
+//         qDebug().noquote() << "[ADB OUTPUT]" << text;
+//     });
+
+//     // 捕获错误输出
+//     connect(process, &QProcess::readyReadStandardError, this, [=]() {
+//         QByteArray data = process->readAllStandardError();
+//         QString text = QString::fromLocal8Bit(data);
+//         qDebug().noquote() << "[ADB ERROR]" << text;
+//     });
+
+//     // 进程结束回调
+//     connect(process,
+//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+//             [=](int exitCode, QProcess::ExitStatus status) {
+//                 if (status == QProcess::NormalExit && exitCode == 0) {
+//                     qDebug().noquote() << "ADB 执行完成";
+//                     showlog("ADB 执行成功");
+//                 } else {
+//                     qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
+//                 }
+//                 process->deleteLater();
+//             });
+
+//     // 启动进程
+//     process->start("cmd.exe", QStringList() << "/c" << cmd);
+
+//     if (!process->waitForStarted(3000)) {
+//         qDebug().noquote() << "ADB 进程启动失败";
+//     } else {
+//         qDebug().noquote() << "ADB 开始执行...";
+//     }
+// }
+void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
+{
     QFileInfo fi(localFile);
-    QString fileName = fi.fileName(); // 拿到拖入文件的名字
+    QString fileName = fi.fileName(); // 文件名
 
-    // 组合 adb 命令，推送到 /usr/bin/<fileName>，然后修改该文件权限
+    // 将多条操作写成一次 adb shell 命令
+    // 注意：路径要用双引号包裹，防止空格问题
     QString cmd =
-        QString("adb remount && "
-                          "adb push %1 /system/bin/%2 && "
-                          "adb shell chmod 777 /system/bin/%2")
-                      .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-                      .arg(fileName);
+        QString("remount && "
+                "push %1 /system/bin/%2 && "
+                "shell chmod 777 /system/bin/%2")
+            .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+            .arg(fileName);
 
-    qDebug().noquote() << "[ cmd]" << cmd;
-    QProcess *process = new QProcess(this);
+    qDebug().noquote() << "[ADB CMD]" << cmd;
 
-    // 捕获标准输出
-    connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
-        QByteArray data = process->readAllStandardOutput();
-        QString text = QString::fromLocal8Bit(data); // GBK 中文解码
-        qDebug().noquote() << "[ADB OUTPUT]" << text;
+    // 调用统一封装的 execAdb
+    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed){
+        qDebug().noquote() << QString("ADB 执行耗时: %1 ms").arg(elapsed);
+        qDebug().noquote() << "[ADB OUTPUT]\n" << output;
+
+        if(output.contains("error", Qt::CaseInsensitive)) {
+            showlog(QString("推送 %1 失败").arg(fileName));
+            qDebug().noquote() << "ADB 执行失败";
+        } else {
+            showlog(QString("推送 %1 成功").arg(fileName));
+            qDebug().noquote() << "ADB 执行成功";
+        }
     });
-
-    // 捕获错误输出
-    connect(process, &QProcess::readyReadStandardError, this, [=]() {
-        QByteArray data = process->readAllStandardError();
-        QString text = QString::fromLocal8Bit(data);
-        qDebug().noquote() << "[ADB ERROR]" << text;
-    });
-
-    // 进程结束回调
-    connect(process,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-            [=](int exitCode, QProcess::ExitStatus status) {
-                if (status == QProcess::NormalExit && exitCode == 0) {
-                    qDebug().noquote() << "ADB 执行完成";
-                    showlog("ADB 执行成功");
-                } else {
-                    qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
-                }
-                process->deleteLater();
-            });
-
-    // 启动进程
-    process->start("cmd.exe", QStringList() << "/c" << cmd);
-
-    if (!process->waitForStarted(3000)) {
-        qDebug().noquote() << "ADB 进程启动失败";
-    } else {
-        qDebug().noquote() << "ADB 开始执行...";
-    }
-}
-
-void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile) {
-    // 组合 adb 命令
+}void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile)
+{
     QFileInfo fi(localFile);
-    QString fileName = fi.fileName(); // 拿到拖入文件的名字
+    QString fileName = fi.fileName(); // 文件名
 
-    // 组合 adb 命令，推送到 /usr/bin/<fileName>，然后修改该文件权限
+
     QString cmd =
-        QString("adb shell mount -o rw,remount / && "
-                          "adb push %1 /usr/bin/%2 && "
-                          "adb shell chmod 777 /usr/bin/%2")
-                      .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-                      .arg(fileName);
+        QString("shell mount -o rw,remount / && "
+                "push %1 /usr/bin/%2 && "
+                "shell chmod 777 /usr/bin/%2")
+            .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+            .arg(fileName);
 
-  qDebug().noquote() << "[ cmd]" << cmd;
-    QProcess *process = new QProcess(this);
 
-  // 捕获标准输出
-    connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
-        QByteArray data = process->readAllStandardOutput();
-        QString text = QString::fromLocal8Bit(data); // GBK 中文解码
-        qDebug().noquote() << "[ADB OUTPUT]" << text;
+    qDebug().noquote() << "[ADB CMD]" << cmd;
+
+    // 调用统一封装的 execAdb
+    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed){
+        qDebug().noquote() << QString("ADB 执行耗时: %1 ms").arg(elapsed);
+        qDebug().noquote() << "[ADB OUTPUT]\n" << output;
+
+        if(output.contains("error", Qt::CaseInsensitive)) {
+            showlog(QString("推送 %1 失败").arg(fileName));
+            qDebug().noquote() << "ADB 执行失败";
+        } else {
+            showlog(QString("推送 %1 成功").arg(fileName));
+            qDebug().noquote() << "ADB 执行成功";
+        }
     });
-
-    // 捕获错误输出
-    connect(process, &QProcess::readyReadStandardError, this, [=]() {
-        QByteArray data = process->readAllStandardError();
-        QString text = QString::fromLocal8Bit(data);
-        qDebug().noquote() << "[ADB ERROR]" << text;
-    });
-
-    // 进程结束回调
-    connect(process,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-            [=](int exitCode, QProcess::ExitStatus status) {
-                if (status == QProcess::NormalExit && exitCode == 0) {
-                    qDebug().noquote() << "ADB 执行完成";
-                    showlog("ADB 执行成功");
-                } else {
-                    qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
-                }
-                process->deleteLater();
-            });
-
-    // 启动进程
-    process->start("cmd.exe", QStringList() << "/c" << cmd);
-
-    if (!process->waitForStarted(3000)) {
-        qDebug().noquote() << "ADB 进程启动失败";
-    } else {
-        qDebug().noquote() << "ADB 开始执行...";
-    }
 }
+// void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile) {
+//     // 组合 adb 命令
+//     QFileInfo fi(localFile);
+//     QString fileName = fi.fileName(); // 拿到拖入文件的名字
+
+//     // 组合 adb 命令，推送到 /usr/bin/<fileName>，然后修改该文件权限
+//     QString cmd =
+//         QString("adb shell mount -o rw,remount / && "
+//                           "adb push %1 /usr/bin/%2 && "
+//                           "adb shell chmod 777 /usr/bin/%2")
+//                       .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+//                       .arg(fileName);
+
+//   qDebug().noquote() << "[ cmd]" << cmd;
+//     QProcess *process = new QProcess(this);
+
+//   // 捕获标准输出
+//     connect(process, &QProcess::readyReadStandardOutput, this, [=]() {
+//         QByteArray data = process->readAllStandardOutput();
+//         QString text = QString::fromLocal8Bit(data); // GBK 中文解码
+//         qDebug().noquote() << "[ADB OUTPUT]" << text;
+//     });
+
+//     // 捕获错误输出
+//     connect(process, &QProcess::readyReadStandardError, this, [=]() {
+//         QByteArray data = process->readAllStandardError();
+//         QString text = QString::fromLocal8Bit(data);
+//         qDebug().noquote() << "[ADB ERROR]" << text;
+//     });
+
+//     // 进程结束回调
+//     connect(process,
+//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+//             [=](int exitCode, QProcess::ExitStatus status) {
+//                 if (status == QProcess::NormalExit && exitCode == 0) {
+//                     qDebug().noquote() << "ADB 执行完成";
+//                     showlog("ADB 执行成功");
+//                 } else {
+//                     qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
+//                 }
+//                 process->deleteLater();
+//             });
+
+//     // 启动进程
+//     process->start("cmd.exe", QStringList() << "/c" << cmd);
+
+//     if (!process->waitForStarted(3000)) {
+//         qDebug().noquote() << "ADB 进程启动失败";
+//     } else {
+//         qDebug().noquote() << "ADB 开始执行...";
+//     }
+// }
 
 // --------------------------
 // 批量执行 adb 命令（按钮4）
@@ -1000,12 +1159,12 @@ void deleteDirContent(const QString &path)
 }
 void factory_analyzer::on_pushButton_8_clicked() {
   showlog("开始删除本地日志 " );
-    QString basePath = R"(产线调试包v4/log/)";
+    QString basePath = R"(factorydebugv4/log/)";
     deleteDirContent(basePath);
     showlog("删除完成" );
 }
 void factory_analyzer::on_pushButton_7_clicked() {
-    QString basePath = R"(产线调试包v4/log/)";
+    QString basePath = R"(factorydebugv4/log/)";
     QDir dir(basePath);
     dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
     dir.setSorting(QDir::Name | QDir::Reversed);
@@ -1313,20 +1472,32 @@ void factory_analyzer::on_pushButton_10_clicked() {
 
     for (int i = 1; i <= LOOP; i++) {
         showlog(QString(">>> ROUND %1 / %2").arg(i).arg(LOOP));
-        runCmd("adb wait-for-device");
+
+
+        execAdbBlocking("wait-for-device",30000);
+
+
+
+
         if (ddr_press == false) {
             showlog("退出PRESS REBOOT");
             return;
         }
 
         // 1. 重启
-        runCmd("adb shell reboot");
+        execAdb("shell reboot", [this](const QString &output, qint64 elapsed){
+            qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
+            showlog(output);
+        } ,30000);
+
         if (ddr_press == false) {
             showlog("退出PRESS REBOOT");
             return;
         }
         // 2. 等待设备上线
-        runCmd("adb wait-for-device");
+
+  execAdbBlocking("wait-for-device",30000);
+
 
         showlog(QString(">>> DONE REBOOT ROUND %1").arg(i));
         showlog("-----------------------------");
@@ -1336,7 +1507,9 @@ void factory_analyzer::on_pushButton_10_clicked() {
         }
     }
 
-    runCmd("adb wait-for-device");
+
+    execAdbBlocking("wait-for-device",30000);
+
 
     if (ddr_press == false) {
         showlog("退出PRESS REBOOT");
@@ -1347,15 +1520,15 @@ void factory_analyzer::on_pushButton_10_clicked() {
 
     // 3. 修改关机配置
     QString cmd =
-        "simulate_device -s DevicePowerUserIdleControlAutoShutdownTime 0";
+        "shell simulate_device -s DevicePowerUserIdleControlAutoShutdownTime 0";
 
-    adb->sendCommand(
-        cmd,
-        [](const QString &output, qint64 elapsed) {
-        qDebug() << "Command finished, elapsed:" << elapsed << "ms";
-        qDebug() << "Output:" << output;
-        },
-        15000); // 设置长一些的超时，比如 15 秒
+
+
+    execAdb(cmd, [this](const QString &output, qint64 elapsed){
+        qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
+        showlog(output);
+    } ,30000);
+
 
     showlog(">>> Set AutoShutdownTime = 0");
 
@@ -1367,15 +1540,14 @@ void factory_analyzer::on_pushButton_10_clicked() {
 void factory_analyzer::on_pushButton_11_clicked() {
 
     QString cmd =
-        "test_mp_stage.sh erase && test_mp_stage.sh ddr_press 1800 &&reboot ";
+        "shell test_mp_stage.sh erase && test_mp_stage.sh ddr_press 1800 &&reboot ";
 
-    adb->sendCommand(
-        cmd,
-        [](const QString &output, qint64 elapsed) {
-            qDebug() << "Command finished, elapsed:" << elapsed << "ms";
-            qDebug() << "Output:" << output;
-        },
-        15000); // 设置长一些的超时，比如 15 秒
+    execAdb(cmd, [this](const QString &output, qint64 elapsed){
+        qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
+        showlog(output);
+    } ,30000);
+
+
 }
 
 void factory_analyzer::on_pushButton_12_clicked() { ddr_press = false; }
@@ -1480,10 +1652,10 @@ void factory_analyzer::on_pushButton_16_clicked() {
 }
 
 void factory_analyzer::updateQualcommComStatus() {
-    if (!usbStatusLabel || !shell)
+    if (!usbStatusLabel || !shellMonitor)
         return;
 
-    shell->sendCommand(
+    shellMonitor->sendCommand(
         "wmic path Win32_PnPEntity where \"Name like '%Qualcomm%COM%'\" get Name",
         [this](const QString &out, qint64 /*t*/) {
             QRegularExpression comRx(R"(COM\d+)");
@@ -1513,8 +1685,9 @@ void factory_analyzer::updateQualcommComStatus() {
                 usbStatusLabel->setText(
                     "Qualcomm COM: <font color='red'>NONE</font>");
             }
+
         },
-        3000);
+        3000);//要花费2秒后面修一下
 }
 
 void factory_analyzer::on_pushButton_17_clicked() {
@@ -1575,7 +1748,7 @@ void factory_analyzer::updateBatteryLevel()
             int level = str.toInt(&ok);
             if(ok) {
                 ui->progressBar->setValue(level);
-                qDebug() << "Battery level:" << level;
+                // qDebug() << "Battery level:" << level;
             } else {
                 qDebug() << "Failed to parse battery level:" << output;
             }
@@ -1679,8 +1852,8 @@ void factory_analyzer::on_pushButton_21_clicked()
 
 void factory_analyzer::on_pushButton_22_clicked()
 {
-        shell->sendCommand(
-            "adb reboot edl -f",
+        execAdb(
+            " reboot edl -f",
             [this](const QString &output, qint64 elapsed)  {
                 qDebug() << "Elapsed:" << elapsed << "ms"<<output;
                showlog("完成");
@@ -1692,5 +1865,35 @@ void factory_analyzer::on_pushButton_22_clicked()
 void factory_analyzer::on_pushButton_23_clicked()
 {
 
+}
+void deleteBuildFiles(const QString &dirPath)
+{
+    QDir dir(dirPath);
+    if (!dir.exists()) {
+        qDebug() << "目录不存在:" << dirPath;
+        return;
+    }
+
+    // 设置过滤条件：文件 + 指定后缀
+    QStringList filters;
+    filters << "*.pdb" << "*.map" << "*.exe";
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoSymLinks);
+
+    for (const QFileInfo &fileInfo : fileList) {
+        QString filePath = fileInfo.absoluteFilePath();
+        if (QFile::remove(filePath)) {
+            qDebug() << "已删除:" << filePath;
+        } else {
+            qDebug() << "删除失败:" << filePath;
+        }
+    }
+}
+
+void factory_analyzer::on_pushButton_24_clicked()
+{
+    QString basePath = R"(所有log/)";
+    deleteDirContent(basePath);
+    QString buildDir = R"(./)";
+    deleteBuildFiles(buildDir);
 }
 

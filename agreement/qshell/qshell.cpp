@@ -37,13 +37,13 @@ bool Qshell::start()
     if (shell->state() != QProcess::NotRunning)
         return true;
 
-    QString program = "powershell";
+    QString program = "powershell.exe";
     QStringList args = {
         "-NoLogo",
         "-NoProfile",
-        "-NonInteractive",
         "-ExecutionPolicy", "Bypass",
-        "-Command", "-"          // ⭐ 从 stdin 读命令
+        "-NoExit",          // ⭐ 必须
+        "-Command", "-"     // ⭐ stdin
     };
 
     shell->start(program, args);
@@ -54,17 +54,16 @@ bool Qshell::start()
     }
 
     // ===== 初始化环境（只做一次）=====
-    // 关闭进度条 / 回显噪声
     shell->write(
-        "$ProgressPreference='SilentlyContinue';"
-        "$ErrorActionPreference='Continue';"
-        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new();"
-        "\n"
+        "$ProgressPreference='SilentlyContinue'\n"
+        "$ErrorActionPreference='Continue'\n"
+        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new()\n"
         );
 
-    qDebug() << "Non-interactive PowerShell started";
+    qDebug() << "Persistent PowerShell started";
     return true;
 }
+
 
 void Qshell::stop()
 {
@@ -82,7 +81,7 @@ void Qshell::sendCommand(const QString &cmd,
                          std::function<void(const QString &, qint64)> callback,
                          qint64 timeoutMs)
 {
-     qDebug() << "sendCommand:" << cmd ;
+     // qDebug() << "sendCommand:" << cmd ;
     CmdItem item;
     item.command = cmd;
     item.endMark = QString("__CMD_END_%1__")
@@ -112,7 +111,7 @@ void Qshell::processNextCommand()
     // ⚠️ 不要用 echo（有 alias 风险）
     QString fullCmd =
         item.command +
-        QString("; [Console]::Out.WriteLine('%1')").arg(item.endMark);
+        " ; echo " + item.endMark;
 
     qDebug() << "[Qshell] exec:" << fullCmd;
 

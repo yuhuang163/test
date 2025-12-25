@@ -107,23 +107,9 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_14">
-              <property name="text">
-               <string>上位机调试</string>
-              </property>
-             </widget>
-            </item>
-            <item>
              <widget class="QPushButton" name="pushButton_21">
               <property name="text">
                <string>挂载情况</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_23">
-              <property name="text">
-               <string>带拓展</string>
               </property>
              </widget>
             </item>
@@ -268,6 +254,39 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
              <widget class="QPushButton" name="pushButton_22">
               <property name="text">
                <string>进9008</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QGroupBox" name="horizontalGroupBox">
+           <property name="styleSheet">
+            <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
+           </property>
+           <property name="title">
+            <string>上位机相关</string>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
+            <item>
+             <widget class="QPushButton" name="pushButton_24">
+              <property name="text">
+               <string>删除上位机日志和历史文件</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_14">
+              <property name="text">
+               <string>上位机调试</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_23">
+              <property name="text">
+               <string>待拓展</string>
               </property>
              </widget>
             </item>

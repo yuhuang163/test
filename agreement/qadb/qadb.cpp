@@ -26,7 +26,7 @@ bool Qadb::start() {
     QString exeDir = QCoreApplication::applicationDirPath();
 
     // 拼接 adb 路径
-    QString adbPath = exeDir + R"(\产线调试包v4\adb\adb.exe)";
+    QString adbPath = exeDir + R"(\factorydebugv4\adb\adb.exe)";
 
     adbShell->start(adbPath, {"shell"});
 
@@ -76,6 +76,7 @@ void Qadb::processNextCommand() {
     isProcessing = true;
     CmdItem &item = commandQueue.head();
     QString fullCmd = item.command + " ; echo " + item.endMark;
+     // qDebug() << "[Qshell] exec:" << fullCmd;
     adbShell->write((fullCmd + "\n").toUtf8());
 }
 
