@@ -22,10 +22,12 @@ QMAKE_CXXFLAGS += /MP
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 #D:\qt\5.15.2\msvc2019_64\bin\windeployqt.exe new_production_20250304.exe
+# E:\qt\MaintenanceTool.exe --urlreplace download.qt.io mirrors.tuna.tsinghua.edu.cn/qt
 
 INCLUDEPATH += agreement
 INCLUDEPATH += agreement/qmes
 INCLUDEPATH += agreement/qadb
+INCLUDEPATH += agreement/qshell
 INCLUDEPATH += agreement/qat
 INCLUDEPATH += agreement/qpb
 INCLUDEPATH += agreement/qset
@@ -91,6 +93,7 @@ SOURCES += \
     agreement/qpb/pb_encode.c \
     agreement/qpb/qpb.cpp \
     agreement/qset/qsetting.cpp \
+    agreement/qshell/qshell.cpp \
     agreement/qusb/qusb.cpp \
     factory_analyzer.cpp \
     lib/form/testmodel.cpp \
@@ -157,6 +160,7 @@ HEADERS += \
     agreement/qpb/pb_encode.h \
     agreement/qpb/qpb.h \
     agreement/qset/qsetting.h \
+    agreement/qshell/qshell.h \
     agreement/qusb/qusb.h \
     factory_analyzer.h \
     lib/form/testmodel.h \

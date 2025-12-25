@@ -4,6 +4,7 @@
 #include "qadb.h"
 #include "qbulk/qbulk.h"
 #include "qcustomplot.h"
+#include "qshell.h"
 #include <QDesktopServices>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -31,17 +32,26 @@ public:
     // 作为类成员
     QTableWidget *table;
     QLabel *adbStatusLabel = nullptr;
-
+    QLabel *usbStatusLabel = nullptr;
 
     QString adbLastOutput;
     bool ddr_press = false;
     void runCmd(const QString &cmd);
-    Qadb* adb;
+    Qadb *adb;
+    Qshell *shell;
+
     QStandardItemModel *treeModel;
     QStandardItemModel *fileModel;
 
-    QQueue<QString> commandQueue;         // 命令队列
-    bool isProcessing = false;            // 是否正在执行命令
+    QQueue<QString> commandQueue; // 命令队列
+    bool isProcessing = false;    // 是否正在执行命令
+
+    QStringList commandHistory;
+    int historyIndex = -1;
+    // 类成员
+    bool treeExpanded = true;  // 当前状态，false=收起，true=展开
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 private slots:
 
     void updateForwardTable();
@@ -93,13 +103,32 @@ private slots:
     void on_pushButton_14_clicked();
 
     void on_pushButton_15_clicked();
-void displayCmdline(QTableWidget *table, const QString &cmdline);
+    void displayCmdline(QTableWidget *table, const QString &cmdline);
     void on_pushButton_16_clicked();
+    void updateQualcommComStatus();
+    void on_tableView_doubleClicked(const QModelIndex &index);
+
+    void on_pushButton_17_clicked();
+    void updateBatteryLevel();
+
+    void on_pushButton_18_clicked();
+
+    void on_lineEdit_returnPressed();
+
+    void on_pushButton_19_clicked();
+
+    void on_pushButton_20_clicked();
+
+    void on_pushButton_21_clicked();
+
+    void on_pushButton_22_clicked();
+
+    void on_pushButton_23_clicked();
 
 private:
     void adbPull(const QString &remotePath);
     void adbDelete(const QString &remotePath);
-void refreshTreeAfterDelete(const QString &remotePath);
+    void refreshTreeAfterDelete(const QString &remotePath);
     void loadRemoteDirectory(const QString &path);
 
 protected:
