@@ -113,7 +113,7 @@ void Qshell::processNextCommand()
         item.command +
         " ; echo " + item.endMark;
 
-    qDebug() << "[Qshell] exec:" << fullCmd;
+    // qDebug() << "[Qshell] exec:" << fullCmd;
 
     shell->write((fullCmd + "\n").toUtf8());
 }
@@ -129,19 +129,23 @@ void Qshell::onReadyRead()
     if (commandQueue.isEmpty())
         return;
 
-    CmdItem &item = commandQueue.head();
+    // 拷贝 CmdItem 避免引用悬空
+    CmdItem item = commandQueue.head();
     int idx = cmdBuffer.indexOf(item.endMark);
     if (idx != -1) {
 
         QString result = cmdBuffer.left(idx).trimmed();
 
+        // 先清理缓冲和队列
+        cmdBuffer.remove(0, idx + item.endMark.length());
+        commandQueue.dequeue();
+
+        // 触发下一个命令
+        processNextCommand();
+
+        // 最后执行回调
         if (item.callback)
             item.callback(result, item.timer.elapsed());
-
-        cmdBuffer.remove(0, idx + item.endMark.length());
-
-        commandQueue.dequeue();
-        processNextCommand();
     }
 }
 

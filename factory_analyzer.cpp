@@ -26,24 +26,21 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
     //     }
     //     ,3000);
 
-
     shell->sendCommand(
         "cd E:/垃圾",
-        [this](const QString &output, qint64 elapsed)  {
-            qDebug() << "Elapsed:" << elapsed << "ms"<<output;
+        [this](const QString &output, qint64 elapsed) {
+            qDebug() << "Elapsed:" << elapsed << "ms" << output;
             showlog("完成");
-        }
-        ,3000);
+        },
+        3000);
 
     shell->sendCommand(
         "[Console]::OutputEncoding",
-        [this](const QString &output, qint64 elapsed)  {
-            qDebug() << "Elapsed:" << elapsed << "ms"<<output;
+        [this](const QString &output, qint64 elapsed) {
+            qDebug() << "Elapsed:" << elapsed << "ms" << output;
             showlog("完成");
-        }
-        ,3000);
-
-
+        },
+        3000);
 
     // QProcess p;
 
@@ -70,15 +67,10 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
     // QString output = QString::fromUtf8(raw);
 
     // qDebug().noquote() << "OUTPUT:" << output;
-
-
-
-
-
 }
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent), adb(new Qadb), shell(new Qshell), shellMonitor(new Qshell),
-    ui(new Ui::factory_analyzer) {
+    : QMainWindow(parent), adb(new Qadb), shell(new Qshell),
+    shellMonitor(new Qshell), ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
     adb->start();
@@ -172,25 +164,24 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
     ui->lineEdit->installEventFilter(this);
 
-
-
-    execAdb("--version", [this](const QString &output, qint64 elapsed){
+    execAdb(
+        "--version",
+        [this](const QString &output, qint64 elapsed) {
         qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
         showlog(output);
-    } ,3000);
-
-
+        },
+        3000);
 }
 // 在你的类里，比如 factory_analyzer
-void factory_analyzer::execAdb(const QString &args,
-                               std::function<void(const QString &output, qint64 elapsed)> callback,
-                               int timeout)
-{
+void factory_analyzer::execAdb(
+    const QString &args,
+    std::function<void(const QString &output, qint64 elapsed)> callback,
+    int timeout) {
     QStringList commands = args.split("&&", Qt::SkipEmptyParts);
     QStringList fullCommands;
-    for(auto &c : commands) {
+    for (auto &c : commands) {
         QString trimmed = c.trimmed();
-        if(!trimmed.isEmpty()) {
+        if (!trimmed.isEmpty()) {
             fullCommands << QString("./factorydebugv4/adb/adb.exe %1").arg(trimmed);
         }
     }
@@ -200,20 +191,19 @@ void factory_analyzer::execAdb(const QString &args,
 
     shell->sendCommand(
         cmd,
-        [callback](const QString &output, qint64 elapsed){
-            if(callback) callback(output, elapsed);
+        [callback](const QString &output, qint64 elapsed) {
+            if (callback)
+                callback(output, elapsed);
         },
-        timeout
-        );
+        timeout);
 }
-QString factory_analyzer::execAdbBlocking(const QString &args, int timeout)
-{
+QString factory_analyzer::execAdbBlocking(const QString &args, int timeout) {
     QStringList commands = args.split("&&", Qt::SkipEmptyParts);
     QStringList fullCommands;
 
-    for(auto &c : commands) {
+    for (auto &c : commands) {
         QString trimmed = c.trimmed();
-        if(!trimmed.isEmpty()) {
+        if (!trimmed.isEmpty()) {
             fullCommands << QString("./factorydebugv4/adb/adb.exe %1").arg(trimmed);
         }
     }
@@ -225,10 +215,13 @@ QString factory_analyzer::execAdbBlocking(const QString &args, int timeout)
     QEventLoop loop;
 
     // 使用 sendCommand 的异步接口，但通过事件循环阻塞
-    shell->sendCommand(cmd, [&](const QString &output, qint64 /*elapsed*/) {
+    shell->sendCommand(
+        cmd,
+        [&](const QString &output, qint64 /*elapsed*/) {
         result = output;
-        loop.quit();  // 命令执行完成，退出阻塞
-    }, timeout);
+        loop.quit(); // 命令执行完成，退出阻塞
+        },
+        timeout);
 
     loop.exec(); // 阻塞等待命令完成
     return result;
@@ -244,22 +237,18 @@ void factory_analyzer::adbPull(const QString &remotePathOrigin) {
     remotePath.replace("\\", "/");
 
     QString cmd = QString("pull %1").arg(remotePath);
-    execAdb(cmd, [](const QString &output, qint64 elapsed){
+    execAdb(cmd, [](const QString &output, qint64 elapsed) {
         QString out = QDir::currentPath(); // 保存路径
 
-        if(output.contains("error", Qt::CaseInsensitive)) {
+        if (output.contains("error", Qt::CaseInsensitive)) {
             QMessageBox::warning(nullptr, "失败", output);
         } else {
-            QMessageBox::information(nullptr, "成功",
-                                     "复制完成！数据在：\n" + out);
+            QMessageBox::information(nullptr, "成功", "复制完成！数据在：\n" + out);
             QDesktopServices::openUrl(QUrl::fromLocalFile(out));
         }
 
         qDebug() << "[ADB pull] elapsed:" << elapsed << "ms";
     });
-
-
-
 }
 void factory_analyzer::refreshTreeAfterDelete(const QString &remotePath) {
     // 找到父路径
@@ -586,14 +575,14 @@ void factory_analyzer::parseFiles(QString path, QString data) {
 void factory_analyzer::updateAdbStatus() {
     // qDebug() << "[factory_analyzer] 更新 ADB 状态...";
 
-    // updateBatteryLevel();
+    updateBatteryLevel();
 
-    // updateQualcommComStatus();
+    updateQualcommComStatus();
 
-    adb->startKeyMonitorAdbShell("/dev/input/event1", [this](const QString &keyName){
-        showlog(QString("%1 被按下").arg(keyName));
-    });
-
+    adb->startKeyMonitorAdbShell("/dev/input/event1",
+                                 [this](const QString &keyName) {
+                                     showlog(QString("%1 被按下").arg(keyName));
+                                 });
 
     // 启动 shell（不管是否成功，只是保证进程存在）
     bool started = adb->start();
@@ -697,61 +686,73 @@ void factory_analyzer::on_pushButton_clicked() {
   //         QMessageBox::warning(this, "错误", "脚本执行失败！");
   // });
 
-showlog("开始拉日志");
+  showlog("开始拉日志");
   // 时间戳
   QString timestamp = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
 
   // 1️⃣ 一次性执行获取 device_id + ls /blackbox
-  QString cmd = "deviceId=$(cat /factory_data/device_id.txt); echo DEVICE_ID=$deviceId; ls /blackbox";
+  QString cmd = "deviceId=$(cat /factory_data/device_id.txt); echo "
+                "DEVICE_ID=$deviceId; ls /blackbox";
 
+  adb->sendCommand(
+      cmd,
+      [this, timestamp](const QString &output, qint64) {
+          QStringList lines = output.split('\n', Qt::SkipEmptyParts);
 
-  adb->sendCommand(cmd, [this, timestamp](const QString &output, qint64) {
-      QStringList lines = output.split('\n', Qt::SkipEmptyParts);
-
-      // 2️⃣ 解析 deviceId
-      QString deviceId;
-      QStringList flightDirs;
-      for (const QString &line : lines) {
+          // 2️⃣ 解析 deviceId
+          QString deviceId;
+          QStringList flightDirs;
+          for (const QString &line : lines) {
           if (line.startsWith("DEVICE_ID=")) {
-              deviceId = line.mid(QString("DEVICE_ID=").length()).trimmed();
+                  deviceId = line.mid(QString("DEVICE_ID=").length()).trimmed();
           } else if (line.startsWith("flight")) {
               flightDirs << line.trimmed();
           }
-      }
-        qDebug() << "deviceId" << deviceId << "lines:" << lines<< "output:" << output;
-      // 3️⃣ 创建固定目录
-      QString logPath = QDir::currentPath() + "/factorydebugv4/log/" + timestamp + "_" + deviceId;
-      QStringList dirs = {"system", "camera", "gui", "amt", "aging_test_result"};
-      QDir().mkpath(logPath);
-      for (const QString &d : dirs) {
+          }
+        qDebug() << "deviceId" << deviceId << "lines:" << lines
+                   << "output:" << output;
+          // 3️⃣ 创建固定目录
+
+        QString logPath = "./factorydebugv4/log/" + timestamp + "_" + deviceId;
+        QStringList dirs = {"system", "camera", "gui", "amt",
+                            "aging_test_result"};
+        QDir().mkpath(logPath);
+        for (const QString &d : dirs) {
           QDir().mkpath(logPath + "/" + d);
-      }
+        }
 
-      // 4️⃣ 拉固定模块
-      for (const QString &d : dirs) {
-          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2").arg(logPath, d,"./factorydebugv4/adb/adb.exe");
-          shell->sendCommand(fullCmd, [logPath, this](const QString &out, qint64 elapsed) {
-              qDebug() << "[pullDirsSequential] 完成:" << out << "耗时:" << elapsed << "ms";
-              showlog("完成:"+out);
-          }, 100000);
-      }
+        // 4️⃣ 拉固定模块
+        for (const QString &d : dirs) {
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")
+                                  .arg(logPath, d, "../../adb/adb.exe");
+          shell->sendCommand(
+              fullCmd,
+              [logPath, this](const QString &out, qint64 elapsed) {
+                  qDebug() << "[pullDirsSequential] 完成:" << out
+                           << "耗时:" << elapsed << "ms";
+                  showlog("完成:" + out);
+              },
+              100000);
+        }
 
-      // 5️⃣ 拉 flightXXXX 目录
-      for (const QString &flight : flightDirs) {
+        // 5️⃣ 拉 flightXXXX 目录
+        for (const QString &flight : flightDirs) {
           QString localDir = logPath + "/" + flight;
           QDir().mkpath(localDir);
 
-          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2").arg(localDir, flight,"./factorydebugv4/adb/adb.exe");
-          shell->sendCommand(fullCmd, [this](const QString &out, qint64 elapsed){
-          qDebug() << "[flightXXXX] 完成:" << out << "耗时:" << elapsed << "ms";
-       showlog("完成:"+out);
-          }, 10000);
-      }
-  }, 10000);
-
-
-
-
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")
+                                .arg(localDir, flight, "../../adb/adb.exe");
+          shell->sendCommand(
+              fullCmd,
+              [this](const QString &out, qint64 elapsed) {
+                  qDebug() << "[flightXXXX] 完成:" << out << "耗时:" << elapsed
+                           << "ms";
+                  showlog("完成:" + out);
+              },
+              10000);
+        }
+      },
+      10000);
 }
 
 // --------------------------
@@ -931,8 +932,8 @@ void factory_analyzer::dropEvent(QDropEvent *event) {
 //         QString("adb remount && "
 //                           "adb push %1 /system/bin/%2 && "
 //                           "adb shell chmod 777 /system/bin/%2")
-//                       .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-//                       .arg(fileName);
+//                       .arg(QDir::toNativeSeparators(localFile)) // 转成
+//                       Windows 原生路径 .arg(fileName);
 
 //     qDebug().noquote() << "[ cmd]" << cmd;
 //     QProcess *process = new QProcess(this);
@@ -953,13 +954,15 @@ void factory_analyzer::dropEvent(QDropEvent *event) {
 
 //     // 进程结束回调
 //     connect(process,
-//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+//             this,
 //             [=](int exitCode, QProcess::ExitStatus status) {
 //                 if (status == QProcess::NormalExit && exitCode == 0) {
 //                     qDebug().noquote() << "ADB 执行完成";
 //                     showlog("ADB 执行成功");
 //                 } else {
-//                     qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
+//                     qDebug().noquote() << "ADB 执行失败, exitCode=" <<
+//                     exitCode;
 //                 }
 //                 process->deleteLater();
 //             });
@@ -973,8 +976,7 @@ void factory_analyzer::dropEvent(QDropEvent *event) {
 //         qDebug().noquote() << "ADB 开始执行...";
 //     }
 // }
-void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
-{
+void factory_analyzer::pushFileToZiYanDevice(const QString &localFile) {
     QFileInfo fi(localFile);
     QString fileName = fi.fileName(); // 文件名
 
@@ -982,19 +984,19 @@ void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
     // 注意：路径要用双引号包裹，防止空格问题
     QString cmd =
         QString("remount && "
-                "push %1 /system/bin/%2 && "
-                "shell chmod 777 /system/bin/%2")
-            .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-            .arg(fileName);
+                          "push %1 /system/bin/%2 && "
+                          "shell chmod 777 /system/bin/%2")
+                      .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+                      .arg(fileName);
 
     qDebug().noquote() << "[ADB CMD]" << cmd;
 
     // 调用统一封装的 execAdb
-    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed){
+    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed) {
         qDebug().noquote() << QString("ADB 执行耗时: %1 ms").arg(elapsed);
         qDebug().noquote() << "[ADB OUTPUT]\n" << output;
 
-        if(output.contains("error", Qt::CaseInsensitive)) {
+        if (output.contains("error", Qt::CaseInsensitive)) {
             showlog(QString("推送 %1 失败").arg(fileName));
             qDebug().noquote() << "ADB 执行失败";
         } else {
@@ -1002,28 +1004,26 @@ void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
             qDebug().noquote() << "ADB 执行成功";
         }
     });
-}void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile)
-{
+}
+void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile) {
     QFileInfo fi(localFile);
     QString fileName = fi.fileName(); // 文件名
 
-
     QString cmd =
         QString("shell mount -o rw,remount / && "
-                "push %1 /usr/bin/%2 && "
-                "shell chmod 777 /usr/bin/%2")
-            .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-            .arg(fileName);
-
+                          "push %1 /usr/bin/%2 && "
+                          "shell chmod 777 /usr/bin/%2")
+                      .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
+                      .arg(fileName);
 
     qDebug().noquote() << "[ADB CMD]" << cmd;
 
     // 调用统一封装的 execAdb
-    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed){
+    execAdb(cmd, [this, fileName](const QString &output, qint64 elapsed) {
         qDebug().noquote() << QString("ADB 执行耗时: %1 ms").arg(elapsed);
         qDebug().noquote() << "[ADB OUTPUT]\n" << output;
 
-        if(output.contains("error", Qt::CaseInsensitive)) {
+        if (output.contains("error", Qt::CaseInsensitive)) {
             showlog(QString("推送 %1 失败").arg(fileName));
             qDebug().noquote() << "ADB 执行失败";
         } else {
@@ -1042,8 +1042,8 @@ void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
 //         QString("adb shell mount -o rw,remount / && "
 //                           "adb push %1 /usr/bin/%2 && "
 //                           "adb shell chmod 777 /usr/bin/%2")
-//                       .arg(QDir::toNativeSeparators(localFile)) // 转成 Windows 原生路径
-//                       .arg(fileName);
+//                       .arg(QDir::toNativeSeparators(localFile)) // 转成
+//                       Windows 原生路径 .arg(fileName);
 
 //   qDebug().noquote() << "[ cmd]" << cmd;
 //     QProcess *process = new QProcess(this);
@@ -1064,13 +1064,15 @@ void factory_analyzer::pushFileToZiYanDevice(const QString &localFile)
 
 //     // 进程结束回调
 //     connect(process,
-//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+//             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+//             this,
 //             [=](int exitCode, QProcess::ExitStatus status) {
 //                 if (status == QProcess::NormalExit && exitCode == 0) {
 //                     qDebug().noquote() << "ADB 执行完成";
 //                     showlog("ADB 执行成功");
 //                 } else {
-//                     qDebug().noquote() << "ADB 执行失败, exitCode=" << exitCode;
+//                     qDebug().noquote() << "ADB 执行失败, exitCode=" <<
+//                     exitCode;
 //                 }
 //                 process->deleteLater();
 //             });
@@ -1112,20 +1114,17 @@ void factory_analyzer::on_pushButton_6_clicked() {
     showlog("同步设备时间: " + times);
 
     // adb 命令列表
-    QString cmd = QString(
-                      "busybox date -s %1 && "
-                      "busybox hwclock -w"
-                      ).arg(times);
+    QString cmd = QString("busybox date -s %1 && "
+                          "busybox hwclock -w")
+                      .arg(times);
 
     // 使用你现有的 sendCommand
     adb->sendCommand(cmd, [this](const QString &output, qint64) {
-
-         showlog("设置完成，当前设备时间: " + output);
+        showlog("设置完成，当前设备时间: " + output);
     });
 }
 
-void deleteDirContent(const QString &path)
-{
+void deleteDirContent(const QString &path) {
     QDir dir(path);
     if (!dir.exists()) {
         qDebug() << "[deleteDir] not exist:" << path;
@@ -1133,8 +1132,7 @@ void deleteDirContent(const QString &path)
     }
 
     QFileInfoList list = dir.entryInfoList(
-        QDir::NoDotAndDotDot | QDir::AllEntries,
-        QDir::DirsFirst);
+        QDir::NoDotAndDotDot | QDir::AllEntries, QDir::DirsFirst);
 
     for (const QFileInfo &info : list) {
         const QString fullPath = info.filePath();
@@ -1155,13 +1153,12 @@ void deleteDirContent(const QString &path)
     } else {
         qDebug() << "[removeDirSafe] OK:" << path;
     }
-
 }
 void factory_analyzer::on_pushButton_8_clicked() {
-  showlog("开始删除本地日志 " );
+  showlog("开始删除本地日志 ");
     QString basePath = R"(factorydebugv4/log/)";
-    deleteDirContent(basePath);
-    showlog("删除完成" );
+  deleteDirContent(basePath);
+    showlog("删除完成");
 }
 void factory_analyzer::on_pushButton_7_clicked() {
     QString basePath = R"(factorydebugv4/log/)";
@@ -1182,10 +1179,9 @@ void factory_analyzer::on_pushButton_7_clicked() {
     QString logFilePath = latestFolder + "/system/system/system.log";
 
     QFile file(logFilePath);
-    if (!file.open(QFile::ReadOnly | QFile::Text))
-    {
-         showlog("请先拉日志"+logFilePath);
-         return;
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        showlog("请先拉日志" + logFilePath);
+        return;
     }
 
     auto plot = graph_value_vector[0];
@@ -1473,11 +1469,7 @@ void factory_analyzer::on_pushButton_10_clicked() {
     for (int i = 1; i <= LOOP; i++) {
         showlog(QString(">>> ROUND %1 / %2").arg(i).arg(LOOP));
 
-
-        execAdbBlocking("wait-for-device",30000);
-
-
-
+        execAdbBlocking("wait-for-device", 30000);
 
         if (ddr_press == false) {
             showlog("退出PRESS REBOOT");
@@ -1485,10 +1477,13 @@ void factory_analyzer::on_pushButton_10_clicked() {
         }
 
         // 1. 重启
-        execAdb("shell reboot", [this](const QString &output, qint64 elapsed){
-            qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
-            showlog(output);
-        } ,30000);
+        execAdb(
+            "shell reboot",
+            [this](const QString &output, qint64 elapsed) {
+                qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
+                showlog(output);
+        },
+            30000);
 
         if (ddr_press == false) {
             showlog("退出PRESS REBOOT");
@@ -1496,8 +1491,7 @@ void factory_analyzer::on_pushButton_10_clicked() {
         }
         // 2. 等待设备上线
 
-  execAdbBlocking("wait-for-device",30000);
-
+        execAdbBlocking("wait-for-device", 30000);
 
         showlog(QString(">>> DONE REBOOT ROUND %1").arg(i));
         showlog("-----------------------------");
@@ -1507,9 +1501,7 @@ void factory_analyzer::on_pushButton_10_clicked() {
         }
     }
 
-
-    execAdbBlocking("wait-for-device",30000);
-
+    execAdbBlocking("wait-for-device", 30000);
 
     if (ddr_press == false) {
         showlog("退出PRESS REBOOT");
@@ -1522,13 +1514,13 @@ void factory_analyzer::on_pushButton_10_clicked() {
     QString cmd =
         "shell simulate_device -s DevicePowerUserIdleControlAutoShutdownTime 0";
 
-
-
-    execAdb(cmd, [this](const QString &output, qint64 elapsed){
+    execAdb(
+        cmd,
+        [this](const QString &output, qint64 elapsed) {
         qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
         showlog(output);
-    } ,30000);
-
+        },
+        30000);
 
     showlog(">>> Set AutoShutdownTime = 0");
 
@@ -1539,15 +1531,16 @@ void factory_analyzer::on_pushButton_10_clicked() {
 
 void factory_analyzer::on_pushButton_11_clicked() {
 
-    QString cmd =
-        "shell test_mp_stage.sh erase && test_mp_stage.sh ddr_press 1800 &&reboot ";
+    QString cmd = "shell test_mp_stage.sh erase && test_mp_stage.sh ddr_press "
+                  "1800 &&reboot ";
 
-    execAdb(cmd, [this](const QString &output, qint64 elapsed){
+    execAdb(
+        cmd,
+        [this](const QString &output, qint64 elapsed) {
         qDebug() << "Elapsed:" << elapsed << "ms\n" << output;
         showlog(output);
-    } ,30000);
-
-
+        },
+        30000);
 }
 
 void factory_analyzer::on_pushButton_12_clicked() { ddr_press = false; }
@@ -1681,13 +1674,14 @@ void factory_analyzer::updateQualcommComStatus() {
                 usbStatusLabel->setText(
                     QString("Qualcomm COM: <font color='green'>%1</font>")
                         .arg(foundCom));
+                qDebug() << "Qualcomm COM: OK";
             } else {
                 usbStatusLabel->setText(
                     "Qualcomm COM: <font color='red'>NONE</font>");
+                qDebug() << "Qualcomm COM:NONE";
             }
-
         },
-        3000);//要花费2秒后面修一下
+        3000); // 要花费2秒后面修一下
 }
 
 void factory_analyzer::on_pushButton_17_clicked() {
@@ -1736,43 +1730,35 @@ void factory_analyzer::on_pushButton_17_clicked() {
         3000);
 }
 
-void factory_analyzer::updateBatteryLevel()
-{
+void factory_analyzer::updateBatteryLevel() {
     // 使用 adb shell 读取电池容量
-    adb->sendCommand(
-        "cat /sys/class/power_supply/battery/capacity",
-        [this](const QString &output, qint64) {
-            // 去掉换行和空格
-            QString str = output.trimmed();
-            bool ok = false;
-            int level = str.toInt(&ok);
-            if(ok) {
-                ui->progressBar->setValue(level);
-                // qDebug() << "Battery level:" << level;
-            } else {
-                qDebug() << "Failed to parse battery level:" << output;
-            }
-        }
-        );
+    adb->sendCommand("cat /sys/class/power_supply/battery/capacity",
+                     [this](const QString &output, qint64) {
+                         // 去掉换行和空格
+                         QString str = output.trimmed();
+                         bool ok = false;
+                         int level = str.toInt(&ok);
+                         if (ok) {
+                             ui->progressBar->setValue(level);
+                             qDebug() << "Battery level:" << level;
+                         } else {
+                             qDebug() << "Failed to parse battery level:" << output;
+                         }
+                     });
 }
 
-void factory_analyzer::on_pushButton_18_clicked()
-{
-    adb->sendCommand(
-        " ps -A| grep dji_",
-        [this](const QString &output, qint64 elapsed)  {
-            qDebug() << "Elapsed:" << elapsed << "ms";
-            showlog(output);
-        }
-        );
-
+void factory_analyzer::on_pushButton_18_clicked() {
+    adb->sendCommand(" ps -A| grep dji_",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
 }
 
-
-void factory_analyzer::on_lineEdit_returnPressed()
-{
+void factory_analyzer::on_lineEdit_returnPressed() {
     QString cmd = ui->lineEdit->text().trimmed();
-    if(cmd.isEmpty()) return;
+    if (cmd.isEmpty())
+        return;
 
     // 添加到历史
     commandHistory.append(cmd);
@@ -1780,26 +1766,25 @@ void factory_analyzer::on_lineEdit_returnPressed()
 
   showlog("> " + cmd);
     // 使用 Qadb 封装的 sendCommand
-    adb->sendCommand(cmd, [this](const QString &output, qint64 elapsed) {
-        // 输出命令结果
-           showlog(output);
-    });
+  adb->sendCommand(cmd, [this](const QString &output, qint64 elapsed) {
+      // 输出命令结果
+      showlog(output);
+  });
 
-    ui->lineEdit->clear(); // 清空输入框
+  ui->lineEdit->clear(); // 清空输入框
 }
 
-bool factory_analyzer::eventFilter(QObject *obj, QEvent *event)
-{
-    if(obj == ui->lineEdit && event->type() == QEvent::KeyPress) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-        if(keyEvent->key() == Qt::Key_Up) {
-            if(historyIndex > 0) {
+bool factory_analyzer::eventFilter(QObject *obj, QEvent *event) {
+    if (obj == ui->lineEdit && event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Up) {
+            if (historyIndex > 0) {
                 historyIndex--;
                 ui->lineEdit->setText(commandHistory.at(historyIndex));
             }
             return true;
-        } else if(keyEvent->key() == Qt::Key_Down) {
-            if(historyIndex < commandHistory.size() - 1) {
+        } else if (keyEvent->key() == Qt::Key_Down) {
+            if (historyIndex < commandHistory.size() - 1) {
                 historyIndex++;
                 ui->lineEdit->setText(commandHistory.at(historyIndex));
             } else {
@@ -1812,62 +1797,42 @@ bool factory_analyzer::eventFilter(QObject *obj, QEvent *event)
     return QWidget::eventFilter(obj, event);
 }
 
-void factory_analyzer::on_pushButton_19_clicked()
-{
-    if(treeExpanded) {
-        ui->treeView->collapseAll();  // 收起
+void factory_analyzer::on_pushButton_19_clicked() {
+    if (treeExpanded) {
+        ui->treeView->collapseAll(); // 收起
         treeExpanded = false;
         ui->pushButton_19->setText("展开全部");
     } else {
-        ui->treeView->expandAll();    // 展开
+        ui->treeView->expandAll(); // 展开
         treeExpanded = true;
         ui->pushButton_19->setText("收起全部");
     }
 }
 
-
-void factory_analyzer::on_pushButton_20_clicked()
-{
-    adb->sendCommand(
-        " ps -A| grep plt_",
-        [this](const QString &output, qint64 elapsed)  {
-            qDebug() << "Elapsed:" << elapsed << "ms";
-            showlog(output);
-        }
-        );
+void factory_analyzer::on_pushButton_20_clicked() {
+    adb->sendCommand(" ps -A| grep plt_",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
 }
 
-
-void factory_analyzer::on_pushButton_21_clicked()
-{
-    adb->sendCommand(
-        "df -h",
-        [this](const QString &output, qint64 elapsed)  {
-            qDebug() << "Elapsed:" << elapsed << "ms";
-            showlog(output);
-        }
-        );
+void factory_analyzer::on_pushButton_21_clicked() {
+    adb->sendCommand("df -h", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "Elapsed:" << elapsed << "ms";
+        showlog(output);
+    });
 }
 
-
-void factory_analyzer::on_pushButton_22_clicked()
-{
-        execAdb(
-            " reboot edl -f",
-            [this](const QString &output, qint64 elapsed)  {
-                qDebug() << "Elapsed:" << elapsed << "ms"<<output;
-               showlog("完成");
-            }
-            );
+void factory_analyzer::on_pushButton_22_clicked() {
+    execAdb(" reboot edl -f", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "Elapsed:" << elapsed << "ms" << output;
+        showlog("完成");
+    });
 }
 
-
-void factory_analyzer::on_pushButton_23_clicked()
-{
-
-}
-void deleteBuildFiles(const QString &dirPath)
-{
+void factory_analyzer::on_pushButton_23_clicked() {}
+void deleteBuildFiles(const QString &dirPath) {
     QDir dir(dirPath);
     if (!dir.exists()) {
         qDebug() << "目录不存在:" << dirPath;
@@ -1877,7 +1842,8 @@ void deleteBuildFiles(const QString &dirPath)
     // 设置过滤条件：文件 + 指定后缀
     QStringList filters;
     filters << "*.pdb" << "*.map" << "*.exe";
-    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoSymLinks);
+    QFileInfoList fileList =
+        dir.entryInfoList(filters, QDir::Files | QDir::NoSymLinks);
 
     for (const QFileInfo &fileInfo : fileList) {
         QString filePath = fileInfo.absoluteFilePath();
@@ -1889,11 +1855,9 @@ void deleteBuildFiles(const QString &dirPath)
     }
 }
 
-void factory_analyzer::on_pushButton_24_clicked()
-{
+void factory_analyzer::on_pushButton_24_clicked() {
     QString basePath = R"(所有log/)";
     deleteDirContent(basePath);
     QString buildDir = R"(./)";
     deleteBuildFiles(buildDir);
 }
-

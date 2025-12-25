@@ -57,9 +57,7 @@ private slots:
 
     void updateForwardTable();
     void parseAndAddLine(const QString &line);
-    void execAdb(const QString &args,
-                                   std::function<void(const QString &output, qint64 elapsed)> callback,
-                 int timeout = 3000);
+
     void on_pushButton_clicked();
 QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_2_clicked();
@@ -135,7 +133,9 @@ private:
     void adbDelete(const QString &remotePath);
     void refreshTreeAfterDelete(const QString &remotePath);
     void loadRemoteDirectory(const QString &path);
-
+    void execAdb(const QString &args,
+                 std::function<void(const QString &output, qint64 elapsed)> callback,
+                 int timeout = 3000);
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     // 放下事件
