@@ -1,150 +1,106 @@
 ﻿#include "qbulk.h"
 #include <QDebug>
-#include <Usbiodef.h>
-// WinUSB 官方 GUID
-DEFINE_GUID(GUID_DEVINTERFACE_WINUSB,
-            0xdee824ef, 0x729b, 0x4a0e,
-            0x9c, 0x14, 0xb7, 0x11, 0x7d, 0x33, 0xa8, 0x17);
 
-QBulk::QBulk()
+QBulk::QBulk() : handle(nullptr)
 {
-    deviceHandle = INVALID_HANDLE_VALUE;
-    usbHandle = nullptr;
-
+    usb_init();              // 初始化 libusb 0.1
+    usb_find_busses();
+    usb_find_devices();
+    qDebug() << "[QBulk] libusb 0.1 initialized.";
 }
 
 QBulk::~QBulk()
 {
     closeDevice();
+    qDebug() << "[QBulk] libusb exited.";
 }
 
-
-
-QString QBulk::findDevicePath(USHORT vid, USHORT pid, int mi)
+bool QBulk::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber)
 {
-    HDEVINFO devInfo = SetupDiGetClassDevs(
-        &GUID_DEVINTERFACE_WINUSB,
-        NULL,
-        NULL,
-        DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    qDebug() << "[QBulk] Scanning USB devices...";
 
-    if (devInfo == INVALID_HANDLE_VALUE)
-        return "";
+    struct usb_bus *bus;
+    struct usb_device *dev = nullptr;
 
-    SP_DEVICE_INTERFACE_DATA iface;
-    iface.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
-
-    DWORD index = 0;
-    while (SetupDiEnumDeviceInterfaces(devInfo, NULL, &GUID_DEVINTERFACE_WINUSB, index, &iface))
-    {
-        DWORD requiredSize = 0;
-        SetupDiGetDeviceInterfaceDetail(devInfo, &iface, NULL, 0, &requiredSize, NULL);
-
-        PSP_DEVICE_INTERFACE_DETAIL_DATA detail =
-            (PSP_DEVICE_INTERFACE_DETAIL_DATA)malloc(requiredSize);
-
-        detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-
-        if (!SetupDiGetDeviceInterfaceDetail(devInfo, &iface, detail, requiredSize, NULL, NULL))
-        {
-            free(detail);
-            index++;
-            continue;
+    for (bus = usb_get_busses(); bus; bus = bus->next) {
+        for (dev = bus->devices; dev; dev = dev->next) {
+            qDebug() << "[QBulk] Device found VID:" << hex << dev->descriptor.idVendor
+                     << "PID:" << dev->descriptor.idProduct;
+            if (dev->descriptor.idVendor == vid && dev->descriptor.idProduct == pid) {
+                goto found_device;
+            }
         }
-
-        QString path = QString::fromWCharArray(detail->DevicePath);
-
-        if (path.contains(QString("vid_%1").arg(vid,4,16,QChar('0')), Qt::CaseInsensitive) &&
-            path.contains(QString("pid_%1").arg(pid,4,16,QChar('0')), Qt::CaseInsensitive) &&
-            path.contains(QString("mi_%1").arg(mi,2,16,QChar('0')), Qt::CaseInsensitive))
-        {
-            free(detail);
-            SetupDiDestroyDeviceInfoList(devInfo);
-            return path;
-        }
-
-        free(detail);
-        index++;
     }
 
-    SetupDiDestroyDeviceInfoList(devInfo);
-    return "";
-}
+    qDebug() << "[QBulk] Target device VID:" << hex << vid
+             << "PID:" << hex << pid << "not found!";
+    return false;
 
-
-bool QBulk::openDevice(USHORT vid, USHORT pid, int mi)
-{
-    QString devPath = findDevicePath(vid, pid, mi);
-
-    if (devPath.isEmpty())
-    {
-        qDebug() << "Device path not found!";
+found_device:
+    handle = usb_open(dev);
+    if (!handle) {
+        qDebug() << "[QBulk] Failed to open device!";
         return false;
     }
 
-    qDebug() << "Found device path:" << devPath;
-
-    deviceHandle = CreateFile(
-        devPath.toStdWString().c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
-        NULL);
-
-    if (deviceHandle == INVALID_HANDLE_VALUE)
-    {
-        qDebug() << "CreateFile failed:" << GetLastError();
+    if (usb_claim_interface(handle, interfaceNumber) < 0) {
+        qDebug() << "[QBulk] Failed to claim interface" << interfaceNumber;
+        usb_close(handle);
+        handle = nullptr;
         return false;
     }
 
-    if (!WinUsb_Initialize(deviceHandle, &usbHandle))
-    {
-        qDebug() << "WinUsb_Initialize failed:" << GetLastError();
-        CloseHandle(deviceHandle);
-        deviceHandle = INVALID_HANDLE_VALUE;
-        return false;
-    }
-
-    qDebug() << "WinUSB device opened successfully!";
+    qDebug() << "[QBulk] Device opened and interface claimed successfully.";
     return true;
 }
 
 void QBulk::closeDevice()
 {
-    if (usbHandle)
-    {
-        WinUsb_Free(usbHandle);
-        usbHandle = nullptr;
-    }
-    if (deviceHandle != INVALID_HANDLE_VALUE)
-    {
-        CloseHandle(deviceHandle);
-        deviceHandle = INVALID_HANDLE_VALUE;
+    if (handle) {
+        usb_release_interface(handle, 0);
+        usb_close(handle);
+        handle = nullptr;
+        qDebug() << "[QBulk] Device closed.";
     }
 }
 
-bool QBulk::bulkRead(UCHAR ep, QByteArray &data, ULONG timeout)
+bool QBulk::bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout)
 {
-    if (!usbHandle) return false;
-
-    UCHAR buffer[4096];
-    ULONG transferred = 0;
-
-    if (!WinUsb_ReadPipe(usbHandle, ep, buffer, sizeof(buffer), &transferred, NULL))
+    if (!handle) {
+        qDebug() << "[QBulk] bulkRead failed: handle is null.";
         return false;
+    }
 
-    data = QByteArray((char*)buffer, transferred);
-    return true;
+    unsigned char buffer[4096];
+    int transferred = usb_bulk_read(handle, ep, reinterpret_cast<char*>(buffer), sizeof(buffer), timeout);
+    if (transferred >= 0) {
+        data = QByteArray((char*)buffer, transferred);
+        qDebug() << "[QBulk] bulkRead success, transferred bytes:" << transferred
+                 << "Endpoint:" << hex << int(ep);
+        return true;
+    } else {
+        qDebug() << "[QBulk] bulkRead failed, error:" << transferred
+                 << "Endpoint:" << hex << int(ep);
+        return false;
+    }
 }
 
-bool QBulk::bulkWrite(UCHAR ep, const QByteArray &data, ULONG /*timeout*/)
+bool QBulk::bulkWrite(unsigned char ep, const QByteArray &data, unsigned int timeout)
 {
-    if (!usbHandle) return false;
+    if (!handle) {
+        qDebug() << "[QBulk] bulkWrite failed: handle is null.";
+        return false;
+    }
 
-    ULONG transferred = 0;
-    return WinUsb_WritePipe(usbHandle, ep,
-                            (PUCHAR)data.data(), data.size(),
-                            &transferred, NULL);
+    int transferred = usb_bulk_write(handle, ep, reinterpret_cast<char*>(const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(data.data()))),
+                                     data.size(), timeout);
+    if (transferred >= 0) {
+        qDebug() << "[QBulk] bulkWrite success, transferred bytes:" << transferred
+                 << "Endpoint:" << hex << int(ep);
+        return true;
+    } else {
+        qDebug() << "[QBulk] bulkWrite failed, error:" << transferred
+                 << "Endpoint:" << hex << int(ep);
+        return false;
+    }
 }

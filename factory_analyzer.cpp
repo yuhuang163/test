@@ -26,21 +26,27 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
     //     }
     //     ,3000);
 
-    shell->sendCommand(
-        "cd E:/垃圾",
-        [this](const QString &output, qint64 elapsed) {
-            qDebug() << "Elapsed:" << elapsed << "ms" << output;
-            showlog("完成");
-        },
-        3000);
 
-    shell->sendCommand(
-        "[Console]::OutputEncoding",
-        [this](const QString &output, qint64 elapsed) {
-            qDebug() << "Elapsed:" << elapsed << "ms" << output;
-            showlog("完成");
-        },
-        3000);
+
+    QByteArray data;
+    if (bulk->bulkRead(0x85, data)) // 0x81 是 IN 端点
+        qDebug() << "Received:" << data.toHex();
+
+    // shell->sendCommand(
+    //     "cd E:/垃圾",
+    //     [this](const QString &output, qint64 elapsed) {
+    //         qDebug() << "Elapsed:" << elapsed << "ms" << output;
+    //         showlog("完成");
+    //     },
+    //     3000);
+
+    // shell->sendCommand(
+    //     "[Console]::OutputEncoding",
+    //     [this](const QString &output, qint64 elapsed) {
+    //         qDebug() << "Elapsed:" << elapsed << "ms" << output;
+    //         showlog("完成");
+    //     },
+    //     3000);
 
     // QProcess p;
 
@@ -69,13 +75,16 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
     // qDebug().noquote() << "OUTPUT:" << output;
 }
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent), adb(new Qadb), shell(new Qshell),
-    shellMonitor(new Qshell), ui(new Ui::factory_analyzer) {
+    : QMainWindow(parent), bulk(new QBulk),
+adb(new Qadb),
+    shell(new Qshell), shellMonitor(new Qshell), ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
     adb->start();
     shell->start();
     shellMonitor->start();
+
+
     QCustomPlot *plot_value = new QCustomPlot;
     // 创建压力值曲线图
     plot_value->legend->setVisible(true); // 设置图例可见
@@ -97,6 +106,9 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     }
     graph_reset(0);
 
+    if (bulk->openDevice(0x2CA3, 0x0025, 4)) {
+
+    }
     const int N = 7;
     static const char *namesbiaoqian[N] = {"电池温度", "qcs8625温度", "nsp温度",
                                            "ddr温度",  "bat温度",     "sens温度",
@@ -133,7 +145,7 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     // 构造函数里
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
-    timer->start(2000); // 1 秒刷新一次
+    // timer->start(2000); // 1 秒刷新一次
     adbStatusLabel = new QLabel("ADB连接：<font color='red'>失败</font>");
     ui->statusbar->addPermanentWidget(adbStatusLabel);
 

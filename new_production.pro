@@ -12,8 +12,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 # }
 
 
-
-LIBS += -lDbgHelp
 QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG /MAP
 
 CONFIG += c++17
@@ -47,6 +45,9 @@ INCLUDEPATH += lib/aes
 INCLUDEPATH += lib/md5
 INCLUDEPATH += lib/productlicense
 INCLUDEPATH += lib/qcustomplot
+INCLUDEPATH += lib/libusb-win32-bin-1.4.0.0/include
+
+
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
 INCLUDEPATH += work_station/imu
@@ -256,8 +257,13 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 
 LIBS += -L$$PWD/lib/nfc/ -ldcrf32
-LIBS += -lwinusb
-LIBS += -lsetupapi
+LIBS += -lwinusb -lsetupapi
+LIBS += -lDbgHelp
+LIBS += -L$$PWD/lib/libusb-win32-bin-1.4.0.0/lib/msvc_x64 -llibusb
+
+
+
+
 
 DISTFILES += \
     agreement/qpb/ble_protocol/fx_ble_msg.proto \

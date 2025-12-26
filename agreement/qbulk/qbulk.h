@@ -1,14 +1,12 @@
 ﻿#ifndef QBULK_H
 #define QBULK_H
 
-#include <windows.h>
-#include <winusb.h>
-#include <setupapi.h>
-#include <QString>
 #include <QByteArray>
-
-#pragma comment(lib, "winusb.lib")
-#pragma comment(lib, "setupapi.lib")
+#include <cstdint>
+#include <lusb0_usb.h>
+// extern "C" {
+// #include <lusb0_usb.h>   // libusb 0.1 API
+// }
 
 class QBulk
 {
@@ -16,16 +14,20 @@ public:
     QBulk();
     ~QBulk();
 
-    bool openDevice(USHORT vid, USHORT pid, int mi = 4);
+    // 打开 USB 设备，vid/pid，指定接口号
+    bool openDevice(uint16_t vid, uint16_t pid, int interfaceNumber);
+
+    // 关闭设备
     void closeDevice();
 
-    bool bulkRead(UCHAR ep, QByteArray &data, ULONG timeout = 1000);
-    bool bulkWrite(UCHAR ep, const QByteArray &data, ULONG timeout = 1000);
+    // Bulk 读取
+    bool bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout = 1000);
+
+    // Bulk 写入
+    bool bulkWrite(unsigned char ep, const QByteArray &data, unsigned int timeout = 1000);
 
 private:
-    HANDLE deviceHandle;
-    WINUSB_INTERFACE_HANDLE usbHandle;
-    QString findDevicePath(USHORT vid, USHORT pid, int mi);
+    usb_dev_handle *handle;
 };
 
 #endif // QBULK_H
