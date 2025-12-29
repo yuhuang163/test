@@ -26,11 +26,17 @@ void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
     //     }
     //     ,3000);
 
-
-
     QByteArray data;
-    if (bulk->bulkRead(0x85, data)) // 0x81 是 IN 端点
-        qDebug() << "Received:" << data.toHex();
+    // data.append(char(0x00)); // 你的命令数据
+    QByteArray pkt = bulk->buildPacket(0x28, 2, 0, 1, data);
+    //55 0D 04 33 0A 28 15 58 40 00 01 A8 3C
+    //55 0d 04 33 0a 28 00 00 20 00 01 00 ef c9
+    //55 0c 04 f7 0a 28 00 00 20 00 01 d5 0f
+    //55 0d 04 33 0a 28 00 00 20 00 01 3f 9b
+    bulk->bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    // QByteArray data;
+    // if (bulk->bulkRead(0x85, data,1000)) // 0x81 是 IN 端点
+    //     qDebug() << "Received:" << data.toHex();
 
     // shell->sendCommand(
     //     "cd E:/垃圾",
@@ -106,9 +112,8 @@ adb(new Qadb),
     }
     graph_reset(0);
 
-    if (bulk->openDevice(0x2CA3, 0x0025, 4)) {
 
-    }
+
     const int N = 7;
     static const char *namesbiaoqian[N] = {"电池温度", "qcs8625温度", "nsp温度",
                                            "ddr温度",  "bat温度",     "sens温度",
@@ -142,15 +147,21 @@ adb(new Qadb),
     QVariant windowSize(availableSize / 4 * 3);
     this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
 
-    // 构造函数里
-    QTimer *timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
-    // timer->start(2000); // 1 秒刷新一次
+                                    // 构造函数里
+                                    QTimer *timer = new QTimer(this);
+                                    connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
+                                    timer->start(2000); // 1 秒刷新一次
+
+
     adbStatusLabel = new QLabel("ADB连接：<font color='red'>失败</font>");
     ui->statusbar->addPermanentWidget(adbStatusLabel);
 
     usbStatusLabel = new QLabel("usb状态：<font color='red'>wait</font>");
     ui->statusbar->addPermanentWidget(usbStatusLabel);
+
+    bulkStatusLabel = new QLabel("bulk连接：<font color='red'>wait</font>");
+    ui->statusbar->addPermanentWidget(bulkStatusLabel);
+
 
     // Tree model
     treeModel = new QStandardItemModel(this);
@@ -183,7 +194,72 @@ adb(new Qadb),
         showlog(output);
         },
         3000);
+
+
+   setupUSB();
+    connect(bulk, SIGNAL(sendGetDjiResponse(int)), this, SLOT(solveGetDjiResponse(int)));
+    connect(bulk, SIGNAL(send_bulk_data(QString)), this, SLOT(refreshbulkData(QString)));
 }
+void factory_analyzer::solveGetDjiResponse(int data) {
+    if(data==1)
+        showlog("收到设备处理回应成功");
+    else
+        showlog("收到设备处理回应失败");
+
+    getRespone = data;
+}
+void factory_analyzer::setupUSB()
+{    bulkreadThread = new QThread(this);
+    reconnectTimer = new QTimer(this);
+    // 1️⃣ 移动 bulk 到线程
+    bulk->moveToThread(bulkreadThread);
+
+    // 2️⃣ 线程启动 -> 阻塞读
+    connect(bulkreadThread, &QThread::started, bulk, &QBulk::startRead);
+
+    // 3️⃣ 数据到 UI
+    // connect(bulk, &QBulk::readyRead, this, [this]( QByteArray &data){
+    //     qDebug() << "USB RX:" << data.toHex();
+    //     bulk->parseCmd( data);
+    // });
+
+    // 4️⃣ 错误处理
+    connect(bulk, &QBulk::error, this, [this](int code, const QString &e){
+        qDebug() << "bulk error:" << e;
+    bulkStatusLabel->setText(
+        "bulk连接：: <font color='red'>失败</font>");
+        reconnectTimer->start();
+    });
+
+    // 5️⃣ 重连定时器
+    reconnectTimer->setInterval(1000); // 每秒尝试一次
+    connect(reconnectTimer, &QTimer::timeout, this, &factory_analyzer::tryOpenUSB);
+
+    // 6️⃣ 尝试先打开一次
+    tryOpenUSB();
+
+
+
+}
+    void factory_analyzer::refreshbulkData(QString data) { showlog(data); }
+void factory_analyzer::tryOpenUSB() {
+    if (!bulk->isOpen()) {
+        if (bulk->openDevice(0x2CA3, 0x0025, 4)) {
+            qDebug() << "bulk 已连接";
+            bulkStatusLabel->setText(
+                QString("bulk连接：: <font color='green'>成功</font>"));
+
+            qDebug() << "bulk连接：: OK";
+            bulkreadThread->start();
+
+            reconnectTimer->stop();
+        } else {
+            qDebug() << "bulk 打开失败，等待重连";
+            reconnectTimer->start();
+        }
+    }
+}
+
 // 在你的类里，比如 factory_analyzer
 void factory_analyzer::execAdb(
     const QString &args,
@@ -633,7 +709,16 @@ void factory_analyzer::graph_reset(uint8_t argument) {
         graph_value_vector[chan]->graph(0)->clearData();
     }
 }
-factory_analyzer::~factory_analyzer() { delete ui; }
+factory_analyzer::~factory_analyzer() {
+
+    if (bulkreadThread && bulkreadThread->isRunning()) {
+        bulk->stopRead();
+        bulkreadThread->quit();
+        bulkreadThread->wait();
+        bulkreadThread->deleteLater();
+    }
+
+    delete ui; }
 
 void factory_analyzer::showlog(const QString &msg) {
     if (msg.isEmpty())
@@ -1188,7 +1273,7 @@ void factory_analyzer::on_pushButton_7_clicked() {
     if (latestFolder.isEmpty())
         return;
 
-    QString logFilePath = latestFolder + "/system/system/system.log";
+    QString logFilePath = latestFolder + "/system/system.log";
 
     QFile file(logFilePath);
     if (!file.open(QFile::ReadOnly | QFile::Text)) {
@@ -1690,7 +1775,7 @@ void factory_analyzer::updateQualcommComStatus() {
             } else {
                 usbStatusLabel->setText(
                     "Qualcomm COM: <font color='red'>NONE</font>");
-                qDebug() << "Qualcomm COM:NONE";
+                // qDebug() << "Qualcomm COM:NONE";
             }
         },
         3000); // 要花费2秒后面修一下
@@ -1752,7 +1837,7 @@ void factory_analyzer::updateBatteryLevel() {
                          int level = str.toInt(&ok);
                          if (ok) {
                              ui->progressBar->setValue(level);
-                             qDebug() << "Battery level:" << level;
+                             // qDebug() << "Battery level:" << level;
                          } else {
                              qDebug() << "Failed to parse battery level:" << output;
                          }
@@ -1873,3 +1958,43 @@ void factory_analyzer::on_pushButton_24_clicked() {
     QString buildDir = R"(./)";
     deleteBuildFiles(buildDir);
 }
+
+void factory_analyzer::on_pushButton_25_clicked()
+{
+
+    bulk->get_dev_ver();
+}
+
+
+void factory_analyzer::on_pushButton_26_clicked()
+{
+    adb->sendCommand("test_ufs_value.sh write 1", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "Elapsed:" << elapsed << "ms";
+        showlog(output);
+    });
+    adb->sendCommand("test_ufs_value.sh read 1", [this](const QString &output, qint64 elapsed) {
+        qDebug() << "Elapsed:" << elapsed << "ms";
+        showlog(output);
+    });
+}
+
+
+void factory_analyzer::on_lineEdit_2_returnPressed()
+{
+    bulk->set_amt_test(ui->lineEdit_2->text());
+}
+
+
+void factory_analyzer::on_pushButton_27_clicked()
+{
+
+     bulk->set_amt_clean_flag();
+}
+
+
+void factory_analyzer::on_pushButton_28_clicked()
+{
+     bulk->set_amt_check_clean_flag();
+
+}
+

@@ -24,6 +24,10 @@ public:
     factory_analyzer(QWidget *parent = nullptr);
     ~factory_analyzer();
     QBulk *bulk = nullptr;
+    QThread *bulkreadThread;
+    QTimer *reconnectTimer;
+    void setupUSB();
+    void tryOpenUSB();
     void showlog(const QString &msg);
     QStringList processOutputLines;
     std::vector<QCustomPlot *> graph_value_vector;
@@ -33,6 +37,7 @@ public:
     QTableWidget *table;
     QLabel *adbStatusLabel = nullptr;
     QLabel *usbStatusLabel = nullptr;
+    QLabel *bulkStatusLabel = nullptr;
 
     QString adbLastOutput;
     bool ddr_press = false;
@@ -128,6 +133,16 @@ QString execAdbBlocking(const QString &args, int timeout);
 
     void on_pushButton_24_clicked();
 
+    void on_pushButton_25_clicked();
+
+    void on_pushButton_26_clicked();
+ void refreshbulkData(QString data);
+    void on_lineEdit_2_returnPressed();
+    void solveGetDjiResponse(int data);
+ void on_pushButton_27_clicked();
+
+    void on_pushButton_28_clicked();
+
 private:
     void adbPull(const QString &remotePath);
     void adbDelete(const QString &remotePath);
@@ -136,6 +151,8 @@ private:
     void execAdb(const QString &args,
                  std::function<void(const QString &output, qint64 elapsed)> callback,
                  int timeout = 3000);
+
+     bool getRespone = 0;
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     // 放下事件
