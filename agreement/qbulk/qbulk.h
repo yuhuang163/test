@@ -20,11 +20,25 @@
 #define DUSS_MB_PACKAGE_V1_CRC_INIT     0x3692          /**< CRC 16 init value */
 #define HOST_ID_FROM_16BIT_TO_8BIT(host_id)          (((((host_id) & 0x07) << 5) | (((host_id) >> 8) & 0x1F)) & 0xFF)
 #define HOST_ID_FROM_8BIT_TO_16BIT(host_id)          (((((host_id) & 0x1F) << 8) | (((host_id) >> 5) & 0x07)) & 0xFFFF)
-
-
+#define    SYS_AMT_TEST_CMD_STR_LEN         (512)
+typedef enum __sys_amt_task_result_e{
+    AMT_TASK_RESULT_PASS                    = 0x00,
+    AMT_TASK_RESULT_ONGOING                 = 0xf0,
+    AMT_TASK_RESULT_TIMER_ERROR             = 0xf1,
+    AMT_TASK_RESULT_EXECUTE_SHELL_ERROR     = 0xf2,
+    AMT_TASK_RESULT_NOT_FIND_TASK_INDEX     = 0xf3,
+    AMT_TASK_RESULT_TIMEOUT                 = 0xf4,
+    AMT_TASK_RESULT_BEING_STOPPED           = 0xf5,
+    AMT_TASK_RESULT_GENERIC_ERROR           = 0xf6,
+    AMT_TASK_RESULT_OTHER
+} sys_amt_test_result_e;
 typedef enum _djiFactroyCmd {
     djiFactroyCmd_FIRST_COMMAND_NO_USE = 0,
     djiFactroyCmd_get_version = 1,
+    djiFactroyCmd_factory_mode_handle = 0x44,
+    djiFactroyCmd_amt_task_start = 0xf4,
+    djiFactroyCmd_amt_task_get_result = 0xf6,
+    djiFactroyCmd_amt_task_get_log = 0xf8,
 
 } djiFactroyCmd;
 typedef struct _djiFactoryDataPackage {
@@ -91,26 +105,37 @@ public:
                                   const QByteArray &data, uint8_t encryptionType = 0);
     uint16_t duss_util_crc16_calc(const uint8_t *data, uint32_t len, uint16_t init_crc);
     uint8_t crc8_calc(const uint8_t *data, uint32_t len, uint8_t init_crc);
+
 public slots:
     void startRead();   // 线程里跑
     void stopRead();
+    int isOpen() { return is_open; }
 
-       int isOpen() { return is_open; }
 public slots:
     void get_dev_ver();
-
-        void set_amt_test(QString data);
     void set_amt_clean_flag();
-        void set_amt_check_clean_flag();
+    void set_amt_check_clean_flag();
+    void set_amt_task_start(const QString &cmdStr,uint32_t timeout,const QByteArray &param);
+    void set_amt_task_get_result();
+    void set_amt_task_get_log();
+    void set_amt_task_rst();
+
 signals:
     void readyRead( QByteArray &data);
     void error(int code, const QString &msg);
-        void send_bulk_data(QString data);
-     void sendGetDjiResponse(int data);
+    void send_bulk_data(QString data);
+    void sendGetDjiResponse(int data);
+
 private slots:
     void process_djiFactroyCmd_get_version(QByteArray& f);
+    void process_dji_factory_mode_handle(QByteArray& f);
+    void process_dji_amt_task_start(QByteArray& f);
+    void process_dji_amt_task_get_result(QByteArray& f);
+    void process_dji_amt_task_get_log(QByteArray& f);
+
 
 private:
+    uint32_t m_cmdId = 0;
     void registerCommand();
     typedef std::function<void(QByteArray&)> callback;
     std::map<djiFactroyCmd, callback> djifactoryCommandList;
@@ -120,7 +145,7 @@ private:
     // CRC 校验
     bool checkHeaderCRC(const QByteArray &packet);
     bool checkDataCRC(const QByteArray &packet);
-       std::atomic<uint16_t> m_seqNum {0};   // 线程安全
+    std::atomic<uint16_t> m_seqNum {0};   // 线程安全
 };
 
 #endif // QBULK_H

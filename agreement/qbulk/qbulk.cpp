@@ -10,6 +10,15 @@ QBulk::QBulk() : handle(nullptr) {
 void QBulk::registerCommand() {
     djifactoryCommandList[djiFactroyCmd_get_version] =
         std::bind(&QBulk::process_djiFactroyCmd_get_version, this, std::placeholders::_1);
+    djifactoryCommandList[djiFactroyCmd_factory_mode_handle] =
+        std::bind(&QBulk::process_dji_factory_mode_handle, this, std::placeholders::_1);
+
+    djifactoryCommandList[djiFactroyCmd_amt_task_start] =
+        std::bind(&QBulk::process_dji_amt_task_start, this, std::placeholders::_1);
+    djifactoryCommandList[djiFactroyCmd_amt_task_get_result] =
+        std::bind(&QBulk::process_dji_amt_task_get_result, this, std::placeholders::_1);
+    djifactoryCommandList[djiFactroyCmd_amt_task_get_log] =
+        std::bind(&QBulk::process_dji_amt_task_get_log, this, std::placeholders::_1);
 
 }
 QBulk::~QBulk() {
@@ -217,8 +226,8 @@ bool QBulk::bulkWrite(unsigned char ep, const QByteArray &data,
                                          reinterpret_cast<const unsigned char *>(data.data()))),
                                      data.size(), timeout);
     if (transferred >= 0) {
-        qDebug() << "[QBulk] bulkWrite success, transferred bytes:" << transferred
-                 << "Endpoint:" << hex << int(ep);
+        // qDebug() << "[QBulk] bulkWrite success, transferred bytes:" << transferred
+        //          << "Endpoint:" << hex << int(ep);
         return true;
     } else {
         qDebug() << "[QBulk] bulkWrite failed, error:" << transferred
@@ -228,6 +237,7 @@ bool QBulk::bulkWrite(unsigned char ep, const QByteArray &data,
 
 
 }
+void QBulk::stopRead() { running = false; }
 void QBulk::startRead() {
     running = true;
 
@@ -254,18 +264,12 @@ void QBulk::get_dev_ver() {
     bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
-void QBulk::set_amt_test(QString data){
-    QByteArray v1data;
 
-    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 1, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
-
-}
 void QBulk::set_amt_clean_flag(){
     QByteArray v1data;
     v1data.append(char(0x80));
     v1data.append(char(0x0a));
-    v1data.append("clear_log", 9);
+    v1data.append("clear_log");
     v1data.append(char(0x00));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
     bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
@@ -274,14 +278,101 @@ void QBulk::set_amt_check_clean_flag(){
     QByteArray v1data;
     v1data.append(char(0x80));
     v1data.append(char(0x0a));
-    v1data.append("check_clear_log", 9);
+    v1data.append("check_clear_log");
+
     v1data.append(char(0x00));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
     bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
-void QBulk::stopRead() { running = false; }
-// qbulk.cpp
+
+void QBulk::set_amt_task_start(const QString &cmdStr,
+                               uint32_t timeout,
+                               const QByteArray &param)
+{
+    QByteArray payload;
+
+    // ---------- cmd：固定 SYS_AMT_TEST_CMD_STR_LEN ----------
+    QByteArray cmdBuf(SYS_AMT_TEST_CMD_STR_LEN, 0);
+    QByteArray cmdUtf8 = cmdStr.toUtf8();
+    uint32_t cmdlen = cmdUtf8.size();
+
+    memcpy(cmdBuf.data(),
+           cmdUtf8.constData(),
+           qMin(cmdUtf8.size(), cmdBuf.size()));
+
+    payload.append(cmdBuf);   // ✅ 固定长度
+
+    // ---------- cmdid ----------
+    uint32_t cmdid = ++m_cmdId;
+
+    // ---------- paralen ----------
+    uint16_t paramLen = param.size();
+
+    // ---------- append fields ----------
+    payload.append(reinterpret_cast<const char*>(&cmdlen), sizeof(cmdlen));
+    payload.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
+    payload.append(reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+    payload.append(reinterpret_cast<const char*>(&paramLen), sizeof(paramLen));
+
+    // ---------- param ----------
+    if (paramLen > 0) {
+        payload.append(param);
+    }
+
+    // ---------- build & send ----------
+    QByteArray pkt = buildPacket(
+        HOST_ID_FROM_16BIT_TO_8BIT(0x0803),
+        2,
+        0,
+        0xf4,
+        payload
+        );
+
+    bulkWrite(0x05, pkt, 1000);
+}
+
+
+void QBulk::set_amt_task_get_result(){
+    QByteArray v1data;
+    uint32_t cmdid    = m_cmdId;   // ✅ 内部自增
+    v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
+    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf6, v1data);
+    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
+
+
+void QBulk::set_amt_task_get_log(){
+    QByteArray v1data;
+    uint32_t cmdid    = m_cmdId;   // ✅ 内部自增
+    uint16_t metaId=0xffff;// 没有用
+    uint8_t  metaDataType=0x01;// 没有用
+    uint32_t offset=0;
+    uint32_t fetchLen=4096;
+
+    v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
+    // metaid
+    v1data.append(reinterpret_cast<const char*>(&metaId), sizeof(metaId));
+
+    // meta_data_type
+    v1data.append(reinterpret_cast<const char*>(&metaDataType), sizeof(metaDataType));
+
+    // meta_data_offset
+    v1data.append(reinterpret_cast<const char*>(&offset), sizeof(offset));
+
+    // fetchlength
+    v1data.append(reinterpret_cast<const char*>(&fetchLen), sizeof(fetchLen));
+    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf8, v1data);
+    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
+void QBulk::set_amt_task_rst(){
+    QByteArray v1data;
+    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf7, v1data);
+    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
 void QBulk::parseCmd(QByteArray &buffer) {
     const int minHeaderSize = 12; // sync + ver/len + headCRC + sender/receiver + seq + type + cmdSet + cmdID
     const int crcSize = 2;        // CRC16
@@ -356,8 +447,8 @@ void QBulk::parseCmd(QByteArray &buffer) {
                  << "isResponse=" << isResponse
                  << "cmdType=" << cmdType
                  << "encryptionType=" << encryptionType
-                 << "cmdSet=" << cmdSet
-                 << "cmdID=" << cmdID
+                  << "cmdSet=0x" << QString::number(cmdSet, 16)
+                  << "cmdID=0x"  << QString::number(cmdID, 16)
                  << "Data=" << QString::fromUtf8(data)
                  << "DataLen=" << data.size();
 
@@ -498,6 +589,107 @@ bool QBulk::checkDataCRC(const QByteArray &packet) {
 
     return true;
 }
+
+
+void QBulk::process_dji_amt_task_start(QByteArray& f){
+    struct DeviceInfo {
+        uint8_t retCode;
+    };
+    DeviceInfo info;
+    const uint8_t *p =
+        reinterpret_cast<const uint8_t *>(f.constData());
+    // 1️⃣ ret_code
+    info.retCode = p[0];
+    if(info.retCode==0)
+        emit sendGetDjiResponse(1);
+    else
+        emit sendGetDjiResponse(info.retCode);
+}void QBulk::process_dji_amt_task_get_result(QByteArray& f){
+    struct DeviceInfo {
+        uint8_t retCode;
+    };
+    DeviceInfo info;
+    const uint8_t *p =
+        reinterpret_cast<const uint8_t *>(f.constData());
+    // 1️⃣ ret_code
+    info.retCode = p[0];
+    if(info.retCode==0)
+        emit sendGetDjiResponse(1);
+    else
+        emit sendGetDjiResponse(info.retCode);
+}
+void QBulk::process_dji_amt_task_get_log(QByteArray &f)
+{
+    if (f.size() < 9) {
+        qWarning() << "[AMT] get_log ack too short:" << f.size();
+        return;
+    }
+
+    const uint8_t *p =
+        reinterpret_cast<const uint8_t *>(f.constData());
+
+    // 1️⃣ ret_code
+    uint8_t retCode = p[0];
+
+    if (retCode == 0)
+        emit sendGetDjiResponse(1);
+    else
+        emit sendGetDjiResponse(retCode);
+
+    // 2️⃣ actual_log_length (LSB)
+    uint32_t actualLen =
+        p[1] |
+        (p[2] << 8) |
+        (p[3] << 16) |
+        (p[4] << 24);
+
+    // 3️⃣ remainder_log_length
+    uint32_t remainLen =
+        p[5] |
+        (p[6] << 8) |
+        (p[7] << 16) |
+        (p[8] << 24);
+
+    // 4️⃣ meta_data
+    QByteArray metaData = f.mid(9, actualLen);
+
+    // ---- debug ----
+    qDebug().noquote()
+        << "[AMT LOG]"
+        << "retCode=" << retCode
+        << "actualLen=" << actualLen
+        << "remainLen=" << remainLen
+        << "metaData HEX="
+        << metaData.toHex(' ').toUpper();
+
+    // 如果 metaData 是文本
+    if (!metaData.isEmpty()) {
+        qDebug().noquote()
+        << "metaData TXT="
+        << QString::fromUtf8(metaData);
+    }
+    emit send_bulk_data(QString("执行日志：%1").arg(QString::fromUtf8(metaData)));
+    // 5️⃣ 如果还有剩余日志，继续 fetch
+    // if (remainLen > 0) {
+    //     requestNextLog();   // 你自己的下一包请求
+    // }
+}
+
+void QBulk::process_dji_factory_mode_handle(QByteArray& f){
+    struct DeviceInfo {
+        uint8_t retCode;
+    };
+    DeviceInfo info;
+    const uint8_t *p =
+        reinterpret_cast<const uint8_t *>(f.constData());
+    // 1️⃣ ret_code
+    info.retCode = p[0];
+    if(info.retCode==0)
+        emit sendGetDjiResponse(1);
+    else
+        emit sendGetDjiResponse(info.retCode);
+}
+
 void QBulk::process_djiFactroyCmd_get_version(QByteArray& f){
     struct DeviceVersionInfo {
         uint8_t retCode;

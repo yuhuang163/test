@@ -56,6 +56,14 @@ public:
     int historyIndex = -1;
     // 类成员
     bool treeExpanded = true;  // 当前状态，false=收起，true=展开
+    QStringList items = {
+        "test_sd_unset.sh",
+        "eagle4_state_pro.sh",
+        "test_mp_stage.sh erase",
+        "test_mp_stage.sh aging_test 3600",
+        "test_ufs_value.sh write 1",
+        "test_ufs_value.sh read 1",
+    };
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 private slots:
@@ -136,12 +144,14 @@ QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_25_clicked();
 
     void on_pushButton_26_clicked();
- void refreshbulkData(QString data);
-    void on_lineEdit_2_returnPressed();
+    void refreshbulkData(QString data);
     void solveGetDjiResponse(int data);
- void on_pushButton_27_clicked();
+    void on_pushButton_27_clicked();
 
     void on_pushButton_28_clicked();
+    void on_pushButton_29_clicked();
+    void on_pushButton_30_clicked();
+    void on_comboBox_activated(int index);
 
 private:
     void adbPull(const QString &remotePath);
@@ -163,5 +173,25 @@ protected:
 
 private:
     Ui::factory_analyzer *ui;
+public:
+
+    void initTimeline();   // 初始化（只干一次）
+    void addTimelineEvent(int ms,
+                          const QString &title,
+                          const QString &detail,
+                          const QColor &color);
+
+private:
+    QString formatTime(int ms) const;
+
+private:
+    QGraphicsScene *m_scene = nullptr;
+    int m_maxX = 0;
+
+    // ====== Timeline 参数 ======
+    const double TIME_SCALE = 0.25;
+    const int BASE_Y = 80;
+    const int SCENE_HEIGHT = 320;
+    const int RIGHT_MARGIN = 200;
 };
 #endif // FACTORY_ANALYZER_H

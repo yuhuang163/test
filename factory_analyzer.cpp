@@ -199,12 +199,106 @@ adb(new Qadb),
    setupUSB();
     connect(bulk, SIGNAL(sendGetDjiResponse(int)), this, SLOT(solveGetDjiResponse(int)));
     connect(bulk, SIGNAL(send_bulk_data(QString)), this, SLOT(refreshbulkData(QString)));
+
+    for (const QString &text : items) {
+        ui->comboBox->addItem(text);
+    }
+
+    initTimeline();
+
+    addTimelineEvent(500,
+                     "系统启动",
+                     "Bootloader → Kernel\n初始化硬件",
+                     Qt::darkGreen);
+
+    addTimelineEvent(4200,
+                     "WiFi 已连接",
+                     "SSID: Factory_AP\nIP: 192.168.1.88",
+                     Qt::blue);
+
+    addTimelineEvent(9800,
+                     "⚠ 异常重启",
+                     "原因：Watchdog Timeout\n任务：camera_init",
+                     Qt::red);
+
+    addTimelineEvent(11500,
+                     "系统恢复",
+                     "二次启动完成\n进入主循环",
+                     Qt::darkGreen);
+
+    ui->graphicsView->centerOn(0, BASE_Y);
 }
+void factory_analyzer::addTimelineEvent(int ms,
+                                        const QString &title,
+                                        const QString &detail,
+                                        const QColor &color)
+{
+    if (!m_scene)
+        return;
+
+    int x = static_cast<int>(ms * TIME_SCALE);
+    m_maxX = qMax(m_maxX, x);
+
+    // 竖线
+    m_scene->addLine(x, BASE_Y - 14, x, BASE_Y + 14,
+                     QPen(color, 2));
+
+    // 圆点
+    m_scene->addEllipse(x - 4, BASE_Y - 4, 8, 8,
+                        QPen(Qt::NoPen),
+                        QBrush(color));
+
+    // 时间
+    auto timeText = m_scene->addText(formatTime(ms));
+    timeText->setDefaultTextColor(Qt::darkGray);
+    timeText->setPos(x - 24, BASE_Y - 42);
+
+    // 标题
+    auto titleText = m_scene->addText(title);
+    titleText->setDefaultTextColor(color);
+    titleText->setPos(x + 10, BASE_Y - 6);
+
+    // 详情
+    auto detailText = m_scene->addText(detail);
+    detailText->setTextWidth(260);
+    detailText->setPos(x + 10, BASE_Y + 16);
+
+    // Scene 自适应
+    m_scene->setSceneRect(0, 0,
+                          m_maxX + RIGHT_MARGIN,
+                          SCENE_HEIGHT);
+}
+
+void factory_analyzer::initTimeline()
+{
+    m_scene = new QGraphicsScene(this);
+    ui->graphicsView->setScene(m_scene);
+
+    ui->graphicsView->setDragMode(QGraphicsView::ScrollHandDrag);
+    ui->graphicsView->setRenderHint(QPainter::Antialiasing);
+    ui->graphicsView->resetTransform();
+
+    // 时间轴基线
+    m_scene->addLine(0, BASE_Y, 10000, BASE_Y,
+                     QPen(Qt::black, 2));
+
+    m_maxX = 0;
+}
+QString factory_analyzer::formatTime(int ms) const
+{
+    int sec = ms / 1000;
+    return QString("%1:%2")
+        .arg(sec / 60, 2, 10, QChar('0'))
+        .arg(sec % 60, 2, 10, QChar('0'));
+}
+
+
 void factory_analyzer::solveGetDjiResponse(int data) {
     if(data==1)
         showlog("收到设备处理回应成功");
     else
-        showlog("收到设备处理回应失败");
+        showlog("收到设备处理回应失败: 0x" + QString::number(data, 16).toUpper());
+
 
     getRespone = data;
 }
@@ -1979,10 +2073,6 @@ void factory_analyzer::on_pushButton_26_clicked()
 }
 
 
-void factory_analyzer::on_lineEdit_2_returnPressed()
-{
-    bulk->set_amt_test(ui->lineEdit_2->text());
-}
 
 
 void factory_analyzer::on_pushButton_27_clicked()
@@ -1997,4 +2087,66 @@ void factory_analyzer::on_pushButton_28_clicked()
      bulk->set_amt_check_clean_flag();
 
 }
+
+
+void factory_analyzer::on_pushButton_29_clicked()
+{
+    bulk->set_amt_task_get_result();
+}
+
+
+void factory_analyzer::on_pushButton_30_clicked()
+{
+    bulk->set_amt_task_get_log();
+}
+
+
+
+
+
+void factory_analyzer::on_comboBox_activated(int index)
+{
+    qDebug() << "[ComboBox] activated index =" << index;
+
+    QString input = ui->comboBox->currentText().trimmed();
+    qDebug() << "[ComboBox] raw text =" << input;
+
+    if (input.isEmpty()) {
+        qWarning() << "[ComboBox] empty text";
+        return;
+    }
+
+    // 1️⃣ 按空格分割（支持多个空格）
+    QStringList parts = input.split(QRegularExpression("\\s+"),
+                                    Qt::SkipEmptyParts);
+    qDebug() << "[ComboBox] split parts =" << parts;
+
+    if (parts.isEmpty()) {
+        qWarning() << "[ComboBox] no parts after split";
+        return;
+    }
+
+    // 2️⃣ 第一个是脚本名
+    QString cmd = parts.takeFirst();
+    qDebug() << "[ComboBox] cmd =" << cmd;
+
+    // 3️⃣ 剩余的是参数
+    QByteArray param;
+    if (!parts.isEmpty()) {
+        param = parts.join(' ').toUtf8();
+    }
+
+    qDebug() << "[ComboBox] param(str) =" << QString::fromUtf8(param);
+    qDebug() << "[ComboBox] param(hex) =" << param.toHex(' ');
+    qDebug() << "[ComboBox] param len =" << param.size();
+
+    // 4️⃣ 调用
+    qDebug() << "[ComboBox] call set_amt_task_start";
+    bulk->set_amt_task_start(
+        cmd,
+        2000,     // timeout
+        param     // 参数
+        );
+}
+
 
