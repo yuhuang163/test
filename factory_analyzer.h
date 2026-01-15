@@ -10,8 +10,8 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMainWindow>
-// #include <QUrl>
-// #include <qlog.h>
+#include <QUrl>
+#include <qlog.h>
 #include "draggablecheckbox.h"
 #include "ui_factory_analyzer.h"
 #include <QMessageBox>

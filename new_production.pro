@@ -23,13 +23,13 @@ QMAKE_CXXFLAGS += /MP
 # 首先最坑的是vc编译器，utf8的源文件不带bom它就当做本地编码，所以如果统一用utf8，必须保证源文件带bom。其次是qt用的utf8，要保证执行码也用utf8，vc必须cpp声明执行码为utf8，这些gcc全都不存在问题。
 # 另外如果是控制台程序，windows默认本地编码，凡是qt字符串输出都要用tolocal8bit，否则控制台输出也基本是乱码。好好理解源码，执行码，运行环境的编码的关系才能不出错。
 
-# force utf-8 msvc output
+# force utf-8 msvc output 不勾选
 # 默认编码utf-8
 # 如果是utf-8添加bom
-# text codec for tools用utf-8
+# text codec for tools用local
 # 语言用中文
-# 现在应用程序输出打印是中文
-# 但是编译输出报错内容会乱码
+
+
 
 INCLUDEPATH += agreement
 INCLUDEPATH += agreement/qmes
@@ -73,8 +73,7 @@ INCLUDEPATH += qlog
 
 # INCLUDEPATH += advance/xlsx
 # DEPENDPATH  += advance/xlsx
-
-include(advance/xlsx/qtxlsx.pri)
+# include(advance/xlsx/qtxlsx.pri)
 
 
 

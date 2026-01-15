@@ -1,6 +1,6 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "xlsxdocument.h"
+// #include "xlsxdocument.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -1442,41 +1442,41 @@ void MainWindow::updateMainStyle(QString style) {
 }
 
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {
-    QFile csvFile(csvFilename);
-    if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "无法打开 CSV 文件进行读取：" << csvFilename;
-        showlog("无法打开 CSV 文件进行读取：" + csvFilename);
-        return;
-    }
+    // QFile csvFile(csvFilename);
+    // if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    //     qDebug() << "无法打开 CSV 文件进行读取：" << csvFilename;
+    //     showlog("无法打开 CSV 文件进行读取：" + csvFilename);
+    //     return;
+    // }
 
-    QTextStream in(&csvFile);
-    QXlsx::Document xlsx;      // 创建一个新的 XLSX 文档
-    xlsx.addSheet("data");     // 创建一个名为 "data" 的工作表
-    xlsx.selectSheet("data");  // 选择该工作表
-    int row = 1;
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList fields = line.split(',', QString::SkipEmptyParts);
+    // QTextStream in(&csvFile);
+    // QXlsx::Document xlsx;      // 创建一个新的 XLSX 文档
+    // xlsx.addSheet("data");     // 创建一个名为 "data" 的工作表
+    // xlsx.selectSheet("data");  // 选择该工作表
+    // int row = 1;
+    // while (!in.atEnd()) {
+    //     QString line = in.readLine();
+    //     QStringList fields = line.split(',', QString::SkipEmptyParts);
 
-        for (int col = 0; col < fields.size(); ++col) {
-            xlsx.write(row, col + 1, fields.at(col));
-        }
+    //     for (int col = 0; col < fields.size(); ++col) {
+    //         xlsx.write(row, col + 1, fields.at(col));
+    //     }
 
-        row++;
-        QCoreApplication::processEvents();  // 避免长时间操作时 UI 冻结
-    }
+    //     row++;
+    //     QCoreApplication::processEvents();  // 避免长时间操作时 UI 冻结
+    // }
 
-    csvFile.close();
+    // csvFile.close();
 
-    if (xlsx.saveAs(xlsFilename)) {
-        showlog("文件转换成功：" + xlsFilename);
+    // if (xlsx.saveAs(xlsFilename)) {
+    //     showlog("文件转换成功：" + xlsFilename);
 
-        qDebug() << "文件转换成功：" << xlsFilename;
-    } else {
-        showlog("文件转换失败");
+    //     qDebug() << "文件转换成功：" << xlsFilename;
+    // } else {
+    //     showlog("文件转换失败");
 
-        qDebug() << "文件转换失败：" << xlsFilename;
-    }
+    //     qDebug() << "文件转换失败：" << xlsFilename;
+    // }
 }
 void MainWindow::imu_normol_saveToCsv(const QString& filename, const FacUploadNineAlex& x) {
     QFile file(filename);
