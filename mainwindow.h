@@ -29,7 +29,7 @@
 #include <QUrl>
 #include <QVector>
 #include <algorithm>
-
+#include <QMessageBox>
 #include "Abini.h"
 #include "common_class.h"
 #include "imu_calibrate.h"

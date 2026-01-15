@@ -6,7 +6,6 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QMimeData>
 #include <QProcess>
 #include <QRegExp>
@@ -16,80 +15,20 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
-void factory_analyzer::on_pushButton_14_clicked() { // 启动按键监控
 
-    // shell->sendCommand(
-    //     "echo 哈哈哈",
-    //     [this](const QString &output, qint64 elapsed)  {
-    //         qDebug() << "Elapsed:" << elapsed << "ms"<<output;
-    //         showlog("完成");
-    //     }
-    //     ,3000);
+// 调试按键
+void factory_analyzer::on_pushButton_14_clicked() {
 
-    QByteArray data;
-    // data.append(char(0x00)); // 你的命令数据
-    QByteArray pkt = bulk->buildPacket(0x28, 2, 0, 1, data);
-    //55 0D 04 33 0A 28 15 58 40 00 01 A8 3C
-    //55 0d 04 33 0a 28 00 00 20 00 01 00 ef c9
-    //55 0c 04 f7 0a 28 00 00 20 00 01 d5 0f
-    //55 0d 04 33 0a 28 00 00 20 00 01 3f 9b
-    bulk->bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
-    // QByteArray data;
-    // if (bulk->bulkRead(0x85, data,1000)) // 0x81 是 IN 端点
-    //     qDebug() << "Received:" << data.toHex();
 
-    // shell->sendCommand(
-    //     "cd E:/垃圾",
-    //     [this](const QString &output, qint64 elapsed) {
-    //         qDebug() << "Elapsed:" << elapsed << "ms" << output;
-    //         showlog("完成");
-    //     },
-    //     3000);
-
-    // shell->sendCommand(
-    //     "[Console]::OutputEncoding",
-    //     [this](const QString &output, qint64 elapsed) {
-    //         qDebug() << "Elapsed:" << elapsed << "ms" << output;
-    //         showlog("完成");
-    //     },
-    //     3000);
-
-    // QProcess p;
-
-    // QString ps =
-    //     "[Console]::OutputEncoding = "
-    //     "[System.Text.UTF8Encoding]::new(); "
-    //     "echo 哈哈哈";
-
-    // p.start(
-    //     "powershell",
-    //     {
-    //         "-NoProfile",
-    //         "-NonInteractive",
-    //         "-Command",
-    //         ps
-    //     }
-    //     );
-
-    // p.waitForFinished();
-
-    // QByteArray raw = p.readAllStandardOutput();
-
-    // // ✅ UTF-8 解码（现在是对的）
-    // QString output = QString::fromUtf8(raw);
-
-    // qDebug().noquote() << "OUTPUT:" << output;
 }
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent), bulk(new QBulk),
-adb(new Qadb),
-    shell(new Qshell), shellMonitor(new Qshell), ui(new Ui::factory_analyzer) {
+    : QMainWindow(parent), bulk(new QBulk), adb(new Qadb), shell(new Qshell),
+    shellMonitor(new Qshell), ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
     adb->start();
     shell->start();
     shellMonitor->start();
-
 
     QCustomPlot *plot_value = new QCustomPlot;
     // 创建压力值曲线图
@@ -111,8 +50,6 @@ adb(new Qadb),
         vlayout->addWidget(graph_value_vector[n]);
     }
     graph_reset(0);
-
-
 
     const int N = 7;
     static const char *namesbiaoqian[N] = {"电池温度", "qcs8625温度", "nsp温度",
@@ -147,11 +84,10 @@ adb(new Qadb),
     QVariant windowSize(availableSize / 4 * 3);
     this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
 
-                                    // 构造函数里
-                                    QTimer *timer = new QTimer(this);
-                                    connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
-                                    timer->start(2000); // 1 秒刷新一次
-
+    // 构造函数里
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
+    timer->start(1000); // 1 秒刷新一次
 
     adbStatusLabel = new QLabel("ADB连接：<font color='red'>失败</font>");
     ui->statusbar->addPermanentWidget(adbStatusLabel);
@@ -161,7 +97,6 @@ adb(new Qadb),
 
     bulkStatusLabel = new QLabel("bulk连接：<font color='red'>wait</font>");
     ui->statusbar->addPermanentWidget(bulkStatusLabel);
-
 
     // Tree model
     treeModel = new QStandardItemModel(this);
@@ -174,8 +109,7 @@ adb(new Qadb),
         {"名字", "大小", "类型", "日期", "权限"});
     ui->tableView->setModel(fileModel);
 
-    // Load root nodes
-    loadRoot();
+
 
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -195,10 +129,9 @@ adb(new Qadb),
         },
         3000);
 
+    setupUSB();
 
-   setupUSB();
-    connect(bulk, SIGNAL(sendGetDjiResponse(int)), this, SLOT(solveGetDjiResponse(int)));
-    connect(bulk, SIGNAL(send_bulk_data(QString)), this, SLOT(refreshbulkData(QString)));
+
 
     for (const QString &text : items) {
         ui->comboBox->addItem(text);
@@ -206,67 +139,214 @@ adb(new Qadb),
 
     initTimeline();
 
-    addTimelineEvent(500,
-                     "系统启动",
-                     "Bootloader → Kernel\n初始化硬件",
-                     Qt::darkGreen);
+    createTestFunctions();
+    conFiglayout = qobject_cast<QVBoxLayout*>(ui->config_areas);
 
-    addTimelineEvent(4200,
-                     "WiFi 已连接",
-                     "SSID: Factory_AP\nIP: 192.168.1.88",
-                     Qt::blue);
+    // 获取QGridLayout，而不是QVBoxLayout
+    canUselayout = qobject_cast<QGridLayout*>(ui->use_areas);
 
-    addTimelineEvent(9800,
-                     "⚠ 异常重启",
-                     "原因：Watchdog Timeout\n任务：camera_init",
-                     Qt::red);
+    // 定义行列数
+    size_t colCount = 3;  // 例如：3列
 
-    addTimelineEvent(11500,
-                     "系统恢复",
-                     "二次启动完成\n进入主循环",
-                     Qt::darkGreen);
+    canUserCol = colCount;
+    // 计算 canUserRow 并向上取整
+    canUserRow = (testFunctions.size() + colCount - 1) / colCount;
 
-    ui->graphicsView->centerOn(0, BASE_Y);
+    for (int i = 0; i < testFunctions.size(); ++i) {
+        // 创建复选框，使用 NamedFunction 结构体中的名称
+        DraggableCheckBox* checkBox = new DraggableCheckBox(testFunctions[i].name, i, this);
+        checkBoxes.append(checkBox);  // 添加到复选框列表
+
+        // 计算行和列的位置
+        int Row = i / colCount;
+        int Col = i % colCount;
+
+        // 将复选框添加到网格布局的指定位置
+        canUselayout->addWidget(checkBox, Row, Col);
+        singleCheckBoxHeight = checkBox->sizeHint().height();
+    }
+    for (int r = 0; r < canUserRow; ++r) {
+        for (int c = 0; c < canUserCol; ++c) {
+            QFrame* cell = new QFrame(this);
+            cell->setFrameShape(QFrame::Box);
+            cell->setLineWidth(1);
+
+            QVBoxLayout* cellLayout = new QVBoxLayout(cell);
+            cellLayout->setContentsMargins(2,2,2,2);
+
+            canUselayout->addWidget(cell, r, c);
+            cell->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+        }
+    }
+
+    // 设置网格布局的行间距和列间距
+    canUselayout->setVerticalSpacing(ROW_SPACING);                     // 设置行间距为 10 像素
+    canUselayout->setHorizontalSpacing(COLUMN_SPACING);                // 设置列间距为 10 像素
+    canUselayout->setContentsMargins(MARGIN, MARGIN, MARGIN, MARGIN);  // 边距设置为 10 像素
+
+    setAcceptDrops(true);  // 允许接收拖放操作
+    testResultTableInit();
+
+    reorderCheckBoxes();
+
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                   "10px; padding: 10px; text-align: center; ");
+
 }
-void factory_analyzer::addTimelineEvent(int ms,
+
+
+void factory_analyzer::addTimelineEvent(const QString &timeStr,
                                         const QString &title,
                                         const QString &detail,
                                         const QColor &color)
 {
-    if (!m_scene)
+    QDateTime dt = QDateTime::fromString(timeStr, "MM-dd hh:mm:ss.zzz");
+    if (!dt.isValid()) {
+        qWarning() << "[Timeline] Invalid time string:" << timeStr;
         return;
+    }
 
-    int x = static_cast<int>(ms * TIME_SCALE);
-    m_maxX = qMax(m_maxX, x);
+    m_events.append({timeStr, title, detail, color, dt});
 
-    // 竖线
-    m_scene->addLine(x, BASE_Y - 14, x, BASE_Y + 14,
-                     QPen(color, 2));
+    if (!m_hasStartTime) {
+        m_startTime = dt;
+        m_hasStartTime = true;
+    }
 
-    // 圆点
-    m_scene->addEllipse(x - 4, BASE_Y - 4, 8, 8,
-                        QPen(Qt::NoPen),
-                        QBrush(color));
+    redrawTimeline(); // 绘制所有事件
+}
+void factory_analyzer::redrawTimeline()
+{
+    if (!m_scene) return;
 
-    // 时间
-    auto timeText = m_scene->addText(formatTime(ms));
-    timeText->setDefaultTextColor(Qt::darkGray);
-    timeText->setPos(x - 24, BASE_Y - 42);
+    m_scene->clear();
 
-    // 标题
-    auto titleText = m_scene->addText(title);
-    titleText->setDefaultTextColor(color);
-    titleText->setPos(x + 10, BASE_Y - 6);
+    const int BASE_Y = 80;
+    const int EVENT_SPACING = 140;
+    const int RIGHT_MARGIN = 200;
 
-    // 详情
-    auto detailText = m_scene->addText(detail);
-    detailText->setTextWidth(260);
-    detailText->setPos(x + 10, BASE_Y + 16);
+    // ✅ ① 先画时间轴基线（永远存在）
+    const int AXIS_LEN = 20000;
+    m_scene->addLine(0, BASE_Y, AXIS_LEN, BASE_Y,
+                     QPen(Qt::black, 2));
 
-    // Scene 自适应
-    m_scene->setSceneRect(0, 0,
-                          m_maxX + RIGHT_MARGIN,
-                          SCENE_HEIGHT);
+    int index = 0;
+    int maxX = 0;
+
+    for (const auto &e : m_events) {
+        int x = static_cast<int>(index * EVENT_SPACING * m_currentScale);
+        maxX = qMax(maxX, x);
+
+        // 竖线
+        m_scene->addLine(x, BASE_Y - 14, x, BASE_Y + 14,
+                         QPen(e.color, 2));
+
+        // 点
+        m_scene->addEllipse(x - 4, BASE_Y - 4, 8, 8,
+                            QPen(Qt::NoPen),
+                            QBrush(e.color));
+
+        // 时间
+        auto timeText = m_scene->addText(e.timeStr);
+        timeText->setDefaultTextColor(Qt::darkGray);
+        timeText->setPos(x - 50, BASE_Y - 42);
+        timeText->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+        // 标题
+        auto titleText = m_scene->addText(e.title);
+        titleText->setDefaultTextColor(e.color);
+        titleText->setPos(x + 10, BASE_Y - 6);
+        titleText->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+        // 详情
+        auto detailText = m_scene->addText(e.detail);
+        detailText->setTextWidth(260);
+        detailText->setPos(x + 10, BASE_Y + 16);
+        detailText->setTextInteractionFlags(Qt::TextSelectableByMouse);
+
+        index++;
+    }
+
+    // ✅ ② scene 范围
+    m_scene->setSceneRect(0, 0, maxX + RIGHT_MARGIN, 300);
+}
+
+// void factory_analyzer::wheelEvent(QWheelEvent *event)
+// {
+//     if (event->angleDelta().y() > 0)
+//         m_currentScale *= 1.15;
+//     else
+//         m_currentScale /= 1.15;
+
+//     // ⭐ 关键：限制范围
+//     m_currentScale = std::clamp(m_currentScale, SCALE_MIN, SCALE_MAX);
+
+//     qDebug() << "[Timeline] scale =" << m_currentScale;
+
+//     redrawTimeline();
+
+
+// }
+bool factory_analyzer::eventFilter(QObject *obj, QEvent *event) {
+    if (obj == ui->graphicsView->viewport() &&
+        event->type() == QEvent::Wheel)
+    {
+        auto *wheel = static_cast<QWheelEvent *>(event);
+
+        if (wheel->angleDelta().y() > 0)
+            m_currentScale *= 1.15;
+        else
+            m_currentScale /= 1.15;
+
+        m_currentScale = std::clamp(m_currentScale, SCALE_MIN, SCALE_MAX);
+
+        qDebug() << "[Timeline] scale =" << m_currentScale;
+
+        redrawTimeline();
+
+        return true;   // ⭐ 吃掉事件，不再传
+    }
+    if (obj == ui->lineEdit && event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Up) {
+            if (historyIndex > 0) {
+                historyIndex--;
+                ui->lineEdit->setText(commandHistory.at(historyIndex));
+            }
+            return true;
+        } else if (keyEvent->key() == Qt::Key_Down) {
+            if (historyIndex < commandHistory.size() - 1) {
+                historyIndex++;
+                ui->lineEdit->setText(commandHistory.at(historyIndex));
+            } else {
+                historyIndex = commandHistory.size();
+                ui->lineEdit->clear();
+            }
+            return true;
+        }
+    }
+    if (obj == ui->lineEdit && event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Up) {
+            if (historyIndex > 0) {
+                historyIndex--;
+                ui->lineEdit->setText(commandHistory.at(historyIndex));
+            }
+            return true;
+        } else if (keyEvent->key() == Qt::Key_Down) {
+            if (historyIndex < commandHistory.size() - 1) {
+                historyIndex++;
+                ui->lineEdit->setText(commandHistory.at(historyIndex));
+            } else {
+                historyIndex = commandHistory.size();
+                ui->lineEdit->clear();
+            }
+            return true;
+        }
+    }
+    return QWidget::eventFilter(obj, event);
 }
 
 void factory_analyzer::initTimeline()
@@ -278,14 +358,11 @@ void factory_analyzer::initTimeline()
     ui->graphicsView->setRenderHint(QPainter::Antialiasing);
     ui->graphicsView->resetTransform();
 
-    // 时间轴基线
-    m_scene->addLine(0, BASE_Y, 10000, BASE_Y,
-                     QPen(Qt::black, 2));
-
-    m_maxX = 0;
+    ui->graphicsView->centerOn(0, BASE_Y);
+    ui->graphicsView->viewport()->installEventFilter(this);
 }
-QString factory_analyzer::formatTime(int ms) const
-{
+
+QString factory_analyzer::formatTime(int ms) const {
     int sec = ms / 1000;
     return QString("%1:%2")
         .arg(sec / 60, 2, 10, QChar('0'))
@@ -293,20 +370,114 @@ QString factory_analyzer::formatTime(int ms) const
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void factory_analyzer::solveGetDjiResponse(int data) {
-    if(data==1)
+    if (data == 1)
         showlog("收到设备处理回应成功");
     else
-        showlog("收到设备处理回应失败: 0x" + QString::number(data, 16).toUpper());
-
+        showlog("收到设备处理回应错误码: 0x" + QString::number(data, 16).toUpper());
 
     getRespone = data;
 }
-void factory_analyzer::setupUSB()
-{    bulkreadThread = new QThread(this);
+void factory_analyzer::on_comboBox_2_activated(int index)
+{
+    QVariantMap dev =
+        ui->comboBox_2->itemData(index, Qt::UserRole).toMap();
+
+    if (dev.isEmpty()) {
+        qDebug() << "No device data";
+        return;
+    }
+
+    uint16_t vid = dev["vid"].toUInt();
+    uint16_t pid = dev["pid"].toUInt();
+    int ifNum     = dev["if"].toInt();
+
+    qDebug() << "Open USB device:"
+             << QString("VID=0x%1 PID=0x%2 IF=%3")
+                    .arg(vid, 4, 16, QChar('0'))
+                    .arg(pid, 4, 16, QChar('0'))
+                    .arg(ifNum);
+    bulk->closeDevice();
+    if (bulk->openDevice(vid, pid, ifNum)) {
+        qDebug() << "bulk 已连接";
+
+        bulkStatusLabel->setText(
+            "bulk连接： <font color='green'>成功</font>");
+
+        bulkreadThread->start();
+        reconnectTimer->stop();
+    } else {
+        qDebug() << "bulk 打开失败，等待重连";
+        reconnectTimer->start();
+    }
+}
+
+void factory_analyzer::setupUSB() {
+    bulkreadThread = new QThread(this);
     reconnectTimer = new QTimer(this);
     // 1️⃣ 移动 bulk 到线程
     bulk->moveToThread(bulkreadThread);
+    connect(bulk, SIGNAL(sendGetDjiResponse(int)), this,SLOT(solveGetDjiResponse(int)));
+    connect(bulk, SIGNAL(send_bulk_data(QString)), this,SLOT(refreshbulkData(QString)));
+    connect(bulk, SIGNAL(send2aprogress(int)), this,SLOT(refreshbulkData(int)));
+
+
+    connect(bulk, &QBulk::usbDeviceListReady,
+            this, [this](const QSet<QBulk::UsbVidPid> &devices) {
+
+                QSet<QString> currentItems;
+
+                for (int i = 0; i < ui->comboBox_2->count(); ++i) {
+                    currentItems.insert(ui->comboBox_2->itemText(i));
+                }
+
+                for (const auto &d : devices) {
+
+                    QString text = QString("VID=0x%1 PID=0x%2")
+                    .arg(d.first, 4, 16, QChar('0'))
+                        .arg(d.second, 4, 16, QChar('0'))
+                        .toUpper();
+
+                    if (!currentItems.contains(text)) {
+                        // ✅ text 给人看
+                        ui->comboBox_2->addItem(text);
+
+                        // ✅ 真正的数据放到 UserRole
+                        QVariantMap dev;
+                        dev["vid"] = d.first;
+                        dev["pid"] = d.second;
+                        dev["if"]  = 4;   // 你现在用的是 interface 4
+
+                        ui->comboBox_2->setItemData(
+                            ui->comboBox_2->count() - 1,
+                            dev,
+                            Qt::UserRole);
+                    }
+
+                    currentItems.remove(text);
+                }
+
+                // 移除不存在的
+                for (const QString &item : currentItems) {
+                    int idx = ui->comboBox_2->findText(item);
+                    if (idx >= 0)
+                        ui->comboBox_2->removeItem(idx);
+                }
+            });
 
     // 2️⃣ 线程启动 -> 阻塞读
     connect(bulkreadThread, &QThread::started, bulk, &QBulk::startRead);
@@ -318,38 +489,42 @@ void factory_analyzer::setupUSB()
     // });
 
     // 4️⃣ 错误处理
-    connect(bulk, &QBulk::error, this, [this](int code, const QString &e){
+    connect(bulk, &QBulk::error, this, [this](int code, const QString &e) {
         qDebug() << "bulk error:" << e;
-    bulkStatusLabel->setText(
-        "bulk连接：: <font color='red'>失败</font>");
+    bulkStatusLabel->setText("bulk连接：: <font color='red'>失败</font>");
         reconnectTimer->start();
     });
 
     // 5️⃣ 重连定时器
     reconnectTimer->setInterval(1000); // 每秒尝试一次
-    connect(reconnectTimer, &QTimer::timeout, this, &factory_analyzer::tryOpenUSB);
-
-    // 6️⃣ 尝试先打开一次
-    tryOpenUSB();
-
-
+    connect(reconnectTimer, &QTimer::timeout, this,
+            &factory_analyzer::tryOpenUSB);
+    reconnectTimer->start();
 
 }
-    void factory_analyzer::refreshbulkData(QString data) { showlog(data); }
+void factory_analyzer::refreshbulkData(int percent)
+{
+    ui->progressBar_2->setValue(percent);
+}
+
+void factory_analyzer::refreshbulkData(QString data) { showlog(data); }
 void factory_analyzer::tryOpenUSB() {
-    if (!bulk->isOpen()) {
-        if (bulk->openDevice(0x2CA3, 0x0025, 4)) {
-            qDebug() << "bulk 已连接";
-            bulkStatusLabel->setText(
-                QString("bulk连接：: <font color='green'>成功</font>"));
+    if(bulk->searchDevice())
+    {
+        if (!bulk->isOpen()) {
+            if (bulk->openDevice(0x2CA3, 0x0025, 4)) {
+                qDebug() << "bulk 已连接";
+                bulkStatusLabel->setText(
+                    QString("bulk连接：: <font color='green'>成功</font>"));
 
-            qDebug() << "bulk连接：: OK";
-            bulkreadThread->start();
+                qDebug() << "bulk连接：: OK";
+                bulkreadThread->start();
 
-            reconnectTimer->stop();
-        } else {
-            qDebug() << "bulk 打开失败，等待重连";
-            reconnectTimer->start();
+                reconnectTimer->stop();
+            } else {
+                qDebug() << "bulk 打开失败，等待重连";
+                reconnectTimer->start();
+            }
         }
     }
 }
@@ -568,7 +743,8 @@ void factory_analyzer::loadRoot() {
         qDebug() << "Elapsed:" << elapsed << "ms";
 
         if (output == "ADB shell被中断") {
-            QMessageBox::warning(this, "错误", "设备未连接或ADB不可用！");
+            showlog("设备未连接或ADB不可用！");
+            // QMessageBox::warning(this, "错误", "设备未连接或ADB不可用！");
             return;
         }
 
@@ -787,9 +963,16 @@ void factory_analyzer::updateAdbStatus() {
 
         QString trimmed = output.trimmed();
         if (trimmed == "success") {
-            adbStatusLabel->setText("ADB连接：<font color='green'>成功</font>");
+
+            if(adb_status==false)
+            {   adbStatusLabel->setText("ADB连接：<font color='green'>成功</font>");
+                adb_status = true;
+                loadRoot();
+                on_pushButton_16_clicked();
+            }
             // qDebug() << "[factory_analyzer] ADB连接成功";
         } else {
+            adb_status = false;
             adbStatusLabel->setText("ADB连接：<font color='red'>失败</font>");
             // qDebug() << "[factory_analyzer] ADB连接失败";
         }
@@ -812,7 +995,8 @@ factory_analyzer::~factory_analyzer() {
         bulkreadThread->deleteLater();
     }
 
-    delete ui; }
+    delete ui;
+}
 
 void factory_analyzer::showlog(const QString &msg) {
     if (msg.isEmpty())
@@ -876,6 +1060,11 @@ void factory_analyzer::on_pushButton_clicked() {
   //     else
   //         QMessageBox::warning(this, "错误", "脚本执行失败！");
   // });
+  if(!adb_status)
+  {
+      showlog("请连接设备");
+      return;
+  }
 
   showlog("开始拉日志");
   // 时间戳
@@ -883,7 +1072,7 @@ void factory_analyzer::on_pushButton_clicked() {
 
   // 1️⃣ 一次性执行获取 device_id + ls /blackbox
   QString cmd = "deviceId=$(cat /factory_data/device_id.txt); echo "
-                "DEVICE_ID=$deviceId; ls /blackbox";
+                "DEVICE_ID=$deviceId; ls -d /blackbox/flight*/ 2>/dev/null";
 
   adb->sendCommand(
       cmd,
@@ -893,16 +1082,32 @@ void factory_analyzer::on_pushButton_clicked() {
           // 2️⃣ 解析 deviceId
           QString deviceId;
           QStringList flightDirs;
+
+          ui->progressBar_3->setValue(0);
           for (const QString &line : lines) {
           if (line.startsWith("DEVICE_ID=")) {
-                  deviceId = line.mid(QString("DEVICE_ID=").length()).trimmed();
-          } else if (line.startsWith("flight")) {
-              flightDirs << line.trimmed();
+              deviceId = line.mid(QString("DEVICE_ID=").length()).trimmed();
+          } else if (line.startsWith("/blackbox/flight")) {
+              QString name = line.trimmed();
+              // 去掉末尾的 '/'
+              if (name.endsWith('/'))
+                  name.chop(1);
+              // 只保留目录名 flightXXXX
+              name = QFileInfo(name).fileName();
+
+              flightDirs << name;
           }
           }
+          mf_dirTotal = flightDirs.size();
+          mf_dirStep  = (mf_dirTotal > 0) ? (50 / mf_dirTotal) : 0;
+          mf_dirProgressIndex = 0;
+
         qDebug() << "deviceId" << deviceId << "lines:" << lines
                    << "output:" << output;
           // 3️⃣ 创建固定目录
+        if(deviceId==""){
+            showlog("设备未写入sn，拉的日志目录不带sn");
+        }
 
         QString logPath = "./factorydebugv4/log/" + timestamp + "_" + deviceId;
         QStringList dirs = {"system", "camera", "gui", "amt",
@@ -912,33 +1117,57 @@ void factory_analyzer::on_pushButton_clicked() {
           QDir().mkpath(logPath + "/" + d);
         }
 
+        m_dirTotal = dirs.size();
+        m_dirStep  = (m_dirTotal > 0) ? (50 / m_dirTotal) : 0;
+        m_dirProgressIndex = 0;
         // 4️⃣ 拉固定模块
         for (const QString &d : dirs) {
-          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")//pwd;
                                   .arg(logPath, d, "../../adb/adb.exe");
           shell->sendCommand(
               fullCmd,
               [logPath, this](const QString &out, qint64 elapsed) {
                   qDebug() << "[pullDirsSequential] 完成:" << out
                            << "耗时:" << elapsed << "ms";
-                  showlog("完成:" + out);
+                  m_dirProgressIndex++;
+                  int value = 0 + m_dirProgressIndex * m_dirStep;
+                  value = qBound(0, value, 50);
+                  ui->progressBar_3->setValue(value);
+                  qDebug() << "[DIR PROGRESS]"
+                           << m_dirProgressIndex << "/" << "dirs"
+                           << "progress =" << value;
+                  showlog("拉取完成:" + out);
               },
               100000);
         }
-
+        qDebug() << "flightDirs" << flightDirs ;
         // 5️⃣ 拉 flightXXXX 目录
-        for (const QString &flight : flightDirs) {
+        for (const QString &flight : std::as_const(flightDirs)) {
           QString localDir = logPath + "/" + flight;
           QDir().mkpath(localDir);
 
-          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")
-                                .arg(localDir, flight, "../../adb/adb.exe");
+          QString fullCmd = QString("cd %1; %3 pull /blackbox/%2; cd ../../../")//pwd;
+                                .arg(logPath, flight, "../../adb/adb.exe");
+          // qDebug() << "flight fullCmd"  <<fullCmd;
           shell->sendCommand(
               fullCmd,
               [this](const QString &out, qint64 elapsed) {
-                  qDebug() << "[flightXXXX] 完成:" << out << "耗时:" << elapsed
-                           << "ms";
-                  showlog("完成:" + out);
+
+                  mf_dirProgressIndex++;
+
+                  int value = 50 + mf_dirProgressIndex * mf_dirStep;
+                  value = qBound(50, value, 100);
+
+                  ui->progressBar_3->setValue(value);
+
+                  qDebug() << "[DIR PROGRESS]"
+                           << mf_dirProgressIndex << "/" << "dirs"
+                           << "progress =" << value;
+                showlog("拉取完成:" + out);
+                  // qDebug() << "[flightXXXX] 完成:" << out << "耗时:" << elapsed
+                  //          << "ms";
+                  // // showlog("完成:" + out);
+                  // ui->progressBar_3->setValue(100);
               },
               10000);
         }
@@ -1081,34 +1310,8 @@ void factory_analyzer::on_pushButton_3_clicked() {
 // --------------------------
 // 拖拽文件
 // --------------------------
-void factory_analyzer::dragEnterEvent(QDragEnterEvent *event) {
-    if (event->mimeData()->hasUrls())
-        event->acceptProposedAction();
-    else
-        event->ignore();
-}
 
-void factory_analyzer::dropEvent(QDropEvent *event) {
-    QList<QUrl> urls = event->mimeData()->urls();
-    if (ui->label->geometry().contains(event->pos())) {
-        for (const QUrl &url : urls) {
-            QString filePath = url.toLocalFile();
-            qDebug() << "拖到 Label 上的文件:" << filePath;
 
-            // 调用推送函数
-            pushFileToGaoTongDevice(filePath);
-        }
-    }
-    if (ui->label_1->geometry().contains(event->pos())) {
-        for (const QUrl &url : urls) {
-            QString filePath = url.toLocalFile();
-            qDebug() << "拖到 label_1 上的文件:" << filePath;
-
-            // 调用推送函数
-            pushFileToZiYanDevice(filePath);
-        }
-    }
-}
 
 // --------------------------
 // 推送文件到 adb 设备
@@ -1188,10 +1391,20 @@ void factory_analyzer::pushFileToZiYanDevice(const QString &localFile) {
         qDebug().noquote() << "[ADB OUTPUT]\n" << output;
 
         if (output.contains("error", Qt::CaseInsensitive)) {
-            showlog(QString("推送 %1 失败").arg(fileName));
+            showlog(QString("推送： %1 失败，请确保文件路径没有包含中文，补充信息:%2").arg(fileName).arg(output));
             qDebug().noquote() << "ADB 执行失败";
         } else {
             showlog(QString("推送 %1 成功").arg(fileName));
+           if (ui->checkBox->isChecked()) {
+            adb->sendCommand(
+                fileName,
+                [this](const QString &output, qint64 elapsed) {
+                    qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+                    qDebug() << "Output:" << output;
+                     showlog(output);
+                },
+                15000); // 设置长一些的超时，比如 15 秒
+            }
             qDebug().noquote() << "ADB 执行成功";
         }
     });
@@ -1215,10 +1428,20 @@ void factory_analyzer::pushFileToGaoTongDevice(const QString &localFile) {
         qDebug().noquote() << "[ADB OUTPUT]\n" << output;
 
         if (output.contains("error", Qt::CaseInsensitive)) {
-            showlog(QString("推送 %1 失败").arg(fileName));
+            showlog(QString("推送： %1 失败，请确保文件路径没有包含中文，补充信息:%2").arg(fileName).arg(output));
             qDebug().noquote() << "ADB 执行失败";
         } else {
             showlog(QString("推送 %1 成功").arg(fileName));
+               if (ui->checkBox->isChecked()) {
+            adb->sendCommand(
+                fileName,
+                [this](const QString &output, qint64 elapsed) {
+                    qDebug() << "Command finished, elapsed:" << elapsed << "ms";
+                    qDebug() << "Output:" << output;
+                         showlog(output);
+                },
+                15000); // 设置长一些的超时，比如 15 秒
+               }
             qDebug().noquote() << "ADB 执行成功";
         }
     });
@@ -1627,6 +1850,7 @@ void factory_analyzer::on_pushButton_9_clicked() {
 void factory_analyzer::closeEvent(QCloseEvent *) {
     SETTINGS.setValue("Window/Size", this->size());
     ddr_press = false;
+    isTestContinue = false;
 }
 void factory_analyzer::runCmd(const QString &cmd) {
     showlog("[RUN] " + cmd);
@@ -1796,16 +2020,34 @@ void factory_analyzer::displayCmdline(QTableWidget *table,
     table->resizeColumnsToContents();
     table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
-QString parseJsonLine(const QString &line) {
-    QString value = line;
-    value = value.trimmed();      // 去掉首尾空格/换行
-    int idx = value.indexOf(':'); // 找冒号
+QString parseJsonLine(const QString &line)
+{
+    QString value = line.trimmed();
+
+    // ① 优先按 ':' 分割
+    int idx = value.indexOf(':');
     if (idx != -1) {
-        value = value.mid(idx + 1); // 取冒号后面部分
+        value = value.mid(idx + 1);
+    } else {
+        // ② 没有冒号 → 按连续空白分割
+        // dji.build.version\t   00.09.24.33
+        QStringList parts = value.split(QRegularExpression("\\s+"),
+                                        Qt::SkipEmptyParts);
+        if (parts.size() >= 2) {
+            value = parts.last();   // 取最后一个最稳
+        } else {
+            return QString();       // 解析失败
+        }
     }
-    value = value.remove('"').remove(',').trimmed(); // 去掉引号和逗号
+
+    // ③ 清洗
+    value.remove('"')
+        .remove(',')
+        .trimmed();
+
     return value;
 }
+
 
 void factory_analyzer::on_pushButton_16_clicked() {
     adb->sendCommand("cat /proc/cmdline", [this](const QString &output,
@@ -1820,19 +2062,7 @@ void factory_analyzer::on_pushButton_16_clicked() {
         displayCmdline(ui->tableWidget_2, cmdline);
     });
 
-    // 硬件型号
-    adb->sendCommand(R"(cat /system/etc/dji.json | grep "hw_str")",
-                     [this](const QString &output, qint64) {
-                         QString hw = parseJsonLine(output);
-                         showlog("设备名: " + hw); // AC206 AC
-                     });
 
-    // 固件版本
-    adb->sendCommand(R"(cat /blackbox/system/ver_info.txt | grep Version)",
-                     [this](const QString &output, qint64) {
-                         QString ver = parseJsonLine(output);
-                         showlog("固件版本: " + ver); // v00.09.11.09
-                     });
 }
 
 void factory_analyzer::updateQualcommComStatus() {
@@ -1931,11 +2161,31 @@ void factory_analyzer::updateBatteryLevel() {
                          int level = str.toInt(&ok);
                          if (ok) {
                              ui->progressBar->setValue(level);
+                                     bulk->ep_numer=0x05;
                              // qDebug() << "Battery level:" << level;
                          } else {
-                             qDebug() << "Failed to parse battery level:" << output;
+                             adb->sendCommand(
+                                 "test_bat_info.sh soc",
+                                 [this](const QString &output, qint64) {
+                                     bulk->ep_numer=0x04;
+                                     QRegularExpression re(R"((\d+))");
+                                     auto match = re.match(output);
+
+                                     if (match.hasMatch()) {
+                                         int level = match.captured(1).toInt();
+                                         ui->progressBar->setValue(level);
+                                         // qDebug() << "Battery level:" << level;
+                                     } else {
+                                         ui->progressBar->setValue(0);
+                                         qDebug() << "Failed to parse battery level:" << output;
+                                     }
+                                 }
+                                 );
+
+
                          }
                      });
+
 }
 
 void factory_analyzer::on_pushButton_18_clicked() {
@@ -1965,28 +2215,7 @@ void factory_analyzer::on_lineEdit_returnPressed() {
   ui->lineEdit->clear(); // 清空输入框
 }
 
-bool factory_analyzer::eventFilter(QObject *obj, QEvent *event) {
-    if (obj == ui->lineEdit && event->type() == QEvent::KeyPress) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-        if (keyEvent->key() == Qt::Key_Up) {
-            if (historyIndex > 0) {
-                historyIndex--;
-                ui->lineEdit->setText(commandHistory.at(historyIndex));
-            }
-            return true;
-        } else if (keyEvent->key() == Qt::Key_Down) {
-            if (historyIndex < commandHistory.size() - 1) {
-                historyIndex++;
-                ui->lineEdit->setText(commandHistory.at(historyIndex));
-            } else {
-                historyIndex = commandHistory.size();
-                ui->lineEdit->clear();
-            }
-            return true;
-        }
-    }
-    return QWidget::eventFilter(obj, event);
-}
+
 
 void factory_analyzer::on_pushButton_19_clicked() {
     if (treeExpanded) {
@@ -2012,6 +2241,15 @@ void factory_analyzer::on_pushButton_21_clicked() {
     adb->sendCommand("df -h", [this](const QString &output, qint64 elapsed) {
         qDebug() << "Elapsed:" << elapsed << "ms";
         showlog(output);
+        const QStringList requiredMounts = {
+            "/", "/system", "/dev", "/system", "/data", "/blackbox", "/cali", "/factory_data", "/mnt"
+        };
+
+        for (const QString &mnt : requiredMounts) {
+            if (!output.contains(QString(" %1").arg(mnt))) {
+                showlog(QString("[ERR] mount point missing: %1").arg(mnt));
+            }
+        }
     });
 }
 
@@ -2053,59 +2291,39 @@ void factory_analyzer::on_pushButton_24_clicked() {
     deleteBuildFiles(buildDir);
 }
 
-void factory_analyzer::on_pushButton_25_clicked()
-{
+void factory_analyzer::on_pushButton_25_clicked() { bulk->get_dev_ver(); }
 
-    bulk->get_dev_ver();
+void factory_analyzer::on_pushButton_26_clicked() {
+    adb->sendCommand("test_ufs_value.sh write 1",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
+    adb->sendCommand("test_ufs_value.sh read 1",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
 }
 
+void factory_analyzer::on_pushButton_27_clicked() {
 
-void factory_analyzer::on_pushButton_26_clicked()
-{
-    adb->sendCommand("test_ufs_value.sh write 1", [this](const QString &output, qint64 elapsed) {
-        qDebug() << "Elapsed:" << elapsed << "ms";
-        showlog(output);
-    });
-    adb->sendCommand("test_ufs_value.sh read 1", [this](const QString &output, qint64 elapsed) {
-        qDebug() << "Elapsed:" << elapsed << "ms";
-        showlog(output);
-    });
+    bulk->set_amt_clean_flag();
 }
 
-
-
-
-void factory_analyzer::on_pushButton_27_clicked()
-{
-
-     bulk->set_amt_clean_flag();
+void factory_analyzer::on_pushButton_28_clicked() {
+    bulk->set_amt_check_clean_flag();
 }
 
-
-void factory_analyzer::on_pushButton_28_clicked()
-{
-     bulk->set_amt_check_clean_flag();
-
-}
-
-
-void factory_analyzer::on_pushButton_29_clicked()
-{
+void factory_analyzer::on_pushButton_29_clicked() {
     bulk->set_amt_task_get_result();
 }
 
-
-void factory_analyzer::on_pushButton_30_clicked()
-{
-    bulk->set_amt_task_get_log();
+void factory_analyzer::on_pushButton_30_clicked() {
+    bulk->set_amt_task_get_log(0);
 }
 
-
-
-
-
-void factory_analyzer::on_comboBox_activated(int index)
-{
+void factory_analyzer::on_comboBox_activated(int index) {
     qDebug() << "[ComboBox] activated index =" << index;
 
     QString input = ui->comboBox->currentText().trimmed();
@@ -2117,8 +2335,8 @@ void factory_analyzer::on_comboBox_activated(int index)
     }
 
     // 1️⃣ 按空格分割（支持多个空格）
-    QStringList parts = input.split(QRegularExpression("\\s+"),
-                                    Qt::SkipEmptyParts);
+    QStringList parts =
+        input.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
     qDebug() << "[ComboBox] split parts =" << parts;
 
     if (parts.isEmpty()) {
@@ -2142,11 +2360,599 @@ void factory_analyzer::on_comboBox_activated(int index)
 
     // 4️⃣ 调用
     qDebug() << "[ComboBox] call set_amt_task_start";
-    bulk->set_amt_task_start(
-        cmd,
-        2000,     // timeout
-        param     // 参数
-        );
+    bulk->set_amt_task_start(cmd,
+                             ui->lineEdit_2->text().toUInt(), // timeout
+                             param // 参数
+                             );
+
+
 }
 
+
+
+void factory_analyzer::on_pushButton_32_clicked()
+{
+    bulk->set_sys_poweroff();
+
+}
+
+
+
+
+
+void factory_analyzer::on_pushButton_33_clicked()
+{
+    // 硬件型号
+    adb->sendCommand(R"(cat /system/etc/dji.json | grep "hw_str")",
+                     [this](const QString &output, qint64) {
+                       if (output.contains("hw_str", Qt::CaseInsensitive)) {
+                         QString hw = parseJsonLine(output);
+                         showlog("设备名: " + hw); // AC206 AC
+                          }
+                     });
+
+    // 固件版本
+    adb->sendCommand(R"(cat /blackbox/system/ver_info.txt | grep Version)",
+                     [this](const QString &output, qint64) {
+                                  if (output.contains("Version", Qt::CaseInsensitive)) {
+                         QString ver = parseJsonLine(output);
+                         showlog("固件版本: " + ver); // v00.09.11.09
+                                  }
+                     });
+    // 固件版本
+    adb->sendCommand(R"(cat /blackbox/system/ver_info.txt | grep Time_Stamp)",
+                     [this](const QString &output, qint64) {
+                            if (output.contains("Time_Stamp", Qt::CaseInsensitive)) {
+                         QString ver = parseJsonLine(output);
+                         showlog("大包日期: " + ver);
+                            }
+                     });
+    adb->sendCommand(R"(unrd | grep dji.build.version)",
+                     [this](const QString &output, qint64) {
+                          if (output.contains("version", Qt::CaseInsensitive)) {
+                         QString ver = parseJsonLine(output);
+                         showlog("固件版本: " + ver);
+                          }
+                     });
+    adb->sendCommand(R"(uname -a)",
+                     [this](const QString &output, qint64) {
+
+                         QString line = output.trimmed();
+                         QStringList parts = line.split(QRegularExpression("\\s+"),
+                                                        Qt::SkipEmptyParts);
+
+                         // 最少需要这么多字段
+                         if (parts.size() < 6) {
+                             return;
+                         }
+
+                         // 取倒数 6 个
+                         QString buildTime = parts.mid(parts.size() - 7, 7).join(" ");
+
+                         showlog("小包日期: " + buildTime);
+                     });
+
+
+}
+
+void factory_analyzer::on_pushButton_31_clicked()
+{
+    m_events.clear();
+    adb->sendCommand(
+        "grep \"beginning of main\" /blackbox/system/system.log* -A 1",
+        [this](const QString &output, qint64 elapsed) {
+            qDebug() << "[ADB] ls output:" << output;
+            qDebug() << "Elapsed:" << elapsed << "ms";
+            QRegularExpression re(R"((\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3}))");
+            QRegularExpressionMatchIterator it = re.globalMatch(output);
+
+            int index = 0;
+            while (it.hasNext()) {
+                auto match = it.next();
+                QString timeStr = match.captured(1);
+
+                qDebug() << QString("重启点 %1: %2").arg(index++).arg(timeStr);
+
+                addTimelineEvent(
+                    timeStr,
+                    "⚠ 机器启动",
+                    QString("beginning of main"),
+                    Qt::darkGreen
+                    );
+            }
+        },
+        5000); // 可选超时时间 5000ms
+
+}
+void factory_analyzer::on_pushButton_34_clicked()
+{
+    QString basePath = R"(factorydebugv4/log/)";
+    QDir dir(basePath);
+    dir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
+    dir.setSorting(QDir::Name | QDir::Reversed);
+
+    QString latestFolder;
+    for (const QFileInfo &info : dir.entryInfoList()) {
+        if (info.fileName().startsWith("2")) {
+            latestFolder = info.absoluteFilePath();
+            break;
+        }
+    }
+    if (latestFolder.isEmpty())
+        return;
+
+    QString logFilePath = latestFolder + "/system/system.log";
+
+    QFile file(logFilePath);
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        showlog("请先拉日志: " + logFilePath);
+        return;
+    }
+
+    QTextStream in(&file);
+
+    QRegularExpression timeRe(
+        R"((\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3}))");
+
+   m_events.clear();
+
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+
+        // ===== ① beginning of main（无时间行）=====
+        if (line.contains("beginning of main", Qt::CaseInsensitive)) {
+            qDebug() << "开机";
+
+            QString timeStr;
+            QString nextLine;
+
+            if (!in.atEnd()) {
+                nextLine = in.readLine();
+
+                auto match = timeRe.match(nextLine);
+                if (match.hasMatch()) {
+                    timeStr = match.captured(1);
+                }
+            }
+
+            addTimelineEvent(
+                timeStr,
+                "⚠ 机器启动",
+                "beginning of main",
+                Qt::darkGreen
+                );
+
+            continue;   // ⭐ 必须
+        }
+
+        // ===== ② 其它日志：必须有时间 =====
+        auto timeMatch = timeRe.match(line);
+        if (!timeMatch.hasMatch())
+            continue;
+
+        QString timeStr = timeMatch.captured(1);
+        QString content = line;
+        content.remove(timeRe);
+        content = content.trimmed();
+        // current exception temp
+        if (line.contains("current exception temp", Qt::CaseInsensitive)) {
+            addTimelineEvent(
+                timeStr,
+                "🔥 温度异常",
+                content,
+                Qt::red
+                );
+        }else if (line.contains("boot reason", Qt::CaseInsensitive)) {
+            addTimelineEvent(
+                timeStr,
+                "🔌 启动原因",
+                content,
+                QColor(255, 140, 0)   // 深橙色 / DarkOrange
+                );
+
+        }else if (line.contains("[AMT]", Qt::CaseInsensitive)) {
+
+
+            addTimelineEvent(
+                timeStr,
+                "🧪 AMT 测试内容",
+                content,
+                QColor(160, 210, 160)
+
+                );
+
+        }
+
+
+
+    }
+
+    file.close();
+
+    // // system.log 本身是时间顺序的，一般不需要排序
+    // // 如果你以后合并多文件，这里可以保留
+    // std::sort(events.begin(), events.end(),
+    //           [](const LogEvent &a, const LogEvent &b) {
+    //               return a.time < b.time;
+    //           });
+
+    // // 加入 Timeline
+    // for (const auto &e : events) {
+    //     addTimelineEvent(
+    //         e.rawTimeStr,
+    //         e.title,
+    //         e.detail,
+    //         e.color
+    //         );
+    // }
+}
+
+
+
+void factory_analyzer::on_pushButton_35_clicked()
+{
+    adb->sendCommand(R"(cat /blackbox/system/system.log |grep "whitelist param_ckeck failed, param is")",
+                     [this](const QString &output, qint64) {
+                         if (output.contains("whitelist param_ckeck failed", Qt::CaseInsensitive)) {
+                               showlog("参数白名单问题："+output);
+                         }else{
+                              showlog("没有参数拦截问题");
+                         }
+
+                     });
+
+    adb->sendCommand(R"(cat /blackbox/system/system.log |grep "AMT task whitelist check fail:")",
+                     [this](const QString &output, qint64) {
+                          qDebug() << output;
+                         if (output.contains("AMT task whitelist check fail", Qt::CaseInsensitive)) {
+                             showlog("脚本未开白名单："+output);
+                         }else{
+                             showlog("没有白名单问题");
+                         }
+
+                     });
+
+    adb->sendCommand(R"(cat /blackbox/system/system.log |grep "set_test_result.sh")",
+                     [this](const QString &output, qint64) {
+                         qDebug() << output;
+                         if (output.contains("set_test_result.sh", Qt::CaseInsensitive)) {
+                             showlog("脚本运行结果："+output);
+                         }
+
+                     });
+
+
+}
+
+
+void factory_analyzer::on_pushButton_36_clicked()
+{
+    // ① 弹出文件选择框
+    QString filePath = QFileDialog::getOpenFileName(
+        this,
+        tr("选择要发送的文件"),
+        QString(),                  // 默认路径（可改为 QDir::homePath()）
+        tr("All Files (*.*)")        // 文件过滤
+        );
+
+    // ② 用户点了取消
+    if (filePath.isEmpty()) {
+        qDebug() << "[SendFile] user canceled";
+        return;
+    }
+
+    qDebug() << "[SendFile] select file:" << filePath;
+
+    // ③ 调用发送接口
+    bulk->set_2a_send_file_info(filePath);
+}
+
+
+
+void factory_analyzer::on_pushButton_37_clicked()
+{   bulk->set_2a_send_file_info_check();
+
+}
+
+
+void factory_analyzer::on_pushButton_38_clicked()
+{
+    bulk->set_2a_send_file_data();
+}
+
+
+void factory_analyzer::on_pushButton_39_clicked()
+{
+    QString timeStr =
+        QDateTime::currentDateTime()
+            .toString("yyyy-MM-dd HH:mm:ss");
+
+    QString adbCmd = QString(
+                         "shell \"echo '[PC_TIME] %1' >> blackbox/system/system.log\""
+                         ).arg(timeStr);
+
+
+    execAdb(
+        adbCmd,
+        [this, adbCmd](const QString &output, qint64 elapsed) {
+            qDebug() << "Elapsed:" << elapsed << "ms";
+            showlog(adbCmd + output);
+        },
+        3000
+        );
+
+
+}
+void factory_analyzer::testResultTableUpdate(QVector<TestItem>& testItems) {
+    if (testResultTable() == nullptr) {
+        showlog("testResultTableUpdate不存在表格");
+        return;
+    }
+
+    for (const auto& item : testItems) {
+        // 获取当前时间戳
+        // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+
+        // 插入新的一行
+        int row = testResultTable()->rowCount();
+        testResultTable()->insertRow(row);
+
+        // 自动滚动到表格底部
+        testResultTable()->scrollToBottom();
+
+        // 设置每列的数据
+        // testResultTable()->setItem(row, 0, new QTableWidgetItem(timestamp));
+        testResultTable()->setItem(row, 0, new QTableWidgetItem(item.testItem));
+        testResultTable()->setItem(row, 1, new QTableWidgetItem(item.testData));
+
+        // 设置结果列的数据，假设结果是一个字符串
+        QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
+        QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
+
+        // 设置失败状态的背景颜色为红色
+        if (item.testResult == "失败") {
+            resultItem->setBackground(QBrush(Qt::red));
+        } else if (item.testResult == "通过") {
+            resultItem->setBackground(QBrush(Qt::green));
+        }
+
+        testResultTable()->setItem(row, 2, resultItem);
+        testResultTable()->setItem(row, 3, askItem);
+    }
+    // log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+
+    testItems.clear();
+}
+
+void factory_analyzer::startTask() {
+    if (isTestContinue) {
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
+        if (teststate == -1) {
+            showlog("开始测试");
+            TestResult=passValue;
+            TestTime.start();
+            teststate++;
+        }
+
+        if (bulk->is_open) {
+            for (; teststate < conFiglayout->count();) {
+                // qDebug() << "程序在跑" << teststate;
+                if (canGoNext) {
+                    DraggableCheckBox* checkBox =
+                        qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate)->widget());  // 获取复选框
+                    if (checkBox->checkState()) {
+                           showlog("开始测试内容：" + checkBox->text());
+                        executeFunctionByName(checkBox->text());  //执行操作
+
+                        qDebug() << "程序在跑" << teststate << conFiglayout->count();
+
+                        if (teststate >= 1) {
+                            TestItem test;
+                            test.testItem =
+                                qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
+                            test.testData = "";
+                            // if()
+                            //      test.testResult = "失败";
+                            // else
+                                test.testResult = "通过";
+                            test.ask = "通过";
+                            testItems.append(test);
+                            qDebug() << "完成测试表格添加1" + test.testItem;
+                            testResultTableUpdate(testItems);
+                        }
+                        ++teststate;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        if (teststate == conFiglayout->count()&&teststate!=0&&canGoNext) {
+            TestItem test;
+            test.testItem = qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
+            test.testData = "";
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            qDebug() << "完成测试表格添加2" + test.testItem;
+            testResultTableUpdate(testItems);
+
+            if (TestResult == failValue) {
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+
+            } else {
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+
+            }
+
+            showlog("测试结束");
+            teststate = -1;
+            isTestContinue = false;
+        }
+
+        if (!sendCommand_test_result) {
+            TestResult=failValue;
+                if (teststate >= 1) {
+                    TestItem test;
+                    test.testItem =
+                        qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
+                    test.testData = "";
+                    test.testResult = "失败";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    qDebug() << "完成测试表格添加1" + test.testItem;
+                    testResultTableUpdate(testItems);
+
+                }
+                if (TestResult == failValue) {
+                    ui->test_result->setText("FAIL");
+                    ui->test_result->setStyleSheet(
+                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                        "border-radius: 10px; padding: 10px; text-align: center; ");
+
+                } else {
+                    ui->test_result->setText("PASS");
+                    ui->test_result->setStyleSheet(
+                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                        "border-radius: 10px; padding: 10px; text-align: center;");
+
+                }
+            showlog("测试失败结束");
+            teststate = -1;
+            isTestContinue = false;
+        }
+        if (teststate==0) {
+            showlog("有异常测试结束");
+            teststate = -1;
+            isTestContinue = false;
+        }
+
+    }
+}
+
+void factory_analyzer::on_pushButton_40_clicked()
+{
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                   "10px; padding: 10px; text-align: center; ");
+
+ testResultTableInit();
+    canGoNext = 1;
+    isTestContinue = true;
+    while (isTestContinue) {
+     startTask();
+        QCoreApplication::processEvents();
+    }
+}
+
+
+void factory_analyzer::on_pushButton_41_clicked()
+{
+        isTestContinue = false;
+}
+
+
+void factory_analyzer::on_save_config_clicked()
+{
+    showTestIndexes();
+}
+
+
+void factory_analyzer::on_tabWidget_tabBarClicked(int index)
+{
+    if(index!=8){
+        // qDebug() << "ui->widget->hide()";
+            ui->widget->hide();
+    }
+    else
+    {
+        // qDebug() << "ui->widget->show()";
+         ui->widget->show();
+    }
+
+
+}
+
+
+void factory_analyzer::on_pushButton_42_clicked()
+{
+    adb->sendCommand("cat /blackbox/system/system.log | grep \"avc: denied\"",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
+
+}
+
+
+void factory_analyzer::on_pushButton_43_clicked()
+{    adb->sendCommand("setenforce 0",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
+
+}
+
+
+void factory_analyzer::on_pushButton_44_clicked()
+{
+    adb->sendCommand("setenforce 1",
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
+}
+void factory_analyzer::refreshColor1() {
+    int r = ui->R1->value();
+    int g = ui->G1->value();
+    int b = ui->B1->value();
+
+    QString styleSheet = QString("QLineEdit { background-color: rgb(%1, %2, %3); }").arg(r).arg(g).arg(b);
+    ui->light1->setStyleSheet(styleSheet);
+
+
+}
+void factory_analyzer::on_R1_valueChanged(int value) {
+    ui->label_46->setText(QString::number(value));
+
+    refreshColor1();
+}
+
+void factory_analyzer::on_G1_valueChanged(int value) {
+    ui->label_47->setText(QString::number(value));
+
+    refreshColor1();
+}
+
+void factory_analyzer::on_B1_valueChanged(int value) {
+    ui->label_48->setText(QString::number(value));
+
+    refreshColor1();
+}
+
+void factory_analyzer::on_pushButton_45_clicked()
+{
+    int r = ui->R1->value();
+    int g = ui->G1->value();
+
+    QString cmd = QString(
+                      "echo %1 > /sys/class/leds/red/brightness\n"
+                      "echo %2 > /sys/class/leds/green/brightness"
+                      ).arg(r).arg(g);
+
+    adb->sendCommand(cmd,
+                     [this](const QString &output, qint64 elapsed) {
+                         qDebug() << "Elapsed:" << elapsed << "ms";
+                         showlog(output);
+                     });
+
+}
 

@@ -106,9 +106,9 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     file.open(QIODevice::WriteOnly | QIODevice::Append);
     QTextStream text_stream(&file);
 
-    printf("%s", current_date.toUtf8().constData());
+    printf("%s", current_date.toLocal8Bit().constData());
     // 打印 msg 并换行
-    printf("  %s\r\n", msg.toUtf8().constData());
+    printf("  %s\r\n", msg.toLocal8Bit().constData());
     fflush(stdout);
     text_stream << message << "\r\n";
     file.close();
@@ -251,10 +251,12 @@ int main(int argc, char* argv[]) {
     // QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     // QLoggingCategory::setFilterRules("*.debug=true");
 
-    MyApplication a(argc, argv);
 
     // 设置使用 UTF-8 编码
-    QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+    // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
+    MyApplication a(argc, argv);
+
+
     // 安装自定义消息处理程序
     qInstallMessageHandler(customMessageHandler);
 

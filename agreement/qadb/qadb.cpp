@@ -34,7 +34,7 @@ bool Qadb::start() {
         qDebug() << "Failed to start adb shell!";
         return false;
     }
-    qDebug() << "adb shell started";
+    // qDebug() << "adb shell started";
     return true;
 }
 
@@ -102,7 +102,7 @@ void Qadb::onReadyRead() {
 
 void Qadb::onFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    qDebug() << "adb shell finished:" << exitCode << exitStatus;
+    qDebug() << "[Qadb]adb shell finished:" << exitCode << exitStatus;
 
     while (!commandQueue.isEmpty()) {
         // ❶ 先拷贝出来（或 move）
@@ -174,7 +174,7 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
     });
     connect(keyProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
-qDebug() << "adb shell finished:";
+                // qDebug() << "adb shell finished:";
                 // USB拔插导致cat结束时，清理并延时重启
                 keyProcess->kill();
                 keyProcess->deleteLater();

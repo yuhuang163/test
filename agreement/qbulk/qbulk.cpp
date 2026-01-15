@@ -1,5 +1,8 @@
 ﻿#include "qbulk.h"
 #include <QDebug>
+#if _MSC_VER >= 1600
+#    pragma execution_character_set(push, "utf-8")
+#endif
 
 QBulk::QBulk() : handle(nullptr) {
     usb_init(); // 初始化 libusb 0.1
@@ -19,6 +22,9 @@ void QBulk::registerCommand() {
         std::bind(&QBulk::process_dji_amt_task_get_result, this, std::placeholders::_1);
     djifactoryCommandList[djiFactroyCmd_amt_task_get_log] =
         std::bind(&QBulk::process_dji_amt_task_get_log, this, std::placeholders::_1);
+    djifactoryCommandList[djiFactroyCmd_2a_send_file] =
+        std::bind(&QBulk::process_dji_2a_send_file, this, std::placeholders::_1);
+
 
 }
 QBulk::~QBulk() {
@@ -33,12 +39,60 @@ bool QBulk::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber) {
     usb_find_devices();
     struct usb_bus *bus;
     struct usb_device *dev = nullptr;
-
+    const struct usb_interface_descriptor *ifd;
     for (bus = usb_get_busses(); bus; bus = bus->next) {
         for (dev = bus->devices; dev; dev = dev->next) {
-            qDebug() << "[QBulk] Device found VID:" << hex << dev->descriptor.idVendor
+
+            qDebug() << "[QBulk] Device VID:"
+                     << hex << dev->descriptor.idVendor
                      << "PID:" << dev->descriptor.idProduct;
-            if (dev->descriptor.idVendor == vid && dev->descriptor.idProduct == pid) {
+
+            uint16_t vid = dev->descriptor.idVendor;
+            uint16_t pid = dev->descriptor.idProduct;
+
+            UsbVidPid key(vid, pid);
+
+            if (!usbDeviceSet.contains(key)) {
+                usbDeviceSet.insert(key);
+
+                emit usbDeviceAdded(vid, pid);
+
+                qDebug().nospace()
+                    << "[QBulk] Found new device VID=0x"
+                    << hex << vid
+                    << " PID=0x"
+                    << pid;
+            }
+            // 遍历 configuration
+            for (int cfg = 0; cfg < dev->descriptor.bNumConfigurations; ++cfg) {
+                const struct usb_config_descriptor *config =
+                    &dev->config[cfg];
+
+                // 遍历 interface
+                for (int ifc = 0; ifc < config->bNumInterfaces; ++ifc) {
+                    const struct usb_interface *interface =
+                        &config->interface[ifc];
+
+                    // 遍历 altsetting
+                    for (int alt = 0; alt < interface->num_altsetting; ++alt) {
+                        ifd =&interface->altsetting[alt];
+
+                        qDebug() << "    MI:"
+                                 << QString("MI_%1")
+                                        .arg(ifd->bInterfaceNumber, 2, 10, QChar('0'))
+                                 << "Class:"
+                                 << QString("0x%1")
+                                        .arg(ifd->bInterfaceClass, 2, 16, QChar('0'))
+                                 << "EPs:"
+                                 << ifd->bNumEndpoints;
+                    }
+                }
+            }
+
+            if (dev->descriptor.idVendor == vid &&
+                dev->descriptor.idProduct == pid&&
+                ifd->bInterfaceNumber==interfaceNumber)
+                 {
                 goto found_device;
             }
         }
@@ -65,7 +119,65 @@ found_device:
     qDebug() << "[QBulk] Device opened and interface claimed successfully.";
     return true;
 }
+bool QBulk::searchDevice()
+{
+    qDebug() << "[QBulk] searchDevice USB devices...";
 
+    usb_find_busses();
+    usb_find_devices();
+
+    QSet<UsbVidPid> currentDevices;
+
+    struct usb_bus *bus;
+    struct usb_device *dev = nullptr;
+    const struct usb_interface_descriptor *ifd;
+
+    for (bus = usb_get_busses(); bus; bus = bus->next) {
+        for (dev = bus->devices; dev; dev = dev->next) {
+
+            uint16_t vid = dev->descriptor.idVendor;
+            uint16_t pid = dev->descriptor.idProduct;
+
+            qDebug() << "[QBulk] Device VID:"
+                     << hex << vid
+                     << "PID:" << pid;
+
+            UsbVidPid key(vid, pid);
+            currentDevices.insert(key);
+
+            // ===== 遍历 interface（保留你原逻辑）=====
+            for (int cfg = 0; cfg < dev->descriptor.bNumConfigurations; ++cfg) {
+                const struct usb_config_descriptor *config = &dev->config[cfg];
+
+                for (int ifc = 0; ifc < config->bNumInterfaces; ++ifc) {
+                    const struct usb_interface *interface =
+                        &config->interface[ifc];
+
+                    for (int alt = 0; alt < interface->num_altsetting; ++alt) {
+                        ifd = &interface->altsetting[alt];
+
+                        qDebug() << "    MI:"
+                                 << QString("MI_%1")
+                                        .arg(ifd->bInterfaceNumber, 2, 10, QChar('0'))
+                                 << "Class:"
+                                 << QString("0x%1")
+                                        .arg(ifd->bInterfaceClass, 2, 16, QChar('0'))
+                                 << "EPs:"
+                                 << ifd->bNumEndpoints;
+                    }
+                }
+            }
+        }
+    }
+
+    // ✅ 更新内部缓存
+    usbDeviceSet = currentDevices;
+
+    // ✅ 一次性通知：当前完整设备列表
+    emit usbDeviceListReady(usbDeviceSet);
+
+    return !usbDeviceSet.isEmpty();
+}
 
 void QBulk::closeDevice() {
     if (handle) {
@@ -125,7 +237,8 @@ bool QBulk::bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout) {
 
     // ⭐ 设备已断开 or 句柄失效
     if (transferred == USB_ERROR_NOT_FOUND ||
-        transferred == USB_ERROR_NO_DEVICE) {
+        transferred == USB_ERROR_NO_DEVICE||
+        transferred ==  USB_ERROR_NOT_DATA) {
 
         qDebug() << "[QBulk] USB device disconnected, releasing resources";
 
@@ -205,7 +318,7 @@ QByteArray QBulk::buildPacket( uint8_t receiver,
 
     return packet;
 }
-bool QBulk::bulkWrite(unsigned char ep, const QByteArray &data,
+bool QBulk::bulkWrite( const QByteArray &data,
                       unsigned int timeout) {
     if (!handle) {
         qDebug() << "[QBulk] bulkWrite failed: handle is null.";
@@ -221,17 +334,17 @@ bool QBulk::bulkWrite(unsigned char ep, const QByteArray &data,
 
 
     int transferred =
-        usb_bulk_write(handle, ep,
+        usb_bulk_write(handle, ep_numer,
                                      reinterpret_cast<char *>(const_cast<unsigned char *>(
                                          reinterpret_cast<const unsigned char *>(data.data()))),
                                      data.size(), timeout);
-    if (transferred >= 0) {
+    if (transferred > 0) {
         // qDebug() << "[QBulk] bulkWrite success, transferred bytes:" << transferred
-        //          << "Endpoint:" << hex << int(ep);
+        //          << "Endpoint:" << hex << int(ep_numer);
         return true;
     } else {
         qDebug() << "[QBulk] bulkWrite failed, error:" << transferred
-                 << "Endpoint:" << hex << int(ep);
+                 << "Endpoint:" << hex << int(ep_numer);
         return false;
     }
 
@@ -261,9 +374,10 @@ void QBulk::get_dev_ver() {
     QByteArray v1data;
 
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x01, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
+
 
 void QBulk::set_amt_clean_flag(){
     QByteArray v1data;
@@ -272,7 +386,7 @@ void QBulk::set_amt_clean_flag(){
     v1data.append("clear_log");
     v1data.append(char(0x00));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
 void QBulk::set_amt_check_clean_flag(){
     QByteArray v1data;
@@ -282,10 +396,243 @@ void QBulk::set_amt_check_clean_flag(){
 
     v1data.append(char(0x00));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
+void QBulk::set_sys_poweroff(){//0x0a00 set system power_level: 5
+    QByteArray v1data;
+
+    v1data.append(char(0x82));//01 00 0001 设置为2，表明sysmode消息
+    v1data.append(char(0x05));//s5关机的意思
+
+    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x44, v1data);
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
+void QBulk::set_2a_send_file_data()
+{
+    if (tow_a_filepath.isEmpty()) {
+        qWarning() << "[2A] file path is empty";
+        return;
+    }
+
+    if (two_a_pack_size == 0) {
+        qWarning() << "[2A] pack_size is 0";
+        return;
+    }
+
+    QFile file(tow_a_filepath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "[2A] open file failed:" << tow_a_filepath;
+        return;
+    }
+
+    uint32_t seq = 0;
+    qint64 fileSize = file.size();
+    qint64 sentBytes = 0;
+    while (!file.atEnd()) {
+
+        QByteArray payload = file.read(two_a_pack_size);
+        if (payload.isEmpty())
+            break;
+
+        QByteArray v1data;
+
+        // ① 请求类型
+        v1data.append(char(0x04));
+
+        // ② seq_num（小端）
+        v1data.append(reinterpret_cast<const char *>(&seq),
+                      sizeof(uint32_t));
+
+        // ③ payload
+        v1data.append(payload);
+
+        // ④ 组包
+        QByteArray pkt = buildPacket(
+            HOST_ID_FROM_16BIT_TO_8BIT(0x0801),
+            2,
+            0x00,
+            0x2a,
+            v1data
+            );
+
+        // ⑤ 发送
+        bulkWrite(pkt, 1000);
+
+        qDebug() << "[2A] send seq =" << seq
+                 << "payload =" << payload.size();
+
+        seq++;
+        two_a_can_send=0;
+
+        while (!two_a_can_send)
+                QCoreApplication::processEvents();
+
+        sentBytes += payload.size();
+            int progress = int(sentBytes * 100 / fileSize);
+        emit send2aprogress(progress);
 
 }
 
+    file.close();
+}
+
+
+void QBulk::set_2a_send_file_info_check()
+{
+    if (tow_a_filepath.isEmpty()) {
+        qWarning() << "[2A] file path is empty";
+        return;
+    }
+
+    QByteArray v1data;
+
+    // ① 请求类型
+    v1data.append(char(0x03));   // 请求接收文件 + 校验
+
+    // ② 打开文件
+    QFile file(tow_a_filepath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "[2A] open file failed:" << tow_a_filepath;
+        return;
+    }
+
+    // ③ MD5 计算（使用 md5_append）
+    md5_state_t md5;
+    md5_byte_t digest[16];
+
+    md5_init(&md5);
+
+    while (!file.atEnd()) {
+        QByteArray chunk = file.read(4096);
+        if (!chunk.isEmpty()) {
+            md5_append(
+                &md5,
+                reinterpret_cast<const md5_byte_t *>(chunk.constData()),
+                chunk.size()
+                );
+        }
+    }
+
+    md5_finish(&md5, digest);
+
+    // ④ 添加 md5（uint8_t[16]）
+    v1data.append(reinterpret_cast<const char *>(digest), 16);
+
+    // 调试输出
+    QByteArray md5Hex(reinterpret_cast<const char *>(digest), 16);
+    qDebug() << "[2A] file path =" << tow_a_filepath;
+    qDebug() << "[2A] file md5  =" << md5Hex.toHex();
+
+    // ⑤ 组包并发送
+    QByteArray pkt = buildPacket(
+        HOST_ID_FROM_16BIT_TO_8BIT(0x0801),
+        2,
+        0x00,
+        0x2a,
+        v1data
+        );
+
+    bulkWrite(pkt, 1000);
+}
+
+
+void QBulk::set_2a_send_file_info(const QString &filepath){
+    QByteArray v1data;
+     tow_a_filepath=filepath;
+    // ① 请求类型
+    v1data.append(char(0x01)); // 请求接收文件
+
+    // ② 打开文件
+    QFile file(filepath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "open file failed:" << filepath;
+        return;
+    }
+
+    // ③ 文件大小 uint32_t
+    quint32 fileSize = file.size();
+    v1data.append(reinterpret_cast<const char*>(&fileSize), sizeof(fileSize));
+
+    // ④ 文件名（只取名字，不要路径）
+    QString fileName = QFileInfo(filepath).fileName();
+    QByteArray fileNameBytes = fileName.toUtf8();
+
+    // ⑤ 文件名长度 uint8_t
+    quint8 fileNameLen = static_cast<quint8>(fileNameBytes.size());
+    v1data.append(char(fileNameLen));
+
+    // ⑥ 文件名本体
+    v1data.append(fileNameBytes);
+
+
+    qDebug() << "[2A] file size  =" << fileSize;
+
+    v1data.append(char(0x00)); //拓展的
+    v1data.append(char(0x01)); //拓展的
+    v1data.append(char(0x01)); //拓展的
+
+    QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+
+}
+void QBulk::set_amt_task_test(const QString &cmdStr,uint32_t timeout){
+
+    emit send_bulk_data("执行脚本："+cmdStr);
+
+    QString input = cmdStr.trimmed();
+    qDebug() << "[ComboBox] raw text =" << input;
+
+    if (input.isEmpty()) {
+        qWarning() << "[ComboBox] empty text";
+        return;
+    }
+
+    // 1️⃣ 按空格分割（支持多个空格）
+    QStringList parts =
+        input.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    qDebug() << "[ComboBox] split parts =" << parts;
+
+    if (parts.isEmpty()) {
+        qWarning() << "[ComboBox] no parts after split";
+        return;
+    }
+
+    // 2️⃣ 第一个是脚本名
+    QString cmd = parts.takeFirst();
+    qDebug() << "[ComboBox] cmd =" << cmd;
+
+    // 3️⃣ 剩余的是参数
+    QByteArray param;
+    if (!parts.isEmpty()) {
+        param = parts.join(' ').toUtf8();
+    }
+
+    qDebug() << "[ComboBox] param(str) =" << QString::fromUtf8(param);
+    qDebug() << "[ComboBox] param(hex) =" << param.toHex(' ');
+    qDebug() << "[ComboBox] param len =" << param.size();
+
+
+
+    set_amt_task_start(cmd,timeout,param);
+
+    waitWork(1000);
+    is_running_amt=1;
+    while(is_running_amt)
+    {
+        set_amt_task_get_result();
+        waitWork(1000);
+
+    }
+    set_amt_task_get_log(0);
+}
+void QBulk::waitWork(int ms) {
+    QTime t;
+    t.start();
+    while (t.elapsed() < ms)
+        QCoreApplication::processEvents();
+}
 void QBulk::set_amt_task_start(const QString &cmdStr,
                                uint32_t timeout,
                                const QByteArray &param)
@@ -329,7 +676,7 @@ void QBulk::set_amt_task_start(const QString &cmdStr,
         payload
         );
 
-    bulkWrite(0x05, pkt, 1000);
+    bulkWrite( pkt, 1000);
 }
 
 
@@ -338,17 +685,16 @@ void QBulk::set_amt_task_get_result(){
     uint32_t cmdid    = m_cmdId;   // ✅ 内部自增
     v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf6, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
 
 
-void QBulk::set_amt_task_get_log(){
+void QBulk::set_amt_task_get_log(  uint32_t offset){
     QByteArray v1data;
     uint32_t cmdid    = m_cmdId;   // ✅ 内部自增
     uint16_t metaId=0xffff;// 没有用
     uint8_t  metaDataType=0x01;// 没有用
-    uint32_t offset=0;
     uint32_t fetchLen=4096;
 
     v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
@@ -364,13 +710,13 @@ void QBulk::set_amt_task_get_log(){
     // fetchlength
     v1data.append(reinterpret_cast<const char*>(&fetchLen), sizeof(fetchLen));
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf8, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
 void QBulk::set_amt_task_rst(){
     QByteArray v1data;
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf7, v1data);
-    bulkWrite(0x05, pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
+    bulkWrite( pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 
 }
 void QBulk::parseCmd(QByteArray &buffer) {
@@ -441,6 +787,8 @@ void QBulk::parseCmd(QByteArray &buffer) {
 
         if(cmdID==0X81)
             break;
+        if(cmdSet==0X02)
+            break;
          qDebug() << "USB RX:" << hexdata;
 
         qDebug() << "[QBulk] handlePacket: version=" << version
@@ -462,7 +810,7 @@ void QBulk::parseCmd(QByteArray &buffer) {
                 .toUpper();
 
         }}else{
-            qDebug() << QString(" cmd id: 0x%1 no for us")
+            qDebug() << QString(" cmd set: 0x%1 no for us")
             .arg(cmdSet, 2, 16, QChar('0'))
                 .toUpper();
         }
@@ -473,121 +821,6 @@ void QBulk::parseCmd(QByteArray &buffer) {
 
     buffer = buf; // 保留半包
     // qDebug() << "[QBulk] parseCmd exit, remaining buffer size:" << buffer.size();
-}
-static const uint8_t crc8_table[256] = {
-    0x00, 0x5e, 0xbc, 0xe2, 0x61, 0x3f, 0xdd, 0x83, 0xc2, 0x9c, 0x7e, 0x20, 0xa3, 0xfd, 0x1f, 0x41,
-    0x9d, 0xc3, 0x21, 0x7f, 0xfc, 0xa2, 0x40, 0x1e, 0x5f, 0x01, 0xe3, 0xbd, 0x3e, 0x60, 0x82, 0xdc,
-    0x23, 0x7d, 0x9f, 0xc1, 0x42, 0x1c, 0xfe, 0xa0, 0xe1, 0xbf, 0x5d, 0x03, 0x80, 0xde, 0x3c, 0x62,
-    0xbe, 0xe0, 0x02, 0x5c, 0xdf, 0x81, 0x63, 0x3d, 0x7c, 0x22, 0xc0, 0x9e, 0x1d, 0x43, 0xa1, 0xff,
-    0x46, 0x18, 0xfa, 0xa4, 0x27, 0x79, 0x9b, 0xc5, 0x84, 0xda, 0x38, 0x66, 0xe5, 0xbb, 0x59, 0x07,
-    0xdb, 0x85, 0x67, 0x39, 0xba, 0xe4, 0x06, 0x58, 0x19, 0x47, 0xa5, 0xfb, 0x78, 0x26, 0xc4, 0x9a,
-    0x65, 0x3b, 0xd9, 0x87, 0x04, 0x5a, 0xb8, 0xe6, 0xa7, 0xf9, 0x1b, 0x45, 0xc6, 0x98, 0x7a, 0x24,
-    0xf8, 0xa6, 0x44, 0x1a, 0x99, 0xc7, 0x25, 0x7b, 0x3a, 0x64, 0x86, 0xd8, 0x5b, 0x05, 0xe7, 0xb9,
-    0x8c, 0xd2, 0x30, 0x6e, 0xed, 0xb3, 0x51, 0x0f, 0x4e, 0x10, 0xf2, 0xac, 0x2f, 0x71, 0x93, 0xcd,
-    0x11, 0x4f, 0xad, 0xf3, 0x70, 0x2e, 0xcc, 0x92, 0xd3, 0x8d, 0x6f, 0x31, 0xb2, 0xec, 0x0e, 0x50,
-    0xaf, 0xf1, 0x13, 0x4d, 0xce, 0x90, 0x72, 0x2c, 0x6d, 0x33, 0xd1, 0x8f, 0x0c, 0x52, 0xb0, 0xee,
-    0x32, 0x6c, 0x8e, 0xd0, 0x53, 0x0d, 0xef, 0xb1, 0xf0, 0xae, 0x4c, 0x12, 0x91, 0xcf, 0x2d, 0x73,
-    0xca, 0x94, 0x76, 0x28, 0xab, 0xf5, 0x17, 0x49, 0x08, 0x56, 0xb4, 0xea, 0x69, 0x37, 0xd5, 0x8b,
-    0x57, 0x09, 0xeb, 0xb5, 0x36, 0x68, 0x8a, 0xd4, 0x95, 0xcb, 0x29, 0x77, 0xf4, 0xaa, 0x48, 0x16,
-    0xe9, 0xb7, 0x55, 0x0b, 0x88, 0xd6, 0x34, 0x6a, 0x2b, 0x75, 0x97, 0xc9, 0x4a, 0x14, 0xf6, 0xa8,
-    0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35,
-};
-
-uint8_t QBulk::crc8_calc(const uint8_t *data, uint32_t len, uint8_t init_crc) {
-    uint8_t crc = init_crc;
-    while (len--) {
-        uint8_t byte = *data++ ^ crc;
-        crc = crc8_table[byte];
-    }
-    return crc;
-}
-bool QBulk::checkHeaderCRC(const QByteArray &packet) {
-    const int headerCrcIndex = 3; // CRC-8 在 packet[3]
-    if (packet.size() < 4) return false; // 包太短，无法校验
-
-    quint8 crcInPacket = quint8(packet[headerCrcIndex]);
-
-    // 计算 CRC-8，范围是 sync + Ver/Len 字节，也就是 packet[0..2]
-    const uint8_t *data = reinterpret_cast<const uint8_t *>(packet.constData());
-    uint32_t dataLen = 3; // 包头前三字节
-    uint8_t crcCalc = crc8_calc(data, dataLen, DUSS_MB_PACKAGE_V1_CRCH_INIT); // 初始值按协议设定
-
-    if (crcCalc != crcInPacket) {
-        qDebug() << "[QBulk] Header CRC mismatch, calculated:" << hex << int(crcCalc)
-        << "expected:" << hex << int(crcInPacket);
-        return false;
-    }
-
-    return true;
-}
-static const uint16_t crc16_table[256] = {
-    0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
-    0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
-    0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
-    0x9cc9, 0x8d40, 0xbfdb, 0xae52, 0xdaed, 0xcb64, 0xf9ff, 0xe876,
-    0x2102, 0x308b, 0x0210, 0x1399, 0x6726, 0x76af, 0x4434, 0x55bd,
-    0xad4a, 0xbcc3, 0x8e58, 0x9fd1, 0xeb6e, 0xfae7, 0xc87c, 0xd9f5,
-    0x3183, 0x200a, 0x1291, 0x0318, 0x77a7, 0x662e, 0x54b5, 0x453c,
-    0xbdcb, 0xac42, 0x9ed9, 0x8f50, 0xfbef, 0xea66, 0xd8fd, 0xc974,
-    0x4204, 0x538d, 0x6116, 0x709f, 0x0420, 0x15a9, 0x2732, 0x36bb,
-    0xce4c, 0xdfc5, 0xed5e, 0xfcd7, 0x8868, 0x99e1, 0xab7a, 0xbaf3,
-    0x5285, 0x430c, 0x7197, 0x601e, 0x14a1, 0x0528, 0x37b3, 0x263a,
-    0xdecd, 0xcf44, 0xfddf, 0xec56, 0x98e9, 0x8960, 0xbbfb, 0xaa72,
-    0x6306, 0x728f, 0x4014, 0x519d, 0x2522, 0x34ab, 0x0630, 0x17b9,
-    0xef4e, 0xfec7, 0xcc5c, 0xddd5, 0xa96a, 0xb8e3, 0x8a78, 0x9bf1,
-    0x7387, 0x620e, 0x5095, 0x411c, 0x35a3, 0x242a, 0x16b1, 0x0738,
-    0xffcf, 0xee46, 0xdcdd, 0xcd54, 0xb9eb, 0xa862, 0x9af9, 0x8b70,
-    0x8408, 0x9581, 0xa71a, 0xb693, 0xc22c, 0xd3a5, 0xe13e, 0xf0b7,
-    0x0840, 0x19c9, 0x2b52, 0x3adb, 0x4e64, 0x5fed, 0x6d76, 0x7cff,
-    0x9489, 0x8500, 0xb79b, 0xa612, 0xd2ad, 0xc324, 0xf1bf, 0xe036,
-    0x18c1, 0x0948, 0x3bd3, 0x2a5a, 0x5ee5, 0x4f6c, 0x7df7, 0x6c7e,
-    0xa50a, 0xb483, 0x8618, 0x9791, 0xe32e, 0xf2a7, 0xc03c, 0xd1b5,
-    0x2942, 0x38cb, 0x0a50, 0x1bd9, 0x6f66, 0x7eef, 0x4c74, 0x5dfd,
-    0xb58b, 0xa402, 0x9699, 0x8710, 0xf3af, 0xe226, 0xd0bd, 0xc134,
-    0x39c3, 0x284a, 0x1ad1, 0x0b58, 0x7fe7, 0x6e6e, 0x5cf5, 0x4d7c,
-    0xc60c, 0xd785, 0xe51e, 0xf497, 0x8028, 0x91a1, 0xa33a, 0xb2b3,
-    0x4a44, 0x5bcd, 0x6956, 0x78df, 0x0c60, 0x1de9, 0x2f72, 0x3efb,
-    0xd68d, 0xc704, 0xf59f, 0xe416, 0x90a9, 0x8120, 0xb3bb, 0xa232,
-    0x5ac5, 0x4b4c, 0x79d7, 0x685e, 0x1ce1, 0x0d68, 0x3ff3, 0x2e7a,
-    0xe70e, 0xf687, 0xc41c, 0xd595, 0xa12a, 0xb0a3, 0x8238, 0x93b1,
-    0x6b46, 0x7acf, 0x4854, 0x59dd, 0x2d62, 0x3ceb, 0x0e70, 0x1ff9,
-    0xf78f, 0xe606, 0xd49d, 0xc514, 0xb1ab, 0xa022, 0x92b9, 0x8330,
-    0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78,
-};
-
-uint16_t QBulk::duss_util_crc16_calc(const uint8_t *data, uint32_t len, uint16_t init_crc) {
-    const uint8_t BITS_OF_BYTE = 8;
-    const uint16_t MASK_BIT_BYTE = 0xFF;
-
-    while (len--) {
-        uint8_t byte = *data++;
-        init_crc = ((init_crc >> BITS_OF_BYTE) & MASK_BIT_BYTE) ^ crc16_table[(uint8_t)init_crc ^ byte];
-    }
-
-    return init_crc;
-}
-
-bool QBulk::checkDataCRC(const QByteArray &packet) {
-    const int crcSize = 2;
-    if (packet.size() < crcSize) return false;
-
-    // 包尾的 CRC-16
-    quint16 crcInPacket = quint8(packet[packet.size() - 2]) | (quint8(packet[packet.size() - 1]) << 8);
-
-    // 数据区：从 sync (0) 到 数据末尾（不包含包尾 CRC16）
-    const uint8_t *data = reinterpret_cast<const uint8_t *>(packet.constData());
-    uint32_t dataLen = packet.size() - crcSize;
-
-    // 计算 CRC16
-    uint16_t crcCalc = duss_util_crc16_calc(data, dataLen, DUSS_MB_PACKAGE_V1_CRC_INIT); // 初始值可根据协议调整
-
-    if (crcCalc != crcInPacket) {
-        qDebug() << "[QBulk] CRC16 mismatch, calculated:" << hex << crcCalc
-                 << "expected:" << hex << crcInPacket;
-        return false;
-    }
-
-    return true;
 }
 
 
@@ -601,10 +834,72 @@ void QBulk::process_dji_amt_task_start(QByteArray& f){
     // 1️⃣ ret_code
     info.retCode = p[0];
     if(info.retCode==0)
-        emit sendGetDjiResponse(1);
+        ; // emit sendGetDjiResponse(1);
     else
         emit sendGetDjiResponse(info.retCode);
-}void QBulk::process_dji_amt_task_get_result(QByteArray& f){
+}
+
+
+static QString amtAckCodeToString(int code)
+{
+    switch (static_cast<dji_amt_task_ack_code_e>(code)) {
+    case AMT_TASK_COMMON_ACK_SUCCESS:
+        return QString("Success");
+
+    case AMT_TASK_COMMON_ACK_NOTSUPPORT:
+        return QString("不支持命令");
+
+    case AMT_TASK_COMMON_ACK_FAILURE:
+        return QString("执行失败");
+
+    case AMT_TASK_COMMON_ACK_INVALID_STATE:
+        return QString("无效的设备状态");
+
+    case AMT_TASK_COMMON_ACK_OUTOFTASK:
+        return QString("任务超数量了");
+
+    case AMT_TASK_COMMON_ACK_ILLEGAL:
+        return QString("非法参数");
+
+    default:
+        return QString("未知返回值 (0x%1)")
+            .arg(code, 2, 16, QLatin1Char('0'));
+    }
+}
+ QString QBulk::amtTaskResultToString(uint8_t code)
+{
+    switch (code) {
+    case AMT_TASK_RESULT_PASS:
+        is_running_amt=0;
+        return "执行成功";
+    case AMT_TASK_RESULT_ONGOING:
+        is_running_amt=1;
+        return "任务进行中";
+    case AMT_TASK_RESULT_TIMER_ERROR:
+          is_running_amt=0;
+        return "定时器错误";
+    case AMT_TASK_RESULT_EXECUTE_SHELL_ERROR:
+          is_running_amt=0;
+        return "脚本执行失败";
+    case AMT_TASK_RESULT_NOT_FIND_TASK_INDEX:
+          is_running_amt=0;
+        return "未找到任务索引";
+    case AMT_TASK_RESULT_TIMEOUT:
+         is_running_amt=0;
+        return "任务超时";
+    case AMT_TASK_RESULT_BEING_STOPPED:
+          is_running_amt=0;
+        return "任务被中止";
+    case AMT_TASK_RESULT_GENERIC_ERROR:
+          is_running_amt=0;
+        return "通用错误";
+    default:
+        return QString("未知错误 (0x%1)")
+            .arg(code, 2, 16, QChar('0')).toUpper();
+    }
+}
+
+void QBulk::process_dji_amt_task_get_result(QByteArray& f){
     struct DeviceInfo {
         uint8_t retCode;
     };
@@ -614,10 +909,128 @@ void QBulk::process_dji_amt_task_start(QByteArray& f){
     // 1️⃣ ret_code
     info.retCode = p[0];
     if(info.retCode==0)
-        emit sendGetDjiResponse(1);
+    {
+
+        emit send_bulk_data("脚本执行状态："+amtTaskResultToString(p[1]));
+        if(p[1]==AMT_TASK_RESULT_ONGOING)
+            ;
+        else if(p[1]==AMT_TASK_RESULT_PASS)
+            emit sendGetDjiResponse(1);
+        else
+            emit sendGetDjiResponse(info.retCode);
+    }
     else
+    {
         emit sendGetDjiResponse(info.retCode);
+        emit send_bulk_data("amt执行错误码翻译为："+amtAckCodeToString(info.retCode));
+        emit send_bulk_data("脚本执行状态："+amtTaskResultToString(p[1]));
+    }
+
+
 }
+
+
+void QBulk::process_dji_2a_send_file(QByteArray &f)
+{
+
+
+    const uint8_t *p =
+        reinterpret_cast<const uint8_t *>(f.constData());
+
+    uint8_t retCode = p[0];
+    if (retCode == 0x00) {
+        emit sendGetDjiResponse(1);   // 成功
+    } else {
+        emit sendGetDjiResponse(retCode);
+    }
+
+    if(f.size()==5)
+    {
+        uint32_t window_size =
+            static_cast<uint32_t>(p[1]) |
+            (static_cast<uint32_t>(p[2]) << 8) |
+            (static_cast<uint32_t>(p[3]) << 16) |
+            (static_cast<uint32_t>(p[4]) << 24);
+        emit send_bulk_data("当前收到的窗口内的最大值"+QString::number(window_size));
+        qDebug() << "当前收到的窗口内的最大值"<<window_size;
+        two_a_can_send=1;
+        return;
+    }
+    if(f.size()==1)
+    {
+        emit send_bulk_data("结束发包");
+        qDebug() << "结束发包";
+        return;
+    }
+
+    // 小端解析
+     two_a_pack_size =
+        static_cast<uint16_t>(p[1]) |
+        (static_cast<uint16_t>(p[2]) << 8);
+
+     two_a_window_size =
+        static_cast<uint16_t>(p[3]) |
+        (static_cast<uint16_t>(p[4]) << 8);
+
+    uint8_t checksum_type = p[5];
+    uint8_t protocol_type = p[6];
+
+    // ---- 日志 ----
+    qDebug() << "[2A]"
+             << "retCode =" << QString("0x%1").arg(retCode, 2, 16, QLatin1Char('0'))
+             << "pack_size =" << two_a_pack_size
+             << "window_size =" << two_a_window_size
+             << "checksum_type =" << checksum_type
+             << "protocol_type =" << protocol_type;
+
+
+
+    // checksum_type
+    // DJI_FILE_TRANS_CHECKSUM_MD5	0X01	  MD5校验
+    // DJI_FILE_TRANS_CHECKSUM_CRC16	0X02	  CRC16校验
+    // DJI_FILE_TRANS_CHECKSUM_CRC32	0X03	 CRC32校验
+
+    // protocol_type
+    // DJI_TRANS_EVERY_PACK_ACK	0X00	每个包ack
+    // DJI_TRANS_LOST_LIST_ACK	0X01	丢包列表ack
+
+    // DJI_DUSS_MB_RET_OK = 0, // 回复OK
+    // DJI_DUSS_MB_RET_ACK = 1, // 回复ACK
+    // DJI_DUSS_MB_RET_INVALID_CMD = 224, // 命令无效
+    // DJI_DUSS_MB_RET_TIMEOUT = 225, // 超时
+    // DJI_DUSS_MB_RET_OUT_OF_MEMORY = 226, // 超出内存
+    // DJI_DUSS_MB_RET_INVALID_PARAM = 227, // 参数无效
+    // DJI_DUSS_MB_RET_INVALID_STATE = 228, // 状态无效
+    // DJI_DUSS_MB_RET_TIME_NOT_SYNC = 229, // 时间不同步
+    // DJI_DUSS_MB_RET_SET_PARAM_FAILED = 230, // 设置参数失败
+    // DJI_DUSS_MB_RET_GET_PARAM_FAILED = 231, // 获取参数失败
+    // DJI_DUSS_MB_RET_SDCARD_NOT_INSERTED = 232, // 未插SD卡
+    // DJI_DUSS_MB_RET_SDCARD_FULL = 233, // SD卡满
+    // DJI_DUSS_MB_RET_SDCARD_ERR = 234, // SD卡错误
+    // DJI_DUSS_MB_RET_SENSOR_ERR = 235, // 传感器错误
+    // DJI_DUSS_MB_RET_CRITICAL_ERR = 236, // 严重错误
+    // DJI_DUSS_MB_RET_PRARM_LEN_TOO_LONG = 237, // 参数长度超长
+    // DJI_DUSS_MB_RET_FW_SEQNUM_NOT_IN_ORDER = 240, // 固件序列不在命令中
+    // DJI_DUSS_MB_RET_FW_EXCEED_FLASH = 241, // 固件超出flash内存范围
+    // DJI_DUSS_MB_RET_FW_CHECK_ERR = 242, // 固件检查失败
+    // DJI_DUSS_MB_RET_FW_FLASH_ERASE_ERR = 243, // 固件flash擦除失败
+    // DJI_DUSS_MB_RET_FW_FLASH_PROGRAM_ERR = 244, // 固件flash编程失败
+    // DJI_DUSS_MB_RET_FW_UPDATE_STATE_ERR = 245, // 固件升级状态错误
+    // DJI_DUSS_MB_RET_FW_INVALID_TYPE = 246, // 固件类型无效
+    // DJI_DUSS_MB_RET_FW_UPDATE_WAIT_FINISH = 247, // 固件升级等待完成
+    // DJI_DUSS_MB_RET_FW_UPDATE_RC_DISCONNECT = 248, // 固件升级遥控器断连
+    // DJI_DUSS_MB_RET_FW_UPGRADE_MOTOR_RUNNING = 249, // 固件升级电机运转
+    // DJI_DUSS_MB_RET_HARDWARE_ERR = 250, // 硬件错误
+    // DJI_DUSS_MB_RET_DEV_BAT_NOT_ENOUGH = 251, // 设备电池电量不足
+    // DJI_DUSS_MB_RET_DEV_UAV_DISCONNECT = 252, // 设备飞机失连
+    // DJI_DUSS_MB_RET_FW_FLASH_ERASING = 253, // 固件flash擦除中
+    // DJI_DUSS_MB_RET_CHECK_CONNECTION_ERR = 254, // 检查连接错误
+    // DJI_DUSS_MB_RET_UNSPECIFIED = 255, // 保留
+    // ---- 业务处理 ----
+
+}
+
+//test_wakealarm_interrupts.sh  研究看看日志少捞的问题
 void QBulk::process_dji_amt_task_get_log(QByteArray &f)
 {
     if (f.size() < 9) {
@@ -632,7 +1045,7 @@ void QBulk::process_dji_amt_task_get_log(QByteArray &f)
     uint8_t retCode = p[0];
 
     if (retCode == 0)
-        emit sendGetDjiResponse(1);
+      ;//  emit sendGetDjiResponse(1);
     else
         emit sendGetDjiResponse(retCode);
 
@@ -670,9 +1083,9 @@ void QBulk::process_dji_amt_task_get_log(QByteArray &f)
     }
     emit send_bulk_data(QString("执行日志：%1").arg(QString::fromUtf8(metaData)));
     // 5️⃣ 如果还有剩余日志，继续 fetch
-    // if (remainLen > 0) {
-    //     requestNextLog();   // 你自己的下一包请求
-    // }
+    if (remainLen > 0) {
+        set_amt_task_get_log(actualLen);
+    }
 }
 
 void QBulk::process_dji_factory_mode_handle(QByteArray& f){
@@ -757,7 +1170,5 @@ void QBulk::process_djiFactroyCmd_get_version(QByteArray& f){
         << QString("fw=%1").arg(info.firmwareVersion);
 
      emit send_bulk_data(QString("版本号=%1").arg(info.firmwareVersion));
-
-
 
 }

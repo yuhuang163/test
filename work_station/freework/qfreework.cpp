@@ -386,8 +386,8 @@ void QFreeWork::startTask() {
                     DraggableCheckBox* checkBox =
                         qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate)->widget());  // 获取复选框
                     if (checkBox->checkState()) {
+                        showlog("开始测试内容：" + checkBox->text());
                         executeFunctionByName(checkBox->text());  //执行操作
-                        showlog("正在测试内容：" + checkBox->text());
                         qDebug() << "程序在跑" << teststate << conFiglayout->count();
 
                         if (teststate >= 1) {
@@ -409,7 +409,7 @@ void QFreeWork::startTask() {
             }
         }
 
-        if (teststate == conFiglayout->count()) {
+        if (teststate == conFiglayout->count()&&teststate!=0) {
             TestItem test;
             test.testItem = qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
             test.testData = "";
