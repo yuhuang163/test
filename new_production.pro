@@ -80,6 +80,7 @@ INCLUDEPATH += qlog
 SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
+    advance/imagewindow/myopenglwidget.cpp \
     agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
     agreement/qbrush/qproduct.cpp \
@@ -148,6 +149,7 @@ SOURCES += \
 HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
+    advance/imagewindow/myopenglwidget.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \
     agreement/qbrush/qproduct.h \

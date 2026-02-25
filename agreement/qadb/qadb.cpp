@@ -147,7 +147,7 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
     keyProcess = new QProcess(this);
 
     // adb shell 命令，每次输出一条事件
-    QString cmd = QString("adb shell cat %1").arg(deviceEvent);
+    QString cmd = deviceEvent;
 
     keyProcess->setProcessChannelMode(QProcess::MergedChannels);
 
@@ -162,13 +162,22 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
             quint16 type = *(quint16*)(p+16);
             quint16 code = *(quint16*)(p+18);
             quint32 value = *(quint32*)(p+20);
-
+            // qDebug() << "已经在监控"<<code<<value;
             if(type != 1) continue; // EV_KEY
             if(code == 357 && value == 1) {
-                if(keyCallback) keyCallback("power_key");
+                if(keyCallback) keyCallback("电源按键");
             }
             if(code == 355 && value == 1) {
-                if(keyCallback) keyCallback("shutter_key");
+                if(keyCallback) keyCallback("录制按键");
+            }
+            if(code == 116 && value == 1) {
+                if(keyCallback) keyCallback("电源按键");
+            }
+            if(code == 126 && value == 1) {
+                if(keyCallback) keyCallback("翻转镜头按键");
+            }
+            if(code == 137 && value == 1) {
+                if(keyCallback) keyCallback("录制按键");
             }
         }
     });

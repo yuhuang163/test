@@ -12,9 +12,11 @@
 #include <QMainWindow>
 #include <QUrl>
 #include <qlog.h>
+
 #include "draggablecheckbox.h"
 #include "ui_factory_analyzer.h"
 #include <QMessageBox>
+// #include "myopenglwidget.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class factory_analyzer;
@@ -40,11 +42,13 @@ public:
     std::vector<QCustomPlot *> graph_value_vector;
     void graph_reset(uint8_t argument);
 
+   Qlog* log;
     // 作为类成员
     QTableWidget *table;
     QLabel *adbStatusLabel = nullptr;
     QLabel *usbStatusLabel = nullptr;
     QLabel *bulkStatusLabel = nullptr;
+    QLabel *uartStatusLabel = nullptr;
 
     QString adbLastOutput;
     bool ddr_press = false;
@@ -64,7 +68,9 @@ public:
     // 类成员
     bool treeExpanded = true;  // 当前状态，false=收起，true=展开
     QStringList items = {
-               "test_button_good.sh power_key",
+
+        "test_rtc_good.sh",
+        "test_button_good.sh power_key",
         "test_reboot_with_usb.sh",
         "test_device_power.sh poweroff",
         "test_device_power.sh sleep",
@@ -76,8 +82,9 @@ public:
         "test_ufs_value.sh write 1",
         "test_ufs_value.sh read 1",
         "test_bootmode_check.sh 0",
-
-
+        "test_bat_info.sh temp",
+        "test_rgb_leds.sh F red",
+        "test_rgb_leds.sh F green",
 
     };
 protected:
@@ -85,16 +92,12 @@ protected:
 private slots:
     void updateForwardTable();
     void parseAndAddLine(const QString &line);
-
     void on_pushButton_clicked();
-QString execAdbBlocking(const QString &args, int timeout);
+    QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_2_clicked();
-
     void on_pushButton_3_clicked();
-
     void pushFileToGaoTongDevice(const QString &localFile);
     void pushFileToZiYanDevice(const QString &localFile);
-
     void on_pushButton_4_clicked();
 
     void on_pushButton_5_clicked();
@@ -103,8 +106,8 @@ QString execAdbBlocking(const QString &args, int timeout);
     void runExeWithReport(const QString &exeName);
 
     void runProcess(const QString &program, const QStringList &arguments,
-                    const QString &workDir,
-                    std::function<void(int, QProcess::ExitStatus)> onFinish);
+    const QString &workDir,
+    std::function<void(int, QProcess::ExitStatus)> onFinish);
 
     void on_pushButton_7_clicked();
 
@@ -160,7 +163,9 @@ QString execAdbBlocking(const QString &args, int timeout);
 
     void on_pushButton_26_clicked();
     void refreshbulkData(QString data);
-    void solveGetDjiResponse(int data);
+
+    void solveGetDjiResponse(int data,int errocode);
+
     void on_pushButton_27_clicked();
 
     void on_pushButton_28_clicked();
@@ -168,7 +173,7 @@ QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_30_clicked();
     void on_comboBox_activated(int index);
 
-    void on_pushButton_31_clicked();
+
 
     void on_pushButton_32_clicked();
 
@@ -185,43 +190,107 @@ QString execAdbBlocking(const QString &args, int timeout);
     void on_pushButton_37_clicked();
 
     void on_pushButton_38_clicked();
-void refreshbulkData(int percent);
     void on_pushButton_39_clicked();
 
-void on_pushButton_40_clicked();
+    void on_pushButton_40_clicked();
 
     void on_pushButton_41_clicked();
 
-void on_save_config_clicked();
+    void on_save_config_clicked();
 
-    void on_tabWidget_tabBarClicked(int index);
 
-void on_pushButton_42_clicked();
+    void on_pushButton_42_clicked();
 
     void on_pushButton_43_clicked();
 
-void on_pushButton_44_clicked();
+    void on_pushButton_44_clicked();
     void refreshColor1();
-void on_R1_valueChanged(int value);
-void on_G1_valueChanged(int value);
-void on_B1_valueChanged(int value);
-void on_pushButton_45_clicked();
+    void on_R1_valueChanged(int value);
+    void on_G1_valueChanged(int value);
+    void on_B1_valueChanged(int value);
+    void on_pushButton_45_clicked();
+
+    void on_pushButton_47_clicked();
+
+    void on_pushButton_49_clicked();
+
+    void on_pushButton_50_clicked();
+
+    void on_pushButton_51_clicked();
+
+    void on_pushButton_52_clicked();
+
+    void refresh_send_bulk_Data(int value);
+
+    void refresh_download_bulk_Data(int value);
+
+    void on_pushButton_46_clicked();
+
+    void on_pushButton_48_clicked();
+
+    void on_pushButton_53_clicked();
+
+    void on_pushButton_54_clicked();
+
+    void on_pushButton_55_clicked();
+
+    void on_pushButton_56_clicked();
+
+    void on_pushButton_57_clicked();
+
+    void on_pushButton_58_clicked();
+
+    void on_pushButton_60_clicked();
+
+    void on_pushButton_59_clicked();
+
+    void on_pushButton_61_clicked();
+
+    void on_pushButton_62_clicked();
+
+    void on_pushButton_63_clicked();
+
+    void on_pushButton_64_clicked();
+
+    void on_pushButton_65_clicked();
+
+    void on_tabWidget_currentChanged(int index);
+
+    void on_pushButton_66_clicked();
+
+    void on_pushButton_31_clicked();
+    void readProductSerialPortData(void);
+    void handleProductSerialPortError(QSerialPort::SerialPortError error);
+    void openProductSerialPort(void);
+    void closeProductSerialPort(void);
+
+    void on_productConnectButton_clicked();
+
+    void on_productDisconnectButton_clicked();
+
+    void on_pushButton_67_clicked();
+    void scanSerialPorts();
+    void on_pushButton_68_clicked();
+
+    void on_pushButton_69_clicked();
 
 private:
-
+    void highlightAll(QPlainTextEdit *edit, const QString &text);
     void adbPull(const QString &remotePath);
     void adbDelete(const QString &remotePath);
     void refreshTreeAfterDelete(const QString &remotePath);
     void loadRemoteDirectory(const QString &path);
-    void execAdb(const QString &args,
-                 std::function<void(const QString &output, qint64 elapsed)> callback,
-                 int timeout = 3000);
-    bool isTestContinue = false;  //测试是否继续
-       QElapsedTimer TestTime;
-     bool getRespone = 0;
-           bool sendRetryOver = false;
-               bool sendCommand_test_result = true;
-           bool adb_status = false;
+    void
+    execAdb(const QString &args,
+            std::function<void(const QString &output, qint64 elapsed)> callback,
+            int timeout = 3000);
+    bool isTestContinue = false; // 测试是否继续
+    QLineEdit *searchEdit;
+    QElapsedTimer TestTime;
+    bool getRespone = 0;
+    bool sendRetryOver = false;
+    bool sendCommand_test_result = true;
+    bool adb_status = false;
 
     int m_dirProgressIndex = 0;
     int m_dirTotal = 0;
@@ -231,14 +300,16 @@ private:
     int mf_dirTotal = 0;
     int mf_dirStep = 0;
 
+    QTimer* scanSerialPortsTimer = new QTimer(this);
+    QSerialPort* productSerialPort;  // 牙刷硬件层
+    Qproduct* product;               // 牙刷协议层
+    QTimer* productSerialPortTimer = new QTimer(this);
+    QByteArray productSerialPortBuf = 0;
 protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     // 放下事件
     void dropEvent(QDropEvent *event) override;
-        void dragMoveEvent(QDragMoveEvent* event) override;
-
-
-
+    void dragMoveEvent(QDragMoveEvent *event) override;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -264,6 +335,8 @@ public:
     };
 
     QVector<TimelineEvent> m_events; // 类成员
+        QVector<TimelineEvent> ufei_m_events; // 类成员
+
         QVector<TestItem> testItems;
     void executeFunctionByName(const QString functionName);
             void testResultTableUpdate(QVector<TestItem>& testItems);
@@ -307,17 +380,23 @@ public:
     void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     QPoint dragPos;  // 存储拖动位置
-        void paintEvent(QPaintEvent* event) override;
-
-
-
-
+    void paintEvent(QPaintEvent* event) override;
     void initTimeline();   // 初始化（只干一次）
-void redrawTimeline();
-void addTimelineEvent(const QString &timeStr,
-                                        const QString &title,
-                                        const QString &detail,
-                                        const QColor &color);
+    void re_drawTimeline();
+    void addTimelineEvent(const QString &timeStr,
+                        const QString &title,
+                        const QString &detail,
+                        const QColor &color,   QVector<TimelineEvent> &my_events);
+    void drawTimeline(
+        const QVector<TimelineEvent> &events,
+        int baseY,
+        const QString &axisName
+        );
+
+        bool isBrushLogGet = 1;
+
+signals:
+    // void refreshProductSerialPortState(int);
 
 private:
     QString formatTime(int ms) const;
@@ -328,7 +407,7 @@ private:
     QDateTime m_startTime;
     bool m_hasStartTime = false;
 
-    QGraphicsScene *m_scene = nullptr;
+    QGraphicsScene *my_screen = nullptr;
     int m_maxX = 0;
 
     // ====== Timeline 参数 ======
