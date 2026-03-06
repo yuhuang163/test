@@ -353,7 +353,7 @@ void MainWindow::readPendingDatagrams() {
     }
 }
 void MainWindow::saveblackbox(QString data) {
-    QString folderName = "所有log/牙刷黑盒的log";
+    QString folderName = "所有log/设备黑盒的log";
     QDir dir;
 
     // 检查并创建目录

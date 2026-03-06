@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1019</width>
-    <height>638</height>
+    <width>1020</width>
+    <height>682</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -73,40 +73,6 @@ QGroupBox {
        </item>
       </layout>
      </widget>
-    </item>
-    <item row="0" column="3" colspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout_11">
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>BULK口选择</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="comboBox_2">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_54">
-        <property name="text">
-         <string>断开连接</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </item>
     <item row="0" column="5">
      <widget class="QLabel" name="label_2">
@@ -174,14 +140,32 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="tabPosition">
+        <enum>QTabWidget::North</enum>
+       </property>
+       <property name="tabShape">
+        <enum>QTabWidget::Rounded</enum>
+       </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
+       </property>
+       <property name="elideMode">
+        <enum>Qt::ElideNone</enum>
+       </property>
+       <property name="usesScrollButtons">
+        <bool>true</bool>
+       </property>
+       <property name="documentMode">
+        <bool>false</bool>
+       </property>
+       <property name="tabsClosable">
+        <bool>false</bool>
        </property>
        <widget class="QWidget" name="tab_6">
         <attribute name="title">
-         <string>adb控制</string>
+         <string>🤖adb控制</string>
         </attribute>
-        <layout class="QFormLayout" name="formLayout">
+        <layout class="QGridLayout" name="gridLayout_12">
          <item row="0" column="0">
           <widget class="QGroupBox" name="horizontalGroupBox">
            <property name="styleSheet">
@@ -264,6 +248,12 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
          </item>
          <item row="1" column="0">
           <widget class="QGroupBox" name="horizontalGroupBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -274,7 +264,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QPushButton" name="pushButton">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -287,7 +277,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QPushButton" name="pushButton_5">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -300,7 +290,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QPushButton" name="pushButton_8">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -313,7 +303,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QPushButton" name="pushButton_2">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -326,7 +316,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QPushButton" name="pushButton_3">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -339,7 +329,56 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
            </layout>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="2" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_14">
+           <item>
+            <widget class="QLabel" name="label_5">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>拉日志进度条：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QProgressBar" name="progressBar_3">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="value">
+              <number>24</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="0">
+          <widget class="QGroupBox" name="horizontalGroupBox_2">
+           <property name="styleSheet">
+            <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
+           </property>
+           <property name="title">
+            <string>测试相关</string>
+           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_7">
+            <item>
+             <widget class="QPushButton" name="pushButton_26">
+              <property name="text">
+               <string>读取ufs跌落情况(带读取)</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="4" column="0">
           <widget class="QGroupBox" name="horizontalGroupBox">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
@@ -372,7 +411,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
            </layout>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="5" column="0">
           <layout class="QVBoxLayout" name="verticalLayout_29">
            <item>
             <widget class="QLineEdit" name="light1">
@@ -511,54 +550,11 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
            </item>
           </layout>
          </item>
-         <item row="3" column="0">
-          <widget class="QGroupBox" name="horizontalGroupBox_2">
-           <property name="styleSheet">
-            <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-           </property>
-           <property name="title">
-            <string>测试相关</string>
-           </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_7">
-            <item>
-             <widget class="QPushButton" name="pushButton_26">
-              <property name="text">
-               <string>读取ufs跌落情况(带读取)</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <layout class="QHBoxLayout" name="horizontalLayout_14">
-           <item>
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>拉日志进度条：</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QProgressBar" name="progressBar_3">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="value">
-              <number>24</number>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="tab_7">
         <attribute name="title">
-         <string>bulk控制</string>
+         <string>🔌 bulk控制</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_10">
          <item row="0" column="0">
@@ -632,6 +628,13 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
                 </property>
                </widget>
               </item>
+              <item>
+               <widget class="QPushButton" name="pushButton_73">
+                <property name="text">
+                 <string>唤醒wifi</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>
@@ -645,8 +648,22 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
            <property name="title">
             <string>安全相关</string>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
+           <layout class="QGridLayout" name="gridLayout_11">
+            <item row="0" column="1">
+             <widget class="QPushButton" name="pushButton_56">
+              <property name="text">
+               <string>获取防回滚值</string>
+              </property>
+             </widget>
+            </item>
+            <item row="12" column="0">
+             <widget class="QPushButton" name="pushButton_59">
+              <property name="text">
+               <string>md5校验</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
              <widget class="QPushButton" name="pushButton_61">
               <property name="enabled">
                <bool>false</bool>
@@ -656,59 +673,66 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_48">
+            <item row="4" column="1">
+             <widget class="QPushButton" name="pushButton_70">
               <property name="text">
-               <string>获取激活信息</string>
+               <string>切量产自研（e4）</string>
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_56">
-              <property name="text">
-               <string>获取防回滚值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_55">
-              <property name="text">
-               <string>获取安全调试模式次数</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_53">
-              <property name="text">
-               <string>获取产品状态（高通）</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_65">
-              <property name="text">
-               <string>获取key状态（高通）</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            <item row="7" column="0">
              <widget class="QPushButton" name="pushButton_46">
               <property name="text">
-               <string>切量产</string>
+               <string>切量产（高通）</string>
               </property>
              </widget>
             </item>
-            <item>
+            <item row="3" column="1">
              <widget class="QPushButton" name="pushButton_60">
               <property name="text">
                <string>获取当前所在槽</string>
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_59">
+            <item row="2" column="1">
+             <widget class="QPushButton" name="pushButton_48">
               <property name="text">
-               <string>md5校验</string>
+               <string>获取激活信息</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QPushButton" name="pushButton_55">
+              <property name="text">
+               <string>获取安全调试模式次数</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QPushButton" name="pushButton_53">
+              <property name="text">
+               <string>获取产品状态（高通）</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QPushButton" name="pushButton_65">
+              <property name="text">
+               <string>获取key状态（高通）</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QPushButton" name="pushButton_71">
+              <property name="text">
+               <string>切量产自研（e3）</string>
+              </property>
+             </widget>
+            </item>
+            <item row="12" column="1">
+             <widget class="QPushButton" name="pushButton_72">
+              <property name="text">
+               <string>检查试用次数</string>
               </property>
              </widget>
             </item>
@@ -892,29 +916,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
                </sizepolicy>
               </property>
               <property name="styleSheet">
-               <string notr="true">QProgressBar {
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    background-color: #f0f0f0; /* 浅灰背景 */
-    text-align: center;
-    padding: 2px;
-}
-
-QProgressBar::chunk {
-    border-radius: 4px;
-    background-color: #4CAF50; /* 默认绿色 */
-}
-
-/* 根据电量动态改变颜色 */
-QProgressBar[progress=&quot;low&quot;]::chunk {
-    background-color: #f44336; /* 红色 */
-}
-QProgressBar[progress=&quot;medium&quot;]::chunk {
-    background-color: #FFB300; /* 黄色 */
-}
-QProgressBar[progress=&quot;high&quot;]::chunk {
-    background-color: #4CAF50; /* 绿色 */
-}</string>
+               <string notr="true"/>
               </property>
               <property name="value">
                <number>24</number>
@@ -945,29 +947,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
             <item>
              <widget class="QProgressBar" name="progressBar_4">
               <property name="styleSheet">
-               <string notr="true">QProgressBar {
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    background-color: #f0f0f0; /* 浅灰背景 */
-    text-align: center;
-    padding: 2px;
-}
-
-QProgressBar::chunk {
-    border-radius: 4px;
-    background-color: #4CAF50; /* 默认绿色 */
-}
-
-/* 根据电量动态改变颜色 */
-QProgressBar[progress=&quot;low&quot;]::chunk {
-    background-color: #f44336; /* 红色 */
-}
-QProgressBar[progress=&quot;medium&quot;]::chunk {
-    background-color: #FFB300; /* 黄色 */
-}
-QProgressBar[progress=&quot;high&quot;]::chunk {
-    background-color: #4CAF50; /* 绿色 */
-}</string>
+               <string notr="true"/>
               </property>
               <property name="value">
                <number>24</number>
@@ -981,7 +961,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
        </widget>
        <widget class="QWidget" name="tab_10">
         <attribute name="title">
-         <string>串口控制</string>
+         <string>🖧串口控制</string>
         </attribute>
         <layout class="QFormLayout" name="formLayout_2">
          <item row="0" column="0">
@@ -1052,7 +1032,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
        </widget>
        <widget class="QWidget" name="tab">
         <attribute name="title">
-         <string>温度相关</string>
+         <string>🌡️温度相关</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_3">
          <item row="0" column="0">
@@ -1099,7 +1079,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
        </widget>
        <widget class="QWidget" name="tab_2">
         <attribute name="title">
-         <string>研发调试</string>
+         <string>🛠️研发调试</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_4">
          <item row="0" column="0">
@@ -1158,7 +1138,7 @@ background-color: lightyellow;
        </widget>
        <widget class="QWidget" name="tab_3">
         <attribute name="title">
-         <string>消息收发</string>
+         <string>💬消息收发</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_5">
          <item row="0" column="0">
@@ -1182,7 +1162,7 @@ background-color: lightyellow;
        </widget>
        <widget class="QWidget" name="tab_4">
         <attribute name="title">
-         <string>文件系统</string>
+         <string>📁文件系统</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0" colspan="2">
@@ -1212,7 +1192,7 @@ background-color: lightyellow;
        </widget>
        <widget class="QWidget" name="tab_5">
         <attribute name="title">
-         <string>启动参数总清单</string>
+         <string>⚙️启动参数</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_6">
          <item row="0" column="0">
@@ -1229,7 +1209,7 @@ background-color: lightyellow;
        </widget>
        <widget class="QWidget" name="tab_8">
         <attribute name="title">
-         <string>机器大事件轴</string>
+         <string>📢机器事件</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout">
          <item row="0" column="0" colspan="2">
@@ -1260,7 +1240,7 @@ background-color: lightyellow;
        </widget>
        <widget class="QWidget" name="tab_9">
         <attribute name="title">
-         <string>自测流程页</string>
+         <string>🧪自测流程</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_8">
          <item row="0" column="3">
@@ -1315,6 +1295,11 @@ background-color: lightyellow;
           <widget class="QTableWidget" name="testResultTable"/>
          </item>
         </layout>
+       </widget>
+       <widget class="QWidget" name="tab_11">
+        <attribute name="title">
+         <string>🏠 待开发</string>
+        </attribute>
        </widget>
       </widget>
       <widget class="QWidget" name="verticalLayoutWidget">
@@ -1446,6 +1431,53 @@ background-color: lightyellow;
       </widget>
      </widget>
     </item>
+    <item row="0" column="3" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout_11">
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>BULK口选择</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>发送端点</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_54">
+        <property name="text">
+         <string>断开连接</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -1453,7 +1485,7 @@ background-color: lightyellow;
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1019</width>
+     <width>1020</width>
      <height>18</height>
     </rect>
    </property>

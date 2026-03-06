@@ -1781,7 +1781,7 @@
           <item row="3" column="0">
            <widget class="QCheckBox" name="checkBox_SaveToothbrushLog">
             <property name="text">
-             <string>是否抓牙刷日志时候保存</string>
+             <string>是否抓设备日志时候保存</string>
             </property>
            </widget>
           </item>
@@ -1858,7 +1858,7 @@
           <item row="27" column="0">
            <widget class="QCheckBox" name="checkBox_IMUCalibrationWakeup">
             <property name="text">
-             <string>是否imu校准需要晃动唤醒牙刷</string>
+             <string>是否imu校准需要晃动唤醒设备</string>
               </property>
            </widget>
           </item>
@@ -1872,7 +1872,7 @@
           <item row="0" column="0">
            <widget class="QCheckBox" name="checkBox_ShowLocalOTAFunc">
             <property name="text">
-             <string>界面是否显示牙刷本地ota功能</string>
+             <string>界面是否显示设备本地ota功能</string>
             </property>
            </widget>
             </item>

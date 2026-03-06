@@ -2,7 +2,7 @@
 #define TEST_BASE_H
 
 // #include <qat.h>      // 与esp32的at指令
-// #include <qpb.h>      // 与牙刷的pb协议
+// #include <qpb.h>      // 与设备的pb协议
 // #include <qusb.h>     // 与治具的测量协议
 // #include <qlog.h>
 // #include <qjig.h>
@@ -47,7 +47,7 @@ public:
     virtual QComboBox* getComNameCombo() { return nullptr; };         // dongle口
     virtual QComboBox* getUsbcomNameCombo() { return nullptr; };      // usb口
     virtual QComboBox* getJigcomNameCombo() { return nullptr; };      // 治具口
-    virtual QComboBox* getProductcomNameCombo() { return nullptr; };  // 牙刷口
+    virtual QComboBox* getProductcomNameCombo() { return nullptr; };  // 设备口
     virtual QComboBox* getNfcComboBox() { return nullptr; };          // nfc的usb口
     virtual QLineEdit* getMotorCaliParam() { return nullptr; };       // 电机校准参数
     virtual QLineEdit* getMacLineEdit() { return nullptr; };          // sn输入口
@@ -116,8 +116,8 @@ public:
     QSerialPort* jigSerialPort;  // 治具硬件层
     Qjig* jig;                   // 治具协议层
 
-    QSerialPort* productSerialPort;  // 牙刷硬件层
-    Qproduct* product;               // 牙刷协议层
+    QSerialPort* productSerialPort;  // 设备硬件层
+    Qproduct* product;               // 设备协议层
 
     QTimer* dongleSerialPortTimer = new QTimer(this);
     QByteArray dongleSerialPortBuf = 0;

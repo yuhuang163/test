@@ -168,7 +168,7 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
             getRespone = 0;
             canGoNext = 1;
 
-            qDebug() << "sendCommandWithRetry完成，收到牙刷响应";
+            qDebug() << "sendCommandWithRetry完成，收到设备响应";
 
             return 1;
         }

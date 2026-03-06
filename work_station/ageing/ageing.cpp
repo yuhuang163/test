@@ -223,7 +223,7 @@ void ageing::on_enterBurningMode_clicked() {
             pb->set_burning_mode(4, FacSwitch_OPEN);
         showlog("已发送老化");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -232,7 +232,7 @@ void ageing::on_exitBurningMode_clicked() {
         pb->set_burning_mode(1, FacSwitch_CLOSE);
         // showlog("已退出老化模式");
     } else {
-        // showlog("请等待连接牙刷后再试");
+        // showlog("请等待连接设备后再试");
     }
 }
 

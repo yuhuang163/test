@@ -726,7 +726,7 @@ void QFreeWork::getWifiMsg(QString data) {
         wifiMac = wifiMac.toUpper();
         // qDebug() << getIndex() << "dongle的的wifiMac:" << macAddress;
         // qDebug() << getIndex() << "RSSI:" << rssi;
-        // qDebug() << getIndex() << " 牙刷的wifiMac:" << wifiMac;
+        // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
         if (macAddress == wifiMac) {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
@@ -775,7 +775,7 @@ void QFreeWork::initDate() {
 
 void QFreeWork::on_pushButton_clicked() {
     // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     // // ui->macInput->setText("3c:84:27:06:f7:5e");
     ui->macInput->setText("3C:84:27:07:A8:D2");
     // // ui->macInput->setText("3c:84:27:29:50:32");
@@ -785,16 +785,16 @@ void QFreeWork::on_pushButton_clicked() {
     // // usb-> getlxMEASure();
     // // waitWork(1000);
 
-    // showlog("正在获取牙刷电量");
+    // showlog("正在获取设备电量");
     // ui->comNameCombo->setCurrentText("COM134");
 }
 
 void QFreeWork::on_get_battery_clicked() {
     if (at->getConnected()) {
         pb->get_battery();
-        showlog("正在获取牙刷电量");
+        showlog("正在获取设备电量");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -803,7 +803,7 @@ void QFreeWork::on_disconnectwifi_clicked() {
         pb->set_wifi_disconnect();
         showlog("已发送断开wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 void QFreeWork::on_connectwifi_clicked() {
@@ -819,7 +819,7 @@ void QFreeWork::on_connectwifi_clicked() {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 

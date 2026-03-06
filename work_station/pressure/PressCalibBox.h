@@ -26,7 +26,7 @@ public:
 
 private:
     Ui::PressCalibBox* ui;
-    Fixture_uart* Fixture_uart_ui = NULL;  // 牙刷控制窗口
+    Fixture_uart* Fixture_uart_ui = NULL;  // 设备控制窗口
 
     std::vector<int> display_state;
 private slots:

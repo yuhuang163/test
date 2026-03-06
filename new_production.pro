@@ -1,4 +1,4 @@
-QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets
+QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
 
 
 QMAKE_PROJECT_DEPTH = 0
@@ -286,7 +286,11 @@ DISTFILES += \
     agreement/qpb/ble_protocol/server_data.proto \
     agreement/qpb/factory_protocol/factory_msg.proto \
     lib/nfc/dcrf32.dll \
-    lib/nfc/dcrf32.lib
+    lib/nfc/dcrf32.lib \
+    new_production.qml
+
+RESOURCES += \
+    new_production.qrc
 
 
 

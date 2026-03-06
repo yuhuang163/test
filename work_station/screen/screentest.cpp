@@ -9,7 +9,7 @@
 #endif
 void screentest::on_pushButton_clicked() {
     ui->macInput->setText("f4:12:fa:c5:51:c6");
-    //    ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    //    ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     ui->macInput->setText("3C:84:27:07:A8:D2");
     on_macInput_returnPressed();
 }
@@ -108,7 +108,7 @@ void screentest::set_screen_color(int x) {
         showlog("已发送屏幕颜色" + QString::number(x));
 
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 

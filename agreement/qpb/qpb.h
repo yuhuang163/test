@@ -232,7 +232,7 @@ public slots:
     void set_camera_picture_state(int state);                  // 设置摄像头图片状态
     void set_local_ota(local_ota_data x[2]);                   // 设置本地OTA
     void set_start_ota_app(RotasFileStatusReq RotasFiledata);  // 启动OTA应用
-    void set_i_am_app();                                       // 骗牙刷是app
+    void set_i_am_app();                                       // 骗设备是app
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
     void set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata);

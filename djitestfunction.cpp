@@ -100,7 +100,7 @@ sendCommand_test_result=true;
             getRespone = 0;
             canGoNext = 1;
 
-            showlog("sendCommandWithRetry完成，收到牙刷响应");
+            showlog("sendCommandWithRetry完成，收到设备响应");
             return 1;
         }
         return 0;
@@ -482,3 +482,4 @@ void factory_analyzer::moveToGrid(QGridLayout* layout, QWidget* widget, int row,
         layout->removeWidget(widget);
     layout->addWidget(widget, row, col);
 }
+

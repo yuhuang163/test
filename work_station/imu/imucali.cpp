@@ -9,13 +9,13 @@
 void imucali::on_pushButton_clicked() {
     // emit send_end_test(getIndex());
 
-    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     ui->macInput->setText("3C:84:27:07:A8:D2");
     // ui->macInput->setText("74:4D:BD:95:7F:36");
     // ui->macInput->setText("e2:66:07:34:2d:f7");
     // ui->macInput->setText("74:4D:BD:95:80:7e");
     // ui->macInput->setText("b4:56:5d:bf:57:9d");//E4:08:09:30:7E:FB
-    // ui->macInput->setText("b4:56:5d:bf:54:4e");  // wd牙刷
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");  // wd设备
     // ui->macInput->setText("ca:5b:09:30:ca:fb");
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     on_macInput_returnPressed();
@@ -120,7 +120,7 @@ imucali::imucali(int index, QWidget* parent) :
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 void imucali::refreshImuCaliResult(FacImuCalibResult x) {
-    showlog("以下为收到牙刷的imu校准数据");
+    showlog("以下为收到设备的imu校准数据");
     showlog(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
     showlog(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
     showlog(QString("gyro_z: %1").arg(qint32(x.gyro_z)));
@@ -1069,7 +1069,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                         state = STATE_SAVE_RESULT;
                     } else if (imudata_check == 2) {
                         result = failValue;
-                        showlog("获取的牙刷校准值错误");
+                        showlog("获取的设备校准值错误");
                         state = STATE_SAVE_RESULT;
                     }
                 }
@@ -1141,7 +1141,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_SHIP_MODE_CHECK:
                 if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
                     if (!at->getConnected() && canGoNext) {
-                        showlog("检测到蓝牙已经断开且收到牙刷回应收到船运退出指令");
+                        showlog("检测到蓝牙已经断开且收到设备回应收到船运退出指令");
                         showlog("说明已经成功进入船运模式");
                         TestItem test;
                         test.testItem = "船运测试";

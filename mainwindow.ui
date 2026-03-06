@@ -1052,7 +1052,7 @@
                      <item>
                       <widget class="QPushButton" name="getBackLog">
                        <property name="text">
-                        <string>牙刷黑盒获取</string>
+                        <string>设备黑盒获取</string>
                        </property>
                       </widget>
                      </item>
@@ -4295,7 +4295,7 @@ border-color: rgb(255, 165, 0)</string>
                 <item row="4" column="0">
                  <widget class="QPushButton" name="clear_picture">
                   <property name="text">
-                   <string>清空牙刷图片</string>
+                   <string>清空设备图片</string>
                   </property>
                  </widget>
                 </item>

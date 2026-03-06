@@ -40,7 +40,7 @@ public:
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };          // usb口（治具）
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };          // 治具口（治具）
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 牙刷口（治具）
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 设备口（治具）
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
     QLineEdit* getMacLineEdit() override { return ui->snInput; };                      // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };                   // mac地址输入口

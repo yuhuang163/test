@@ -538,7 +538,7 @@ void test_base::readProductSerialPortData() {
     if (isBrushLogGet)
         log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
-    logEdit()->appendPlainText("收到牙刷日志");
+    logEdit()->appendPlainText("收到设备日志");
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // msgEdit()->appendPlainText(QString::fromUtf8(dataTemp));
@@ -585,7 +585,7 @@ void test_base::openProductSerialPort() {
 
         // showlog("串口连接成功");
         emit refreshProductSerialPortState(1);
-        //  at->ask_mac();//连接串口过程，复位牙刷写入资源复位损坏
+        //  at->ask_mac();//连接串口过程，复位设备写入资源复位损坏
         connect(productSerialPortTimer, &QTimer::timeout, this,
                 &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
     } else {
@@ -696,7 +696,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
             getRespone = 0;
             canGoNext = 1;
 
-            showlog("sendCommandWithRetry完成，收到牙刷响应");
+            showlog("sendCommandWithRetry完成，收到设备响应");
             return 1;
         }
         return 0;

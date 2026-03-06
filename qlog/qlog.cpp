@@ -51,7 +51,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
 }
 
 void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
-    QString folderName = "所有log/牙刷log";
+    QString folderName = "所有log/设备log";
     QDir dir;
 
     // 检查并创建目录
@@ -73,7 +73,7 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
     // qDebug() << "macAddress:" << macAddress;
 
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        // qDebug() << "写入成功牙刷日志";
+        // qDebug() << "写入成功设备日志";
         // 写入数据
         QTextStream out(&logFile);
         QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
@@ -82,6 +82,6 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
         //   out << data << '\n';
         logFile.close();
     } else {
-        qDebug() << "无法打开牙刷日志文件：" << fileName;
+        qDebug() << "无法打开设备日志文件：" << fileName;
     }
 }

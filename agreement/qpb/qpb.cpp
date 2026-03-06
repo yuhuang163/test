@@ -1336,7 +1336,7 @@ void Qpb::get_bursh_backlog(int state) {
     }
 
     sendShortPack(pack);
-    qDebug() << "已发送获取牙刷黑盒日志";
+    qDebug() << "已发送获取设备黑盒日志";
 }
 
 void Qpb::set_mic_control(int state) {
@@ -1630,7 +1630,7 @@ void Qpb::set_sleeep(FacSwitch state)  // 进入休眠状态
     sendShortPack(pack);
 }
 
-void Qpb::set_dev_reset()  // 复位牙刷
+void Qpb::set_dev_reset()  // 复位设备
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
     FactoryDataPackage pack;
@@ -1641,10 +1641,10 @@ void Qpb::set_dev_reset()  // 复位牙刷
     pack.command_data.set_dev_state.state = FacSwitch_OPEN;
 
     sendShortPack(pack);
-    qDebug() << "已复位牙刷";
+    qDebug() << "已复位设备";
 }
 
-void Qpb::set_brush_reset()  // 复位牙刷
+void Qpb::set_brush_reset()  // 复位设备
 {
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_STATE;
     FactoryDataPackage pack;
@@ -1655,7 +1655,7 @@ void Qpb::set_brush_reset()  // 复位牙刷
     pack.command_data.set_dev_state.state = FacSwitch_OPEN;
 
     sendShortPack(pack);
-    qDebug() << "已重置牙刷";
+    qDebug() << "已重置设备";
 }
 
 void Qpb::set_press_collect_param(FacSwitch sta)  // 设置压感采集开关
@@ -1961,7 +1961,7 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     FacMotorCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_pb_date("收到牙刷上报信息");
+    emit send_pb_date("收到设备上报信息");
     if (x.which_value_item == FacMotorCalibResult_hall_calibration_data_tag &&
         x.type == FacMotorUploadType_HALL_CALIBRATION_DATA) {
         emit sendGetBrushResponse(1);
@@ -2069,7 +2069,7 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     FacImuCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
 
-    qDebug() << "牙刷IMU校准值:";
+    qDebug() << "设备IMU校准值:";
     qDebug().nospace().noquote() << "gyro_x: " << x.gyro_x;
     qDebug().nospace().noquote() << "gyro_y: " << x.gyro_y;
     qDebug().nospace().noquote() << "gyro_z: " << x.gyro_z;
@@ -2086,9 +2086,9 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     is_get_imu_cali_data = 1;
     emit send_IMU_CALIB_result(x);
     if (x.result) {
-        emit send_pb_date("牙刷六轴校准数据有问题,可能是初始值");
+        emit send_pb_date("设备六轴校准数据有问题,可能是初始值");
     } else {
-        emit send_pb_date("牙刷六轴校准数据是工厂值,是可靠的");
+        emit send_pb_date("设备六轴校准数据是工厂值,是可靠的");
     }
     emit sendGetBrushResponse(1);
 }
@@ -2105,7 +2105,7 @@ void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     FacBrushControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_BrushControl_state(x);
-    qDebug() << "收到牙刷控制回应:" << x.value_item.brush_start;
+    qDebug() << "收到设备控制回应:" << x.value_item.brush_start;
     emit sendGetBrushResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
@@ -2196,10 +2196,10 @@ void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacPreSensorCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
-    qDebug() << "获取牙刷校准的brush_head_adc=" << x.brush_head_adc;
-    qDebug() << "获取牙刷校准的mode_button_adc=" << x.mode_button_adc;
-    qDebug() << "获取牙刷校准的temperature=" << x.temperature;
-    qDebug() << "获取牙刷校准的power_button_adc=" << x.power_button_adc;
+    qDebug() << "获取设备校准的brush_head_adc=" << x.brush_head_adc;
+    qDebug() << "获取设备校准的mode_button_adc=" << x.mode_button_adc;
+    qDebug() << "获取设备校准的temperature=" << x.temperature;
+    qDebug() << "获取设备校准的power_button_adc=" << x.power_button_adc;
     qDebug() << "获取模式辅助元器件校准的assistant_component=" << x.assistant_component;
     emit send_press_cali_data(x);
     is_save_press_cali_ok = 1;
@@ -2495,7 +2495,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_FAC_LOG(FactoryDataPackage& f) {
     FacUploadNineAlex x;
     memcpy(&x, &f.command_data, sizeof(x));
-    qDebug() << "收到牙刷黑盒日志回应";
+    qDebug() << "收到设备黑盒日志回应";
 
     emit sendGetBrushResponse(1);
 }

@@ -877,9 +877,9 @@ void PressureSensorForm::on_end_clicked() {
     isTestContinue = false;
     if (at->getConnected()) {
         delay_msec(300);
-        pb->set_dev_reset();  // 开始复位牙刷
+        pb->set_dev_reset();  // 开始复位设备
         delay_msec(50);
-        showlog("牙刷已复位");
+        showlog("设备已复位");
     }
 
     if (dongleSerialPort->isOpen()) {
@@ -2686,7 +2686,7 @@ void PressureSensorForm::startTask() {
                             pb->set_dev_reset();
                             delay_msec(1000);
 
-                            showlog("已发送复位请求，等待牙刷复位");
+                            showlog("已发送复位请求，等待设备复位");
                             at->resetConnected();
                             if (function_switch == FUNCTION_CALIB_TEST || function_switch == FUNCTION_TEST) {
                                 delay_msec(30);
@@ -2893,9 +2893,9 @@ void PressureSensorForm::startTask() {
                 isTestContinue = false;
                 // showlog("压感测试完毕");
 
-                pb->set_dev_reset();  // 开始复位牙刷
+                pb->set_dev_reset();  // 开始复位设备
                 delay_msec(50);
-                showlog("牙刷已复位");
+                showlog("设备已复位");
                 closeDongleSerialPort();
 
                 stringsn = "";

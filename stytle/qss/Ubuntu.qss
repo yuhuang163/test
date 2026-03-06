@@ -5,6 +5,7 @@ Company: GTRONICK
 Last updated: 01/10/2021 (dd/mm/yyyy), 15:18.
 Available at: https://github.com/GTRONICK/QSS/blob/master/Ubuntu.qss
 */
+
 QMainWindow {
 	background-color:#f0f0f0;
 }
@@ -447,17 +448,40 @@ QScrollBar::down-arrow:vertical {
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
   	background: none;
 }
-QTabWidget {
-	color:rgb(0,0,0);
-	background-color:rgb(247,246,246);
-}
+
 QTabWidget::pane {
-	border-color: rgb(180,180,180);
-	background-color:rgb(247,246,246);
-	border-style: solid;
-	border-width: 1px;
-  	border-radius: 6px;
+    border: none;
 }
+
+QTabBar::tab {
+	
+    background: transparent;
+    padding: 12px 20px;
+    margin: 2px;
+    min-width:120px;
+  color: rgba(210, 26, 26, 1);
+    font-size:20px;
+  
+ 
+    border-radius:6px;
+}
+
+QTabBar::tab:hover {
+    background: rgba(246,134,86,40);
+     color: rgba(210, 26, 26, 1);
+}
+
+QTabBar::tab:selected {
+    background: rgb(246,134,86);
+	 border-bottom: 3px solid rgb(255,150,60);
+	color: rgba(90, 224, 28, 1);
+   
+    font-weight: bold;
+}
+
+
+
+
 QTabBar::tab {
 	padding-left:4px;
 	padding-right:4px;

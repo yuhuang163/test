@@ -10,12 +10,12 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 void PcbaForm::on_pushButton_clicked() {
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");  // 测试牙刷
-    // //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su牙刷
-    // // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏牙刷
-    // // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏牙刷
-    // // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng牙刷
-    // //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");  // 测试设备
+    // //  ui->macInput->setText("74:4D:BD:95:7A:DA");//su设备
+    // // ui->macInput->setText("74:4D:BD:95:7B:E6");//金鹏设备
+    // // ui->macInput->setText("74:4D:BD:95:7B:F6");//金鹏设备
+    // // ui->macInput->setText("74:4D:BD:95:7C:BE");//zhangmeng设备
+    // //   ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     // ui->macInput->setText("3C:84:27:07:A8:D2");
     // // ui->macInput->setText("e2:66:07:34:2d:f7");
     // // ui->macInput->setText("3c:84:27:29:50:32");
@@ -163,7 +163,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::P
     connect(usblogwaittime, &QTimer::timeout, [=]() {
         if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
             at->ask_mac();
-            showlog("正在定时器复位牙刷");
+            showlog("正在定时器复位设备");
         }
     });
 
@@ -404,7 +404,7 @@ void PcbaForm::getWifiMsg(QString data) {
         wifiMac = wifiMac.toUpper();
         // qDebug() << getIndex() << "dongle的的wifiMac:" << macAddress;
         // qDebug() << getIndex() << "RSSI:" << rssi;
-        // qDebug() << getIndex() << " 牙刷的wifiMac:" << wifiMac;
+        // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
         if (macAddress == wifiMac) {
             ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
@@ -485,7 +485,7 @@ void PcbaForm::checkLedControlState(FacLedControl data) {
 
 void PcbaForm::checkBrushControlState(FacBrushControl data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "收到牙刷控制状态:" << data.value_item.brush_start;
+             << "收到设备控制状态:" << data.value_item.brush_start;
     isbrushcontrol = 1;
 }
 void PcbaForm::checkbutton(FacButtonState data) {
@@ -855,7 +855,7 @@ void PcbaForm::connectwifi() {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -1631,7 +1631,7 @@ void PcbaForm::startTask() {
                     at->sendMac("00:00:00:00:00:00");
                     waitWork(100);
 
-                    showlog("已经发送请求牙刷休眠");
+                    showlog("已经发送请求设备休眠");
                     state = STATE_SLEEP_OPEN;
 
                 } else {
@@ -1860,13 +1860,13 @@ void PcbaForm::writeToLogFile(const QByteArray& data, QString currentDate, QStri
     QFile logFile(fileName);
 
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        // qDebug() << "写入成功牙刷日志";
+        // qDebug() << "写入成功设备日志";
         // 写入数据
         QTextStream out(&logFile);
         out << data << '\n';
         logFile.close();
     } else {
-        qDebug() << "无法打开牙刷日志文件：" << fileName;
+        qDebug() << "无法打开设备日志文件：" << fileName;
     }
 }
 void PcbaForm::on_getMac_returnPressed() {

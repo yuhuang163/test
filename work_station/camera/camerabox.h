@@ -22,7 +22,7 @@ public:
 private:
     Ui::camerabox* ui;
     void checkAllTest(int fixtureNumber) override;
-    Fixture_uart* Fixture_uart_ui = NULL;  // 牙刷控制窗口
+    Fixture_uart* Fixture_uart_ui = NULL;  // 设备控制窗口
 
 signals:
     void go_camera_next(int);

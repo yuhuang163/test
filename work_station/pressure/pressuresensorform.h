@@ -162,7 +162,7 @@ private:
         STATE_OVERTIME_ERROR,       // 超时
         STATE_AMPLITUEDE,           //摆幅测试
 
-        STATE_SAVE_RESULT,  // 复位牙刷
+        STATE_SAVE_RESULT,  // 复位设备
         STATE_END,          // 上传mes
 
         STATE_TEST_1,
@@ -262,7 +262,7 @@ private:
 
     function_e function_switch = FUNCTION_CALIB_TEST;  // 功能选择,校准or测试
 
-    QString donotmove = "人员：别移动牙刷";
+    QString donotmove = "人员：别移动设备";
     QString brush_placing_200_weights = "人员：刷头放400g砝码";
     QString pack_weights = "人员：拿走400g砝码";
     QString botton_placing_200_weights = "人员：按键放230g砝码";

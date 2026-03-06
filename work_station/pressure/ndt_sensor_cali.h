@@ -153,7 +153,7 @@ public:
     int32_t send_state = 0;  //治具发送完毕状态
 
 private:
-    QString donotmove = "人员：别移动牙刷";
+    QString donotmove = "人员：别移动设备";
 
     uint16_t CAL_CHANNEL_NUM = 0;  // 校准通道数
 

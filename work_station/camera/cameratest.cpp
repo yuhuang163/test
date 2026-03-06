@@ -13,12 +13,12 @@
 #endif
 
 void cameratest::on_pushButton_clicked() {
-    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     // ui->macInput->setText("3C:84:27:07:A8:D2");
     // ui->macInput->setText("3C:84:27:20:01:3E");
     // ui->macInput->setText("3c:84:27:20:00:c6");
-    // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
-    // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
+    // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd设备
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd设备
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     // ui->macInput->setText("F8:8F:C8:57:73:E9");
 
@@ -946,7 +946,7 @@ void cameratest::on_distribution_network_clicked() {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 void cameratest::deinit_distribution_network() {

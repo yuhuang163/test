@@ -11,6 +11,10 @@
 #include <QRegExp>
 #include <QUrl>
 #include <functional>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQuickWidget>
+#include <QQmlContext>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -18,8 +22,10 @@
 
 // 调试按键
 void factory_analyzer::on_pushButton_14_clicked() {}
+
+
 factory_analyzer::factory_analyzer(QWidget *parent)
-    : QMainWindow(parent) ,bulk(new QBulk), adb(new Qadb), log(new Qlog),shell(new Qshell),
+    : QMainWindow(parent) ,bulk(new QBulk), log(new Qlog), adb(new Qadb),shell(new Qshell),
     shellMonitor(new Qshell), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort)),ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
@@ -27,6 +33,27 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     adb->start();
     shell->start();
     shellMonitor->start();
+
+    updateMainStyle(":/stytle/qss/Ubuntu.qss");
+
+
+    QWidget *page11 = ui->tabWidget->widget(10);
+
+
+
+    // 创建 QQuickWidget
+    QQuickWidget *quickWidget = new QQuickWidget(page11);
+    quickWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    quickWidget->rootContext()->setContextProperty("factory_analyzer", this);
+    quickWidget->setSource(QUrl("qrc:/new_production.qml"));
+
+    // 让它铺满整个页面
+    QVBoxLayout *layout = new QVBoxLayout(page11);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(quickWidget);
+
+    page11->setLayout(layout);
+
 
     //  // 在你的窗口中创建 MyOpenGLWidget 对象
     //  MyOpenGLWidget *openGLWidget = new MyOpenGLWidget(this);
@@ -129,11 +156,12 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
-    scanSerialPortsTimer->start(1000);  // 每秒刷新一次
+
     connect(ui->treeView, &QWidget::customContextMenuRequested, this,
             &::factory_analyzer::onTreeViewContextMenu);
     connect(ui->tableView, &QWidget::customContextMenuRequested, this,
             &factory_analyzer::onTableViewContextMenu);
+        scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     connect(this->productSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleProductSerialPortError(QSerialPort::SerialPortError)));
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
@@ -281,6 +309,33 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
 
 }
+
+void factory_analyzer::updateMainStyle(QString style) {
+    // QSS文件初始化界面样式
+    QString stylesheet;
+
+
+    QFile qss(style);
+
+
+    if (qss.open(QFile::ReadOnly)) {
+        qDebug() << "qss load";
+        QTextStream filetext(&qss);
+        stylesheet = filetext.readAll();
+        this->setStyleSheet(stylesheet);
+        qss.close();
+    } else {
+        qDebug() << "qss not load";
+        qss.setFileName("/qss/" + style);
+        if (qss.open(QFile::ReadOnly)) {
+            qDebug() << "qss load";
+            QTextStream filetext(&qss);
+            stylesheet = filetext.readAll();
+            this->setStyleSheet(stylesheet);
+            qss.close();
+        }
+    }
+}
 void factory_analyzer::readProductSerialPortData() {
     productSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = productSerialPortBuf;  // 读取缓冲区数据
@@ -294,6 +349,16 @@ void factory_analyzer::readProductSerialPortData() {
     ui->msgEdit->appendPlainText(QString::fromUtf8(dataTemp));
     productSerialPortBuf.clear();  // 清除缓冲区
 }
+void factory_analyzer::refreshProductUartState(int state) {
+    if (state)
+        showlog("product串口连接成功");
+    else {
+        ui->productComNameCombo->setEnabled(true);
+        ui->productConnectButton->setEnabled(true);
+        showlog("product串口连接断开");
+    }
+}
+
 void factory_analyzer::handleProductSerialPortError(QSerialPort::SerialPortError error) {
     qDebug() << "ProductSerialPort串口问题" << error;
     if (error == QSerialPort::PermissionError) {
@@ -365,9 +430,9 @@ void factory_analyzer::openProductSerialPort() {
         productSerialPort->setDataTerminalReady(true);
 
         // showlog("串口连接成功");
-        // emit refreshProductSerialPortState(1);
-            uartStatusLabel->setText("uart连接:<font color='green'>成功</font>");
-        //  at->ask_mac();//连接串口过程，复位牙刷写入资源复位损坏
+
+         emit refreshProductSerialPortState(1);
+        //  at->ask_mac();//连接串口过程，复位设备写入资源复位损坏
         connect(productSerialPortTimer, &QTimer::timeout, this,
                 &factory_analyzer::readProductSerialPortData);  // timeout执行真正的读取操作
     } else {
@@ -386,9 +451,8 @@ void factory_analyzer::closeProductSerialPort() {
     disconnect(productSerialPortTimer, &QTimer::timeout, this,
                &factory_analyzer::readProductSerialPortData);  // timeout执行真正的读取操作
 
+   emit refreshProductSerialPortState(0);
 
-    uartStatusLabel->setText("uart连接:<font color='red'>失败</font>");
-    // emit refreshProductSerialPortState(0);
 }
 void factory_analyzer::addTimelineEvent(const QString &timeStr,
                                         const QString &title,
@@ -2400,7 +2464,7 @@ void factory_analyzer::updateBatteryLevel() {
             int level = str.toInt(&ok);
             if (ok) {
                 ui->progressBar->setValue(level);
-                bulk->ep_numer = 0x05;
+                bulk->ep_numer = 0x05;//高通
                 // qDebug() << "Battery level:" << level;
             } else {
                 adb->sendCommand(
@@ -2412,15 +2476,20 @@ void factory_analyzer::updateBatteryLevel() {
                         if (match.hasMatch()) {
                             int level = match.captured(1).toInt();
                             ui->progressBar->setValue(level);
-                            bulk->ep_numer = 0x04;//默认走05
+                            bulk->ep_numer = 0x04;//默认走05//自研
                             // qDebug() << "Battery level:" << level;
                         } else {
                             ui->progressBar->setValue(0);
                             qDebug() << "Failed to parse battery level:" << output;
+
                         }
                     });
             }
         });
+    if(bulk->ep_numer==0x05)
+    ui->label_7->setText("识别为高通："+QString::number(bulk->ep_numer));
+    else if(bulk->ep_numer==0x04)
+        ui->label_7->setText("识别为自研："+QString::number(bulk->ep_numer));
 }
 
 void factory_analyzer::on_pushButton_18_clicked() {
@@ -2557,7 +2626,7 @@ void factory_analyzer::on_pushButton_29_clicked() {
 void factory_analyzer::on_pushButton_30_clicked() {
     bulk->set_amt_task_get_log(0);
 }
-
+//通用的脚本执行函数
 void factory_analyzer::on_comboBox_activated(int index) {
     qDebug() << "[ComboBox] activated index =" << index;
 
@@ -3195,6 +3264,7 @@ void factory_analyzer::on_pushButton_52_clicked() {
 
 void factory_analyzer::on_pushButton_46_clicked() {
     bulk->set_write_product_status();
+    showlog("成功后记得重启");
 }
 
 void factory_analyzer::on_pushButton_48_clicked() {
@@ -3256,6 +3326,7 @@ void factory_analyzer::on_pushButton_64_clicked()
 void factory_analyzer::on_pushButton_65_clicked()
 {
     bulk->get_root_key_status();
+
 
 }
 
@@ -3343,5 +3414,53 @@ void factory_analyzer::on_pushButton_69_clicked()
                   2000)
         );
 
+}
+
+
+void factory_analyzer::on_pushButton_70_clicked()
+{    QString cmd = QString("eagle4_state_pro.sh");
+
+    sendCommandWithRetry(
+        std::bind(&QBulk::set_amt_task_test,
+                  bulk,
+                  cmd,
+                  2000)
+        );
+
+showlog("成功后记得重启");
+}
+
+
+void factory_analyzer::on_pushButton_71_clicked()
+{
+    QString cmd = QString("e3t_state_pro.sh");
+
+    sendCommandWithRetry(
+        std::bind(&QBulk::set_amt_task_test,
+                  bulk,
+                  cmd,
+                  2000)
+        );
+
+    showlog("成功后记得重启");
+}
+
+
+void factory_analyzer::on_pushButton_72_clicked()
+{
+          bulk->get_active_times();
+}
+
+
+void factory_analyzer::on_pushButton_73_clicked()
+{
+      bulk->set_wake_wifi();
+}
+
+void factory_analyzer::qmlstartTest()
+{
+
+
+    showlog("成功后记得重启");
 }
 

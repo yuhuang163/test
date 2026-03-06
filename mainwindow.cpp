@@ -27,8 +27,8 @@ void MainWindow::on_pushButton_clicked() {
     // 尝试访问空指针
     button->setText("Click Me");
     // ui->macInput->setText("B4:56:5D:BF:53:66");
-    // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd牙刷
-    // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd牙刷
+    // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd设备
+    // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd设备
     // // ui->macInput->setText("f8:8f:c8:57:72:df");
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     // ui->macInput->setText("3C:84:27:07:A8:D2");
@@ -737,7 +737,7 @@ void MainWindow::on_enterShipModeButton_clicked() {
         pb->set_ship_mode(1);
         showlog("已发送进入船运");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -775,7 +775,7 @@ void MainWindow::on_lcdTestButton_clicked() {
         pb->set_screen_color(state);
         showlog("已发送屏幕颜色");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 
     state++;
@@ -808,15 +808,15 @@ void MainWindow::on_snInput_returnPressed() {
 
     if (at->getConnected()) {
         pb->set_sn(FacDevInfoType_SUB_PID, subpid);
-        showlog("已绑定subpid到牙刷");
+        showlog("已绑定subpid到设备");
 
         pb->set_sn(FacDevInfoType_TAIL_SN, sn);
-        showlog("已绑定sn到牙刷");
+        showlog("已绑定sn到设备");
 
         bandSnMacToCsv(macAddress, sn);
         showlog("已绑定保存到文件");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 
     if (ui->checkbanding->checkState()) {
@@ -840,7 +840,7 @@ void MainWindow::on_enterBurningMode_clicked() {
             pb->set_burning_mode(4, FacSwitch_OPEN);
         showlog("已发送老化");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 void MainWindow::on_pushButton_2_clicked() {
@@ -888,7 +888,7 @@ void MainWindow::on_exitBurningMode_clicked() {
         pb->set_burning_mode(1, FacSwitch_CLOSE);
         showlog("已退出老化模式");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -919,7 +919,7 @@ void MainWindow::on_entersleep_clicked() {
 
         showlog("已发送休眠");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -928,7 +928,7 @@ void MainWindow::on_forbidsleep_clicked() {
     if (at->getConnected()) {
         showlog("已禁止休眠");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -937,7 +937,7 @@ void MainWindow::on_fac_mode_clicked() {
         pb->set_fac_mode(1);
         showlog("设置进入工厂模式");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -946,7 +946,7 @@ void MainWindow::on_getwifi_clicked() {
         pb->get_wifi_info();
         showlog("正在获取wifi设置信息");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -955,7 +955,7 @@ void MainWindow::on_disconnectwifi_clicked() {
         pb->set_wifi_disconnect();
         showlog("已发送断开wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 void MainWindow::on_connectwifi_clicked() {
@@ -969,7 +969,7 @@ void MainWindow::on_connectwifi_clicked() {
         pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -978,7 +978,7 @@ void MainWindow::on_rebot_clicked() {
         pb->set_dev_reset();
         showlog("重启");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -1995,7 +1995,7 @@ void MainWindow::on_new_connectwifi_clicked() {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, wifiPasswordBytes, wifiPassword);
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -2012,7 +2012,7 @@ void MainWindow::on_swing_test_clicked() {
 
         showlog("已经设置摆幅测试");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -2048,7 +2048,7 @@ void MainWindow::on_light_test_clicked() {
         pb->set_rgb_color(data);
         showlog("已经设置RGB测试");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -2336,7 +2336,7 @@ void MainWindow::on_distribution_network_clicked() {
         pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
         showlog("已发送连接wifi");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -2795,9 +2795,9 @@ void MainWindow::on_get_device_subpid_clicked() { pb->get_sn(FacDevInfoType_SUB_
 void MainWindow::on_get_battery_clicked() {
     if (at->getConnected()) {
         pb->get_battery();
-        showlog("正在获取牙刷电量");
+        showlog("正在获取设备电量");
     } else {
-        showlog("请等待连接牙刷后再试");
+        showlog("请等待连接设备后再试");
     }
 }
 
@@ -2808,13 +2808,13 @@ void MainWindow::on_get_board_sn_clicked() { pb->get_sn(FacDevInfoType_BOARD_SN)
 void MainWindow::on_write_device_sn_clicked() {
     QByteArray devicesn = ui->snInput->text().toUtf8();
     pb->set_sn(FacDevInfoType_TAIL_SN, devicesn);
-    showlog("已绑定尾盖sn到牙刷");
+    showlog("已绑定尾盖sn到设备");
 }
 
 void MainWindow::on_write_board_sn_clicked() {
     QByteArray boardsn = ui->snInput->text().toUtf8();
     pb->set_sn(FacDevInfoType_BOARD_SN, boardsn);
-    showlog("已绑定板子sn到牙刷");
+    showlog("已绑定板子sn到设备");
 }
 
 void MainWindow::on_write_device_subpid_clicked() {
@@ -2824,7 +2824,7 @@ void MainWindow::on_write_device_subpid_clicked() {
         return;
     }
     pb->set_sn(FacDevInfoType_SUB_PID, subpid);
-    showlog("已绑定subpid到牙刷");
+    showlog("已绑定subpid到设备");
 }
 // void MainWindow::on_clear_picture_clicked() {
 //     // 创建网络访问管理器
@@ -3489,7 +3489,7 @@ void MainWindow::on_write_device_skuid_clicked() {
     QByteArray skuid = ui->snInput->text().toUtf8();
 
     pb->set_sn(FacDevInfoType_SKUID, skuid);
-    showlog("已绑定skuid到牙刷");
+    showlog("已绑定skuid到设备");
 }
 
 void MainWindow::on_get_device_skuid_clicked() {

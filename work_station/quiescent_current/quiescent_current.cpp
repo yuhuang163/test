@@ -37,7 +37,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     });
     connect(usblogwaittime, &QTimer::timeout, [=]() {
         at->ask_mac();
-        showlog("正在定时器复位牙刷");
+        showlog("正在定时器复位设备");
     });
 
     HighCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();

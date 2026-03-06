@@ -41,7 +41,7 @@ public:
     QStringList processOutputLines;
     std::vector<QCustomPlot *> graph_value_vector;
     void graph_reset(uint8_t argument);
-
+    void updateMainStyle(QString style);
    Qlog* log;
     // 作为类成员
     QTableWidget *table;
@@ -85,6 +85,7 @@ public:
         "test_bat_info.sh temp",
         "test_rgb_leds.sh F red",
         "test_rgb_leds.sh F green",
+        "test_ntc.sh",
 
     };
 protected:
@@ -261,6 +262,7 @@ private slots:
     void on_pushButton_31_clicked();
     void readProductSerialPortData(void);
     void handleProductSerialPortError(QSerialPort::SerialPortError error);
+    void refreshProductUartState(int state);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
 
@@ -273,6 +275,19 @@ private slots:
     void on_pushButton_68_clicked();
 
     void on_pushButton_69_clicked();
+
+    void on_pushButton_70_clicked();
+
+    void on_pushButton_71_clicked();
+
+    void on_pushButton_72_clicked();
+
+    void on_pushButton_73_clicked();
+
+
+
+public slots:
+      void qmlstartTest();
 
 private:
     void highlightAll(QPlainTextEdit *edit, const QString &text);
@@ -301,8 +316,8 @@ private:
     int mf_dirStep = 0;
 
     QTimer* scanSerialPortsTimer = new QTimer(this);
-    QSerialPort* productSerialPort;  // 牙刷硬件层
-    Qproduct* product;               // 牙刷协议层
+    QSerialPort* productSerialPort;  // 设备硬件层
+    Qproduct* product;               // 设备协议层
     QTimer* productSerialPortTimer = new QTimer(this);
     QByteArray productSerialPortBuf = 0;
 protected:
@@ -396,7 +411,7 @@ public:
         bool isBrushLogGet = 1;
 
 signals:
-    // void refreshProductSerialPortState(int);
+    void refreshProductSerialPortState(int);
 
 private:
     QString formatTime(int ms) const;
@@ -416,4 +431,5 @@ private:
     const int SCENE_HEIGHT = 320;
     const int RIGHT_MARGIN = 200;
 };
+
 #endif // FACTORY_ANALYZER_H

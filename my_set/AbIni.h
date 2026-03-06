@@ -45,7 +45,7 @@
 #include <lxmes.h>  // 立讯的mes头文件
 #include <qat.h>    // 与esp32的at指令
 #include <qjig.h>
-#include <qpb.h>  // 与牙刷的pb协议
+#include <qpb.h>  // 与设备的pb协议
 #include <qproduct.h>
 #include <qsetting.h>  //上位机设置界面
 #include <qusb.h>      // 与治具的测量协议
@@ -142,7 +142,7 @@
 
 
 // [PCBA_VER] 适配新的电机测试功能
-// [DEBUG_VER] 增加v3的ai，允许语音输入控制牙刷。支持ui预览多组动图传输
+// [DEBUG_VER] 增加v3的ai，允许语音输入控制设备。支持ui预览多组动图传输
 //
 
 // [PRESSURE_VER] 做y20po和y25s的压感治具适配

@@ -55,6 +55,8 @@ typedef enum _djiFactroyCmd {
     djiFactroyCmd_get_product_status = 0xc5,
     djiFactroyCmd_set_product_status = 0xc4,
     djiFactroyCmd_read_root_key_status = 0xc6,
+    djiFactroyCmd_sec_act_command_general = 0x32,
+
 
     //amt 0803
     djiFactroyCmd_amt_task_start = 0xf4,
@@ -63,7 +65,6 @@ typedef enum _djiFactroyCmd {
     djiFactroyCmd_get_product_dbg_misc_subcmd_count = 0xe0,
     djiFactroyCmd_sec_dbg_command_req_handler=0xe1,
     djiFactroyCmd_sec_dbg_command_auth_handler=0xe2,
-    djiFactroyCmd_get_active = 0x32,
     djiFactroyCmd_set_sn_operate = 0x50,
     djiFactroyCmd_get_sn_operate = 0x51,
 
@@ -148,6 +149,9 @@ public slots:
     void get_product_status();
     void get_product_active();
  void get_current_slot();
+     void get_active_times();
+         void set_wake_wifi();
+
      void get_product_md5_result();
 
     void get_Esdd_Check_Antirollback();
@@ -237,6 +241,7 @@ private slots:
     void process_sys_event_report_status(QByteArray &f);//没有用
     void process_set_product_status(QByteArray &f);
     void process_read_root_key_status(QByteArray &f);
+
 
 
 

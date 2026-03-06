@@ -244,7 +244,6 @@ public:
     }
 };
 
-
 int main(int argc, char* argv[]) {
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);  //注冊异常捕获函数
 
@@ -255,7 +254,6 @@ int main(int argc, char* argv[]) {
     // 设置使用 UTF-8 编码
     // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     MyApplication a(argc, argv);
-
 
     // 安装自定义消息处理程序
     qInstallMessageHandler(customMessageHandler);

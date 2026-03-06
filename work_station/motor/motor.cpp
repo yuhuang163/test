@@ -14,7 +14,7 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 void motor::on_pushButton_2_clicked() {
-    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd牙刷
+    // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
     ui->macInput->setText("E1:51:07:34:0B:F8");
     ui->macInput->setText("3C:84:27:07:A8:D2");
     ui->macInput->setText("e2:66:07:34:2d:f7");
@@ -724,7 +724,7 @@ void motor::startTest_task() {
                 if (pb->get_is_damping_state() == 1) {
                     QMessageBox::StandardButton reply;
                     reply =
-                        QMessageBox::question(this, "电机测试", "牙刷是否成功复位", QMessageBox::Yes | QMessageBox::No);
+                        QMessageBox::question(this, "电机测试", "设备是否成功复位", QMessageBox::Yes | QMessageBox::No);
                     if (reply == QMessageBox::No) {
                         test_result = failValue;
                     }

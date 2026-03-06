@@ -31,7 +31,7 @@ private:
     std::vector<int> fixtureDownStates;
     std::vector<int> fixtureUpStates;
 
-    Fixture_uart *Fixture_uart_ui = NULL;   // 牙刷控制窗口
+    Fixture_uart *Fixture_uart_ui = NULL;   // 设备控制窗口
 
     int mehineState[12]={0};//从0开始
 

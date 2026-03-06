@@ -216,14 +216,14 @@ void imubox::check_all_over_fixture_down(int testNumber) {
     testNumber = testNumber - 1;
     if (testNumber < 0 || testNumber > testList.size()) {
         qDebug() << "check_all_over_fixture_down机号错误";
-        // emit send_fixture_log("牙刷90度测试完成");
+        // emit send_fixture_log("设备90度测试完成");
         return;
     }
     fixtureDownStates[testNumber] = 1;
 
     if (checkStateReady(fixtureDownStates)) {
         qDebug() << "check_all_over_fixture_down结束";
-        // emit send_fixture_log("所有牙刷90度测试完成,旋转90度");
+        // emit send_fixture_log("所有设备90度测试完成,旋转90度");
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_DOWN);
         for (int i = 0; i < testList.size(); ++i) {
@@ -237,14 +237,14 @@ void imubox::check_all_over_fixture_right(int testNumber) {
     testNumber = testNumber - 1;
     if (testNumber < 0 || testNumber > testList.size()) {
         qDebug() << "check_all_over_fixture_right机号错误";
-        // emit send_fixture_log("牙刷180度测试完成");
+        // emit send_fixture_log("设备180度测试完成");
         return;
     }
     fixtureRightStates[testNumber] = 1;
 
     if (checkStateReady(fixtureRightStates)) {
         qDebug() << "check_all_over_fixture_right结束";
-        // emit send_fixture_log("所有牙刷180度测试完成,旋转90度");
+        // emit send_fixture_log("所有设备180度测试完成,旋转90度");
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_RIGHT);
         for (int i = 0; i < testList.size(); ++i) {
@@ -257,14 +257,14 @@ void imubox::check_all_over_fixture_left(int testNumber) {
     testNumber = testNumber - 1;
     if (testNumber < 0 || testNumber > testList.size()) {
         qDebug() << "check_all_over_fixture_left机号错误";
-        // emit send_fixture_log("所有牙刷90度测试完成");
+        // emit send_fixture_log("所有设备90度测试完成");
         return;
     }
     qDebug() << "收到check_all_over_fixture_left的testNumber" << testNumber;
     fixtureLeftStates[testNumber] = 1;
 
     if (checkStateReady(fixtureLeftStates)) {
-        // emit send_fixture_log("所有牙刷90度测试完成");
+        // emit send_fixture_log("所有设备90度测试完成");
         qDebug() << "check_all_over_fixture_left结束";
         waitWork(300);
         set_cylinder_state(STATE_BRUSH_LEFT);
