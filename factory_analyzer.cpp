@@ -123,9 +123,9 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     this->resize(SETTINGS.value("Window/Size", windowSize).toSize());
 
     // 构造函数里
-    QTimer *timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
-    timer->start(1000); // 1 秒刷新一次
+
+    connect(adb_check_timer, &QTimer::timeout, this, &factory_analyzer::updateAdbStatus);
+    adb_check_timer->start(1000); // 1 秒刷新一次
 
     adbStatusLabel = new QLabel("ADB连接：<font color='red'>wait</font>");
     ui->statusbar->addPermanentWidget(adbStatusLabel);
@@ -141,12 +141,28 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
 
 
+    json_treeModel = new QStandardItemModel(this);
+    json_tableModel = new QStandardItemModel(this);
+
+    ui->treeView_2->setModel(json_treeModel);
+    ui->tableView_2->setModel(json_tableModel);
+
+    json_treeModel->setHorizontalHeaderLabels(QStringList() << "json树");
+
+    connect(ui->treeView_2,
+            &QTreeView::clicked,
+            this,
+            &factory_analyzer::json_onTreeClicked);
+
+
 
 
     // Tree model
     treeModel = new QStandardItemModel(this);
     treeModel->setHorizontalHeaderLabels({"设备树"});
     ui->treeView->setModel(treeModel);
+
+
 
     // File model
     fileModel = new QStandardItemModel(this);
@@ -309,6 +325,258 @@ factory_analyzer::factory_analyzer(QWidget *parent)
 
 
 }
+void factory_analyzer::json_loadFile(const QString &path)
+{
+    QFile file(path);
+
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+
+    json_rootObject = doc.object();
+
+    json_treeModel->clear();
+    json_treeModel->setHorizontalHeaderLabels(QStringList() << "JSON Modules");
+
+    json_buildTree(json_rootObject, json_treeModel->invisibleRootItem());
+}
+void factory_analyzer::json_loadFile_mechine()
+{
+    adb->sendCommand(R"(cat /system/etc/dji.json)",
+                     [this](const QString &output, qint64) {
+
+                         QByteArray data = output.toUtf8();
+
+                         QJsonParseError err;
+                         QJsonDocument doc = QJsonDocument::fromJson(data, &err);
+
+                         if (err.error != QJsonParseError::NoError) {
+                             qDebug() << "JSON parse error:" << err.errorString();
+                             return;
+                         }
+
+                         json_rootObject = doc.object();
+
+                         json_treeModel->clear();
+                         json_treeModel->setHorizontalHeaderLabels(QStringList() << "JSON Modules");
+
+                         json_buildTree(json_rootObject, json_treeModel->invisibleRootItem());
+                     });
+}
+
+void factory_analyzer::json_showObject(const QJsonObject &obj)
+{
+    json_tableModel->clear();
+
+    json_tableModel->setHorizontalHeaderLabels(
+        QStringList() << "Key" << "Value");
+
+    for (QString key : obj.keys())
+    {
+        QJsonValue val = obj[key];
+
+        QList<QStandardItem*> row;
+
+        row << new QStandardItem(key);
+
+        if (val.isString())
+            row << new QStandardItem(val.toString());
+
+        else if (val.isDouble())
+            row << new QStandardItem(QString::number(val.toDouble()));
+
+        else if (val.isBool())
+            row << new QStandardItem(val.toBool() ? "true" : "false");
+
+        else
+            row << new QStandardItem("[object]");
+
+        json_tableModel->appendRow(row);
+    }
+}
+void factory_analyzer::json_showArray(const QJsonArray &arr)
+{
+    json_tableModel->clear();
+
+    if (arr.isEmpty())
+        return;
+
+    QJsonObject first = arr.first().toObject();
+
+    QStringList headers;
+
+    for (QString key : first.keys())
+        headers << key;
+
+    json_tableModel->setHorizontalHeaderLabels(headers);
+
+    for (auto v : arr)
+    {
+        QJsonObject obj = v.toObject();
+
+        QList<QStandardItem*> row;
+
+        for (QString key : headers)
+        {
+            row << new QStandardItem(obj[key].toVariant().toString());
+        }
+
+        json_tableModel->appendRow(row);
+    }
+}
+
+void factory_analyzer::json_onTreeClicked(const QModelIndex &index)
+{
+    QStandardItem *item = json_treeModel->itemFromIndex(index);
+
+    if (!item)
+        return;
+
+    QVariant data = item->data(Qt::UserRole);
+
+    if (!data.isValid())
+        return;
+
+    QJsonValue val = data.value<QJsonValue>();
+
+    qDebug() << "val1:" << val;
+
+    if (val.isObject())
+    {
+        QJsonObject obj = val.toObject();
+   qDebug() << "obj:" << obj;
+        // 判断是不是 route table
+        if (!obj.isEmpty())
+        {
+            QString firstKey = obj.keys().first();
+
+            QJsonValue firstVal = obj.value(firstKey);
+
+            if (firstVal.isObject())
+            {
+                QJsonObject route = firstVal.toObject();
+
+                // DJI route table 特征
+                if (route.contains("target") && route.contains("channel"))
+                {
+                    json_showRouteTable(obj);
+                       qDebug() << "obj2222:" << obj;
+                    return;
+                }
+            }
+        }
+
+        // 普通 JSON
+        json_showObject(obj);
+    }
+    else if (val.isArray())
+    {
+           qDebug() << "val2:" << val;
+        json_showArray(val.toArray());
+    }  else
+    {
+        // 处理 string / number / bool
+        json_tableModel->clear();
+        json_tableModel->setHorizontalHeaderLabels({"Value"});
+
+        QList<QStandardItem*> row;
+
+        if (val.isDouble())
+            row << new QStandardItem(QString::number(val.toDouble()));
+        else if (val.isString())
+            row << new QStandardItem(val.toString());
+        else if (val.isBool())
+            row << new QStandardItem(val.toBool() ? "true" : "false");
+        else
+            row << new QStandardItem("null");
+
+        json_tableModel->appendRow(row);
+    }
+}
+
+void factory_analyzer::json_showRouteTable(const QJsonObject &obj)
+{
+    json_tableModel->clear();
+
+    QStringList headers;
+
+    headers << "route_id"
+            << "target"
+            << "protocol"
+            << "channel"
+            << "index"
+            << "distance"
+            << "status";
+
+    json_tableModel->setHorizontalHeaderLabels(headers);
+
+    for (QString route_id : obj.keys())
+    {
+        QJsonObject route = obj.value(route_id).toObject();
+        // 先过滤无效数据
+        if (!route.contains("target") || !route.contains("channel"))
+            continue;
+        QList<QStandardItem*> row;
+
+        row << new QStandardItem(route_id);
+        row << new QStandardItem(route["target"].toString());
+        row << new QStandardItem(route["protocol"].toString());
+        row << new QStandardItem(route["channel"].toString());
+        row << new QStandardItem(QString::number(route["index"].toInt()));
+        row << new QStandardItem(QString::number(route["distance"].toInt()));
+        row << new QStandardItem(QString::number(route["status"].toInt()));
+
+        json_tableModel->appendRow(row);
+    }
+
+    ui->tableView_2->resizeColumnsToContents();
+}
+
+
+void factory_analyzer::json_buildTree(const QJsonObject &obj, QStandardItem *parent)
+{
+    for (const QString &key : obj.keys())
+    {
+        QJsonValue value = obj.value(key);   // 关键：不要用 obj[key]
+
+        QStandardItem *item = new QStandardItem(key);
+
+        item->setData(QVariant::fromValue(value), Qt::UserRole);
+
+        parent->appendRow(item);
+
+        if (value.isObject())
+        {
+            json_buildTree(value.toObject(), item);
+        }
+
+        if (value.isArray())
+        {
+            QJsonArray arr = value.toArray();
+
+            for (int i = 0; i < arr.size(); i++)
+            {
+                QJsonValue v = arr.at(i);
+
+                if (v.isObject())
+                {
+                    QStandardItem *child = new QStandardItem(QString("[%1]").arg(i));
+
+                    child->setData(QVariant::fromValue(v), Qt::UserRole);
+
+                    item->appendRow(child);
+
+                    json_buildTree(v.toObject(), child);
+                }
+            }
+        }
+    }
+}
+
 
 void factory_analyzer::updateMainStyle(QString style) {
     // QSS文件初始化界面样式
@@ -481,7 +749,7 @@ void factory_analyzer::drawTimeline(
     const QString &axisName
     ) {
     const int EVENT_SPACING = 140;
-    const int AXIS_LEN = 20000;
+    const int AXIS_LEN = 200000;
 
     // 画轴线
     my_screen->addLine(20, baseY, AXIS_LEN, baseY, QPen(Qt::black, 2));
@@ -1251,6 +1519,7 @@ void factory_analyzer::updateAdbStatus() {
                 adbStatusLabel->setText("ADB连接：<font color='green'>成功</font>");
                 adb_status = true;
                 loadRoot();
+                json_loadFile_mechine();
                 on_pushButton_16_clicked();
             }
             // qDebug() << "[factory_analyzer] ADB连接成功";
@@ -2828,7 +3097,9 @@ void factory_analyzer::on_pushButton_34_clicked() {
                              QColor(255, 140, 0) // 深橙色 / DarkOrange
                              ,m_events);
 
-        } else if (line.contains("[AMT]", Qt::CaseInsensitive)) {
+            // qDebug() << "解析 line 日志:" << line;
+
+        } else if (line.contains("[AMT]", Qt::CaseInsensitive)&&ui->checkBox_2->checkState()) {
 
             addTimelineEvent(timeStr, "🧪 AMT 测试内容", content,
                              QColor(160, 210, 160),m_events
@@ -2875,7 +3146,7 @@ void factory_analyzer::on_pushButton_34_clicked() {
         QString resetReason;
         QString timeStr;
 
-        qDebug() << "解析 UEFI 日志:" << fileName;
+        qDebug() << "解析 UEFI 日志:" << fileName<<uefiDirPath;
 
         while (!uefi_in.atEnd()) {
             QString line = uefi_in.readLine().trimmed();
@@ -3459,8 +3730,40 @@ void factory_analyzer::on_pushButton_73_clicked()
 
 void factory_analyzer::qmlstartTest()
 {
-
-
     showlog("成功后记得重启");
+}
+
+
+void factory_analyzer::on_pushButton_75_clicked()
+{
+        json_loadFile("dji.json");
+
+}
+
+
+void factory_analyzer::on_pushButton_76_clicked()
+{
+        reconnectTimer->stop();
+    adb_check_timer->stop();
+}
+
+
+void factory_analyzer::on_pushButton_74_clicked()
+{
+    if (json_treeExpanded) {
+        ui->treeView_2->collapseAll(); // 收起
+        json_treeExpanded = false;
+        ui->pushButton_74->setText("展开全部");
+    } else {
+        ui->treeView_2->expandAll(); // 展开
+        json_treeExpanded = true;
+        ui->pushButton_74->setText("收起全部");
+    }
+}
+
+
+void factory_analyzer::on_pushButton_77_clicked()
+{
+     json_loadFile_mechine();
 }
 

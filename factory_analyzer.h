@@ -17,6 +17,12 @@
 #include "ui_factory_analyzer.h"
 #include <QMessageBox>
 // #include "myopenglwidget.h"
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QFile>
+#include <QStandardItemModel>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class factory_analyzer;
@@ -67,6 +73,7 @@ public:
     int historyIndex = -1;
     // 类成员
     bool treeExpanded = true;  // 当前状态，false=收起，true=展开
+        bool json_treeExpanded = false;  // 当前状态，false=收起，true=展开
     QStringList items = {
 
         "test_rtc_good.sh",
@@ -285,6 +292,15 @@ private slots:
     void on_pushButton_73_clicked();
 
 
+    void json_onTreeClicked(const QModelIndex &index);
+
+    void on_pushButton_75_clicked();
+
+    void on_pushButton_76_clicked();
+
+    void on_pushButton_74_clicked();
+
+    void on_pushButton_77_clicked();
 
 public slots:
       void qmlstartTest();
@@ -315,6 +331,21 @@ private:
     int mf_dirTotal = 0;
     int mf_dirStep = 0;
 
+    QStandardItemModel *json_treeModel;
+    QStandardItemModel *json_tableModel;
+
+    QJsonObject json_rootObject;
+   void json_loadFile_mechine();
+    void json_loadFile(const QString &path);
+    void json_buildTree(const QJsonObject &obj, QStandardItem *parent);
+    void json_showObject(const QJsonObject &obj);
+    void json_showArray(const QJsonArray &arr);
+void json_showRouteTable(const QJsonObject &obj);
+
+
+
+
+    QTimer *adb_check_timer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
     QSerialPort* productSerialPort;  // 设备硬件层
     Qproduct* product;               // 设备协议层

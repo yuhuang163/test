@@ -360,7 +360,7 @@ bool QBulk::bulkWrite(const QByteArray &data, unsigned int timeout) {
     }
     hexdata.chop(1); // 去掉最后一个空格
 
-    qDebug() << "USB TX:" << hexdata;
+    // qDebug() << "USB TX:" << hexdata;
     emit send_bulk_data("USB TX:"+hexdata);
 
     int transferred =
@@ -801,6 +801,12 @@ void QBulk::set_Rpmb_Device(const QString &sn) {
     // ③ sn_length（小端）
     v1data.append(char(snLen & 0xFF));
     v1data.append(char((snLen >> 8) & 0xFF));
+    //sn的地址
+    v1data.append(char(0x00));
+     v1data.append(char(0x10));
+       v1data.append(char(0x00));
+       v1data.append(char(0xf5));
+
 
     // ④ sn 内容
     v1data.append(snBytes);
@@ -1443,7 +1449,7 @@ void QBulk::parseCmd(QByteArray &buffer) {
         if (cmdID == 0Xf1)
             break;
 
-        qDebug() << "USB RX:" << hexdata;
+        // qDebug() << "USB RX:" << hexdata;
 
         emit send_bulk_data("USB RX:"+hexdata);
 

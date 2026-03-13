@@ -15,6 +15,60 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_7">
+    <item row="0" column="6">
+     <widget class="QProgressBar" name="progressBar">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QProgressBar {
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    background-color: #f0f0f0; /* 浅灰背景 */
+    text-align: center;
+    padding: 2px;
+}
+
+QProgressBar::chunk {
+    border-radius: 4px;
+    background-color: #4CAF50; /* 默认绿色 */
+}
+
+/* 根据电量动态改变颜色 */
+QProgressBar[progress=&quot;low&quot;]::chunk {
+    background-color: #f44336; /* 红色 */
+}
+QProgressBar[progress=&quot;medium&quot;]::chunk {
+    background-color: #FFB300; /* 黄色 */
+}
+QProgressBar[progress=&quot;high&quot;]::chunk {
+    background-color: #4CAF50; /* 绿色 */
+}</string>
+      </property>
+      <property name="value">
+       <number>24</number>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="5">
+     <widget class="QLabel" name="label_2">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="text">
+       <string>电池电量</string>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="7" rowspan="2">
      <widget class="QWidget" name="widget" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout_18">
@@ -74,59 +128,52 @@ QGroupBox {
       </layout>
      </widget>
     </item>
-    <item row="0" column="5">
-     <widget class="QLabel" name="label_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>电池电量</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="6">
-     <widget class="QProgressBar" name="progressBar">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">QProgressBar {
-    border: 1px solid #aaa;
-    border-radius: 6px;
-    background-color: #f0f0f0; /* 浅灰背景 */
-    text-align: center;
-    padding: 2px;
-}
-
-QProgressBar::chunk {
-    border-radius: 4px;
-    background-color: #4CAF50; /* 默认绿色 */
-}
-
-/* 根据电量动态改变颜色 */
-QProgressBar[progress=&quot;low&quot;]::chunk {
-    background-color: #f44336; /* 红色 */
-}
-QProgressBar[progress=&quot;medium&quot;]::chunk {
-    background-color: #FFB300; /* 黄色 */
-}
-QProgressBar[progress=&quot;high&quot;]::chunk {
-    background-color: #4CAF50; /* 绿色 */
-}</string>
-      </property>
-      <property name="value">
-       <number>24</number>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-      </property>
-     </widget>
+    <item row="0" column="3" colspan="2">
+     <layout class="QHBoxLayout" name="horizontalLayout_11">
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>BULK口选择</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>发送端点</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pushButton_54">
+        <property name="text">
+         <string>断开连接</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item row="1" column="0" colspan="7">
      <widget class="QSplitter" name="splitter_2">
@@ -147,7 +194,7 @@ QProgressBar[progress=&quot;high&quot;]::chunk {
         <enum>QTabWidget::Rounded</enum>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>11</number>
        </property>
        <property name="elideMode">
         <enum>Qt::ElideNone</enum>
@@ -1222,10 +1269,19 @@ background-color: lightyellow;
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QPushButton" name="pushButton_34">
+         <item row="0" column="2">
+          <widget class="QCheckBox" name="checkBox_2">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
-            <string>更新事件轴（读取本地日志）</string>
+            <string>AMT</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -1233,6 +1289,13 @@ background-color: lightyellow;
           <widget class="QPushButton" name="pushButton_31">
            <property name="text">
             <string>拉取日志到本地</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1" colspan="2">
+          <widget class="QPushButton" name="pushButton_34">
+           <property name="text">
+            <string>更新事件轴（读取本地日志）</string>
            </property>
           </widget>
          </item>
@@ -1300,6 +1363,47 @@ background-color: lightyellow;
         <attribute name="title">
          <string>🏠 待开发</string>
         </attribute>
+       </widget>
+       <widget class="QWidget" name="tab_12">
+        <attribute name="title">
+         <string>dji.json</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_13">
+         <item row="0" column="0">
+          <widget class="QTreeView" name="treeView_2">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="pushButton_74">
+           <property name="text">
+            <string>展开全部</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="pushButton_75">
+           <property name="text">
+            <string>加载本地dji.json</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="pushButton_77">
+           <property name="text">
+            <string>加载机器dji.json</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" colspan="2">
+          <widget class="QTableView" name="tableView_2"/>
+         </item>
+        </layout>
        </widget>
       </widget>
       <widget class="QWidget" name="verticalLayoutWidget">
@@ -1399,6 +1503,13 @@ background-color: lightyellow;
              </property>
             </widget>
            </item>
+           <item row="2" column="2">
+            <widget class="QPushButton" name="pushButton_76">
+             <property name="text">
+              <string>关闭自动连接设备</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </widget>
         </item>
@@ -1430,53 +1541,6 @@ background-color: lightyellow;
        </layout>
       </widget>
      </widget>
-    </item>
-    <item row="0" column="3" colspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout_11">
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>BULK口选择</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="comboBox_2">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_7">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>发送端点</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pushButton_54">
-        <property name="text">
-         <string>断开连接</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </item>
    </layout>
   </widget>
