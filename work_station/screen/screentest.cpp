@@ -221,7 +221,7 @@ void screentest::refreshSn(FacDevInfo data) {
         }
     }
 }
-void screentest::startTask()  // 编写六轴校准的代码
+void screentest::startTask()
 {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);

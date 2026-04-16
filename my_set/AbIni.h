@@ -53,7 +53,7 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "电刷产测工具   V1.5.7"
+#define DEBUG_VER "产品产测工具   V1.5.7"
 #define CAMERA_VER "摄像测试工站   V1.3.8"
 #define AGE_VER "老化测试工站   V1.3.7"
 #define MOTOR_VER "电机校准工站   V1.3.4"
@@ -63,7 +63,7 @@
 #define SINGLE_VER "信号测试工站   V1.5.5"
 #define FREE_VER "自由测试工站   V1.1.5"
 #define IMU_VER "IMU校准工站    V1.5.5"
-#define PCBA_VER "电刷板子测试   V1.5.2"
+#define PCBA_VER "产品板子测试   V1.5.2"
 #define PRESSURE_VER "压感校测工站   V1.3.9"
 
 

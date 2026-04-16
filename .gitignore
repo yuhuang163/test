@@ -1,4 +1,3 @@
 build/
-new_production.pro
-new_production.pro.user
-new_production.pro.user.*
+new_production.pro*
+.vscode/
