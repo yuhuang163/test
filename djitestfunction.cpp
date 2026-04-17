@@ -16,26 +16,26 @@ void factory_analyzer::executeFunctionByName(const QString functionName) {
 }
 void factory_analyzer::createTestFunctions() {
     testFunctions = {
-                     // {"禁止休眠", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN)); }},
+                     // {"禁止休眠", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); }); }},
                      // {"蓝牙升级",
                      //  [&]() {
-                     //      // sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                     //      // sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                      //  }},
                      // {"电机升级",
                      //  [&]() {
-                     //      // sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                     //      // sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                      //  }},
                      // {"压感升级",
                      //  [&]() {
-                     //      // sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                     //      // sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                      //  }},
-                     // {"打开串口接收", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_uart_receive, pb, 1)); }},
-                     // {"关闭串口接收", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_uart_receive, pb, 0)); }},
-                     // {"设置屏幕颜色", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_screen_color, pb, 1)); }},
-                     // {"获取尾盖SN码", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN)); }},
-                     // {"获取基本信息", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb)); }},
-                     // {"获取电量信息", [&]() { sendCommandWithRetry(std::bind(&Qpb::get_battery, pb)); }},
-                     // {"进入船运模式", [&]() { sendCommandWithRetry(std::bind(&Qpb::set_ship_mode, pb, 1)); }},
+                     // {"打开串口接收", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::UartReceive, 1); }); }},
+                     // {"关闭串口接收", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::UartReceive, 0); }); }},
+                     // {"设置屏幕颜色", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::ScreenColor, 1); }); }},
+                     // {"获取尾盖SN码", [&]() { sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); }); }},
+                     // {"获取基本信息", [&]() { sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); }); }},
+                     // {"获取电量信息", [&]() { sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); }); }},
+                     // {"进入船运模式", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::ShipMode, 1); }); }},
 
 
 {"检查sd卡有没有拔掉", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_sd_unset.sh",2000)); }},
@@ -482,4 +482,6 @@ void factory_analyzer::moveToGrid(QGridLayout* layout, QWidget* widget, int row,
         layout->removeWidget(widget);
     layout->addWidget(widget, row, col);
 }
+
+
 

@@ -2,68 +2,30 @@
 #define QPB_H
 
 #include <QObject>
+#include <QVariant>
 #include <QSerialPort>
 #include "qprotocol.h"
+#include "qpb_types.h"
 
 #include "ble_protocol/fx_ble_msg.pb.h"
 #include "factory_protocol/factory_msg.pb.h"
 
-typedef struct {
-    int magic;
-    short gyro_offset[3];
-} ImuCalData;
+Q_DECLARE_METATYPE(WifiInfo)
+Q_DECLARE_METATYPE(FacLedControl)
+Q_DECLARE_METATYPE(FacSetBrushRecord)
+Q_DECLARE_METATYPE(press_calib_data_t)
+Q_DECLARE_METATYPE(ImuCalData)
+Q_DECLARE_METATYPE(NewImuCalData)
+Q_DECLARE_METATYPE(RotasFileStatusReq)
+Q_DECLARE_METATYPE(local_ota_data)
+Q_DECLARE_METATYPE(FacGetDevBaseInfo)
 
-typedef struct {
-    short gyro_offset[3];
-    float kx;
-    float ky;
-    float kz;
-    float syx;
-    float szx;
-    float szy;
-    float bx;
-    float by;
-    float bz;
-} NewImuCalData;
-
-typedef struct {
-    short gyro[3];
-    short acc[3];
-} ImuDataT;
-
-typedef struct {
-    int magic;
-    ImuDataT imu_offset;
-    float acc_scalar[3];
-} ImuCalDataOld;
-
-typedef struct {
-    int is_have_data;
-    int file_size;
-    int version_code;  // 版本号
-    int version_type;  // 文件类型  201固件  202资源  303音频 304主题 305音乐文件
-    QByteArray url;    //
-    QByteArray md5;    //
-} local_ota_data;
-
-typedef enum {
-    MODULE_INVALID,
-    MODULE_BTH,
-    MODULE_MODE_BUTTON,
-    MODULE_POWER_BUTTON,
-    MODULE_ASSISTANT_COMPONENT,
-    MODULE_MAX,
-} press_module_e;
-
-typedef struct {
-    unsigned short calib_factor[MODULE_MAX];
-    short temperature[MODULE_MAX];
-} press_calib_data_t;
-
-class Qpb : public QSerialPort, public qProtocol  {
+class Qpb : public QSerialPort, public qProtocol, public IDevice {
     Q_OBJECT
 public:
     explicit Qpb(QSerialPort* parent = nullptr);
+    void set(DeviceCmd cmd, const QVariant& data = {}) override;
+    void get(DeviceCmd cmd, const QVariant& param = {}) override;
     void parseCmd(const QByteArray& byte) override;
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
@@ -107,6 +69,7 @@ public:
     };
     int getState(PbStateType stateType) const;
     void setState(PbStateType stateType, int value);
+    bool get_is_save_press_cali_data() { return is_save_press_cali_ok; }
 
     void reset_all_pb() {
         is_dev_into_white_mode = 0;
@@ -195,7 +158,7 @@ private:
     int shipCount = 0;
     int is_motor_cali_data_set = 0;
 
-public slots:
+private slots:
     void set_press_sensor_temp(int state);
     void set_solve_imu_collect_param(FacSwitch sta);  // 设置imu采集开关
     void set_uart_receive(int state);                 // 设置UART接收状态
@@ -228,7 +191,6 @@ public slots:
     void set_brush_reset();                                                     // 刷牙复位
 
     void set_press_cali_result(press_calib_data_t cali_result);  // 设置压力校准结果
-    bool get_is_save_press_cali_data() { return is_save_press_cali_ok; }
     void set_imu_cali_result(ImuCalData cali_ok);         // 发送IMU校准结果
     void set_new_imu_cali_result(NewImuCalData cali_ok);  // 发送新的IMU校准结果
 
@@ -257,7 +219,7 @@ public slots:
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
                                uint32_t vibrate_freq);  // 设置舵机电机参数
 
-public slots:
+private slots:
     void get_now_music_info();
     void get_sd_card_info();
     void get_light_sensor_info();
@@ -273,6 +235,8 @@ public slots:
     void get_wifi_info();                  // 获取WiFi信息
     void get_servo_motor_info();           // 获取电机信息
     void get_bursh_backlog(int state);
+
+    
 private slots:
     void process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f);
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);

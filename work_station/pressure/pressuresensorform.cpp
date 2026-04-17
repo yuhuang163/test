@@ -877,7 +877,7 @@ void PressureSensorForm::on_end_clicked() {
     isTestContinue = false;
     if (at->getConnected()) {
         delay_msec(300);
-        pb->set_dev_reset();  // 开始复位设备
+        pb->set(DeviceCmd::DevReset);  // 开始复位设备
         delay_msec(50);
         showlog("设备已复位");
     }
@@ -1327,7 +1327,7 @@ void PressureSensorForm::calib_send_result(void) {
 
         isStartSendCaliResult = 0;
         delay_msec(300);
-        pb->set_press_cali_result(cali_result);
+        pb->set(DeviceCmd::PressCaliResult, QVariant::fromValue(cali_result));
         repeat_send_ok = 1;
         delay_msec(300);
     }
@@ -1627,7 +1627,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                         if (product_model == MODEL_ID_F20) {
                             showlog("当前是电机测试");
                         } else {
-                            pb->set_brush_control(1);
+                            pb->set(DeviceCmd::BrushControl, 1);
                         }
 
                         showlog(sensor_v[test_chan]->ui_msg_test[0]);
@@ -1647,9 +1647,9 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
                     } else if (lock == 0) {
                         lock = 1;
                         if (product_model == MODEL_ID_F20) {
-                            pb->set_motor_test_state(1);
+                            pb->set(DeviceCmd::MotorTestState, 1);
                         } else {
-                            pb->set_device_mode(3);  // 清洁模式
+                            pb->set(DeviceCmd::DeviceMode, 3);  // 清洁模式
                         }
                         showlog("开始压感测试");
                         delay_msec(200);
@@ -1672,7 +1672,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
 #else
                 if (sensor_v[test_chan]->test_status == TEST_START) {
                     qDebug() << "请求获取按键状态上报" << i;
-                    pb->get_button_state(1);
+                    pb->get(DeviceCmd::ButtonState, 1);
                     sensor_v[test_chan]->test_status = TEST_KEY_NO_CLICK;
                     qDebug() << "set_fixture_movement:key_test";
                     showlog(sensor_v[test_chan]->ui_msg_test[0]);
@@ -1872,7 +1872,7 @@ void PressureSensorForm::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -2480,8 +2480,8 @@ void PressureSensorForm::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     showlog("蓝牙连接成功");
-                    pb->get_base_info();  // 获取设备信息
-                    pb->get_sn(FacDevInfoType_TAIL_SN);
+                    pb->get(DeviceCmd::BaseInfo);  // 获取设备信息
+                    pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     state = STATE_DISABLE_SLEEP_CALIB;
                 }
                 break;
@@ -2490,11 +2490,11 @@ void PressureSensorForm::startTask() {
                 delay_msec(100);
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
-                    pb->set_press_collect_param(FacSwitch_START);
+                    pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_START));
                     state = STATE_WATI_ASKQR;
                 } else {
                     delay_msec(500);
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("再次发送禁止休眠");
                 }
                 break;
@@ -2525,7 +2525,7 @@ void PressureSensorForm::startTask() {
                     get_independent_state() == STATE_CALIB_STATIC_START) {
                     delay_msec(200);
 
-                    pb->get_press_cali_result();
+                    pb->get(DeviceCmd::GetPressCaliResult);
 
                     showlog("已设置压感采集参数");
 
@@ -2538,7 +2538,7 @@ void PressureSensorForm::startTask() {
                     } else if (function_switch == FUNCTION_TEST) {
                         state = STATE_TEST_CH_X;
 #if Y20_Pro_PRESS_TEST  // Y20pro测试前需要校准系数阈值比对
-                        pb->get_press_cali_result();
+                        pb->get(DeviceCmd::GetPressCaliResult);
                         state = STATE_TEST_PARM_LIMIT;
 #endif
                     } else {
@@ -2603,7 +2603,7 @@ void PressureSensorForm::startTask() {
                     waittime->stop();
                     qDebug() << "waittime->stop();";
                 } else if (sensor_v[calib_chan]->gs32SensorFlag == 6) {
-                    pb->set_press_collect_param(FacSwitch_STOP);
+                    pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_STOP));
                     delay_msec(200);
                     showlog("压感校准失败");
                     waittime->stop();
@@ -2627,7 +2627,7 @@ void PressureSensorForm::startTask() {
                                     .arg(sensor_v[chan]->para.upper_limit));
                         state = STATE_SEND_CAIL_RESULT;
                     } else {
-                        pb->set_press_collect_param(FacSwitch_STOP);
+                        pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_STOP));
                         delay_msec(200);
                         showlog(QString("校准系数超阈值:%1(%2-%3)")
                                     .arg(sensor_v[chan]->calib_result[0])
@@ -2685,7 +2685,7 @@ void PressureSensorForm::startTask() {
                         if (is_calib_suc == 1) {  // 保存回读成功
                             showlog("已保存完毕");
                             delay_msec(500);
-                            pb->set_dev_reset();
+                            pb->set(DeviceCmd::DevReset);
                             delay_msec(1000);
 
                             showlog("已发送复位请求，等待设备复位");
@@ -2707,7 +2707,7 @@ void PressureSensorForm::startTask() {
                         }
                     } else {
                         qDebug() << "主界面获取校准结果";
-                        pb->get_press_cali_result();
+                        pb->get(DeviceCmd::GetPressCaliResult);
                     }
                 }
                 break;
@@ -2731,12 +2731,12 @@ void PressureSensorForm::startTask() {
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     delay_msec(200);
                     showlog("已进入第二次禁止休眠");
-                    pb->set_press_collect_param(FacSwitch_START);
+                    pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_START));
                     delay_msec(200);
                     state = STATE_SET_COLLECT_PARAM_2;
                 } else {
                     showlog("设置第二次禁止休眠");
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                     delay_msec(200);
                 }
                 break;
@@ -2760,7 +2760,7 @@ void PressureSensorForm::startTask() {
                                         .arg(chan));
                             state = STATE_TEST_CH_X;
                         } else {
-                            pb->set_press_collect_param(FacSwitch_STOP);
+                            pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_STOP));
                             delay_msec(200);
                             showlog(QString("通道%3校准系数超阈值:%1(%2-%3)")
                                         .arg(LastCali.calib_factor[chan])
@@ -2811,7 +2811,7 @@ void PressureSensorForm::startTask() {
                     }
                 } else if (sensor_v[test_chan]->test_status == TEST_FAIL) {
                     waittime->stop();
-                    pb->set_press_collect_param(FacSwitch_STOP);
+                    pb->set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_STOP));
                     delay_msec(200);
                     showlog("压感测试失败");
                     result = failValue;
@@ -2895,7 +2895,7 @@ void PressureSensorForm::startTask() {
                 isTestContinue = false;
                 // showlog("压感测试完毕");
 
-                pb->set_dev_reset();  // 开始复位设备
+                pb->set(DeviceCmd::DevReset);  // 开始复位设备
                 delay_msec(50);
                 showlog("设备已复位");
                 closeDongleSerialPort();
@@ -2928,7 +2928,7 @@ void PressureSensorForm::startTask() {
 void PressureSensorForm::on_ClearGraph_clicked() { graph_reset(0); }
 
 void PressureSensorForm::on_GetButton_clicked() {
-    pb->get_button_state(1);
+    pb->get(DeviceCmd::ButtonState, 1);
     return;
 }
 
@@ -2936,7 +2936,7 @@ void PressureSensorForm::overTask() { on_end_clicked(); }
 
 void PressureSensorForm::on_button_get_calib_factor_clicked() {
     delay_msec(200);
-    pb->get_press_cali_result();
+    pb->get(DeviceCmd::GetPressCaliResult);
     delay_msec(200);
 }
 
@@ -3151,7 +3151,7 @@ void PressureSensorForm::refreshBaseData(FacGetDevBaseInfo data) {
 void PressureSensorForm::on_TestButtonNFC_clicked() { QString ReadNfcData = ReadNfcDataProcess(); }
 
 void PressureSensorForm::on_TestButton1_clicked() {
-    // pb->get_base_info();  // 获取设备信息
+    // pb->get(DeviceCmd::BaseInfo);  // 获取设备信息
 
     // CheckNfcData();
 
@@ -3183,3 +3183,5 @@ void PressureSensorForm::refreshAmplitudeData(QString data) {
         }
     }
 }
+
+

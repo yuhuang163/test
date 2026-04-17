@@ -30,6 +30,277 @@ Qpb::Qpb(QSerialPort* parent) : QSerialPort{parent} {
     serialPort = parent;
     registerCommand();
 }
+
+void Qpb::set(DeviceCmd cmd, const QVariant& data) {
+    switch (cmd) {
+        case DeviceCmd::MotorCali:
+            set_motor_cali(data.toInt());
+            break;
+        case DeviceCmd::WifiConnect: {
+            if (data.canConvert<QVariantMap>()) {
+                const QVariantMap wifiMap = data.toMap();
+                const QByteArray name = wifiMap.value("name").toByteArray();
+                const QByteArray password = wifiMap.value("password").toByteArray();
+                set_connect_wifi(name, password);
+                break;
+            }
+            const WifiInfo wifi = data.value<WifiInfo>();
+            set_connect_wifi(wifi.wifi_name, wifi.wifi_password);
+            break;
+        }
+        case DeviceCmd::CameraState:
+            set_camera_state(data.toInt());
+            break;
+        case DeviceCmd::PressCollect:
+            set_press_collect_param(static_cast<FacSwitch>(data.toInt()));
+            break;
+        case DeviceCmd::ImuCollect:
+            set_imu_collect_param(static_cast<FacSwitch>(data.toInt()));
+            break;
+        case DeviceCmd::PressCaliResult:
+            set_press_cali_result(data.value<press_calib_data_t>());
+            break;
+        case DeviceCmd::ImuCaliResult:
+            set_imu_cali_result(data.value<ImuCalData>());
+            break;
+        case DeviceCmd::NewImuCaliResult:
+            set_new_imu_cali_result(data.value<NewImuCalData>());
+            break;
+        case DeviceCmd::Battery:
+            set_battery(static_cast<FacBatteryType>(data.toInt()));
+            break;
+        case DeviceCmd::BaseInfo: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                set_base_info(static_cast<FacBasInfoType>(list.at(0).toInt()), list.at(1).value<FacGetDevBaseInfo>());
+            }
+            break;
+        }
+        case DeviceCmd::LocalOta: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                local_ota_data ota[2] = {list.at(0).value<local_ota_data>(), list.at(1).value<local_ota_data>()};
+                set_local_ota(ota);
+            } else {
+                qWarning() << "DeviceCmd::LocalOta expects QVariantList{local_ota_data0, local_ota_data1}";
+            }
+            break;
+        }
+        case DeviceCmd::StartOtaApp:
+            set_start_ota_app(data.value<RotasFileStatusReq>());
+            break;
+        case DeviceCmd::StartMultiBleOtaApp: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                RotasFileStatusReq otaReq[2] = {list.at(0).value<RotasFileStatusReq>(),
+                                                list.at(1).value<RotasFileStatusReq>()};
+                set_start_multi_ble_ota_app(otaReq);
+            } else {
+                qWarning() << "DeviceCmd::StartMultiBleOtaApp expects QVariantList{req0, req1}";
+            }
+            break;
+        }
+        case DeviceCmd::ConfigNetworkApp:
+            set_config_network_app(data.value<WifiInfo>());
+            break;
+        case DeviceCmd::MotorDampingState:
+            set_motor_damping_state(data.toInt());
+            break;
+        case DeviceCmd::RgbColor:
+            set_rgb_color(data.value<FacLedControl>());
+            break;
+        case DeviceCmd::LedColor: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                set_led_color(list.at(0).toInt(), list.at(1).toInt());
+            }
+            break;
+        }
+        case DeviceCmd::MotorTestState:
+            set_motor_test_state(data.toInt());
+            break;
+        case DeviceCmd::MotorCaliState:
+            set_motor_cali_state(data.toInt());
+            break;
+        case DeviceCmd::FacResult:
+            set_fac_result(data.toInt());
+            break;
+        case DeviceCmd::ScreenColor:
+            set_screen_color(data.toInt());
+            break;
+        case DeviceCmd::ShipMode:
+            set_ship_mode(data.toInt());
+            break;
+        case DeviceCmd::MotorAdcSwitch:
+            set_motor_adc_switch(data.toInt());
+            break;
+        case DeviceCmd::MotorState:
+            set_motor_state(data.toInt());
+            break;
+        case DeviceCmd::MotorParam: {
+            // data = QVariantList{fre, duty}
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                set_motor_param(list.at(0).toUInt(), list.at(1).toFloat());
+            } else {
+                qWarning() << "DeviceCmd::MotorParam expects QVariantList{fre, duty}";
+            }
+            break;
+        }
+        case DeviceCmd::MotorCaliResultParam:
+            set_motor_cali_result_param(data.toUInt());
+            break;
+        case DeviceCmd::Music:
+            set_music(data.toByteArray());
+            break;
+        case DeviceCmd::BurningMode: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                set_burning_mode(list.at(0).toInt(), static_cast<FacSwitch>(list.at(1).toInt()));
+            }
+            break;
+        }
+        case DeviceCmd::BrushRecord:
+            set_brush_record(data.value<FacSetBrushRecord>());
+            break;
+        case DeviceCmd::BrushTime:
+            set_brush_time(data.toInt());
+            break;
+        case DeviceCmd::Sleep:
+            set_sleeep(static_cast<FacSwitch>(data.toInt()));
+            break;
+        case DeviceCmd::ForbidSleep:
+            set_forbid_sleep(static_cast<FacSwitch>(data.toInt()));
+            break;
+        case DeviceCmd::ScreenCameraState:
+            set_screen_camera_state(data.toInt());
+            break;
+        case DeviceCmd::CameraLightState:
+            set_camera_light_state(data.toInt());
+            break;
+        case DeviceCmd::CameraSupportState:
+            set_camera_support_state(data.toInt());
+            break;
+        case DeviceCmd::CameraExposureTime:
+            set_camera_exposure_time(data.toUInt());
+            break;
+        case DeviceCmd::DevReset:
+            set_dev_reset();
+            break;
+        case DeviceCmd::BrushReset:
+            set_brush_reset();
+            break;
+        case DeviceCmd::DeviceMode:
+            set_device_mode(data.toInt());
+            break;
+        case DeviceCmd::BrushControl:
+            set_brush_control(data.toInt());
+            break;
+        case DeviceCmd::FacMode:
+            set_fac_mode(data.toInt());
+            break;
+        case DeviceCmd::CameraPictureState:
+            set_camera_picture_state(data.toInt());
+            break;
+        case DeviceCmd::Sn: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 2) {
+                set_sn(static_cast<FacDevInfoType>(list.at(0).toInt()), list.at(1).toByteArray());
+            }
+            break;
+        }
+        case DeviceCmd::IAmApp:
+            set_i_am_app();
+            break;
+        case DeviceCmd::WifiDisconnect:
+            set_wifi_disconnect();
+            break;
+        case DeviceCmd::ServoMotorInfo:
+            set_servo_motor_info();
+            break;
+        case DeviceCmd::MicControl:
+            set_mic_control(data.toInt());
+            break;
+        case DeviceCmd::UploadRecordData:
+            set_upload_record_data(data.toInt());
+            break;
+        case DeviceCmd::SevorMotorParam: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 4) {
+                set_sevor_motor_param(list.at(0).toUInt(), list.at(1).toFloat(), list.at(2).toFloat(), list.at(3).toUInt());
+            }
+            break;
+        }
+        case DeviceCmd::NewWifiConnect: {
+            const QVariantList list = data.toList();
+            if (list.size() >= 4) {
+                set_new_connect_wifi(list.at(0).toByteArray(), list.at(1).toByteArray(), list.at(2).toString(),
+                                     list.at(3).toString());
+            }
+            break;
+        }
+        default:
+            qWarning() << "Unsupported set cmd:" << static_cast<int>(cmd);
+            break;
+    }
+}
+
+void Qpb::get(DeviceCmd cmd, const QVariant& param) {
+    switch (cmd) {
+        case DeviceCmd::Battery:
+        case DeviceCmd::GetBattery:
+            get_battery();
+            break;
+        case DeviceCmd::BaseInfo:
+        case DeviceCmd::GetBaseInfo:
+            get_base_info();
+            break;
+        case DeviceCmd::ImuCaliResult:
+        case DeviceCmd::GetImuCaliResult:
+            get_imu_cali_result();
+            break;
+        case DeviceCmd::PressCaliResult:
+        case DeviceCmd::GetPressCaliResult:
+            get_press_cali_result();
+            break;
+        case DeviceCmd::DeviceInfo:
+            get_device_info();
+            break;
+        case DeviceCmd::PeriphState:
+            get_periph_state();
+            break;
+        case DeviceCmd::ConnectInfo:
+            get_connect_info();
+            break;
+        case DeviceCmd::WifiInfo:
+            get_wifi_info();
+            break;
+        case DeviceCmd::GetServoMotorInfo:
+            get_servo_motor_info();
+            break;
+        case DeviceCmd::NowMusicInfo:
+            get_now_music_info();
+            break;
+        case DeviceCmd::SdCardInfo:
+            get_sd_card_info();
+            break;
+        case DeviceCmd::LightSensorInfo:
+            get_light_sensor_info();
+            break;
+        case DeviceCmd::ButtonState:
+            get_button_state(param.toInt());
+            break;
+        case DeviceCmd::GetSn:
+            get_sn(static_cast<FacDevInfoType>(param.toInt()));
+            break;
+        case DeviceCmd::BurshBacklog:
+            get_bursh_backlog(param.toInt());
+            break;
+        default:
+            qWarning() << "Unsupported get cmd:" << static_cast<int>(cmd);
+            break;
+    }
+}
 /*
  * 函数：aes256Decrypt
  * 说明：对输入数据使用 AES-256-CBC 模式进行解密，

@@ -616,9 +616,9 @@ void imucali::getimuData(FacUploadNineAlex x) {
             if (imudata_result == -32768) {
                 showlog("数据异常正在重新唤醒");
                 waitWork(WAITTIME);
-                pb->set_forbid_sleep(FacSwitch_STOP);
+                pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_STOP));
                 waitWork(WAITTIME);
-                pb->set_forbid_sleep(FacSwitch_OPEN);
+                pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                 waitWork(1000);
                 break;
             }
@@ -922,7 +922,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
-                    sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                     state = STATE_DISABLE_SLEEP_1;
                 }
                 break;
@@ -932,10 +932,10 @@ void imucali::startTask()  // 编写六轴校准的代码
                     showlog("已进入禁止休眠");
 
                     if (SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool()) {
-                        sendCommandWithRetry(std::bind(&Qpb::set_uart_receive, pb, 0));
+                        sendCommandWithRetry([&]() { pb->set(DeviceCmd::UartReceive, 0); });
                         state = STATE_CLOSE_UART;
                     } else {
-                        sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                        sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
                         state = STATE_GETBASEDATA;
                     }
                 }
@@ -952,7 +952,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     test.ask = "关闭";
                     testItems.append(test);
                     testResultTableUpdate(testItems);
-                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
                     state = STATE_GETBASEDATA;
                 }
                 break;
@@ -960,7 +960,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_GETBASEDATA:
                 if (canGoNext) {
                     showlog("开始获取出厂电压");
-                    sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
                     state = STATE_GETBATTERY;
                 }
                 break;
@@ -993,7 +993,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
                         testResultTableUpdate(testItems);
                     }
-                    sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); });
 
                     state = STATE_CAIL;
                 }
@@ -1024,7 +1024,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     nqimuc->calData.gyro_offset[0] = qimuc->calData.gyro_offset[0];
                     nqimuc->calData.gyro_offset[1] = qimuc->calData.gyro_offset[1];
                     nqimuc->calData.gyro_offset[2] = qimuc->calData.gyro_offset[2];
-                    sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_STOP));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); });
                     state = STATE_END_CALI_DATA;
                     break;
                 }
@@ -1035,7 +1035,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                     isovertime = 0;
                     showlog("六轴校准失败：超时");
                     waitWork(WAITTIME);
-                    pb->set_imu_collect_param(FacSwitch_STOP);
+                    pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
                     waitWork(WAITTIME);
                     state = STATE_SAVE_RESULT;
                     result = failValue;
@@ -1047,7 +1047,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
                 if (canGoNext) {
                     showlog("开始设置六轴校准结果");
-                    sendCommandWithRetry(std::bind(&Qpb::set_new_imu_cali_result, pb, nqimuc->calData));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::NewImuCaliResult, QVariant::fromValue(nqimuc->calData)); });
                     state = STATE_SENDOK;
                 }
                 break;
@@ -1056,7 +1056,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 
                 if (canGoNext) {
                     showlog("已获取到imu校准结果发送回应");
-                    sendCommandWithRetry(std::bind(&Qpb::get_imu_cali_result, pb));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetImuCaliResult); });
                     showlog("开始获取imu校准结果");
                     state = STATE_CHECKOK;
                 }
@@ -1124,9 +1124,9 @@ void imucali::startTask()  // 编写六轴校准的代码
                     emit endcali(getIndex());
 
                     if ((ui->isusemes->checkState() || pack.factory == "无mes厂") && result == passValue) {
-                        pb->set_fac_mode(0);
+                        pb->set(DeviceCmd::FacMode, 0);
                         waitWork(100);
-                        sendCommandWithRetry(std::bind(&Qpb::set_ship_mode, pb, 1));
+                        sendCommandWithRetry([&]() { pb->set(DeviceCmd::ShipMode, 1); });
                         showlog("已发送进入船运模式");
                         qDebug() << ui->getMac->text() << macAddress << getIndex() << "已发送进入船运模式";
                         state = STATE_SHIP_MODE_CHECK;
@@ -1230,7 +1230,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 testResultTableUpdate(testItems);
 
                 waitWork(WAITTIME);
-                pb->set_imu_collect_param(FacSwitch_STOP);
+                pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
                 waitWork(100);
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 stringsn = "";
@@ -1361,3 +1361,6 @@ void imucali::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
+
+

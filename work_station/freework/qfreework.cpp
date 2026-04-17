@@ -668,7 +668,7 @@ void QFreeWork::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -791,7 +791,7 @@ void QFreeWork::on_pushButton_clicked() {
 
 void QFreeWork::on_get_battery_clicked() {
     if (at->getConnected()) {
-        pb->get_battery();
+        pb->get(DeviceCmd::Battery);
         showlog("正在获取设备电量");
     } else {
         showlog("请等待连接设备后再试");
@@ -800,7 +800,7 @@ void QFreeWork::on_get_battery_clicked() {
 
 void QFreeWork::on_disconnectwifi_clicked() {
     if (at->getConnected()) {
-        pb->set_wifi_disconnect();
+        pb->set(DeviceCmd::WifiDisconnect);
         showlog("已发送断开wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -816,7 +816,7 @@ void QFreeWork::on_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
+        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1405,3 +1405,5 @@ void QFreeWork::on_stopTest_clicked() {
 }
 
 void QFreeWork::on_save_config_clicked() { showTestIndexes(); }
+
+

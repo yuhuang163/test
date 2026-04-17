@@ -1203,7 +1203,7 @@ void MainWindow::refreshBleState(int state) {
     if (state) {
         bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
 
         showlog("已发送禁止休眠");
     } else {
@@ -1910,7 +1910,7 @@ void MainWindow::sendBrushData(bool is_random) {
 
     for (int i = start; i < end; i++) {
         // 设置手柄时间为start time
-        pb->set_brush_time(timestamp);
+        pb->set(DeviceCmd::BrushTime, timestamp);
         waitWork(WAITTIME);
         // 设置刷牙数据
         uint32_t work_time[6];
@@ -1963,7 +1963,7 @@ void MainWindow::sendBrushData(bool is_random) {
             memcpy(record.pressure_time.bytes, pressure_time, 12);
             record.horizon_brush.size = 12;
             memcpy(record.horizon_brush.bytes, horizon_brush, 12);
-            pb->set_brush_record(record);
+            pb->set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
             ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
             ui->msgTest->appendPlainText("");
             ui->msgTest->appendPlainText("手柄时间:" + QDateTime::fromSecsSinceEpoch(timestamp).toString(Qt::ISODate));
@@ -2199,7 +2199,7 @@ void MainWindow::sendRecord() {
     record.horizon_brush.size = 12;
     memcpy(record.horizon_brush.bytes, horizon_brush, 12);
 
-    pb->set_brush_record(record);
+    pb->set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
 
     ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
     ui->msgTest->appendPlainText("记录生成时间:" + ui->dateTimeBrushSet->dateTime().toString(Qt::ISODate));
@@ -3426,3 +3426,5 @@ void MainWindow::solve_sd_info(FacDevInfo x) {
     showlog(QString("获取到 SD 卡命令: %1").arg((x.dev_info[0].value_item.sdcard.cmd)));
     showlog(QString("获取到sd卡信息: ") + QString::fromUtf8(x.dev_info[0].value_item.sdcard.data));
 }
+
+

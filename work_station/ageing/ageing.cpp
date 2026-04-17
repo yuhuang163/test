@@ -150,7 +150,7 @@ void ageing::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -214,13 +214,13 @@ void ageing::on_enterBurningMode_clicked() {
     if (at->getConnected()) {
         qDebug() << getIndex() << "串口问题";
         if (ui->burningModeCombo->currentText() == "老化1")
-            pb->set_burning_mode(1, FacSwitch_OPEN);
+            pb->set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_OPEN)});
         if (ui->burningModeCombo->currentText() == "老化2")
-            pb->set_burning_mode(2, FacSwitch_OPEN);
+            pb->set(DeviceCmd::BurningMode, QVariantList{2, static_cast<int>(FacSwitch_OPEN)});
         if (ui->burningModeCombo->currentText() == "老化3")
-            pb->set_burning_mode(3, FacSwitch_OPEN);
+            pb->set(DeviceCmd::BurningMode, QVariantList{3, static_cast<int>(FacSwitch_OPEN)});
         if (ui->burningModeCombo->currentText() == "老化4")
-            pb->set_burning_mode(4, FacSwitch_OPEN);
+            pb->set(DeviceCmd::BurningMode, QVariantList{4, static_cast<int>(FacSwitch_OPEN)});
         showlog("已发送老化");
     } else {
         showlog("请等待连接设备后再试");
@@ -229,7 +229,7 @@ void ageing::on_enterBurningMode_clicked() {
 
 void ageing::on_exitBurningMode_clicked() {
     if (at->getConnected()) {
-        pb->set_burning_mode(1, FacSwitch_CLOSE);
+        pb->set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_CLOSE)});
         // showlog("已退出老化模式");
     } else {
         // showlog("请等待连接设备后再试");
@@ -380,7 +380,7 @@ void ageing::startTask() {
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_TAIL_SN, writesn));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), writesn}); });
                     showlog("sn绑定保存内容为：" + stringsn);
                     state = STATE_WAIT_BANDING;
                 }
@@ -388,7 +388,7 @@ void ageing::startTask() {
 
             case STATE_WAIT_BANDING:
                 if (canGoNext) {
-                    sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_TAIL_SN));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
 
@@ -400,12 +400,12 @@ void ageing::startTask() {
                     if (snCompareOk == 1) {
                         if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
                             showlog("已发送subpid");
-                            sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SUB_PID, writesubpid));
+                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SUB_PID), writesubpid}); });
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
                             // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
                             //     showlog("已发送Skuid");
-                            //     sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writeskuid));
+                            //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SKUID), writeskuid}); });
                             //     state = STATE_WAIT_BANDING_SKUID;
                             // } else {
                             state = STATE_DISABLE_SLEEP_1;
@@ -425,7 +425,7 @@ void ageing::startTask() {
             case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_SUB_PID));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SUBPID;
                 }
@@ -436,7 +436,7 @@ void ageing::startTask() {
                     if (subpidCompareOk == 1) {
                         // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
                         //     showlog("已发送Skuid");
-                        //     sendCommandWithRetry(std::bind(&Qpb::set_sn, pb, FacDevInfoType_SKUID, writeskuid));
+                        //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SKUID), writeskuid}); });
                         //     state = STATE_WAIT_BANDING_SKUID;
                         // } else {
                         state = STATE_DISABLE_SLEEP_1;
@@ -454,7 +454,7 @@ void ageing::startTask() {
             case STATE_WAIT_BANDING_SKUID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SKUID");
-                    sendCommandWithRetry(std::bind(&Qpb::get_sn, pb, FacDevInfoType_SKUID));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SKUID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SKUID;
                 }
@@ -477,14 +477,14 @@ void ageing::startTask() {
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
  if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
-                 {   pb->get_battery();
+                 {   pb->get(DeviceCmd::Battery);
                     state = STATE_GETBATTERY;}
  else
                     state = STATE_CHECK_FLASH;
 
                 } else {
                     waitWork(500);
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("已重发禁止休眠");
                 }
                 break;
@@ -499,7 +499,7 @@ void ageing::startTask() {
                         test.ask = "通过";
                         testItems.append(test);
                         testResultTableUpdate(testItems);
-                        pb->get_periph_state();
+                        pb->get(DeviceCmd::PeriphState);
                         state = STATE_CHECK_FLASH;
                     }
 
@@ -520,14 +520,14 @@ void ageing::startTask() {
                 } else {
                     waitWork(500);
                     showlog("正在重发获取电量信息");
-                    pb->get_battery();
+                    pb->get(DeviceCmd::Battery);
                 }
                 break;
 
             case STATE_CHECK_FLASH:
                 if (flash_state == 1) {
                     showlog("已发送进入老化");
-                    sendCommandWithRetry(std::bind(&Qpb::set_burning_mode, pb, 1, FacSwitch_OPEN));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_OPEN)}); });
 
                     ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
                     showlog("Flash资源正常");
@@ -540,7 +540,7 @@ void ageing::startTask() {
                     state = STATE_SAVE_RESULT;
                 } else {
                     waitWork(500);
-                    pb->get_periph_state();
+                    pb->get(DeviceCmd::PeriphState);
                     showlog("正在重新获取Flash资源状态");
                 }
                 break;
@@ -738,3 +738,4 @@ void ageing::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+

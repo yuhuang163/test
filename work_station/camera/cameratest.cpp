@@ -410,7 +410,7 @@ void cameratest::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -550,7 +550,7 @@ void cameratest::onTimeout() {
     faultData.clear();
     dataNumber = 0;
     // showlog("再次获取图片");
-    pb->set_camera_picture_state(1);
+    pb->set(DeviceCmd::CameraPictureState, 1);
     std::memset(dongle_ring_buffer, 0,
                 sizeof(dongle_ring_buffer));  // 将数组全部初始化为零
     std::memset(camera_ring_buf, 0,
@@ -632,7 +632,7 @@ void cameratest::startTask() {
                     qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                     waitWork(WAITTIME);
                     showlog("蓝牙连接成功");
-                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
                     bandSnMacToCsv(macAddress, sn);
                     state = STATE_WATI_BASE_INFO;
                 }
@@ -642,7 +642,7 @@ void cameratest::startTask() {
 
                 if (canGoNext) {
                     showlog("已获取到设备信息");
-                    pb->set_camera_state(0);
+                    pb->set(DeviceCmd::CameraState, 0);
                     state = STATE_DISABLE_SLEEP_1;
                 }
 
@@ -659,7 +659,7 @@ void cameratest::startTask() {
                         packetMap.clear();
                         faultData.clear();
                         ui->log->appendPlainText("开始发送开摄像头");
-                        pb->set_camera_picture_state(1);
+                        pb->set(DeviceCmd::CameraPictureState, 1);
                         std::memset(dongle_ring_buffer, 0,
                                     sizeof(dongle_ring_buffer));  // 将数组全部初始化为零
                         std::memset(camera_ring_buf, 0,
@@ -674,7 +674,7 @@ void cameratest::startTask() {
                     }
                 } else {
                     waitWork(500);
-                    pb->set_forbid_sleep(FacSwitch_OPEN);
+                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("已发送禁止休眠");
                 }
                 break;
@@ -685,10 +685,10 @@ void cameratest::startTask() {
                     showlog("已配网成功");
                     //  waitWork(5000);
                     showlog("现在打开摄像头");
-                    pb->set_camera_state(1);
+                    pb->set(DeviceCmd::CameraState, 1);
                     showlog("锁定曝光时间");
                     on_exposure_time_edit_returnPressed();
-                    // pb->set_camera_light_state(1);
+                    // pb->set(DeviceCmd::CameraLightState, 1);
                     state = CAMERA_TEST;
                     showlog("等待显示照片");
                 } else {
@@ -746,8 +746,8 @@ void cameratest::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
                 deinit_distribution_network();
-                pb->set_camera_state(0);
-                pb->set_camera_light_state(0);
+                pb->set(DeviceCmd::CameraState, 0);
+                pb->set(DeviceCmd::CameraLightState, 0);
 
                 stringsn = "";
                 ui->macInput->clear();
@@ -757,7 +757,7 @@ void cameratest::startTask() {
                 // ui->jxl_normal->setDisabled(0);
                 // ui->jxl_abnormal->setDisabled(0);
                 // waitWork(WAITTIME);
-                pb->set_dev_reset();  //重启彻底断网，别发了
+                pb->set(DeviceCmd::DevReset);  //重启彻底断网，别发了
                 waitWork(500);
                 emit send_end_test(getIndex());
                 if (pack.factory == "lx" && m_index == 1)
@@ -778,17 +778,17 @@ void cameratest::startTask() {
 }
 
 void cameratest::on_lcdTestButton_clicked() {
-    pb->set_dev_reset();
+    pb->set(DeviceCmd::DevReset);
     // waitWork(WAITTIME);
     //
     // waitWork(WAITTIME);
-    // pb->set_fac_mode(0);
+    // pb->set(DeviceCmd::FacMode, 0);
     // waitWork(WAITTIME);
-    // pb->set_fac_mode(1);
+    // pb->set(DeviceCmd::FacMode, 1);
     // waitWork(WAITTIME);
-    // pb->set_fac_mode(0);
+    // pb->set(DeviceCmd::FacMode, 0);
     // waitWork(WAITTIME);
-    // pb->set_fac_mode(1);
+    // pb->set(DeviceCmd::FacMode, 1);
     // waitWork(WAITTIME);
 }
 
@@ -886,13 +886,13 @@ void cameratest::processGetMesTestValue() {
         emit getMesTestValue(pack);
     }
 }
-void cameratest::on_close_camera_clicked() { pb->set_camera_state(0); }
+void cameratest::on_close_camera_clicked() { pb->set(DeviceCmd::CameraState, 0); }
 
-void cameratest::on_open_camera_clicked() { pb->set_camera_state(1); }
+void cameratest::on_open_camera_clicked() { pb->set(DeviceCmd::CameraState, 1); }
 
-void cameratest::on_open_camear_light_clicked() { pb->set_camera_light_state(1); }
+void cameratest::on_open_camear_light_clicked() { pb->set(DeviceCmd::CameraLightState, 1); }
 
-void cameratest::on_close_camear_light_clicked() { pb->set_camera_light_state(0); }
+void cameratest::on_close_camear_light_clicked() { pb->set(DeviceCmd::CameraLightState, 0); }
 void cameratest::on_distribution_network_clicked() {
     // 获取IP地址
     QString ipString = "0.0.0.0";
@@ -943,7 +943,7 @@ void cameratest::on_distribution_network_clicked() {
     //     isExecuted = true;
     // }
     if (at->getConnected()) {
-        pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
+        pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()});
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -965,7 +965,7 @@ void cameratest::deinit_distribution_network() {
     QString ipString = "0.0.0.0";
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-    pb->set_new_connect_wifi(wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text());
+    pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()});
 }
 void cameratest::on_save_photo_clicked() {
     if (!viewercamrea->pixmap.isNull()) {
@@ -1172,7 +1172,7 @@ void cameratest::on_abnormal_clicked() {
 }
 
 void cameratest::on_exposure_time_edit_returnPressed() {
-    pb->set_camera_exposure_time(ui->exposure_time_edit->text().toUInt());
+    pb->set(DeviceCmd::CameraExposureTime, ui->exposure_time_edit->text().toUInt());
 }
 void cameratest::on_DirtyTestButton_clicked() {
     QString filePath;
@@ -1365,7 +1365,7 @@ void cameratest::on_DirtyTestButton_clicked() {
 
 void cameratest::on_stopTest_clicked() {
     showlog("用户按了结束测试");
-    pb->set_dev_reset();
+    pb->set(DeviceCmd::DevReset);
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
@@ -1830,3 +1830,5 @@ void cameratest::on_ResolutionTestButton_clicked() {
             on_OffsetTest_clicked();
     }
 }
+
+

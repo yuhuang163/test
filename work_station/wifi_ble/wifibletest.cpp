@@ -177,7 +177,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
                     pressureSenseVersion);
             allow_retry = 0;
             showlog("压感版本错误尝试重新获取一次");
-            pb->get_base_info();
+            pb->get(DeviceCmd::BaseInfo);
             refresh_base_times = 1;
             return;
         }
@@ -465,7 +465,7 @@ void wifibletest::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        pb->set_forbid_sleep(FacSwitch_OPEN);
+        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -592,13 +592,13 @@ void wifibletest::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     showlog("蓝牙连接成功");
-                    sendCommandWithRetry(std::bind(&Qpb::set_forbid_sleep, pb, FacSwitch_OPEN));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                     state = getNextState(state);
                 }
                 break;
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
                 if (canGoNext) {
-                    sendCommandWithRetry(std::bind(&Qpb::set_fac_mode, pb, 1));
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::FacMode, 1); });
                     showlog("已进入禁止休眠");
                     state = getNextState(state);
                 }
@@ -606,7 +606,7 @@ void wifibletest::startTask() {
 
             case STATE_FAC_MODE:  // 设置设备采集
                 if (canGoNext) {
-                    sendCommandWithRetry(std::bind(&Qpb::get_base_info, pb));
+                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
                     showlog("已进入工厂模式");
                     state = getNextState(state);
                 }
@@ -649,7 +649,7 @@ void wifibletest::startTask() {
                                 state = STATE_WATI_WIFI_CONNECT;
 
                             } else {
-                                sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                                sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
                                 state = STATE_WATI_CORRECT_BATTARY;
                             }
                         }
@@ -686,7 +686,7 @@ void wifibletest::startTask() {
 
                             } else {
                                 wifiresult = "通过";
-                                sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                                sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
                                 state = STATE_WATI_CORRECT_BATTARY;
                             }
                         }
@@ -720,8 +720,8 @@ void wifibletest::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-                            //   pb->set_wifi_disconnect();
+                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            //   pb->set(DeviceCmd::WifiDisconnect);
                             wifiresult = "通过";
                             TestItem test;
 
@@ -733,7 +733,7 @@ void wifibletest::startTask() {
 
                             testResultTableUpdate(testItems);
 
-                            sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                            sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
                             state = STATE_WATI_CORRECT_BATTARY;
                             rssitestcount = 0;
                         }
@@ -746,8 +746,8 @@ void wifibletest::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
-                            //     pb->set_wifi_disconnect();
+                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            //     pb->set(DeviceCmd::WifiDisconnect);
                             TestResult = failValue;
                             TestItem test;
 
@@ -762,7 +762,7 @@ void wifibletest::startTask() {
                             qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                             showlog("wifi不合格信号强度" + WIFI_RSSI);
                             rssitestfailcount = 0;
-                            sendCommandWithRetry(std::bind(&Qpb::get_battery, pb));
+                            sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
                             state = STATE_WATI_CORRECT_BATTARY;
                         }
                     }
@@ -903,7 +903,7 @@ void wifibletest::startTask() {
 
 void wifibletest::on_disconnectwifi_clicked() {
     if (at->getConnected()) {
-        pb->set_wifi_disconnect();
+        pb->set(DeviceCmd::WifiDisconnect);
         showlog("已发送断开wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -919,7 +919,7 @@ void wifibletest::on_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set_connect_wifi(wifiNameBytes, wifiPasswordBytes);
+        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1734,9 +1734,11 @@ void wifibletest::on_nfcComFresh_clicked() { updateHIDComboBox(getNfcComboBox())
 
 void wifibletest::on_get_battery_clicked() {
     if (at->getConnected()) {
-        pb->get_battery();
+        pb->get(DeviceCmd::Battery);
         showlog("正在获取设备电量");
     } else {
         showlog("请等待连接设备后再试");
     }
 }
+
+
