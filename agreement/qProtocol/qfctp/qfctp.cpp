@@ -1,3 +1,7 @@
 #include "qfctp.h"
 
-qfctp::qfctp() {}
+Qfctp::Qfctp() {}
+
+void Qfctp::parseCmd(const QByteArray& byte) {
+    (void)byte;
+}

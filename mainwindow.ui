@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1406</width>
-    <height>1117</height>
+    <width>1093</width>
+    <height>827</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4801,7 +4801,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string/>
                </property>
                <property name="text">
-                <string>b4:56:5d:bf:57:9d</string>
+                <string>12:34:56:C2:9B:B9</string>
                </property>
                <property name="placeholderText">
                 <string>切换英文输入再扫码</string>
@@ -4893,7 +4893,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1406</width>
+     <width>1093</width>
      <height>18</height>
     </rect>
    </property>

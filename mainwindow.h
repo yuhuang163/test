@@ -34,6 +34,7 @@
 #include "common_class.h"
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
+#include "qprotocolmanager.h"
 #include "sensor_hub.h"
 #include "testmodel.h"
 // #include <iomanip>
@@ -176,6 +177,7 @@ private:
 
     std::atomic<bool> running;
     QFuture<void> future;
+    QProtocolManager protocolManager;
     Qpb* pb;
     Qat* at;
     TestFunctionExecutor executor;

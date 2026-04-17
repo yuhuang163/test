@@ -1,10 +1,14 @@
-#ifndef QFCTP_H
-#define QFCTP_H
+#ifndef Qfctp_H
+#define Qfctp_H
+#include <QByteArray>
+#include <QSerialPort>
 
-class qfctp
-{
+#include "qprotocol.h"
+
+class Qfctp : public QSerialPort, public qProtocol {
 public:
-    qfctp();
+    Qfctp();
+    void parseCmd(const QByteArray& byte) override;
 };
 
-#endif // QFCTP_H
+#endif // Qfctp_H

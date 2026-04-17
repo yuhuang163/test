@@ -78,6 +78,21 @@ MainWindow::MainWindow(QWidget* parent) :
     at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
+    protocolManager.bindQpb(pb);
+    const std::string protocolName =
+        SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
+    auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
+    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    protocolManager.setCurrentProtocolType(selectedType);
+    pb = protocolManager.currentQpb();
+    if (!pb) {
+        QMessageBox::critical(this, "协议初始化失败", "当前协议未实现，默认回退到 qpb。");
+        protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
+        pb = protocolManager.currentQpb();
+    }
+
     // tts = new QTextToSpeech(this);
     // if (!tts) {
     //     qDebug() << "Failed to initialize QTextToSpeech.";

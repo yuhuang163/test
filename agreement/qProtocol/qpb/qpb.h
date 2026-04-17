@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QSerialPort>
+#include "qprotocol.h"
 
 #include "ble_protocol/fx_ble_msg.pb.h"
 #include "factory_protocol/factory_msg.pb.h"
@@ -59,14 +60,14 @@ typedef struct {
     short temperature[MODULE_MAX];
 } press_calib_data_t;
 
-class Qpb : public QSerialPort {
+class Qpb : public QSerialPort, public qProtocol  {
     Q_OBJECT
 public:
     QString APP_VERSION;
     bool NEEDAES = 0;
     int shipCount = 0;
     explicit Qpb(QSerialPort* parent = nullptr);
-    void parseCmd(const QByteArray& byte);
+    void parseCmd(const QByteArray& byte) override;
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
     QByteArray aes256Decrypt(const QByteArray& encrypted);
