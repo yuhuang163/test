@@ -848,7 +848,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
     }
 }
 void test_base::testResultTableInit() {
-    pb->APP_VERSION = upperComputerVer;
+    pb->setAppVersion(upperComputerVer);
     LockProductUI();
     if (testResultTable() == nullptr) {
         showlog("testResultTableInit不存在表格");

@@ -471,7 +471,7 @@ MainWindow::MainWindow(QWidget* parent) :
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 
-    pb->APP_VERSION = DEBUG_VER;
+    pb->setAppVersion(DEBUG_VER);
 
     QAction* setting = ui->menubar->addAction("功能设置");
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
@@ -770,7 +770,7 @@ void MainWindow::on_macInput_returnPressed() {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
-        pb->NEEDAES = 0;
+        pb->setNeedAes(false);
         macAddress = ui->macInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
         at->sendMac(ui->macInput->text());  // 开始连接
@@ -1337,7 +1337,7 @@ void MainWindow::on_motor_cali_clicked() {
                         motorstate = MOTOR_CALI_DATA_SET;
 
                     } else {
-                        pb->is_motor_cali_data_set = 1;
+                        pb->set_is_motor_cali_data_set(1);
                         motorstate = MOTOR_CALI_DATA_SET;
                     }
 
@@ -1799,7 +1799,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
         iotUrl = ui->iot_url_america->text();
-        pb->NEEDAES = 1;
+        pb->setNeedAes(true);
 
     } else if (OTAGroup->checkedId() == 4) {
         LicensePair pair;
@@ -1814,7 +1814,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
         iotUrl = ui->iot_url_america_product->text();
-        pb->NEEDAES = 1;
+        pb->setNeedAes(true);
     }
 
     else {
@@ -2091,7 +2091,7 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
     } else {
-        pb->NEEDAES = 0;
+        pb->setNeedAes(false);
         macAddress = arg1;
         at->sendMac(macAddress);  // 发送mac地址
     }
@@ -3174,7 +3174,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
                 return;  // 停止测试
             }
         }
-        pb->NEEDAES = 0;
+        pb->setNeedAes(false);
         pb->setPbMode(1);  //为了区分收到的解包工厂接口
         on_getBasicInfoButton_clicked();
         waitWork(500);
@@ -3240,7 +3240,7 @@ void MainWindow::on_startBleOta_clicked() {
     QByteArray fileData_source;
     if (connectProductName != "U7" && connectProductName != "U7P") {
         if (connectProductName == "Y20PS")
-            pb->NEEDAES = 1;
+            pb->setNeedAes(true);
         QString filePath_source = ui->otaFilePath_source->text();
         if (filePath_source.isEmpty()) {
             QMessageBox::warning(this, "警告", "未选择资源OTA文件");
@@ -3456,7 +3456,7 @@ void MainWindow::on_ship_bomb_clicked() {
     waitWork(1000);
     at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
 
-    pb->shipCount = 1;
+    pb->setShipCount(1);
 }
 
 void MainWindow::on_get_noisy_clicked() {

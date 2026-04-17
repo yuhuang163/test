@@ -63,9 +63,6 @@ typedef struct {
 class Qpb : public QSerialPort, public qProtocol  {
     Q_OBJECT
 public:
-    QString APP_VERSION;
-    bool NEEDAES = 0;
-    int shipCount = 0;
     explicit Qpb(QSerialPort* parent = nullptr);
     void parseCmd(const QByteArray& byte) override;
     void sendShortPack(const FactoryDataPackage& pack);
@@ -77,19 +74,26 @@ public:
     uint32_t sendlongPack(const FactoryDataPackage& pack);
     void waitWork(int ms);
     void setPbMode(int p) { pb_mode = (PB_MODE)p; }
+    void setAppVersion(const QString& version) { appVersion = version; }
+    QString getAppVersion() const { return appVersion; }
+    void setNeedAes(bool needAes) { needAES = needAes; }
+    bool getNeedAes() const { return needAES; }
+    void setShipCount(int count) { shipCount = count; }
+    int getShipCount() const { return shipCount; }
+    void increaseShipCount() { ++shipCount; }
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
     bool getisDevintowhitemode() { return is_dev_into_white_mode; }
     bool getisOtaStart() { return is_ota_start; }
     bool getisSetIamApp() { return is_set_i_am_app; }
 
-    int is_motor_cali_data_set = 0;
     int getisHallCali() { return is_hall_cali; }
     int getis_camera_control() { return is_camera_control; }
     int get_is_damping_state() { return is_damping_state; }
     int get_is_wif_set() { return is_wif_set; }
     int get_is_motor_test_state() { return is_motor_test_state; }
     int get_is_motor_cali_data_set() { return is_motor_cali_data_set; }
+    void set_is_motor_cali_data_set(int value) { is_motor_cali_data_set = value; }
     int get_is_get_battery_data() { return is_get_battery_data; }
     int get_is_stop_motor_cali() { return is_stop_motor_cali; }
     int getisZeroCali() { return is_zero_cali; }
@@ -187,6 +191,10 @@ private:
     bool is_imu_set_sta = 0;
     bool is_set_press_collect_param = 0;
     bool is_setimu_collect_param = 0;
+    QString appVersion;
+    bool needAES = 0;
+    int shipCount = 0;
+    int is_motor_cali_data_set = 0;
 
 public slots:
     void set_press_sensor_temp(int state);

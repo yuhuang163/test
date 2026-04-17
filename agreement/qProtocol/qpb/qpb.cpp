@@ -268,7 +268,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                     // qDebug() << "收到的crc16" << crc16 << x;
 
                     if (crc16 == x) {
-                        if (NEEDAES) {
+                        if (needAES) {
                             QByteArray byteArray(reinterpret_cast<const char*>(ipack.data()),
                                                  static_cast<int>(ipack.size()));
 
@@ -343,7 +343,7 @@ void Qpb::sendMainPack(const DataPackage& pack) {
             return;
         }
 
-        if (NEEDAES) {
+        if (needAES) {
             // qDebug() << "笑容加发包前结果:"
             //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1),
             //                                             static_cast<int>(len))
@@ -421,7 +421,7 @@ void Qpb::sendShortPack(const DataPackage& pack) {
             return;
         }
 
-        if (NEEDAES) {
+        if (needAES) {
             // qDebug() << "笑容加发包前结果:"
             //          << QString(QByteArray::fromRawData(reinterpret_cast<const char*>(tx_buffer.data() + 1),
             //                                             static_cast<int>(len))
@@ -887,7 +887,7 @@ void Qpb::set_motor_cali(int state) {
     QString currentDate = QDateTime::currentDateTime().toString("yyMMddhhmmss") + hostName;
     // 格式化字符串
 
-    QString infoString = QString("%1,%2.").arg(currentDate).arg(APP_VERSION);
+    QString infoString = QString("%1,%2.").arg(currentDate).arg(appVersion);
     // 转换为 QByteArray 并存入 write_info
     QByteArray byteArray = infoString.toUtf8();
 
@@ -1184,7 +1184,7 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
     QString currentDate = QDateTime::currentDateTime().toString("yyMMddhhmmss") + hostName;
     // 格式化字符串
 
-    QString infoString = QString("%1,%2").arg(currentDate).arg(APP_VERSION);
+    QString infoString = QString("%1,%2").arg(currentDate).arg(appVersion);
 
     FactroyCmd cmd = FactroyCmd_SET_DEVICE_INFO;
     pack.cmd_id = cmd;
@@ -2236,8 +2236,9 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
         qDebug() << "设置船运成功";
         emit send_pb_date("设置船运成功" + QString::number(shipCount));
         emit sendGetBrushResponse(1);
-        if (shipCount)
-            shipCount++;
+        if (shipCount) {
+            increaseShipCount();
+        }
     }
     if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
         qDebug() << "设置工厂模式成功";

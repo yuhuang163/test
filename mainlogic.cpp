@@ -2375,7 +2375,7 @@ void MainWindow::updateComboBox() {
                 if (ui->is_scan_connect->checkState())
 
                 {
-                    pb->NEEDAES = 0;
+                    pb->setNeedAes(false);
                     at->sendMac(deviceAddress);  // 发送mac地址
                     qDebug() << "开启了扫描到就连接的功能";
                 }
@@ -2385,7 +2385,7 @@ void MainWindow::updateComboBox() {
             if (index == -1) {
                 ui->pick_device->addItem(deviceAddress);
                 if (ui->is_scan_connect->checkState()) {
-                    pb->NEEDAES = 0;
+                    pb->setNeedAes(false);
                     at->sendMac(deviceAddress);  // 发送mac地址
                     pb->setPbMode(1);
                     qDebug() << "开启了扫描到就连接的功能";
