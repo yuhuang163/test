@@ -35,7 +35,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
                                     "刷头图像", "按键图像",     "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
-    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "无mes厂"};
+    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
 
     loadConfig();
@@ -911,6 +911,24 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_login_account->show();
         ui->label_mes_login_password->show();
         ui->lineEdit_mes_login_password->show();
+    }
+    if (ui->comboBox_factory->currentText() == "byd") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_79->show();
+        ui->lineEdit_processName->show();
+        ui->label_weikesen_order->show();
+        ui->lineEdit_weikesen_order->show();
+        ui->label_line_huaqin->show();
+        ui->lineEdit_line_huaqin->show();
+        ui->label_mes_login_account->show();
+        ui->lineEdit_mes_login_account->show();
+        ui->label_mes_login_password->show();
+        ui->lineEdit_mes_login_password->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->label_mes_login_station->show();
+        ui->lineEdit_mes_login_station->show();
     }
     if (ui->comboBox_factory->currentText() == "lx") {
         ui->label_78->show();

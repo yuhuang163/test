@@ -1,12 +1,18 @@
 ﻿#include "mesmanager.h"
 
 QMesManager::QMesManager() {
+    MesSystems.push_back(&BydMes);
     MesSystems.push_back(&JjMes);
     MesSystems.push_back(&XwdMes);
     MesSystems.push_back(&LxMes);
     MesSystems.push_back(&HqMes);
     MesSystems.push_back(&WksMes);
     MesSystems.push_back(&YdmMes);
+
+    connect(&BydMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
+    connect(&BydMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
+    connect(&BydMes, &Qmes::operateMesError, this, &QMesManager::handleMesError);
+    connect(&BydMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
 
     connect(&JjMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
     connect(&JjMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);

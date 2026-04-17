@@ -1,9 +1,10 @@
 ﻿#ifndef MESMANAGER_H
 #define MESMANAGER_H
+#include <bydmes.h>  // 比亚迪的mes头文件
 #include <hqmes.h>   // 华勤的mes头文件
 #include <jjmes.h>   // 金进的mes头文件
 #include <lxmes.h>   // 立讯的mes头文件
-#include <wksmes.h>  // 欣旺达的mes头文件
+#include <wksmes.h>  // 伟克森的mes头文件
 #include <xwdmes.h>  // 欣旺达的mes头文件
 
 #include <vector>
@@ -31,6 +32,7 @@ signals:
     void MesError(const int mechines, QString resultMsg);      // 信号声明
     void MesTestvalue(const int mechines, QString resultMsg);  // 信号声明
 private:
+    bydmes BydMes;
     jjmes JjMes;
     xwdmes XwdMes;
     lxmes LxMes;

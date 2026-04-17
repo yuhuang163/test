@@ -357,6 +357,8 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("伟克森"));
         else if (pack.factory == "ydm")
             parent->statusBar()->addPermanentWidget(new QLabel("亚达明"));
+        else if (pack.factory == "byd")
+            parent->statusBar()->addPermanentWidget(new QLabel("比亚迪MES"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
     } else {

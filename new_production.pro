@@ -92,6 +92,7 @@ SOURCES += \
     agreement/qbulk/qbulk.cpp \
     agreement/qjig/fixture_uart.cpp \
     agreement/qjig/qjig.cpp \
+    agreement/qmes/bydmes.cpp \
     agreement/qmes/hqmes.cpp \
     agreement/qmes/jjmes.cpp \
     agreement/qmes/lxmes.cpp \
@@ -163,6 +164,7 @@ HEADERS += \
     agreement/qbulk/qbulk.h \
     agreement/qjig/fixture_uart.h \
     agreement/qjig/qjig.h \
+    agreement/qmes/bydmes.h \
     agreement/qmes/hqmes.h \
     agreement/qmes/jjmes.h \
     agreement/qmes/lxmes.h \
