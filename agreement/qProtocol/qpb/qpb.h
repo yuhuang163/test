@@ -29,21 +29,22 @@ Q_DECLARE_METATYPE(StartMultiBleOtaPayload)
 class Qpb : public QSerialPort, public qProtocol, public IDevice {
     Q_OBJECT
 public:
-    // 统一协议入口，上层新代码应只使用这两个接口。
+    // ==================== 对外接口（协议层） ====================
+    // 【不动】构造函数不是虚函数，不需要改。
     explicit Qpb(QSerialPort* parent = nullptr);
-    void set(DeviceCmd cmd, const QVariant& data = {}) override;
-    void get(DeviceCmd cmd, const QVariant& param = {}) override;
 
-    // 协议打包、解包与传输核心能力。
+    // 【需要虚函数】来自 IDevice，必须保留 override。
+    void set(DeviceCmd cmd, const QVariant& data = {}) override;
+    // 【需要虚函数】来自 IDevice，必须保留 override。
+    void get(DeviceCmd cmd, const QVariant& param = {}) override;
+    // 【需要虚函数】来自 qProtocol，必须保留 override。
     void parseCmd(const QByteArray& byte) override;
-    void sendShortPack(const FactoryDataPackage& pack);
-    void sendShortPack(const DataPackage& pack);
+
+    // ==================== 对外接口（迁移过渡控制） ====================
+    // 说明：这一组仍为 public，是为了避免一次性改动过大。
+    // 建议后续通过 QProtocolManager 转发后，再逐步收敛为 private。
     QByteArray aes256Decrypt(const QByteArray& encrypted);
     QByteArray aes256Encrypt(const QByteArray& input);
-
-    void sendMainPack(const DataPackage& pack);
-    uint32_t sendlongPack(const FactoryDataPackage& pack);
-    void waitWork(int ms);
     void setPbMode(int p) { pb_mode = (PB_MODE)p; }
     void setAppVersion(const QString& version) { appVersion = version; }
     QString getAppVersion() const { return appVersion; }
@@ -52,8 +53,6 @@ public:
     void setShipCount(int count) { shipCount = count; }
     int getShipCount() const { return shipCount; }
     void increaseShipCount() { ++shipCount; }
-    DataPackage getBlePack() const;
-    void setBlePack(const DataPackage& newBlePack);
     enum class PbStateType {
         DevIntoWhiteMode,
         OtaStart,
@@ -80,8 +79,10 @@ public:
     void setState(PbStateType stateType, int value);
 
     // 保留给现有流程使用的状态查询接口。
+    // 【不动】状态查询，不需要虚函数。
     bool get_is_save_press_cali_data() { return is_save_press_cali_ok; }
 
+    // 【不动】状态复位工具函数，不需要虚函数。
     void reset_all_pb() {
         is_dev_into_white_mode = 0;
         is_ota_start = 0;
@@ -106,6 +107,16 @@ public:
         is_save_press_cali_ok = 0;
     }  // 复位参数
 private:
+    // ==================== 私有状态与内部数据 ====================
+    // ==================== 私有传输实现（不对上层开放） ====================
+    void sendShortPack(const FactoryDataPackage& pack);
+    void sendShortPack(const DataPackage& pack);
+    void sendMainPack(const DataPackage& pack);
+    uint32_t sendlongPack(const FactoryDataPackage& pack);
+    void waitWork(int ms);
+    DataPackage getBlePack() const;
+    void setBlePack(const DataPackage& newBlePack);
+
     typedef enum {
         STATE_IDLE,
         STATE_HEADER,
@@ -170,7 +181,8 @@ private:
     int is_motor_cali_data_set = 0;
 
 private slots:
-    // 旧 set 实现，仅供 set(DeviceCmd, ...) 分发调用。
+    // ==================== 私有 set 实现（仅分发层调用） ====================
+    // 【不动】这些函数是内部实现，不要改为虚函数。
     void set_press_sensor_temp(int state);
     void set_solve_imu_collect_param(FacSwitch sta);  // 设置imu采集开关
     void set_uart_receive(int state);                 // 设置UART接收状态
@@ -231,7 +243,8 @@ private slots:
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
                                uint32_t vibrate_freq);  // 设置舵机电机参数
 
-    // 旧 get 实现，仅供 get(DeviceCmd, ...) 分发调用。
+    // ==================== 私有 get 实现（仅分发层调用） ====================
+    // 【不动】这些函数是内部实现，不要改为虚函数。
     void get_now_music_info();
     void get_sd_card_info();
     void get_light_sensor_info();
@@ -248,7 +261,8 @@ private slots:
     void get_servo_motor_info();           // 获取电机信息
     void get_bursh_backlog(int state);
 
-    // 收包后的内部命令处理函数。
+    // ==================== 私有收包处理器 ====================
+    // 【不动】这些函数是内部处理，不要改为虚函数。
     void process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f);
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
     void process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f);
@@ -280,6 +294,7 @@ private slots:
     void process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f);
     void process_FactroyCmd_FAC_LOG(FactoryDataPackage& f);
 signals:
+    // ==================== 信号输出（上层订阅） ====================
     void send_photosensitive_info(FacDevInfo);
     void send_sd_info(FacDevInfo);
     void send_press_data(FacUploadPresSensor);

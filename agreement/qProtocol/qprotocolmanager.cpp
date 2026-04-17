@@ -53,6 +53,34 @@ qProtocol* QProtocolManager::currentProtocol() const {
     return active_;
 }
 
+bool QProtocolManager::hasActiveProtocol() const {
+    return active_ != nullptr;
+}
+
+bool QProtocolManager::parseCmd(const QByteArray& byte) const {
+    if (!active_) {
+        return false;
+    }
+    active_->parseCmd(byte);
+    return true;
+}
+
+bool QProtocolManager::set(DeviceCmd cmd, const QVariant& data) const {
+    if (!active_) {
+        return false;
+    }
+    active_->set(cmd, data);
+    return true;
+}
+
+bool QProtocolManager::get(DeviceCmd cmd, const QVariant& param) const {
+    if (!active_) {
+        return false;
+    }
+    active_->get(cmd, param);
+    return true;
+}
+
 Qpb* QProtocolManager::currentQpb() const {
     if (currentType_ == ProtocolType::Qpb) {
         return qpb_;

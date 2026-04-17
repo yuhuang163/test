@@ -29,6 +29,12 @@ public:
     qProtocol* currentProtocol() const;
     Qpb* currentQpb() const;
     Qfctp* currentQfctp() const;
+    bool hasActiveProtocol() const;
+
+    // 统一转发入口：上层只依赖管理器，不直接依赖具体协议实现。
+    bool parseCmd(const QByteArray& byte) const;
+    bool set(DeviceCmd cmd, const QVariant& data = {}) const;
+    bool get(DeviceCmd cmd, const QVariant& param = {}) const;
 
     bool isQpbProtocolActive() const;
     bool isQfctpProtocolActive() const;
