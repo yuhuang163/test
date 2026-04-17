@@ -45,6 +45,10 @@
 #include <QGraphicsView>
 #include <QPixmap>
 #include <QWheelEvent>
+#include "qfctp.h"
+
+
+
 extern "C" {
 #include "md5.h"  // 引入 tiny-AES-c 的头文件
 }
@@ -178,8 +182,9 @@ private:
     std::atomic<bool> running;
     QFuture<void> future;
     QProtocolManager protocolManager;
-    Qpb* pb;
-    Qat* at;
+    Qfctp* qfctp = nullptr;
+    Qpb* pb= nullptr;
+    Qat* at= nullptr;
     TestFunctionExecutor executor;
     typedef enum {
         STATE_IDLE,             // 休眠状态

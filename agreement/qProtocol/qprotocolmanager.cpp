@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cctype>
 
-#include "qpb.h"
-#include "qfctp.h"
+#include "qpb/qpb.h"
+#include "qfctp/qfctp.h"
 
 QProtocolManager::QProtocolManager() {}
 
@@ -78,6 +78,77 @@ bool QProtocolManager::get(DeviceCmd cmd, const QVariant& param) const {
         return false;
     }
     active_->get(cmd, param);
+    return true;
+}
+
+bool QProtocolManager::setPbMode(int p) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return false;
+    }
+    pb->setPbMode(p);
+    return true;
+}
+
+bool QProtocolManager::setNeedAes(bool needAes) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return false;
+    }
+    pb->setNeedAes(needAes);
+    return true;
+}
+
+bool QProtocolManager::setAppVersion(const QString& version) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return false;
+    }
+    pb->setAppVersion(version);
+    return true;
+}
+
+QString QProtocolManager::getAppVersion() const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return QString();
+    }
+    return pb->getAppVersion();
+}
+
+QByteArray QProtocolManager::aes256Decrypt(const QByteArray& encrypted) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return QByteArray();
+    }
+    return pb->aes256Decrypt(encrypted);
+}
+
+QByteArray QProtocolManager::aes256Encrypt(const QByteArray& input) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return QByteArray();
+    }
+    return pb->aes256Encrypt(input);
+}
+
+int QProtocolManager::getState(int stateType, int defaultValue) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return defaultValue;
+    }
+    if (stateType < 0) {
+        return defaultValue;
+    }
+    return pb->getState(static_cast<Qpb::PbStateType>(stateType));
+}
+
+bool QProtocolManager::setState(int stateType, int value) const {
+    Qpb* pb = currentQpb();
+    if (!pb || stateType < 0) {
+        return false;
+    }
+    pb->setState(static_cast<Qpb::PbStateType>(stateType), value);
     return true;
 }
 

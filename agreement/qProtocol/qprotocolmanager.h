@@ -3,6 +3,8 @@
 
 #include "qprotocol.h"
 #include <string>
+#include <QByteArray>
+#include <QString>
 
 class Qpb;
 class Qfctp;
@@ -35,6 +37,16 @@ public:
     bool parseCmd(const QByteArray& byte) const;
     bool set(DeviceCmd cmd, const QVariant& data = {}) const;
     bool get(DeviceCmd cmd, const QVariant& param = {}) const;
+
+    // Qpb 专有能力桥接：用于迁移期兼容旧调用。
+    bool setPbMode(int p) const;
+    bool setNeedAes(bool needAes) const;
+    bool setAppVersion(const QString& version) const;
+    QString getAppVersion() const;
+    QByteArray aes256Decrypt(const QByteArray& encrypted) const;
+    QByteArray aes256Encrypt(const QByteArray& input) const;
+    int getState(int stateType, int defaultValue = 0) const;
+    bool setState(int stateType, int value) const;
 
     bool isQpbProtocolActive() const;
     bool isQfctpProtocolActive() const;

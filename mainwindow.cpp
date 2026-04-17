@@ -75,22 +75,28 @@ void MainWindow::on_pushButton_3_clicked() {
 
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
+    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
     protocolManager.bindQpb(pb);
+    protocolManager.bindQfctp(qfctp);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
     if (selectedType == QProtocolManager::ProtocolType::Unknown) {
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
-    protocolManager.setCurrentProtocolType(selectedType);
-    pb = protocolManager.currentQpb();
     if (!pb) {
-        QMessageBox::critical(this, "协议初始化失败", "当前协议未实现，默认回退到 qpb。");
+        QMessageBox::critical(this, "协议初始化失败", "Qpb 实例初始化失败。");
+    }
+
+    // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
+    // 当前激活协议由 protocolManager 统一维护。
+    if (selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) {
+        QMessageBox::information(this, "协议提示", "qfctp 未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
-        pb = protocolManager.currentQpb();
+    } else {
+        protocolManager.setCurrentProtocolType(selectedType);
     }
 
     // tts = new QTextToSpeech(this);
