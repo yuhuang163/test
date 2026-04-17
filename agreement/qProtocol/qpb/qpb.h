@@ -19,13 +19,22 @@ Q_DECLARE_METATYPE(NewImuCalData)
 Q_DECLARE_METATYPE(RotasFileStatusReq)
 Q_DECLARE_METATYPE(local_ota_data)
 Q_DECLARE_METATYPE(FacGetDevBaseInfo)
+Q_DECLARE_METATYPE(WifiConnectPayload)
+Q_DECLARE_METATYPE(DeviceSnPayload)
+Q_DECLARE_METATYPE(NewWifiConnectPayload)
+Q_DECLARE_METATYPE(SevorMotorParamPayload)
+Q_DECLARE_METATYPE(LocalOtaPayload)
+Q_DECLARE_METATYPE(StartMultiBleOtaPayload)
 
 class Qpb : public QSerialPort, public qProtocol, public IDevice {
     Q_OBJECT
 public:
+    // 统一协议入口，上层新代码应只使用这两个接口。
     explicit Qpb(QSerialPort* parent = nullptr);
     void set(DeviceCmd cmd, const QVariant& data = {}) override;
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
+
+    // 协议打包、解包与传输核心能力。
     void parseCmd(const QByteArray& byte) override;
     void sendShortPack(const FactoryDataPackage& pack);
     void sendShortPack(const DataPackage& pack);
@@ -69,6 +78,8 @@ public:
     };
     int getState(PbStateType stateType) const;
     void setState(PbStateType stateType, int value);
+
+    // 保留给现有流程使用的状态查询接口。
     bool get_is_save_press_cali_data() { return is_save_press_cali_ok; }
 
     void reset_all_pb() {
@@ -159,6 +170,7 @@ private:
     int is_motor_cali_data_set = 0;
 
 private slots:
+    // 旧 set 实现，仅供 set(DeviceCmd, ...) 分发调用。
     void set_press_sensor_temp(int state);
     void set_solve_imu_collect_param(FacSwitch sta);  // 设置imu采集开关
     void set_uart_receive(int state);                 // 设置UART接收状态
@@ -200,12 +212,12 @@ private slots:
     void set_sn(FacDevInfoType which_sn, const QByteArray& sn);  // 绑定SN码
     void set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data);
     void set_camera_picture_state(int state);                  // 设置摄像头图片状态
-    void set_local_ota(local_ota_data x[2]);                   // 设置本地OTA
+    void set_local_ota(const LocalOtaPayload& payload);        // 设置本地OTA
     void set_start_ota_app(RotasFileStatusReq RotasFiledata);  // 启动OTA应用
     void set_i_am_app();                                       // 骗设备是app
     void set_config_network_app(WifiInfo info);                // 配置网络应用
     void set_wifi_disconnect();                                // 断开WiFi
-    void set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata);
+    void set_start_multi_ble_ota_app(const StartMultiBleOtaPayload& payload);
     void set_press_collect_param(FacSwitch sta);  // 设置压力采集参数
     void set_imu_collect_param(FacSwitch sta);    // 设置IMU采集参数
     void set_camera_fault_data_packet(int count, const QVector<int>& data);
@@ -219,7 +231,7 @@ private slots:
     void set_sevor_motor_param(uint32_t sweeping_angle, float vibrate_angle, float sweeping_freq,
                                uint32_t vibrate_freq);  // 设置舵机电机参数
 
-private slots:
+    // 旧 get 实现，仅供 get(DeviceCmd, ...) 分发调用。
     void get_now_music_info();
     void get_sd_card_info();
     void get_light_sensor_info();
@@ -236,8 +248,7 @@ private slots:
     void get_servo_motor_info();           // 获取电机信息
     void get_bursh_backlog(int state);
 
-    
-private slots:
+    // 收包后的内部命令处理函数。
     void process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f);
     void process_CommandId_ROTAS_RESULT_RSP(DataPackage& f);
     void process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f);

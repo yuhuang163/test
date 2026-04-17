@@ -852,7 +852,7 @@ void PcbaForm::connectwifi() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+        pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1333,7 +1333,7 @@ void PcbaForm::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
                             //   pb->set(DeviceCmd::WifiDisconnect);
                             testData = WIFI_RSSI;
                             TestItem test;
@@ -1359,7 +1359,7 @@ void PcbaForm::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
                             //     pb->set(DeviceCmd::WifiDisconnect);
                             totalresult = failValue;
 
@@ -1390,7 +1390,7 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_GET_CORRECT_MOTOR:
                 if (canGoNext) {
-                    pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
 
                     showlog("已收到电机校准参数");
                     showlog("5、蓝牙强度测试");
@@ -1531,12 +1531,12 @@ void PcbaForm::startTask() {
                     showlog("播放结束");
                     pb->set(DeviceCmd::FacMode, 1);
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
                             // showlog("跑的是P30P");
-                            // pb->set(DeviceCmd::SevorMotorParam, QVariantList{3500, 14000, 10, 380});
+                            // pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
 
                             showlog("跑的是统一电机参数");
                             pb->set(DeviceCmd::MotorTestState, 1);
@@ -1596,12 +1596,12 @@ void PcbaForm::startTask() {
                 } else {
                     waitWork(500);
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
                             // showlog("跑的是P30P");
-                            // pb->set(DeviceCmd::SevorMotorParam, QVariantList{3500, 14000, 10, 380});
+                            // pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
 
                             showlog("跑的是统一电机参数");
                             pb->set(DeviceCmd::MotorTestState, 1);
@@ -1989,5 +1989,6 @@ void PcbaForm::on_pick_device_textActivated(const QString& arg1) {
         on_macInput_returnPressed();
     }
 }
+
 
 

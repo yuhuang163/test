@@ -816,7 +816,7 @@ void QFreeWork::on_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+        pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1405,5 +1405,6 @@ void QFreeWork::on_stopTest_clicked() {
 }
 
 void QFreeWork::on_save_config_clicked() { showTestIndexes(); }
+
 
 

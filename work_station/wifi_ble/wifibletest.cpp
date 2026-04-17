@@ -720,7 +720,7 @@ void wifibletest::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
                             //   pb->set(DeviceCmd::WifiDisconnect);
                             wifiresult = "通过";
                             TestItem test;
@@ -746,7 +746,7 @@ void wifibletest::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
                             //     pb->set(DeviceCmd::WifiDisconnect);
                             TestResult = failValue;
                             TestItem test;
@@ -919,7 +919,7 @@ void wifibletest::on_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+        pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1740,5 +1740,6 @@ void wifibletest::on_get_battery_clicked() {
         showlog("请等待连接设备后再试");
     }
 }
+
 
 

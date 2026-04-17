@@ -274,7 +274,7 @@ void screentest::startTask()
 
                         if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
                             showlog("已发送subpid");
-                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SUB_PID), writesubpid}); });
+                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
                             state = STATE_DISABLE_SLEEP_1;
@@ -565,4 +565,5 @@ void screentest::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
 

@@ -491,7 +491,7 @@ void motor::startTask() {
 
                     state = UNLOCK_DAMPING;
 
-                    // pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn});
+                    // pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     // showlog("已发送sn绑定");
                     // state = STATE_SN_CHECK;
                 } else {
@@ -509,7 +509,7 @@ void motor::startTask() {
 
                 //             } else {
                 //                 waitWork(500);
-                //                 pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn});
+                //                 pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                 //                 showlog("重发sn绑定");
                 //             }
                 //             break;
@@ -589,7 +589,7 @@ void motor::startTask() {
                 if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
                     refreshMotorCaliMsg("正在进行电机测试");
                     // showlog("正在进行电机测试");
-                    pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                     //  pb->set(DeviceCmd::MotorTestState, 1);
 
                     state = MOTOR_TESTING;
@@ -606,7 +606,7 @@ void motor::startTask() {
                     emit send_go_next_test(getIndex());
                     state = MOTOR_WAIT_TESTING;
                 } else {
-                    pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                     refreshMotorCaliMsg("重发电机测试");
                     waitWork(500);
                 }
@@ -666,7 +666,7 @@ void motor::startTask() {
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 waitWork(WAITTIME);
-                pb->set(DeviceCmd::SevorMotorParam, QVariantList{0, 0, 0, 0});
+                pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
                 waitWork(500);
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
@@ -947,5 +947,6 @@ void motor::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
 
 

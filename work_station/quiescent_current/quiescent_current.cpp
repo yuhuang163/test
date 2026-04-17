@@ -681,7 +681,7 @@ void quiescent_current::startTask() {
                     qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                     waitWork(WAITTIME);
                     showlog("蓝牙连接成功");
-                    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn});
+                    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     state = STATE_BANDING;
                 }
                 break;
@@ -692,7 +692,7 @@ void quiescent_current::startTask() {
                     state = STATE_WATI_DISABLE_SLEEP;
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn});
+                    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     showlog("已发送sn绑定");
                 }
 
@@ -1084,6 +1084,7 @@ void quiescent_current::on_stopTest_clicked() {
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 }
+
 
 
 

@@ -2,7 +2,10 @@
 #define QPB_TYPES_H
 
 #include <QByteArray>
+#include <QString>
 #include <QVariant>
+#include "ble_protocol/fx_ble_msg.pb.h"
+#include "factory_protocol/factory_msg.pb.h"
 
 typedef struct {
     int magic;
@@ -55,6 +58,40 @@ typedef struct {
     unsigned short calib_factor[MODULE_MAX];
     short temperature[MODULE_MAX];
 } press_calib_data_t;
+
+typedef struct {
+    QByteArray name;
+    QByteArray password;
+} WifiConnectPayload;
+
+typedef struct {
+    FacDevInfoType which_sn;
+    QByteArray sn;
+} DeviceSnPayload;
+
+typedef struct {
+    QByteArray name;
+    QByteArray password;
+    QString ip;
+    QString port;
+} NewWifiConnectPayload;
+
+typedef struct {
+    uint32_t sweeping_angle;
+    float vibrate_angle;
+    float sweeping_freq;
+    uint32_t vibrate_freq;
+} SevorMotorParamPayload;
+
+typedef struct {
+    local_ota_data file0;
+    local_ota_data file1;
+} LocalOtaPayload;
+
+typedef struct {
+    RotasFileStatusReq req0;
+    RotasFileStatusReq req1;
+} StartMultiBleOtaPayload;
 
 enum class DeviceCmd {
     // set commands

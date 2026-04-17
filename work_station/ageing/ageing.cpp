@@ -380,7 +380,7 @@ void ageing::startTask() {
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), writesn}); });
+                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, writesn})); });
                     showlog("sn绑定保存内容为：" + stringsn);
                     state = STATE_WAIT_BANDING;
                 }
@@ -400,12 +400,12 @@ void ageing::startTask() {
                     if (snCompareOk == 1) {
                         if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
                             showlog("已发送subpid");
-                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SUB_PID), writesubpid}); });
+                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
                             // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
                             //     showlog("已发送Skuid");
-                            //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SKUID), writeskuid}); });
+                            //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, writeskuid})); });
                             //     state = STATE_WAIT_BANDING_SKUID;
                             // } else {
                             state = STATE_DISABLE_SLEEP_1;
@@ -436,7 +436,7 @@ void ageing::startTask() {
                     if (subpidCompareOk == 1) {
                         // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
                         //     showlog("已发送Skuid");
-                        //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SKUID), writeskuid}); });
+                        //     sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, writeskuid})); });
                         //     state = STATE_WAIT_BANDING_SKUID;
                         // } else {
                         state = STATE_DISABLE_SLEEP_1;
@@ -738,4 +738,5 @@ void ageing::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
 

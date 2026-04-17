@@ -52,8 +52,7 @@ void QFreeWork::createTestFunctions() {
         {"连接WiFi",
          [&]() {
              sendCommandWithRetry([&]() {
-                 pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", QByteArray("SSID")},
-                                                             {"password", QByteArray("password")}});
+                 pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{QByteArray("SSID"), QByteArray("password")}));
              });
          }},
         {"设置音乐", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::Music, QByteArray("music data")); }); }},
@@ -80,18 +79,18 @@ void QFreeWork::createTestFunctions() {
         {"发送新的IMU校准结果",
          [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::NewImuCaliResult, QVariant::fromValue(NewImuCalData{/* params */})); }); }},
         {"设置舵机电机参数",
-         [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::SevorMotorParam, QVariantList{90, 30.0f, 50.0f, 100}); }); }},
+         [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{90, 30.0f, 50.0f, 100})); }); }},
         {"设置设备模式", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::DeviceMode, 1); }); }},
         {"设置亮白模式", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::DeviceMode, 4); }); }},
         {"设置刷牙控制状态", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::BrushControl, 1); }); }},
         {"设置工厂模式", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::FacMode, 1); }); }},
-        {"绑定SN码", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn}); }); }},
+        {"绑定SN码", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); }); }},
         {"设置摄像头图片状态", [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::CameraPictureState, 1); }); }},
         {"设置本地OTA",
          [&]() {
              local_ota_data x[2] = {/* params */};
             sendCommandWithRetry(
-                    [&]() { pb->set(DeviceCmd::LocalOta, QVariantList{QVariant::fromValue(x[0]), QVariant::fromValue(x[1])}); });
+                    [&]() { pb->set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); });
          }},
         {"启动OTA应用",
          [&]() { sendCommandWithRetry([&]() { pb->set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFileStatusReq{/* params */})); }); }},
@@ -101,8 +100,7 @@ void QFreeWork::createTestFunctions() {
         {"设置新的WiFi连接",
          [&]() {
             sendCommandWithRetry([&]() {
-                pb->set(DeviceCmd::NewWifiConnect, QVariantList{QByteArray("SSID"), QByteArray("password"),
-                                                                 QString("192.168.1.1"), QString("8080")});
+                pb->set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{QByteArray("SSID"), QByteArray("password"), QString("192.168.1.1"), QString("8080")}));
             });
          }},
         {"设置压力采集参数",
@@ -118,4 +116,5 @@ void QFreeWork::createTestFunctions() {
         {"获取WiFi信息", [&]() { sendCommandWithRetry([&]() { pb->get(DeviceCmd::WifiInfo); }); }},
     };
 }
+
 

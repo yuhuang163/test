@@ -37,6 +37,11 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             set_motor_cali(data.toInt());
             break;
         case DeviceCmd::WifiConnect: {
+            if (data.canConvert<WifiConnectPayload>()) {
+                const WifiConnectPayload payload = data.value<WifiConnectPayload>();
+                set_connect_wifi(payload.name, payload.password);
+                break;
+            }
             if (data.canConvert<QVariantMap>()) {
                 const QVariantMap wifiMap = data.toMap();
                 const QByteArray name = wifiMap.value("name").toByteArray();
@@ -77,12 +82,16 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             break;
         }
         case DeviceCmd::LocalOta: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 2) {
-                local_ota_data ota[2] = {list.at(0).value<local_ota_data>(), list.at(1).value<local_ota_data>()};
-                set_local_ota(ota);
+            if (data.canConvert<LocalOtaPayload>()) {
+                const LocalOtaPayload payload = data.value<LocalOtaPayload>();
+                set_local_ota(payload);
             } else {
-                qWarning() << "DeviceCmd::LocalOta expects QVariantList{local_ota_data0, local_ota_data1}";
+                const QVariantList list = data.toList();
+                if (list.size() >= 2) {
+                    set_local_ota(LocalOtaPayload{list.at(0).value<local_ota_data>(), list.at(1).value<local_ota_data>()});
+                } else {
+                    qWarning() << "DeviceCmd::LocalOta expects LocalOtaPayload";
+                }
             }
             break;
         }
@@ -90,13 +99,17 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             set_start_ota_app(data.value<RotasFileStatusReq>());
             break;
         case DeviceCmd::StartMultiBleOtaApp: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 2) {
-                RotasFileStatusReq otaReq[2] = {list.at(0).value<RotasFileStatusReq>(),
-                                                list.at(1).value<RotasFileStatusReq>()};
-                set_start_multi_ble_ota_app(otaReq);
+            if (data.canConvert<StartMultiBleOtaPayload>()) {
+                const StartMultiBleOtaPayload payload = data.value<StartMultiBleOtaPayload>();
+                set_start_multi_ble_ota_app(payload);
             } else {
-                qWarning() << "DeviceCmd::StartMultiBleOtaApp expects QVariantList{req0, req1}";
+                const QVariantList list = data.toList();
+                if (list.size() >= 2) {
+                    set_start_multi_ble_ota_app(
+                        StartMultiBleOtaPayload{list.at(0).value<RotasFileStatusReq>(), list.at(1).value<RotasFileStatusReq>()});
+                } else {
+                    qWarning() << "DeviceCmd::StartMultiBleOtaApp expects StartMultiBleOtaPayload";
+                }
             }
             break;
         }
@@ -203,9 +216,14 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             set_camera_picture_state(data.toInt());
             break;
         case DeviceCmd::Sn: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 2) {
-                set_sn(static_cast<FacDevInfoType>(list.at(0).toInt()), list.at(1).toByteArray());
+            if (data.canConvert<DeviceSnPayload>()) {
+                const DeviceSnPayload payload = data.value<DeviceSnPayload>();
+                set_sn(payload.which_sn, payload.sn);
+            } else {
+                const QVariantList list = data.toList();
+                if (list.size() >= 2) {
+                    set_sn(static_cast<FacDevInfoType>(list.at(0).toInt()), list.at(1).toByteArray());
+                }
             }
             break;
         }
@@ -225,17 +243,29 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             set_upload_record_data(data.toInt());
             break;
         case DeviceCmd::SevorMotorParam: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 4) {
-                set_sevor_motor_param(list.at(0).toUInt(), list.at(1).toFloat(), list.at(2).toFloat(), list.at(3).toUInt());
+            if (data.canConvert<SevorMotorParamPayload>()) {
+                const SevorMotorParamPayload payload = data.value<SevorMotorParamPayload>();
+                set_sevor_motor_param(payload.sweeping_angle, payload.vibrate_angle, payload.sweeping_freq,
+                                      payload.vibrate_freq);
+            } else {
+                const QVariantList list = data.toList();
+                if (list.size() >= 4) {
+                    set_sevor_motor_param(list.at(0).toUInt(), list.at(1).toFloat(), list.at(2).toFloat(),
+                                          list.at(3).toUInt());
+                }
             }
             break;
         }
         case DeviceCmd::NewWifiConnect: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 4) {
-                set_new_connect_wifi(list.at(0).toByteArray(), list.at(1).toByteArray(), list.at(2).toString(),
-                                     list.at(3).toString());
+            if (data.canConvert<NewWifiConnectPayload>()) {
+                const NewWifiConnectPayload payload = data.value<NewWifiConnectPayload>();
+                set_new_connect_wifi(payload.name, payload.password, payload.ip, payload.port);
+            } else {
+                const QVariantList list = data.toList();
+                if (list.size() >= 4) {
+                    set_new_connect_wifi(list.at(0).toByteArray(), list.at(1).toByteArray(), list.at(2).toString(),
+                                         list.at(3).toString());
+                }
             }
             break;
         }
@@ -1678,7 +1708,7 @@ void Qpb::set_connect_wifi(const QByteArray& name, const QByteArray& password) {
     qDebug() << "已发送连接wifi";
 }
 
-void Qpb::set_local_ota(local_ota_data x[2]) {
+void Qpb::set_local_ota(const LocalOtaPayload& payload) {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
 
@@ -1686,25 +1716,25 @@ void Qpb::set_local_ota(local_ota_data x[2]) {
     pack.cmd_id = cmd;
     pack.which_command_data = FactoryDataPackage_internet_ota_tag;
 
-    if (x[0].is_have_data && x[1].is_have_data)
+    if (payload.file0.is_have_data && payload.file1.is_have_data)
         pack.command_data.internet_ota.file_info_count = 2;
     else
         pack.command_data.internet_ota.file_info_count = 1;
 
-    pack.command_data.internet_ota.file_info[0].file_size = x[0].file_size;
-    pack.command_data.internet_ota.file_info[0].version_code = x[0].version_code;
-    pack.command_data.internet_ota.file_info[0].version_type = x[0].version_type;
-    qstrncpy(pack.command_data.internet_ota.file_info[0].md5, x[0].md5,
+    pack.command_data.internet_ota.file_info[0].file_size = payload.file0.file_size;
+    pack.command_data.internet_ota.file_info[0].version_code = payload.file0.version_code;
+    pack.command_data.internet_ota.file_info[0].version_type = payload.file0.version_type;
+    qstrncpy(pack.command_data.internet_ota.file_info[0].md5, payload.file0.md5,
              sizeof(pack.command_data.internet_ota.file_info[0].md5));
-    qstrncpy(pack.command_data.internet_ota.file_info[0].url, x[0].url,
+    qstrncpy(pack.command_data.internet_ota.file_info[0].url, payload.file0.url,
              sizeof(pack.command_data.internet_ota.file_info[0].url));
 
-    pack.command_data.internet_ota.file_info[1].file_size = x[1].file_size;
-    pack.command_data.internet_ota.file_info[1].version_code = x[1].version_code;
-    pack.command_data.internet_ota.file_info[1].version_type = x[1].version_type;
-    qstrncpy(pack.command_data.internet_ota.file_info[1].md5, x[1].md5,
+    pack.command_data.internet_ota.file_info[1].file_size = payload.file1.file_size;
+    pack.command_data.internet_ota.file_info[1].version_code = payload.file1.version_code;
+    pack.command_data.internet_ota.file_info[1].version_type = payload.file1.version_type;
+    qstrncpy(pack.command_data.internet_ota.file_info[1].md5, payload.file1.md5,
              sizeof(pack.command_data.internet_ota.file_info[1].md5));
-    qstrncpy(pack.command_data.internet_ota.file_info[1].url, x[1].url,
+    qstrncpy(pack.command_data.internet_ota.file_info[1].url, payload.file1.url,
              sizeof(pack.command_data.internet_ota.file_info[1].url));
 
     sendShortPack(pack);
@@ -2685,7 +2715,7 @@ void Qpb::set_i_am_app() {
     pb_mode = CLIENT;
 }
 
-void Qpb::set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata) {
+void Qpb::set_start_multi_ble_ota_app(const StartMultiBleOtaPayload& payload) {
     CommandId cmd = CommandId_MULTI_FILE_STATUS_REQ;
     DataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -2693,15 +2723,13 @@ void Qpb::set_start_multi_ble_ota_app(RotasFileStatusReq* RotasFiledata) {
     pack.which_command_data = DataPackage_multi_file_status_req_tag;
     pack.command_data.multi_file_status_req.file_status_list_count = 2;
 
-    pack.command_data.multi_file_status_req.file_status_list[0].fileType =
-        RotasFiledata[0].fileType;  // RotasUpdateFile_UI_RESOURCE;
-    pack.command_data.multi_file_status_req.file_status_list[0].fileSize = RotasFiledata[0].fileSize;
-    pack.command_data.multi_file_status_req.file_status_list[0].file_zip_md5 = RotasFiledata[0].file_zip_md5;
+    pack.command_data.multi_file_status_req.file_status_list[0].fileType = payload.req0.fileType;
+    pack.command_data.multi_file_status_req.file_status_list[0].fileSize = payload.req0.fileSize;
+    pack.command_data.multi_file_status_req.file_status_list[0].file_zip_md5 = payload.req0.file_zip_md5;
 
-    pack.command_data.multi_file_status_req.file_status_list[1].fileType =
-        RotasFiledata[1].fileType;  // RotasUpdateFile_BLE_FIRMWARE;
-    pack.command_data.multi_file_status_req.file_status_list[1].fileSize = RotasFiledata[1].fileSize;
-    pack.command_data.multi_file_status_req.file_status_list[1].file_zip_md5 = RotasFiledata[1].file_zip_md5;
+    pack.command_data.multi_file_status_req.file_status_list[1].fileType = payload.req1.fileType;
+    pack.command_data.multi_file_status_req.file_status_list[1].fileSize = payload.req1.fileSize;
+    pack.command_data.multi_file_status_req.file_status_list[1].file_zip_md5 = payload.req1.file_zip_md5;
     sendShortPack(pack);
 }
 

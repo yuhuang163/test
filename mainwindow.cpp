@@ -822,10 +822,10 @@ void MainWindow::on_snInput_returnPressed() {
     QByteArray sn = ui->snInput->text().toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SUB_PID), subpid});
+        pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, subpid}));
         showlog("已绑定subpid到设备");
 
-        pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), sn});
+        pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
         showlog("已绑定sn到设备");
 
         bandSnMacToCsv(macAddress, sn);
@@ -981,7 +981,7 @@ void MainWindow::on_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::WifiConnect, QVariantMap{{"name", wifiNameBytes}, {"password", wifiPasswordBytes}});
+        pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1355,7 +1355,7 @@ void MainWindow::on_motor_cali_clicked() {
                         pb->set(DeviceCmd::ScreenCameraState, 1);
                     } else {
                         if (ui->is_sero_motor->checkState()) {
-                            pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                            pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                         } else {
                             pb->set(DeviceCmd::MotorParam, QVariantList{270, 60});
                             pb->set(DeviceCmd::MotorState, 1);
@@ -1380,7 +1380,7 @@ void MainWindow::on_motor_cali_clicked() {
                     }
                     showlog("已经发送电机测试指令");
                     if (ui->is_sero_motor->checkState()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                     } else {
                         pb->set(DeviceCmd::MotorParam, QVariantList{270, 60});
                         pb->set(DeviceCmd::MotorState, 1);
@@ -1403,7 +1403,7 @@ void MainWindow::on_motor_cali_clicked() {
                 } else {
                     waitWork(500);
                     if (ui->is_sero_motor->checkState()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                     } else {
                         pb->set(DeviceCmd::MotorParam, QVariantList{270, 60});
                         pb->set(DeviceCmd::MotorState, 1);
@@ -1431,7 +1431,7 @@ void MainWindow::on_motor_cali_clicked() {
                 waitWork(500);
 
                 if (ui->is_sero_motor->checkState()) {
-                    pb->set(DeviceCmd::SevorMotorParam, QVariantList{0, 0, 0, 0});
+                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
                 } else {
                     pb->set(DeviceCmd::MotorState, 0);
                 }
@@ -1691,9 +1691,7 @@ void MainWindow::on_sweeping_angle_returnPressed() {
     qDebug() << "sweeping_angle" << ui->sweeping_angle->text().toFloat();
     qDebug() << "vibrate_freq" << ui->vibrate_freq->text().toFloat();
 
-    pb->set(DeviceCmd::SevorMotorParam,
-            QVariantList{ui->sweeping_angle->text().toUInt(), ui->vibrate_angle->text().toFloat(),
-                         ui->sweeping_freq->text().toFloat(), ui->vibrate_freq->text().toUInt()});
+    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{ui->sweeping_angle->text().toUInt(), ui->vibrate_angle->text().toFloat(), ui->sweeping_freq->text().toFloat(), ui->vibrate_freq->text().toUInt()}));
 }
 //单次ota接口
 void MainWindow::on_otaTestPushButton_2_clicked() {
@@ -1996,7 +1994,7 @@ void MainWindow::on_start_local_ota_clicked() {
     }
 
     if (count > 0) {
-        pb->set(DeviceCmd::LocalOta, QVariantList{QVariant::fromValue(pack[0]), QVariant::fromValue(pack[1])});
+        pb->set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{pack[0], pack[1]}));
     }
 }
 
@@ -2008,7 +2006,7 @@ void MainWindow::on_new_connectwifi_clicked() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, wifiPasswordBytes, wifiPassword});
+        pb->set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{wifiNameBytes, wifiPasswordBytes, wifiPasswordBytes, wifiPassword}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -2021,9 +2019,9 @@ void MainWindow::on_swing_test_clicked() {
     if (at->getConnected()) {
         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
             showlog("跑的是P30P");
-            pb->set(DeviceCmd::SevorMotorParam, QVariantList{3500, 14000, 10, 380});
+            pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
         } else {
-            pb->set(DeviceCmd::SevorMotorParam, QVariantList{14, 12, 5.2, 190});
+            pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
         }
 
         showlog("已经设置摆幅测试");
@@ -2349,7 +2347,7 @@ void MainWindow::on_distribution_network_clicked() {
 
     connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
     if (at->getConnected()) {
-        pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()});
+        pb->set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -2823,13 +2821,13 @@ void MainWindow::on_get_board_sn_clicked() { pb->get(DeviceCmd::GetSn, static_ca
 
 void MainWindow::on_write_device_sn_clicked() {
     QByteArray devicesn = ui->snInput->text().toUtf8();
-    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_TAIL_SN), devicesn});
+    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, devicesn}));
     showlog("已绑定尾盖sn到设备");
 }
 
 void MainWindow::on_write_board_sn_clicked() {
     QByteArray boardsn = ui->snInput->text().toUtf8();
-    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_BOARD_SN), boardsn});
+    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_BOARD_SN, boardsn}));
     showlog("已绑定板子sn到设备");
 }
 
@@ -2839,7 +2837,7 @@ void MainWindow::on_write_device_subpid_clicked() {
         QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
         return;
     }
-    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SUB_PID), subpid});
+    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, subpid}));
     showlog("已绑定subpid到设备");
 }
 // void MainWindow::on_clear_picture_clicked() {
@@ -3295,8 +3293,7 @@ void MainWindow::on_startBleOta_clicked() {
 
         while (!pb->getState(Qpb::PbStateType::OtaStart)) {
             showlog("已发送开始OTA!");
-            pb->set(DeviceCmd::StartMultiBleOtaApp,
-                    QVariantList{QVariant::fromValue(RotasFiledata[0]), QVariant::fromValue(RotasFiledata[1])});
+            pb->set(DeviceCmd::StartMultiBleOtaApp, QVariant::fromValue(StartMultiBleOtaPayload{RotasFiledata[0], RotasFiledata[1]}));
             waitWork(2000);
             if (stopBleOta) {
                 showlog("停止测试");
@@ -3505,7 +3502,7 @@ void MainWindow::on_getBackLog_clicked() { pb->get(DeviceCmd::BurshBacklog, 1); 
 void MainWindow::on_write_device_skuid_clicked() {
     QByteArray skuid = ui->snInput->text().toUtf8();
 
-    pb->set(DeviceCmd::Sn, QVariantList{static_cast<int>(FacDevInfoType_SKUID), skuid});
+    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, skuid}));
     showlog("已绑定skuid到设备");
 }
 
@@ -3763,5 +3760,6 @@ void MainWindow::on_btn_stopUpload_clicked() { pb->set(DeviceCmd::UploadRecordDa
 void MainWindow::on_btn_getSDCardStatus_clicked() { pb->get(DeviceCmd::SdCardInfo); }
 
 void MainWindow::on_btn_getLDRInfo_clicked() { pb->get(DeviceCmd::LightSensorInfo); }
+
 
 

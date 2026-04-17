@@ -943,7 +943,7 @@ void cameratest::on_distribution_network_clicked() {
     //     isExecuted = true;
     // }
     if (at->getConnected()) {
-        pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()});
+        pb->set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -965,7 +965,7 @@ void cameratest::deinit_distribution_network() {
     QString ipString = "0.0.0.0";
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-    pb->set(DeviceCmd::NewWifiConnect, QVariantList{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()});
+    pb->set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{wifiNameBytes, wifiPasswordBytes, ipString, ui->port_num->text()}));
 }
 void cameratest::on_save_photo_clicked() {
     if (!viewercamrea->pixmap.isNull()) {
@@ -1830,5 +1830,6 @@ void cameratest::on_ResolutionTestButton_clicked() {
             on_OffsetTest_clicked();
     }
 }
+
 
 
