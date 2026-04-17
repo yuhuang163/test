@@ -11,6 +11,7 @@
 #include <qlog.h>
 
 #include "Abini.h"
+#include "agreement/qProtocol/qprotocolmanager.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -31,6 +32,7 @@ typedef enum {
     STATE_CALIB_RESULT,
     STATE_MAX,
 } STATE_INDEPENDENT_E;
+class Qfctp;
 class test_base : public QWidget {
     Q_OBJECT
 public:
@@ -108,6 +110,8 @@ public:
 
     QSerialPort* dongleSerialPort;  // dongle硬件层
     Qpb* pb;                        // dongle协议层
+    Qfctp* qfctp;                   // fctp协议层
+    QProtocolManager protocolManager;
     Qat* at;                        // dongle协议层
 
     QSerialPort* usbSerialPort;  // 通用硬件层

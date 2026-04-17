@@ -104,7 +104,7 @@ void screentest::on_macInput_returnPressed() {
 
 void screentest::set_screen_color(int x) {
     if (at->getConnected()) {
-        pb->set(DeviceCmd::ScreenColor, x);
+        protocolManager.set(DeviceCmd::ScreenColor, x);
         showlog("已发送屏幕颜色" + QString::number(x));
 
     } else {
@@ -246,7 +246,7 @@ void screentest::startTask()
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
                     showlog("已发送禁止休眠");
                     state = STATE_WATI_DISABLE_SLEEP;
                 }
@@ -255,7 +255,7 @@ void screentest::startTask()
                 if (canGoNext) {
                     stringsn = ui->getMac->text();
                     showlog("开始获取sn");
-                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
                 break;
@@ -274,7 +274,7 @@ void screentest::startTask()
 
                         if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
                             showlog("已发送subpid");
-                            sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
+                            sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
                             state = STATE_WAIT_BANDING_SUBPID;
                         } else {
                             state = STATE_DISABLE_SLEEP_1;
@@ -299,7 +299,7 @@ void screentest::startTask()
             case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SUBPID;
                 }
@@ -414,7 +414,7 @@ void screentest::startTask()
                 stringsn = "";
                 ui->getMac->clear();
                 ui->macInput->clear();
-                pb->set(DeviceCmd::DevReset);
+                protocolManager.set(DeviceCmd::DevReset);
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
@@ -433,7 +433,7 @@ void screentest::startTask()
 }
 
 void screentest::on_lcdTestButton_clicked() {
-    pb->set(DeviceCmd::DevReset);
+    protocolManager.set(DeviceCmd::DevReset);
     // waitWork(WAITTIME);
     //
     // waitWork(WAITTIME);
@@ -565,5 +565,6 @@ void screentest::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
 
 

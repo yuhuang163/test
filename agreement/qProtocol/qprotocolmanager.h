@@ -47,6 +47,8 @@ public:
     QByteArray aes256Encrypt(const QByteArray& input) const;
     int getState(int stateType, int defaultValue = 0) const;
     bool setState(int stateType, int value) const;
+    bool resetAllPb() const;
+    bool setShipCount(int count) const;
 
     bool isQpbProtocolActive() const;
     bool isQfctpProtocolActive() const;

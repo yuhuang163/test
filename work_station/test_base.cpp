@@ -13,6 +13,7 @@
 
 #include "qcoreapplication.h"
 #include "qprocess.h"
+#include "agreement/qProtocol/qfctp/qfctp.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -24,9 +25,19 @@
 
 test_base::test_base(QWidget* parent) :
     QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)), usb(new Qusb(usbSerialPort)),
+    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
+    usb(new Qusb(usbSerialPort)),
     jigSerialPort(new QSerialPort(this)), jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort)) {
+    protocolManager.bindQpb(pb);
+    protocolManager.bindQfctp(qfctp);
+    const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
+    auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
+    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    protocolManager.setCurrentProtocolType(selectedType);
+
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
     initData();

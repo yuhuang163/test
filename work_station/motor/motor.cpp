@@ -157,7 +157,7 @@ void motor::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+        protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -185,27 +185,27 @@ void motor::on_motor_cali_clicked() {
 
     switch (caliStep) {
         case 1:
-            pb->set(DeviceCmd::MotorCali, 1);
+            protocolManager.set(DeviceCmd::MotorCali, 1);
             showlog("Running set_motor_cali(1)");
             break;
 
         case 2:
-            pb->set(DeviceCmd::MotorCali, 2);
+            protocolManager.set(DeviceCmd::MotorCali, 2);
             showlog("Running set_motor_cali(2)");
             break;
 
         case 3:
-            pb->set(DeviceCmd::MotorCali, 3);
+            protocolManager.set(DeviceCmd::MotorCali, 3);
             showlog("Running set_motor_cali(3)");
             break;
 
         case 4:
-            pb->set(DeviceCmd::MotorDampingState, 1);
+            protocolManager.set(DeviceCmd::MotorDampingState, 1);
             showlog("Running set_motor_damping_state(1)");
             break;
 
         case 5:
-            pb->set(DeviceCmd::MotorDampingState, 0);
+            protocolManager.set(DeviceCmd::MotorDampingState, 0);
             showlog("Running set_motor_damping_state(0)");
             break;
     }
@@ -452,14 +452,14 @@ void motor::startTask() {
                 break;
             case STATE_WATI_CONNECT:
                 if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
                     state = STATE_GETBASEDATA;
                 }
 
                 break;
             case STATE_GETBASEDATA:
                 if (canGoNext) {
-                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::Battery); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
                     state = STATE_WATI_CORRECT_BATTARY;
                 }
                 break;
@@ -475,11 +475,11 @@ void motor::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
-                    pb->set(DeviceCmd::MotorTestState, 0);
+                    protocolManager.set(DeviceCmd::MotorTestState, 0);
                     waitWork(100);
-                    pb->set(DeviceCmd::MotorCaliState, 1);
+                    protocolManager.set(DeviceCmd::MotorCaliState, 1);
                     waitWork(100);
-                    pb->set(DeviceCmd::MotorDampingState, 0);
+                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
                     waitWork(100);
                     refreshMotorCaliMsg("解除阻尼");
                     // showlog("解除阻尼");
@@ -491,13 +491,13 @@ void motor::startTask() {
 
                     state = UNLOCK_DAMPING;
 
-                    // pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                    // protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     // showlog("已发送sn绑定");
                     // state = STATE_SN_CHECK;
                 } else {
                     waitWork(500);
                     showlog("正在重发进入禁止休眠");
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                 }
                 break;
 
@@ -509,7 +509,7 @@ void motor::startTask() {
 
                 //             } else {
                 //                 waitWork(500);
-                //                 pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                //                 protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                 //                 showlog("重发sn绑定");
                 //             }
                 //             break;
@@ -520,11 +520,11 @@ void motor::startTask() {
                     refreshMotorCaliMsg("正在进行霍尔校准");
                     // showlog("正在进行霍尔校准");
 
-                    pb->set(DeviceCmd::MotorCali, 1);
+                    protocolManager.set(DeviceCmd::MotorCali, 1);
                     waitWork(WAITTIME);
                     state = MOTOR_CALI1;
                 } else {
-                    pb->set(DeviceCmd::MotorDampingState, 0);
+                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
                     showlog("重发解除阻尼");
                     waitWork(500);
                 }
@@ -548,7 +548,7 @@ void motor::startTask() {
                 if (is_canGoNext) {
                     is_canGoNext = 0;
                     waitWork(WAITTIME);
-                    pb->set(DeviceCmd::MotorCali, 2);
+                    protocolManager.set(DeviceCmd::MotorCali, 2);
                     waitWork(WAITTIME);
                     showlog("正在进行零点校准");
                     state = MOTOR_CALI2;
@@ -566,7 +566,7 @@ void motor::startTask() {
                         break;
                     }
 
-                    pb->set(DeviceCmd::MotorCaliState, 0);
+                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
                     state = STOP_MOTOR_CALI;
                 }
                 if (pb->getState(Qpb::PbStateType::ZeroCali) == 2) {
@@ -579,7 +579,7 @@ void motor::startTask() {
             case MOTOR_WAIT_CALI2:
                 if (is_canGoNext) {
                     is_canGoNext = 0;
-                    pb->set(DeviceCmd::MotorCaliState, 0);
+                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
                     state = STOP_MOTOR_CALI;
                 }
                 break;
@@ -589,12 +589,12 @@ void motor::startTask() {
                 if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
                     refreshMotorCaliMsg("正在进行电机测试");
                     // showlog("正在进行电机测试");
-                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
-                    //  pb->set(DeviceCmd::MotorTestState, 1);
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    //  protocolManager.set(DeviceCmd::MotorTestState, 1);
 
                     state = MOTOR_TESTING;
                 } else {
-                    pb->set(DeviceCmd::MotorCaliState, 0);
+                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
                     refreshMotorCaliMsg("重发关闭校准流程");
                     waitWork(500);
                 }
@@ -606,7 +606,7 @@ void motor::startTask() {
                     emit send_go_next_test(getIndex());
                     state = MOTOR_WAIT_TESTING;
                 } else {
-                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                     refreshMotorCaliMsg("重发电机测试");
                     waitWork(500);
                 }
@@ -666,7 +666,7 @@ void motor::startTask() {
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 waitWork(WAITTIME);
-                pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
                 waitWork(500);
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
@@ -705,16 +705,16 @@ void motor::startTest_task() {
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
                     waitWork(WAITTIME);
-                    pb->set(DeviceCmd::MotorTestState, 0);
+                    protocolManager.set(DeviceCmd::MotorTestState, 0);
                     waitWork(WAITTIME);
-                    pb->set(DeviceCmd::MotorDampingState, 0);
+                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
                     waitWork(WAITTIME);
                     showlog("解除阻尼");
                     QMessageBox::warning(NULL, "警告", " 请把刷头置于非0位\t\r\n");
-                    pb->get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
+                    protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     waitWork(WAITTIME);
                     showlog("打开阻尼");
-                    pb->set(DeviceCmd::MotorDampingState, 1);
+                    protocolManager.set(DeviceCmd::MotorDampingState, 1);
                     test_state = MOTOR_TESTING;
                     showlog("正在查询SN");
                 }
@@ -847,9 +847,9 @@ void motor::getTestValue(const int mechines, const QString value) {
     // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
-void motor::on_damping_open_clicked() { pb->set(DeviceCmd::MotorDampingState, 1); }
+void motor::on_damping_open_clicked() { protocolManager.set(DeviceCmd::MotorDampingState, 1); }
 
-void motor::on_damping_close_clicked() { pb->set(DeviceCmd::MotorDampingState, 0); }
+void motor::on_damping_close_clicked() { protocolManager.set(DeviceCmd::MotorDampingState, 0); }
 
 void motor::on_getMac_returnPressed() {
     testResultTableInit();
@@ -947,6 +947,7 @@ void motor::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
+
 
 
 

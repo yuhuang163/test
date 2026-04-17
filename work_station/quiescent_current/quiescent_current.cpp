@@ -526,7 +526,7 @@ void quiescent_current::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+        protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -681,7 +681,7 @@ void quiescent_current::startTask() {
                     qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
                     waitWork(WAITTIME);
                     showlog("蓝牙连接成功");
-                    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     state = STATE_BANDING;
                 }
                 break;
@@ -692,7 +692,7 @@ void quiescent_current::startTask() {
                     state = STATE_WATI_DISABLE_SLEEP;
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
                     showlog("已发送sn绑定");
                 }
 
@@ -702,12 +702,12 @@ void quiescent_current::startTask() {
 
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
-                    pb->get(DeviceCmd::NowMusicInfo);
-                    pb->get(DeviceCmd::BaseInfo);
+                    protocolManager.get(DeviceCmd::NowMusicInfo);
+                    protocolManager.get(DeviceCmd::BaseInfo);
                     state = STATE_WATI_GET_BASE_STATE;
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("已发送禁止休眠");
                 }
                 break;
@@ -718,14 +718,14 @@ void quiescent_current::startTask() {
                 {
                     waitWork(WAITTIME);
                     showlog("基础信息验证通过");
-                    pb->get(DeviceCmd::PeriphState);
+                    protocolManager.get(DeviceCmd::PeriphState);
 
                     state = STATE_WATI_GET_PERIPHERAL_STATE;
                 }
                 if (base_state == 2) {
                     waitWork(WAITTIME);
                     showlog("基础信息验证失败");
-                    pb->get(DeviceCmd::PeriphState);
+                    protocolManager.get(DeviceCmd::PeriphState);
                     QString mesresult = "NG";
                     QString itemvalue = QString("|版本信息:错误|");
                     pack.result = mesresult;
@@ -750,7 +750,7 @@ void quiescent_current::startTask() {
 
                 else {
                     waitWork(500);
-                    pb->get(DeviceCmd::BaseInfo);
+                    protocolManager.get(DeviceCmd::BaseInfo);
                     showlog("正在重发获取基本信息");
                 }
                 break;
@@ -760,7 +760,7 @@ void quiescent_current::startTask() {
                 {
                     showlog("外设状态正常");
                     showlog("正在发送取消静止休眠");
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
                     qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
                     ble_waittime->setInterval(disconnect_wait_time);
                     ble_waittime->start();
@@ -787,7 +787,7 @@ void quiescent_current::startTask() {
                 }
                 if (periph_state == 0) {
                     waitWork(500);
-                    pb->get(DeviceCmd::PeriphState);
+                    protocolManager.get(DeviceCmd::PeriphState);
                     showlog("正在重发获取外设信息");
                 }
                 break;
@@ -797,13 +797,13 @@ void quiescent_current::startTask() {
                     ble_waittime->stop();
                     waittime->stop();
                     waitWork(100);
-                    // pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START));
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START)); });
+                    // protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START));
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START)); });
 
                     state = STATE_SLEEP_OPEN;
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
                     showlog("正在重发取消禁止休眠");
                 }
 
@@ -1084,6 +1084,7 @@ void quiescent_current::on_stopTest_clicked() {
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 }
+
 
 
 

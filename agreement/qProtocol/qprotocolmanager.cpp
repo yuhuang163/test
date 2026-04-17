@@ -5,6 +5,9 @@
 
 #include "qpb/qpb.h"
 #include "qfctp/qfctp.h"
+#if _MSC_VER >= 1600
+#    pragma execution_character_set(push, "utf-8")
+#endif
 
 QProtocolManager::QProtocolManager() {}
 
@@ -149,6 +152,24 @@ bool QProtocolManager::setState(int stateType, int value) const {
         return false;
     }
     pb->setState(static_cast<Qpb::PbStateType>(stateType), value);
+    return true;
+}
+
+bool QProtocolManager::resetAllPb() const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return false;
+    }
+    pb->reset_all_pb();
+    return true;
+}
+
+bool QProtocolManager::setShipCount(int count) const {
+    Qpb* pb = currentQpb();
+    if (!pb) {
+        return false;
+    }
+    pb->setShipCount(count);
     return true;
 }
 

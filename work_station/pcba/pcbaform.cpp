@@ -79,8 +79,8 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     // testItem = "六轴状态";
     // testData = "QString::number(data.imu_state)";
 
-    // pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
-    // pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
+    // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+    // protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
     // waitWork(100);
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     // waitWork(50);
@@ -93,40 +93,40 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     // ui->ng_number->setStyleSheet("font-size: 15px; background-color: #FF0000; color: black;
     // border: 2px solid #FF0000; border-radius: 10px; padding: 1px; text-align: center; ");
 
-    //  pb->set(DeviceCmd::WifiDisconnect);
-    // pb->set(DeviceCmd::DeviceMode, );//进入亮白
+    //  protocolManager.set(DeviceCmd::WifiDisconnect);
+    // protocolManager.set(DeviceCmd::DeviceMode, );//进入亮白
     // waitWork(500);
-    // pb->set(DeviceCmd::BrushControl, 1);
-    //  pb->set(DeviceCmd::ShipMode, 1);
+    // protocolManager.set(DeviceCmd::BrushControl, 1);
+    //  protocolManager.set(DeviceCmd::ShipMode, 1);
 
-    //  pb->set(DeviceCmd::LedColor, QVariantList{1);
-    //  pb->get(DeviceCmd::Battery);
-    //  pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN}));
+    //  protocolManager.set(DeviceCmd::LedColor, QVariantList{1);
+    //  protocolManager.get(DeviceCmd::Battery);
+    //  protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN}));
     // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< " getIndex()"<<
     // getIndex();
     //     emit overtask(getIndex());
 
-    // pb->get(DeviceCmd::PeriphState);
+    // protocolManager.get(DeviceCmd::PeriphState);
 
-    // pb->set(DeviceCmd::WifiDisconnect);
-    // pb->set(DeviceCmd::FacMode, 1);
+    // protocolManager.set(DeviceCmd::WifiDisconnect);
+    // protocolManager.set(DeviceCmd::FacMode, 1);
     // emit overtask(getIndex());
 
     //  connectwifi();
     // waitWork(WAITTIME);
     // static int t=1;
     // if(t==1){
-    //  //  pb->set(DeviceCmd::DeviceMode, );//进入亮白
+    //  //  protocolManager.set(DeviceCmd::DeviceMode, );//进入亮白
     //       connectwifi();
     //     t=0;
     // }else{
-    //    pb->set(DeviceCmd::WifiDisconnect);
+    //    protocolManager.set(DeviceCmd::WifiDisconnect);
     //     t=1;
     // }
 
-    // pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+    // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
     // waitWork(WAITTIME);
-    // pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
+    // protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
 }
 
 PcbaForm::PcbaForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::PcbaForm) {
@@ -452,7 +452,7 @@ void PcbaForm::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
-        pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+        protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>断开</font>");
@@ -852,7 +852,7 @@ void PcbaForm::connectwifi() {
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
 
     if (at->getConnected()) {
-        pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
+        protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
         showlog("已发送连接wifi");
     } else {
         showlog("请等待连接设备后再试");
@@ -1054,7 +1054,7 @@ void PcbaForm::checkIMUData(const QString& axis, int32_t value, int32_t upper, i
     } else {
         state = STATE_WATI_STOP_IMU_DATA;
 
-        pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
+        protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
         totalresult = failValue;
 
         TestItem test;
@@ -1132,8 +1132,8 @@ void PcbaForm::startTask() {
                     if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool() &&
                         (SETTINGS.value("Mes/Product_Name").toString() == "Q20" ||
                          SETTINGS.value("Mes/Product_Name").toString() == "Q20P")) {
-                        pb->set(DeviceCmd::DeviceMode, 11);   //进入纯享模式
-                        pb->set(DeviceCmd::BrushControl, 1);  //开始刷牙
+                        protocolManager.set(DeviceCmd::DeviceMode, 11);   //进入纯享模式
+                        protocolManager.set(DeviceCmd::BrushControl, 1);  //开始刷牙
                     }
                 }
                 break;
@@ -1142,13 +1142,13 @@ void PcbaForm::startTask() {
 
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
-                    pb->set(DeviceCmd::FacMode, 1);
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); });
+                    protocolManager.set(DeviceCmd::FacMode, 1);
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); });
 
                     state = STATE_WATI_CORRECT_IMU_DATA;
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
                 }
                 break;
 
@@ -1169,7 +1169,7 @@ void PcbaForm::startTask() {
                     testItems.append(test);
                     testResultTableUpdate(testItems);
 
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); });
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); });
                     state = STATE_WATI_STOP_IMU_DATA;
                 }
 
@@ -1178,7 +1178,7 @@ void PcbaForm::startTask() {
             case STATE_WATI_STOP_IMU_DATA:  // 设置设备采集
                 if (canGoNext) {
                     showlog("成功关闭六轴数据");
-                    sendCommandWithRetry([&]() { pb->get(DeviceCmd::BaseInfo); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
 
                     state = STATE_WATI_GET_BASE_STATE;
                 }
@@ -1190,7 +1190,7 @@ void PcbaForm::startTask() {
                     {
                         showlog("基础信息验证通过");
                         waitWork(WAITTIME);
-                        sendCommandWithRetry([&]() { pb->get(DeviceCmd::PeriphState); });
+                        sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); });
 
                         showlog("2、设备外设测试");
                         state = STATE_WATI_GET_PERIPHERAL_STATE;
@@ -1198,7 +1198,7 @@ void PcbaForm::startTask() {
                     if (base_state == 2) {
                         waitWork(WAITTIME);
                         showlog("基础信息验证失败");
-                        sendCommandWithRetry([&]() { pb->get(DeviceCmd::PeriphState); });
+                        sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); });
                         showlog("2、设备外设测试");
                         totalresult = failValue;
                         erroContent << "|基础信息:异常";
@@ -1211,7 +1211,7 @@ void PcbaForm::startTask() {
                     if (periph_state == 1)  // 设备信息正常
                     {
                         showlog("外设状态正常");
-                        // pb->get(DeviceCmd::ButtonState, 1);
+                        // protocolManager.get(DeviceCmd::ButtonState, 1);
                         // showlog("8、按键测试");
                         // showlog("请按下按键");
                         state = STATE_WATI_CHARGE_CURRENT;
@@ -1248,7 +1248,7 @@ void PcbaForm::startTask() {
                                  << "Invalid input string";
                     }
 
-                    sendCommandWithRetry([&]() { pb->set(DeviceCmd::MotorCaliResultParam, value); });
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorCaliResultParam, value); });
 
                     state = STATE_WATI_GET_CORRECT_MOTOR;
                 } else if (!SETTINGS.value("SYSTEM/TestWifiSignal").toBool() &&
@@ -1333,8 +1333,8 @@ void PcbaForm::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
-                            //   pb->set(DeviceCmd::WifiDisconnect);
+                            protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
+                            //   protocolManager.set(DeviceCmd::WifiDisconnect);
                             testData = WIFI_RSSI;
                             TestItem test;
                             test.testItem = "wifi信号";
@@ -1359,8 +1359,8 @@ void PcbaForm::startTask() {
                             QString wifiPassword = "12345678";
                             QByteArray wifiNameBytes = wifiName.toUtf8();
                             QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-                            pb->set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
-                            //     pb->set(DeviceCmd::WifiDisconnect);
+                            protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
+                            //     protocolManager.set(DeviceCmd::WifiDisconnect);
                             totalresult = failValue;
 
                             testData = WIFI_RSSI;
@@ -1390,7 +1390,7 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_GET_CORRECT_MOTOR:
                 if (canGoNext) {
-                    pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
 
                     showlog("已收到电机校准参数");
                     showlog("5、蓝牙强度测试");
@@ -1444,7 +1444,7 @@ void PcbaForm::startTask() {
                                 // << musicFileName;
                                 QByteArray musicFileNameBytes = musicFileName.toUtf8();
                                 showlog("正在播放音乐");
-                                pb->set(DeviceCmd::Music, musicFileNameBytes);
+                                protocolManager.set(DeviceCmd::Music, musicFileNameBytes);
                                 music_play_time->setInterval(6000);
                                 music_play_time->start();
                                 state = STATE_WATI_WORKING_TEST;
@@ -1498,7 +1498,7 @@ void PcbaForm::startTask() {
                                 // << musicFileName;
                                 QByteArray musicFileNameBytes = musicFileName.toUtf8();
                                 showlog("正在播放音乐");
-                                pb->set(DeviceCmd::Music, musicFileNameBytes);
+                                protocolManager.set(DeviceCmd::Music, musicFileNameBytes);
                                 music_play_time->setInterval(6000);
                                 music_play_time->start();
                                 state = STATE_WATI_WORKING_TEST;
@@ -1512,13 +1512,13 @@ void PcbaForm::startTask() {
             case STATE_WATI_LIGHT_TEST:
                 if (1) {
                     showlog("正在进行灯光测试");
-                    pb->set(DeviceCmd::LedColor, QVariantList{1, 1});
+                    protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 1});
                     waitWork(100);
-                    pb->set(DeviceCmd::LedColor, QVariantList{0, 1});
+                    protocolManager.set(DeviceCmd::LedColor, QVariantList{0, 1});
                     waitWork(100);
-                    pb->set(DeviceCmd::LedColor, QVariantList{0, 2});
+                    protocolManager.set(DeviceCmd::LedColor, QVariantList{0, 2});
                     waitWork(100);
-                    pb->set(DeviceCmd::LedColor, QVariantList{1, 2});
+                    protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 2});
                     is_music_play_over_time = 1;
                     state = STATE_WATI_WORKING_TEST;
                 }
@@ -1529,30 +1529,30 @@ void PcbaForm::startTask() {
                 if (is_music_play_over_time) {
                     is_music_play_over_time = 0;
                     showlog("播放结束");
-                    pb->set(DeviceCmd::FacMode, 1);
+                    protocolManager.set(DeviceCmd::FacMode, 1);
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                        protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
                             // showlog("跑的是P30P");
-                            // pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
+                            // protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
 
                             showlog("跑的是统一电机参数");
-                            pb->set(DeviceCmd::MotorTestState, 1);
+                            protocolManager.set(DeviceCmd::MotorTestState, 1);
                         } else {
                             showlog("跑的是q20");
-                            pb->set(DeviceCmd::DeviceMode, 3);
-                            // pb->set(DeviceCmd::MotorParam, QVariantList{270, 60});
-                            // pb->set(DeviceCmd::MotorState, 1);
+                            protocolManager.set(DeviceCmd::DeviceMode, 3);
+                            // protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
+                            // protocolManager.set(DeviceCmd::MotorState, 1);
                         }
                         //   waitWork(1500);
-                        //   pb->set(DeviceCmd::DeviceMode, 3);
-                        //       pb->set(DeviceCmd::BrushControl, 1);
+                        //   protocolManager.set(DeviceCmd::DeviceMode, 3);
+                        //       protocolManager.set(DeviceCmd::BrushControl, 1);
                     }
 
                     // else {
-                    //     pb->set(DeviceCmd::DeviceMode, 4);  // 进入亮白
+                    //     protocolManager.set(DeviceCmd::DeviceMode, 4);  // 进入亮白
                     // }
 
                     showlog("已发送进入亮白模式");
@@ -1586,7 +1586,7 @@ void PcbaForm::startTask() {
                         }
                     }
                     // if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
-                    //     pb->set(DeviceCmd::BrushControl, 0);  //退出纯享模式
+                    //     protocolManager.set(DeviceCmd::BrushControl, 0);  //退出纯享模式
                     // }
                     at->resetConnected();
                     showlog("等待治具请求休眠命令");
@@ -1596,20 +1596,20 @@ void PcbaForm::startTask() {
                 } else {
                     waitWork(500);
                     if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                        pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                        protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
                         showlog("已经发送电机测试指令");
                     } else {
                         if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
                             // showlog("跑的是P30P");
-                            // pb->set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
+                            // protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
 
                             showlog("跑的是统一电机参数");
-                            pb->set(DeviceCmd::MotorTestState, 1);
+                            protocolManager.set(DeviceCmd::MotorTestState, 1);
                         } else {
                             showlog("跑的是q20");
-                            pb->set(DeviceCmd::DeviceMode, 3);
-                            // pb->set(DeviceCmd::MotorParam, QVariantList{270, 60});
-                            // pb->set(DeviceCmd::MotorState, 1);
+                            protocolManager.set(DeviceCmd::DeviceMode, 3);
+                            // protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
+                            // protocolManager.set(DeviceCmd::MotorState, 1);
                         }
                     }
                 }
@@ -1618,8 +1618,8 @@ void PcbaForm::startTask() {
             case STATE_WATI_RETURN_TEST:
                 if (start_sleep) {
                     start_sleep = 0;
-                    pb->set(DeviceCmd::MotorTestState, 0);
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+                    protocolManager.set(DeviceCmd::MotorTestState, 0);
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
                     showlog("已发送取消禁止休眠");
                     state = STATE_CLOSE_FORBID_SLEEP;
                 }
@@ -1628,7 +1628,7 @@ void PcbaForm::startTask() {
 
             case STATE_CLOSE_FORBID_SLEEP:
                 if (pb->getState(Qpb::PbStateType::CloseForbidSleep)) {
-                    pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
+                    protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
 
                     waitWork(100);
                     at->sendMac("00:00:00:00:00:00");
@@ -1639,7 +1639,7 @@ void PcbaForm::startTask() {
 
                 } else {
                     waitWork(500);
-                    pb->set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
                     showlog("正在重发取消禁止休眠");
                 }
 
@@ -1652,7 +1652,7 @@ void PcbaForm::startTask() {
                         remain_ok = 1;
                     state = STATE_WATI_REMAIN_TEST;
                 } else {
-                    pb->set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
+                    protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("正在重发开始休眠");
                     at->sendMac("00:00:00:00:00:00");
                     waitWork(500);
@@ -1698,7 +1698,7 @@ void PcbaForm::startTask() {
                         "border-radius: 10px; padding: 1px; text-align: center;");
 
                     passnumber++;
-                    pb->set(DeviceCmd::FacResult, 1);
+                    protocolManager.set(DeviceCmd::FacResult, 1);
                     ui->test_result->setText("PASS");
                     ui->test_result->setStyleSheet(
                         "font-size: 40px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
@@ -1731,7 +1731,7 @@ void PcbaForm::startTask() {
                         "border-radius: 10px; padding: 1px; text-align: center; ");
                     ngnumber++;
 
-                    pb->set(DeviceCmd::FacResult, 0);
+                    protocolManager.set(DeviceCmd::FacResult, 0);
                     ui->test_result->setText("FAIL");
                     ui->test_result->setStyleSheet(
                         "font-size: 40px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
@@ -1750,7 +1750,7 @@ void PcbaForm::startTask() {
 
                 isTestContinue = false;  // 结束
 
-                // pb->set(DeviceCmd::FacMode, 1);
+                // protocolManager.set(DeviceCmd::FacMode, 1);
                 // waitWork(300);
                 on_disconnectButton_clicked();
 
@@ -1989,6 +1989,7 @@ void PcbaForm::on_pick_device_textActivated(const QString& arg1) {
         on_macInput_returnPressed();
     }
 }
+
 
 
 
