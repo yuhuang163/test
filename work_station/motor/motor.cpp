@@ -473,7 +473,7 @@ void motor::startTask() {
                 break;
 
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
                     pb->set_motor_test_state(0);
                     waitWork(100);
@@ -516,7 +516,7 @@ void motor::startTask() {
 
             case UNLOCK_DAMPING:
 
-                if (pb->get_is_damping_state() == 1) {
+                if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
                     refreshMotorCaliMsg("正在进行霍尔校准");
                     // showlog("正在进行霍尔校准");
 
@@ -530,14 +530,14 @@ void motor::startTask() {
                 }
 
             case MOTOR_CALI1:
-                if (pb->getisHallCali() == 1) {
+                if (pb->getState(Qpb::PbStateType::HallCali) == 1) {
                     refreshMotorCaliMsg("霍尔校准完成");
                     qDebug() << getIndex() << "发射霍尔校准完成";
                     emit send_go_next_test(getIndex());
 
                     state = MOTOR_WAIT_CALI1;
                 }
-                if (pb->getisHallCali() == 2) {
+                if (pb->getState(Qpb::PbStateType::HallCali) == 2) {
                     refreshMotorCaliMsg("霍尔校准失败");
                     pack.error = "SP03004";
                     result = failValue;
@@ -556,7 +556,7 @@ void motor::startTask() {
 
                 break;
             case MOTOR_CALI2:
-                if (pb->getisZeroCali() == 1) {
+                if (pb->getState(Qpb::PbStateType::ZeroCali) == 1) {
                     refreshMotorCaliMsg("零点校准完成");
                     // showlog("零点校准完成");
                     if (pack.factory == "lx") {
@@ -569,7 +569,7 @@ void motor::startTask() {
                     pb->set_motor_cali_state(0);
                     state = STOP_MOTOR_CALI;
                 }
-                if (pb->getisZeroCali() == 2) {
+                if (pb->getState(Qpb::PbStateType::ZeroCali) == 2) {
                     pack.error = "SP03005";
                     result = failValue;
                     state = STATE_SAVE_RESULT;
@@ -586,7 +586,7 @@ void motor::startTask() {
 
             case STOP_MOTOR_CALI:
                 qDebug() << "当前状态是" << state;
-                if (pb->get_is_stop_motor_cali()) {
+                if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
                     refreshMotorCaliMsg("正在进行电机测试");
                     // showlog("正在进行电机测试");
                     pb->set_sevor_motor_param(14, 12, 5.2, 190);
@@ -600,7 +600,7 @@ void motor::startTask() {
                 }
                  break;
             case MOTOR_TESTING:
-                if (pb->get_is_motor_test_state()) {
+                if (pb->getState(Qpb::PbStateType::MotorTestState)) {
 
                     qDebug() << getIndex() << "发射电机测试完成";
                     emit send_go_next_test(getIndex());
@@ -702,7 +702,7 @@ void motor::startTest_task() {
                 break;
 
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
                     waitWork(WAITTIME);
                     pb->set_motor_test_state(0);
@@ -721,7 +721,7 @@ void motor::startTest_task() {
                 break;
 
             case MOTOR_TESTING:
-                if (pb->get_is_damping_state() == 1) {
+                if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
                     QMessageBox::StandardButton reply;
                     reply =
                         QMessageBox::question(this, "电机测试", "设备是否成功复位", QMessageBox::Yes | QMessageBox::No);

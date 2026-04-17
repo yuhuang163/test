@@ -83,31 +83,30 @@ public:
     void increaseShipCount() { ++shipCount; }
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
-    bool getisDevintowhitemode() { return is_dev_into_white_mode; }
-    bool getisOtaStart() { return is_ota_start; }
-    bool getisSetIamApp() { return is_set_i_am_app; }
-
-    int getisHallCali() { return is_hall_cali; }
-    int getis_camera_control() { return is_camera_control; }
-    int get_is_damping_state() { return is_damping_state; }
-    int get_is_wif_set() { return is_wif_set; }
-    int get_is_motor_test_state() { return is_motor_test_state; }
-    int get_is_motor_cali_data_set() { return is_motor_cali_data_set; }
-    void set_is_motor_cali_data_set(int value) { is_motor_cali_data_set = value; }
-    int get_is_get_battery_data() { return is_get_battery_data; }
-    int get_is_stop_motor_cali() { return is_stop_motor_cali; }
-    int getisZeroCali() { return is_zero_cali; }
-    bool getDisableSleep() { return is_disable_sleep; }
-    bool getCollectParam() { return is_set_press_collect_param; }
-    bool getis_imu_set_sta() { return is_imu_set_sta; }
-    bool get_is_close_forbid_sleep() { return is_close_forbid_sleep; }
-    bool get_is_banding_ok() { return is_banding_ok; }
-    bool get_is_motor_param_set() { return is_motor_param_set; }
-    int get_is_get_imu_cali_data() {
-        return is_get_imu_cali_data;  // get的返回成功
-    }
-
-    bool get_isSetimuCollectParam() { return is_setimu_collect_param; }
+    enum class PbStateType {
+        DevIntoWhiteMode,
+        OtaStart,
+        SetIamApp,
+        HallCali,
+        CameraControl,
+        DampingState,
+        WifiSet,
+        MotorTestState,
+        MotorCaliDataSet,
+        GetBatteryData,
+        StopMotorCali,
+        ZeroCali,
+        DisableSleep,
+        CollectParam,
+        ImuSetState,
+        CloseForbidSleep,
+        BandingOk,
+        MotorParamSet,
+        GetImuCaliData,
+        SetImuCollectParam,
+    };
+    int getState(PbStateType stateType) const;
+    void setState(PbStateType stateType, int value);
 
     void reset_all_pb() {
         is_dev_into_white_mode = 0;

@@ -2475,6 +2475,58 @@ void Qpb::set_start_ota_app(RotasFileStatusReq RotasFiledata) {
 
 DataPackage Qpb::getBlePack() const { return blePack; }
 
+int Qpb::getState(PbStateType stateType) const {
+    switch (stateType) {
+        case PbStateType::DevIntoWhiteMode: return is_dev_into_white_mode;
+        case PbStateType::OtaStart: return is_ota_start;
+        case PbStateType::SetIamApp: return is_set_i_am_app;
+        case PbStateType::HallCali: return is_hall_cali;
+        case PbStateType::CameraControl: return is_camera_control;
+        case PbStateType::DampingState: return is_damping_state;
+        case PbStateType::WifiSet: return is_wif_set;
+        case PbStateType::MotorTestState: return is_motor_test_state;
+        case PbStateType::MotorCaliDataSet: return is_motor_cali_data_set;
+        case PbStateType::GetBatteryData: return is_get_battery_data;
+        case PbStateType::StopMotorCali: return is_stop_motor_cali;
+        case PbStateType::ZeroCali: return is_zero_cali;
+        case PbStateType::DisableSleep: return is_disable_sleep;
+        case PbStateType::CollectParam: return is_set_press_collect_param;
+        case PbStateType::ImuSetState: return is_imu_set_sta;
+        case PbStateType::CloseForbidSleep: return is_close_forbid_sleep;
+        case PbStateType::BandingOk: return is_banding_ok;
+        case PbStateType::MotorParamSet: return is_motor_param_set;
+        case PbStateType::GetImuCaliData: return is_get_imu_cali_data;
+        case PbStateType::SetImuCollectParam: return is_setimu_collect_param;
+        default: return 0;
+    }
+}
+
+void Qpb::setState(PbStateType stateType, int value) {
+    switch (stateType) {
+        case PbStateType::DevIntoWhiteMode: is_dev_into_white_mode = value; break;
+        case PbStateType::OtaStart: is_ota_start = value; break;
+        case PbStateType::SetIamApp: is_set_i_am_app = value; break;
+        case PbStateType::HallCali: is_hall_cali = value; break;
+        case PbStateType::CameraControl: is_camera_control = value; break;
+        case PbStateType::DampingState: is_damping_state = value; break;
+        case PbStateType::WifiSet: is_wif_set = value; break;
+        case PbStateType::MotorTestState: is_motor_test_state = value; break;
+        case PbStateType::MotorCaliDataSet: is_motor_cali_data_set = value; break;
+        case PbStateType::GetBatteryData: is_get_battery_data = value; break;
+        case PbStateType::StopMotorCali: is_stop_motor_cali = value; break;
+        case PbStateType::ZeroCali: is_zero_cali = value; break;
+        case PbStateType::DisableSleep: is_disable_sleep = value; break;
+        case PbStateType::CollectParam: is_set_press_collect_param = value; break;
+        case PbStateType::ImuSetState: is_imu_set_sta = value; break;
+        case PbStateType::CloseForbidSleep: is_close_forbid_sleep = value; break;
+        case PbStateType::BandingOk: is_banding_ok = value; break;
+        case PbStateType::MotorParamSet: is_motor_param_set = value; break;
+        case PbStateType::GetImuCaliData: is_get_imu_cali_data = value; break;
+        case PbStateType::SetImuCollectParam: is_setimu_collect_param = value; break;
+        default: break;
+    }
+}
+
 void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f) {
     FacCollectParam x;
     memcpy(&x, &f.command_data, sizeof(x));

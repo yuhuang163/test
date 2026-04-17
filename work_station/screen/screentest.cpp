@@ -319,7 +319,7 @@ void screentest::startTask()
                 break;
 
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
                     set_screen_color(0);
                     showlog("--------------当前是红色");

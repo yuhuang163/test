@@ -687,7 +687,7 @@ void quiescent_current::startTask() {
                 break;
 
             case STATE_BANDING:
-                if (pb->get_is_banding_ok()) {
+                if (pb->getState(Qpb::PbStateType::BandingOk)) {
                     showlog("sn已成功绑定保存");
                     state = STATE_WATI_DISABLE_SLEEP;
                 } else {
@@ -700,7 +700,7 @@ void quiescent_current::startTask() {
 
             case STATE_WATI_DISABLE_SLEEP:
 
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
                     pb->get_now_music_info();
                     pb->get_base_info();
@@ -793,7 +793,7 @@ void quiescent_current::startTask() {
                 break;
 
             case STATE_CLOSE_FORBID_SLEEP:
-                if (pb->get_is_close_forbid_sleep()) {
+                if (pb->getState(Qpb::PbStateType::CloseForbidSleep)) {
                     ble_waittime->stop();
                     waittime->stop();
                     waitWork(100);

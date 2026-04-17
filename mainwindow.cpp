@@ -1208,13 +1208,13 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
                 break;
 
             case STATE_DISABLE_SLEEP_1:  // 设置设备采集
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
                     pb->set_imu_collect_param(FacSwitch_START);
                     state = STATE_CAIL;
                 }
             case STATE_CAIL:  // 开始校准
-                if (pb->get_isSetimuCollectParam()) {
+                if (pb->getState(Qpb::PbStateType::SetImuCollectParam)) {
                     showlog("已发送imu采集参数");
                     qimuc->imu_calib_init();
                     is_start_ium_cali = 1;
@@ -1250,7 +1250,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
                 break;
 
             case STATE_SAVE_RESULT:
-                if (pb->get_is_get_imu_cali_data()) {
+                if (pb->getState(Qpb::PbStateType::GetImuCaliData)) {
                     saveImuTestDataToCsv(macAddress, result);
                     showlog("六轴校准保存完毕");
                     showlog("六轴校准结束");
@@ -1314,7 +1314,7 @@ void MainWindow::on_motor_cali_clicked() {
                 break;
 
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
 
                     on_getBasicInfoButton_clicked();
@@ -1337,7 +1337,7 @@ void MainWindow::on_motor_cali_clicked() {
                         motorstate = MOTOR_CALI_DATA_SET;
 
                     } else {
-                        pb->set_is_motor_cali_data_set(1);
+                        pb->setState(Qpb::PbStateType::MotorCaliDataSet, 1);
                         motorstate = MOTOR_CALI_DATA_SET;
                     }
 
@@ -1349,7 +1349,7 @@ void MainWindow::on_motor_cali_clicked() {
                 break;
 
             case MOTOR_CALI_DATA_SET:
-                if (pb->get_is_motor_cali_data_set()) {
+                if (pb->getState(Qpb::PbStateType::MotorCaliDataSet)) {
                     if (ui->is_test_camera->checkState()) {
                         motorstate = CAMERA_TEST;
                         pb->set_screen_camera_state(1);
@@ -1372,7 +1372,7 @@ void MainWindow::on_motor_cali_clicked() {
 
             case CAMERA_TEST:
                 waitWork(500);
-                if (pb->getis_camera_control()) {
+                if (pb->getState(Qpb::PbStateType::CameraControl)) {
                     reply =
                         QMessageBox::question(this, "摄像头测试", "摄像头正常吗？", QMessageBox::Yes | QMessageBox::No);
                     if (reply == QMessageBox::No) {
@@ -1394,7 +1394,7 @@ void MainWindow::on_motor_cali_clicked() {
                 }
                 break;
             case MOTOR_TESTING:
-                if (pb->get_is_motor_param_set() || pb->get_is_motor_test_state()) {
+                if (pb->getState(Qpb::PbStateType::MotorParamSet) || pb->getState(Qpb::PbStateType::MotorTestState)) {
                     reply = QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
                     if (reply == QMessageBox::No) {
                         motorresult = failValue;
@@ -3262,7 +3262,7 @@ void MainWindow::on_startBleOta_clicked() {
 
     pb->set_uart_receive(1);
 
-    while (!pb->getisSetIamApp()) {
+    while (!pb->getState(Qpb::PbStateType::SetIamApp)) {
         showlog("已发送假装app!");
         pb->set_i_am_app();  //假装是app
         waitWork(1000);
@@ -3292,7 +3292,7 @@ void MainWindow::on_startBleOta_clicked() {
         memcpy(RotasFiledata[1].file_zip_md5.bytes, FWMd5.toUtf8().constData(), FWMd5.toUtf8().size());
         RotasFiledata[1].fileSize = fileData.size();
 
-        while (!pb->getisOtaStart()) {
+        while (!pb->getState(Qpb::PbStateType::OtaStart)) {
             showlog("已发送开始OTA!");
             pb->set_start_multi_ble_ota_app(RotasFiledata);
             waitWork(2000);
@@ -3309,7 +3309,7 @@ void MainWindow::on_startBleOta_clicked() {
         RotasFiledata.fileUnzipSize = fileData.size();
         RotasFiledata.fileSize = fileData.size();
 
-        while (!pb->getisOtaStart()) {
+        while (!pb->getState(Qpb::PbStateType::OtaStart)) {
             showlog("已发送开始OTA!");
             pb->set_start_ota_app(RotasFiledata);
             waitWork(2000);
@@ -3370,7 +3370,7 @@ void MainWindow::on_startBleOta_clicked() {
     }
     pb->reset_all_pb();
     if (connectProductName != "U7" && connectProductName != "U7P") {
-        while (!pb->getisOtaStart()) {  //接收请求可以发送下一包
+        while (!pb->getState(Qpb::PbStateType::OtaStart)) {  //接收请求可以发送下一包
             showlog("等待手柄请求发送固件包!");
 
             waitWork(2000);

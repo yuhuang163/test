@@ -1621,7 +1621,8 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
             case MODULE_BTH:
                 if (sensor_v[test_chan]->test_status == TEST_START) {
                     static uint8_t lock = 0;
-                    if (pb->getisDevintowhitemode() || pb->get_is_motor_test_state()) {
+                    if (pb->getState(Qpb::PbStateType::DevIntoWhiteMode) ||
+                        pb->getState(Qpb::PbStateType::MotorTestState)) {
                         set_fixture_movement(product_model, STATE_TEST_CH_X, test_chan);
                         if (product_model == MODEL_ID_F20) {
                             showlog("当前是电机测试");
@@ -2487,7 +2488,7 @@ void PressureSensorForm::startTask() {
 
             case STATE_DISABLE_SLEEP_CALIB:  // 禁止休眠
                 delay_msec(100);
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
                     pb->set_press_collect_param(FacSwitch_START);
                     state = STATE_WATI_ASKQR;
@@ -2520,7 +2521,8 @@ void PressureSensorForm::startTask() {
                 if (SETTINGS.value("SYSTEM/PressIndependent").toBool()) {
                     set_independent_state(STATE_CALIB_STATIC_START);
                 }
-                if (pb->getCollectParam() && isStartcali && get_independent_state() == STATE_CALIB_STATIC_START) {
+                if (pb->getState(Qpb::PbStateType::CollectParam) && isStartcali &&
+                    get_independent_state() == STATE_CALIB_STATIC_START) {
                     delay_msec(200);
 
                     pb->get_press_cali_result();
@@ -2726,7 +2728,7 @@ void PressureSensorForm::startTask() {
 
             case STATE_DISABLE_SLEEP_TEST:  // 开始第二次禁止休眠
                 // delay_msec(100);
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     delay_msec(200);
                     showlog("已进入第二次禁止休眠");
                     pb->set_press_collect_param(FacSwitch_START);
@@ -2740,7 +2742,7 @@ void PressureSensorForm::startTask() {
                 break;
 
             case STATE_SET_COLLECT_PARAM_2:  // 开始第二次采集参数
-                if (pb->getCollectParam()) {
+                if (pb->getState(Qpb::PbStateType::CollectParam)) {
                     delay_msec(200);
                     showlog("已进入第二次设置压感采集参数");
                     state = STATE_TEST_CH_X;

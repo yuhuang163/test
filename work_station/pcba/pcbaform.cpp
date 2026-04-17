@@ -1140,7 +1140,7 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_DISABLE_SLEEP:
 
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠");
                     pb->set_fac_mode(1);
                     sendCommandWithRetry(std::bind(&Qpb::set_imu_collect_param, pb, FacSwitch_START));
@@ -1154,7 +1154,8 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_CORRECT_IMU_DATA:  // 获取准确inu数据
                 if (is_imu_correct_data == 1) {
-                    showlog("开始关闭六轴开关，当前状态为" + QString::number(pb->getis_imu_set_sta()));
+                    showlog("开始关闭六轴开关，当前状态为" +
+                            QString::number(pb->getState(Qpb::PbStateType::ImuSetState)));
                     showlog("六轴数据正常");
                     showlog("1、设备信息测试");
 
@@ -1562,7 +1563,9 @@ void PcbaForm::startTask() {
 
             case STATE_WATI_WHITE_MODE:
 
-                if (pb->getisDevintowhitemode() || pb->get_is_motor_param_set() || pb->get_is_motor_test_state()) {
+                if (pb->getState(Qpb::PbStateType::DevIntoWhiteMode) ||
+                    pb->getState(Qpb::PbStateType::MotorParamSet) ||
+                    pb->getState(Qpb::PbStateType::MotorTestState)) {
                     //  pb->reset_all_pb();
                     showlog("已进入亮白模式且发送指令给治具");
                     waitWork(100);
@@ -1624,7 +1627,7 @@ void PcbaForm::startTask() {
                 break;
 
             case STATE_CLOSE_FORBID_SLEEP:
-                if (pb->get_is_close_forbid_sleep()) {
+                if (pb->getState(Qpb::PbStateType::CloseForbidSleep)) {
                     pb->set_sleeep(FacSwitch_OPEN);
 
                     waitWork(100);

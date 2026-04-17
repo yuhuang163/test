@@ -648,7 +648,7 @@ void cameratest::startTask() {
 
                 break;
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
                     if (SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool()) {
                         // 设置定时器的超时时间为6000毫秒（6秒）
@@ -681,7 +681,7 @@ void cameratest::startTask() {
 
             case STATE_NET_SET:
                 waitWork(500);
-                if (pb->get_is_wif_set()) {
+                if (pb->getState(Qpb::PbStateType::WifiSet)) {
                     showlog("已配网成功");
                     //  waitWork(5000);
                     showlog("现在打开摄像头");

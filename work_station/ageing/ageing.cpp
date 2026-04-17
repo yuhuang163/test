@@ -474,7 +474,7 @@ void ageing::startTask() {
                 break;
 
             case STATE_DISABLE_SLEEP_1:
-                if (pb->getDisableSleep()) {
+                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
  if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
                  {   pb->get_battery();
