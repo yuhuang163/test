@@ -9,7 +9,7 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
-QProtocolManager::QProtocolManager() {}
+QProtocolManager::QProtocolManager(QObject* parent) : QObject(parent) {}
 
 QProtocolManager::ProtocolType QProtocolManager::currentProtocolType() const {
     return currentType_;
@@ -196,12 +196,25 @@ bool QProtocolManager::isQfctpProtocolActive() const {
 }
 
 void QProtocolManager::syncActivePointer() {
+    if (qpb_ != nullptr) {
+        disconnect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
+    }
+    if (qfctp_ != nullptr) {
+        disconnect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
+    }
+
     switch (currentType_) {
         case ProtocolType::Qpb:
             active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
+            if (qpb_ != nullptr) {
+                connect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
+            }
             break;
         case ProtocolType::Qfctp:
             active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
+            if (qfctp_ != nullptr) {
+                connect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
+            }
             break;
         default:
             active_ = nullptr;

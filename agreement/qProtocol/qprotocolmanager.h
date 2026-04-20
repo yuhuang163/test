@@ -2,6 +2,7 @@
 #define QPROTOCOLMANAGER_H
 
 #include "qprotocol.h"
+#include <QObject>
 #include <string>
 #include <QByteArray>
 #include <QString>
@@ -9,9 +10,10 @@
 class Qpb;
 class Qfctp;
 
-class QProtocolManager {
+class QProtocolManager : public QObject {
+    Q_OBJECT
 public:
-    QProtocolManager();
+    explicit QProtocolManager(QObject* parent = nullptr);
 
     enum class ProtocolType {
         Unknown = 0,
@@ -52,6 +54,9 @@ public:
 
     bool isQpbProtocolActive() const;
     bool isQfctpProtocolActive() const;
+
+signals:
+    void send_pb_date(QString data);
 
 private:
     void syncActivePointer();

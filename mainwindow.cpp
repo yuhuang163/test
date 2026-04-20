@@ -242,7 +242,7 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
             SLOT(getPresscalidata(FacPreSensorCalibResult)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
-    connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
+    connect(&protocolManager, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, &Qpb::send_pb_info, [&](QString s) {
         appendAndSaveWifiOtaLog(" ");
