@@ -38,6 +38,7 @@ INCLUDEPATH += agreement/qat
 INCLUDEPATH += agreement/qProtocol
 INCLUDEPATH += agreement/qProtocol/qpb
 INCLUDEPATH += agreement/qProtocol/qfctp
+INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
 INCLUDEPATH += agreement/qset
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
@@ -82,6 +83,8 @@ SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.cpp \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.cpp \
     agreement/qProtocol/qfctp/qfctp.cpp \
     agreement/qProtocol/qprotocol.cpp \
     agreement/qProtocol/qprotocolmanager.cpp \
@@ -155,6 +158,11 @@ HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol.h \
+    agreement/qProtocol/qfctp/common_protocl/root_common_base.h \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.h \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol_defs.h \
+    agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
     agreement/qProtocol/qfctp/qfctp.h \
     agreement/qProtocol/qprotocol.h \
     agreement/qProtocol/qprotocolmanager.h \
