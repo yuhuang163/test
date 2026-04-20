@@ -514,7 +514,7 @@ void MainWindow::readDongleSerialPortData() {
     }
 
     at->parseCmd(dataTemp);  // at回应用
-    pb->parseCmd(dataTemp);
+    protocolManager.parseCmd(dataTemp);
     getmacadress(dataTemp);  // 搜索设备用
 
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');

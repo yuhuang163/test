@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>1</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -4801,7 +4801,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string/>
                </property>
                <property name="text">
-                <string>12:34:56:C2:9B:B9</string>
+                <string>12:34:56:c2:9b:a9</string>
                </property>
                <property name="placeholderText">
                 <string>切换英文输入再扫码</string>

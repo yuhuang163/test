@@ -153,8 +153,8 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
             continue;
         }
 
-        /// 解析Payload长度
-        uint16_t payload_length = ((uint16_t)header[3] << 8) | header[2];
+        /// 解析 Payload 长度（与帧头一致：byte2=seq, byte3=frame_type, byte4-5=payload 小端）
+        uint16_t payload_length = (uint16_t)header[4] | ((uint16_t)header[5] << 8);
         
         /// 验证Payload长度
         if (payload_length < COMM_PROTOCOL_PAYLOAD_SIZE_MIN || 

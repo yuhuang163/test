@@ -70,6 +70,12 @@ void MainWindow::on_pushButton_3_clicked() {
     // waitWork(1000);
     // at->sendOTADATA(1);
 
+    static int facMode = 0;
+
+    facMode = !facMode;   // 0↔1 翻转
+
+    protocolManager.set(DeviceCmd::FacMode, facMode);
+
     // pb->set_servo_motor_info();
 }
 
@@ -150,7 +156,7 @@ MainWindow::MainWindow(QWidget* parent) :
         }
     });
 
-    QStringList productList = {"Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
+    QStringList productList = {"V3",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
                                "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
 

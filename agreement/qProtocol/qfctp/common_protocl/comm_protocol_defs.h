@@ -177,6 +177,9 @@ typedef enum {
 /// 描述协议帧服务error code tlv id
 #define PROTOCOL_SERVICE_ERROR_CODE_TLV_ID         (0xF000)
 
+/// 8.2.1 产测模式 TLV Type
+#define COMM_PROTOCOL_TLV_TYPE_FACTORY_TEST_MODE   (0x0001u)
+
 
 /// 协议帧回调函数类型（user_data 由 comm_protocol_assemble_packet 传入）
 typedef void (*comm_protocol_frame_callback_t)(const uint8_t *frame_data, uint16_t frame_len, void *user_data);
