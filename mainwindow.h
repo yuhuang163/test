@@ -579,6 +579,14 @@ private slots:
 
     void on_closeCompensationSet_clicked();
 
+    void on_get_device_mac_clicked();
+
+    void on_set_device_mac_clicked();
+
+    void on_night_brightness_clicked();
+
+    void on_reset_factory_clicked();
+
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);

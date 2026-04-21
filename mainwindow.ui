@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>3</number>
+               <number>2</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -998,6 +998,20 @@
                   </item>
                  </layout>
                 </item>
+                <item row="4" column="1">
+                 <widget class="QSlider" name="yedengslider">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QPushButton" name="night_brightness">
+                  <property name="text">
+                   <string>夜灯亮度</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
               <widget class="QWidget" name="tab_4">
@@ -1229,6 +1243,20 @@
                       <number>0</number>
                      </property>
                      <item>
+                      <widget class="QPushButton" name="get_device_mac">
+                       <property name="text">
+                        <string>获取mac地址</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="set_device_mac">
+                       <property name="text">
+                        <string>写入mac地址</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <widget class="QPushButton" name="openCompensationSet">
                        <property name="text">
                         <string>吸力补偿开</string>
@@ -1239,6 +1267,13 @@
                       <widget class="QPushButton" name="closeCompensationSet">
                        <property name="text">
                         <string>吸力补偿关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="reset_factory">
+                       <property name="text">
+                        <string>恢复出厂设置</string>
                        </property>
                       </widget>
                      </item>

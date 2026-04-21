@@ -1,5 +1,6 @@
 ﻿#include "mainwindow.h"
 
+#include <QInputDialog>
 #include <QRandomGenerator>
 #include <QtConcurrent>
 
@@ -2209,10 +2210,22 @@ void MainWindow::on_pink_led_clicked() {
 void MainWindow::on_white_led_clicked() {
     static int turn = 1;
     if (turn) {
-        protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 1});
+        if (protocolManager.isQfctpProtocolActive()) {
+            QVariantMap m;
+            m["on"] = 1;
+            protocolManager.set(DeviceCmd::LedTest, m);
+        } else {
+            protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 1});
+        }
         turn = 0;
     } else {
-        protocolManager.set(DeviceCmd::LedColor, QVariantList{0, 1});
+        if (protocolManager.isQfctpProtocolActive()) {
+            QVariantMap m;
+            m["on"] = 0;
+            protocolManager.set(DeviceCmd::LedTest, m);
+        } else {
+            protocolManager.set(DeviceCmd::LedColor, QVariantList{0, 1});
+        }
         turn = 1;
     }
 }
@@ -3873,5 +3886,44 @@ void MainWindow::on_closeCompensationSet_clicked()
      m["enable"]=0;
 
     protocolManager.set(DeviceCmd::CompensationSet, m);
+}
+
+
+void MainWindow::on_get_device_mac_clicked()
+{
+    protocolManager.get(DeviceCmd::MacRead);
+    showlog("开始读取设备MAC");
+}
+
+void MainWindow::on_set_device_mac_clicked()
+{
+    QByteArray mac = ui->macInput->text().toUtf8();
+    mac.replace(":", "");
+    mac = mac.toUpper();
+    if (mac.isEmpty()) {
+        showlog("MAC为空，无法写入");
+        return;
+    }
+    QVariantMap m;
+    m["value"] = mac;
+    protocolManager.set(DeviceCmd::MacWrite, m);
+    showlog("已发送写MAC");
+}
+
+void MainWindow::on_night_brightness_clicked()
+{
+    ui->yedengslider->setMinimum(0);
+    ui->yedengslider->setMaximum(10);
+    const int brightness = ui->yedengslider->value();
+    QVariantMap m;
+    m["value"] = brightness;
+    protocolManager.set(DeviceCmd::NightLightSet, m);
+    showlog(QString("已发送夜灯亮度设置: %1/10").arg(brightness));
+}
+
+void MainWindow::on_reset_factory_clicked()
+{
+    protocolManager.set(DeviceCmd::FactoryReset);
+    showlog("已发送恢复出厂设置");
 }
 

@@ -206,6 +206,31 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
                 << "status=0x" + QString::number(status, 16).toUpper().rightJustified(2, '0')
                 << "(" << statusText << ")"
                 << "raw=" << QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+    } else if ((req.kind == RequestKind::FwVersionGet) && mainValue != nullptr && mainLen > 0) {
+        const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
+        const QString hex = raw.toHex(' ').toUpper();
+        const QString ascii = QString::fromLatin1(raw).trimmed();
+        qInfo() << "FCTP 固件版本"
+                << "raw=" << hex
+                << "ascii=" << ascii;
+        emit send_pb_date(QString("FCTP 固件版本 raw=%1").arg(hex));
+    } else if ((req.kind == RequestKind::MacRead) && mainValue != nullptr && mainLen > 0) {
+        const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
+        const QString hex = raw.toHex(' ').toUpper();
+        QString macText;
+        if (mainLen == 6) {
+            QStringList parts;
+            for (int i = 0; i < raw.size(); ++i) {
+                parts << QString::number(static_cast<uint8_t>(raw.at(i)), 16).toUpper().rightJustified(2, '0');
+            }
+            macText = parts.join(":");
+        } else {
+            macText = QString::fromLatin1(raw).trimmed();
+        }
+        qInfo() << "FCTP MAC读取"
+                << "raw=" << hex
+                << "mac=" << macText;
+        emit send_pb_date(QString("FCTP MAC读取 raw=%1 mac=%2").arg(hex, macText));
     }
 }
 
@@ -886,6 +911,8 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         if (getCaseMacRead()) return;
         break;
     case DeviceCmd::BaseInfo:
+        if (getCaseFwVersionRead()) return;
+        break;
     case DeviceCmd::TupleRead:
         if (getCaseTupleRead()) return;
         break;
