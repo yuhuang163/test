@@ -229,7 +229,7 @@ void ageing:: on_enterBurningMode_clicked() {
 
         QVariantMap m;
         m["mode"] = mode;
-        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+        m["seconds"] = ui->burningModetime->text();
         protocolManager.set(DeviceCmd::BurningMode, m);
         showlog("已发送老化");
     } else {

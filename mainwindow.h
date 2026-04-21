@@ -561,6 +561,12 @@ private slots:
 
     void on_btn_getLDRInfo_clicked();
 
+    void on_enterSuctionMode_clicked();
+
+    void on_exitSuctionMode_clicked();
+
+    void on_readBurningModestatus_clicked();
+
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);

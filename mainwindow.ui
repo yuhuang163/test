@@ -254,6 +254,24 @@
                     </layout>
                    </item>
                    <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_103">
+                     <item>
+                      <widget class="QLabel" name="label_108">
+                       <property name="text">
+                        <string>老化时间(秒)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="burningModetime">
+                       <property name="text">
+                        <string>1800</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_10">
                      <property name="leftMargin">
                       <number>0</number>
@@ -272,6 +290,13 @@
                       <widget class="QPushButton" name="exitBurningMode">
                        <property name="text">
                         <string>退出老化</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="readBurningModestatus">
+                       <property name="text">
+                        <string>读取老化状态</string>
                        </property>
                       </widget>
                      </item>
@@ -1060,6 +1085,20 @@
                       <widget class="QPushButton" name="enterwhitemode">
                        <property name="text">
                         <string>进入亮白模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enterSuctionMode">
+                       <property name="text">
+                        <string>进入吸力测试</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exitSuctionMode">
+                       <property name="text">
+                        <string>退出吸力测试</string>
                        </property>
                       </widget>
                      </item>

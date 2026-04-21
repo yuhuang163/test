@@ -876,7 +876,7 @@ void MainWindow::on_enterBurningMode_clicked() {
 
         QVariantMap m;
         m["mode"] = mode;
-        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+        m["seconds"] = ui->burningModetime->text();  // 统一上层入参，协议层做兼容
         protocolManager.set(DeviceCmd::BurningMode, m);
         showlog("已发送老化");
     } else {
@@ -3795,4 +3795,33 @@ void MainWindow::on_btn_getLDRInfo_clicked() { protocolManager.get(DeviceCmd::Li
 
 
 
+
+
+void MainWindow::on_enterSuctionMode_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 1;
+
+    protocolManager.set(DeviceCmd::SuctionMode, m);
+
+
+}
+
+
+void MainWindow::on_exitSuctionMode_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 0;
+
+    protocolManager.set(DeviceCmd::SuctionMode, m);
+}
+
+
+void MainWindow::on_readBurningModestatus_clicked()
+{    QVariantMap m;
+    m["mode"] = ui->burningModetime->text();
+
+    protocolManager.get(DeviceCmd::AgingStatusRead, m);
+
+}
 
