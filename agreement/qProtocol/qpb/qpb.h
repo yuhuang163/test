@@ -5,7 +5,7 @@
 #include <QVariant>
 #include <QSerialPort>
 #include "qprotocol.h"
-#include "qpb_types.h"
+#include "qprotocol_types.h"
 
 #include "ble_protocol/fx_ble_msg.pb.h"
 #include "factory_protocol/factory_msg.pb.h"

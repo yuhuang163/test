@@ -460,14 +460,19 @@ bool Qfctp::handleSetSn(const QVariant &data)
 
 bool Qfctp::setCaseAgingMode(const QVariantMap &map)
 {
+    const int mode = map.value("mode").toInt();
+    if (mode <= 0) {
+        qWarning() << "Qfctp setCaseAgingMode mode 非法:" << mode;
+        return false;
+    }
     QByteArray value;
-    value.append(static_cast<char>(map.value("mode").toInt() & 0xFF));
+    value.append(static_cast<char>(mode & 0xFF));
     const uint32_t sec = map.value("seconds").toUInt();
     value.append(static_cast<char>(sec & 0xFF));
     value.append(static_cast<char>((sec >> 8) & 0xFF));
     value.append(static_cast<char>((sec >> 16) & 0xFF));
     value.append(static_cast<char>((sec >> 24) & 0xFF));
-    return sendTestsServiceTlv(kTlvAgingModeSet, value, "老化模式设置", RequestKind::AgingModeSet);
+    return sendTestsServiceTlv(kTlvAgingModeSet, value, "老化模式设置", RequestKind::BurningMode);
 }
 
 bool Qfctp::setCaseAgingExit()
@@ -682,16 +687,40 @@ void Qfctp::parseCmd(const QByteArray& byte) {
 }
 
 void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
+    const auto toBurningMap = [&](const QVariant &in) {
+        QVariantMap map = in.toMap();
+        if (map.isEmpty() && in.canConvert<QVariantList>()) {
+            const QVariantList list = in.toList();
+            if (!list.isEmpty()) {
+                map.insert("mode", list.at(0).toInt());
+            }
+            if (list.size() >= 2) {
+                map.insert("switch", list.at(1).toInt());
+            }
+        }
+        if (!map.contains("seconds")) {
+            map.insert("seconds", 3600u);
+        }
+        return map;
+    };
+
     switch (cmd) {
     case DeviceCmd::FacMode:
         sendFactoryTestMode(data.toInt() != 0);
         return;
-    case DeviceCmd::AgingModeSet:
-        if (setCaseAgingMode(data.toMap())) return;
+    case DeviceCmd::BurningMode: {
+        const QVariantMap map = toBurningMap(data);
+        const bool shouldExit = (map.value("enter").isValid() && map.value("enter").toInt() == 0) ||
+                                (map.value("switch").isValid() && map.value("switch").toInt() == 0);
+        if (shouldExit) {
+            if (setCaseAgingExit()) return;
+        } else if (setCaseAgingMode(map)) {
+            return;
+        } else {
+            qWarning() << "Qfctp BurningMode 参数无效，期望 map{mode,seconds,enter?/switch?}";
+        }
         break;
-    case DeviceCmd::AgingModeExit:
-        if (setCaseAgingExit()) return;
-        break;
+    }
     case DeviceCmd::SuctionMode:
         if (setCaseSuctionMode(data.toMap())) return;
         break;
@@ -704,7 +733,7 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::BtFreqMode:
         if (setCaseBtFreqMode(data.toMap())) return;
         break;
-    case DeviceCmd::StandbyMode:
+    case DeviceCmd::Sleep:
         if (setCaseStandbyMode(data.toMap())) return;
         break;
     case DeviceCmd::Sn:
@@ -712,16 +741,7 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
             return;
         }
         break;
-    case DeviceCmd::WriteProductId:
-        if (setCaseWriteProductId(data.toMap())) return;
-        break;
-    case DeviceCmd::WriteDeviceId:
-        if (setCaseWriteDeviceId(data.toMap())) return;
-        break;
-    case DeviceCmd::WriteKey:
-        if (setCaseWriteKey(data.toMap())) return;
-        break;
-    case DeviceCmd::FactoryDoneWrite:
+    case DeviceCmd::FactoryDoneWrite:  // 兼容别名：暂无 Qpb 主入口可替代
         if (setCaseFactoryDoneWrite(data.toMap())) return;
         break;
     case DeviceCmd::TrimSet:
@@ -739,7 +759,7 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::FactoryReset:
         if (setCaseFactoryReset()) return;
         break;
-    case DeviceCmd::PowerOff:
+    case DeviceCmd::ShipMode:
         if (setCasePowerOff()) return;
         break;
     case DeviceCmd::LcdBacklight:
@@ -756,24 +776,18 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         break;
     case DeviceCmd::BaseInfo:
     case DeviceCmd::Battery:
-        qWarning() << "Qfctp 请改用细分DeviceCmd，不再使用BaseInfo/Battery携带op";
+        qWarning() << "Qfctp 请改用主入口命令，不再使用BaseInfo/Battery携带op";
         break;
-    case DeviceCmd::Sleep: {
-        const bool enter = (data.toInt() != 0);
-        if (sendTestsServiceTlv(kTlvStandbyMode, QByteArray(1, static_cast<char>(enter ? 1 : 0)), "待机模式(兼容Sleep入口)", RequestKind::StandbyMode)) {
-            return;
-        }
-        break;
-    }
     case DeviceCmd::DeviceInfo:
         qWarning() << "Qfctp DeviceInfo(set)请改用细分DeviceCmd";
         break;
     default:
+        emit send_pb_date(QString("Qfctp 暂未实现/参数非法 set 命令，cmd=%1 data=%2")
+                              .arg(static_cast<int>(cmd))
+                              .arg(data.toString()));
         break;
     }
-    emit send_pb_date(QString("Qfctp 暂未实现/参数非法 set 命令，cmd=%1 data=%2")
-                          .arg(static_cast<int>(cmd))
-                          .arg(data.toString()));
+
 }
 
 void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
@@ -791,9 +805,6 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         }
         return;
     }
-    case DeviceCmd::TupleRead:
-        if (getCaseTupleRead()) return;
-        break;
     case DeviceCmd::TrimRead:
         if (getCaseTrimRead()) return;
         break;
@@ -828,9 +839,6 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::FactoryDoneRead:
         if (getCaseFactoryDoneRead()) return;
         break;
-    case DeviceCmd::DeviceExceptionRead:
-        if (getCaseDeviceExceptionRead()) return;
-        break;
     case DeviceCmd::DeviceInfo:
         if (getCaseDeviceExceptionRead()) return;
         break;
@@ -842,9 +850,10 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         if (getCaseBatteryRead()) return;
         break;
     default:
+        emit send_pb_date(QString("Qfctp 暂未实现/参数非法 get 命令，cmd=%1 param=%2")
+                              .arg(static_cast<int>(cmd))
+                              .arg(param.toString()));
         break;
     }
-    emit send_pb_date(QString("Qfctp 暂未实现/参数非法 get 命令，cmd=%1 param=%2")
-                          .arg(static_cast<int>(cmd))
-                          .arg(param.toString()));
+
 }

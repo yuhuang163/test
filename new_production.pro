@@ -165,6 +165,7 @@ HEADERS += \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
     agreement/qProtocol/qfctp/qfctp.h \
     agreement/qProtocol/qprotocol.h \
+    agreement/qProtocol/qprotocol_types.h \
     agreement/qProtocol/qprotocolmanager.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \

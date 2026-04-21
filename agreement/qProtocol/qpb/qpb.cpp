@@ -167,9 +167,23 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
             set_music(data.toByteArray());
             break;
         case DeviceCmd::BurningMode: {
-            const QVariantList list = data.toList();
-            if (list.size() >= 2) {
-                set_burning_mode(list.at(0).toInt(), static_cast<FacSwitch>(list.at(1).toInt()));
+            if (data.canConvert<QVariantMap>()) {
+                const QVariantMap map = data.toMap();
+                const int mode = map.value("mode").toInt();
+                if (mode <= 0) {
+                    qWarning() << "DeviceCmd::BurningMode map mode is invalid:" << mode;
+                    break;
+                }
+                const int switchValue = map.value("switch", map.value("enter", static_cast<int>(FacSwitch_OPEN))).toInt();
+                const FacSwitch sw = static_cast<FacSwitch>(switchValue);
+                set_burning_mode(mode, sw);
+            } else {
+                const QVariantList list = data.toList();
+                if (list.size() >= 2) {
+                    set_burning_mode(list.at(0).toInt(), static_cast<FacSwitch>(list.at(1).toInt()));
+                } else {
+                    qWarning() << "DeviceCmd::BurningMode expects QVariantMap{mode,switch?} or QVariantList{mode,switch}";
+                }
             }
             break;
         }

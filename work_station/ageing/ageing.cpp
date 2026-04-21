@@ -208,19 +208,29 @@ void ageing::on_macInput_returnPressed() {
     }
 }
 
-void ageing::on_enterBurningMode_clicked() {
-    qDebug() << getIndex() << "串口问题";
-
+void ageing:: on_enterBurningMode_clicked() {
     if (at->getConnected()) {
-        qDebug() << getIndex() << "串口问题";
-        if (ui->burningModeCombo->currentText() == "老化1")
-            protocolManager.set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_OPEN)});
-        if (ui->burningModeCombo->currentText() == "老化2")
-            protocolManager.set(DeviceCmd::BurningMode, QVariantList{2, static_cast<int>(FacSwitch_OPEN)});
-        if (ui->burningModeCombo->currentText() == "老化3")
-            protocolManager.set(DeviceCmd::BurningMode, QVariantList{3, static_cast<int>(FacSwitch_OPEN)});
-        if (ui->burningModeCombo->currentText() == "老化4")
-            protocolManager.set(DeviceCmd::BurningMode, QVariantList{4, static_cast<int>(FacSwitch_OPEN)});
+        const QString currentText = ui->burningModeCombo->currentText();
+        int mode = 0;
+        if (currentText == "老化1") {
+            mode = 1;
+        } else if (currentText == "老化2") {
+            mode = 2;
+        } else if (currentText == "老化3") {
+            mode = 3;
+        } else if (currentText == "老化4") {
+            mode = 4;
+        }
+
+        if (mode == 0) {
+            showlog("未知老化模式，请先选择老化1-老化4");
+            return;
+        }
+
+        QVariantMap m;
+        m["mode"] = mode;
+        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+        protocolManager.set(DeviceCmd::BurningMode, m);
         showlog("已发送老化");
     } else {
         showlog("请等待连接设备后再试");
@@ -229,7 +239,10 @@ void ageing::on_enterBurningMode_clicked() {
 
 void ageing::on_exitBurningMode_clicked() {
     if (at->getConnected()) {
-        protocolManager.set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_CLOSE)});
+        QVariantMap m;
+        m["mode"] = 1;
+        m["switch"] = static_cast<int>(FacSwitch_CLOSE);
+        protocolManager.set(DeviceCmd::BurningMode, m);
         // showlog("已退出老化模式");
     } else {
         // showlog("请等待连接设备后再试");
@@ -527,7 +540,12 @@ void ageing::startTask() {
             case STATE_CHECK_FLASH:
                 if (flash_state == 1) {
                     showlog("已发送进入老化");
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_OPEN)}); });
+                    sendCommandWithRetry([&]() {
+                        QVariantMap m;
+                        m["mode"] = 1;
+                        m["switch"] = static_cast<int>(FacSwitch_OPEN);
+                        protocolManager.set(DeviceCmd::BurningMode, m);
+                    });
 
                     ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
                     showlog("Flash资源正常");

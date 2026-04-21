@@ -27,7 +27,7 @@ private:
     enum class RequestKind {
         Unknown = 0,
         FactoryMode,
-        AgingModeSet,
+        BurningMode,
         AgingModeExit,
         AgingStatusGet,
         SuctionMode,

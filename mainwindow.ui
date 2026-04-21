@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>3</number>
+               <number>0</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1017,7 +1017,7 @@
                      <item>
                       <widget class="QPushButton" name="enterShipModeButton">
                        <property name="text">
-                        <string>进入船运</string>
+                        <string>关机</string>
                        </property>
                       </widget>
                      </item>

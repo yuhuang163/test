@@ -57,7 +57,14 @@ void QFreeWork::createTestFunctions() {
          }},
         {"设置音乐", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Music, QByteArray("music data")); }); }},
         {"设置老化测试模式",
-         [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BurningMode, QVariantList{1, static_cast<int>(FacSwitch_START)}); }); }},
+         [&]() {
+             sendCommandWithRetry([&]() {
+                 QVariantMap m;
+                 m["mode"] = 1;
+                 m["switch"] = static_cast<int>(FacSwitch_START);
+                 protocolManager.set(DeviceCmd::BurningMode, m);
+             });
+         }},
         {"设置刷牙记录",
          [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(FacSetBrushRecord{/* params */})); }); }},
         {"设置刷牙时间", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushTime, 1625140800); }); }},

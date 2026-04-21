@@ -1,10 +1,10 @@
-#ifndef QPROTOCOL_H
+﻿#ifndef QPROTOCOL_H
 #define QPROTOCOL_H
 
 #include <QByteArray>
 #include <QVariant>
 
-#include "qpb/qpb_types.h"
+#include "qprotocol_types.h"
 
 class qProtocol {
 public:
