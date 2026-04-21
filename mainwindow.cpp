@@ -2864,11 +2864,12 @@ void MainWindow::on_write_board_sn_clicked() {
 }
 
 void MainWindow::on_write_device_subpid_clicked() {
-    QByteArray subpid = getValueBySN(ui->snInput->text()).toUtf8();
-    if ("SUBPID_ERRO" == subpid) {
-        QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
-        return;
-    }
+    // QByteArray subpid = getValueBySN(ui->snInput->text()).toUtf8();
+    // if ("SUBPID_ERRO" == subpid) {
+    //     QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
+    //     return;
+    // }
+    QByteArray subpid = ui->snInput->text().toUtf8();
     protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, subpid}));
     showlog("已绑定subpid到设备");
 }
@@ -3530,17 +3531,17 @@ void MainWindow::on_stop_noisy_clicked() {
 }
 
 void MainWindow::on_getBackLog_clicked() { protocolManager.get(DeviceCmd::BurshBacklog, 1); }
-
+//skuid==产品
 void MainWindow::on_write_device_skuid_clicked() {
     QByteArray skuid = ui->snInput->text().toUtf8();
 
     protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, skuid}));
-    showlog("已绑定skuid到设备");
+    showlog("已绑定skuid==产品id到设备");
 }
 
 void MainWindow::on_get_device_skuid_clicked() {
     protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SKUID));
-    showlog("开始获取skuid");
+    showlog("开始获取skuid==产品id");
 }
 
 void MainWindow::on_set_hw_ver_clicked() {
@@ -3801,7 +3802,6 @@ void MainWindow::on_enterSuctionMode_clicked()
 {
     QVariantMap m;
     m["enter"] = 1;
-
     protocolManager.set(DeviceCmd::SuctionMode, m);
 
 
@@ -3812,16 +3812,66 @@ void MainWindow::on_exitSuctionMode_clicked()
 {
     QVariantMap m;
     m["enter"] = 0;
-
     protocolManager.set(DeviceCmd::SuctionMode, m);
 }
 
 
 void MainWindow::on_readBurningModestatus_clicked()
 {    QVariantMap m;
-    m["mode"] = ui->burningModetime->text();
+    const QString currentText = ui->burningModeCombo->currentText();
+    int mode = 0;
+    if (currentText == "老化1") {
+        mode = 1;
+    } else if (currentText == "老化2") {
+        mode = 2;
+    } else if (currentText == "老化3") {
+        mode = 3;
+    } else if (currentText == "老化4") {
+        mode = 4;
+    }
+    m["mode"] = mode;
 
     protocolManager.get(DeviceCmd::AgingStatusRead, m);
 
+}
+
+
+void MainWindow::on_kTlvKeyWrite_clicked()
+{   QVariantMap m;
+    m["value"] = ui->kTlvKey_data->text();
+    protocolManager.set(DeviceCmd::WriteKey, m);
+
+}
+
+
+void MainWindow::on_kTlvKeyread_clicked()
+{
+    QVariantMap m;
+      protocolManager.get(DeviceCmd::TupleRead, m);
+
+}
+
+
+void MainWindow::on_getCaseDeviceException_clicked()
+{
+    QVariantMap m;
+    protocolManager.get(DeviceCmd::DeviceExceptionRead, m);
+}
+
+
+void MainWindow::on_openCompensationSet_clicked()
+{
+    QVariantMap m;
+       m["enable"]=1;
+    protocolManager.set(DeviceCmd::CompensationSet, m);
+}
+
+
+void MainWindow::on_closeCompensationSet_clicked()
+{
+    QVariantMap m;
+     m["enable"]=0;
+
+    protocolManager.set(DeviceCmd::CompensationSet, m);
 }
 

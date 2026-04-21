@@ -152,6 +152,7 @@ enum class DeviceCmd {
     BtSignalMode,           // 【兼容别名】Qfctp 蓝牙信令入口（保留兼容）
     BtNoSignalMode,         // 【兼容别名】Qfctp 蓝牙非信令入口（保留兼容）
     BtFreqMode,             // 【兼容别名】Qfctp 蓝牙校频入口（保留兼容）
+    WriteKey,               // 【兼容别名】Qfctp 写密钥入口（建议优先走 Sn 主入口）
     FactoryDoneWrite,       // 【兼容别名】Qfctp 专有入口（保留兼容）
     TrimSet,                // 【Qfctp】写 trim（QVariantMap，setCaseTrimSet）
     MacWrite,               // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
@@ -173,8 +174,10 @@ enum class DeviceCmd {
     GetSn,                  // 【主入口】SN/三元组读统一入口；Qfctp 内部按 type 自动分流
     GetPressCaliResult,     // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,       // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
-    DeviceInfo,             // 【主入口】设备信息查询；Qfctp 兼容映射设备异常状态读
-    GetBaseInfo,            // 【主入口】基础信息读取；Qfctp 兼容映射三元组读取
+    DeviceInfo,             // 【主入口】设备信息查询（Qpb）
+    GetBaseInfo,            // 【主入口】基础信息读取；
+    TupleRead,            // 【主入口】Qfctp 兼容映射三元组读取
+
     PeriphState,            // 【主入口】外设状态读取；Qfctp 映射 sensor 状态 TLV
     ConnectInfo,            // 【Qpb】连接信息（无参，get_connect_info）
     WifiInfo,               // 【Qpb】WiFi 信息（无参，get_wifi_info）
@@ -189,6 +192,7 @@ enum class DeviceCmd {
     ChargeCurrentRead,      // 【Qfctp】读充电电流（无参，getCaseChargeCurrentRead）
     AgingStatusRead,        // 【兼容别名】Qfctp 老化状态查询（保留兼容）
     FactoryDoneRead,        // 【兼容别名】Qfctp 产测标识读取（保留兼容）
+    DeviceExceptionRead,    // 【Qfctp】读设备异常状态（独立入口）
 };
 
 class IDevice {

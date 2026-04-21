@@ -92,8 +92,6 @@ private:
     bool        setCaseBtNoSignalMode(const QVariantMap &map);
     bool        setCaseBtFreqMode(const QVariantMap &map);
     bool        setCaseStandbyMode(const QVariantMap &map);
-    bool        setCaseWriteProductId(const QVariantMap &map);
-    bool        setCaseWriteDeviceId(const QVariantMap &map);
     bool        setCaseWriteKey(const QVariantMap &map);
     bool        setCaseFactoryDoneWrite(const QVariantMap &map);
     bool        setCaseTrimSet(const QVariantMap &map);

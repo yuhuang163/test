@@ -567,6 +567,18 @@ private slots:
 
     void on_readBurningModestatus_clicked();
 
+    void on_kTlvKeyWrite_clicked();
+
+    void on_kTlvKeyread_clicked();
+
+
+
+    void on_getCaseDeviceException_clicked();
+
+    void on_openCompensationSet_clicked();
+
+    void on_closeCompensationSet_clicked();
+
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);
