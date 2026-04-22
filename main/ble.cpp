@@ -194,6 +194,9 @@ class MyClientCallback : public BLEClientCallbacks
             strcpy(targetDeviceAddress, packetString.c_str());
             // delay(5000);
             Serial.println("已经重置mac地址");
+            Serial.printf("状态重置后: doConnect=%d, ble_connected=%d, ble_scan_over=%d\r\n",
+                          doConnect, ble_connected, ble_scan_over);
+           
         }
     }
 };
@@ -569,10 +572,38 @@ bool connectToServer()
         Serial.println(use_normal_service);
         if (pClient != nullptr)
         {
+            // 连接在服务发现过程中可能被对端断开，逐个检查避免阻塞卡住 loop。
             facRemoteService = pClient->getService(serviceUUID);
+            if (!pClient->isConnected())
+            {
+                Serial.println("服务发现中连接已断开(facRemoteService)");
+                candeleteble = true;
+                return false;
+            }
+
             appRemoteService = pClient->getService(serviceUUIDOTA);
+            if (!pClient->isConnected())
+            {
+                Serial.println("服务发现中连接已断开(appRemoteService)");
+                candeleteble = true;
+                return false;
+            }
+
             mainRemoteService = pClient->getService(mainserviceUUID);
+            if (!pClient->isConnected())
+            {
+                Serial.println("服务发现中连接已断开(mainRemoteService)");
+                candeleteble = true;
+                return false;
+            }
+
             normolRemoteService = pClient->getService(serviceUUIDNormal);
+            if (!pClient->isConnected())
+            {
+                Serial.println("服务发现中连接已断开(normolRemoteService)");
+                candeleteble = true;
+                return false;
+            }
         }
         else
         {

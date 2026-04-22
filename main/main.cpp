@@ -100,26 +100,11 @@ void setup()
 {
   Serial.setRxBufferSize(UART_RX_BUFFER_SIZE); // 设置缓存
   Serial.begin(921600);
-  delay(10); // 等待100毫秒，确保串口初始化完成
-   Serial.print("wifi设置");
-  Serial.println(wifiuse);
-
-#if wifiuse == 1
-  wifi_init();
-#endif
-  strip.begin();           // 初始化WS2812B
-  strip.show();            // 显示初始化状态（全部关灯）
-  strip.setBrightness(10); // 设置亮度为50% （取值范围为0-255）
-
-  Serial.print("AT+DONGLEVER=");
-  Serial.println(version);
-
-  pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
-  pinMode(RST_PIN, INPUT); // 将引脚设置为输入模式，即高阻态
+  delay(1); // 给串口硬件一个最小稳定时间，尽早进入接收流程
 
   initRingBuffer();
 
-  // 创建串口事件任务并获取任务句柄
+  // 串口任务尽早创建，确保上电后第一时间接收并处理数据
   xTaskCreate(
       serialEventTask,          // 任务函数
       "Serial Event Task",      // 任务名称
@@ -129,7 +114,6 @@ void setup()
       &serialEventTaskHandle    // 任务句柄
   );
 
-  // 创建数据处理任务并获取任务句柄
   xTaskCreate(
       processDataTask,          // 任务函数
       "Process Data Task",      // 任务名称
@@ -157,6 +141,22 @@ void setup()
   {
     Serial.println("数据处理任务创建失败");
   }
+
+  Serial.print("wifi设置");
+  Serial.println(wifiuse);
+
+#if wifiuse == 1
+  wifi_init();
+#endif
+  strip.begin();           // 初始化WS2812B
+  strip.show();            // 显示初始化状态（全部关灯）
+  strip.setBrightness(10); // 设置亮度为50% （取值范围为0-255）
+
+  Serial.print("AT+DONGLEVER=");
+  Serial.println(version);
+
+  pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
+  pinMode(RST_PIN, INPUT); // 将引脚设置为输入模式，即高阻态
   colorWipe(strip.Color(0, 0, 255)); // 蓝色
 
   ble_init();
