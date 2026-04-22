@@ -28,9 +28,10 @@ static BLEUUID mainNotifyUUID("a6ed0302-d344-460a-8075-b9e8ec90d71b");
 static BLERemoteCharacteristic *mainNotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *mainWriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b"); // fac
-static BLEUUID NotifyUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b");  // 收产测指令
-static BLEUUID WriteUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b");   // 写产测指令
+static BLEUUID serviceUUID("524f4f54-9000-0080-0010-000000020001"); // fac
+static BLEUUID NotifyUUID("524f4f54-9000-0080-0010-000000020002");  // 收产测指令
+static BLEUUID WriteUUID("524f4f54-9000-0080-0010-000000020003");   // 写产测指令
+
 static BLEUUID CameraUUID("a6ed0204-d344-460a-8075-b9e8ec90d71b");  // 摄像头传图
 static BLEUUID LogUUID("a6ed0205-d344-460a-8075-b9e8ec90d71b");     // 传输日志
 static BLERemoteCharacteristic *LOGUUIDCharacteristic = nullptr;

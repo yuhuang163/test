@@ -41,6 +41,9 @@
     "list": "cpp",
     "vector": "cpp"
   },
-  "idf.portWin": "COM56",
-  "C_Cpp.errorSquiggles": "disabled"
+  "idf.portWin": "COM7",
+  "C_Cpp.errorSquiggles": "disabled",
+  "idf.espIdfPathWin": "C:\\Users\\user\\esp\\v5.1.4\\esp-idf",
+  "idf.toolsPathWin": "C:\\Users\\user\\.espressif",
+  "idf.pythonInstallPath": "C:\\Users\\user\\.espressif\\tools\\idf-python\\3.11.2\\python.exe"
 }
