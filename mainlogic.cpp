@@ -2655,6 +2655,13 @@ void MainWindow::initBasicInfo() {
             motorresult = failValue;
         }
     });
+
+    QObject::connect(qfctp, &Qfctp::send_fw_version, this, [=](const QString& versionText) {
+        auto* softVersionItem = basicInfoModel->getTestItemByName("soft_version");
+        if (softVersionItem && !versionText.isEmpty()) {
+            softVersionItem->setData(versionText, Qt::DisplayRole);
+        }
+    });
 }
 
 void MainWindow::initPeriphState() {
@@ -2669,12 +2676,24 @@ void MainWindow::initPeriphState() {
     QString flashStatus = "=" + SETTINGS.value("PeripheralStatus/Flash_Status").toString();
     QString magneticStatus = "=" + SETTINGS.value("PeripheralStatus/Magnetic_Status").toString();
     QString pressureStatus = "=" + SETTINGS.value("PeripheralStatus/Pressure_Status").toString();
+    QString press0Status = "=" + SETTINGS.value("PeripheralStatus/Press0_Status").toString();
+    QString press1Status = "=" + SETTINGS.value("PeripheralStatus/Press1_Status").toString();
+    QString batteryIcStatus = "=" + SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString();
+    QString touchIcStatus = "=" + SETTINGS.value("PeripheralStatus/TouchIc_Status").toString();
+    QString ledIcStatus = "=" + SETTINGS.value("PeripheralStatus/LedIc_Status").toString();
+    QString pdIcStatus = "=" + SETTINGS.value("PeripheralStatus/PdIc_Status").toString();
 
     QList<namePair> items = {
         {"imu_state", "imu状态", imuStatus},
         {"flash_state", "flash状态", flashStatus},
         {"magnet_state", "地磁状态", magneticStatus},
         {"press_state", "压感状态", pressureStatus},
+        {"press0_state", "气压传感器0状态", press0Status},
+        {"press1_state", "气压传感器1状态", press1Status},
+        {"battery_ic_state", "电池IC状态", batteryIcStatus},
+        {"touch_ic_state", "触摸按键IC状态", touchIcStatus},
+        {"led_ic_state", "LED IC状态", ledIcStatus},
+        {"pd_ic_state", "PD IC充电状态", pdIcStatus},
     };
 
     for (auto name : items) {
@@ -2702,6 +2721,26 @@ void MainWindow::initPeriphState() {
             motorresult = failValue;
         }
     });
+
+    QObject::connect(qfctp, &Qfctp::send_periph_sensor_state, this,
+                     [=](int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc) {
+                         auto *press0Item = peripheralModel->getTestItemByName("press0_state");
+                         auto *press1Item = peripheralModel->getTestItemByName("press1_state");
+                         auto *batteryItem = peripheralModel->getTestItemByName("battery_ic_state");
+                         auto *touchItem = peripheralModel->getTestItemByName("touch_ic_state");
+                         auto *ledItem = peripheralModel->getTestItemByName("led_ic_state");
+                         auto *pdItem = peripheralModel->getTestItemByName("pd_ic_state");
+
+                         if (press0Item) press0Item->setData(QString::number(press0), Qt::DisplayRole);
+                         if (press1Item) press1Item->setData(QString::number(press1), Qt::DisplayRole);
+                         if (batteryItem) batteryItem->setData(QString::number(batteryIc), Qt::DisplayRole);
+                         if (touchItem) touchItem->setData(QString::number(touchIc), Qt::DisplayRole);
+                         if (ledItem) ledItem->setData(QString::number(ledIc), Qt::DisplayRole);
+                         if (pdItem) {
+                             pdItem->setData(pdIc >= 0 ? QString::number(pdIc) : QString("未上报"), Qt::DisplayRole);
+                         }
+                         writePeripheralDataToCSVFile();
+                     });
 }
 
 bool renameFile(const QString& oldFilePath, const QString& newFilePath) {

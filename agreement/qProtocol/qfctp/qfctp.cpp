@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QVariantMap>
 #include <QString>
+#include <QStringList>
 
 #include "comm_protocol_builder.h"
 #include "comm_protocol_parser.h"
@@ -206,14 +207,90 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
                 << "status=0x" + QString::number(status, 16).toUpper().rightJustified(2, '0')
                 << "(" << statusText << ")"
                 << "raw=" << QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+    } else if ((req.kind == RequestKind::TrimGet) && mainValue != nullptr && mainLen >= 4) {
+        const uint32_t trim = static_cast<uint32_t>(mainValue[0])
+                            | (static_cast<uint32_t>(mainValue[1]) << 8)
+                            | (static_cast<uint32_t>(mainValue[2]) << 16)
+                            | (static_cast<uint32_t>(mainValue[3]) << 24);
+        const QString trimHex = "0x" + QString::number(trim, 16).toUpper().rightJustified(8, '0');
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        qInfo() << "FCTP Trim读取"
+                << "trim=" << trim
+                << "(" << trimHex << ")"
+                << "raw=" << rawHex;
+        emit send_pb_date(QString("FCTP Trim读取 trim=%1(%2) raw=%3").arg(QString::number(trim), trimHex, rawHex));
+    } else if ((req.kind == RequestKind::FactoryDoneRead) && mainValue != nullptr && mainLen >= 1) {
+        const uint8_t done = mainValue[0];
+        const QString doneText = (done == 0x01) ? "产测完成" : "产测未完成";
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        qInfo() << "FCTP 产测完成标识"
+                << "value=0x" + QString::number(done, 16).toUpper().rightJustified(2, '0')
+                << "(" << doneText << ")"
+                << "raw=" << rawHex;
+        emit send_pb_date(QString("FCTP 产测完成标识 value=0x%1(%2) raw=%3")
+                              .arg(QString::number(done, 16).toUpper().rightJustified(2, '0'),
+                                   doneText,
+                                   rawHex));
+    } else if ((req.kind == RequestKind::RssiGet) && mainValue != nullptr && mainLen >= 4) {
+        const int32_t rssi = static_cast<int32_t>(static_cast<uint32_t>(mainValue[0])
+                                                  | (static_cast<uint32_t>(mainValue[1]) << 8)
+                                                  | (static_cast<uint32_t>(mainValue[2]) << 16)
+                                                  | (static_cast<uint32_t>(mainValue[3]) << 24));
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        qInfo() << "FCTP RSSI读取"
+                << "rssi=" << rssi << "dBm"
+                << "raw=" << rawHex;
+        emit send_pb_date(QString("FCTP RSSI读取 rssi=%1 dBm raw=%2").arg(rssi).arg(rawHex));
+    } else if ((req.kind == RequestKind::SensorStateGet) && mainValue != nullptr && mainLen >= 5) {
+        const auto stateText = [](uint8_t v) { return v == 0x01 ? "成功" : "失败"; };
+        const uint8_t press0 = mainValue[0];
+        const uint8_t press1 = mainValue[1];
+        const uint8_t battIc = mainValue[2];
+        const uint8_t touchIc = mainValue[3];
+        const uint8_t ledIc = mainValue[4];
+        const bool hasPdIc = mainLen >= 6;
+        const uint8_t pdIc = hasPdIc ? mainValue[5] : 0xFF;
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        qInfo() << "FCTP 外设sensor状态"
+                << "press0=" << QString("0x%1(%2)").arg(QString::number(press0, 16).toUpper().rightJustified(2, '0'), stateText(press0))
+                << "press1=" << QString("0x%1(%2)").arg(QString::number(press1, 16).toUpper().rightJustified(2, '0'), stateText(press1))
+                << "batteryIc=" << QString("0x%1(%2)").arg(QString::number(battIc, 16).toUpper().rightJustified(2, '0'), stateText(battIc))
+                << "touchIc=" << QString("0x%1(%2)").arg(QString::number(touchIc, 16).toUpper().rightJustified(2, '0'), stateText(touchIc))
+                << "ledIc=" << QString("0x%1(%2)").arg(QString::number(ledIc, 16).toUpper().rightJustified(2, '0'), stateText(ledIc))
+                << "pdIc=" << (hasPdIc
+                                   ? QString("0x%1(%2)").arg(QString::number(pdIc, 16).toUpper().rightJustified(2, '0'), stateText(pdIc))
+                                   : QString("未上报"))
+                << "raw=" << rawHex;
+        emit send_pb_date(QString("FCTP 外设sensor状态 press0=%1 press1=%2 batteryIc=%3 touchIc=%4 ledIc=%5 pdIc=%6 raw=%7")
+                              .arg(stateText(press0))
+                              .arg(stateText(press1))
+                              .arg(stateText(battIc))
+                              .arg(stateText(touchIc))
+                              .arg(stateText(ledIc))
+                              .arg(hasPdIc ? stateText(pdIc) : "未上报")
+                              .arg(rawHex));
+        emit send_periph_sensor_state(static_cast<int>(press0),
+                                      static_cast<int>(press1),
+                                      static_cast<int>(battIc),
+                                      static_cast<int>(touchIc),
+                                      static_cast<int>(ledIc),
+                                      hasPdIc ? static_cast<int>(pdIc) : -1);
     } else if ((req.kind == RequestKind::FwVersionGet) && mainValue != nullptr && mainLen > 0) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
         const QString hex = raw.toHex(' ').toUpper();
         const QString ascii = QString::fromLatin1(raw).trimmed();
+        QStringList versionParts;
+        versionParts.reserve(raw.size());
+        for (const char byte : raw) {
+            versionParts << QString::number(static_cast<uint8_t>(byte));
+        }
+        const QString versionText = versionParts.join(".");
         qInfo() << "FCTP 固件版本"
                 << "raw=" << hex
-                << "ascii=" << ascii;
+                << "ascii=" << ascii
+                << "version=" << versionText;
         emit send_pb_date(QString("FCTP 固件版本 raw=%1").arg(hex));
+        emit send_fw_version(versionText);
     } else if ((req.kind == RequestKind::MacRead) && mainValue != nullptr && mainLen > 0) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
         const QString hex = raw.toHex(' ').toUpper();

@@ -579,6 +579,26 @@ private slots:
 
     void on_closeCompensationSet_clicked();
 
+    void on_factory_flag_clicked();
+
+    void on_get_trim_data_clicked();
+
+    void on_set_trim_data_clicked();
+    
+    void on_factory_flag_read_clicked();
+
+    void on_enter_ble_cali_clicked();
+
+    void on_exit_ble_cali_clicked();
+
+    void on_enter_ble_test_clicked();
+
+    void on_exit_ble_test_clicked();
+
+    void on_enter_no_ble_test_clicked();
+
+    void on_exit_no_ble_test_clicked();
+
     void on_get_device_mac_clicked();
 
     void on_set_device_mac_clicked();
@@ -586,6 +606,8 @@ private slots:
     void on_night_brightness_clicked();
 
     void on_reset_factory_clicked();
+
+    void on_get_rssi_device_clicked();
 
 signals:
     void send_uart_state(int data);

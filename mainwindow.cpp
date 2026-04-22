@@ -1,6 +1,7 @@
 ﻿#include "mainwindow.h"
 
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QRandomGenerator>
 #include <QtConcurrent>
 
@@ -3925,5 +3926,103 @@ void MainWindow::on_reset_factory_clicked()
 {
     protocolManager.set(DeviceCmd::FactoryReset);
     showlog("已发送恢复出厂设置");
+}
+
+
+void MainWindow::on_factory_flag_clicked()
+{
+    QVariantMap m;
+    m["done"] = 1;
+    protocolManager.set(DeviceCmd::FactoryDoneWrite, m);
+    showlog("已发送产测完成标识写入");
+}
+
+void MainWindow::on_enter_ble_test_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 1;
+    protocolManager.set(DeviceCmd::BtSignalMode, m);
+    showlog("已发送进入蓝牙信令测试");
+}
+
+void MainWindow::on_exit_ble_test_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 0;
+    protocolManager.set(DeviceCmd::BtSignalMode, m);
+    showlog("已发送退出蓝牙信令测试");
+}
+
+void MainWindow::on_enter_no_ble_test_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 1;
+    protocolManager.set(DeviceCmd::BtNoSignalMode, m);
+    showlog("已发送进入蓝牙非信令测试");
+}
+
+void MainWindow::on_exit_no_ble_test_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 0;
+    protocolManager.set(DeviceCmd::BtNoSignalMode, m);
+    showlog("已发送退出蓝牙非信令测试");
+}
+
+void MainWindow::on_enter_ble_cali_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 1;
+    protocolManager.set(DeviceCmd::BtFreqMode, m);
+    showlog("已发送进入蓝牙校频测试");
+}
+
+void MainWindow::on_exit_ble_cali_clicked()
+{
+    QVariantMap m;
+    m["enter"] = 0;
+    protocolManager.set(DeviceCmd::BtFreqMode, m);
+    showlog("已发送退出蓝牙校频测试");
+}
+
+void MainWindow::on_set_trim_data_clicked()
+{
+    auto *trimEdit = this->findChild<QLineEdit*>("trim_data_line");
+    if (trimEdit == nullptr) {
+        showlog("未找到trim_data_line输入框");
+        return;
+    }
+    bool ok = false;
+    const uint32_t trimValue = trimEdit->text().toUInt(&ok, 0);
+    if (!ok) {
+        showlog("trim_data_line内容非法，请输入数字（支持0x前缀）");
+        return;
+    }
+    QVariantMap m;
+    m["value"] = trimValue;
+    protocolManager.set(DeviceCmd::TrimSet, m);
+    showlog(QString("已发送设置trim值: %1").arg(trimValue));
+}
+
+void MainWindow::on_get_trim_data_clicked()
+{
+    protocolManager.get(DeviceCmd::TrimRead);
+    showlog("开始获取trim值");
+}
+
+
+void MainWindow::on_factory_flag_read_clicked()
+{
+    protocolManager.get(DeviceCmd::FactoryDoneRead);
+    showlog("开始读取产测完成标识");
+}
+
+
+void MainWindow::on_get_rssi_device_clicked()
+{
+    QVariantMap m;
+    m["mode"] = 1;
+    protocolManager.get(DeviceCmd::RssiRead, m);
+    showlog("开始获取设备RSSI");
 }
 

@@ -22,6 +22,8 @@ public:
 
 signals:
     void send_pb_date(QString data);
+    void send_fw_version(QString version);
+    void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
 
 private:
     enum class RequestKind {

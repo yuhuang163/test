@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>1</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -400,6 +400,13 @@
                       <widget class="QCheckBox" name="show_rssi">
                        <property name="text">
                         <string>显示蓝牙rssi</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_rssi_device">
+                       <property name="text">
+                        <string>获取对端设备的rssi</string>
                        </property>
                       </widget>
                      </item>
@@ -1243,6 +1250,20 @@
                       <number>0</number>
                      </property>
                      <item>
+                      <widget class="QPushButton" name="factory_flag">
+                       <property name="text">
+                        <string>产测完成写入</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="factory_flag_read">
+                       <property name="text">
+                        <string>产测完成读取</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <widget class="QPushButton" name="get_device_mac">
                        <property name="text">
                         <string>获取mac地址</string>
@@ -1274,6 +1295,76 @@
                       <widget class="QPushButton" name="reset_factory">
                        <property name="text">
                         <string>恢复出厂设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_106">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="get_trim_data">
+                       <property name="text">
+                        <string>获取trim值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="set_trim_data">
+                       <property name="text">
+                        <string>设置trim值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="trim_data_line">
+                       <property name="text">
+                        <string>255</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enter_ble_cali">
+                       <property name="text">
+                        <string>进入蓝牙校频</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exit_ble_cali">
+                       <property name="text">
+                        <string>退出蓝牙校频</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enter_ble_test">
+                       <property name="text">
+                        <string>进入蓝牙信令测试</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exit_ble_test">
+                       <property name="text">
+                        <string>退出蓝牙信令测试</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="enter_no_ble_test">
+                       <property name="text">
+                        <string>进入蓝牙非信令测试</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exit_no_ble_test">
+                       <property name="text">
+                        <string>退出蓝牙非信令测试</string>
                        </property>
                       </widget>
                      </item>
