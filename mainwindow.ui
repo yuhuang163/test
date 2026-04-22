@@ -1491,6 +1491,76 @@
                      </item>
                     </layout>
                    </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_custom_msg">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="label_custom_service">
+                       <property name="text">
+                        <string>serviceId</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="custom_service_id">
+                       <property name="text">
+                        <string>0x0007</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_custom_tlv">
+                       <property name="text">
+                        <string>tlvType</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="custom_tlv_type">
+                       <property name="text">
+                        <string>0x0001</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_custom_value">
+                       <property name="text">
+                        <string>value(hex)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="custom_value_hex">
+                       <property name="placeholderText">
+                        <string>01 02 0A FF</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_custom_action">
+                       <property name="text">
+                        <string>action</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="custom_action_name">
+                       <property name="text">
+                        <string>上层自定义消息</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="send_custom_msg">
+                       <property name="text">
+                        <string>发送自定义消息</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
                   </layout>
                  </widget>
                 </item>

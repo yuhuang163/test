@@ -19,6 +19,65 @@ static uint16_t qfctpReadLe16(const uint8_t *p)
     return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
 }
 
+static QByteArray qfctpHexToBytes(QString hex)
+{
+    hex = hex.trimmed();
+    if (hex.startsWith("0x", Qt::CaseInsensitive)) {
+        hex = hex.mid(2);
+    }
+    hex.remove(' ');
+    hex.remove(':');
+    if (hex.size() % 2 != 0) {
+        return {};
+    }
+    return QByteArray::fromHex(hex.toLatin1());
+}
+
+static QByteArray qfctpParseValueString(const QString &text, bool *ok)
+{
+    QString s = text.trimmed();
+    if (s.isEmpty()) {
+        if (ok != nullptr) {
+            *ok = true;
+        }
+        return {};
+    }
+
+    if (s.startsWith("0x", Qt::CaseInsensitive)) {
+        s = s.mid(2);
+    }
+
+    QString compact = s;
+    compact.remove(' ');
+    compact.remove(':');
+
+    // 兼容用户输入单个半字节，如 "0" => "00"
+    if (compact.size() % 2 != 0) {
+        compact.prepend('0');
+    }
+
+    if (compact.isEmpty()) {
+        if (ok != nullptr) {
+            *ok = true;
+        }
+        return {};
+    }
+
+    for (const QChar ch : compact) {
+        if (!ch.isDigit() && (ch.toUpper() < QChar('A') || ch.toUpper() > QChar('F'))) {
+            if (ok != nullptr) {
+                *ok = false;
+            }
+            return {};
+        }
+    }
+
+    if (ok != nullptr) {
+        *ok = true;
+    }
+    return QByteArray::fromHex(compact.toLatin1());
+}
+
 static constexpr uint8_t kPhyTxHeaderByte = 0xCC;
 static constexpr uint8_t kPhyRxHeaderByte = 0xAA;
 static constexpr int     kPhyHeaderSize = 8;
@@ -82,6 +141,54 @@ void qfctp_on_full_frame(const uint8_t *frame_data, uint16_t frame_len, void *us
 Qfctp::Qfctp(QSerialPort* parent) : QSerialPort(parent)
 {
     serialPort = parent;
+}
+
+bool Qfctp::sendCustomMessage(const QVariantMap &map)
+{
+    const QVariant serviceVar = map.value("serviceId");
+    const QVariant tlvVar = map.value("tlvType");
+    if (!serviceVar.isValid() || !tlvVar.isValid()) {
+        qWarning() << "Qfctp 通用发送缺少必填字段 serviceId/tlvType";
+        return false;
+    }
+
+    bool okService = false;
+    bool okTlv = false;
+    const int serviceInt = serviceVar.toInt(&okService);
+    const int tlvInt = tlvVar.toInt(&okTlv);
+    if (!okService || !okTlv || serviceInt < 0 || serviceInt > 0xFFFF || tlvInt < 0 || tlvInt > 0xFFFF) {
+        qWarning() << "Qfctp 通用发送参数范围非法"
+                   << "serviceId=" << serviceVar
+                   << "tlvType=" << tlvVar;
+        return false;
+    }
+
+    QByteArray value;
+    const QVariant valueVar = map.value("value");
+    if (valueVar.isValid()) {
+        if (valueVar.canConvert<QString>()) {
+            bool okHex = false;
+            const QString hex = valueVar.toString();
+            value = qfctpParseValueString(hex, &okHex);
+            if (!okHex) {
+                qWarning() << "Qfctp 通用发送 value 不是有效 hex 字符串:" << hex;
+                return false;
+            }
+        } else if (valueVar.canConvert<QByteArray>()) {
+            value = valueVar.toByteArray();
+        } else {
+            qWarning() << "Qfctp 通用发送 value 类型不支持，需 QByteArray 或 hex QString";
+            return false;
+        }
+    }
+
+    const QString action = map.value("actionName").toString().trimmed();
+    const QByteArray actionUtf8 = action.isEmpty() ? QByteArray("上层自定义消息") : action.toUtf8();
+    return sendRequest(RequestKind::Unknown,
+                       static_cast<uint16_t>(serviceInt),
+                       static_cast<uint16_t>(tlvInt),
+                       value,
+                       actionUtf8.constData());
 }
 
 void Qfctp::handleFullFrame(const uint8_t *frameData, uint16_t frameLen)

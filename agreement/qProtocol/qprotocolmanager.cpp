@@ -1,4 +1,4 @@
-#include "qprotocolmanager.h"
+﻿#include "qprotocolmanager.h"
 
 #include <algorithm>
 #include <cctype>
@@ -82,6 +82,13 @@ bool QProtocolManager::get(DeviceCmd cmd, const QVariant& param) const {
     }
     active_->get(cmd, param);
     return true;
+}
+
+bool QProtocolManager::sendCustomMessage(const QVariantMap& map) const {
+    if (!active_) {
+        return false;
+    }
+    return active_->sendCustomMessage(map);
 }
 
 bool QProtocolManager::setPbMode(int p) const {

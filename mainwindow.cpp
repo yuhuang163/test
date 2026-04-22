@@ -4093,3 +4093,29 @@ void MainWindow::on_get_ble_rssi_device_clicked()
     showlog("开始获取设备RSSI");
 }
 
+void MainWindow::on_send_custom_msg_clicked()
+{
+    bool okService = false;
+    bool okTlv = false;
+    const uint32_t serviceId = ui->custom_service_id->text().trimmed().toUInt(&okService, 0);
+    const uint32_t tlvType = ui->custom_tlv_type->text().trimmed().toUInt(&okTlv, 0);
+    if (!okService || !okTlv || serviceId > 0xFFFFu || tlvType > 0xFFFFu) {
+        showlog("自定义消息参数错误：serviceId/tlvType 需为 0~0xFFFF（支持0x前缀）");
+        return;
+    }
+
+    QVariantMap msg;
+    msg["serviceId"] = static_cast<int>(serviceId);
+    msg["tlvType"] = static_cast<int>(tlvType);
+    msg["value"] = ui->custom_value_hex->text().trimmed();
+    msg["actionName"] = ui->custom_action_name->text().trimmed();
+
+    if (protocolManager.sendCustomMessage(msg)) {
+        showlog(QString("已发送自定义消息 service=0x%1 tlv=0x%2")
+                    .arg(QString::number(serviceId, 16).toUpper().rightJustified(4, '0'))
+                    .arg(QString::number(tlvType, 16).toUpper().rightJustified(4, '0')));
+    } else {
+        showlog("自定义消息发送失败：请确认当前协议为QFCTP且串口已连接");
+    }
+}
+

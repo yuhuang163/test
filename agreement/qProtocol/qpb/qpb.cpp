@@ -644,6 +644,13 @@ void Qpb::parseCmd(const QByteArray& byte) {
     }
 }
 
+bool Qpb::sendCustomMessage(const QVariantMap& map)
+{
+    Q_UNUSED(map);
+    qWarning() << "Qpb 暂不支持 sendCustomMessage";
+    return false;
+}
+
 void Qpb::sendMainPack(const DataPackage& pack) {
     std::vector<uint8_t> tx_buffer(1024);
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);

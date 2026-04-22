@@ -38,7 +38,9 @@ public:
     // 【需要虚函数】来自 IDevice，必须保留 override。
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     // 【需要虚函数】来自 qProtocol，必须保留 override。
-    void parseCmd(const QByteArray& byte) override;
+    void parseCmd(const QByteArray& byte);
+    // qpb 当前不支持该通用TLV发送，统一返回 false。
+    bool sendCustomMessage(const QVariantMap& map);
 
     // ==================== 对外接口（迁移过渡控制） ====================
     // 说明：这一组仍为 public，是为了避免一次性改动过大。

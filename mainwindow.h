@@ -626,6 +626,7 @@ private slots:
     void on_get_keysignal_clicked();
 
     void on_get_ble_rssi_device_clicked();
+    void on_send_custom_msg_clicked();
 
 signals:
     void send_uart_state(int data);

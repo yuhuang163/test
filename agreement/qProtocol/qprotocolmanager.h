@@ -1,4 +1,4 @@
-#ifndef QPROTOCOLMANAGER_H
+﻿#ifndef QPROTOCOLMANAGER_H
 #define QPROTOCOLMANAGER_H
 
 #include "qprotocol.h"
@@ -39,6 +39,7 @@ public:
     bool parseCmd(const QByteArray& byte) const;
     bool set(DeviceCmd cmd, const QVariant& data = {}) const;
     bool get(DeviceCmd cmd, const QVariant& param = {}) const;
+    bool sendCustomMessage(const QVariantMap& map) const;
 
     // Qpb 专有能力桥接：用于迁移期兼容旧调用。
     bool setPbMode(int p) const;
