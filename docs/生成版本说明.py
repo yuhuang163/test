@@ -3,20 +3,52 @@ import os
 import re
 from datetime import datetime
 
-# 可配置的内容置顶,包括那天
-REPO_PATH = r"D:\new_production\new_production"
-SINCE_DATE = "2025-3-6"
-UNTIL_DATE = "2026-12-31"
+# 定义脚本目录
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 定义头文件路径
-HEADERS_FILE = r"D:\new_production\new_production\my_set\AbIni.h"
+# 可配置项
+# 为空时自动识别当前脚本所在仓库；也可手动写死仓库路径
+REPO_PATH = ""
+SINCE_DATE = "2026-4-14"
+UNTIL_DATE = "2027-12-31"
 
 # 初始化提交消息映射字典
 COMMIT_DEFINITIONS = {}
 
+
+def resolve_repo_path(configured_repo_path):
+    if configured_repo_path and configured_repo_path.strip():
+        return configured_repo_path.strip()
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", SCRIPT_DIR, "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+            encoding="utf-8"
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # 非 git 仓库场景下，回退到脚本上级目录
+        return os.path.dirname(SCRIPT_DIR)
+
+def resolve_header_file(repo_path):
+    candidates = [
+        os.path.join(repo_path, "my_set", "AbIni.h"),
+        os.path.join(SCRIPT_DIR, "AbIni.h"),
+        os.path.join(os.path.dirname(SCRIPT_DIR), "my_set", "AbIni.h"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    raise FileNotFoundError(f"头文件不存在，已尝试: {', '.join(candidates)}")
+
 def parse_header_file(header_file):
     definitions = {}
     pattern = r'^#define\s+(\w+VER)\s+"([^"]+)"'
+    if not os.path.exists(header_file):
+        raise FileNotFoundError(f"头文件不存在: {header_file}")
     with open(header_file, 'r', encoding='utf-8') as file:
         for line in file:
             match = re.match(pattern, line.strip())
@@ -25,9 +57,6 @@ def parse_header_file(header_file):
                 value = match.group(2)
                 definitions[key] = f"{value}"
     return definitions
-
-# 解析头文件中的宏定义
-COMMIT_DEFINITIONS = parse_header_file(HEADERS_FILE)
 
 def get_git_commits(repo_path, since, until):
     try:
@@ -103,6 +132,12 @@ def save_commits_to_md(commits, file_path):
         file.write("\n")
 
 if __name__ == "__main__":
+    REPO_PATH = resolve_repo_path(REPO_PATH)
+    if not os.path.isdir(REPO_PATH):
+        raise FileNotFoundError(f"git本地库路径不存在: {REPO_PATH}")
+    HEADERS_FILE = resolve_header_file(REPO_PATH)
+    COMMIT_DEFINITIONS = parse_header_file(HEADERS_FILE)
+
     print(f"使用的git本地库为: {REPO_PATH}")
     
     # 获取 Git 提交记录
@@ -110,6 +145,6 @@ if __name__ == "__main__":
     
     if commits:
         # 保存提交记录到 Markdown 文件
-        md_file_path = os.path.join(REPO_PATH, "my_set", "上位机版本发布.md")
+        md_file_path = os.path.join(REPO_PATH, "docs", "上位机版本发布.md")
         save_commits_to_md(commits, md_file_path)
         print(f"保存到 {md_file_path}")
