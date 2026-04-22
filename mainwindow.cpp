@@ -3811,7 +3811,6 @@ void MainWindow::on_btn_getLDRInfo_clicked() { protocolManager.get(DeviceCmd::Li
 
 
 
-
 void MainWindow::on_enterSuctionMode_clicked()
 {
     QVariantMap m;
@@ -3854,15 +3853,44 @@ void MainWindow::on_kTlvKeyWrite_clicked()
 {   QVariantMap m;
     m["value"] = ui->kTlvKey_data->text();
     protocolManager.set(DeviceCmd::WriteKey, m);
-
 }
-
 
 void MainWindow::on_kTlvKeyread_clicked()
 {
     QVariantMap m;
       protocolManager.get(DeviceCmd::TupleRead, m);
+}
 
+void MainWindow::on_read_current_charge_clicked()
+{  QVariantMap m;
+     protocolManager.get(DeviceCmd::ChargeCurrentRead, m);
+}
+
+
+void MainWindow::on_read_light_sensor_clicked()
+{  QVariantMap m;
+    protocolManager.get(DeviceCmd::LightCalibRead, m);
+}
+
+
+void MainWindow::on_set_light_sensor_clicked()
+{  QVariantMap m;
+    m["index"] = 0;              // 对应前面的 00
+    m["value"] = 0x12345678;
+    protocolManager.set(DeviceCmd::LightCalibWrite, m);
+}
+
+
+void MainWindow::on_light_repo_start_clicked()
+{  QVariantMap m;
+    m["start"] = 1;
+    protocolManager.set(DeviceCmd::LightReportControl, m);
+}
+
+void MainWindow::on_light_repo_stop_clicked()
+{  QVariantMap m;
+    m["start"] = 0;
+    protocolManager.set(DeviceCmd::LightReportControl, m);
 }
 
 
@@ -4024,5 +4052,29 @@ void MainWindow::on_get_rssi_device_clicked()
     m["mode"] = 1;
     protocolManager.get(DeviceCmd::RssiRead, m);
     showlog("开始获取设备RSSI");
+}
+
+void MainWindow::on_backlight_start_clicked()
+{  QVariantMap m;
+    m["on"] = 1;
+    protocolManager.set(DeviceCmd::LcdBacklight, m);
+}
+
+void MainWindow::on_backlight_stop_clicked()
+{  QVariantMap m;
+    m["on"] = 0;
+    protocolManager.set(DeviceCmd::LcdBacklight, m);
+}
+
+
+void MainWindow::on_get_battery_2_clicked()
+{  QVariantMap m;
+    protocolManager.get(DeviceCmd::GetBattery, m);
+}
+
+
+void MainWindow::on_get_keysignal_clicked()
+{  QVariantMap m;
+    protocolManager.get(DeviceCmd::KeySignalRead, m);
 }
 
