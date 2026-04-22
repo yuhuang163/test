@@ -571,15 +571,7 @@ private slots:
 
     void on_kTlvKeyread_clicked();
 
-    void on_read_current_charge_clicked();
 
-    void on_read_light_sensor_clicked();
-
-    void on_set_light_sensor_clicked();
-
-    void on_light_repo_start_clicked();
-
-    void on_light_repo_stop_clicked();
 
     void on_getCaseDeviceException_clicked();
 
@@ -592,7 +584,7 @@ private slots:
     void on_get_trim_data_clicked();
 
     void on_set_trim_data_clicked();
-
+    
     void on_factory_flag_read_clicked();
 
     void on_enter_ble_cali_clicked();
@@ -616,14 +608,6 @@ private slots:
     void on_reset_factory_clicked();
 
     void on_get_rssi_device_clicked();
-
-    void on_backlight_start_clicked();
-
-    void on_backlight_stop_clicked();
-
-    void on_get_battery_2_clicked();
-
-    void on_get_keysignal_clicked();
 
 signals:
     void send_uart_state(int data);
