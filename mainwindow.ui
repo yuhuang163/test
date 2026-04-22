@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1093</width>
-    <height>827</height>
+    <width>1807</width>
+    <height>971</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -175,7 +175,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>3</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1095,6 +1095,27 @@
                        </property>
                       </widget>
                      </item>
+                     <item>
+                      <widget class="QPushButton" name="read_current_charge">
+                       <property name="text">
+                        <string>读取充电电流</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="light_repo_stop">
+                       <property name="text">
+                        <string>关闭光感上报</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="light_repo_start">
+                       <property name="text">
+                        <string>开启光感上报</string>
+                       </property>
+                      </widget>
+                     </item>
                     </layout>
                    </item>
                    <item>
@@ -1155,6 +1176,48 @@
                       <widget class="QPushButton" name="forbidsleep">
                        <property name="text">
                         <string>禁止休眠模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="backlight_start">
+                       <property name="text">
+                        <string>背光开启</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="backlight_stop">
+                       <property name="text">
+                        <string>背光关闭</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="set_light_sensor">
+                       <property name="text">
+                        <string>设置光照校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="read_light_sensor">
+                       <property name="text">
+                        <string>读取光照校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_keysignal">
+                       <property name="text">
+                        <string>读取按键电容</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="get_battery_2">
+                       <property name="text">
+                        <string>读取电池电量</string>
                        </property>
                       </widget>
                      </item>
@@ -5035,7 +5098,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string/>
                </property>
                <property name="text">
-                <string>12:34:56:c2:9b:a9</string>
+                <string>12:34:56:c2:9b:aa</string>
                </property>
                <property name="placeholderText">
                 <string>切换英文输入再扫码</string>
@@ -5127,8 +5190,8 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1093</width>
-     <height>18</height>
+     <width>1807</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>

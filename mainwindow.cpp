@@ -3851,7 +3851,12 @@ void MainWindow::on_readBurningModestatus_clicked()
 
 void MainWindow::on_kTlvKeyWrite_clicked()
 {   QVariantMap m;
-    m["value"] = ui->kTlvKey_data->text();
+    auto *keyEdit = this->findChild<QLineEdit*>("kTlvKey_data");
+    if (keyEdit == nullptr) {
+        showlog("未找到 kTlvKey_data 输入框");
+        return;
+    }
+    m["value"] = keyEdit->text();
     protocolManager.set(DeviceCmd::WriteKey, m);
 }
 
