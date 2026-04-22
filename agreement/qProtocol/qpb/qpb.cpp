@@ -1398,7 +1398,7 @@ void Qpb::get_wifi_info() {
 
     sendShortPack(pack);
 }
-void Qpb::set_brush_control(int state)  // 开始暂停刷牙
+void Qpb::set_brush_control(int state)  // 开始暂停使用
 {
     FactoryDataPackage pack;
     memset(&pack, 0, sizeof(pack));
@@ -2122,10 +2122,10 @@ void Qpb::set_press_cali_result(press_calib_data_t cali_result)  //发送校准�
 
     sendShortPack(pack);
     qDebug() << "已发送压感校准结果";
-    qDebug() << "刷头校准值 (brush_head_adc):" << pack.command_data.set_fsensor_calib.brush_head_adc;
+    qDebug() << "电机校准值 (brush_head_adc):" << pack.command_data.set_fsensor_calib.brush_head_adc;
     qDebug() << "模式按键校准值 (mode_button_adc):" << pack.command_data.set_fsensor_calib.mode_button_adc;
     qDebug() << "电源按键校准值 (power_button_adc):" << pack.command_data.set_fsensor_calib.power_button_adc;
-    qDebug() << "刷头温度校准值 (temperature):" << pack.command_data.set_fsensor_calib.temperature;
+    qDebug() << "电机温度校准值 (temperature):" << pack.command_data.set_fsensor_calib.temperature;
     qDebug() << "模式按键温度校准值 (temperature):" << pack.command_data.set_fsensor_calib.temperature;
     qDebug() << "辅助元件校准值 (assistant_component):" << pack.command_data.set_fsensor_calib.assistant_component;
 }

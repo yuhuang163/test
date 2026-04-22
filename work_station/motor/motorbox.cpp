@@ -63,8 +63,8 @@ void motorbox::checkAllTest(int fixtureNumber) {
             } else {
                 motor_cali_stage = 3;
             }
-            QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
-            qDebug() << "弹窗：请把所有刷头置于0位";
+            QMessageBox::warning(NULL, "警告", " 请把所有电机置于0位\t\r\n");
+            qDebug() << "弹窗：请把所有电机置于0位";
             emit go_screen_next(0);  // 没问题
             return;
         }

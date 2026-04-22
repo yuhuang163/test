@@ -1827,8 +1827,8 @@ QString MainWindow::generateOutputFilePath() {
 void MainWindow::getPressSensorData(FacUploadPresSensor x) {
     showlog("保存压感数据ing");
     for (int i = 0; i < x.sensor_data_count; i++) {
-        ui->brush_value->setText("刷头压力：" + QString::number(int16_t(x.sensor_data[i].brush_head.value)));
-        ui->brush_adc->setText("刷头adc：" + QString::number(int16_t(x.sensor_data[i].brush_head.adc)));
+        ui->brush_value->setText("电机压力：" + QString::number(int16_t(x.sensor_data[i].brush_head.value)));
+        ui->brush_adc->setText("电机adc：" + QString::number(int16_t(x.sensor_data[i].brush_head.adc)));
 
         ui->mode_botton_adc->setText("模式按键adc：" + QString::number(int16_t(x.sensor_data[i].mode_button.adc)));
         ui->mode_botton_value->setText("模式按键压力：" + QString::number(int16_t(x.sensor_data[i].mode_button.value)));
@@ -1870,8 +1870,8 @@ void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool a
         QStringList headers;
         headers << "时间戳"
                 << "MAC地址"
-                << "刷头ADC"
-                << "刷头压力"
+                << "电机ADC"
+                << "电机压力"
                 << "模式按键ADC"
                 << "模式按键压力"
                 << "电源按键ADC"
@@ -1912,7 +1912,7 @@ void MainWindow::sendBrushData(bool is_random) {
         // 设置手柄时间为start time
         protocolManager.set(DeviceCmd::BrushTime, timestamp);
         waitWork(WAITTIME);
-        // 设置刷牙数据
+        // 设置使用数据
         uint32_t work_time[6];
         uint16_t pressure_time[6], horizon_brush[6];
         FacSetBrushRecord record;
@@ -1967,12 +1967,12 @@ void MainWindow::sendBrushData(bool is_random) {
             ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
             ui->msgTest->appendPlainText("");
             ui->msgTest->appendPlainText("手柄时间:" + QDateTime::fromSecsSinceEpoch(timestamp).toString(Qt::ISODate));
-            ui->msgTest->appendPlainText("刷牙记录时间:" +
+            ui->msgTest->appendPlainText("使用记录时间:" +
                                          QDateTime::fromSecsSinceEpoch(record.timestamp).toString(Qt::ISODate));
-            ui->msgTest->appendPlainText(QString("牙菌斑:%1").arg(ui->spinBox->value()));
-            ui->msgTest->appendPlainText("刷牙时长:" + ui->brushTime->text());
+            ui->msgTest->appendPlainText(QString("菌斑指标:%1").arg(ui->spinBox->value()));
+            ui->msgTest->appendPlainText("使用时长:" + ui->brushTime->text());
             ui->msgTest->appendPlainText("过压时长:" + ui->pressureTime->text());
-            ui->msgTest->appendPlainText("横刷时长:" + ui->horizalBrushTime->text());
+            ui->msgTest->appendPlainText("横向动作时长:" + ui->horizalBrushTime->text());
             ui->msgTest->appendPlainText("\n");
             waitWork(500);
         }
@@ -2203,10 +2203,10 @@ void MainWindow::sendRecord() {
 
     ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
     ui->msgTest->appendPlainText("记录生成时间:" + ui->dateTimeBrushSet->dateTime().toString(Qt::ISODate));
-    ui->msgTest->appendPlainText(QString("牙菌斑:%1").arg(ui->spinBox->value()));
-    ui->msgTest->appendPlainText("刷牙时长:" + ui->brushTime->text());
+    ui->msgTest->appendPlainText(QString("菌斑指标:%1").arg(ui->spinBox->value()));
+    ui->msgTest->appendPlainText("使用时长:" + ui->brushTime->text());
     ui->msgTest->appendPlainText("过压时长:" + ui->pressureTime->text());
-    ui->msgTest->appendPlainText("横刷时长:" + ui->horizalBrushTime->text());
+    ui->msgTest->appendPlainText("横向动作时长:" + ui->horizalBrushTime->text());
     ui->msgTest->appendPlainText("\n");
 }
 
@@ -3126,7 +3126,7 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }
 void MainWindow::getPresscalidata(FacPreSensorCalibResult x) {
-    showlog("刷头" + QString::number(x.brush_head_adc));
+    showlog("电机" + QString::number(x.brush_head_adc));
     showlog("模式" + QString::number(x.mode_button_adc));
     showlog("电源" + QString::number(x.power_button_adc));
     showlog("温度" + QString::number(x.temperature));

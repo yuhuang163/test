@@ -746,7 +746,7 @@ message FacDataCollectItem
     DataCollectType type = 1;
     oneof command_data {
         DataCollectParam bat_vol = 2;   //电池电压
-        DataCollectParam pressure_sensor = 3; //压感 刷头压感+压感按键
+        DataCollectParam pressure_sensor = 3; //压感 电机压感+压感按键
         DataCollectParam nine_axle = 4;	      //9轴 地磁+IMU
         DataCollectParam nine_axle_solve = 5;	//处理过的9轴 地磁+IMU
     }
@@ -924,7 +924,7 @@ message FacImuCalibResult
 
 
 
-/*********************设置刷牙时间区域******************/
+/*********************设置使用时间区域******************/
 
 message FacSetTime
 {
@@ -932,14 +932,14 @@ message FacSetTime
     uint32 timezone = 2;
 }
 
-/*********************设置刷牙时间区域******************/
+/*********************设置使用时间区域******************/
 
 
 
 
 
 
-/*********************设置刷牙结果区域******************/
+/*********************设置使用结果区域******************/
 message FacSetBrushRecord
 {
     uint32 timestamp = 1;
@@ -948,7 +948,7 @@ message FacSetBrushRecord
     bytes pressure_time = 4 [(nanopb).max_size= 12];
     bytes horizon_brush = 5 [(nanopb).max_size= 12];
 }
-/*********************设置刷牙结果区域******************/
+/*********************设置使用结果区域******************/
 
 
 

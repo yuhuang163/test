@@ -416,35 +416,35 @@ void imubox::set_cylinder_state(imuFixtureState state) {
 
     if (state == STATE_40) {
         Fixture_uart_ui->sendimuData(STATE_40);
-        qDebug() << "刷头朝上40度";
+        qDebug() << "电机朝上40度";
     }
 
     if (state == STATE_FU40) {
         Fixture_uart_ui->sendimuData(STATE_FU40);
-        qDebug() << "刷头朝下40度";
+        qDebug() << "电机朝下40度";
     }
 
     if (state == STATE_BRUSH_UP) {
         Fixture_uart_ui->sendimuData(STATE_BRUSH_UP);
-        qDebug() << "刷头0度";
+        qDebug() << "电机0度";
     }
 
     if (state == STATE_BRUSH_DOWN) {
         Fixture_uart_ui->sendimuData(STATE_BRUSH_DOWN);
-        qDebug() << "刷头180度";
+        qDebug() << "电机180度";
     }
     if (state == STATE_BRUSH_LEFT) {
-        // emit send_fixture_log("刷头90度");
+        // emit send_fixture_log("电机90度");
         Fixture_uart_ui->sendimuData(STATE_BRUSH_LEFT);
-        qDebug() << "刷头90度";
+        qDebug() << "电机90度";
     }
     if (state == STATE_BRUSH_RIGHT) {
         Fixture_uart_ui->sendimuData(STATE_BRUSH_RIGHT);
-        qDebug() << "刷头270度";
+        qDebug() << "电机270度";
     }
 
     if (state == STATE_HOME) {
         Fixture_uart_ui->sendimuData(STATE_HOME);
-        qDebug() << "刷头270度";
+        qDebug() << "电机270度";
     }
 }

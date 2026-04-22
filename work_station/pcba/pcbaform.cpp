@@ -682,7 +682,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
 
         // Check for FSensor version
         if (isFSensorTest) {
-            test.testItem = "刷头压感版本";
+            test.testItem = "电机压感版本";
             test.testData = QString::fromUtf8(data.fsensor_version);
             test.ask = fsensorVersion;
             testItems.append(test);
@@ -1133,7 +1133,7 @@ void PcbaForm::startTask() {
                         (SETTINGS.value("Mes/Product_Name").toString() == "Q20" ||
                          SETTINGS.value("Mes/Product_Name").toString() == "Q20P")) {
                         protocolManager.set(DeviceCmd::DeviceMode, 11);   //进入纯享模式
-                        protocolManager.set(DeviceCmd::BrushControl, 1);  //开始刷牙
+                        protocolManager.set(DeviceCmd::BrushControl, 1);  //开始使用
                     }
                 }
                 break;

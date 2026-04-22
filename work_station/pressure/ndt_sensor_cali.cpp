@@ -114,7 +114,7 @@ const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
       0,
       1000,
       9000,
-      {"请勿移动", "人员：刷头放400g砝码", "人员：拿走砝码"},
+      {"请勿移动", "人员：电机放400g砝码", "人员：拿走砝码"},
       {"人员：请放50g砝码", "人员：请放250g砝码", "人员：请放450g砝码"}}},
 
     {CAL_CHANNEL_F20_CH1,
@@ -136,7 +136,7 @@ const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
       0,
       1000,
       9000,
-      {"请勿移动", "人员：刷头放400g砝码", "人员：拿走砝码"},
+      {"请勿移动", "人员：电机放400g砝码", "人员：拿走砝码"},
       {"人员：请放50g砝码", "人员：请放250g砝码", "人员：请放450g砝码"}}},
     {CAL_CHANNEL_Y30S_CH0, {1, 80, 80 / 5, 400, 400, 0, 0, {}, {}}},
     {CAL_CHANNEL_Y20PS_CH0, {1, 20, 20 / 5, 400, 400, 0, 0, {}, {}}}};
@@ -422,10 +422,10 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
             if (CAL_CHANNEL_NUM == 2) {
                 gSensorPressAdc[1] = adc[1];
             }
-            // qDebug() << "按键的adc " << adc[0];       // 刷头
+            // qDebug() << "按键的adc " << adc[0];       // 电机
             // qDebug() << "辅助元器件的adc" << adc[1];  // 按键
 
-            // qDebug() << "CSU18M68, Cali BrushHead: PressAdc = " << gSensorPressAdc[0];  // 刷头
+            // qDebug() << "CSU18M68, Cali BrushHead: PressAdc = " << gSensorPressAdc[0];  // 电机
             // qDebug() << "CSU18M68, Cali Key: PressAdc =" << gSensorPressAdc[1];         // 按键
 
             // printf("CSU18M68, Cali Temperature: %d\r\n", tempFactor);

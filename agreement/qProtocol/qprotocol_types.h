@@ -113,8 +113,8 @@ enum class DeviceCmd {
     WifiConnect,            // 【Qpb】连 WiFi（WifiConnectPayload / QVariantMap{name,password} / WifiInfo，set_connect_wifi）
     Music,                  // 【Qpb】音乐控制/曲目数据（QByteArray，set_music）
     BurningMode,            // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp 均兼容
-    BrushRecord,            // 【Qpb】刷头记录写入（FacSetBrushRecord，set_brush_record）
-    BrushTime,              // 【Qpb】刷头计时相关（int，set_brush_time）
+    BrushRecord,            // 【Qpb】使用记录写入（FacSetBrushRecord，set_brush_record）
+    BrushTime,              // 【Qpb】使用计时相关（int，set_brush_time）
     Sleep,                  // 【主入口】休眠/待机控制；Qpb 走 set_sleeep，Qfctp 映射待机 TLV
     ForbidSleep,            // 【Qpb】禁止休眠开关（FacSwitch，set_forbid_sleep）
     CameraState,            // 【Qpb】摄像头总开关/状态（int，set_camera_state）
@@ -123,12 +123,12 @@ enum class DeviceCmd {
     CameraSupportState,     // 【Qpb】相机能力/支持项状态（int，set_camera_support_state）
     CameraExposureTime,     // 【Qpb】曝光时间（uint，set_camera_exposure_time）
     DevReset,               // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）
-    BrushReset,             // 【Qpb】刷头相关复位（无参，set_brush_reset）
+    BrushReset,             // 【Qpb】使用相关复位（无参，set_brush_reset）
     PressCaliResult,        // 【Qpb】压力标定结果下发（press_calib_data_t，set_press_cali_result）；get 见 GetPressCaliResult
     ImuCaliResult,          // 【Qpb】IMU 标定结果下发（ImuCalData，set_imu_cali_result）；get 见 GetImuCaliResult
     NewImuCaliResult,       // 【Qpb】新 IMU 校准结果下发（NewImuCalData，set_new_imu_cali_result）
     DeviceMode,             // 【Qpb】设备运行模式（int，set_device_mode）
-    BrushControl,           // 【Qpb】刷头电机/动作控制（int，set_brush_control）
+    BrushControl,           // 【Qpb】电机/动作控制（int，set_brush_control）
     FacMode,                // 【Qpb】工厂模式开关（int，set_fac_mode）；【Qfctp】非 0 进入产测模式（sendFactoryTestMode）
     Sn,                     // 【主入口】SN/三元组写统一入口；Qpb 兼容 set_sn，Qfctp 内部映射 TLV 写入
     BaseInfo,               // 【主入口】基础信息读写入口；Qfctp 兼容映射三元组读取
@@ -182,7 +182,7 @@ enum class DeviceCmd {
     ConnectInfo,            // 【Qpb】连接信息（无参，get_connect_info）
     WifiInfo,               // 【Qpb】WiFi 信息（无参，get_wifi_info）
     GetServoMotorInfo,      // 【Qpb】读舵机信息（无参，get_servo_motor_info）
-    BurshBacklog,           // 【Qpb】刷头积压/日志类（param.toInt()，get_bursh_backlog）
+    BurshBacklog,           // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
     TrimRead,               // 【Qfctp】读 trim（无参，getCaseTrimRead）
     FwVersionRead,          // 【Qfctp】读固件版本（无参，getCaseFwVersionRead）
     MacRead,                // 【Qfctp】读 MAC（无参，getCaseMacRead）

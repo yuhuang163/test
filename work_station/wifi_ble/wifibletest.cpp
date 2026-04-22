@@ -159,7 +159,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
 
         // 读取压感版本字符串
         QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
-        // 读取刷头压感版本字符串
+        // 读取电机压感版本字符串
         QString fsensorVersion = SETTINGS.value("ProductInfo/FSensor_Version").toString();
         // 读取电机版本字符串
         QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
@@ -208,7 +208,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             showlog("老化状态正确" + QString::number(data.ageing_state));
             showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
             showlog("压感状态正确" + QString::fromUtf8(data.presure_version));
-            showlog("刷头压感状态正确" + QString::fromUtf8(data.fsensor_version));
+            showlog("电机压感状态正确" + QString::fromUtf8(data.fsensor_version));
             showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
             showlog("软件版本正确");
 
@@ -221,7 +221,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
             showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
                     pressureSenseVersion);
-            showlog("当前设备刷头压感版本" + QString::fromUtf8(data.fsensor_version) + "配置文件刷头压感要求" +
+            showlog("当前设备电机压感版本" + QString::fromUtf8(data.fsensor_version) + "配置文件电机压感要求" +
                     fsensorVersion);
             showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersion);
 

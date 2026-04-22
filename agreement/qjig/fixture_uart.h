@@ -39,10 +39,10 @@ typedef enum {
     STATE_RETURN,       // 翻转
     STATE_40,           // 40度
     STATE_FU40,         // 负40度
-    STATE_BRUSH_UP,     // 刷头朝上
-    STATE_BRUSH_DOWN,   // 刷头朝下
-    STATE_BRUSH_LEFT,   // 刷头朝左
-    STATE_BRUSH_RIGHT,  // 刷头朝右
+    STATE_BRUSH_UP,     // 电机朝上
+    STATE_BRUSH_DOWN,   // 电机朝下
+    STATE_BRUSH_LEFT,   // 电机朝左
+    STATE_BRUSH_RIGHT,  // 电机朝右
     STATE_HOME,         // 治具回零位
 } imuFixtureState;
 

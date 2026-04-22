@@ -77,9 +77,9 @@ void TestFunctionExecutor::createTestFunctions() {
                  protocolManager.set(DeviceCmd::BurningMode, m);
              });
          }},
-        {"设置刷牙记录",
+        {"设置使用记录",
          [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(FacSetBrushRecord{/* params */})); }); }},
-        {"设置刷牙时间", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushTime, 1625140800); }); }},
+        {"设置使用时间", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushTime, 1625140800); }); }},
         {"设置休眠状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START)); }); }},
         {"设置摄像头状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraState, 1); }); }},
         {"设置屏幕摄像头状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenCameraState, 1); }); }},
@@ -87,7 +87,7 @@ void TestFunctionExecutor::createTestFunctions() {
         {"设置摄像头支持状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraSupportState, 1); }); }},
         {"设置摄像头曝光时间", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraExposureTime, 1000); }); }},
         {"设备复位", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DevReset); }); }},
-        {"刷牙复位", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushReset); }); }},
+        {"使用复位", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushReset); }); }},
         {"设置压力校准结果",
          [&]() {
              // sendCommandWithRetry(std::bind(&Qpb::set_press_cali_result, pb, reinterpret_cast<unsigned
@@ -101,7 +101,7 @@ void TestFunctionExecutor::createTestFunctions() {
          [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{90, 30.0f, 50.0f, 100})); }); }},
         {"设置设备模式", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DeviceMode, 1); }); }},
         {"设置亮白模式", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DeviceMode, 4); }); }},
-        {"设置刷牙控制状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushControl, 1); }); }},
+        {"设置使用控制状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushControl, 1); }); }},
         {"设置工厂模式", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); }); }},
         // {"绑定SN码", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); }); }},
         {"设置摄像头图片状态", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraPictureState, 1); }); }},

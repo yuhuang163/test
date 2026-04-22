@@ -962,7 +962,7 @@
           <item>
              <widget class="QLabel" name="pressSignalStrengthLabel">
               <property name="text">
-               <string>刷头校准系数</string>
+               <string>电机校准系数</string>
               </property>
              </widget>
             </item>
@@ -1049,7 +1049,7 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>刷头adc阈值个数</string>
+               <string>电机adc阈值个数</string>
               </property>
              </widget>
             </item>
@@ -1141,7 +1141,7 @@
                </sizepolicy>
               </property>
                 <property name="text">
-               <string>刷头adc阈值</string>
+               <string>电机adc阈值</string>
                 </property>
                </widget>
               </item>
@@ -1697,7 +1697,7 @@
             <item>
              <widget class="QLabel" name="labelFSensorVersion">
               <property name="text">
-               <string>刷头压感</string>
+               <string>电机压感</string>
               </property>
              </widget>
             </item>

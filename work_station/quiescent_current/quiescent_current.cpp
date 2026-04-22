@@ -239,7 +239,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
 
         // Check for FSensor version
         if (isFSensorTest) {
-            test.testItem = "刷头压感版本";
+            test.testItem = "电机压感版本";
             test.testData = QString::fromUtf8(data.fsensor_version);
             test.ask = fsensorVersion;
             testItems.append(test);

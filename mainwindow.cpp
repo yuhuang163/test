@@ -3586,7 +3586,7 @@ void MainWindow::on_set_hw_ver_clicked() {
 
 void MainWindow::on_brush_relocation_clicked() {
     protocolManager.set(DeviceCmd::MotorDampingState, 0);
-    QMessageBox::warning(NULL, "警告", " 请把所有刷头置于0位\t\r\n");
+    QMessageBox::warning(NULL, "警告", " 请把所有电机置于0位\t\r\n");
     protocolManager.set(DeviceCmd::MotorCali, 2);
 }
 
@@ -3746,7 +3746,7 @@ void MainWindow::on_set_press_info_clicked() {
     qDebug() << "发送校准系数";
 
     press_calib_data_t cali_result = {0};
-    qDebug() << "刷头校准值:" << ui->calibValue_brushHead->text();
+    qDebug() << "电机校准值:" << ui->calibValue_brushHead->text();
     cali_result.calib_factor[MODULE_BTH] = ui->calibValue_brushHead->text().toInt();
 
     qDebug() << "温度校准值:" << ui->calibValue_temp->text();

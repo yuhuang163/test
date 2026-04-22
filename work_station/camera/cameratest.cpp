@@ -1511,15 +1511,15 @@ void cameratest::on_OffsetTest_clicked() {
     if (flag == 0) {
         TestItem test;
         test.testItem = "偏位测试";
-        test.testData = "刷头偏位";
+        test.testData = "电机偏位";
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
 
         testResultTableUpdate(testItems);
 
-        pyTestResult = "刷头偏位";
-        showlog("刷头偏位");
+        pyTestResult = "电机偏位";
+        showlog("电机偏位");
 
         on_abnormal_clicked();
     }

@@ -28,11 +28,11 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
     ui->comboBox_pressFunctionSwitch->addItems(pressFunctionSwitch);
 
-    QStringList individualMode = {"无效选项", "单独刷头", "单独按键", "都校准"};
+    QStringList individualMode = {"无效选项", "单独电机", "单独按键", "都校准"};
     ui->comboBox_individualMode->addItems(individualMode);
 
     QStringList displayImageType = {"无效选项", "关闭所有图像", "ADC图像",     "压力值图像",
-                                    "刷头图像", "按键图像",     "显示全部图像"};
+                                    "电机图像", "按键图像",     "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
     QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
@@ -245,7 +245,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_FactoryPB->setText(SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString());  // 厂测的pb
     ui->lineEdit_AlgorithmVersion->setText(SETTINGS.value("ProductInfo/Algorithm_Version").toString());  // 算法版本
     ui->lineEdit_PressureVersion->setText(SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString());  // 压感版本
-    ui->lineEdit_FSensorVersion->setText(SETTINGS.value("ProductInfo/FSensor_Version").toString());  // 刷头压感版本
+    ui->lineEdit_FSensorVersion->setText(SETTINGS.value("ProductInfo/FSensor_Version").toString());  // 电机压感版本
     ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                    // imu的id
     ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());              // 摄像头的id
 

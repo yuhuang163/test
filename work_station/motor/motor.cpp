@@ -710,7 +710,7 @@ void motor::startTest_task() {
                     protocolManager.set(DeviceCmd::MotorDampingState, 0);
                     waitWork(WAITTIME);
                     showlog("解除阻尼");
-                    QMessageBox::warning(NULL, "警告", " 请把刷头置于非0位\t\r\n");
+                    QMessageBox::warning(NULL, "警告", " 请把电机置于非0位\t\r\n");
                     protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     waitWork(WAITTIME);
                     showlog("打开阻尼");

@@ -202,8 +202,8 @@ private slots:
     void set_connect_wifi(const QByteArray& name, const QByteArray& password);  // 连接WiFi
     void set_music(const QByteArray& data);                                     // 设置音乐
     void set_burning_mode(int state, FacSwitch switchs);                        // 设置老化测试模式
-    void set_brush_record(const FacSetBrushRecord& record);                     // 设置刷牙记录
-    void set_brush_time(int timestamp);                                         // 设置刷牙时间
+    void set_brush_record(const FacSetBrushRecord& record);                     // 设置使用记录
+    void set_brush_time(int timestamp);                                         // 设置使用时间
     void set_sleeep(FacSwitch state);                                           // 设置休眠状态
     void set_forbid_sleep(FacSwitch state);                                     // 禁止休眠
     void set_camera_state(int state);                                           // 设置摄像头状态
@@ -212,14 +212,14 @@ private slots:
     void set_camera_support_state(int state);                                   // 设置摄像头支持状态
     void set_camera_exposure_time(uint32_t time);                               // 设置摄像头曝光时间
     void set_dev_reset();                                                       // 设备复位
-    void set_brush_reset();                                                     // 刷牙复位
+    void set_brush_reset();                                                     // 使用复位
 
     void set_press_cali_result(press_calib_data_t cali_result);  // 设置压力校准结果
     void set_imu_cali_result(ImuCalData cali_ok);         // 发送IMU校准结果
     void set_new_imu_cali_result(NewImuCalData cali_ok);  // 发送新的IMU校准结果
 
     void set_device_mode(int mode);                              // 设置设备模式
-    void set_brush_control(int state);                           // 设置刷牙控制状态
+    void set_brush_control(int state);                           // 设置使用控制状态
     void set_fac_mode(int state);                                // 设置工厂模式
     void set_sn(FacDevInfoType which_sn, const QByteArray& sn);  // 绑定SN码
     void set_base_info(FacBasInfoType which_info, const FacGetDevBaseInfo& data);

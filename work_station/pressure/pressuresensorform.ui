@@ -56,14 +56,14 @@
                  <item>
                   <widget class="QLabel" name="brush_adc">
                    <property name="text">
-                    <string>刷头adc：</string>
+                    <string>电机adc：</string>
                    </property>
                   </widget>
                  </item>
                  <item>
                   <widget class="QLabel" name="brush_value">
                    <property name="text">
-                    <string>刷头压力：</string>
+                    <string>电机压力：</string>
                    </property>
                   </widget>
                  </item>

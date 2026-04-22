@@ -157,10 +157,10 @@ private:
 
     uint16_t CAL_CHANNEL_NUM = 0;  // 校准通道数
 
-    uint16_t CAL_SIGNAL_CH0 = 0;  // 差异值刷头
+    uint16_t CAL_SIGNAL_CH0 = 0;  // 差异值电机
     uint16_t CAL_SIGNAL_CH1 = 0;  // 差异值按键
 
-    uint16_t CAL_WEIGHT_CH0 = 0;  // 刷头校准质量(g)
+    uint16_t CAL_WEIGHT_CH0 = 0;  // 电机校准质量(g)
     uint16_t CAL_WEIGHT_CH1 = 0;  // 按键校准质量(g)
 
     int brush_test_time = 600;

@@ -123,18 +123,18 @@ enum OperationType {
 
 enum KeyType {
     DEFAULT_KEY = 0;
-    VEC_BRUSH_TIME_RAW = 1; // 区域刷牙时长 (校正前)
-    VEC_BRUSH_TIME_CORRECTED = 2; // 区域刷牙时长 (校正后)
+    VEC_BRUSH_TIME_RAW = 1; // 区域使用时长 (校正前)
+    VEC_BRUSH_TIME_CORRECTED = 2; // 区域使用时长 (校正后)
     VEC_OP_TIME_RAW = 3; // 区域过压时长 (校正前)
     VEC_OP_TIME_CORRECTED = 4; // 区域过压时长 (校正后)
-    VEC_HB_TIME_RAW = 5; // 区域横刷时长 (校正前)
-    VEC_HB_TIME_CORRECTED = 6; // 区域横刷时长 (校正后)
+    VEC_HB_TIME_RAW = 5; // 区域横向动作时长 (校正前)
+    VEC_HB_TIME_CORRECTED = 6; // 区域横向动作时长 (校正后)
 }
 
 enum SwitchType {
-    BRUSHING_REAL_TIME = 0; // 刷牙时长
+    BRUSHING_REAL_TIME = 0; // 使用时长
     OP_TIME = 1; // 过压时长
-    HB_TIME = 2; // 横刷时长
+    HB_TIME = 2; // 横向动作时长
     COVERAGE = 3; // 覆盖率
     PLAQUE_RESIDUE = 4; // 菌斑残留
 }
@@ -490,14 +490,14 @@ enum TeethNumber {
 
 enum ProblemTeeth {
     NO_PROBLEM = 0;
-    SENSITIVE_TEETH = 1; // 敏感牙
-    DENTAL_IMPLANTS = 2; // 种植牙
+    SENSITIVE_TEETH = 1; // 敏感类型
+    DENTAL_IMPLANTS = 2; // 植入类型
     ORTHODONTICS_TEETH = 3; // 正畸
-    MISSING_TEETH = 4; // 缺牙
-    WISDOM_TEETH = 5; // 龋齿牙
-    STONE_TEETH = 6; // 结石牙
-    PIGMENT_TEETH = 7; // 色素牙
-    BACTERIAL_PLAQUE = 8; // 牙菌斑
+    MISSING_TEETH = 4; // 缺失类型
+    WISDOM_TEETH = 5; // 龋坏类型
+    STONE_TEETH = 6; // 结石类型
+    PIGMENT_TEETH = 7; // 色素类型
+    BACTERIAL_PLAQUE = 8; // 菌斑类型
 }
 
 enum BrushTotalArea {
@@ -1207,14 +1207,14 @@ message BrushingReport {
 }
 
 message ReportData {
-    uint32 timestamp = 1; // 刷牙开始时间
-    BrushingModel brushing_model = 2; // 刷牙模式
-    uint32 brushing_power_level = 3; // 刷牙力度
-    uint32 brushing_time = 4; // 刷牙停止时长
-    uint32 brushing_real_time = 5; // 实际刷牙时长
-    uint32 brushing_time_score = 6; // 刷牙时长总分数
+    uint32 timestamp = 1; // 使用开始时间
+    BrushingModel brushing_model = 2; // 使用模式
+    uint32 brushing_power_level = 3; // 使用力度
+    uint32 brushing_time = 4; // 使用停止时长
+    uint32 brushing_real_time = 5; // 实际使用时长
+    uint32 brushing_time_score = 6; // 使用时长总分数
     uint32 coverage_rate_score = 7; // 覆盖率总分数
-    uint32 brushing_score = 8; // 刷牙总分数
+    uint32 brushing_score = 8; // 使用总分数
     uint32 pressure_sensor_score = 9; // 压力感应总得分
     oneof add_data {
         AlgorithmReport algorithm_report = 10; // algorithm add
@@ -1225,21 +1225,21 @@ message ReportData {
 
 message AlgoResultFusion {
     bytes param_switch = 1 [(nanopb).max_size= 5]; // 全口参数开关 顺序使用SwitchType
-    bytes factor_switch = 2 [(nanopb).max_size= 4]; // 区域牙模开关 顺序使用SwitchType
+    bytes factor_switch = 2 [(nanopb).max_size= 4]; // 区域模型开关 顺序使用SwitchType
     uint32 time_op = 3; // 全口过压时长
-    uint32 time_hb = 4; // 全口横刷时长
+    uint32 time_hb = 4; // 全口横向动作时长
     uint32 plaque_residue = 5; // 全口菌斑残留
-    uint32 n_area = 6; // 齿区数量
-    uint32 n_facet = 7; // 齿面数量
-    repeated int32 vec_time_display = 8 [(nanopb).max_count = 6]; // 区域刷牙时长呈现百分比
+    uint32 n_area = 6; // 区域数量
+    uint32 n_facet = 7; // 面位数量
+    repeated int32 vec_time_display = 8 [(nanopb).max_count = 6]; // 区域使用时长呈现百分比
     repeated int32 vec_time_op_display = 9 [(nanopb).max_count = 6]; // 区域过压时长呈现百分比
-    repeated int32 vec_time_hb_display = 10 [(nanopb).max_count = 6]; //区域横刷时长呈现百分比
+    repeated int32 vec_time_hb_display = 10 [(nanopb).max_count = 6]; //区域横向动作时长呈现百分比
     repeated uint32 vec_coverage = 11 [(nanopb).max_count = 6]; // 区域覆盖率
     uint32 algo_ver = 12; // 算法版本号
     uint32 protocol_ver = 13; // 协议编号
-    uint32 timestamp_end = 14; // 刷牙结束时间
-    repeated uint32 vec_brush_time_raw = 15 [(nanopb).max_count = 6]; // 区域刷牙时长呈现值
-    repeated uint32 vec_op_time_raw  = 16 [(nanopb).max_count = 6]; // 区域过压刷牙时长呈现值
+    uint32 timestamp_end = 14; // 使用结束时间
+    repeated uint32 vec_brush_time_raw = 15 [(nanopb).max_count = 6]; // 区域使用时长呈现值
+    repeated uint32 vec_op_time_raw  = 16 [(nanopb).max_count = 6]; // 区域过压使用时长呈现值
     oneof other_data {
         AlgoOtherData other_data_result = 100; // 研究数据
         bytes other_data_bytes = 101 [(nanopb).max_size= 256]; // 研究数据byte流
@@ -1335,7 +1335,7 @@ message BackupFileInfo {
 }
 
 message BackupConfigInfo {
-    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:口腔档案
+    uint32 backup_code = 1; // BackupCode: 1:设置项，2:AI学习，3:用户档案
     oneof config_data { // 配置项备份数据：1设置项使用settingV0
         bytes byte_data = 10 [(nanopb).max_size= 64];
         string string_data = 11 [(nanopb).max_size= 64];

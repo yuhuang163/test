@@ -193,7 +193,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         y20p_ch0_vector->ui_msg_tip[0] = donotmove;
         y20p_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
         y20p_ch0_vector->ui_msg_tip[2] = pack_weights;
-        y20p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20p_ch0_vector->ui_msg_err[0] = "电机错误码为：";
         y20p_ch0_vector->ui_msg_test[0] = "人员：请放50g砝码";
         y20p_ch0_vector->ui_msg_test[1] = "人员：请放250g砝码";
         y20p_ch0_vector->ui_msg_test[2] = "人员：请放450g砝码";
@@ -221,7 +221,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         y20p_ch0_vector->ui_msg_tip[0] = donotmove;
         y20p_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
         y20p_ch0_vector->ui_msg_tip[2] = pack_weights;
-        y20p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20p_ch0_vector->ui_msg_err[0] = "电机错误码为：";
         y20p_ch0_vector->ui_msg_test[0] = "人员：请放50g砝码";
         y20p_ch0_vector->ui_msg_test[1] = "人员：请放250g砝码";
         y20p_ch0_vector->ui_msg_test[2] = "人员：请放450g砝码";
@@ -271,7 +271,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
             showlog("当前为单按键");
 
         } else if (only_mode == BTH_ONLY) {
-            showlog("当前为单刷头");
+            showlog("当前为单电机");
             sensor_v.push_back(y20p_ch0_vector);
             sensor_v[0]->Sensor_cali_Init(CAL_CHANNEL_F20_CH0);
         } else {
@@ -287,7 +287,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         y20_ch0_vector->ui_msg_tip[0] = donotmove;
         y20_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
         y20_ch0_vector->ui_msg_tip[2] = pack_weights;
-        y20_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20_ch0_vector->ui_msg_err[0] = "电机错误码为：";
         y20_ch0_vector->ui_msg_test[0] = "人员：请放330g砝码";
         y20_ch0_vector->ui_msg_test[1] = "人员：请放350g砝码";
         y20_ch0_vector->ui_msg_test[2] = "人员：请放520g砝码";
@@ -299,7 +299,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         y20p_ch0_vector->ui_msg_tip[0] = donotmove;
         y20p_ch0_vector->ui_msg_tip[1] = brush_placing_200_weights;
         y20p_ch0_vector->ui_msg_tip[2] = pack_weights;
-        y20p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        y20p_ch0_vector->ui_msg_err[0] = "电机错误码为：";
         y20p_ch0_vector->ui_msg_test[0] = "人员：请放50g砝码";
         y20p_ch0_vector->ui_msg_test[1] = "人员：请放350g砝码";
         y20p_ch0_vector->ui_msg_test[2] = "人员：请放450g砝码";
@@ -440,7 +440,7 @@ void PressureSensorForm::calib_vector_init(MODEL_ID_E model) {
         p30p_ch0_vector->ui_msg_tip[1] = "按键放300g砝码";
         p30p_ch0_vector->ui_msg_tip[2] = "拿走砝码";
 
-        p30p_ch0_vector->ui_msg_err[0] = "刷头错误码为：";
+        p30p_ch0_vector->ui_msg_err[0] = "电机错误码为：";
 
         p30p_ch0_vector->ui_msg_test[0] = "测试100g不触发";
         p30p_ch0_vector->ui_msg_test[1] = "测试300g触发";
@@ -519,9 +519,9 @@ void PressureSensorForm::getTestValue(const int mechines, const QString value) {
 
 void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
     if (x.brush_head_adc != 0) {
-        showlog("读取到的刷头校准系数" + QString::number(x.brush_head_adc));
+        showlog("读取到的电机校准系数" + QString::number(x.brush_head_adc));
         LastCali.calib_factor[MODULE_BTH] = x.brush_head_adc;
-        qDebug() << "获取到刷头校准系数：" << LastCali.calib_factor[MODULE_BTH];
+        qDebug() << "获取到电机校准系数：" << LastCali.calib_factor[MODULE_BTH];
     }
     if (x.mode_button_adc != 0) {
         showlog("读取到的模式按键校准系数" + QString::number(x.mode_button_adc));
@@ -713,7 +713,7 @@ void PressureSensorForm::save_press_test_data_to_csv(const QString& macAddress, 
                     << "通道"
                     << "mac地址"
                     << "结果"
-                    << "刷头校准系数或错误码"
+                    << "电机校准系数或错误码"
                     << "模式按键校准系数或错误码"
                     << "电源按键校准系数或错误码"
                     << "温度系数"
@@ -921,8 +921,8 @@ void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x
         QStringList headers;
         headers << "时间戳"
                 << "MAC地址"
-                << "刷头ADC"
-                << "刷头压力"
+                << "电机ADC"
+                << "电机压力"
                 << "模式按键ADC"
                 << "模式按键压力"
                 << "电源按键ADC"
@@ -1056,10 +1056,10 @@ void PressureSensorForm::updateGraphs() {
                     // 更新 UI 文本
                     switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
                         case MODULE_BTH:
-                            ui->brush_adc->setText("刷头adc：" + QString::number(adc));
-                            ui->brush_value->setText("刷头压力：" + QString::number(value));
-                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
-                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
+                            ui->brush_adc->setText("电机adc：" + QString::number(adc));
+                            ui->brush_value->setText("电机压力：" + QString::number(value));
+                            graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电机ADC值");
+                            graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电机压力值");
                             break;
                         case MODULE_MODE_BUTTON:
                             ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
@@ -1159,10 +1159,10 @@ void PressureSensorForm::updateGraphs() {
 //                 // 更新 UI 文本
 //                 switch (sensor_v[channel]->para.f_module[need_sensor_count]) {
 //                     case MODULE_BTH:
-//                         ui->brush_adc->setText("刷头adc：" + QString::number(adc));
-//                         ui->brush_value->setText("刷头压力：" + QString::number(value));
-//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("刷头ADC值");
-//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("刷头压力值");
+//                         ui->brush_adc->setText("电机adc：" + QString::number(adc));
+//                         ui->brush_value->setText("电机压力：" + QString::number(value));
+//                         graph_adc_vector[channel + need_sensor_count]->graph(0)->setName("电机ADC值");
+//                         graph_value_vector[channel + need_sensor_count]->graph(0)->setName("电机压力值");
 //                         break;
 //                     case MODULE_MODE_BUTTON:
 //                         ui->botton_adc->setText("模式按键adc：" + QString::number(adc));
@@ -1262,8 +1262,8 @@ void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
                     << "通道"
                     << "MAC地址"
                     << "状态"
-                    << "刷头ADC"
-                    << "刷头压力"
+                    << "电机ADC"
+                    << "电机压力"
                     << "模式按键ADC"
                     << "模式按键压力"
                     << "电源按键ADC"
@@ -1288,9 +1288,9 @@ void PressureSensorForm::calib_send_result(void) {
                 case MODULE_BTH:
                     cali_result.calib_factor[MODULE_BTH] = sensor_v[channel]->calib_result[0];
                     cali_result.temperature[MODULE_BTH] = sensor_v[channel]->temperature;
-                    showlog(QString("写入刷头校准系数：") + QString::number(cali_result.calib_factor[MODULE_BTH]));
+                    showlog(QString("写入电机校准系数：") + QString::number(cali_result.calib_factor[MODULE_BTH]));
                     showlog(QString("写入温度校准系数：") + QString::number(cali_result.temperature[MODULE_BTH]));
-                    qDebug() << "刷头校准系数：" << cali_result.calib_factor[MODULE_BTH];
+                    qDebug() << "电机校准系数：" << cali_result.calib_factor[MODULE_BTH];
                     break;
                 case MODULE_MODE_BUTTON:
                     cali_result.calib_factor[MODULE_MODE_BUTTON] = sensor_v[channel]->calib_result[0];
@@ -1405,7 +1405,7 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
             }
             continue;
         }
-        // 避免刷头给按键校准造成干扰需要检查 brush_head.value < 50，即刷头值较小时才进行校准，避免干扰
+        // 避免电机给按键校准造成干扰需要检查 brush_head.value < 50，即电机值较小时才进行校准，避免干扰
         if (sensor_v[calib_chan]->para.f_module[0] == MODULE_MODE_BUTTON) {
             if ((short)x.sensor_data[i].brush_head.value < 50)
                 if (1) {
@@ -1446,7 +1446,7 @@ void PressureSensorForm::calib_process(FacUploadPresSensor x) {
                 !start_calib_channel[calib_chan] && sensor_v[calib_chan]->para.first_adc != 0 &&
                 qAbs(adc_c[calib_chan] - last_brush_adc) < AdcShakeValue) {
                 brush_before_calib_count++;
-                qDebug() << getIndex() << "刷头合法值个数" << brush_before_calib_count << "要求个数"
+                qDebug() << getIndex() << "电机合法值个数" << brush_before_calib_count << "要求个数"
                          << sensor_v[calib_chan]->para.count_threshold;
                 if (brush_before_calib_count > sensor_v[calib_chan]->para.count_threshold) {
                     start_calib_channel[calib_chan] = 1;
@@ -1929,7 +1929,7 @@ void PressureSensorForm::reset_all() {
 
     memset(&cali_result, 0, sizeof(press_calib_data_t));
     memset(&LastCali, 0, sizeof(press_calib_data_t));
-    memset(&start_calib_channel, 0, sizeof(start_calib_channel));  // 是否开始刷头200校准
+    memset(&start_calib_channel, 0, sizeof(start_calib_channel));  // 是否开始电机200校准
 
     // emit operator_instruct(getIndex());  //核对
 
@@ -2178,7 +2178,7 @@ void PressureSensorForm::Y20PS_fixture(State state, int argument) {
 
             if (SETTINGS.value("PRESSURE/PressMechine").toInt() == 1) {
                 qDebug() << "治具结束";
-                //没有刷头去掉了
+                //没有电机去掉了
                 if (SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2)  //测试不需要
                     send_start_command(COMMAND_ID_KEY_UP, 0);                   // FAMA_U
 

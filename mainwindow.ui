@@ -1140,7 +1140,7 @@
                      <item>
                       <widget class="QPushButton" name="start_brush">
                        <property name="text">
-                        <string>开启刷牙流程</string>
+                        <string>开启产品使用流程</string>
                        </property>
                       </widget>
                      </item>
@@ -2267,14 +2267,14 @@
                      <item>
                       <widget class="QLabel" name="brush_adc">
                        <property name="text">
-                        <string>刷头adc：</string>
+                        <string>电机adc：</string>
                        </property>
                       </widget>
                      </item>
                      <item>
                       <widget class="QLabel" name="brush_value">
                        <property name="text">
-                        <string>刷头压力：</string>
+                        <string>电机压力：</string>
                        </property>
                       </widget>
                      </item>
@@ -2321,7 +2321,7 @@
                      <item>
                       <widget class="QLabel" name="label_brushHeadCalib">
                        <property name="text">
-                        <string>刷头校准值</string>
+                        <string>电机校准值</string>
                        </property>
                       </widget>
                      </item>
@@ -2969,7 +2969,7 @@
                   <item>
                    <widget class="QPushButton" name="brush_relocation">
                     <property name="text">
-                     <string>刷头重定位</string>
+                     <string>电机重定位</string>
                     </property>
                    </widget>
                   </item>
@@ -3869,7 +3869,7 @@
                   <item>
                    <widget class="QLabel" name="label_34">
                     <property name="text">
-                     <string>刷牙记录</string>
+                     <string>使用记录</string>
                     </property>
                    </widget>
                   </item>
@@ -3949,7 +3949,7 @@
                      <item row="2" column="0">
                       <widget class="QLabel" name="label_37">
                        <property name="text">
-                        <string>每天刷牙次数</string>
+                        <string>每日使用次数</string>
                        </property>
                       </widget>
                      </item>
@@ -3963,7 +3963,7 @@
                      <item row="3" column="0">
                       <widget class="QLabel" name="label_38">
                        <property name="text">
-                        <string>牙菌斑(%)</string>
+                        <string>菌斑指标(%)</string>
                        </property>
                       </widget>
                      </item>
@@ -3977,7 +3977,7 @@
                      <item row="4" column="0">
                       <widget class="QLabel" name="label_39">
                        <property name="text">
-                        <string>刷牙时长(ms)</string>
+                        <string>使用时长(ms)</string>
                        </property>
                       </widget>
                      </item>
@@ -4005,7 +4005,7 @@
                      <item row="6" column="0">
                       <widget class="QLabel" name="label_41">
                        <property name="text">
-                        <string>横刷时长(ms)</string>
+                        <string>横向动作时长(ms)</string>
                        </property>
                       </widget>
                      </item>
