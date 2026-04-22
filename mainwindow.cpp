@@ -743,6 +743,7 @@ void MainWindow::on_connectButton_clicked() {
     ui->comNameCombo->setEnabled(false);
     ui->connectButton->setEnabled(false);
     openDongleSerialPort();
+    waitWork(500);//给时间让dongle开机
 }
 
 void MainWindow::on_getBasicInfoButton_clicked() {
@@ -4081,5 +4082,14 @@ void MainWindow::on_get_battery_2_clicked()
 void MainWindow::on_get_keysignal_clicked()
 {  QVariantMap m;
     protocolManager.get(DeviceCmd::KeySignalRead, m);
+}
+
+
+void MainWindow::on_get_ble_rssi_device_clicked()
+{
+    QVariantMap m;
+    m["mode"] = 0;
+    protocolManager.get(DeviceCmd::RssiRead, m);
+    showlog("开始获取设备RSSI");
 }
 
