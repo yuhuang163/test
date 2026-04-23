@@ -4081,6 +4081,7 @@ void MainWindow::on_get_battery_2_clicked()
 
 void MainWindow::on_get_keysignal_clicked()
 {  QVariantMap m;
+    m["value"] = 1;
     protocolManager.get(DeviceCmd::KeySignalRead, m);
 }
 

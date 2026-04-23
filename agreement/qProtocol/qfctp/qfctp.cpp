@@ -415,6 +415,93 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
                 << "raw=" << hex
                 << "mac=" << macText;
         emit send_pb_date(QString("FCTP MAC读取 raw=%1 mac=%2").arg(hex, macText));
+    } else if (req.kind == RequestKind::BatteryGet && mainValue != nullptr) {
+        // 兼容：1B ACK/电量编码；2B uint16 LE；4B uint32 LE（依固件定义，常见为百分比或原始值）
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen == 1) {
+            const int b = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+            qInfo() << "FCTP 电池电量读取(ACK/单字节) value=" << b + "%" << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 电池电量读取 value=%1% raw=%2").arg(b).arg(rawHex));
+        } else {
+            qWarning() << "FCTP 电池电量读取 长度异常 len=" << mainLen << "raw=" << rawHex;
+        }
+    } else if (req.kind == RequestKind::KeySignalGet && mainValue != nullptr) {
+        // 按键电容：常见为 4B uint32 LE（原始计数值/fF 等，依固件）；或 1B 仅 ACK
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen >= 4) {
+            const uint32_t cap = static_cast<uint32_t>(mainValue[0])
+                               | (static_cast<uint32_t>(mainValue[1]) << 8)
+                               | (static_cast<uint32_t>(mainValue[2]) << 16)
+                               | (static_cast<uint32_t>(mainValue[3]) << 24);
+            qInfo() << "FCTP 按键电容读取 capacitance_u32=" << cap << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 按键电容读取 value=%1 raw=%2").arg(cap).arg(rawHex));
+        } else {
+            qWarning() << "FCTP 按键电容读取 长度异常 len=" << mainLen << "raw=" << rawHex;
+        }
+    } else if (req.kind == RequestKind::LightCalibRead && mainValue != nullptr) {
+        // 光感校准读取：常见 4B uint32 LE；或 1B ACK
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen >= 4) {
+            const uint32_t cal = static_cast<uint32_t>(mainValue[0])
+                               | (static_cast<uint32_t>(mainValue[1]) << 8)
+                               | (static_cast<uint32_t>(mainValue[2]) << 16)
+                               | (static_cast<uint32_t>(mainValue[3]) << 24);
+            qInfo() << "FCTP 光感校准读取 calib_u32=" << cal << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感校准读取 value=%1 raw=%2").arg(cal).arg(rawHex));
+        } else {
+            qWarning() << "FCTP 光感校准读取 长度异常 len=" << mainLen << "raw=" << rawHex;
+        }
+    } else if (req.kind == RequestKind::LcdBacklightSet && mainValue != nullptr) {
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen == 1) {
+            const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+            const QString ackText = (ack == 1) ? "成功" : "失败";
+            qInfo() << "FCTP LCD背光控制应答 响应结果=" << ackText << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP LCD背光控制应答 响应结果=%1 raw=%2").arg(ackText).arg(rawHex));
+        } else {
+            qInfo() << "FCTP LCD背光控制应答 len=" << mainLen << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP LCD背光控制应答 raw=%1").arg(rawHex));
+        }
+    } else if (req.kind == RequestKind::LightReportControl && mainValue != nullptr) {
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen == 1) {
+            const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+            const QString ackText = (ack == 1) ? "成功" : "失败";
+            qInfo() << "FCTP 光感上报控制应答 响应结果=" << ackText << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感上报控制应答 响应结果=%1 raw=%2").arg(ackText).arg(rawHex));
+        } else {
+            qInfo() << "FCTP 光感上报控制应答 len=" << mainLen << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感上报控制应答 raw=%1").arg(rawHex));
+        }
+    } else if (req.kind == RequestKind::LightCalibWrite && mainValue != nullptr) {
+        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen >= 4) {
+            const uint32_t v = static_cast<uint32_t>(mainValue[0])
+                             | (static_cast<uint32_t>(mainValue[1]) << 8)
+                             | (static_cast<uint32_t>(mainValue[2]) << 16)
+                             | (static_cast<uint32_t>(mainValue[3]) << 24);
+            qInfo() << "FCTP 光感校准写入应答 value_u32=" << v << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感校准写入应答 value=%1 raw=%2").arg(v).arg(rawHex));
+        } else {
+            qInfo() << "FCTP 光感校准写入应答 len=" << mainLen << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感校准写入应答 raw=%1").arg(rawHex));
+        }
+    } else if (req.kind == RequestKind::ChargeCurrentGet && mainValue != nullptr) {
+        // 兼容两类回包：
+        // 1) len=1 仅返回业务ACK（常见值 1）
+        // 2) len>=4 返回 uint32 小端充电电流（mA）
+        if (mainLen >= 4) {
+            const uint32_t chargeCurrentMa = static_cast<uint32_t>(mainValue[0])
+                                           | (static_cast<uint32_t>(mainValue[1]) << 8)
+                                           | (static_cast<uint32_t>(mainValue[2]) << 16)
+                                           | (static_cast<uint32_t>(mainValue[3]) << 24);
+            qWarning() << "FCTP ChargeCurrentGet 命中(4B)";
+            qInfo() << "FCTP 充电电流值 current_mA=" << chargeCurrentMa;
+            const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+            emit send_pb_date(QString("FCTP 充电电流读取 current_mA=%1 raw=%2").arg(chargeCurrentMa).arg(rawHex));
+        } else {
+            qWarning() << "FCTP ChargeCurrentGet 长度异常 len=" << mainLen;
+        }
     }
 }
 
@@ -450,7 +537,29 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
                     << "id=" << encoderId
                     << "raw=" << raw.toHex(' ');
         } else if (serviceId == kAlgoService && type == 0x0006 && len > 0) {
-            qInfo() << "FCTP 光感上报数据:" << QByteArray(reinterpret_cast<const char *>(value), len).toHex(' ');
+            // 协议 8.2.31：光感数据上报（NOTIFY，Algo Service TLV 0x0006）
+            const QByteArray raw(reinterpret_cast<const char *>(value), static_cast<int>(len));
+            const QString rawHex = raw.toHex(' ').toUpper();
+            if (len >= 4) {
+                const uint32_t v0 = static_cast<uint32_t>(value[0])
+                                  | (static_cast<uint32_t>(value[1]) << 8)
+                                  | (static_cast<uint32_t>(value[2]) << 16)
+                                  | (static_cast<uint32_t>(value[3]) << 24);
+                if (len >= 8) {
+                    const uint32_t v1 = static_cast<uint32_t>(value[4])
+                                      | (static_cast<uint32_t>(value[5]) << 8)
+                                      | (static_cast<uint32_t>(value[6]) << 16)
+                                      | (static_cast<uint32_t>(value[7]) << 24);
+                    qInfo() << "FCTP 光感上报" << "field0_u32=" << v0 << "field1_u32=" << v1 << "raw=" << rawHex;
+                    emit send_pb_date(QString("FCTP 光感上报 field0=%1 field1=%2 raw=%3").arg(v0).arg(v1).arg(rawHex));
+                } else {
+                    qInfo() << "FCTP 光感上报" << "value_u32=" << v0 << "raw=" << rawHex;
+                    emit send_pb_date(QString("FCTP 光感上报 value=%1 raw=%2").arg(v0).arg(rawHex));
+                }
+            } else {
+                qInfo() << "FCTP 光感上报(短包) raw=" << rawHex;
+                emit send_pb_date(QString("FCTP 光感上报 raw=%1").arg(rawHex));
+            }
         } else {
             qDebug() << "FCTP NOTIFY" << "service=" << serviceId << "type=" << type << "len=" << len;
         }
