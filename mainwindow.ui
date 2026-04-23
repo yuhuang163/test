@@ -1499,7 +1499,7 @@
                      <item>
                       <widget class="QLabel" name="label_custom_service">
                        <property name="text">
-                        <string>serviceId</string>
+                        <string>Service ID</string>
                        </property>
                       </widget>
                      </item>
@@ -1513,7 +1513,7 @@
                      <item>
                       <widget class="QLabel" name="label_custom_tlv">
                        <property name="text">
-                        <string>tlvType</string>
+                        <string>TLV Type</string>
                        </property>
                       </widget>
                      </item>
@@ -1527,12 +1527,15 @@
                      <item>
                       <widget class="QLabel" name="label_custom_value">
                        <property name="text">
-                        <string>value(hex)</string>
+                        <string>TLV Value</string>
                        </property>
                       </widget>
                      </item>
                      <item>
                       <widget class="QLineEdit" name="custom_value_hex">
+                       <property name="text">
+                        <string>01</string>
+                       </property>
                        <property name="placeholderText">
                         <string>01 02 0A FF</string>
                        </property>
