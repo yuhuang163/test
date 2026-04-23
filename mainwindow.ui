@@ -5178,7 +5178,7 @@ border-color: rgb(255, 165, 0)</string>
                 <string/>
                </property>
                <property name="text">
-                <string>12:34:56:c2:9b:aa</string>
+                <string>12:34:56:c2:9b:a9</string>
                </property>
                <property name="placeholderText">
                 <string>切换英文输入再扫码</string>

@@ -88,6 +88,10 @@ static constexpr uint8_t kPhyChannelMain = 3;
 static constexpr uint16_t kTestsService = COMM_PROTOCOL_TESTS_SERVICE;
 static constexpr uint16_t kSystemConfigService = COMM_PROTOCOL_SYSTEM_CONFIG_SERVICE;
 static constexpr uint16_t kAlgoService = COMM_PROTOCOL_ALGO_SERVICE;
+static uint32_t qfctpMakeResponseKey(uint16_t serviceId, uint16_t tlvType)
+{
+    return (static_cast<uint32_t>(serviceId) << 16) | static_cast<uint32_t>(tlvType);
+}
 
 // TESTS SERVICE TLV
 static constexpr uint16_t kTlvFactoryMode = 0x0001;
@@ -141,6 +145,7 @@ void qfctp_on_full_frame(const uint8_t *frame_data, uint16_t frame_len, void *us
 Qfctp::Qfctp(QSerialPort* parent) : QSerialPort(parent)
 {
     serialPort = parent;
+    registerResponseHandlers();
 }
 
 bool Qfctp::sendCustomMessage(const QVariantMap &map)
@@ -184,8 +189,7 @@ bool Qfctp::sendCustomMessage(const QVariantMap &map)
 
     const QString action = map.value("actionName").toString().trimmed();
     const QByteArray actionUtf8 = action.isEmpty() ? QByteArray("上层自定义消息") : action.toUtf8();
-    return sendRequest(RequestKind::Unknown,
-                       static_cast<uint16_t>(serviceInt),
+    return sendRequest(static_cast<uint16_t>(serviceInt),
                        static_cast<uint16_t>(tlvInt),
                        value,
                        actionUtf8.constData());
@@ -201,22 +205,18 @@ void Qfctp::handleFullFrame(const uint8_t *frameData, uint16_t frameLen)
         qWarning() << "FCTP 帧反序列化失败:" << rc;
         return;
     }
-    qDebug() << "FCTP 帧 seq" << frame.seq << "type" << frame.frame_type
-             << "payload" << frame.payload_length << "services"
-             << frame.payload.service_count
-             << "inner_raw=" << frameRaw.toHex(' ');
 
     for (uint16_t i = 0; i < frame.payload.service_count && i < COMM_PROTOCOL_MAX_SERVICE_NUM; ++i) {
         const comm_protocol_service_node_t &svc = frame.payload.services[i];
         if (frame.frame_type == COMM_PROTOCOL_FRAME_TYPE_RESPONSE) {
-            handleResponseService(frame.seq, svc.svr_id, svc.tlvs, svc.srv_length);
+            handleResponseService(frame.seq, svc.svr_id, svc.tlvs, svc.srv_length, frameRaw);
         } else if (frame.frame_type == COMM_PROTOCOL_FRAME_TYPE_NOTIFY) {
             handleNotifyService(svc.svr_id, svc.tlvs, svc.srv_length);
         }
     }
 }
 
-void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen)
+void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen, const QByteArray &frameRaw)
 {
     const QByteArray serviceRaw = (tlvs != nullptr && serviceLen > 0)
                                       ? QByteArray(reinterpret_cast<const char *>(tlvs), static_cast<int>(serviceLen))
@@ -249,11 +249,20 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
     }
 
     PendingRequest req = m_pendingRequests.take(seq);
-    if (req.kind == RequestKind::Unknown) {
+    if (req.serviceId == 0 || req.tlvType == 0) {
         req.serviceId = serviceId;
         req.tlvType = mainType;
+    }
+    if (req.actionName.isEmpty()) {
         req.actionName = "未知请求";
     }
+
+    const QByteArray actionUtf8 = req.actionName.toUtf8();
+    qDebug() << "FCTP RX:" << actionUtf8.constData()
+             << "seq=" << static_cast<int>(seq)
+             << "service=" << serviceId
+             << "tlv_type=" << mainType
+             << "inner=" << frameRaw.toHex(' ').toUpper();
 
     int mainValueAsInt = 0;
     bool hasMainValueAsInt = false;
@@ -267,40 +276,80 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
         }
     }
 
-    qDebug() << "FCTP 响应"
-             << "seq=" << static_cast<int>(seq)
-             << "service=" << serviceId
-             << "tlv=" << mainType
-             << "len=" << mainLen
-             << "err=" << (hasErrCode ? QString::number(errCode) : "-")
-             << "service_raw=" << serviceRaw.toHex(' ')
-             << "tlv_raw="
-             << ((mainValue != nullptr && mainLen > 0)
-                     ? QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ')
-                     : QByteArray("-"));
     handleRequestResult(seq, req, mainValueAsInt, hasMainValueAsInt, errCode, hasErrCode);
+    handleResponseByType(req, mainValue, mainLen);
+}
 
-    if (req.kind == RequestKind::SnRead && mainValue != nullptr && mainLen > 0) {
+void Qfctp::registerResponseHandlers()
+{
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSnRead), &Qfctp::handleRspSnRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTupleRead), &Qfctp::handleRspTupleRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvAgingStatus), &Qfctp::handleRspAgingStatus);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvDeviceException), &Qfctp::handleRspDeviceException);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTrimGet), &Qfctp::handleRspTrimGet);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvFactoryDoneRead), &Qfctp::handleRspFactoryDoneRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvRssiRead), &Qfctp::handleRspRssiRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSensorState), &Qfctp::handleRspSensorState);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvBatteryRead), &Qfctp::handleRspBatteryRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvKeySignalRead), &Qfctp::handleRspKeySignalRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibRead), &Qfctp::handleRspLightCalibRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLcdBacklight), &Qfctp::handleRspLcdBacklight);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightReportCtrl), &Qfctp::handleRspLightReportCtrl);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibWrite), &Qfctp::handleRspLightCalibWrite);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvChargeCurrentRead), &Qfctp::handleRspChargeCurrentRead);
+
+    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvFwVersionRead), &Qfctp::handleRspFwVersionRead);
+    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvMacRead), &Qfctp::handleRspMacRead);
+
+
+}
+
+void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen)
+{
+    const auto it = m_responseHandlers.constFind(qfctpMakeResponseKey(req.serviceId, req.tlvType));
+    if (it != m_responseHandlers.constEnd()) {
+        (this->*(it.value()))(mainValue, mainLen);
+    }
+}
+
+bool Qfctp::isDataResponse(uint16_t serviceId, uint16_t tlvType) const
+{
+    return m_responseHandlers.contains(qfctpMakeResponseKey(serviceId, tlvType));
+}
+
+void Qfctp::handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen > 0) {
         qInfo() << "FCTP SN读取:" << QByteArray(reinterpret_cast<const char *>(mainValue), mainLen);
-    } else if (req.kind == RequestKind::TupleRead && mainValue != nullptr && mainLen >= 38) {
+    }
+}
+
+void Qfctp::handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 38) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), mainLen);
         const QString prod = QString::fromLatin1(raw.left(6)).trimmed();
         const QString dev = QString::fromLatin1(raw.mid(6, 16)).trimmed();
         const QString key = QString::fromLatin1(raw.mid(22, 16)).trimmed();
-        qInfo() << "FCTP 三元组读取 prod=" << prod
-                << "dev=" << dev
-                << "key=" << key;
-    } else if ((req.kind == RequestKind::AgingStatusGet) && mainValue != nullptr && mainLen >= 7) {
+        qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key;
+    }
+}
+
+void Qfctp::handleRspAgingStatus(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 7) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
         const uint8_t status = mainValue[0];
         const uint16_t loops = qfctpReadLe16(mainValue + 1);
-        const uint32_t seconds = static_cast<uint32_t>(mainValue[3])
-                               | (static_cast<uint32_t>(mainValue[4]) << 8)
-                               | (static_cast<uint32_t>(mainValue[5]) << 16)
-                               | (static_cast<uint32_t>(mainValue[6]) << 24);
-        qInfo() << "FCTP 老化状态 raw=" << raw.toHex(' ')
-                << "老化结果=" << status << "循环次数=" << loops << "已经老化时间=" << seconds;
-    } else if ((req.kind == RequestKind::DeviceExceptionGet) && mainValue != nullptr && mainLen >= 1) {
+        const uint32_t seconds = static_cast<uint32_t>(mainValue[3]) | (static_cast<uint32_t>(mainValue[4]) << 8)
+                               | (static_cast<uint32_t>(mainValue[5]) << 16) | (static_cast<uint32_t>(mainValue[6]) << 24);
+        qInfo() << "FCTP 老化状态 raw=" << raw.toHex(' ') << "老化结果=" << status << "循环次数=" << loops << "已经老化时间=" << seconds;
+    }
+}
+
+void Qfctp::handleRspDeviceException(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 1) {
         const uint8_t status = mainValue[0];
         QString statusText = "未知";
         switch (status) {
@@ -314,41 +363,49 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
                 << "status=0x" + QString::number(status, 16).toUpper().rightJustified(2, '0')
                 << "(" << statusText << ")"
                 << "raw=" << QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
-    } else if ((req.kind == RequestKind::TrimGet) && mainValue != nullptr && mainLen >= 4) {
-        const uint32_t trim = static_cast<uint32_t>(mainValue[0])
-                            | (static_cast<uint32_t>(mainValue[1]) << 8)
-                            | (static_cast<uint32_t>(mainValue[2]) << 16)
-                            | (static_cast<uint32_t>(mainValue[3]) << 24);
+    }
+}
+
+void Qfctp::handleRspTrimGet(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 4) {
+        const uint32_t trim = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                            | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
         const QString trimHex = "0x" + QString::number(trim, 16).toUpper().rightJustified(8, '0');
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
-        qInfo() << "FCTP Trim读取"
-                << "trim=" << trim
-                << "(" << trimHex << ")"
-                << "raw=" << rawHex;
+        qInfo() << "FCTP Trim读取" << "trim=" << trim << "(" << trimHex << ")" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP Trim读取 trim=%1(%2) raw=%3").arg(QString::number(trim), trimHex, rawHex));
-    } else if ((req.kind == RequestKind::FactoryDoneRead) && mainValue != nullptr && mainLen >= 1) {
+    }
+}
+
+void Qfctp::handleRspFactoryDoneRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 1) {
         const uint8_t done = mainValue[0];
         const QString doneText = (done == 0x01) ? "产测完成" : "产测未完成";
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         qInfo() << "FCTP 产测完成标识"
                 << "value=0x" + QString::number(done, 16).toUpper().rightJustified(2, '0')
-                << "(" << doneText << ")"
-                << "raw=" << rawHex;
+                << "(" << doneText << ")" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP 产测完成标识 value=0x%1(%2) raw=%3")
-                              .arg(QString::number(done, 16).toUpper().rightJustified(2, '0'),
-                                   doneText,
-                                   rawHex));
-    } else if ((req.kind == RequestKind::RssiGet) && mainValue != nullptr && mainLen >= 4) {
-        const int32_t rssi = static_cast<int32_t>(static_cast<uint32_t>(mainValue[0])
-                                                  | (static_cast<uint32_t>(mainValue[1]) << 8)
-                                                  | (static_cast<uint32_t>(mainValue[2]) << 16)
-                                                  | (static_cast<uint32_t>(mainValue[3]) << 24));
+                              .arg(QString::number(done, 16).toUpper().rightJustified(2, '0'), doneText, rawHex));
+    }
+}
+
+void Qfctp::handleRspRssiRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 4) {
+        const int32_t rssi = static_cast<int32_t>(static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                                                  | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24));
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
-        qInfo() << "FCTP RSSI读取"
-                << "rssi=" << rssi << "dBm"
-                << "raw=" << rawHex;
+        qInfo() << "FCTP RSSI读取" << "rssi=" << rssi << "dBm" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP RSSI读取 rssi=%1 dBm raw=%2").arg(rssi).arg(rawHex));
-    } else if ((req.kind == RequestKind::SensorStateGet) && mainValue != nullptr && mainLen >= 5) {
+    }
+}
+
+void Qfctp::handleRspSensorState(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen >= 5) {
         const auto stateText = [](uint8_t v) { return v == 0x01 ? "成功" : "失败"; };
         const uint8_t press0 = mainValue[0];
         const uint8_t press1 = mainValue[1];
@@ -364,25 +421,19 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
                 << "batteryIc=" << QString("0x%1(%2)").arg(QString::number(battIc, 16).toUpper().rightJustified(2, '0'), stateText(battIc))
                 << "touchIc=" << QString("0x%1(%2)").arg(QString::number(touchIc, 16).toUpper().rightJustified(2, '0'), stateText(touchIc))
                 << "ledIc=" << QString("0x%1(%2)").arg(QString::number(ledIc, 16).toUpper().rightJustified(2, '0'), stateText(ledIc))
-                << "pdIc=" << (hasPdIc
-                                   ? QString("0x%1(%2)").arg(QString::number(pdIc, 16).toUpper().rightJustified(2, '0'), stateText(pdIc))
-                                   : QString("未上报"))
+                << "pdIc=" << (hasPdIc ? QString("0x%1(%2)").arg(QString::number(pdIc, 16).toUpper().rightJustified(2, '0'), stateText(pdIc)) : QString("未上报"))
                 << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP 外设sensor状态 press0=%1 press1=%2 batteryIc=%3 touchIc=%4 ledIc=%5 pdIc=%6 raw=%7")
-                              .arg(stateText(press0))
-                              .arg(stateText(press1))
-                              .arg(stateText(battIc))
-                              .arg(stateText(touchIc))
-                              .arg(stateText(ledIc))
-                              .arg(hasPdIc ? stateText(pdIc) : "未上报")
-                              .arg(rawHex));
-        emit send_periph_sensor_state(static_cast<int>(press0),
-                                      static_cast<int>(press1),
-                                      static_cast<int>(battIc),
-                                      static_cast<int>(touchIc),
-                                      static_cast<int>(ledIc),
-                                      hasPdIc ? static_cast<int>(pdIc) : -1);
-    } else if ((req.kind == RequestKind::FwVersionGet) && mainValue != nullptr && mainLen > 0) {
+                              .arg(stateText(press0)).arg(stateText(press1)).arg(stateText(battIc)).arg(stateText(touchIc))
+                              .arg(stateText(ledIc)).arg(hasPdIc ? stateText(pdIc) : "未上报").arg(rawHex));
+        emit send_periph_sensor_state(static_cast<int>(press0), static_cast<int>(press1), static_cast<int>(battIc),
+                                      static_cast<int>(touchIc), static_cast<int>(ledIc), hasPdIc ? static_cast<int>(pdIc) : -1);
+    }
+}
+
+void Qfctp::handleRspFwVersionRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen > 0) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
         const QString hex = raw.toHex(' ').toUpper();
         const QString ascii = QString::fromLatin1(raw).trimmed();
@@ -392,13 +443,15 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
             versionParts << QString::number(static_cast<uint8_t>(byte));
         }
         const QString versionText = versionParts.join(".");
-        qInfo() << "FCTP 固件版本"
-                << "raw=" << hex
-                << "ascii=" << ascii
-                << "version=" << versionText;
+        qInfo() << "FCTP 固件版本" << "raw=" << hex << "ascii=" << ascii << "version=" << versionText;
         emit send_pb_date(QString("FCTP 固件版本 raw=%1").arg(hex));
         emit send_fw_version(versionText);
-    } else if ((req.kind == RequestKind::MacRead) && mainValue != nullptr && mainLen > 0) {
+    }
+}
+
+void Qfctp::handleRspMacRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr && mainLen > 0) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen));
         const QString hex = raw.toHex(' ').toUpper();
         QString macText;
@@ -411,12 +464,14 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
         } else {
             macText = QString::fromLatin1(raw).trimmed();
         }
-        qInfo() << "FCTP MAC读取"
-                << "raw=" << hex
-                << "mac=" << macText;
+        qInfo() << "FCTP MAC读取" << "raw=" << hex << "mac=" << macText;
         emit send_pb_date(QString("FCTP MAC读取 raw=%1 mac=%2").arg(hex, macText));
-    } else if (req.kind == RequestKind::BatteryGet && mainValue != nullptr) {
-        // 兼容：1B ACK/电量编码；2B uint16 LE；4B uint32 LE（依固件定义，常见为百分比或原始值）
+    }
+}
+
+void Qfctp::handleRspBatteryRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen == 1) {
             const int b = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
@@ -425,33 +480,42 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
         } else {
             qWarning() << "FCTP 电池电量读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
-    } else if (req.kind == RequestKind::KeySignalGet && mainValue != nullptr) {
-        // 按键电容：常见为 4B uint32 LE（原始计数值/fF 等，依固件）；或 1B 仅 ACK
+    }
+}
+
+void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen >= 4) {
-            const uint32_t cap = static_cast<uint32_t>(mainValue[0])
-                               | (static_cast<uint32_t>(mainValue[1]) << 8)
-                               | (static_cast<uint32_t>(mainValue[2]) << 16)
-                               | (static_cast<uint32_t>(mainValue[3]) << 24);
+            const uint32_t cap = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                               | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 按键电容读取 capacitance_u32=" << cap << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 按键电容读取 value=%1 raw=%2").arg(cap).arg(rawHex));
         } else {
             qWarning() << "FCTP 按键电容读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
-    } else if (req.kind == RequestKind::LightCalibRead && mainValue != nullptr) {
-        // 光感校准读取：常见 4B uint32 LE；或 1B ACK
+    }
+}
+
+void Qfctp::handleRspLightCalibRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen >= 4) {
-            const uint32_t cal = static_cast<uint32_t>(mainValue[0])
-                               | (static_cast<uint32_t>(mainValue[1]) << 8)
-                               | (static_cast<uint32_t>(mainValue[2]) << 16)
-                               | (static_cast<uint32_t>(mainValue[3]) << 24);
+            const uint32_t cal = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                               | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准读取 calib_u32=" << cal << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准读取 value=%1 raw=%2").arg(cal).arg(rawHex));
         } else {
             qWarning() << "FCTP 光感校准读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
-    } else if (req.kind == RequestKind::LcdBacklightSet && mainValue != nullptr) {
+    }
+}
+
+void Qfctp::handleRspLcdBacklight(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen == 1) {
             const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
@@ -462,7 +526,12 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
             qInfo() << "FCTP LCD背光控制应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP LCD背光控制应答 raw=%1").arg(rawHex));
         }
-    } else if (req.kind == RequestKind::LightReportControl && mainValue != nullptr) {
+    }
+}
+
+void Qfctp::handleRspLightReportCtrl(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen == 1) {
             const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
@@ -473,29 +542,31 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
             qInfo() << "FCTP 光感上报控制应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感上报控制应答 raw=%1").arg(rawHex));
         }
-    } else if (req.kind == RequestKind::LightCalibWrite && mainValue != nullptr) {
+    }
+}
+
+void Qfctp::handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen >= 4) {
-            const uint32_t v = static_cast<uint32_t>(mainValue[0])
-                             | (static_cast<uint32_t>(mainValue[1]) << 8)
-                             | (static_cast<uint32_t>(mainValue[2]) << 16)
-                             | (static_cast<uint32_t>(mainValue[3]) << 24);
+            const uint32_t v = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                             | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准写入应答 value_u32=" << v << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准写入应答 value=%1 raw=%2").arg(v).arg(rawHex));
         } else {
             qInfo() << "FCTP 光感校准写入应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准写入应答 raw=%1").arg(rawHex));
         }
-    } else if (req.kind == RequestKind::ChargeCurrentGet && mainValue != nullptr) {
-        // 兼容两类回包：
-        // 1) len=1 仅返回业务ACK（常见值 1）
-        // 2) len>=4 返回 uint32 小端充电电流（mA）
+    }
+}
+
+void Qfctp::handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLen)
+{
+    if (mainValue != nullptr) {
         if (mainLen >= 4) {
-            const uint32_t chargeCurrentMa = static_cast<uint32_t>(mainValue[0])
-                                           | (static_cast<uint32_t>(mainValue[1]) << 8)
-                                           | (static_cast<uint32_t>(mainValue[2]) << 16)
-                                           | (static_cast<uint32_t>(mainValue[3]) << 24);
-            qWarning() << "FCTP ChargeCurrentGet 命中(4B)";
+            const uint32_t chargeCurrentMa = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
+                                           | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 充电电流值 current_mA=" << chargeCurrentMa;
             const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
             emit send_pb_date(QString("FCTP 充电电流读取 current_mA=%1 raw=%2").arg(chargeCurrentMa).arg(rawHex));
@@ -569,37 +640,20 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
 
 void Qfctp::handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode)
 {
-    const auto isQueryKind = [&](RequestKind kind) {
-        switch (kind) {
-        case RequestKind::AgingStatusGet:
-        case RequestKind::SnRead:
-        case RequestKind::TupleRead:
-        case RequestKind::TrimGet:
-        case RequestKind::FactoryDoneRead:
-        case RequestKind::DeviceExceptionGet:
-        case RequestKind::SensorStateGet:
-        case RequestKind::RssiGet:
-        case RequestKind::BatteryGet:
-        case RequestKind::KeySignalGet:
-        case RequestKind::ChargeCurrentGet:
-        case RequestKind::FwVersionGet:
-        case RequestKind::MacRead:
-        case RequestKind::LightCalibRead:
-            return true;
-        default:
-            return false;
-        }
-    };
-
+    const bool queryResponse = isDataResponse(req.serviceId, req.tlvType);
     const bool errOk = hasErrCode && (errCode == 0u);
-    const bool bizOk = isQueryKind(req.kind) ? true : (!hasMainValue || (mainValue == 1));
+    const bool bizOk = queryResponse ? true : (!hasMainValue || (mainValue == 1));
     const bool ok = errOk && bizOk;
-    qInfo() << "FCTP 应答判定"
-            << req.actionName
+    const QString bizText = hasMainValue ? QString::number(mainValue) : "N/A";
+    const QString errText = hasErrCode ? QString::number(errCode) : "N/A";
+    const QByteArray actionUtf8 = req.actionName.toUtf8();
+    qInfo() << "FCTP SOLVE:"
+            << actionUtf8.constData()
             << "seq=" << static_cast<int>(seq)
-            << "biz=" << (hasMainValue ? QString::number(mainValue) : "-")
-            << "err=" << (hasErrCode ? QString::number(errCode) : "-")
-            << (ok ? "成功" : "失败/不完整");
+            << "query=" << (queryResponse ? 1 : 0)
+            << "业务值=" << bizText
+            << "错误码=" << errText
+            << "result=" << (ok ? "PASS" : "FAIL");
 }
 
 QByteArray Qfctp::wrapPhyPacket(const QByteArray &innerPacket) const
@@ -763,31 +817,32 @@ bool Qfctp::sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray valu
         return false;
     }
 
-    qDebug() << "FCTP 已发送" << actionName
-             << "seq=" << static_cast<int>(m_fctpSeq)
+
+
+    qDebug() << "FCTP TX:" << actionName
+             << "seq=" << static_cast<int>(seq)
              << "service=" << serviceId
-             << "tlv=" << tlvType
+             << "tlv_type=" << tlvType
              << "inner=" << pkt.toHex(' ').toUpper();
-             //<< "outer=" << phyPacket.toHex(' ');
+             //<< "outer=" << phyPacket.toHex(' ').toUpper();
     if (outSeq != nullptr) {
         *outSeq = seq;
     }
     return true;
 }
 
-bool Qfctp::sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char *actionName, RequestKind kind)
+bool Qfctp::sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char *actionName)
 {
-    return sendRequest(kind, kTestsService, tlvType, value, actionName);
+    return sendRequest(kTestsService, tlvType, value, actionName);
 }
 
-bool Qfctp::sendRequest(RequestKind kind, uint16_t serviceId, uint16_t tlvType, const QByteArray &value, const char *actionName)
+bool Qfctp::sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray &value, const char *actionName)
 {
     uint8_t seq = 0;
     if (!sendServiceTlv(serviceId, tlvType, value, actionName, &seq)) {
         return false;
     }
     PendingRequest req{};
-    req.kind = kind;
     req.serviceId = serviceId;
     req.tlvType = tlvType;
     req.actionName = QString::fromUtf8(actionName);
@@ -799,7 +854,7 @@ void Qfctp::sendFactoryTestMode(bool enter)
 {
     const uint8_t v = enter ? 1u : 0u;
     const QByteArray value(reinterpret_cast<const char *>(&v), 1);
-    sendTestsServiceTlv(kTlvFactoryMode, value, enter ? "产测模式进入" : "产测模式退出", RequestKind::FactoryMode);
+    sendTestsServiceTlv(kTlvFactoryMode, value, enter ? "产测模式进入" : "产测模式退出");
 }
 
 bool Qfctp::handleSetSn(const QVariant &data)
@@ -808,15 +863,15 @@ bool Qfctp::handleSetSn(const QVariant &data)
         const DeviceSnPayload payload = data.value<DeviceSnPayload>();
         switch (payload.which_sn) {
         case FacDevInfoType_SKUID:
-            return sendTestsServiceTlv(kTlvProductIdWrite, payload.sn, "写产品ID", RequestKind::TupleWriteProductId);
+            return sendTestsServiceTlv(kTlvProductIdWrite, payload.sn, "写产品ID");
         case FacDevInfoType_SUB_PID:
-            return sendTestsServiceTlv(kTlvDeviceIdWrite, payload.sn, "写入设备id", RequestKind::TupleWriteDeviceId);
+            return sendTestsServiceTlv(kTlvDeviceIdWrite, payload.sn, "写入设备id");
         case FacDevInfoType_BOARD_SN:
             qWarning() << "Qfctp BOARD_SN 使用SN通道兼容写入";
-            return sendTestsServiceTlv(kTlvSnWrite, payload.sn, "写BOARD_SN", RequestKind::SnWrite);
+            return sendTestsServiceTlv(kTlvSnWrite, payload.sn, "写BOARD_SN");
         case FacDevInfoType_TAIL_SN:
         default:
-            return sendTestsServiceTlv(kTlvSnWrite, payload.sn, "写SN", RequestKind::SnWrite);
+            return sendTestsServiceTlv(kTlvSnWrite, payload.sn, "写SN");
         }
     }
 
@@ -825,16 +880,16 @@ bool Qfctp::handleSetSn(const QVariant &data)
         const auto which = static_cast<FacDevInfoType>(list.at(0).toInt());
         const QByteArray sn = list.at(1).toByteArray();
         if (which == FacDevInfoType_SUB_PID) {
-            return sendTestsServiceTlv(kTlvProductIdWrite, sn, "写SUB_PID", RequestKind::TupleWriteProductId);
+            return sendTestsServiceTlv(kTlvProductIdWrite, sn, "写SUB_PID");
         }
         if (which == FacDevInfoType_SKUID) {
-            return sendTestsServiceTlv(kTlvDeviceIdWrite, sn, "写SKUID", RequestKind::TupleWriteDeviceId);
+            return sendTestsServiceTlv(kTlvDeviceIdWrite, sn, "写SKUID");
         }
         if (which == FacDevInfoType_BOARD_SN) {
             qWarning() << "Qfctp BOARD_SN 使用SN通道兼容写入";
-            return sendTestsServiceTlv(kTlvSnWrite, sn, "写BOARD_SN", RequestKind::SnWrite);
+            return sendTestsServiceTlv(kTlvSnWrite, sn, "写BOARD_SN");
         }
-        return sendTestsServiceTlv(kTlvSnWrite, sn, "写SN", RequestKind::SnWrite);
+        return sendTestsServiceTlv(kTlvSnWrite, sn, "写SN");
     }
 
     QByteArray value = data.toByteArray();
@@ -846,7 +901,7 @@ bool Qfctp::handleSetSn(const QVariant &data)
         qWarning() << "Qfctp SN写入参数为空";
         return false;
     }
-    return sendTestsServiceTlv(kTlvSnWrite, value, "写SN", RequestKind::SnWrite);
+    return sendTestsServiceTlv(kTlvSnWrite, value, "写SN");
 }
 
 bool Qfctp::setCaseAgingMode(const QVariantMap &map)
@@ -863,53 +918,53 @@ bool Qfctp::setCaseAgingMode(const QVariantMap &map)
     value.append(static_cast<char>((sec >> 8) & 0xFF));
     value.append(static_cast<char>((sec >> 16) & 0xFF));
     value.append(static_cast<char>((sec >> 24) & 0xFF));
-    return sendTestsServiceTlv(kTlvAgingModeSet, value, "老化模式设置", RequestKind::BurningMode);
+    return sendTestsServiceTlv(kTlvAgingModeSet, value, "老化模式设置");
 }
 
 bool Qfctp::setCaseAgingExit()
 {
-    return sendTestsServiceTlv(kTlvAgingModeExit, {}, "老化模式退出", RequestKind::AgingModeExit);
+    return sendTestsServiceTlv(kTlvAgingModeExit, {}, "老化模式退出");
 }
 
 bool Qfctp::setCaseSuctionMode(const QVariantMap &map)
 {
     const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvSuctionMode, QByteArray(1, static_cast<char>(v)), "吸力测试模式", RequestKind::SuctionMode);
+    return sendTestsServiceTlv(kTlvSuctionMode, QByteArray(1, static_cast<char>(v)), "吸力测试模式");
 }
 
 bool Qfctp::setCaseBtSignalMode(const QVariantMap &map)
 {
     const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvBtSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙信令测试模式", RequestKind::BtSignalMode);
+    return sendTestsServiceTlv(kTlvBtSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙信令测试模式");
 }
 
 bool Qfctp::setCaseBtNoSignalMode(const QVariantMap &map)
 {
     const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvBtNoSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙非信令测试模式", RequestKind::BtNoSignalMode);
+    return sendTestsServiceTlv(kTlvBtNoSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙非信令测试模式");
 }
 
 bool Qfctp::setCaseBtFreqMode(const QVariantMap &map)
 {
     const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvBtFreqMode, QByteArray(1, static_cast<char>(v)), "蓝牙校频测试模式", RequestKind::BtFreqMode);
+    return sendTestsServiceTlv(kTlvBtFreqMode, QByteArray(1, static_cast<char>(v)), "蓝牙校频测试模式");
 }
 
 bool Qfctp::setCaseStandbyMode(const QVariantMap &map)
 {
     const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvStandbyMode, QByteArray(1, static_cast<char>(v)), "待机模式", RequestKind::StandbyMode);
+    return sendTestsServiceTlv(kTlvStandbyMode, QByteArray(1, static_cast<char>(v)), "待机模式");
 }
 
 bool Qfctp::setCaseWriteKey(const QVariantMap &map)
 {
-    return sendTestsServiceTlv(kTlvKeyWrite, map.value("value").toByteArray(), "写密钥", RequestKind::TupleWriteKey);
+    return sendTestsServiceTlv(kTlvKeyWrite, map.value("value").toByteArray(), "写密钥");
 }
 
 bool Qfctp::setCaseFactoryDoneWrite(const QVariantMap &map)
 {
     const uint8_t v = map.value("done").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvFactoryDoneWrite, QByteArray(1, static_cast<char>(v)), "写产测完成标识", RequestKind::FactoryDoneWrite);
+    return sendTestsServiceTlv(kTlvFactoryDoneWrite, QByteArray(1, static_cast<char>(v)), "写产测完成标识");
 }
 
 bool Qfctp::setCaseTrimSet(const QVariantMap &map)
@@ -920,46 +975,46 @@ bool Qfctp::setCaseTrimSet(const QVariantMap &map)
     value.append(static_cast<char>((trim >> 8) & 0xFF));
     value.append(static_cast<char>((trim >> 16) & 0xFF));
     value.append(static_cast<char>((trim >> 24) & 0xFF));
-    return sendTestsServiceTlv(kTlvTrimSet, value, "写trim", RequestKind::TrimSet);
+    return sendTestsServiceTlv(kTlvTrimSet, value, "写trim");
 }
 
 bool Qfctp::setCaseMacWrite(const QVariantMap &map)
 {
-    return sendRequest(RequestKind::MacWrite, kSystemConfigService, kTlvMacWrite, map.value("value").toByteArray(), "写MAC");
+    return sendRequest(kSystemConfigService, kTlvMacWrite, map.value("value").toByteArray(), "写MAC");
 }
 
 bool Qfctp::setCaseNightLightSet(const QVariantMap &map)
 {
     const uint8_t v = static_cast<uint8_t>(map.value("value").toUInt() & 0xFF);
-    return sendRequest(RequestKind::NightLightSet, kSystemConfigService, kTlvNightLightSet, QByteArray(1, static_cast<char>(v)), "夜灯亮度设置");
+    return sendRequest(kSystemConfigService, kTlvNightLightSet, QByteArray(1, static_cast<char>(v)), "夜灯亮度设置");
 }
 
 bool Qfctp::setCaseLedTest(const QVariantMap &map)
 {
     const uint8_t v = map.value("on").toInt() != 0 ? 1u : 0u;
-    return sendRequest(RequestKind::LedTest, kSystemConfigService, kTlvLedTest, QByteArray(1, static_cast<char>(v)), "显示测试");
+    return sendRequest(kSystemConfigService, kTlvLedTest, QByteArray(1, static_cast<char>(v)), "显示测试");
 }
 
 bool Qfctp::setCaseFactoryReset()
 {
-    return sendRequest(RequestKind::FactoryReset, kSystemConfigService, kTlvFactoryReset, {}, "恢复出厂");
+    return sendRequest(kSystemConfigService, kTlvFactoryReset, {}, "恢复出厂");
 }
 
 bool Qfctp::setCasePowerOff()
 {
-    return sendRequest(RequestKind::PowerOff, kSystemConfigService, kTlvPowerOff, {}, "设备关机");
+    return sendRequest(kSystemConfigService, kTlvPowerOff, {}, "设备关机");
 }
 
 bool Qfctp::setCaseLcdBacklight(const QVariantMap &map)
 {
     const uint8_t v = map.value("on").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvLcdBacklight, QByteArray(1, static_cast<char>(v)), "LCD背光控制", RequestKind::LcdBacklightSet);
+    return sendTestsServiceTlv(kTlvLcdBacklight, QByteArray(1, static_cast<char>(v)), "LCD背光控制");
 }
 
 bool Qfctp::setCaseLightReportControl(const QVariantMap &map)
 {
     const uint8_t v = map.value("start").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvLightReportCtrl, QByteArray(1, static_cast<char>(v)), "光感上报控制", RequestKind::LightReportControl);
+    return sendTestsServiceTlv(kTlvLightReportCtrl, QByteArray(1, static_cast<char>(v)), "光感上报控制");
 }
 
 bool Qfctp::setCaseLightCalibWrite(const QVariantMap &map)
@@ -972,83 +1027,83 @@ bool Qfctp::setCaseLightCalibWrite(const QVariantMap &map)
     value.append(static_cast<char>((calib >> 8) & 0xFF));
     value.append(static_cast<char>((calib >> 16) & 0xFF));
     value.append(static_cast<char>((calib >> 24) & 0xFF));
-    return sendTestsServiceTlv(kTlvLightCalibWrite, value, "光感校准写入", RequestKind::LightCalibWrite);
+    return sendTestsServiceTlv(kTlvLightCalibWrite, value, "光感校准写入");
 }
 
 bool Qfctp::getCaseTupleRead()
 {
-    return sendTestsServiceTlv(kTlvTupleRead, {}, "读取三元组", RequestKind::TupleRead);
+    return sendTestsServiceTlv(kTlvTupleRead, {}, "读取三元组");
 }
 
 bool Qfctp::getCaseTrimRead()
 {
-    return sendTestsServiceTlv(kTlvTrimGet, {}, "读取trim", RequestKind::TrimGet);
+    return sendTestsServiceTlv(kTlvTrimGet, {}, "读取trim");
 }
 
 bool Qfctp::getCaseFwVersionRead()
 {
-    return sendRequest(RequestKind::FwVersionGet, kSystemConfigService, kTlvFwVersionRead, {}, "读取固件版本");
+    return sendRequest(kSystemConfigService, kTlvFwVersionRead, {}, "读取固件版本");
 }
 
 bool Qfctp::getCaseMacRead()
 {
-    return sendRequest(RequestKind::MacRead, kSystemConfigService, kTlvMacRead, {}, "读取MAC");
+    return sendRequest(kSystemConfigService, kTlvMacRead, {}, "读取MAC");
 }
 
 bool Qfctp::setCaseCompensationSet(const QVariantMap &map)
 {
     const uint8_t v = map.value("enable").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)), "吸力补偿开关", RequestKind::CompensationSet);
+    return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)), "吸力补偿开关");
 }
 
 bool Qfctp::getCaseRssiRead(const QVariantMap &map)
 {
     const uint8_t v = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
-    return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI", RequestKind::RssiGet);
+    return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI");
 }
 
 bool Qfctp::getCaseKeySignalRead(const QVariantMap &map)
 {
     const uint8_t keyId = static_cast<uint8_t>(map.value("key").toUInt() & 0xFF);
-    return sendTestsServiceTlv(kTlvKeySignalRead, QByteArray(1, static_cast<char>(keyId)), "读取按键电容值", RequestKind::KeySignalGet);
+    return sendTestsServiceTlv(kTlvKeySignalRead, QByteArray(1, static_cast<char>(keyId)), "读取按键电容值");
 }
 
 bool Qfctp::getCaseLightCalibRead(const QVariantMap &map)
 {
     const uint8_t idx = static_cast<uint8_t>(map.value("index").toUInt() & 0xFF);
-    return sendTestsServiceTlv(kTlvLightCalibRead, QByteArray(1, static_cast<char>(idx)), "读取光感校准值", RequestKind::LightCalibRead);
+    return sendTestsServiceTlv(kTlvLightCalibRead, QByteArray(1, static_cast<char>(idx)), "读取光感校准值");
 }
 
 bool Qfctp::getCaseChargeCurrentRead()
 {
-    return sendTestsServiceTlv(kTlvChargeCurrentRead, {}, "读取充电电流", RequestKind::ChargeCurrentGet);
+    return sendTestsServiceTlv(kTlvChargeCurrentRead, {}, "读取充电电流");
 }
 
 bool Qfctp::getCaseAgingStatusRead(const QVariantMap &map)
 {
     const uint8_t mode = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
      qWarning() << "读取老化状态" << mode;
-    return sendTestsServiceTlv(kTlvAgingStatus, QByteArray(1, static_cast<char>(mode)), "读取老化状态", RequestKind::AgingStatusGet);
+    return sendTestsServiceTlv(kTlvAgingStatus, QByteArray(1, static_cast<char>(mode)), "读取老化状态");
 }
 
 bool Qfctp::getCaseFactoryDoneRead()
 {
-    return sendTestsServiceTlv(kTlvFactoryDoneRead, {}, "读取产测完成标识", RequestKind::FactoryDoneRead);
+    return sendTestsServiceTlv(kTlvFactoryDoneRead, {}, "读取产测完成标识");
 }
 
 bool Qfctp::getCaseDeviceExceptionRead()
 {
-    return sendTestsServiceTlv(kTlvDeviceException, {}, "读取设备异常状态", RequestKind::DeviceExceptionGet);
+    return sendTestsServiceTlv(kTlvDeviceException, {}, "读取设备异常状态");
 }
 
 bool Qfctp::getCasePeriphStateRead()
 {
-    return sendTestsServiceTlv(kTlvSensorState, {}, "读取外设sensor状态", RequestKind::SensorStateGet);
+    return sendTestsServiceTlv(kTlvSensorState, {}, "读取外设sensor状态");
 }
 
 bool Qfctp::getCaseBatteryRead()
 {
-    return sendTestsServiceTlv(kTlvBatteryRead, {}, "读取电池电量", RequestKind::BatteryGet);
+    return sendTestsServiceTlv(kTlvBatteryRead, {}, "读取电池电量");
 }
 
 void Qfctp::parseCmd(const QByteArray& byte) {
@@ -1063,7 +1118,7 @@ void Qfctp::parseCmd(const QByteArray& byte) {
     //          << "outer=" << byte.toHex(' ')
     //          << "inner_count=" << innerPackets.size();
     for (const auto &inner : innerPackets) {
-        qDebug() << "FCTP 收到内层包" << "inner=" << inner.toHex(' ').toUpper();
+        // qDebug() << "inner:" << inner.toHex(' ').toUpper();
         const auto *p = reinterpret_cast<const uint8_t *>(inner.constData());
         const int  rc = comm_protocol_assemble_packet(p, static_cast<uint16_t>(inner.size()), qfctp_on_full_frame, this);
         if (rc < 0) {
@@ -1185,12 +1240,12 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());
         if (which == FacDevInfoType_SUB_PID || which == FacDevInfoType_SKUID) {
-            sendTestsServiceTlv(kTlvTupleRead, {}, "读三元组(兼容GetSn参数)", RequestKind::TupleRead);
+            sendTestsServiceTlv(kTlvTupleRead, {}, "读三元组(兼容GetSn参数)");
         } else {
             if (which == FacDevInfoType_BOARD_SN) {
                 qWarning() << "Qfctp BOARD_SN 使用SN读取通道兼容";
             }
-            sendTestsServiceTlv(kTlvSnRead, {}, "读SN", RequestKind::SnRead);
+            sendTestsServiceTlv(kTlvSnRead, {}, "读SN");
         }
         return;
     }

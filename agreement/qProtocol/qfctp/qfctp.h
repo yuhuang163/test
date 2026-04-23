@@ -33,49 +33,9 @@ signals:
     void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
 
 private:
-    enum class RequestKind {
-        Unknown = 0,
-        FactoryMode,
-        BurningMode,
-        AgingModeExit,
-        AgingStatusGet,
-        SuctionMode,
-        BtSignalMode,
-        BtNoSignalMode,
-        BtFreqMode,
-        TrimSet,
-        TrimGet,
-        StandbyMode,
-        SnWrite,
-        SnRead,
-        TupleWriteProductId,
-        TupleWriteDeviceId,
-        TupleWriteKey,
-        TupleRead,
-        FactoryDoneWrite,
-        FactoryDoneRead,
-        DeviceExceptionGet,
-        SensorStateGet,
-        RssiGet,
-        BatteryGet,
-        KeySignalGet,
-        ChargeCurrentGet,
-        CompensationSet,
-        FwVersionGet,
-        MacRead,
-        MacWrite,
-        PowerOff,
-        LedTest,
-        NightLightSet,
-        FactoryReset,
-        LcdBacklightSet,
-        LightReportControl,
-        LightCalibWrite,
-        LightCalibRead
-    };
+    using ResponseHandler = void (Qfctp::*)(const uint8_t *mainValue, uint16_t mainLen);
 
     struct PendingRequest {
-        RequestKind kind = RequestKind::Unknown;
         uint16_t    serviceId = 0;
         uint16_t    tlvType = 0;
         QString     actionName;
@@ -90,9 +50,31 @@ private:
     };
 
     void        handleFullFrame(const uint8_t *frameData, uint16_t frameLen);
-    void        handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen);
+    void        handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen, const QByteArray &frameRaw);
     void        handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen);
     void        handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode);
+    void        registerResponseHandlers();
+    void        handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen);
+    bool        isDataResponse(uint16_t serviceId, uint16_t tlvType) const;
+    void        handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspAgingStatus(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspDeviceException(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspTrimGet(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspFactoryDoneRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspRssiRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspSensorState(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspFwVersionRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspMacRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspBatteryRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspLightCalibRead(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspLcdBacklight(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspLightReportCtrl(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen);
+    void        handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLen);
+    
+    
     bool        handleSetSn(const QVariant &data);
     bool        setCaseAgingMode(const QVariantMap &map);
     bool        setCaseAgingExit();
@@ -128,12 +110,13 @@ private:
     bool        getCaseDeviceExceptionRead();
     bool        getCasePeriphStateRead();
     bool        getCaseBatteryRead();
-    bool        sendRequest(RequestKind kind, uint16_t serviceId, uint16_t tlvType, const QByteArray &value, const char *actionName);
+    bool        sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray &value, const char *actionName);
     bool        tryUnwrapPhyPacket(const QByteArray &packet, QList<QByteArray> &outPackets);
+    
     QByteArray  wrapPhyPacket(const QByteArray &innerPacket) const;
     bool        sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket = nullptr) const;
     bool        sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray value, const char *actionName, uint8_t *outSeq = nullptr);
-    bool        sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char *actionName, RequestKind kind = RequestKind::Unknown);
+    bool        sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char *actionName);
     void        sendFactoryTestMode(bool enter);
 
     QSerialPort *serialPort = nullptr;
@@ -144,6 +127,7 @@ private:
     QByteArray    m_phyPayload;
     uint8_t       m_fctpSeq = 0;
     QHash<uint8_t, PendingRequest> m_pendingRequests;
+    QHash<uint32_t, ResponseHandler> m_responseHandlers;
 };
 
 #endif // Qfctp_H

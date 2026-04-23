@@ -257,8 +257,8 @@ int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size,
     frame->payload.service_count = 0;
     for (uint8_t i = 0; i < COMM_PROTOCOL_MAX_SERVICE_NUM; i++) {
         if (payload_offset >= frame->payload_length) {
-            qDebug() << "[comm_protocol] complete deserialize, payload_length:" << frame->payload_length
-                     << "payload_offset:" << payload_offset;
+            // qDebug() << "[comm_protocol] complete deserialize, payload_length:" << frame->payload_length
+            //          << "payload_offset:" << payload_offset;
             break;
         }       
         service = (comm_protocol_service_t *)(payload + payload_offset); 
@@ -267,8 +267,8 @@ int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size,
         frame->payload.services[i].tlvs = service->tlvs;  /// 零拷贝：tlvs 指向 buffer，必须保证 buffer 生命周期足够长
         frame->payload.service_count++;
         payload_offset += service->srv_length + COMM_PROTOCOL_SERVICE_HEADER_SIZE;
-        qDebug() << "[comm_protocol] payload_length:" << frame->payload_length
-                 << "payload_offset:" << payload_offset << "service_count:" << frame->payload.service_count;
+        // qDebug() << "[comm_protocol] payload_length:" << frame->payload_length
+        //          << "payload_offset:" << payload_offset << "service_count:" << frame->payload.service_count;
     }
     return COMM_PROTOCOL_ERROR_NONE;
 }
