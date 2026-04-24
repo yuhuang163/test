@@ -392,11 +392,7 @@ void test_base::readUsbSerialPortData() {
     usbSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = usbSerialPortBuf;  // 读取缓冲区数据
 
-    if (pack.factory == "xwd") {
-        usb->parseCmd(dataTemp);  //欣旺达充电电流
-    } else {
-        usb->processlxModbusRTUData(dataTemp);  // 立讯充电电流
-    }
+    usb->parseCmd(dataTemp);  // 由Qusb内部协议配置决定解析流程
 
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);

@@ -51,6 +51,7 @@ public:
     void disconnect_dongle();
 
 private:
+    void applyCurrentProtocolConfig();
     QByteArray sn;
     double HighCurrent;
     double LowCurrent;
@@ -75,6 +76,7 @@ private:
     TestModel* peripheralModel;
     QString logString = "";
     QString totalresult = "";
+    Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
     typedef enum {
         STATE_IDLE,                // 休眠状态
         STATE_WATI_CONNECT,        // 等待连接

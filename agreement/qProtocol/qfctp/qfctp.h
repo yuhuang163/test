@@ -19,12 +19,6 @@ public:
     void parseCmd(const QByteArray& byte) override;
     void set(DeviceCmd cmd, const QVariant& data = {}) override;
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
-    // 通用消息发送接口，供上层按 service/tlv 自定义发送。
-    // map 字段:
-    // - serviceId(int, 必填)
-    // - tlvType(int, 必填)
-    // - value(QByteArray 或 hex QString, 可选)
-    // - actionName(QString, 可选)
     bool sendCustomMessage(const QVariantMap &map) override;
 
 signals:
@@ -73,9 +67,10 @@ private:
     void        handleRspLightReportCtrl(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLen);
-    
-    
     bool        handleSetSn(const QVariant &data);
+
+
+
     bool        setCaseAgingMode(const QVariantMap &map);
     bool        setCaseAgingExit();
     bool        setCaseSuctionMode(const QVariantMap &map);

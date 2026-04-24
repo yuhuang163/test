@@ -5,6 +5,23 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
+{
+    const QString value = type.trimmed().toLower();
+    if (value == "scpi") {
+        return Qusb::ProtocolType::Scpi;
+    }
+    if (value == "hq" || value == "hqmodbus") {
+        return Qusb::ProtocolType::HqModbus;
+    }
+    if (value == "lx" || value == "lxmodbus") {
+        return Qusb::ProtocolType::LxModbus;
+    }
+    return Qusb::ProtocolType::Auto;
+}
+}
 quiescent_current::quiescent_current(int index, QWidget* parent) :
     test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
@@ -54,6 +71,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     showlog("HighCurrent=" + QString::number(HighCurrent));
     showlog("LowCurrent=" + QString::number(LowCurrent));
     showlog("measure_wait_time=" + QString::number(measure_wait_time));
+    applyCurrentProtocolConfig();
 
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
@@ -79,6 +97,34 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     //     productBaudRate = 1000000;
     // }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+}
+
+void quiescent_current::applyCurrentProtocolConfig() {
+    Qusb::ProtocolConfig cfg;
+    cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Current/ProtocolType", "auto").toString());
+    cfg.luxshareMachineId = SETTINGS.value("Current/LxMachineId", getIndex()).toInt();
+    cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
+    cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
+    cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+
+    if (cfg.protocol == Qusb::ProtocolType::Auto) {
+        const QString factory = pack.factory.trimmed().toLower();
+        if (factory == "hq") {
+            cfg.protocol = Qusb::ProtocolType::HqModbus;
+        } else if (factory == "lx" || factory == "jj") {
+            cfg.protocol = Qusb::ProtocolType::LxModbus;
+        } else {
+            cfg.protocol = Qusb::ProtocolType::Scpi;
+        }
+    }
+
+    currentProtocolType = cfg.protocol;
+    usb->setProtocolConfig(cfg);
+
+    showlog("静态电流协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
+            " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
+    showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
+            ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
@@ -376,9 +422,9 @@ void quiescent_current::refreshAmmeterData(QString data) {
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (pack.factory == "jj")
+    if (currentProtocolType == Qusb::ProtocolType::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (pack.factory == "hq")
+    else if (currentProtocolType == Qusb::ProtocolType::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;
@@ -652,10 +698,7 @@ void quiescent_current::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
 
-                if (pack.factory == "hq")
-                    usb->sethqMEASure();
-                else
-                    usb->sendCONF("CURR", "DC", "500e-3");  // 500ma静态电流
+                usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
 
                 pb->reset_all_pb();
                 periph_state = 0;
@@ -883,15 +926,11 @@ void quiescent_current::startTask() {
                     totalresult = passValue;
                     state = STATE_SAVE_RESULT;
                 } else {
-                    if (pack.factory == "hq") {
-                        usb->gethqMEASure();
-                        waitWork(1000);
-                    } else if (pack.factory == "lx") {
-                        usb->getlxMEASure(1);
-                        waitWork(1000);
-                    } else {
-                        usb->getMEASure("");
+                    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+                    if (currentProtocolType == Qusb::ProtocolType::Scpi) {
                         waitWork(100);
+                    } else {
+                        waitWork(1000);
                     }
                 }
                 break;
@@ -951,10 +990,7 @@ void quiescent_current::on_pushButton_clicked() {
 }
 
 void quiescent_current::on_pushButton_3_clicked() {
-    if (pack.factory == "hq")
-        usb->gethqMEASure();
-    else
-        usb->getMEASure("");
+    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
 
     // at->ask_mac();
     // MesInit();

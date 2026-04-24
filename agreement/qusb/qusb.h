@@ -4,12 +4,43 @@
 #include <QObject>
 #include <QQueue>
 #include <QSerialPort>
+#include <functional>
+#include <map>
 
 class Qusb : public QSerialPort
 {
     Q_OBJECT
 public:
+    enum class ProtocolType
+    {
+        Auto,
+        Scpi,
+        HqModbus,
+        LxModbus
+    };
+
+    enum class PowerAction
+    {
+        ConfigurePowerSupply,
+        ReadMeasurement,
+        ReadConfiguration,
+        InitializeDevice
+    };
+
+    struct ProtocolConfig
+    {
+        ProtocolType protocol = ProtocolType::Auto;
+        int luxshareMachineId = 1;
+        QString scpiCurrentType = "CURRent";
+        QString scpiCurrentMode = "DC";
+        QString scpiRange = "500e-3";
+    };
+
     explicit Qusb(QSerialPort *parent = nullptr);
+
+    void setProtocolConfig(const ProtocolConfig &config);
+    ProtocolConfig protocolConfig() const;
+    bool sendPowerInstruction(PowerAction action);
 
     void sendCmd(QString cmd);
     void sendCONF(QString current, QString dc, QString range);
@@ -25,6 +56,12 @@ signals:
     void send_ammeter_data(QString data);   // 信号声明
 
 private:
+    ProtocolType resolveProtocolForInput(const QByteArray &input) const;
+    ProtocolType resolveProtocolForOutput() const;
+    bool handleScpiAction(PowerAction action);
+    bool handleHqAction(PowerAction action);
+    bool handleLxAction(PowerAction action);
+    void processScpiData(const QByteArray &byte);
     void processModbusRTUData(const QByteArray &data);
     QString cmd, parameter;
     QSerialPort *serialPort;
@@ -35,6 +72,7 @@ private:
     void registerCommand();
     void CONFigureFUNCtion(QString p);
     QByteArray data = 0;
+    ProtocolConfig protocolConfig_;
 
 private slots:
     void processCmd(QString cmd, QString parameter);

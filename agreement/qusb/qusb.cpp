@@ -1,6 +1,50 @@
 ﻿#include "qusb.h"
 #include <QDebug>
+#include <QMessageBox>
+#include <QStringList>
 #include <cmath>
+
+namespace {
+constexpr int kModbusMinFrameLen = 5;
+constexpr int kModbusMaxBufferedLen = 15;
+constexpr int kReg0HighIndex = 3;
+constexpr int kReg0LowIndex = 4;
+constexpr int kReg1HighIndex = 5;
+constexpr int kReg1LowIndex = 6;
+constexpr int kUnitExponentIndex = 8;
+
+quint16 readBigEndianU16(const QByteArray &buffer, int highIndex, int lowIndex)
+{
+    return (static_cast<quint8>(buffer.at(highIndex)) << 8) |
+           static_cast<quint8>(buffer.at(lowIndex));
+}
+
+bool isExpectedModbusLength(const QByteArray &buffer, quint8 byteCount)
+{
+    return buffer.length() == kModbusMinFrameLen + byteCount;
+}
+
+bool isLikelyAsciiLine(const QByteArray &buffer)
+{
+    if (buffer.isEmpty())
+    {
+        return false;
+    }
+    for (char c : buffer)
+    {
+        const unsigned char uc = static_cast<unsigned char>(c);
+        if (uc == '\r' || uc == '\n' || uc == '\t')
+        {
+            continue;
+        }
+        if (uc < 0x20 || uc > 0x7E)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+}   // namespace
 #if _MSC_VER >= 1600
     #pragma execution_character_set(push, "utf-8")
 #endif
@@ -26,12 +70,31 @@ void Qusb::registerCommand()
 }
 void Qusb::CONFigureFUNCtion(QString p)
 {
+    Q_UNUSED(p);
     qDebug() << "当前是电流模式";
 }
 
 void Qusb::parseCmd(const QByteArray &byte)
 {
-    processModbusRTUData(byte);//可能是另一个静态电流协议，华勤的应该是
+    switch (resolveProtocolForInput(byte))
+    {
+    case ProtocolType::Scpi:
+        processScpiData(byte);
+        break;
+    case ProtocolType::HqModbus:
+        processModbusRTUData(byte);
+        break;
+    case ProtocolType::LxModbus:
+        processlxModbusRTUData(byte);
+        break;
+    case ProtocolType::Auto:
+        processScpiData(byte);
+        break;
+    }
+}
+
+void Qusb::processScpiData(const QByteArray &byte)
+{
     foreach(char c, byte)
     {
         if (c == '\r' || c == '\n')
@@ -48,6 +111,118 @@ void Qusb::parseCmd(const QByteArray &byte)
     }
     processCmd(cmd, parameter);
     cmd.clear();
+}
+
+void Qusb::setProtocolConfig(const ProtocolConfig &config)
+{
+    protocolConfig_ = config;
+}
+
+Qusb::ProtocolConfig Qusb::protocolConfig() const
+{
+    return protocolConfig_;
+}
+
+bool Qusb::sendPowerInstruction(PowerAction action)
+{
+    if (!serialPort || !serialPort->isOpen())
+    {
+        QMessageBox::warning(NULL, "警告", " 未打开usb串口\t\r\n  无法发送数据！\r\n");
+        return false;
+    }
+
+    switch (resolveProtocolForOutput())
+    {
+    case ProtocolType::Scpi:
+        return handleScpiAction(action);
+    case ProtocolType::HqModbus:
+        return handleHqAction(action);
+    case ProtocolType::LxModbus:
+        return handleLxAction(action);
+    case ProtocolType::Auto:
+        return handleScpiAction(action);
+    }
+    return false;
+}
+
+Qusb::ProtocolType Qusb::resolveProtocolForInput(const QByteArray &input) const
+{
+    if (protocolConfig_.protocol != ProtocolType::Auto)
+    {
+        return protocolConfig_.protocol;
+    }
+    if (isLikelyAsciiLine(input))
+    {
+        return ProtocolType::Scpi;
+    }
+    if (protocolConfig_.luxshareMachineId > 0)
+    {
+        return ProtocolType::LxModbus;
+    }
+    return ProtocolType::HqModbus;
+}
+
+Qusb::ProtocolType Qusb::resolveProtocolForOutput() const
+{
+    if (protocolConfig_.protocol != ProtocolType::Auto)
+    {
+        return protocolConfig_.protocol;
+    }
+    return ProtocolType::Scpi;
+}
+
+bool Qusb::handleScpiAction(PowerAction action)
+{
+    switch (action)
+    {
+    case PowerAction::ConfigurePowerSupply:
+        sendCONF(protocolConfig_.scpiCurrentType, protocolConfig_.scpiCurrentMode, protocolConfig_.scpiRange);
+        return true;
+    case PowerAction::ReadMeasurement:
+        getMEASure(QString());
+        return true;
+    case PowerAction::ReadConfiguration:
+        getCONF(QString());
+        return true;
+    case PowerAction::InitializeDevice:
+        sendCmd("*RST");
+        return true;
+    }
+    return false;
+}
+
+bool Qusb::handleHqAction(PowerAction action)
+{
+    switch (action)
+    {
+    case PowerAction::ConfigurePowerSupply:
+    case PowerAction::InitializeDevice:
+        sethqMEASure();
+        return true;
+    case PowerAction::ReadMeasurement:
+        gethqMEASure();
+        return true;
+    case PowerAction::ReadConfiguration:
+        qDebug() << "华勤Modbus协议暂无读取配置指令，已跳过";
+        return false;
+    }
+    return false;
+}
+
+bool Qusb::handleLxAction(PowerAction action)
+{
+    switch (action)
+    {
+    case PowerAction::ReadMeasurement:
+        getlxMEASure(protocolConfig_.luxshareMachineId);
+        return true;
+    case PowerAction::ConfigurePowerSupply:
+    case PowerAction::ReadConfiguration:
+    case PowerAction::InitializeDevice:
+        qDebug() << "立讯协议当前仅支持读取测量值";
+        return false;
+    }
+    return false;
 }
 
 void Qusb::processCmd(QString cmd, QString parameter)
@@ -88,6 +263,7 @@ void Qusb::sendCONF(QString current, QString dc, QString range)
 
 void Qusb::getCONF(QString mac)
 {
+    Q_UNUSED(mac);
     QString s;
     // s = "CONFigure:RANGe?";
     // sendCmd(s);
@@ -96,6 +272,7 @@ void Qusb::getCONF(QString mac)
 }
 void Qusb::getMEASure(QString mac)
 {
+    Q_UNUSED(mac);
     QString s = "MEASure:CURRent:DC? 500e-3";
     sendCmd(s);
 }
@@ -108,21 +285,16 @@ void Qusb::gethqMEASure()
 }
 void Qusb::getlxMEASure(int mechine)
 {
-    QString s;
-    if (mechine == 1)
-        s = "010300000002c40b";   // 测量数值
-    if (mechine == 2)
-        s = "020300000002C438";   // 测量数值
-    if (mechine == 3)
-        s = "030300000002C5E9";   // 测量数值
-    if (mechine == 4)
-        s = "040300000002C45E";   // 测量数值
-    if (mechine == 5)
-        s = "050300000002C58F";   // 测量数值
-    if (mechine == 6)
-        s = "060300000002C5BC";   // 测量数值
+    static const QStringList machineCmdList = {
+        "",                    "010300000002c40b", "020300000002C438", "030300000002C5E9",
+        "040300000002C45E",    "050300000002C58F", "060300000002C5BC"};
+    if (mechine <= 0 || mechine >= machineCmdList.size())
+    {
+        qDebug() << "不支持的立讯设备号:" << mechine;
+        return;
+    }
 
-    QByteArray data = QByteArray::fromHex(s.toLatin1());
+    QByteArray data = QByteArray::fromHex(machineCmdList.at(mechine).toLatin1());
     serialPort->write(data);
 }
 void Qusb::sethqMEASure()
@@ -156,120 +328,84 @@ quint16 calculateCRC(const QByteArray &data)
 }
 void Qusb::processModbusRTUData(const QByteArray &response)
 {
-    // Modbus RTU响应帧的最小长度为 5 字节
-    if (response.length() >= 5)
-    {
-        qDebug() << "Received Modbus RTU response frame: " << response.toHex().toUpper();
-
-        // 解析响应帧
-
-        quint8 byteCount = static_cast<quint8>(response.at(2));
-
-        // 验证数据长度是否符合预期
-        if (response.length() == 5 + byteCount)
-        {
-            // 验证CRC校验
-            quint16 crcExpected = (static_cast<quint8>(response.at(response.length() - 2)) << 8) |
-                                  static_cast<quint8>(response.at(response.length() - 1));
-            quint16 crcCalculated = calculateCRC(response.left(response.length() - 2));
-
-            qDebug() << "Length: " << response.length() << " Byte Count: " << byteCount
-                     << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
-                     << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
-
-            if (crcCalculated == crcExpected)
-            {
-                quint16 reg0 = (static_cast<quint8>(response.at(3)) << 8) |
-                               static_cast<quint8>(response.at(4));
-                quint16 reg1 = (static_cast<quint8>(response.at(5)) << 8) |
-                               static_cast<quint8>(response.at(6));
-
-                // 读取电流单位指数
-                qint8 unitExponent = static_cast<qint8>(response.at(8));
-
-                // 计算电流值
-                qint32 currentValue = (reg0 << 16) | reg1;
-
-                // 根据单位指数调整电流值
-                double current_uA = currentValue * std::pow(10, unitExponent) * 0.000000001;
-                qDebug() << ": Current Value = " << current_uA << "A";
-
-                QString stringValue = QString::number(current_uA);
-                emit send_ammeter_data(stringValue);
-            }
-            else
-            {
-                qDebug() << "CRC check failed";
-            }
-        }
-        else
-        {
-            qDebug() << "Invalid data length";
-        }
-    }
-    else
+    if (response.length() < kModbusMinFrameLen)
     {
         qDebug() << "processModbus RTUDataInvalid Modbus RTU response frame";
+        return;
     }
+
+    qDebug() << "Received Modbus RTU response frame: " << response.toHex().toUpper();
+
+    const quint8 byteCount = static_cast<quint8>(response.at(2));
+    if (!isExpectedModbusLength(response, byteCount))
+    {
+        qDebug() << "Invalid data length";
+        return;
+    }
+
+    const quint16 crcExpected =
+        readBigEndianU16(response, response.length() - 2, response.length() - 1);
+    const quint16 crcCalculated = calculateCRC(response.left(response.length() - 2));
+
+    qDebug() << "Length: " << response.length() << " Byte Count: " << byteCount
+             << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
+             << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
+
+    if (crcCalculated != crcExpected)
+    {
+        qDebug() << "CRC check failed";
+        return;
+    }
+
+    const quint16 reg0 = readBigEndianU16(response, kReg0HighIndex, kReg0LowIndex);
+    const quint16 reg1 = readBigEndianU16(response, kReg1HighIndex, kReg1LowIndex);
+    const qint8 unitExponent = static_cast<qint8>(response.at(kUnitExponentIndex));
+    const qint32 currentValue = (reg0 << 16) | reg1;
+    const double current_uA = currentValue * std::pow(10, unitExponent) * 0.000000001;
+    qDebug() << ": Current Value = " << current_uA << "A";
+
+    emit send_ammeter_data(QString::number(current_uA));
 }
 
 void Qusb::processlxModbusRTUData(const QByteArray &response)
 {
     qDebug() << "收到的数据为: " << response.toHex().toUpper();
     data = data + response;
-    if (data.length() > 15)
+    if (data.length() > kModbusMaxBufferedLen)
         data = 0;
 
-    if (data.length() >= 5)
-    {
-        qDebug() << "Received Modbus RTU data frame: " << data.toHex().toUpper();
-        quint8 byteCount = static_cast<quint8>(data.at(2));
-        qDebug() << "数据长度：" << byteCount;
-        // 验证数据长度是否符合预期
-        if (data.length() == 5 + byteCount)
-        {
-            // 验证CRC校验
-            quint16 crcExpected = (static_cast<quint8>(data.at(data.length() - 2)) << 8) |
-                                  static_cast<quint8>(data.at(data.length() - 1));
-            quint16 crcCalculated = calculateCRC(data.left(data.length() - 2));
-
-            qDebug() << "Length: " << data.length()
-                     << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
-                     << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
-
-            if (crcCalculated == crcExpected)
-            {
-                quint16 reg0 =
-                    (static_cast<quint8>(data.at(3)) << 8) | static_cast<quint8>(data.at(4));
-                quint16 reg1 =
-                    (static_cast<quint8>(data.at(5)) << 8) | static_cast<quint8>(data.at(6));
-
-                // 读取电流单位指数
-                // qint8 unitExponent = static_cast<qint8>(response.at(8));
-
-                // 计算电流值
-                qint32 currentValue = (reg0 << 16) | reg1;
-
-                // 根据单位指数调整电流值
-                double current_uA = currentValue;
-                qDebug() << "Current Value = " << current_uA << "uA";
-
-                QString stringValue = QString::number(current_uA);
-                emit send_ammeter_data(stringValue);//立讯的发送
-                data = 0;
-            }
-            else
-            {
-                qDebug() << "CRC check failed";
-            }
-        }
-        else
-        {
-            qDebug() << "Invalid data length";
-        }
-    }
-    else
+    if (data.length() < kModbusMinFrameLen)
     {
         qDebug() << "processlxModb usRTUData Invalid Modbus RTU response frame";
+        return;
     }
+
+    qDebug() << "Received Modbus RTU data frame: " << data.toHex().toUpper();
+    const quint8 byteCount = static_cast<quint8>(data.at(2));
+    qDebug() << "数据长度：" << byteCount;
+    if (!isExpectedModbusLength(data, byteCount))
+    {
+        qDebug() << "Invalid data length";
+        return;
+    }
+
+    const quint16 crcExpected = readBigEndianU16(data, data.length() - 2, data.length() - 1);
+    const quint16 crcCalculated = calculateCRC(data.left(data.length() - 2));
+    qDebug() << "Length: " << data.length()
+             << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
+             << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
+    if (crcCalculated != crcExpected)
+    {
+        qDebug() << "CRC check failed";
+        return;
+    }
+
+    const quint16 reg0 = readBigEndianU16(data, kReg0HighIndex, kReg0LowIndex);
+    const quint16 reg1 = readBigEndianU16(data, kReg1HighIndex, kReg1LowIndex);
+    const qint32 currentValue = (reg0 << 16) | reg1;
+    const double current_uA = currentValue;
+    qDebug() << "Current Value = " << current_uA << "uA";
+
+    emit send_ammeter_data(QString::number(current_uA));   // 立讯的发送
+    data = 0;
 }
