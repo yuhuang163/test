@@ -621,8 +621,6 @@ private slots:
 
     void on_backlight_stop_clicked();
 
-    void on_get_battery_2_clicked();
-
     void on_get_keysignal_clicked();
 
     void on_get_ble_rssi_device_clicked();

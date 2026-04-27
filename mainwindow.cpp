@@ -3866,19 +3866,18 @@ void MainWindow::on_kTlvKeyWrite_clicked()
 
 void MainWindow::on_kTlvKeyread_clicked()
 {
-    QVariantMap m;
-      protocolManager.get(DeviceCmd::TupleRead, m);
+    protocolManager.get(DeviceCmd::TupleRead);
 }
 
 void MainWindow::on_read_current_charge_clicked()
-{  QVariantMap m;
-     protocolManager.get(DeviceCmd::ChargeCurrentRead, m);
+{
+    protocolManager.get(DeviceCmd::ChargeCurrentRead);
 }
 
 
 void MainWindow::on_read_light_sensor_clicked()
-{  QVariantMap m;
-    protocolManager.get(DeviceCmd::LightCalibRead, m);
+{
+    protocolManager.get(DeviceCmd::LightCalibRead);
 }
 
 
@@ -3905,8 +3904,7 @@ void MainWindow::on_light_repo_stop_clicked()
 
 void MainWindow::on_getCaseDeviceException_clicked()
 {
-    QVariantMap m;
-    protocolManager.get(DeviceCmd::DeviceExceptionRead, m);
+    protocolManager.get(DeviceCmd::DeviceExceptionRead);
 }
 
 
@@ -4076,15 +4074,11 @@ void MainWindow::on_backlight_stop_clicked()
 }
 
 
-void MainWindow::on_get_battery_2_clicked()
-{  QVariantMap m;
-    protocolManager.get(DeviceCmd::GetBattery, m);
-}
 
 
 void MainWindow::on_get_keysignal_clicked()
 {  QVariantMap m;
-    m["value"] = 1;
+    m["key"] = 1;
     protocolManager.get(DeviceCmd::KeySignalRead, m);
 }
 

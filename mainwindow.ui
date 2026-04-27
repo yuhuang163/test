@@ -1334,13 +1334,6 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="get_battery_2">
-                       <property name="text">
-                        <string>读取电池电量</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QPushButton" name="set_light_sensor">
                        <property name="text">
                         <string>设置光照校准值</string>
