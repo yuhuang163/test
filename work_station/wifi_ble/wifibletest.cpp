@@ -300,9 +300,9 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
     }
 }
 
-void wifibletest::refreshBattaryData(FacDevInfo adc) {
+void wifibletest::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
-    switch (adc.dev_info[0].value_item.battery.charge_state) {
+    switch (adc.chargeState) {
         case 1:
             chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
             chargestate = "CHARGE_FULL";
@@ -328,25 +328,24 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
 
     // 修改电量的显示样式
     QString batteryPercentStr =
-        "电量为：<span style='color:blue'>" + QString::number(adc.dev_info[0].value_item.battery.percent) + "%</span>";
+        "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
 
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0, 'f', 3) +
+                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
                                 "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
 
-    voltage = adc.dev_info[0].value_item.battery.voltage / 1000.0;
+    voltage = adc.voltageMv / 1000.0;
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     // QRegularExpressionMatch match = regex.match(chargeStateStr);
     // chargestate = match.captured(2);
     is_battary_test = 1;
-    if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
+    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
         TestItem test;
         test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
         test.testResult = "通过";
         test.ask = "通过";
         testItems.append(test);
@@ -357,11 +356,10 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         voltageresult = "通过";
         showlog("电量和充电测试通过");
     }
-    if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
+    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
         TestItem test;
         test.testItem = "充电测试";
-        test.testData = "充电断开" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testData = "充电断开" + QString::number(adc.voltageMv / 1000.0) + "V";
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
@@ -375,11 +373,10 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         voltageresult = "通过";
         TestResult = failValue;
     }
-    if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
+    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary) {
         TestItem test;
         test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
@@ -391,11 +388,10 @@ void wifibletest::refreshBattaryData(FacDevInfo adc) {
         charageresult = "通过";
         TestResult = failValue;
     }
-    if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
+    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
         TestItem test;
         test.testItem = "充电测试";
-        test.testData = "不充电" + QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0) + "V";
+        test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);

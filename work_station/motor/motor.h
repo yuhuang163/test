@@ -38,7 +38,7 @@ private slots:
     void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
     void refreshDongleUartState(int state) override;
-    void refreshBattaryData(FacDevInfo adc) override;
+    void refreshBattaryData(ProtocolBatteryData adc) override;
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_pushButton_2_clicked();

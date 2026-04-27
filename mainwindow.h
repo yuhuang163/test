@@ -327,8 +327,8 @@ private slots:
     void refreshWifiRssi(QString data);
     void refreshBleState(int state);
     void getimuData(FacUploadNineAlex x);
-    void refreshBattaryData(FacDevInfo adc);
-    void updateWifi(FacDevInfo wifi);
+    void refreshBattaryData(ProtocolBatteryData adc);
+    void updateWifi(ProtocolWifiStateData wifi);
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void getMac(QString sn_to_search);
     void updateLocalOtaResult(FacInternetOta x);
@@ -353,7 +353,7 @@ private slots:
     QString getMotorStateString(FacMotoState state);
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
-    void refreshMusicState(FacDevInfo data);
+    void refreshMusicState(ProtocolMusicStateData data);
     void getPresscalidata(FacPreSensorCalibResult x);
     void scanIpPorts();
     void checkbutton(FacButtonState data);

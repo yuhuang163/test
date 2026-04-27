@@ -320,10 +320,10 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
-    connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
-    connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(updateWifi(FacDevInfo)));
+    connect(pb, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
+    connect(pb, SIGNAL(send_wifi_State(ProtocolWifiStateData)), this, SLOT(updateWifi(ProtocolWifiStateData)));
     connect(pb, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
-    connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
+    connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));

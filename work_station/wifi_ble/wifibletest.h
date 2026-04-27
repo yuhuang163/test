@@ -110,7 +110,7 @@ private slots:
     void getWifiMsg(QString data) override;
 
     void refreshBaseData(FacGetDevBaseInfo data) override;
-    void refreshBattaryData(FacDevInfo data) override;
+    void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
 

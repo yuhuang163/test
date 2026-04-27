@@ -791,9 +791,9 @@ void imucali::processInspection(QString stringsn) {
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
-void imucali::refreshBattaryData(FacDevInfo adc) {
+void imucali::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
-    switch (adc.dev_info[0].value_item.battery.charge_state) {
+    switch (adc.chargeState) {
         case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
         case 2: chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>"; break;
         case 3: chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>"; break;
@@ -804,24 +804,24 @@ void imucali::refreshBattaryData(FacDevInfo adc) {
 
     // 修改电量的显示样式
     QString batteryPercentStr =
-        "电量为：<span style='color:blue'>" + QString::number(adc.dev_info[0].value_item.battery.percent) + "%</span>";
+        "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
 
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0, 'f', 3) +
+                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
                                 "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
 
-    voltage = adc.dev_info[0].value_item.battery.voltage / 1000.0;
+    voltage = adc.voltageMv / 1000.0;
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     // QRegularExpressionMatch match = regex.match(chargeStateStr);
     // chargestate = match.captured(2);
 
-    if (adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
+    if (adc.voltageMv / 1000.0 > standbattary) {
         is_battary_test = 1;  // 正常
     }
-    if (adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary)
+    if (adc.voltageMv / 1000.0 <= standbattary)
         is_battary_test = 2;  // 低电量
 }
 void imucali::dataInit() {

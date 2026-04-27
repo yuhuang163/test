@@ -1212,9 +1212,9 @@ void MainWindow::refreshBleState(int state) {
     }
 }
 
-void MainWindow::refreshBattaryData(FacDevInfo adc) {
+void MainWindow::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
-    switch (adc.dev_info[0].value_item.battery.charge_state) {
+    switch (adc.chargeState) {
         case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
         case 2: chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>"; break;
         case 3: chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>"; break;
@@ -1225,7 +1225,7 @@ void MainWindow::refreshBattaryData(FacDevInfo adc) {
 
     // 修改电量的显示样式
     QString batteryPercentStr =
-        "电量为：<span style='color:blue'>" + QString::number(adc.dev_info[0].value_item.battery.percent) + "%</span>";
+        "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
 
     // QString battery_type;
@@ -1238,35 +1238,31 @@ void MainWindow::refreshBattaryData(FacDevInfo adc) {
 
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.dev_info[0].value_item.battery.voltage / 1000.0, 'f', 3) +
+                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
                                 "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
 
-    voltage = adc.dev_info[0].value_item.battery.voltage / 1000.0;
+    voltage = adc.voltageMv / 1000.0;
     QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     QRegularExpressionMatch match = regex.match(chargeStateStr);
     chargestate = match.captured(2);
 
-    if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
+    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
         is_battary_test = 1;
         charageresult = "通过";
         voltageresult = "通过";
     }
-    if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 > standbattary) {
+    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
         charageresult = "失败";
         voltageresult = "通过";
         is_battary_test = 2;  // 状态不对
     }
-    if (adc.dev_info[0].value_item.battery.charge_state == 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
+    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary) {
         voltageresult = "失败";
         charageresult = "通过";
         is_battary_test = 3;  // 电压不对
     }
-    if (adc.dev_info[0].value_item.battery.charge_state != 2 &&
-        adc.dev_info[0].value_item.battery.voltage / 1000.0 <= standbattary) {
+    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
         is_battary_test = 4;  // 全部不对
         voltageresult = "失败";
         charageresult = "失败";
@@ -1333,8 +1329,8 @@ void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString 
     }
 }
 
-void MainWindow::refreshMusicState(FacDevInfo data) {
-    showlog("当前曲目为：" + QString::number(data.dev_info[0].value_item.music_state));
+void MainWindow::refreshMusicState(ProtocolMusicStateData data) {
+    showlog("当前曲目为：" + QString::number(data.musicState));
 }
 void MainWindow::refreshSn(ProtocolSnData data) {
     switch (data.type) {
@@ -1409,11 +1405,9 @@ void MainWindow::getDongleWifi(QString data) {
     ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
-void MainWindow::updateWifi(FacDevInfo wifi) {
-    QString wifiName = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_name);
-    showlog(wifiName);
-    QString wifipassword = QString::fromUtf8(wifi.dev_info[0].value_item.wifi_info.wifi_password);
-    showlog(wifipassword);
+void MainWindow::updateWifi(ProtocolWifiStateData wifi) {
+    showlog(wifi.wifiName);
+    showlog(wifi.wifiPassword);
 }
 void MainWindow::updateMainStyle(QString style) {
     // QSS文件初始化界面样式
@@ -2592,7 +2586,7 @@ void MainWindow::initBasicInfo() {
 
     basicInfoModel->resetAllTestResult();
 
-    QObject::connect(pb, &Qpb::send_base_data, this, [=](FacGetDevBaseInfo baseInfo) {
+    QObject::connect(pb, QOverload<FacGetDevBaseInfo>::of(&Qpb::send_base_data), this, [=](FacGetDevBaseInfo baseInfo) {
         connectProductName = baseInfo.product_name;
 
         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
@@ -2704,7 +2698,7 @@ void MainWindow::initPeriphState() {
     ui->peripheralView->setColumnHidden(1, true);
     ui->peripheralView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     peripheralModel->resetAllTestResult();
-    QObject::connect(pb, &Qpb::send_periph_data, this, [=](FacGetPeriphState state) {
+    QObject::connect(pb, QOverload<FacGetPeriphState>::of(&Qpb::send_periph_data), this, [=](FacGetPeriphState state) {
         peripheralModel->getTestItemByName("flash_state")
             ->setData(QString("%1").arg(state.flash_state), Qt::DisplayRole);
         peripheralModel->getTestItemByName("imu_state")->setData(QString("%1").arg(state.imu_state), Qt::DisplayRole);

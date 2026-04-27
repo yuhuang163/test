@@ -78,7 +78,7 @@ private:
     int imu_wait_time = 15000;
     int imu_compare_wait_time = 15000;
     int ImuCompareData = 15000;
-    void refreshBattaryData(FacDevInfo adc) override;
+    void refreshBattaryData(ProtocolBatteryData adc) override;
     double standbattary = 0;
     double voltage = 0;
     int is_battary_test = 0;

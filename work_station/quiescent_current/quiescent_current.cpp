@@ -128,14 +128,14 @@ void quiescent_current::applyCurrentProtocolConfig() {
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
-void quiescent_current::refreshMusicState(FacDevInfo data) {
+void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
-    showlog("当前曲目为：" + QString::number(data.dev_info[0].value_item.music_state));
+    showlog("当前曲目为：" + QString::number(data.musicState));
 
-    if (!isMusicStateTest || SETTINGS.value("Music/MusicState").toInt() == data.dev_info[0].value_item.music_state) {
+    if (!isMusicStateTest || SETTINGS.value("Music/MusicState").toInt() == data.musicState) {
         TestItem test;
         test.testItem = "曲目测试";
-        test.testData = QString::number(data.dev_info[0].value_item.music_state);
+        test.testData = QString::number(data.musicState);
         test.testResult = passValue;
         test.ask = QString::number(SETTINGS.value("Music/MusicState").toInt());
         testItems.append(test);
@@ -145,7 +145,7 @@ void quiescent_current::refreshMusicState(FacDevInfo data) {
     } else {
         TestItem test;
         test.testItem = "曲目测试";
-        test.testData = QString::number(data.dev_info[0].value_item.music_state);
+        test.testData = QString::number(data.musicState);
         test.testResult = failValue;
         test.ask = QString::number(SETTINGS.value("Music/MusicState").toInt());
         testItems.append(test);

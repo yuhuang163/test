@@ -69,7 +69,7 @@ private slots:
 
     void refreshSn(ProtocolSnData data) override;
     void refreshPeriphData(FacGetPeriphState) override;
-    void refreshBattaryData(FacDevInfo adc) override;
+    void refreshBattaryData(ProtocolBatteryData adc) override;
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();

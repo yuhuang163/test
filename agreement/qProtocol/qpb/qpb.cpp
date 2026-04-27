@@ -2249,6 +2249,9 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.send_data_over == FacErrorCode_NO_ERROR) {
         emit send_get_picture_send_over(x);
+        ProtocolPictureSendOverData pictureAckData;
+        pictureAckData.result = static_cast<int>(x.result);
+        emit send_get_picture_send_over(pictureAckData);
         emit sendGetProductResponse(1);
     }
 
@@ -2260,6 +2263,9 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
 
     emit send_FactroyCmd_WIFI_DEMAND(x);
+    ProtocolWifiDemandData wifiDemandData;
+    wifiDemandData.result = static_cast<int>(x.result);
+    emit send_FactroyCmd_WIFI_DEMAND(wifiDemandData);
     qDebug() << "收到wifi连接回应" << x.result;
     emit sendGetProductResponse(1);
 
@@ -2269,6 +2275,9 @@ void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
     FacInternetOta x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_FactroyCmd_INTERNET_OTA(x);
+    ProtocolInternetOtaData internetOtaData;
+    internetOtaData.result = static_cast<int>(x.result);
+    emit send_FactroyCmd_INTERNET_OTA(internetOtaData);
     qDebug() << "收到本地ota控制回应:" << x.result;
     emit sendGetProductResponse(1);
 }
@@ -2276,6 +2285,9 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     FacCameraControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_camera_CONTROL_state(x);
+    ProtocolCameraControlData cameraControlData;
+    cameraControlData.type = static_cast<int>(x.type);
+    emit send_camera_CONTROL_state(cameraControlData);
     qDebug() << "收到摄像头控制回应:" << x.type;
     is_camera_control = true;
     emit sendGetProductResponse(1);
@@ -2312,6 +2324,10 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
         qDebug() << "收到电机信息"
                  << "new" << x.value_item.servo_info.opera_info.zero_info;
         emit send_servo_motor_info_msg(x);
+        ProtocolServoMotorInfoData servoMotorInfoData;
+        servoMotorInfoData.uploadType = static_cast<int>(x.type);
+        servoMotorInfoData.whichValue = static_cast<int>(x.which_value_item);
+        emit send_servo_motor_info_msg(servoMotorInfoData);
         emit sendGetProductResponse(1);
     }
 
@@ -2375,6 +2391,9 @@ void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage& f) {
     FacLcdControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_Lcd_CONTROL_state(x);
+    ProtocolLcdControlData lcdControlData;
+    lcdControlData.type = static_cast<int>(x.type);
+    emit send_Lcd_CONTROL_state(lcdControlData);
     qDebug() << "收到屏幕控制回应:" << x.type;
     emit sendGetProductResponse(1);
 }
@@ -2407,6 +2426,12 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     qDebug().nospace().noquote() << "szy: " << x.new_cali.szy;
     is_get_imu_cali_data = 1;
     emit send_IMU_CALIB_result(x);
+    ProtocolImuCalibResultData imuCalibData;
+    imuCalibData.result = static_cast<int>(x.result);
+    imuCalibData.gyroX = static_cast<int>(x.gyro_x);
+    imuCalibData.gyroY = static_cast<int>(x.gyro_y);
+    imuCalibData.gyroZ = static_cast<int>(x.gyro_z);
+    emit send_IMU_CALIB_result(imuCalibData);
     if (x.result) {
         emit send_pb_date("设备六轴校准数据有问题,可能是初始值");
     } else {
@@ -2418,6 +2443,10 @@ void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     FacLedControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_LED_CONTROL_state(x);
+    ProtocolLedControlData ledControlData;
+    ledControlData.switchState = static_cast<int>(x.switch_state);
+    ledControlData.ledStateCount = static_cast<int>(x.led_state_count);
+    emit send_LED_CONTROL_state(ledControlData);
     qDebug() << "收到灯光控制回应:" << x.switch_state;
 
     qDebug() << "收到灯光count:" << x.led_state_count;
@@ -2427,6 +2456,9 @@ void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     FacBrushControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_BrushControl_state(x);
+    ProtocolBrushControlData brushControlData;
+    brushControlData.brushStart = static_cast<int>(x.value_item.brush_start);
+    emit send_BrushControl_state(brushControlData);
     qDebug() << "收到设备控制回应:" << x.value_item.brush_start;
     emit sendGetProductResponse(1);
 }
@@ -2438,6 +2470,10 @@ void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     qDebug() << "获取到开关按键状态" << x.button_state[0].command_data.power_button.button_state_now;
 
     emit send_button_state(x);
+    ProtocolButtonStateData buttonStateData;
+    buttonStateData.modeButtonState = static_cast<int>(x.button_state[1].command_data.mode_button.button_state_now);
+    buttonStateData.powerButtonState = static_cast<int>(x.button_state[0].command_data.power_button.button_state_now);
+    emit send_button_state(buttonStateData);
     emit sendGetProductResponse(1);
 }
 
@@ -2447,41 +2483,49 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
 
     if (x.dev_info[0].which_value_item == FacDevInfoValue_battery_tag) {
         emit send_battary(x);
+        ProtocolBatteryData batteryData;
+        batteryData.chargeState = static_cast<int>(x.dev_info[0].value_item.battery.charge_state);
+        batteryData.percent = static_cast<int>(x.dev_info[0].value_item.battery.percent);
+        batteryData.voltageMv = static_cast<int>(x.dev_info[0].value_item.battery.voltage);
+        emit send_battary(batteryData);
         qDebug() << "获取到电量信息";
         emit sendGetProductResponse(1);
         is_get_battery_data = 1;
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_wifi_info_tag) {
         emit send_wifi_State(x);
+        ProtocolWifiStateData wifiData;
+        wifiData.wifiName = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_name);
+        wifiData.wifiPassword = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_password);
+        emit send_wifi_State(wifiData);
         qDebug() << "获取到wifi信息";
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
-        emit send_sn_data(x);
         emit send_sn_data({ProtocolSnType::BoardSn, QString::fromUtf8(x.dev_info[0].value_item.board_sn)});
         qDebug() << "获取到板子的sn" << x.dev_info[0].value_item.board_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        emit send_sn_data(x);
         emit send_sn_data({ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.tail_sn)});
         qDebug() << "获取到回复尾盖的sn" << x.dev_info[0].value_item.tail_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        emit send_sn_data(x);
         emit send_sn_data({ProtocolSnType::SubPid, QString::fromUtf8(x.dev_info[0].value_item.sub_pid)});
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
-        emit send_sn_data(x);
         emit send_sn_data({ProtocolSnType::SkuId, QString::fromUtf8(x.dev_info[0].value_item.sku_id)});
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_music_state_tag) {
         emit send_music_state(x);
+        ProtocolMusicStateData musicStateData;
+        musicStateData.musicState = static_cast<int>(x.dev_info[0].value_item.music_state);
+        emit send_music_state(musicStateData);
         qDebug() << "获取到音乐状态回应" << x.dev_info[0].value_item.music_state;
         emit sendGetProductResponse(1);
     }
@@ -2505,6 +2549,11 @@ void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     FacGetPeriphState x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_periph_data(x);
+    ProtocolPeriphStateData periphData;
+    periphData.periphType = x.imu_state ? 1 : 0;
+    periphData.state = x.flash_state ? 1 : 0;
+    periphData.code = static_cast<int>(x.result);
+    emit send_periph_data(periphData);
     qDebug() << "获取到外设状态";
     emit sendGetProductResponse(1);
 }
@@ -2513,6 +2562,12 @@ void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "获取到设备信息";
     emit send_base_data(x);
+    ProtocolBaseInfoData baseInfoData;
+    baseInfoData.hardVersion = QString::fromUtf8(x.hw_version);
+    baseInfoData.softVersion = QString::fromUtf8(x.soft_version);
+    baseInfoData.resVersion = QString::fromUtf8(x.res_version);
+    baseInfoData.ageingState = x.ageing_state ? 1 : 0;
+    emit send_base_data(baseInfoData);
     emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
@@ -2528,6 +2583,13 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     qDebug() << "获取设备校准的power_button_adc=" << x.power_button_adc;
     qDebug() << "获取模式辅助元器件校准的assistant_component=" << x.assistant_component;
     emit send_press_cali_data(x);
+    ProtocolPressCalibResultData pressCalibData;
+    pressCalibData.brushHeadAdc = static_cast<int>(x.brush_head_adc);
+    pressCalibData.modeButtonAdc = static_cast<int>(x.mode_button_adc);
+    pressCalibData.powerButtonAdc = static_cast<int>(x.power_button_adc);
+    pressCalibData.assistantComponent = static_cast<int>(x.assistant_component);
+    pressCalibData.temperature = static_cast<int>(x.temperature);
+    emit send_press_cali_data(pressCalibData);
     is_save_press_cali_ok = 1;
     emit sendGetProductResponse(1);
 }
@@ -2865,6 +2927,29 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     // qDebug () << "sensor data";
     emit send_press_data(x);
+    ProtocolPressSampleData pressData;
+    if (x.sensor_data_count > 0) {
+        pressData.timeStamp = static_cast<int>(x.sensor_data[0].timestamp);
+    }
+    for (int i = 0; i < static_cast<int>(x.sensor_data_count) && i < 15; ++i) {
+        if (x.sensor_data[i].has_brush_head) {
+            pressData.adcValues.push_back(static_cast<int>(x.sensor_data[i].brush_head.adc));
+            pressData.valueValues.push_back(static_cast<int>(x.sensor_data[i].brush_head.value));
+        }
+        if (x.sensor_data[i].has_mode_button) {
+            pressData.adcValues.push_back(static_cast<int>(x.sensor_data[i].mode_button.adc));
+            pressData.valueValues.push_back(static_cast<int>(x.sensor_data[i].mode_button.value));
+        }
+        if (x.sensor_data[i].has_power_button) {
+            pressData.adcValues.push_back(static_cast<int>(x.sensor_data[i].power_button.adc));
+            pressData.valueValues.push_back(static_cast<int>(x.sensor_data[i].power_button.value));
+        }
+        if (x.sensor_data[i].has_assistant_component) {
+            pressData.adcValues.push_back(static_cast<int>(x.sensor_data[i].assistant_component.adc));
+            pressData.valueValues.push_back(static_cast<int>(x.sensor_data[i].assistant_component.value));
+        }
+    }
+    emit send_press_data(pressData);
     is_set_press_collect_param = 1;
     emit sendGetProductResponse(1);
 }
@@ -2881,6 +2966,17 @@ void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "收到imu数据包";
     emit send_imu_data(x);
+    ProtocolImuSampleData imuData;
+    for (int i = 0; i < static_cast<int>(x.data_count) && i < 15; ++i) {
+        imuData.timeStamp = static_cast<int>(x.data[i].timestamp);
+        imuData.accelValues.push_back(static_cast<int>(x.data[i].acc_x));
+        imuData.accelValues.push_back(static_cast<int>(x.data[i].acc_y));
+        imuData.accelValues.push_back(static_cast<int>(x.data[i].acc_z));
+        imuData.gyroValues.push_back(static_cast<int>(x.data[i].gyro_x));
+        imuData.gyroValues.push_back(static_cast<int>(x.data[i].gyro_y));
+        imuData.gyroValues.push_back(static_cast<int>(x.data[i].gyro_z));
+    }
+    emit send_imu_data(imuData);
     is_setimu_collect_param = 1;
     emit sendGetProductResponse(1);
 }

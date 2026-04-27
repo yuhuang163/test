@@ -198,8 +198,8 @@ public slots:
     virtual void refreshBleState(int){};
     virtual void getWifiMsg(QString){};
     virtual void refreshBaseData(FacGetDevBaseInfo){};
-    virtual void refreshBattaryData(FacDevInfo){};
-    virtual void refreshMusicState(FacDevInfo){};
+    virtual void refreshBattaryData(ProtocolBatteryData){};
+    virtual void refreshMusicState(ProtocolMusicStateData){};
 
     virtual void refreshSn(ProtocolSnData){};
     virtual void refreshLcdControl(FacLcdControl){};

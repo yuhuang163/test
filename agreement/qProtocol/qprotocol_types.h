@@ -2,6 +2,7 @@
 #define QPB_TYPES_H
 
 #include <QByteArray>
+#include <QVector>
 #include <QString>
 #include <QVariant>
 #include "ble_protocol/fx_ble_msg.pb.h"
@@ -81,6 +82,100 @@ typedef struct {
     ProtocolSnType type = ProtocolSnType::Unknown;
     QString value;
 } ProtocolSnData;
+
+typedef struct {
+    int chargeState = 0;
+    int percent = 0;
+    int voltageMv = 0;
+} ProtocolBatteryData;
+
+typedef struct {
+    QString wifiName;
+    QString wifiPassword;
+} ProtocolWifiStateData;
+
+typedef struct {
+    int musicState = 0;
+} ProtocolMusicStateData;
+
+typedef struct {
+    QString hardVersion;
+    QString softVersion;
+    QString resVersion;
+    int ageingState = 0;
+} ProtocolBaseInfoData;
+
+typedef struct {
+    int periphType = 0;
+    int state = 0;
+    int code = 0;
+} ProtocolPeriphStateData;
+
+typedef struct {
+    int modeButtonState = 0;
+    int powerButtonState = 0;
+} ProtocolButtonStateData;
+
+typedef struct {
+    int brushStart = 0;
+} ProtocolBrushControlData;
+
+typedef struct {
+    int switchState = 0;
+    int ledStateCount = 0;
+} ProtocolLedControlData;
+
+typedef struct {
+    int type = 0;
+} ProtocolLcdControlData;
+
+typedef struct {
+    int timeStamp = 0;
+    QVector<int> adcValues;
+    QVector<int> valueValues;
+} ProtocolPressSampleData;
+
+typedef struct {
+    int timeStamp = 0;
+    QVector<int> accelValues;
+    QVector<int> gyroValues;
+} ProtocolImuSampleData;
+
+typedef struct {
+    int result = 0;
+    int gyroX = 0;
+    int gyroY = 0;
+    int gyroZ = 0;
+} ProtocolImuCalibResultData;
+
+typedef struct {
+    int brushHeadAdc = 0;
+    int modeButtonAdc = 0;
+    int powerButtonAdc = 0;
+    int assistantComponent = 0;
+    int temperature = 0;
+} ProtocolPressCalibResultData;
+
+typedef struct {
+    int result = 0;
+} ProtocolInternetOtaData;
+
+typedef struct {
+    int result = 0;
+} ProtocolWifiDemandData;
+
+typedef struct {
+    int type = 0;
+} ProtocolCameraControlData;
+
+typedef struct {
+    int uploadType = 0;
+    int whichValue = 0;
+} ProtocolServoMotorInfoData;
+
+typedef struct {
+    int result = 0;
+} ProtocolPictureSendOverData;
 
 typedef struct {
     QByteArray name;
@@ -217,5 +312,23 @@ public:
 };
 
 Q_DECLARE_METATYPE(ProtocolSnData)
+Q_DECLARE_METATYPE(ProtocolBatteryData)
+Q_DECLARE_METATYPE(ProtocolWifiStateData)
+Q_DECLARE_METATYPE(ProtocolMusicStateData)
+Q_DECLARE_METATYPE(ProtocolBaseInfoData)
+Q_DECLARE_METATYPE(ProtocolPeriphStateData)
+Q_DECLARE_METATYPE(ProtocolButtonStateData)
+Q_DECLARE_METATYPE(ProtocolBrushControlData)
+Q_DECLARE_METATYPE(ProtocolLedControlData)
+Q_DECLARE_METATYPE(ProtocolLcdControlData)
+Q_DECLARE_METATYPE(ProtocolPressSampleData)
+Q_DECLARE_METATYPE(ProtocolImuSampleData)
+Q_DECLARE_METATYPE(ProtocolImuCalibResultData)
+Q_DECLARE_METATYPE(ProtocolPressCalibResultData)
+Q_DECLARE_METATYPE(ProtocolInternetOtaData)
+Q_DECLARE_METATYPE(ProtocolWifiDemandData)
+Q_DECLARE_METATYPE(ProtocolCameraControlData)
+Q_DECLARE_METATYPE(ProtocolServoMotorInfoData)
+Q_DECLARE_METATYPE(ProtocolPictureSendOverData)
 
 #endif  // QPB_TYPES_H
