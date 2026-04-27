@@ -312,7 +312,7 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
 
-    connect(pb, SIGNAL(send_photosensitive_info(ProtocolPhotosensitiveData)), this,
+    connect(&protocolManager, SIGNAL(send_photosensitive_info(ProtocolPhotosensitiveData)), this,
             SLOT(solve_photosensitive_info(ProtocolPhotosensitiveData)));
     connect(pb, SIGNAL(send_sd_info(ProtocolSdInfoData)), this, SLOT(solve_sd_info(ProtocolSdInfoData)));
 
@@ -321,9 +321,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_press_data(ProtocolPressSampleData)), this, SLOT(getPressSensorData(ProtocolPressSampleData)));
     connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
-    connect(pb, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
+    connect(&protocolManager, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
     connect(pb, SIGNAL(send_wifi_State(ProtocolWifiStateData)), this, SLOT(updateWifi(ProtocolWifiStateData)));
-    connect(pb, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
+    connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
@@ -501,7 +501,7 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
     ui->wifiotaprogress->setMaximum(100);
     connect(pb, &Qpb::send_ota_progress, [&](int s) { ui->wifiotaprogress->setValue(s); });
-    connect(pb, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
+    connect(&protocolManager, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
 }
 
 void MainWindow::checkbutton(ProtocolButtonStateData x) {
