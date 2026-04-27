@@ -286,7 +286,7 @@ void ageing::refreshSn(ProtocolSnData data) {
     }
 
     if (data.type == ProtocolSnType::TailSn) {
-        ui->tail_sn->setText("存储的尾盖sn:" + brushstringsn);
+        ui->product_sn->setText("存储的整机sn:" + brushstringsn);
 
         showlog("读取的sn为" + brushstringsn);
         showlog("写入的sn为" + stringsn);
@@ -378,7 +378,7 @@ void ageing::startTask() {
                 showlog("开始测试");
                 pb->reset_all_pb();
                 at->resetConnected();
-                ui->tail_sn->setText("存储的尾盖sn:");
+                ui->product_sn->setText("存储的整机sn:");
                 ui->brush_subpid->setText("存储的subpid:");
                 snCompareOk = 0;
                 result = "";

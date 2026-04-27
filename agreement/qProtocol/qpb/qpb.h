@@ -317,14 +317,14 @@ signals:
     void send_camera_CONTROL_state(ProtocolCameraControlData);
     void send_servo_motor_info_msg(ProtocolServoMotorInfoData);
     void send_get_picture_send_over(ProtocolPictureSendOverData);
+    void send_press_cali_data(ProtocolPressCalibResultData x);
+
     void send_pb_date(QString data);
     void send_ota_flow_control(int state);
     void send_motor_cali_msg(QString data);
     void send_pb_info(QString info);
     void send_ota_progress(int progress);
     void send_ota_result(int result);
-    void send_press_cali_data(ProtocolPressCalibResultData x);
-
     void sendGetProductResponse(int data);
 };
 

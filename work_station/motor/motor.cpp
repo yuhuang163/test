@@ -222,7 +222,7 @@ void motor::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("存储尾盖sn:" + stringsn);
+    ui->product_sn->setText("存储整机sn:" + stringsn);
 }
 
 void motor::processInspection(QString stringsn) {
@@ -439,7 +439,7 @@ void motor::startTask() {
                 at->resetConnected();
                 is_canGoNext = 0;
                 refreshBleState(0);
-                ui->tail_sn->setText("存储尾盖sn:");
+                ui->product_sn->setText("存储整机sn:");
                 stringsn = "";
                 result = passValue;
                 TestTime.start();
@@ -690,7 +690,7 @@ void motor::startTest_task() {
                 pb->reset_all_pb();
                 at->resetConnected();
                 refreshBleState(0);
-                ui->tail_sn->setText("存储尾盖sn:");
+                ui->product_sn->setText("存储整机sn:");
                 stringsn = "";
                 test_result = passValue;
                 test_state = STATE_WATI_CONNECT;

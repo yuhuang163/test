@@ -64,7 +64,7 @@ private:
     QLabel* frame_rate;
     QLabel* macLabel;
     QLabel* board_sn;
-    QLabel* tail_sn;
+    QLabel* product_sn;
     int periph_state = 0;
     int base_state = 0;
     double measure_ammeter = 0;

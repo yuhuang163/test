@@ -467,9 +467,9 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
     // qDebug() << getIndex()<< "qss not load"<<  data.value;
     QString tail_sn_string = data.value;
     // ui->board_sn->setText("板子sn:"+board_sn_string);
-    ui->tail_sn->setText("尾盖sn:" + tail_sn_string);
+    ui->product_sn->setText("整机sn:" + tail_sn_string);
 
-    showlog("尾盖sn:" + tail_sn_string);
+    showlog("整机sn:" + tail_sn_string);
 }
 
 void quiescent_current::on_snInput_returnPressed() {
@@ -558,8 +558,8 @@ void quiescent_current::clearDisplay() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
-    ui->tail_sn->clear();
-    ui->tail_sn->setText("尾盖sn:");
+    ui->product_sn->clear();
+    ui->product_sn->setText("整机sn:");
     ui->log->clear();
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "

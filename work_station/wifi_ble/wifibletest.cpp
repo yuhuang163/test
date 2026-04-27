@@ -421,7 +421,7 @@ void wifibletest::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+    ui->product_sn->setText("芯片存储的整机sn:" + stringsn);
 
     if (stringsn == "") {
         QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
@@ -542,7 +542,7 @@ void wifibletest::initDate() {
     refresh_periph_times = 1;
     allow_retry = 1;
     measure_ammeter_counts = 0;
-    ui->tail_sn->setText("芯片存储的尾盖sn:");
+    ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
 

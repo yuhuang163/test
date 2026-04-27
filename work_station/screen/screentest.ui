@@ -121,9 +121,9 @@
        <item row="7" column="1" colspan="3">
         <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
-          <widget class="QLabel" name="tail_sn">
+          <widget class="QLabel" name="product_sn">
            <property name="text">
-            <string>存储尾盖sn:</string>
+            <string>存储整机sn:</string>
            </property>
           </widget>
          </item>

@@ -1522,10 +1522,10 @@ void Qpb::set_sn(FacDevInfoType which_sn, const QByteArray& sn) {
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_board_sn_tag;
     } else if (which_sn == FacDevInfoType_TAIL_SN) {
         pack.command_data.set_dev_info.dev_info[0].info_item = which_sn;
-        qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn, sn,
-                 sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1);
+        qstrncpy(pack.command_data.set_dev_info.dev_info[0].value_item.product_sn, sn,
+                 sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.product_sn) - 1);
         pack.command_data.set_dev_info.dev_info[0]
-            .value_item.tail_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.tail_sn) - 1] = '\0';
+            .value_item.product_sn[sizeof(pack.command_data.set_dev_info.dev_info[0].value_item.product_sn) - 1] = '\0';
         pack.command_data.set_dev_info.dev_info[0].which_value_item = FacDevInfoValue_tail_sn_tag;
 
     } else if (which_sn == FacDevInfoType_SUB_PID) {
@@ -2511,8 +2511,8 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        emit send_sn_data({ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.tail_sn)});
-        qDebug() << "获取到回复尾盖的sn" << x.dev_info[0].value_item.tail_sn;
+        emit send_sn_data({ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.product_sn)});
+        qDebug() << "获取到回复整机的sn" << x.dev_info[0].value_item.product_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
@@ -2694,7 +2694,7 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
 
     if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN) {
         is_banding_ok = 1;
-        qDebug() << "已经收到写入尾盖的sn回应";
+        qDebug() << "已经收到写入整机的sn回应";
         emit sendGetProductResponse(1);
     }
 

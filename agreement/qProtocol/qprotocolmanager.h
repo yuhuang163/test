@@ -2,6 +2,7 @@
 #define QPROTOCOLMANAGER_H
 
 #include "qprotocol.h"
+#include "qprotocol_types.h"
 #include <QObject>
 #include <string>
 #include <QByteArray>
@@ -59,6 +60,11 @@ public:
 signals:
     void send_pb_date(QString data);
     void sendGetProductResponse(int data);
+    void send_sn_data(ProtocolSnData data);
+    void send_battary(ProtocolBatteryData data);
+    void send_button_state(ProtocolButtonStateData data);
+    void send_periph_data(ProtocolPeriphStateData data);
+    void send_photosensitive_info(ProtocolPhotosensitiveData data);
 
 private:
     void syncActivePointer();

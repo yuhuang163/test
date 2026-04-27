@@ -315,7 +315,7 @@ message FacDevInfoValue {
     FacDevInfoType info_item = 1;
     oneof value_item {
         FacWifiInfo wifi_info = 2;
-        string tail_sn = 3 [(nanopb).max_size = 64];
+        string product_sn = 3 [(nanopb).max_size = 64];
         string board_sn = 4 [(nanopb).max_size = 64];
         uint32 brush_mode = 5;
         FacBatteryInfo battery = 6;

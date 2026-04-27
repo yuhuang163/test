@@ -275,7 +275,7 @@ void imucali::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+    ui->product_sn->setText("芯片存储的整机sn:" + stringsn);
 }
 
 void imucali::set_fix_result(int state) {
@@ -811,7 +811,7 @@ void imucali::dataInit() {
     //  at->sendMac(ui->macInput->text());//发送mac地址
     result = passValue;
 
-    ui->tail_sn->setText("芯片存储的尾盖sn:");
+    ui->product_sn->setText("芯片存储的整机sn:");
 
     for (int la = 0; la < 12; la++) {
         QLabel* label = labelList.at(la);

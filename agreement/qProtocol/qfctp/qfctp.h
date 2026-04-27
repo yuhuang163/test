@@ -123,6 +123,10 @@ private:
 signals:
     void send_pb_date(QString data);
     void send_sn_data(ProtocolSnData);
+    void send_battary(ProtocolBatteryData);
+    void send_button_state(ProtocolButtonStateData);
+    void send_periph_data(ProtocolPeriphStateData data);
+    void send_photosensitive_info(ProtocolPhotosensitiveData);
     void send_fw_version(QString version);
     void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
     void sendGetProductResponse(int data);

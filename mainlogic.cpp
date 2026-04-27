@@ -1336,7 +1336,7 @@ void MainWindow::refreshSn(ProtocolSnData data) {
             break;
         case ProtocolSnType::TailSn:
             qDebug() << "原始的tail_sn：" << data.value;
-            tail_sn->setText("尾盖sn:" + data.value);
+            product_sn->setText("整机sn:" + data.value);
             break;
         case ProtocolSnType::SkuId:
             qDebug() << "原始的skuid：" << data.value;

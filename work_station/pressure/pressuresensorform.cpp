@@ -1879,7 +1879,7 @@ void PressureSensorForm::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << "dev_info" << data.value;
     qDebug() << "stringsn" << stringsn;
-    showlog("芯片存储的尾盖sn:" + stringsn);
+    showlog("芯片存储的整机sn:" + stringsn);
 }
 
 void PressureSensorForm::refreshBleState(int state) {

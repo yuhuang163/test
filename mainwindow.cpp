@@ -175,7 +175,7 @@ MainWindow::MainWindow(QWidget* parent) :
     uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
     macLabel = new QLabel("蓝牙mac:                        ");
     board_sn = new QLabel("板子sn:                        ");
-    tail_sn = new QLabel("尾盖sn:                        ");
+    product_sn = new QLabel("整机sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
     sku_id = new QLabel("sku_id:        ");
     // 添加用户友好的字符串到下拉框
@@ -203,7 +203,7 @@ MainWindow::MainWindow(QWidget* parent) :
                                "}");
 
     ui->statusbar->addPermanentWidget(board_sn);
-    ui->statusbar->addPermanentWidget(tail_sn);
+    ui->statusbar->addPermanentWidget(product_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
     ui->statusbar->addPermanentWidget(sku_id);
 
@@ -2872,7 +2872,7 @@ void MainWindow::on_get_board_sn_clicked() { protocolManager.get(DeviceCmd::GetS
 void MainWindow::on_write_device_sn_clicked() {
     QByteArray devicesn = ui->snInput->text().toUtf8();
     protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, devicesn}));
-    showlog("已绑定尾盖sn到设备");
+    showlog("已绑定正sn到设备");
 }
 
 void MainWindow::on_write_board_sn_clicked() {

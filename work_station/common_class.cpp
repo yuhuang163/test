@@ -41,7 +41,7 @@ void TestFunctionExecutor::createTestFunctions() {
         {"打开串口接收", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 1); }); }},
         {"关闭串口接收", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); }); }},
         {"设置屏幕颜色", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenColor, 1); }); }},
-        {"获取尾盖SN码", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); }); }},
+        {"获取整机SN码", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); }); }},
         {"获取设备信息", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::DeviceInfo); }); }},
         {"获取基本信息", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }); }},
         {"获取外围设备状态", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); }); }},

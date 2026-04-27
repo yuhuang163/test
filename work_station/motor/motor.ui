@@ -115,9 +115,9 @@
         </layout>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="tail_sn">
+        <widget class="QLabel" name="product_sn">
          <property name="text">
-          <string>存储尾盖sn:</string>
+          <string>存储整机sn:</string>
          </property>
         </widget>
        </item>

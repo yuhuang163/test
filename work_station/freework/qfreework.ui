@@ -363,9 +363,9 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="tail_sn">
+           <widget class="QLabel" name="product_sn">
             <property name="text">
-             <string>芯片存储的尾盖sn：</string>
+             <string>芯片存储的整机sn：</string>
             </property>
            </widget>
           </item>

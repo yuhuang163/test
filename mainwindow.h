@@ -175,7 +175,7 @@ private:
     QLabel* frame_rate = nullptr;
     QLabel* macLabel = nullptr;
     QLabel* board_sn = nullptr;
-    QLabel* tail_sn = nullptr;
+    QLabel* product_sn = nullptr;
     QLabel* sub_pid = nullptr;
     QLabel* sku_id = nullptr;
 

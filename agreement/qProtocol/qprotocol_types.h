@@ -129,6 +129,8 @@ typedef struct {
     int flash_state = 0;
     int magnet_state = 0;
     int press_state = 0;
+    int press0_state = 0;
+    int press1_state = 0;
     int audio_state = 0;
     int result = 0;
 } ProtocolPeriphStateData;

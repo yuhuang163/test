@@ -420,6 +420,16 @@ void Qfctp::handleRspSensorState(const uint8_t *mainValue, uint16_t mainLen)
         emit send_pb_date(QString("FCTP 外设sensor状态 press0=%1 press1=%2 batteryIc=%3 touchIc=%4 ledIc=%5 pdIc=%6 raw=%7")
                               .arg(stateText(press0)).arg(stateText(press1)).arg(stateText(battIc)).arg(stateText(touchIc))
                               .arg(stateText(ledIc)).arg(hasPdIc ? stateText(pdIc) : "未上报").arg(rawHex));
+        ProtocolPeriphStateData periphData;
+        periphData.press0_state = (press0 == 0x01) ? 1 : 0;
+        periphData.press1_state = (press1 == 0x01) ? 1 : 0;
+        periphData.flash_state = (ledIc == 0x01) ? 1 : 0;
+        periphData.magnet_state = (battIc == 0x01) ? 1 : 0;
+        periphData.imu_state = (touchIc == 0x01) ? 1 : 0;
+        periphData.audio_state = hasPdIc ? ((pdIc == 0x01) ? 1 : 0) : -1;
+        periphData.result = periphData.press_state && periphData.flash_state && periphData.magnet_state
+                          && periphData.imu_state && (periphData.audio_state != 0);
+        emit send_periph_data(periphData);
         emit send_periph_sensor_state(static_cast<int>(press0), static_cast<int>(press1), static_cast<int>(battIc),
                                       static_cast<int>(touchIc), static_cast<int>(ledIc), hasPdIc ? static_cast<int>(pdIc) : -1);
     }
@@ -473,6 +483,9 @@ void Qfctp::handleRspBatteryRead(const uint8_t *mainValue, uint16_t mainLen)
                     << b << "%"
                     << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 电池电量读取 value=%1% raw=%2").arg(b).arg(rawHex));
+            ProtocolBatteryData batteryData;
+            batteryData.percent = b;
+            emit send_battary(batteryData);
         } else {
             qWarning() << "FCTP 电池电量读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -593,6 +606,13 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
                     << "event=" << event << "(" << eventText << ")"
                     << "key=" << keyId
                     << "raw=" << raw.toHex(' ');
+            ProtocolButtonStateData buttonData;
+            if (keyId == 1u) {
+                buttonData.modeButtonState = static_cast<int>(event);
+            } else if (keyId == 2u) {
+                buttonData.powerButtonState = static_cast<int>(event);
+            }
+            emit send_button_state(buttonData);
         } else if (serviceId == kTestsService && type == kTlvEncoderStatusReport && len >= 2) {
             // ENCODER_STATUS_REPORT: value[0]=dir(1左旋/2右旋), value[1]=encoderId(1-255)
             const uint8_t dir = value[0];
@@ -619,9 +639,11 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
                                       | (static_cast<uint32_t>(value[7]) << 24);
                     qInfo() << "FCTP 光感上报" << "field0_u32=" << v0 << "field1_u32=" << v1 << "raw=" << rawHex;
                     emit send_pb_date(QString("FCTP 光感上报 field0=%1 field1=%2 raw=%3").arg(v0).arg(v1).arg(rawHex));
+                    emit send_photosensitive_info({static_cast<int>(v0)});
                 } else {
                     qInfo() << "FCTP 光感上报" << "value_u32=" << v0 << "raw=" << rawHex;
                     emit send_pb_date(QString("FCTP 光感上报 value=%1 raw=%2").arg(v0).arg(rawHex));
+                    emit send_photosensitive_info({static_cast<int>(v0)});
                 }
             } else {
                 qInfo() << "FCTP 光感上报(短包) raw=" << rawHex;

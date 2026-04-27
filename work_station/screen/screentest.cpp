@@ -158,7 +158,7 @@ void screentest::refreshSn(ProtocolSnData data) {
     const QString brushstringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "brushstringsn" << brushstringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + brushstringsn);
+    ui->product_sn->setText("芯片存储的整机sn:" + brushstringsn);
 
     if (data.type == ProtocolSnType::SubPid) {
         const QString brushstringSubpid = data.value;
@@ -192,7 +192,7 @@ void screentest::refreshSn(ProtocolSnData data) {
     }
 
     if (data.type == ProtocolSnType::TailSn) {
-        ui->tail_sn->setText("存储的尾盖sn:" + brushstringsn);
+        ui->product_sn->setText("存储的整机sn:" + brushstringsn);
 
         showlog("读取的sn为" + brushstringsn);
         showlog("写入的sn为" + stringsn);
@@ -230,7 +230,7 @@ void screentest::startTask()
                 pb->reset_all_pb();
                 at->resetConnected();
                 refreshBleState(0);
-                ui->tail_sn->setText("存储尾盖sn:");
+                ui->product_sn->setText("存储整机sn:");
                 stringsn = "";
                 result = passValue;
                 is_canGoNext = 0;

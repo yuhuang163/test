@@ -512,7 +512,7 @@ void cameratest::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("存储尾盖sn:" + stringsn);
+    ui->product_sn->setText("存储整机sn:" + stringsn);
 }
 //正常上报0，失败上报机号，上报了就结束测试了
 void cameratest::canGoNextMechine(int x) {
@@ -612,7 +612,7 @@ void cameratest::startTask() {
                 at->resetConnected();
                 displayRectangles = false;
                 refreshBleState(0);
-                ui->tail_sn->setText("存储尾盖sn:");
+                ui->product_sn->setText("存储整机sn:");
                 stringsn = "";
                 cameraSendTimer->stop();
                 result = passValue;

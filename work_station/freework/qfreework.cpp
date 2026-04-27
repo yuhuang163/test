@@ -625,7 +625,7 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     stringsn = data.value;
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
+    ui->product_sn->setText("芯片存储的整机sn:" + stringsn);
 
     // if (stringsn == "")
     // {
@@ -741,7 +741,7 @@ void QFreeWork::getWifiMsg(QString data) {
     }
 }
 void QFreeWork::initDate() {
-    ui->tail_sn->setText("芯片存储的尾盖sn:");
+    ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
 
