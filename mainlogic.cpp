@@ -58,25 +58,16 @@ QString MainWindow::getCaliMarkString(CaliMark caliMark) {
         default: return "未知校准标志";
     }
 }
-void MainWindow::getServoMotorInfoMsg(FacMotorCalibResult data) {
-    // showlog("伺服电机校准标志为"+QString::number(data.value_item.servo_info.motor_cali_mark));
-    // showlog("伺服电机电流为"+QString::number(data.value_item.servo_info.motor_current));
-    // showlog("伺服电机工作状态为"+QString::number(data.value_item.servo_info.motor_state));
-    // showlog("伺服电机电压为"+QString::number(data.value_item.servo_info.motor_voltage));
-    // showlog("伺服电机错误码为"+QString::number(data.value_item.servo_info.FaultCode));
-
-    showlog("伺服电机校准标志：" +
-            getCaliMarkString(static_cast<CaliMark>(data.value_item.servo_info.motor_cali_mark)));
-
-    showlog("伺服电机电流：" + QString::number(data.value_item.servo_info.motor_current));
-    showlog("伺服电机工作状态：" +
-            getMotorStateString(static_cast<FacMotoState>(data.value_item.servo_info.motor_state)));
-    showlog("伺服电机电压：" + QString::number(data.value_item.servo_info.motor_voltage));
-    showlog("伺服电机错误码：" +
-            getMotorFaultCodeString(static_cast<FacMotorFaultCode>(data.value_item.servo_info.FaultCode)));
-
-    showlog("霍尔校准的记录内容:" + QString(data.value_item.servo_info.opera_info.hall_info));
-    showlog("零点校准的记录内容:" + QString(data.value_item.servo_info.opera_info.zero_info));
+void MainWindow::getServoMotorInfoMsg(ProtocolServoMotorInfoData data) {
+    showlog("伺服电机上报类型：" + QString::number(data.uploadType));
+    showlog("伺服电机上报值类型：" + QString::number(data.whichValue));
+    showlog("伺服电机校准标志：" + getCaliMarkString(static_cast<CaliMark>(data.motorCaliMark)));
+    showlog("伺服电机电流：" + QString::number(data.motorCurrent));
+    showlog("伺服电机工作状态：" + getMotorStateString(static_cast<FacMotoState>(data.motorState)));
+    showlog("伺服电机电压：" + QString::number(data.motorVoltage));
+    showlog("伺服电机错误码：" + getMotorFaultCodeString(static_cast<FacMotorFaultCode>(data.faultCode)));
+    showlog("霍尔校准的记录内容:" + data.hallInfo);
+    showlog("零点校准的记录内容:" + data.zeroInfo);
 }
 void MainWindow::updateHIDComboBox(QComboBox* comboBox) {
     if (!comboBox)
@@ -1126,19 +1117,20 @@ void MainWindow::sendPicture(const QString& url, const QString& filePath) {
     manager->deleteLater();
 }
 
-void MainWindow::refreshImuCaliResult(FacImuCalibResult x) {
-    showlog(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
-    showlog(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
-    showlog(QString("gyro_z: %1").arg(qint32(x.gyro_z)));
-    showlog(QString("bx: %1").arg(x.new_cali.bx));
-    showlog(QString("by: %1").arg(x.new_cali.by));
-    showlog(QString("bz: %1").arg(x.new_cali.bz));
-    showlog(QString("kx: %1").arg(x.new_cali.kx));
-    showlog(QString("ky: %1").arg(x.new_cali.ky));
-    showlog(QString("kz: %1").arg(x.new_cali.kz));
-    showlog(QString("syx: %1").arg(x.new_cali.syx));
-    showlog(QString("szx: %1").arg(x.new_cali.szx));
-    showlog(QString("szy: %1").arg(x.new_cali.szy));
+void MainWindow::refreshImuCaliResult(ProtocolImuCalibResultData x) {
+    showlog(QString("gyro_x: %1").arg(x.gyroX));
+    showlog(QString("gyro_y: %1").arg(x.gyroY));
+    showlog(QString("gyro_z: %1").arg(x.gyroZ));
+    showlog(QString("bx: %1").arg(x.bx));
+    showlog(QString("by: %1").arg(x.by));
+    showlog(QString("bz: %1").arg(x.bz));
+    showlog(QString("kx: %1").arg(x.kx));
+    showlog(QString("ky: %1").arg(x.ky));
+    showlog(QString("kz: %1").arg(x.kz));
+    showlog(QString("syx: %1").arg(x.syx));
+    showlog(QString("szx: %1").arg(x.szx));
+    showlog(QString("szy: %1").arg(x.szy));
+    showlog(QString("imu校准结果: %1").arg(x.result));
 }
 void MainWindow::otaFwSet(int state) {
     for (int i = 1; i < 2; i++) {
@@ -1473,7 +1465,7 @@ void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsF
     //     qDebug() << "文件转换失败：" << xlsFilename;
     // }
 }
-void MainWindow::imu_normol_saveToCsv(const QString& filename, const FacUploadNineAlex& x) {
+void MainWindow::imu_normol_saveToCsv(const QString& filename, const ProtocolImuSampleData& x) {
     QFile file(filename);
     bool fileExists = file.exists();
 
@@ -1490,9 +1482,12 @@ void MainWindow::imu_normol_saveToCsv(const QString& filename, const FacUploadNi
     }
 
     // 写入数据行
-    for (int i = 0; i < x.data_count; i++) {
-        out << x.data[i].timestamp << ',' << x.data[i].acc_x << ',' << x.data[i].acc_y << ',' << x.data[i].acc_z << ','
-            << x.data[i].gyro_x << ',' << x.data[i].gyro_y << ',' << x.data[i].gyro_z << '\n';
+    const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 3;
+        out << x.timeStamp << ',' << x.accelValues[base] << ',' << x.accelValues[base + 1] << ','
+            << x.accelValues[base + 2] << ',' << x.gyroValues[base] << ',' << x.gyroValues[base + 1] << ','
+            << x.gyroValues[base + 2] << '\n';
 
         // 如果需要防止UI冻结，调用processEvents()
     }
@@ -1500,10 +1495,10 @@ void MainWindow::imu_normol_saveToCsv(const QString& filename, const FacUploadNi
     file.close();
 
     qDebug() << "文件保存成功：" << filename;
-    qDebug() << "保存数量为" << x.data_count;
+    qDebug() << "保存数量为" << sampleCount;
 }
 
-void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) {
+void MainWindow::saveToCsv(const QString& filename, const ProtocolImuSampleData& x) {
     QFile file(filename);
     bool fileExists = file.exists();
 
@@ -1520,10 +1515,12 @@ void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) 
     }
 
     // 写入数据行
-    for (int i = 0; i < x.data_count; i++) {
-        out << x.data[i].timestamp << ',' << x.data[i].solve_acc_x << ',' << x.data[i].solve_acc_y << ','
-            << x.data[i].solve_acc_z << ',' << x.data[i].solve_gyro_x << ',' << x.data[i].solve_gyro_y << ','
-            << x.data[i].solve_gyro_z << '\n';
+    const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 3;
+        out << x.timeStamp << ',' << x.accelValues[base] << ',' << x.accelValues[base + 1] << ','
+            << x.accelValues[base + 2] << ',' << x.gyroValues[base] << ',' << x.gyroValues[base + 1] << ','
+            << x.gyroValues[base + 2] << '\n';
 
         // 如果需要防止UI冻结，调用processEvents()
     }
@@ -1531,25 +1528,27 @@ void MainWindow::saveToCsv(const QString& filename, const FacUploadNineAlex& x) 
     file.close();
 
     qDebug() << "文件保存成功：" << filename;
-    qDebug() << "保存数量为" << x.data_count;
+    qDebug() << "保存数量为" << sampleCount;
 }
-void MainWindow::getimuData(FacUploadNineAlex x) {
+void MainWindow::getimuData(ProtocolImuSampleData x) {
     qDebug() << "开始保存";
-    showlog("收到的个数=" + QString::number(x.data_count));
+    const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+    showlog("收到的个数=" + QString::number(sampleCount));
 
     saveToCsv("处理后的6轴IMU性能验证.csv", x);
     imu_normol_saveToCsv("未处理6轴IMU性能验证.csv", x);
-    for (int i = 0; i < x.data_count; i++) {
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 3;
         //   showlog("时间为=" + QString::number(x.data[i].timestamp));
 
-        orgData.acc[0] = x.data[i].acc_x;
-        orgData.acc[1] = x.data[i].acc_y;
-        orgData.acc[2] = x.data[i].acc_z;
-        orgData.gyro[0] = x.data[i].gyro_x;
-        orgData.gyro[1] = x.data[i].gyro_y;
-        orgData.gyro[2] = x.data[i].gyro_z;
+        orgData.acc[0] = x.accelValues[base];
+        orgData.acc[1] = x.accelValues[base + 1];
+        orgData.acc[2] = x.accelValues[base + 2];
+        orgData.gyro[0] = x.gyroValues[base];
+        orgData.gyro[1] = x.gyroValues[base + 1];
+        orgData.gyro[2] = x.gyroValues[base + 2];
 
-        ui->imutimestamp->setText("timestamp=" + QString::number(x.data[i].timestamp));
+        ui->imutimestamp->setText("timestamp=" + QString::number(x.timeStamp));
         ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
         ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
         ui->gyro_z->setText("gyro_z=" + QString::number(orgData.gyro[2]));
@@ -1560,13 +1559,14 @@ void MainWindow::getimuData(FacUploadNineAlex x) {
     // qDebug()<<"收到六轴数据";
     int ret = 0;
     if (is_start_ium_cali) {
-        for (int i = 0; i < x.data_count; i++) {
-            orgData.acc[0] = x.data[i].acc_x;
-            orgData.acc[1] = x.data[i].acc_y;
-            orgData.acc[2] = x.data[i].acc_z;
-            orgData.gyro[0] = x.data[i].gyro_x;
-            orgData.gyro[1] = x.data[i].gyro_y;
-            orgData.gyro[2] = x.data[i].gyro_z;
+        for (int i = 0; i < sampleCount; i++) {
+            const int base = i * 3;
+            orgData.acc[0] = x.accelValues[base];
+            orgData.acc[1] = x.accelValues[base + 1];
+            orgData.acc[2] = x.accelValues[base + 2];
+            orgData.gyro[0] = x.gyroValues[base];
+            orgData.gyro[1] = x.gyroValues[base + 1];
+            orgData.gyro[2] = x.gyroValues[base + 2];
 
             ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
             ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
@@ -1785,7 +1785,7 @@ void MainWindow::saveImuTestDataToCsv(const QString& macAddress, const QString& 
     }
 }
 
-void MainWindow::refreshWifiDemand(FacWifiDemand x) {
+void MainWindow::refreshWifiDemand(ProtocolWifiDemandData x) {
     if (x.result) {
         WifiStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
         showlog("WIFI连接断开");
@@ -1794,7 +1794,7 @@ void MainWindow::refreshWifiDemand(FacWifiDemand x) {
         showlog("WIFI连接成功");
     }
 }
-void MainWindow::updateLocalOtaResult(FacInternetOta x) {
+void MainWindow::updateLocalOtaResult(ProtocolInternetOtaData x) {
     if (x.result)
         qDebug() << "本地ota返回错误，结果为" << x.result;
     ui->local_ota_result->setText("OTA");
@@ -1819,30 +1819,23 @@ QString MainWindow::generateOutputFilePath() {
     return QDir(musicFolderPath).filePath(fileName);
 }
 
-void MainWindow::getPressSensorData(FacUploadPresSensor x) {
+void MainWindow::getPressSensorData(ProtocolPressSampleData x) {
     showlog("保存压感数据ing");
-    for (int i = 0; i < x.sensor_data_count; i++) {
-        ui->brush_value->setText("电机压力：" + QString::number(int16_t(x.sensor_data[i].brush_head.value)));
-        ui->brush_adc->setText("电机adc：" + QString::number(int16_t(x.sensor_data[i].brush_head.adc)));
-
-        ui->mode_botton_adc->setText("模式按键adc：" + QString::number(int16_t(x.sensor_data[i].mode_button.adc)));
-        ui->mode_botton_value->setText("模式按键压力：" + QString::number(int16_t(x.sensor_data[i].mode_button.value)));
-
-        ui->power_botton_adc->setText("电源按键adc：" + QString::number(int16_t(x.sensor_data[i].power_button.adc)));
-        ui->power_botton_value->setText("电源按键压力：" +
-                                        QString::number(int16_t(x.sensor_data[i].power_button.value)));
-
-        ui->assistant_botton_adc->setText("辅助元件adc：" +
-                                          QString::number(int16_t(x.sensor_data[i].assistant_component.adc)));
-        ui->assistant_botton_value->setText("辅助元件压力：" +
-                                            QString::number(int16_t(x.sensor_data[i].assistant_component.value)));
-
-        savePressDataToLocalFolder(x, isfirstsavedata);
-        isfirstsavedata = 0;
+    if (x.adcValues.size() >= 4 && x.valueValues.size() >= 4) {
+        ui->brush_value->setText("电机压力：" + QString::number(x.valueValues[0]));
+        ui->brush_adc->setText("电机adc：" + QString::number(x.adcValues[0]));
+        ui->mode_botton_adc->setText("模式按键adc：" + QString::number(x.adcValues[1]));
+        ui->mode_botton_value->setText("模式按键压力：" + QString::number(x.valueValues[1]));
+        ui->power_botton_adc->setText("电源按键adc：" + QString::number(x.adcValues[2]));
+        ui->power_botton_value->setText("电源按键压力：" + QString::number(x.valueValues[2]));
+        ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(x.adcValues[3]));
+        ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(x.valueValues[3]));
     }
+    savePressDataToLocalFolder(x, isfirstsavedata);
+    isfirstsavedata = 0;
 }
 
-void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader) {
+void MainWindow::savePressDataToLocalFolder(const ProtocolPressSampleData& x, bool appHeader) {
     QString folderPath = "D:/测试结果";
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
@@ -1880,16 +1873,14 @@ void MainWindow::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool a
     QString timestamp = currentDateTime.toString("yyyy-MM-dd hh:mm:ss");
 
     // 遍历传感器数据并写入文件
-    for (int i = 0; i < x.sensor_data_count; i++) {
+    const int sampleCount = qMin(x.adcValues.size(), x.valueValues.size()) / 4;
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 4;
         QStringList dataList;
-        dataList << timestamp << macAddress << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.value));
+        dataList << timestamp << macAddress << QString::number(x.adcValues[base]) << QString::number(x.valueValues[base])
+                 << QString::number(x.adcValues[base + 1]) << QString::number(x.valueValues[base + 1])
+                 << QString::number(x.adcValues[base + 2]) << QString::number(x.valueValues[base + 2])
+                 << QString::number(x.adcValues[base + 3]) << QString::number(x.valueValues[base + 3]);
 
         out << dataList.join(",") << "\n";
     }
@@ -2842,7 +2833,7 @@ bool MainWindow::deleteCsvFile(const QString& filePath) {
         return false;
     }
 }
-void MainWindow::getPictureSendOver(FacPictureDataAck x) {
+void MainWindow::getPictureSendOver(ProtocolPictureSendOverData x) {
     Q_UNUSED(x);
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
@@ -3122,12 +3113,12 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     showlog("发送结束");
     showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }
-void MainWindow::getPresscalidata(FacPreSensorCalibResult x) {
-    showlog("电机" + QString::number(x.brush_head_adc));
-    showlog("模式" + QString::number(x.mode_button_adc));
-    showlog("电源" + QString::number(x.power_button_adc));
+void MainWindow::getPresscalidata(ProtocolPressCalibResultData x) {
+    showlog("电机" + QString::number(x.brushHeadAdc));
+    showlog("模式" + QString::number(x.modeButtonAdc));
+    showlog("电源" + QString::number(x.powerButtonAdc));
     showlog("温度" + QString::number(x.temperature));
-    showlog("辅助元器件" + QString::number(x.assistant_component));
+    showlog("辅助元器件" + QString::number(x.assistantComponent));
 }
 
 void MainWindow::sendAiMessage() {

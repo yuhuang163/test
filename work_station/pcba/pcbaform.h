@@ -55,7 +55,7 @@ private slots:
 
     void processInspection(QString stringsn);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
-    void getimuData(FacUploadNineAlex x) override;
+    void getimuData(ProtocolImuSampleData x) override;
     void get_remain_data(const FixturePacketData packetData);
     void get_remain_data_sleep(const FixturePacketData packetData);
     void on_stopTest_clicked();

@@ -2327,6 +2327,13 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
         ProtocolServoMotorInfoData servoMotorInfoData;
         servoMotorInfoData.uploadType = static_cast<int>(x.type);
         servoMotorInfoData.whichValue = static_cast<int>(x.which_value_item);
+        servoMotorInfoData.motorCaliMark = static_cast<int>(x.value_item.servo_info.motor_cali_mark);
+        servoMotorInfoData.motorCurrent = static_cast<int>(x.value_item.servo_info.motor_current);
+        servoMotorInfoData.motorState = static_cast<int>(x.value_item.servo_info.motor_state);
+        servoMotorInfoData.motorVoltage = static_cast<int>(x.value_item.servo_info.motor_voltage);
+        servoMotorInfoData.faultCode = static_cast<int>(x.value_item.servo_info.FaultCode);
+        servoMotorInfoData.hallInfo = QString::fromUtf8(x.value_item.servo_info.opera_info.hall_info);
+        servoMotorInfoData.zeroInfo = QString::fromUtf8(x.value_item.servo_info.opera_info.zero_info);
         emit send_servo_motor_info_msg(servoMotorInfoData);
         emit sendGetProductResponse(1);
     }
@@ -2431,6 +2438,15 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     imuCalibData.gyroX = static_cast<int>(x.gyro_x);
     imuCalibData.gyroY = static_cast<int>(x.gyro_y);
     imuCalibData.gyroZ = static_cast<int>(x.gyro_z);
+    imuCalibData.bx = static_cast<int>(x.new_cali.bx);
+    imuCalibData.by = static_cast<int>(x.new_cali.by);
+    imuCalibData.bz = static_cast<int>(x.new_cali.bz);
+    imuCalibData.kx = static_cast<int>(x.new_cali.kx);
+    imuCalibData.ky = static_cast<int>(x.new_cali.ky);
+    imuCalibData.kz = static_cast<int>(x.new_cali.kz);
+    imuCalibData.syx = static_cast<int>(x.new_cali.syx);
+    imuCalibData.szx = static_cast<int>(x.new_cali.szx);
+    imuCalibData.szy = static_cast<int>(x.new_cali.szy);
     emit send_IMU_CALIB_result(imuCalibData);
     if (x.result) {
         emit send_pb_date("设备六轴校准数据有问题,可能是初始值");

@@ -517,20 +517,20 @@ void PressureSensorForm::getTestValue(const int mechines, const QString value) {
     // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
-void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
-    if (x.brush_head_adc != 0) {
-        showlog("读取到的电机校准系数" + QString::number(x.brush_head_adc));
-        LastCali.calib_factor[MODULE_BTH] = x.brush_head_adc;
+void PressureSensorForm::getPresscalidata(ProtocolPressCalibResultData x) {
+    if (x.brushHeadAdc != 0) {
+        showlog("读取到的电机校准系数" + QString::number(x.brushHeadAdc));
+        LastCali.calib_factor[MODULE_BTH] = x.brushHeadAdc;
         qDebug() << "获取到电机校准系数：" << LastCali.calib_factor[MODULE_BTH];
     }
-    if (x.mode_button_adc != 0) {
-        showlog("读取到的模式按键校准系数" + QString::number(x.mode_button_adc));
-        LastCali.calib_factor[MODULE_MODE_BUTTON] = x.mode_button_adc;
+    if (x.modeButtonAdc != 0) {
+        showlog("读取到的模式按键校准系数" + QString::number(x.modeButtonAdc));
+        LastCali.calib_factor[MODULE_MODE_BUTTON] = x.modeButtonAdc;
         qDebug() << "获取到模式按键校准系数：" << LastCali.calib_factor[MODULE_MODE_BUTTON];
     }
-    if (x.power_button_adc != 0) {
-        showlog("读取到的电源按键校准系数" + QString::number(x.power_button_adc));
-        LastCali.calib_factor[MODULE_POWER_BUTTON] = x.power_button_adc;
+    if (x.powerButtonAdc != 0) {
+        showlog("读取到的电源按键校准系数" + QString::number(x.powerButtonAdc));
+        LastCali.calib_factor[MODULE_POWER_BUTTON] = x.powerButtonAdc;
         qDebug() << "获取到电源按键校准系数：" << LastCali.calib_factor[MODULE_MODE_BUTTON];
     }
     if (x.temperature != 0) {
@@ -539,9 +539,9 @@ void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
         qDebug() << "获取到温度系数：" << LastCali.calib_factor[MODULE_MODE_BUTTON];
     }
 
-    if (x.assistant_component != 0) {
-        showlog("读取到的辅助元器件校准系数" + QString::number(x.assistant_component));
-        LastCali.calib_factor[MODULE_ASSISTANT_COMPONENT] = x.assistant_component;
+    if (x.assistantComponent != 0) {
+        showlog("读取到的辅助元器件校准系数" + QString::number(x.assistantComponent));
+        LastCali.calib_factor[MODULE_ASSISTANT_COMPONENT] = x.assistantComponent;
         qDebug() << "辅助元器件" << LastCali.calib_factor[MODULE_ASSISTANT_COMPONENT];
     }
 
@@ -550,11 +550,11 @@ void PressureSensorForm::getPresscalidata(FacPreSensorCalibResult x) {
         /* (cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] == 0 ||
           x.assistant_component == (uint32_t)cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT]) &&*/
         (cali_result.calib_factor[MODULE_BTH] == 0 ||
-         x.brush_head_adc == (uint32_t)cali_result.calib_factor[MODULE_BTH]) &&
+         x.brushHeadAdc == (uint32_t)cali_result.calib_factor[MODULE_BTH]) &&
         (cali_result.calib_factor[MODULE_MODE_BUTTON] == 0 ||
-         x.mode_button_adc == (uint32_t)cali_result.calib_factor[MODULE_MODE_BUTTON]) &&
+         x.modeButtonAdc == (uint32_t)cali_result.calib_factor[MODULE_MODE_BUTTON]) &&
         (cali_result.calib_factor[MODULE_POWER_BUTTON] == 0 ||
-         x.power_button_adc == (uint32_t)cali_result.calib_factor[MODULE_POWER_BUTTON]) &&
+         x.powerButtonAdc == (uint32_t)cali_result.calib_factor[MODULE_POWER_BUTTON]) &&
         (x.temperature == (uint32_t)cali_result.temperature[MODULE_BTH] ||
          x.temperature == (uint32_t)cali_result.temperature[MODULE_MODE_BUTTON])) {
         qDebug() << "校准数据核对成功";
@@ -891,7 +891,7 @@ void PressureSensorForm::on_end_clicked() {
     ui->getMac->setFocus();
 }
 
-void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader) {
+void PressureSensorForm::savePressDataToLocalFolder(const ProtocolPressSampleData& x, bool appHeader) {
     // 获取当前日期
     QDate currentDate = QDate::currentDate();
     QString dateFolder = currentDate.toString("yyyy-MM-dd");  // 获取当前日期字符串作为文件夹名
@@ -937,16 +937,14 @@ void PressureSensorForm::savePressDataToLocalFolder(const FacUploadPresSensor& x
     QString timestamp = currentDateTime.toString("yyyy-MM-dd hh:mm:ss");
 
     // 遍历传感器数据并写入文件
-    for (int i = 0; i < x.sensor_data_count; i++) {
+    const int sampleCount = qMin(x.adcValues.size(), x.valueValues.size()) / 4;
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 4;
         QStringList dataList;
-        dataList << timestamp << macAddress << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].brush_head.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].mode_button.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].power_button.value))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.adc))
-                 << QString::number(static_cast<int16_t>(x.sensor_data[i].assistant_component.value));
+        dataList << timestamp << macAddress << QString::number(x.adcValues[base]) << QString::number(x.valueValues[base])
+                 << QString::number(x.adcValues[base + 1]) << QString::number(x.valueValues[base + 1])
+                 << QString::number(x.adcValues[base + 2]) << QString::number(x.valueValues[base + 2])
+                 << QString::number(x.adcValues[base + 3]) << QString::number(x.valueValues[base + 3]);
 
         out << dataList.join(",") << "\n";
     }
@@ -1269,7 +1267,17 @@ void PressureSensorForm::save_pressure_data(FacUploadPresSensor x) {
                     << "电源按键ADC"
                     << "电源按键压力";
 
-            savePressDataToLocalFolder(x, isfirstsavedata);
+            ProtocolPressSampleData protocolData;
+            protocolData.timeStamp = static_cast<int>(x.sensor_data[i].timestamp);
+            protocolData.adcValues << static_cast<int>(x.sensor_data[i].brush_head.adc)
+                                   << static_cast<int>(x.sensor_data[i].mode_button.adc)
+                                   << static_cast<int>(x.sensor_data[i].power_button.adc)
+                                   << static_cast<int>(x.sensor_data[i].assistant_component.adc);
+            protocolData.valueValues << static_cast<int>(x.sensor_data[i].brush_head.value)
+                                     << static_cast<int>(x.sensor_data[i].mode_button.value)
+                                     << static_cast<int>(x.sensor_data[i].power_button.value)
+                                     << static_cast<int>(x.sensor_data[i].assistant_component.value);
+            savePressDataToLocalFolder(protocolData, isfirstsavedata);
 
             isfirstsavedata = 0;
         }
@@ -1823,11 +1831,19 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
     }
 }
 
-void PressureSensorForm::getPressSensorData(FacUploadPresSensor x) {
-    graph_update(x);  // 图像更新
-    save_pressure_data(x);
-    calib_process(x);
-    test_process(x);
+void PressureSensorForm::getPressSensorData(ProtocolPressSampleData x) {
+    if (x.adcValues.size() >= 4 && x.valueValues.size() >= 4) {
+        ui->brush_adc->setText("电机adc：" + QString::number(x.adcValues[0]));
+        ui->brush_value->setText("电机压力：" + QString::number(x.valueValues[0]));
+        ui->botton_adc->setText("模式按键adc：" + QString::number(x.adcValues[1]));
+        ui->botton_value1->setText("模式按键压力：" + QString::number(x.valueValues[1]));
+        ui->power_adc->setText("电源按键adc：" + QString::number(x.adcValues[2]));
+        ui->power_value->setText("电源按键压力：" + QString::number(x.valueValues[2]));
+        ui->assistant_botton_adc->setText("辅助元件adc：" + QString::number(x.adcValues[3]));
+        ui->assistant_botton_value->setText("辅助元件压力：" + QString::number(x.valueValues[3]));
+    }
+    savePressDataToLocalFolder(x, isfirstsavedata);
+    isfirstsavedata = 0;
 }
 
 void PressureSensorForm::checkbutton(ProtocolButtonStateData x) {

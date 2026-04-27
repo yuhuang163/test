@@ -168,6 +168,15 @@ typedef struct {
     int gyroX = 0;
     int gyroY = 0;
     int gyroZ = 0;
+    int bx = 0;
+    int by = 0;
+    int bz = 0;
+    int kx = 0;
+    int ky = 0;
+    int kz = 0;
+    int syx = 0;
+    int szx = 0;
+    int szy = 0;
 } ProtocolImuCalibResultData;
 
 typedef struct {
@@ -193,6 +202,13 @@ typedef struct {
 typedef struct {
     int uploadType = 0;
     int whichValue = 0;
+    int motorCaliMark = 0;
+    int motorCurrent = 0;
+    int motorState = 0;
+    int motorVoltage = 0;
+    int faultCode = 0;
+    QString hallInfo;
+    QString zeroInfo;
 } ProtocolServoMotorInfoData;
 
 typedef struct {

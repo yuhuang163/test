@@ -119,123 +119,66 @@ imucali::imucali(int index, QWidget* parent) :
     testResultTableInit();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
-void imucali::refreshImuCaliResult(FacImuCalibResult x) {
+void imucali::refreshImuCaliResult(ProtocolImuCalibResultData x) {
     showlog("以下为收到设备的imu校准数据");
-    showlog(QString("gyro_x: %1").arg(qint32(x.gyro_x)));
-    showlog(QString("gyro_y: %1").arg(qint32(x.gyro_y)));
-    showlog(QString("gyro_z: %1").arg(qint32(x.gyro_z)));
-    showlog(QString("bx: %1").arg(x.new_cali.bx));
-    showlog(QString("by: %1").arg(x.new_cali.by));
-    showlog(QString("bz: %1").arg(x.new_cali.bz));
-    showlog(QString("kx: %1").arg(x.new_cali.kx));
-    showlog(QString("ky: %1").arg(x.new_cali.ky));
-    showlog(QString("kz: %1").arg(x.new_cali.kz));
-    showlog(QString("syx: %1").arg(x.new_cali.syx));
-    showlog(QString("szx: %1").arg(x.new_cali.szx));
-    showlog(QString("szy: %1").arg(x.new_cali.szy));
+    showlog(QString("gyro_x: %1").arg(x.gyroX));
+    showlog(QString("gyro_y: %1").arg(x.gyroY));
+    showlog(QString("gyro_z: %1").arg(x.gyroZ));
+    showlog(QString("bx: %1").arg(x.bx));
+    showlog(QString("by: %1").arg(x.by));
+    showlog(QString("bz: %1").arg(x.bz));
+    showlog(QString("kx: %1").arg(x.kx));
+    showlog(QString("ky: %1").arg(x.ky));
+    showlog(QString("kz: %1").arg(x.kz));
+    showlog(QString("syx: %1").arg(x.syx));
+    showlog(QString("szx: %1").arg(x.szx));
+    showlog(QString("szy: %1").arg(x.szy));
+    showlog(QString("imu校准结果: %1").arg(x.result));
 
-    if (QString(product_name).compare("P20P") == 0 || QString(product_name).compare("Q20") == 0) {
-        if (nqimuc->calData.kx == x.new_cali.kx && nqimuc->calData.ky == x.new_cali.ky &&
-            nqimuc->calData.kz == x.new_cali.kz && nqimuc->calData.syx == x.new_cali.syx &&
-            nqimuc->calData.szx == x.new_cali.szx && nqimuc->calData.szy == x.new_cali.szy &&
-            nqimuc->calData.bx == x.new_cali.bx && nqimuc->calData.by == x.new_cali.by &&
-            nqimuc->calData.bz == x.new_cali.bz) {
-            imudata_check = 1;
-        } else {
-            imudata_check = 2;
-            // 打印条件不满足的部分
-            if (nqimuc->calData.gyro_offset[0] != x.gyro_x)
-                qDebug() << getIndex() << "gyro_offset[0] 不匹配：" << nqimuc->calData.gyro_offset[0]
-                         << " != " << x.gyro_x;
-
-            if (nqimuc->calData.gyro_offset[1] != x.gyro_y)
-                qDebug() << getIndex() << "gyro_offset[1] 不匹配：" << nqimuc->calData.gyro_offset[1]
-                         << " != " << x.gyro_y;
-
-            if (nqimuc->calData.gyro_offset[2] != x.gyro_z)
-                qDebug() << getIndex() << "gyro_offset[2] 不匹配：" << nqimuc->calData.gyro_offset[2]
-                         << " != " << x.gyro_z;
-
-            if (nqimuc->calData.kx != x.new_cali.kx)
-                qDebug() << getIndex() << "kx 不匹配：" << nqimuc->calData.kx << " != " << x.new_cali.kx;
-
-            if (nqimuc->calData.ky != x.new_cali.ky)
-                qDebug() << getIndex() << "ky 不匹配：" << nqimuc->calData.ky << " != " << x.new_cali.ky;
-
-            if (nqimuc->calData.kz != x.new_cali.kz)
-                qDebug() << getIndex() << "kz 不匹配：" << nqimuc->calData.kz << " != " << x.new_cali.kz;
-
-            if (nqimuc->calData.syx != x.new_cali.syx)
-                qDebug() << getIndex() << "syx 不匹配：" << nqimuc->calData.syx << " != " << x.new_cali.syx;
-
-            if (nqimuc->calData.szx != x.new_cali.szx)
-                qDebug() << getIndex() << "szx 不匹配：" << nqimuc->calData.szx << " != " << x.new_cali.szx;
-
-            if (nqimuc->calData.szy != x.new_cali.szy)
-                qDebug() << getIndex() << "szy 不匹配：" << nqimuc->calData.szy << " != " << x.new_cali.szy;
-
-            if (nqimuc->calData.bx != x.new_cali.bx)
-                qDebug() << getIndex() << "bx 不匹配：" << nqimuc->calData.bx << " != " << x.new_cali.bx;
-
-            if (nqimuc->calData.by != x.new_cali.by)
-                qDebug() << getIndex() << "by 不匹配：" << nqimuc->calData.by << " != " << x.new_cali.by;
-
-            if (nqimuc->calData.bz != x.new_cali.bz)
-                qDebug() << getIndex() << "bz 不匹配：" << nqimuc->calData.bz << " != " << x.new_cali.bz;
-        }
+    const bool isP20POrQ20 = (QString(product_name).compare("P20P") == 0 || QString(product_name).compare("Q20") == 0);
+    bool isMatch = false;
+    if (isP20POrQ20) {
+        isMatch = (nqimuc->calData.kx == x.kx && nqimuc->calData.ky == x.ky && nqimuc->calData.kz == x.kz &&
+                   nqimuc->calData.syx == x.syx && nqimuc->calData.szx == x.szx && nqimuc->calData.szy == x.szy &&
+                   nqimuc->calData.bx == x.bx && nqimuc->calData.by == x.by && nqimuc->calData.bz == x.bz);
+    } else {
+        isMatch = (nqimuc->calData.gyro_offset[0] == x.gyroX && nqimuc->calData.gyro_offset[1] == x.gyroY &&
+                   nqimuc->calData.gyro_offset[2] == x.gyroZ && nqimuc->calData.kx == x.kx &&
+                   nqimuc->calData.ky == x.ky && nqimuc->calData.kz == x.kz && nqimuc->calData.syx == x.syx &&
+                   nqimuc->calData.szx == x.szx && nqimuc->calData.szy == x.szy && nqimuc->calData.bx == x.bx &&
+                   nqimuc->calData.by == x.by && nqimuc->calData.bz == x.bz);
     }
 
-    else {
-        if (nqimuc->calData.gyro_offset[0] == x.gyro_x && nqimuc->calData.gyro_offset[1] == x.gyro_y &&
-            nqimuc->calData.gyro_offset[2] == x.gyro_z && nqimuc->calData.kx == x.new_cali.kx &&
-            nqimuc->calData.ky == x.new_cali.ky && nqimuc->calData.kz == x.new_cali.kz &&
-            nqimuc->calData.syx == x.new_cali.syx && nqimuc->calData.szx == x.new_cali.szx &&
-            nqimuc->calData.szy == x.new_cali.szy && nqimuc->calData.bx == x.new_cali.bx &&
-            nqimuc->calData.by == x.new_cali.by && nqimuc->calData.bz == x.new_cali.bz) {
-            imudata_check = 1;
-        } else {
-            imudata_check = 2;
-            // 打印条件不满足的部分
-            if (nqimuc->calData.gyro_offset[0] != x.gyro_x)
-                qDebug() << getIndex() << "gyro_offset[0] 不匹配：" << nqimuc->calData.gyro_offset[0]
-                         << " != " << x.gyro_x;
-
-            if (nqimuc->calData.gyro_offset[1] != x.gyro_y)
-                qDebug() << getIndex() << "gyro_offset[1] 不匹配：" << nqimuc->calData.gyro_offset[1]
-                         << " != " << x.gyro_y;
-
-            if (nqimuc->calData.gyro_offset[2] != x.gyro_z)
-                qDebug() << getIndex() << "gyro_offset[2] 不匹配：" << nqimuc->calData.gyro_offset[2]
-                         << " != " << x.gyro_z;
-
-            if (nqimuc->calData.kx != x.new_cali.kx)
-                qDebug() << getIndex() << "kx 不匹配：" << nqimuc->calData.kx << " != " << x.new_cali.kx;
-
-            if (nqimuc->calData.ky != x.new_cali.ky)
-                qDebug() << getIndex() << "ky 不匹配：" << nqimuc->calData.ky << " != " << x.new_cali.ky;
-
-            if (nqimuc->calData.kz != x.new_cali.kz)
-                qDebug() << getIndex() << "kz 不匹配：" << nqimuc->calData.kz << " != " << x.new_cali.kz;
-
-            if (nqimuc->calData.syx != x.new_cali.syx)
-                qDebug() << getIndex() << "syx 不匹配：" << nqimuc->calData.syx << " != " << x.new_cali.syx;
-
-            if (nqimuc->calData.szx != x.new_cali.szx)
-                qDebug() << getIndex() << "szx 不匹配：" << nqimuc->calData.szx << " != " << x.new_cali.szx;
-
-            if (nqimuc->calData.szy != x.new_cali.szy)
-                qDebug() << getIndex() << "szy 不匹配：" << nqimuc->calData.szy << " != " << x.new_cali.szy;
-
-            if (nqimuc->calData.bx != x.new_cali.bx)
-                qDebug() << getIndex() << "bx 不匹配：" << nqimuc->calData.bx << " != " << x.new_cali.bx;
-
-            if (nqimuc->calData.by != x.new_cali.by)
-                qDebug() << getIndex() << "by 不匹配：" << nqimuc->calData.by << " != " << x.new_cali.by;
-
-            if (nqimuc->calData.bz != x.new_cali.bz)
-                qDebug() << getIndex() << "bz 不匹配：" << nqimuc->calData.bz << " != " << x.new_cali.bz;
-        }
+    if (isMatch) {
+        imudata_check = 1;
+        return;
     }
+
+    imudata_check = 2;
+    if (nqimuc->calData.gyro_offset[0] != x.gyroX)
+        qDebug() << getIndex() << "gyro_offset[0] 不匹配：" << nqimuc->calData.gyro_offset[0] << " != " << x.gyroX;
+    if (nqimuc->calData.gyro_offset[1] != x.gyroY)
+        qDebug() << getIndex() << "gyro_offset[1] 不匹配：" << nqimuc->calData.gyro_offset[1] << " != " << x.gyroY;
+    if (nqimuc->calData.gyro_offset[2] != x.gyroZ)
+        qDebug() << getIndex() << "gyro_offset[2] 不匹配：" << nqimuc->calData.gyro_offset[2] << " != " << x.gyroZ;
+    if (nqimuc->calData.kx != x.kx)
+        qDebug() << getIndex() << "kx 不匹配：" << nqimuc->calData.kx << " != " << x.kx;
+    if (nqimuc->calData.ky != x.ky)
+        qDebug() << getIndex() << "ky 不匹配：" << nqimuc->calData.ky << " != " << x.ky;
+    if (nqimuc->calData.kz != x.kz)
+        qDebug() << getIndex() << "kz 不匹配：" << nqimuc->calData.kz << " != " << x.kz;
+    if (nqimuc->calData.syx != x.syx)
+        qDebug() << getIndex() << "syx 不匹配：" << nqimuc->calData.syx << " != " << x.syx;
+    if (nqimuc->calData.szx != x.szx)
+        qDebug() << getIndex() << "szx 不匹配：" << nqimuc->calData.szx << " != " << x.szx;
+    if (nqimuc->calData.szy != x.szy)
+        qDebug() << getIndex() << "szy 不匹配：" << nqimuc->calData.szy << " != " << x.szy;
+    if (nqimuc->calData.bx != x.bx)
+        qDebug() << getIndex() << "bx 不匹配：" << nqimuc->calData.bx << " != " << x.bx;
+    if (nqimuc->calData.by != x.by)
+        qDebug() << getIndex() << "by 不匹配：" << nqimuc->calData.by << " != " << x.by;
+    if (nqimuc->calData.bz != x.bz)
+        qDebug() << getIndex() << "bz 不匹配：" << nqimuc->calData.bz << " != " << x.bz;
 }
 
 void imucali::getTestValue(const int mechines, const QString value) {
@@ -581,7 +524,7 @@ void imucali::refresh_imu_data_to_csv(QString imutime, QString msg) {
     }
 }
 
-void imucali::getimuData(FacUploadNineAlex x) {
+void imucali::getimuData(ProtocolImuSampleData x) {
     int ret = 0;
     int old_ret = 0;
     int32_t imudata_result = 0;
@@ -589,27 +532,29 @@ void imucali::getimuData(FacUploadNineAlex x) {
     // qDebug() << getIndex()<< "收到数据: " << getIndex();
     if (is_start_ium_cali) {
         //  showlog("收到的个数=" + QString::number(x.data_count));
-        for (int i = 0; i < x.data_count; i++) {
-            orgData.acc[0] = x.data[i].acc_x;
-            orgData.acc[1] = x.data[i].acc_y;
-            orgData.acc[2] = x.data[i].acc_z;
-            orgData.gyro[0] = x.data[i].gyro_x;
-            orgData.gyro[1] = x.data[i].gyro_y;
-            orgData.gyro[2] = x.data[i].gyro_z;
+        const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+        for (int i = 0; i < sampleCount; i++) {
+            const int base = i * 3;
+            orgData.acc[0] = x.accelValues[base];
+            orgData.acc[1] = x.accelValues[base + 1];
+            orgData.acc[2] = x.accelValues[base + 2];
+            orgData.gyro[0] = x.gyroValues[base];
+            orgData.gyro[1] = x.gyroValues[base + 1];
+            orgData.gyro[2] = x.gyroValues[base + 2];
 
-            refresh_imu_data_to_csv(QString::number(x.data[i].timestamp),
+            refresh_imu_data_to_csv(QString::number(x.timeStamp),
                                     QString::number(orgData.gyro[0]) + "," + QString::number(orgData.gyro[1]) + "," +
                                         QString::number(orgData.gyro[2]) + "," + QString::number(orgData.acc[0]) + "," +
                                         QString::number(orgData.acc[1]) + "," + QString::number(orgData.acc[2]));
 
             //  showlog("时间为=" + QString::number(x.data[i].timestamp));
-            nqimuc->imu_time = QString::number(x.data[i].timestamp);
-            qimuc->imu_time = QString::number(x.data[i].timestamp);
+            nqimuc->imu_time = QString::number(x.timeStamp);
+            qimuc->imu_time = QString::number(x.timeStamp);
 
-            if (x.data[0].gyro_x & 0x8000) {  // 判断最高位是否为 1，表示负数测试一下
-                imudata_result = static_cast<int32_t>(x.data[0].gyro_x | 0xFFFF0000);  // 扩展为 32 位的负数
+            if (orgData.gyro[0] & 0x8000) {  // 判断最高位是否为 1，表示负数测试一下
+                imudata_result = static_cast<int32_t>(orgData.gyro[0] | 0xFFFF0000);  // 扩展为 32 位的负数
             } else {
-                imudata_result = static_cast<int32_t>(x.data[0].gyro_x);  // 保持正数不变
+                imudata_result = static_cast<int32_t>(orgData.gyro[0]);  // 保持正数不变
             }
 
             // qDebug()<< "Converted back result: " << imudata_result;
@@ -699,13 +644,15 @@ void imucali::getimuData(FacUploadNineAlex x) {
     }
 
     if (is_start_ium_test) {
-        for (int i = 0; i < x.data_count; i++) {
-            orgData.acc[0] = x.data[i].acc_x;
-            orgData.acc[1] = x.data[i].acc_y;
-            orgData.acc[2] = x.data[i].acc_z;
-            orgData.gyro[0] = x.data[i].gyro_x;
-            orgData.gyro[1] = x.data[i].gyro_y;
-            orgData.gyro[2] = x.data[i].gyro_z;
+        const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+        for (int i = 0; i < sampleCount; i++) {
+            const int base = i * 3;
+            orgData.acc[0] = x.accelValues[base];
+            orgData.acc[1] = x.accelValues[base + 1];
+            orgData.acc[2] = x.accelValues[base + 2];
+            orgData.gyro[0] = x.gyroValues[base];
+            orgData.gyro[1] = x.gyroValues[base + 1];
+            orgData.gyro[2] = x.gyroValues[base + 2];
 
             ui->gyro_x->setText("gyro_x=" + QString::number(orgData.gyro[0]));
             ui->gyro_y->setText("gyro_y=" + QString::number(orgData.gyro[1]));
@@ -716,10 +663,10 @@ void imucali::getimuData(FacUploadNineAlex x) {
 
             int32_t result = 0;
 
-            if (x.data[i].acc_z & 0x8000) {  // 判断最高位是否为 1，表示负数
-                result = static_cast<int32_t>(x.data[i].acc_z | 0xFFFF0000);  // 扩展为 32 位的负数
+            if (orgData.acc[2] & 0x8000) {  // 判断最高位是否为 1，表示负数
+                result = static_cast<int32_t>(orgData.acc[2] | 0xFFFF0000);  // 扩展为 32 位的负数
             } else {
-                result = static_cast<int32_t>(x.data[i].acc_z);  // 保持正数不变
+                result = static_cast<int32_t>(orgData.acc[2]);  // 保持正数不变
             }
 
             qDebug() << getIndex() << "Converted back result: " << result;

@@ -268,7 +268,7 @@ private:
     QString botton_placing_200_weights = "人员：按键放230g砝码";
     QString cali_result_ok = "校准完成";
     QString cali_result_fail = "校准失败";
-    void savePressDataToLocalFolder(const FacUploadPresSensor& x, bool appHeader);
+    void savePressDataToLocalFolder(const ProtocolPressSampleData& x, bool appHeader);
     void save_press_test_data_to_csv(const QString& macAddress, press_calib_data_t cali_result);
 
 public slots:
@@ -284,7 +284,7 @@ private:
     QTimer graphUpdateTimer;
 
 private slots:
-    void getPressSensorData(FacUploadPresSensor x) override;
+    void getPressSensorData(ProtocolPressSampleData x) override;
     void refreshAmplitudeData(QString data) override;
     void receive_uart_data(int state);
 
@@ -309,7 +309,7 @@ private slots:
 
     void on_connectButton_clicked();
     void checkbutton(ProtocolButtonStateData data) override;
-    void getPresscalidata(FacPreSensorCalibResult x) override;
+    void getPresscalidata(ProtocolPressCalibResultData x) override;
 
     void on_end_clicked();
 

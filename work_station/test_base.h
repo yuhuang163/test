@@ -181,19 +181,19 @@ public slots:
 public slots:
     virtual void getTestValue(const int, const QString){};
     virtual void canGoNextMechine(int){};
-    virtual void refreshCameraControl(FacCameraControl){};
+    virtual void refreshCameraControl(ProtocolCameraControlData){};
     virtual void checkLedControlState(ProtocolLedControlData){};
-    virtual void getPressSensorData(FacUploadPresSensor){};
+    virtual void getPressSensorData(ProtocolPressSampleData){};
 
     virtual void refreshAmplitudeData(QString ){};
     virtual void checkbutton(ProtocolButtonStateData){};
     virtual void checkBrushControlState(ProtocolBrushControlData){};
-    virtual void refreshImuCaliResult(FacImuCalibResult){};
-    virtual void getimuData(FacUploadNineAlex){};
+    virtual void refreshImuCaliResult(ProtocolImuCalibResultData){};
+    virtual void getimuData(ProtocolImuSampleData){};
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString){};
     virtual void refreshBleRssi(QString){};
-    virtual void getPresscalidata(FacPreSensorCalibResult){};
+    virtual void getPresscalidata(ProtocolPressCalibResultData){};
     virtual void getDongleWifi(QString){};
     virtual void refreshBleState(int){};
     virtual void getWifiMsg(QString){};

@@ -119,8 +119,8 @@ private slots:
     void refreshBaseData(ProtocolBaseInfoData data) override;
 
     void set_fix_result(int state);
-    void getimuData(FacUploadNineAlex x) override;
-    void refreshImuCaliResult(FacImuCalibResult x) override;
+    void getimuData(ProtocolImuSampleData x) override;
+    void refreshImuCaliResult(ProtocolImuCalibResultData x) override;
 
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();

@@ -66,18 +66,19 @@ void test_base::signalAndslot() {
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
 
-    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
-            SLOT(getPresscalidata(FacPreSensorCalibResult)));
-    connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
+    connect(pb, SIGNAL(send_press_cali_data(ProtocolPressCalibResultData)), this,
+            SLOT(getPresscalidata(ProtocolPressCalibResultData)));
+    connect(pb, SIGNAL(send_press_data(ProtocolPressSampleData)), this, SLOT(getPressSensorData(ProtocolPressSampleData)));
     connect(pb, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(pb, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
     connect(pb, SIGNAL(send_BrushControl_state(ProtocolBrushControlData)), this,
             SLOT(checkBrushControlState(ProtocolBrushControlData)));
     connect(pb, SIGNAL(send_LED_CONTROL_state(ProtocolLedControlData)), this, SLOT(checkLedControlState(ProtocolLedControlData)));
-    connect(pb, SIGNAL(send_camera_CONTROL_state(FacCameraControl)), this,
-            SLOT(refreshCameraControl(FacCameraControl)));
-    connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
-    connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this, SLOT(refreshImuCaliResult(FacImuCalibResult)));
+    connect(pb, SIGNAL(send_camera_CONTROL_state(ProtocolCameraControlData)), this,
+            SLOT(refreshCameraControl(ProtocolCameraControlData)));
+    connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
+    connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
+            SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
     connect(pb, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));

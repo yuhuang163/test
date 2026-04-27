@@ -241,8 +241,8 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
 
-    connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
-            SLOT(getPresscalidata(FacPreSensorCalibResult)));
+    connect(pb, SIGNAL(send_press_cali_data(ProtocolPressCalibResultData)), this,
+            SLOT(getPresscalidata(ProtocolPressCalibResultData)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(&protocolManager, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
@@ -315,11 +315,11 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(pb, SIGNAL(send_photosensitive_info(FacDevInfo)), this, SLOT(solve_photosensitive_info(FacDevInfo)));
     connect(pb, SIGNAL(send_sd_info(FacDevInfo)), this, SLOT(solve_sd_info(FacDevInfo)));
 
-    connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
-            SLOT(getPictureSendOver(FacPictureDataAck)));
+    connect(pb, SIGNAL(send_get_picture_send_over(ProtocolPictureSendOverData)), this,
+            SLOT(getPictureSendOver(ProtocolPictureSendOverData)));
 
-    connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
-    connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
+    connect(pb, SIGNAL(send_press_data(ProtocolPressSampleData)), this, SLOT(getPressSensorData(ProtocolPressSampleData)));
+    connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
     connect(pb, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
     connect(pb, SIGNAL(send_wifi_State(ProtocolWifiStateData)), this, SLOT(updateWifi(ProtocolWifiStateData)));
     connect(pb, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
@@ -330,19 +330,22 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(sendWifiIp(QString)), this, SLOT(getWifiIp(QString)));
 
-    connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(FacInternetOta)), this, SLOT(updateLocalOtaResult(FacInternetOta)));
+    connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(ProtocolInternetOtaData)), this,
+            SLOT(updateLocalOtaResult(ProtocolInternetOtaData)));
 
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
 
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
 
-    connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(FacWifiDemand)), this, SLOT(refreshWifiDemand(FacWifiDemand)));
+    connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(ProtocolWifiDemandData)), this,
+            SLOT(refreshWifiDemand(ProtocolWifiDemandData)));
 
-    connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this, SLOT(refreshImuCaliResult(FacImuCalibResult)));
+    connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
+            SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
 
-    connect(pb, SIGNAL(send_servo_motor_info_msg(FacMotorCalibResult)), this,
-            SLOT(getServoMotorInfoMsg(FacMotorCalibResult)));
+    connect(pb, SIGNAL(send_servo_motor_info_msg(ProtocolServoMotorInfoData)), this,
+            SLOT(getServoMotorInfoMsg(ProtocolServoMotorInfoData)));
 
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
     connect(ui->is_ota_1, SIGNAL(stateChanged(int)), this, SLOT(otaSourceSet(int)));

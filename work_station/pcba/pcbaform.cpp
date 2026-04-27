@@ -1023,12 +1023,14 @@ void PcbaForm::logPacketData(const FixturePacketData& packetData) {
     showlog("产品为:" + QString(pack.product));
 }
 
-void PcbaForm::getimuData(FacUploadNineAlex x) {
-    for (int i = 0; i < x.data_count; i++) {
+void PcbaForm::getimuData(ProtocolImuSampleData x) {
+    const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
+    for (int i = 0; i < sampleCount; i++) {
+        const int base = i * 3;
         // 处理 IMU 数据
-        really_accx = processIMUData(x.data[i].acc_x);
-        really_accy = processIMUData(x.data[i].acc_y);
-        really_accz = processIMUData(x.data[i].acc_z);
+        really_accx = processIMUData(static_cast<uint16_t>(x.accelValues[base]));
+        really_accy = processIMUData(static_cast<uint16_t>(x.accelValues[base + 1]));
+        really_accz = processIMUData(static_cast<uint16_t>(x.accelValues[base + 2]));
 
         // 打印实际读取到的加速度数据
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："

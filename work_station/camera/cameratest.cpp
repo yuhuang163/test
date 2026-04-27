@@ -110,8 +110,8 @@ cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new U
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_dirty_test);
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_offset_test);
 
-    connect(pb, SIGNAL(send_get_picture_send_over(FacPictureDataAck)), this,
-            SLOT(getPictureSendOver(FacPictureDataAck)));
+    connect(pb, SIGNAL(send_get_picture_send_over(ProtocolPictureSendOverData)), this,
+            SLOT(getPictureSendOver(ProtocolPictureSendOverData)));
     viewercamrea = new ImageViewer("image_markings.png", this);
     ui->verticalLayout->addWidget(viewercamrea);  // 将 ImageViewer 添加到布局中
     viewercamrea->show();                         // 显示 ImageViewer
@@ -376,8 +376,8 @@ void cameratest::solve_frame(void) {
         QCoreApplication::processEvents();
     }
 }
-void cameratest::refreshCameraControl(FacCameraControl style) {
-    qDebug() << getIndex() << "收到摄像头控制回应" << style.result;
+void cameratest::refreshCameraControl(ProtocolCameraControlData style) {
+    qDebug() << getIndex() << "收到摄像头控制回应" << style.type;
     is_camera_control = 1;
 }
 
@@ -1641,10 +1641,10 @@ QByteArray cameratest::reassembleData() {
 
     return completeData;
 }
-void cameratest::getPictureSendOver(FacPictureDataAck x) {
+void cameratest::getPictureSendOver(ProtocolPictureSendOverData x) {
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
-    qDebug() << "错误个数" + QString::number(faultData.size()) << x.send_data_over;
+    qDebug() << "错误个数" + QString::number(faultData.size()) << x.result;
     //   showlog("错误个数"+QString::number(faultData.size()));
     emit send_fault_data_packet(faultData.size(), faultData);
 }

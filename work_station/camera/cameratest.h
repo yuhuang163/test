@@ -223,11 +223,11 @@ private slots:
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
     void readDongleSerialPortData() override;
-    void getPictureSendOver(FacPictureDataAck x);
+    void getPictureSendOver(ProtocolPictureSendOverData x);
     void onTimeout();
     void processTheDatagram(QByteArray& datagram);
     void bandSnMacToCsv(const QString& macAddress, const QString& sn);
-    void refreshCameraControl(FacCameraControl style) override;
+    void refreshCameraControl(ProtocolCameraControlData style) override;
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(ProtocolSnData data) override;
