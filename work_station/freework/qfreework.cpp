@@ -787,7 +787,7 @@ void QFreeWork::on_pushButton_clicked() {
 
 void QFreeWork::on_get_battery_clicked() {
     if (at->getConnected()) {
-        protocolManager.get(DeviceCmd::Battery);
+        protocolManager.get(DeviceCmd::GetBattery);
         showlog("正在获取设备电量");
     } else {
         showlog("请等待连接设备后再试");

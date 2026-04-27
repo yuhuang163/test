@@ -299,7 +299,6 @@ enum class DeviceCmd {
     PressCollect,           // 【Qpb】压力传感器产测采集开关（FacSwitch，set_press_collect_param）
     ImuCollect,             // 【Qpb】IMU 产测采集开关（FacSwitch，set_imu_collect_param）
     CameraFaultDataPacket,  // 【预留】当前 Qpb/Qfctp 均未在 switch 中实现
-    Battery,                // 【Qpb】模拟/设置电量类型（FacBatteryType，set_battery）；【Qfctp】set 已废弃（告警）；get 与 GetBattery 均走电量 TLV
     ServoMotorInfo,         // 【Qpb】舵机信息查询触发/下发（无参 set，set_servo_motor_info）
     MicControl,             // 【Qpb】麦克风开关或增益类控制（int，set_mic_control）
     UploadRecordData,       // 【Qpb】上传记录类数据控制（int，set_upload_record_data）
@@ -328,7 +327,6 @@ enum class DeviceCmd {
     LightSensorInfo,        // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
     GetBattery,             // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV（getCaseBatteryRead）
     ButtonState,            // 【Qpb】按键状态（param.toInt() 为按键索引/掩码，get_button_state）
-    GetSn,                  // 【主入口】SN/三元组读统一入口；Qfctp 内部按 type 自动分流
     GetPressCaliResult,     // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,       // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
     DeviceInfo,             // 【主入口】设备信息查询（Qpb）

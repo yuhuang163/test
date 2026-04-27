@@ -2495,7 +2495,7 @@ void PressureSensorForm::startTask() {
                 if (at->getConnected()) {
                     showlog("蓝牙连接成功");
                     protocolManager.get(DeviceCmd::BaseInfo);  // 获取设备信息
-                    protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
+                    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     state = STATE_DISABLE_SLEEP_CALIB;
                 }
                 break;

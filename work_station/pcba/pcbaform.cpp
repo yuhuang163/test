@@ -100,7 +100,7 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     //  protocolManager.set(DeviceCmd::ShipMode, 1);
 
     //  protocolManager.set(DeviceCmd::LedColor, QVariantList{1);
-    //  protocolManager.get(DeviceCmd::Battery);
+    //  protocolManager.get(DeviceCmd::GetBattery);
     //  protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN}));
     // qDebug() <<"pcba号："<<getIndex()<<"mac地址："<<macAddress<<"log："<< " getIndex()"<<
     // getIndex();

@@ -401,7 +401,7 @@ void ageing::startTask() {
 
             case STATE_WAIT_BANDING:
                 if (canGoNext) {
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
 
@@ -438,7 +438,7 @@ void ageing::startTask() {
             case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SUBPID;
                 }
@@ -467,7 +467,7 @@ void ageing::startTask() {
             case STATE_WAIT_BANDING_SKUID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SKUID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SKUID)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SKUID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SKUID;
                 }
@@ -490,7 +490,7 @@ void ageing::startTask() {
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
  if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
-                 {   protocolManager.get(DeviceCmd::Battery);
+                 {   protocolManager.get(DeviceCmd::GetBattery);
                     state = STATE_GETBATTERY;}
  else
                     state = STATE_CHECK_FLASH;
@@ -533,7 +533,7 @@ void ageing::startTask() {
                 } else {
                     waitWork(500);
                     showlog("正在重发获取电量信息");
-                    protocolManager.get(DeviceCmd::Battery);
+                    protocolManager.get(DeviceCmd::GetBattery);
                 }
                 break;
 

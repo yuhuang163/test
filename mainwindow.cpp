@@ -1321,7 +1321,7 @@ void MainWindow::on_buruing1_clicked() {
     protocolManager.set(DeviceCmd::BurningMode, m);
 }
 
-void MainWindow::on_get_device_sn_clicked() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); }
+void MainWindow::on_get_device_sn_clicked() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); }
 
 void MainWindow::on_close_imu_collect_clicked() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); }
 
@@ -2854,11 +2854,11 @@ void MainWindow::on_nfc_decode_clicked() {
     }
 }
 
-void MainWindow::on_get_device_subpid_clicked() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); }
+void MainWindow::on_get_device_subpid_clicked() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); }
 
 void MainWindow::on_get_battery_clicked() {
     if (at->getConnected()) {
-        protocolManager.get(DeviceCmd::Battery);
+        protocolManager.get(DeviceCmd::GetBattery);
         showlog("正在获取设备电量");
     } else {
         showlog("请等待连接设备后再试");
@@ -2867,7 +2867,7 @@ void MainWindow::on_get_battery_clicked() {
 
 void MainWindow::on_get_motor_info_clicked() { protocolManager.get(DeviceCmd::GetServoMotorInfo); }
 
-void MainWindow::on_get_board_sn_clicked() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_BOARD_SN)); }
+void MainWindow::on_get_board_sn_clicked() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_BOARD_SN)); }
 
 void MainWindow::on_write_device_sn_clicked() {
     QByteArray devicesn = ui->snInput->text().toUtf8();
@@ -3558,7 +3558,7 @@ void MainWindow::on_write_device_skuid_clicked() {
 }
 
 void MainWindow::on_get_device_skuid_clicked() {
-    protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SKUID));
+    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SKUID));
     showlog("开始获取skuid==产品id");
 }
 

@@ -1239,7 +1239,6 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseCompensationSet(data.toMap())) return;
         break;
     case DeviceCmd::BaseInfo:
-    case DeviceCmd::Battery:
         qWarning() << "Qfctp 请改用主入口命令，不再使用BaseInfo/Battery携带op";
         break;
     case DeviceCmd::DeviceInfo:
@@ -1256,7 +1255,6 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
 
 void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
     switch (cmd) {
-    case DeviceCmd::GetSn:
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());
         if (which == FacDevInfoType_SUB_PID || which == FacDevInfoType_SKUID) {
@@ -1314,7 +1312,6 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::PeriphState:
         if (getCasePeriphStateRead()) return;
         break;
-    case DeviceCmd::Battery:
     case DeviceCmd::GetBattery:
         if (getCaseBatteryRead()) return;
         break;

@@ -459,7 +459,7 @@ void motor::startTask() {
                 break;
             case STATE_GETBASEDATA:
                 if (canGoNext) {
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                     state = STATE_WATI_CORRECT_BATTARY;
                 }
                 break;
@@ -711,7 +711,7 @@ void motor::startTest_task() {
                     waitWork(WAITTIME);
                     showlog("解除阻尼");
                     QMessageBox::warning(NULL, "警告", " 请把电机置于非0位\t\r\n");
-                    protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN));
+                    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     waitWork(WAITTIME);
                     showlog("打开阻尼");
                     protocolManager.set(DeviceCmd::MotorDampingState, 1);

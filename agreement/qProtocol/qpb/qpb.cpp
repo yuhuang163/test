@@ -71,9 +71,6 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
         case DeviceCmd::NewImuCaliResult:
             set_new_imu_cali_result(data.value<NewImuCalData>());
             break;
-        case DeviceCmd::Battery:
-            set_battery(static_cast<FacBatteryType>(data.toInt()));
-            break;
         case DeviceCmd::BaseInfo: {
             const QVariantList list = data.toList();
             if (list.size() >= 2) {
@@ -291,7 +288,6 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
 
 void Qpb::get(DeviceCmd cmd, const QVariant& param) {
     switch (cmd) {
-        case DeviceCmd::Battery:
         case DeviceCmd::GetBattery:
             get_battery();
             break;
@@ -334,7 +330,7 @@ void Qpb::get(DeviceCmd cmd, const QVariant& param) {
         case DeviceCmd::ButtonState:
             get_button_state(param.toInt());
             break;
-        case DeviceCmd::GetSn:
+        case DeviceCmd::Sn:
             get_sn(static_cast<FacDevInfoType>(param.toInt()));
             break;
         case DeviceCmd::BurshBacklog:

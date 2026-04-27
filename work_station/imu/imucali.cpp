@@ -907,7 +907,7 @@ void imucali::startTask()  // 编写六轴校准的代码
             case STATE_GETBASEDATA:
                 if (canGoNext) {
                     showlog("开始获取出厂电压");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                     state = STATE_GETBATTERY;
                 }
                 break;

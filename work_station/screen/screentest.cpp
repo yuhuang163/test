@@ -254,7 +254,7 @@ void screentest::startTask()
                 if (canGoNext) {
                     stringsn = ui->getMac->text();
                     showlog("开始获取sn");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
                 break;
@@ -298,7 +298,7 @@ void screentest::startTask()
             case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
                 if (canGoNext) {
                     showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetSn, static_cast<int>(FacDevInfoType_SUB_PID)); });
+                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); });
 
                     state = STATE_WAIT_CORRECT_BANDING_SUBPID;
                 }

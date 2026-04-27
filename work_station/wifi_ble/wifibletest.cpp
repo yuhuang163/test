@@ -645,7 +645,7 @@ void wifibletest::startTask() {
                                 state = STATE_WATI_WIFI_CONNECT;
 
                             } else {
-                                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                                 state = STATE_WATI_CORRECT_BATTARY;
                             }
                         }
@@ -682,7 +682,7 @@ void wifibletest::startTask() {
 
                             } else {
                                 wifiresult = "通过";
-                                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                                 state = STATE_WATI_CORRECT_BATTARY;
                             }
                         }
@@ -729,7 +729,7 @@ void wifibletest::startTask() {
 
                             testResultTableUpdate(testItems);
 
-                            sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                            sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                             state = STATE_WATI_CORRECT_BATTARY;
                             rssitestcount = 0;
                         }
@@ -758,7 +758,7 @@ void wifibletest::startTask() {
                             qDebug() << getIndex() << "wifi不合格信号强度" << intwifirssi;
                             showlog("wifi不合格信号强度" + WIFI_RSSI);
                             rssitestfailcount = 0;
-                            sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Battery); });
+                            sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
                             state = STATE_WATI_CORRECT_BATTARY;
                         }
                     }
@@ -1730,7 +1730,7 @@ void wifibletest::on_nfcComFresh_clicked() { updateHIDComboBox(getNfcComboBox())
 
 void wifibletest::on_get_battery_clicked() {
     if (at->getConnected()) {
-        protocolManager.get(DeviceCmd::Battery);
+        protocolManager.get(DeviceCmd::GetBattery);
         showlog("正在获取设备电量");
     } else {
         showlog("请等待连接设备后再试");
