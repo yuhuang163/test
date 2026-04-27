@@ -254,8 +254,8 @@ protected:
     void closeEvent(QCloseEvent*) override;
 
 private slots:
-    void solve_photosensitive_info(FacDevInfo x);
-    void solve_sd_info(FacDevInfo x) ;
+    void solve_photosensitive_info(ProtocolPhotosensitiveData x);
+    void solve_sd_info(ProtocolSdInfoData x);
     void appendAndSaveWifiOtaLog(const QString& msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);

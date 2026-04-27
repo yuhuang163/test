@@ -3450,12 +3450,12 @@ void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
     }
 }
 
-void MainWindow::solve_photosensitive_info(FacDevInfo x) {
-    showlog("获取到光敏电阻值：" + QString::number(x.dev_info[0].value_item.light_sensor));
+void MainWindow::solve_photosensitive_info(ProtocolPhotosensitiveData x) {
+    showlog("获取到光敏电阻值：" + QString::number(x.lightSensor));
 }
-void MainWindow::solve_sd_info(FacDevInfo x) {
-    showlog(QString("获取到 SD 卡命令: %1").arg((x.dev_info[0].value_item.sdcard.cmd)));
-    showlog(QString("获取到sd卡信息: ") + QString::fromUtf8(x.dev_info[0].value_item.sdcard.data));
+void MainWindow::solve_sd_info(ProtocolSdInfoData x) {
+    showlog(QString("获取到 SD 卡命令: %1").arg(x.cmd));
+    showlog(QString("获取到sd卡信息: ") + x.data);
 }
 
 

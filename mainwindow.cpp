@@ -312,8 +312,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
 
-    connect(pb, SIGNAL(send_photosensitive_info(FacDevInfo)), this, SLOT(solve_photosensitive_info(FacDevInfo)));
-    connect(pb, SIGNAL(send_sd_info(FacDevInfo)), this, SLOT(solve_sd_info(FacDevInfo)));
+    connect(pb, SIGNAL(send_photosensitive_info(ProtocolPhotosensitiveData)), this,
+            SLOT(solve_photosensitive_info(ProtocolPhotosensitiveData)));
+    connect(pb, SIGNAL(send_sd_info(ProtocolSdInfoData)), this, SLOT(solve_sd_info(ProtocolSdInfoData)));
 
     connect(pb, SIGNAL(send_get_picture_send_over(ProtocolPictureSendOverData)), this,
             SLOT(getPictureSendOver(ProtocolPictureSendOverData)));

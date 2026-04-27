@@ -2248,7 +2248,6 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     FacPictureDataAck x;
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.send_data_over == FacErrorCode_NO_ERROR) {
-        emit send_get_picture_send_over(x);
         ProtocolPictureSendOverData pictureAckData;
         pictureAckData.result = static_cast<int>(x.result);
         emit send_get_picture_send_over(pictureAckData);
@@ -2262,7 +2261,6 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
     FacWifiDemand x;
     memcpy(&x, &f.command_data, sizeof(x));
 
-    emit send_FactroyCmd_WIFI_DEMAND(x);
     ProtocolWifiDemandData wifiDemandData;
     wifiDemandData.result = static_cast<int>(x.result);
     emit send_FactroyCmd_WIFI_DEMAND(wifiDemandData);
@@ -2274,7 +2272,6 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
     FacInternetOta x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_FactroyCmd_INTERNET_OTA(x);
     ProtocolInternetOtaData internetOtaData;
     internetOtaData.result = static_cast<int>(x.result);
     emit send_FactroyCmd_INTERNET_OTA(internetOtaData);
@@ -2284,7 +2281,6 @@ void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     FacCameraControl x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_camera_CONTROL_state(x);
     ProtocolCameraControlData cameraControlData;
     cameraControlData.type = static_cast<int>(x.type);
     emit send_camera_CONTROL_state(cameraControlData);
@@ -2323,7 +2319,6 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     if (x.which_value_item == FacMotorCalibResult_servo_info_tag && x.type == FacMotorUploadType_SERVO_INFO) {
         qDebug() << "收到电机信息"
                  << "new" << x.value_item.servo_info.opera_info.zero_info;
-        emit send_servo_motor_info_msg(x);
         ProtocolServoMotorInfoData servoMotorInfoData;
         servoMotorInfoData.uploadType = static_cast<int>(x.type);
         servoMotorInfoData.whichValue = static_cast<int>(x.which_value_item);
@@ -2397,7 +2392,6 @@ void Qpb::process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage& f) {
     FacLcdControl x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_Lcd_CONTROL_state(x);
     ProtocolLcdControlData lcdControlData;
     lcdControlData.type = static_cast<int>(x.type);
     emit send_Lcd_CONTROL_state(lcdControlData);
@@ -2432,7 +2426,6 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     qDebug().nospace().noquote() << "szx: " << x.new_cali.szx;
     qDebug().nospace().noquote() << "szy: " << x.new_cali.szy;
     is_get_imu_cali_data = 1;
-    emit send_IMU_CALIB_result(x);
     ProtocolImuCalibResultData imuCalibData;
     imuCalibData.result = static_cast<int>(x.result);
     imuCalibData.gyroX = static_cast<int>(x.gyro_x);
@@ -2458,7 +2451,6 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     FacLedControl x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_LED_CONTROL_state(x);
     ProtocolLedControlData ledControlData;
     ledControlData.switchState = static_cast<int>(x.switch_state);
     ledControlData.ledStateCount = static_cast<int>(x.led_state_count);
@@ -2471,7 +2463,6 @@ void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     FacBrushControl x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_BrushControl_state(x);
     ProtocolBrushControlData brushControlData;
     brushControlData.brushStart = static_cast<int>(x.value_item.brush_start);
     emit send_BrushControl_state(brushControlData);
@@ -2485,7 +2476,6 @@ void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     qDebug() << "获取到模式按键状态" << x.button_state[1].command_data.mode_button.button_state_now;
     qDebug() << "获取到开关按键状态" << x.button_state[0].command_data.power_button.button_state_now;
 
-    emit send_button_state(x);
     ProtocolButtonStateData buttonStateData;
     buttonStateData.modeButtonState = static_cast<int>(x.button_state[1].command_data.mode_button.button_state_now);
     buttonStateData.powerButtonState = static_cast<int>(x.button_state[0].command_data.power_button.button_state_now);
@@ -2498,7 +2488,6 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
 
     if (x.dev_info[0].which_value_item == FacDevInfoValue_battery_tag) {
-        emit send_battary(x);
         ProtocolBatteryData batteryData;
         batteryData.chargeState = static_cast<int>(x.dev_info[0].value_item.battery.charge_state);
         batteryData.percent = static_cast<int>(x.dev_info[0].value_item.battery.percent);
@@ -2509,7 +2498,6 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         is_get_battery_data = 1;
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_wifi_info_tag) {
-        emit send_wifi_State(x);
         ProtocolWifiStateData wifiData;
         wifiData.wifiName = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_name);
         wifiData.wifiPassword = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_password);
@@ -2538,7 +2526,6 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_music_state_tag) {
-        emit send_music_state(x);
         ProtocolMusicStateData musicStateData;
         musicStateData.musicState = static_cast<int>(x.dev_info[0].value_item.music_state);
         emit send_music_state(musicStateData);
@@ -2547,13 +2534,18 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     }
 
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sdcard_tag) {
-        emit send_sd_info(x);
+        ProtocolSdInfoData sdInfoData;
+        sdInfoData.cmd = static_cast<int>(x.dev_info[0].value_item.sdcard.cmd);
+        sdInfoData.data = QString::fromUtf8(x.dev_info[0].value_item.sdcard.data);
+        emit send_sd_info(sdInfoData);
         qDebug() << "获取到sd卡命令" << x.dev_info[0].value_item.sdcard.cmd;
         qDebug() << "获取到sd卡信息" << x.dev_info[0].value_item.sdcard.data;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_light_sensor_tag) {
-        emit send_photosensitive_info(x);
+        ProtocolPhotosensitiveData photosensitiveData;
+        photosensitiveData.lightSensor = static_cast<int>(x.dev_info[0].value_item.light_sensor);
+        emit send_photosensitive_info(photosensitiveData);
         qDebug() << "获取到光敏电阻信息" << x.dev_info[0].value_item.light_sensor;
         emit sendGetProductResponse(1);
     }
@@ -2564,7 +2556,6 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     FacGetPeriphState x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_periph_data(x);
     ProtocolPeriphStateData periphData;
     periphData.imu_state = x.imu_state ? 1 : 0;
     periphData.flash_state = x.flash_state ? 1 : 0;
@@ -2580,7 +2571,6 @@ void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     FacGetDevBaseInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "获取到设备信息";
-    emit send_base_data(x);
     ProtocolBaseInfoData baseInfoData;
     baseInfoData.product_name = QString::fromUtf8(x.product_name);
     baseInfoData.pb_phone_ver = static_cast<int>(x.pb_phone_ver);
@@ -2621,7 +2611,6 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     qDebug() << "获取设备校准的temperature=" << x.temperature;
     qDebug() << "获取设备校准的power_button_adc=" << x.power_button_adc;
     qDebug() << "获取模式辅助元器件校准的assistant_component=" << x.assistant_component;
-    emit send_press_cali_data(x);
     ProtocolPressCalibResultData pressCalibData;
     pressCalibData.brushHeadAdc = static_cast<int>(x.brush_head_adc);
     pressCalibData.modeButtonAdc = static_cast<int>(x.mode_button_adc);
@@ -2965,7 +2954,6 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     FacUploadPresSensor x;
     memcpy(&x, &f.command_data, sizeof(x));
     // qDebug () << "sensor data";
-    emit send_press_data(x);
     ProtocolPressSampleData pressData;
     if (x.sensor_data_count > 0) {
         pressData.timeStamp = static_cast<int>(x.sensor_data[0].timestamp);
@@ -3004,7 +2992,6 @@ void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
     FacUploadNineAlex x;
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "收到imu数据包";
-    emit send_imu_data(x);
     ProtocolImuSampleData imuData;
     for (int i = 0; i < static_cast<int>(x.data_count) && i < 15; ++i) {
         imuData.timeStamp = static_cast<int>(x.data[i].timestamp);

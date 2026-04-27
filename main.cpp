@@ -282,6 +282,8 @@ int main(int argc, char* argv[]) {
     qRegisterMetaType<ProtocolCameraControlData>("ProtocolCameraControlData");
     qRegisterMetaType<ProtocolServoMotorInfoData>("ProtocolServoMotorInfoData");
     qRegisterMetaType<ProtocolPictureSendOverData>("ProtocolPictureSendOverData");
+    qRegisterMetaType<ProtocolPhotosensitiveData>("ProtocolPhotosensitiveData");
+    qRegisterMetaType<ProtocolSdInfoData>("ProtocolSdInfoData");
 
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},

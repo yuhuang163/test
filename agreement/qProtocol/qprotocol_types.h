@@ -216,6 +216,15 @@ typedef struct {
 } ProtocolPictureSendOverData;
 
 typedef struct {
+    int lightSensor = 0;
+} ProtocolPhotosensitiveData;
+
+typedef struct {
+    int cmd = 0;
+    QString data;
+} ProtocolSdInfoData;
+
+typedef struct {
     QByteArray name;
     QByteArray password;
     QString ip;
@@ -368,5 +377,7 @@ Q_DECLARE_METATYPE(ProtocolWifiDemandData)
 Q_DECLARE_METATYPE(ProtocolCameraControlData)
 Q_DECLARE_METATYPE(ProtocolServoMotorInfoData)
 Q_DECLARE_METATYPE(ProtocolPictureSendOverData)
+Q_DECLARE_METATYPE(ProtocolPhotosensitiveData)
+Q_DECLARE_METATYPE(ProtocolSdInfoData)
 
 #endif  // QPB_TYPES_H
