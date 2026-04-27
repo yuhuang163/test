@@ -2550,9 +2550,12 @@ void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_periph_data(x);
     ProtocolPeriphStateData periphData;
-    periphData.periphType = x.imu_state ? 1 : 0;
-    periphData.state = x.flash_state ? 1 : 0;
-    periphData.code = static_cast<int>(x.result);
+    periphData.imu_state = x.imu_state ? 1 : 0;
+    periphData.flash_state = x.flash_state ? 1 : 0;
+    periphData.magnet_state = x.magnet_state ? 1 : 0;
+    periphData.press_state = x.press_state ? 1 : 0;
+    periphData.audio_state = x.audio_state ? 1 : 0;
+    periphData.result = static_cast<int>(x.result);
     emit send_periph_data(periphData);
     qDebug() << "获取到外设状态";
     emit sendGetProductResponse(1);
@@ -2563,10 +2566,30 @@ void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     qDebug() << "获取到设备信息";
     emit send_base_data(x);
     ProtocolBaseInfoData baseInfoData;
-    baseInfoData.hardVersion = QString::fromUtf8(x.hw_version);
-    baseInfoData.softVersion = QString::fromUtf8(x.soft_version);
-    baseInfoData.resVersion = QString::fromUtf8(x.res_version);
-    baseInfoData.ageingState = x.ageing_state ? 1 : 0;
+    baseInfoData.product_name = QString::fromUtf8(x.product_name);
+    baseInfoData.pb_phone_ver = static_cast<int>(x.pb_phone_ver);
+    baseInfoData.pb_factory_ver = static_cast<int>(x.pb_factory_ver);
+    baseInfoData.hw_version = QString::fromUtf8(x.hw_version);
+    baseInfoData.soft_version = QString::fromUtf8(x.soft_version);
+    baseInfoData.res_version = QString::fromUtf8(x.res_version);
+    baseInfoData.algo_version = QString::fromUtf8(x.algo_version);
+    baseInfoData.presure_version = QString::fromUtf8(x.presure_version);
+    baseInfoData.motor_version = QString::fromUtf8(x.motor_version);
+    baseInfoData.ble_version = QString::fromUtf8(x.ble_version);
+    baseInfoData.camera_version = QString::fromUtf8(x.camera_version);
+    baseInfoData.fsensor_version = QString::fromUtf8(x.fsensor_version);
+    baseInfoData.ble_mac.size = static_cast<int>(x.ble_mac.size);
+    baseInfoData.wifi_mac.size = static_cast<int>(x.wifi_mac.size);
+    for (int i = 0; i < baseInfoData.ble_mac.size && i < 6; ++i) {
+        baseInfoData.ble_mac.bytes[i] = x.ble_mac.bytes[i];
+    }
+    for (int i = 0; i < baseInfoData.wifi_mac.size && i < 6; ++i) {
+        baseInfoData.wifi_mac.bytes[i] = x.wifi_mac.bytes[i];
+    }
+    baseInfoData.imu_id = static_cast<int>(x.imu_id);
+    baseInfoData.result = static_cast<int>(x.result);
+    baseInfoData.ageing_state = x.ageing_state ? 1 : 0;
+    baseInfoData.ageingState = baseInfoData.ageing_state;
     emit send_base_data(baseInfoData);
     emit sendGetProductResponse(1);
 }

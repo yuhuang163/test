@@ -60,7 +60,7 @@ private slots:
     QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
     QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
-    void refreshLcdControl(FacLcdControl style) override;
+    void refreshLcdControl(ProtocolLcdControlData style) override;
     void refreshBleState(int state) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshDongleUartState(int state) override;

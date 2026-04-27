@@ -732,7 +732,7 @@ void imucali::getimuData(FacUploadNineAlex x) {
         }
     }
 }
-void imucali::refreshBaseData(FacGetDevBaseInfo data) {
+void imucali::refreshBaseData(ProtocolBaseInfoData data) {
     showlog("设备名字为" + QString(data.product_name));
 
     product_name = QString(data.product_name);

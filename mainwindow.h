@@ -356,7 +356,7 @@ private slots:
     void refreshMusicState(ProtocolMusicStateData data);
     void getPresscalidata(FacPreSensorCalibResult x);
     void scanIpPorts();
-    void checkbutton(FacButtonState data);
+    void checkbutton(ProtocolButtonStateData data);
 private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();

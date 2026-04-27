@@ -157,11 +157,11 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
         showlog("曲目测试不良");
     }
 }
-void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
+void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
-        brushsoft_version = QString::fromUtf8(data.soft_version);
+        brushsoft_version = data.soft_version;
         qDebug() << getIndex() << "algo_version" << data.algo_version;
         qDebug() << getIndex() << "hw_version" << data.hw_version;
         qDebug() << getIndex() << "presure_version" << data.presure_version;
@@ -222,7 +222,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for BLE version
         if (isBleTest) {
             test.testItem = "蓝牙版本";
-            test.testData = QString::fromUtf8(data.ble_version);
+            test.testData = data.ble_version;
             test.ask = bleVersion;
             testItems.append(test);
         }
@@ -230,7 +230,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Motor version
         if (isMotorTest) {
             test.testItem = "电机版本";
-            test.testData = QString::fromUtf8(data.motor_version);
+            test.testData = data.motor_version;
             test.ask = motorVersion;
             testItems.append(test);
         }
@@ -238,7 +238,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Resource version
         if (isResourceTest) {
             test.testItem = "资源版本";
-            test.testData = QString::fromUtf8(data.res_version);
+            test.testData = data.res_version;
             test.ask = resourceVersion;
             testItems.append(test);
         }
@@ -246,7 +246,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Software version
         if (isSoftwareTest) {
             test.testItem = "软件版本";
-            test.testData = QString::fromUtf8(data.soft_version);
+            test.testData = data.soft_version;
             test.ask = softwareVersion;
             testItems.append(test);
         }
@@ -254,7 +254,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Product name
         if (isProductTest) {
             test.testItem = "产品名字";
-            test.testData = QString::fromUtf8(data.product_name);
+            test.testData = data.product_name;
             test.ask = productName;
             testItems.append(test);
         }
@@ -262,7 +262,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Hardware version
         if (isHwTest) {
             test.testItem = "硬件版本";
-            test.testData = QString::fromUtf8(data.hw_version);
+            test.testData = data.hw_version;
             test.ask = hardwareVersion;
             testItems.append(test);
         }
@@ -270,7 +270,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Algorithm version
         if (isAlgoTest) {
             test.testItem = "算法版本号";
-            test.testData = QString::fromUtf8(data.algo_version);
+            test.testData = data.algo_version;
             test.ask = algorithmVersion;
             testItems.append(test);
         }
@@ -278,7 +278,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Pressure version
         if (isPresureTest) {
             test.testItem = "压感版本";
-            test.testData = QString::fromUtf8(data.presure_version);
+            test.testData = data.presure_version;
             test.ask = pressureSenseVersion;
             testItems.append(test);
         }
@@ -286,7 +286,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for FSensor version
         if (isFSensorTest) {
             test.testItem = "电机压感版本";
-            test.testData = QString::fromUtf8(data.fsensor_version);
+            test.testData = data.fsensor_version;
             test.ask = fsensorVersion;
             testItems.append(test);
         }
@@ -318,7 +318,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Camera ID
         if (isCameraTest) {
             test.testItem = "摄像头id";
-            test.testData = QString::fromUtf8(data.camera_version);
+            test.testData = data.camera_version;
             test.ask = camera_id;
             testItems.append(test);
         }
@@ -327,7 +327,7 @@ void quiescent_current::refreshBaseData(FacGetDevBaseInfo data) {
     }
 }
 
-void quiescent_current::refreshPeriphData(FacGetPeriphState data) {
+void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "flash_state" << data.flash_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："

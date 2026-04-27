@@ -1830,26 +1830,24 @@ void PressureSensorForm::getPressSensorData(FacUploadPresSensor x) {
     test_process(x);
 }
 
-void PressureSensorForm::checkbutton(FacButtonState x) {
-    showlog("获取到按键上报个数" + QString::number(x.button_state_count));
+void PressureSensorForm::checkbutton(ProtocolButtonStateData x) {
+    showlog("获取到按键上报");
     qDebug() << "product_model=" << product_model;
     qDebug() << "nsor_v[0].para.f_module[0]" << sensor_v[0]->para.f_module[0];
 
-    for (int i = 0; i < x.button_state_count; i++) {
-        if (sensor_v[0]->para.f_module[0] == MODULE_MODE_BUTTON && (product_model != MODEL_ID_U7) &&
-            (product_model != MODEL_ID_F20) && (product_model != MODEL_ID_Y30S)) {
-            showlog("模式状态" + QString::number(x.button_state[1].command_data.mode_button.button_state_now));
-            if (x.button_state[1].command_data.mode_button.button_state_now == ButtonState_PRESSED) {
-                sensor_v[test_chan]->para.button_state = 1;
-            }
+    if (sensor_v[0]->para.f_module[0] == MODULE_MODE_BUTTON && (product_model != MODEL_ID_U7) &&
+        (product_model != MODEL_ID_F20) && (product_model != MODEL_ID_Y30S)) {
+        showlog("模式状态" + QString::number(x.modeButtonState));
+        if (x.modeButtonState == ButtonState_PRESSED) {
+            sensor_v[test_chan]->para.button_state = 1;
         }
-        if (sensor_v[0]->para.f_module[0] == MODULE_POWER_BUTTON ||
-            (product_model == MODEL_ID_F20 || product_model == MODEL_ID_U7) || (product_model == MODEL_ID_Y30S)) {
-            showlog("电源状态" + QString::number(x.button_state[0].command_data.power_button.button_state_now));
+    }
+    if (sensor_v[0]->para.f_module[0] == MODULE_POWER_BUTTON ||
+        (product_model == MODEL_ID_F20 || product_model == MODEL_ID_U7) || (product_model == MODEL_ID_Y30S)) {
+        showlog("电源状态" + QString::number(x.powerButtonState));
 
-            if (x.button_state[0].command_data.power_button.button_state_now == ButtonState_PRESSED) {
-                sensor_v[test_chan]->para.button_state = 1;
-            }
+        if (x.powerButtonState == ButtonState_PRESSED) {
+            sensor_v[test_chan]->para.button_state = 1;
         }
     }
 }
@@ -3142,7 +3140,7 @@ QString PressureSensorForm::ReadNfcDataProcess() {
     return ReadNfcData;
 }
 
-void PressureSensorForm::refreshBaseData(FacGetDevBaseInfo data) {
+void PressureSensorForm::refreshBaseData(ProtocolBaseInfoData data) {
     readProduct = data.product_name;
     qDebug() << "refreshBaseData";
     showlog("获取到当前型号为：" + readProduct);

@@ -250,7 +250,7 @@ void motor::processInspection(QString stringsn) {
     }
 }
 
-void motor::refreshBaseData(FacGetDevBaseInfo data) {
+void motor::refreshBaseData(ProtocolBaseInfoData data) {
     // QString mac;
 
     // for (int var = data.ble_mac.size - 1; var >= 0; --var) {
@@ -291,10 +291,10 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
         (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
         (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
         (!isMotorTest || compareVersions(motorVersion, data.motor_version))) {
-        showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
-        showlog("资源版本正确" + QString::fromUtf8(data.res_version));
-        showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
-        showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
+        showlog("软件版本正确" + data.soft_version);
+        showlog("资源版本正确" + data.res_version);
+        showlog("电机版本正确" + data.motor_version);
+        showlog("蓝牙版本正确" + data.ble_version);
         showlog("软件版本正确");
 
     } else {
@@ -303,10 +303,10 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
                                        "#FF0000; border-radius: 10px; padding: 10px; text-align: center;");
 
         showlog("版本错误");
-        showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersion);
-        showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersion);
-        showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机版本" + motorVersion);
-        showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
+        showlog("当前设备软件版本" + data.soft_version + "配置文件软件版本" + softwareVersion);
+        showlog("当前设备资源版本" + data.res_version + "配置文件资源版本" + resourceVersion);
+        showlog("当前设备电机版本" + data.motor_version + "配置文件电机版本" + motorVersion);
+        showlog("当前设备蓝牙版本" + data.ble_version + "配置文件蓝牙要求" + bleVersion);
 
         isTestContinue = false;
         showlog("停止运行");
@@ -326,7 +326,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     // Check for BLE version
     if (isBleTest) {
         test.testItem = "蓝牙版本";
-        test.testData = QString::fromUtf8(data.ble_version);
+        test.testData = data.ble_version;
         test.ask = bleVersion;
         testItems.append(test);
     }
@@ -334,7 +334,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     // Check for Motor version
     if (isMotorTest) {
         test.testItem = "电机版本";
-        test.testData = QString::fromUtf8(data.motor_version);
+        test.testData = data.motor_version;
         test.ask = motorVersion;
         testItems.append(test);
     }
@@ -342,7 +342,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     // Check for Resource version
     if (isResourceTest) {
         test.testItem = "资源版本";
-        test.testData = QString::fromUtf8(data.res_version);
+        test.testData = data.res_version;
         test.ask = resourceVersion;
         testItems.append(test);
     }
@@ -350,7 +350,7 @@ void motor::refreshBaseData(FacGetDevBaseInfo data) {
     // Check for Software version
     if (isSoftwareTest) {
         test.testItem = "软件版本";
-        test.testData = QString::fromUtf8(data.soft_version);
+        test.testData = data.soft_version;
         test.ask = softwareVersion;
         testItems.append(test);
     }

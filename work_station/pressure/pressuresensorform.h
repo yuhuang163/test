@@ -305,10 +305,10 @@ private slots:
 
     void refreshSn(ProtocolSnData data) override;
     void delay_msec(unsigned int msec);
-    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshBaseData(ProtocolBaseInfoData data) override;
 
     void on_connectButton_clicked();
-    void checkbutton(FacButtonState data) override;
+    void checkbutton(ProtocolButtonStateData data) override;
     void getPresscalidata(FacPreSensorCalibResult x) override;
 
     void on_end_clicked();

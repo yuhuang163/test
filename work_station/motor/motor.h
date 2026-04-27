@@ -30,7 +30,7 @@ public:
 
 private slots:
 
-    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshBaseData(ProtocolBaseInfoData data) override;
     void processInspection(QString stringsn);
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);

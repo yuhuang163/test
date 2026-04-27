@@ -2586,7 +2586,8 @@ void MainWindow::initBasicInfo() {
 
     basicInfoModel->resetAllTestResult();
 
-    QObject::connect(pb, QOverload<FacGetDevBaseInfo>::of(&Qpb::send_base_data), this, [=](FacGetDevBaseInfo baseInfo) {
+    QObject::connect(pb, QOverload<ProtocolBaseInfoData>::of(&Qpb::send_base_data), this,
+                     [=](ProtocolBaseInfoData baseInfo) {
         connectProductName = baseInfo.product_name;
 
         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
@@ -2698,7 +2699,8 @@ void MainWindow::initPeriphState() {
     ui->peripheralView->setColumnHidden(1, true);
     ui->peripheralView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     peripheralModel->resetAllTestResult();
-    QObject::connect(pb, QOverload<FacGetPeriphState>::of(&Qpb::send_periph_data), this, [=](FacGetPeriphState state) {
+    QObject::connect(pb, QOverload<ProtocolPeriphStateData>::of(&Qpb::send_periph_data), this,
+                     [=](ProtocolPeriphStateData state) {
         peripheralModel->getTestItemByName("flash_state")
             ->setData(QString("%1").arg(state.flash_state), Qt::DisplayRole);
         peripheralModel->getTestItemByName("imu_state")->setData(QString("%1").arg(state.imu_state), Qt::DisplayRole);

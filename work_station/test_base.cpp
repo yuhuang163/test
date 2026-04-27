@@ -70,18 +70,19 @@ void test_base::signalAndslot() {
             SLOT(getPresscalidata(FacPreSensorCalibResult)));
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
     connect(pb, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
-    connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
-    connect(pb, SIGNAL(send_BrushControl_state(FacBrushControl)), this, SLOT(checkBrushControlState(FacBrushControl)));
-    connect(pb, SIGNAL(send_LED_CONTROL_state(FacLedControl)), this, SLOT(checkLedControlState(FacLedControl)));
+    connect(pb, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
+    connect(pb, SIGNAL(send_BrushControl_state(ProtocolBrushControlData)), this,
+            SLOT(checkBrushControlState(ProtocolBrushControlData)));
+    connect(pb, SIGNAL(send_LED_CONTROL_state(ProtocolLedControlData)), this, SLOT(checkLedControlState(ProtocolLedControlData)));
     connect(pb, SIGNAL(send_camera_CONTROL_state(FacCameraControl)), this,
             SLOT(refreshCameraControl(FacCameraControl)));
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
     connect(pb, SIGNAL(send_IMU_CALIB_result(FacImuCalibResult)), this, SLOT(refreshImuCaliResult(FacImuCalibResult)));
     connect(pb, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
-    connect(pb, SIGNAL(send_periph_data(FacGetPeriphState)), this, SLOT(refreshPeriphData(FacGetPeriphState)));
-    connect(pb, SIGNAL(send_Lcd_CONTROL_state(FacLcdControl)), this, SLOT(refreshLcdControl(FacLcdControl)));
-    connect(pb, SIGNAL(send_base_data(FacGetDevBaseInfo)), this, SLOT(refreshBaseData(FacGetDevBaseInfo)));
+    connect(pb, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));
+    connect(pb, SIGNAL(send_Lcd_CONTROL_state(ProtocolLcdControlData)), this, SLOT(refreshLcdControl(ProtocolLcdControlData)));
+    connect(pb, SIGNAL(send_base_data(ProtocolBaseInfoData)), this, SLOT(refreshBaseData(ProtocolBaseInfoData)));
     connect(pb, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
     connect(pb, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));

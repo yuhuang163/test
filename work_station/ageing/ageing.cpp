@@ -32,7 +32,7 @@ ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::agein
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
-void ageing::refreshPeriphData(FacGetPeriphState data) {
+void ageing::refreshPeriphData(ProtocolPeriphStateData data) {
     if (refresh_periph_times) {
         refresh_periph_times = 0;
 

@@ -40,8 +40,8 @@ screentest::screentest(int index, QWidget* parent) : test_base(parent), ui(new U
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
-void screentest::refreshLcdControl(FacLcdControl style) {
-    qDebug() << getIndex() << "屏幕控制回应" << style.result;
+void screentest::refreshLcdControl(ProtocolLcdControlData style) {
+    qDebug() << getIndex() << "屏幕控制回应 type" << style.type;
     is_lcd_control = 1;
 }
 

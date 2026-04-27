@@ -497,13 +497,12 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
     ui->wifiotaprogress->setMaximum(100);
     connect(pb, &Qpb::send_ota_progress, [&](int s) { ui->wifiotaprogress->setValue(s); });
-    connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
+    connect(pb, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
 }
 
-void MainWindow::checkbutton(FacButtonState x) {
-    qDebug() << "上报的按键个数" << x.button_state_count;
-    showlog("电源按键" + QString::number(x.button_state[0].command_data.power_button.button_state_now));
-    showlog("模式按键" + QString::number(x.button_state[1].command_data.mode_button.button_state_now));
+void MainWindow::checkbutton(ProtocolButtonStateData x) {
+    showlog("电源按键" + QString::number(x.powerButtonState));
+    showlog("模式按键" + QString::number(x.modeButtonState));
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {

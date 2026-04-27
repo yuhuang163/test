@@ -182,12 +182,12 @@ public slots:
     virtual void getTestValue(const int, const QString){};
     virtual void canGoNextMechine(int){};
     virtual void refreshCameraControl(FacCameraControl){};
-    virtual void checkLedControlState(FacLedControl){};
+    virtual void checkLedControlState(ProtocolLedControlData){};
     virtual void getPressSensorData(FacUploadPresSensor){};
 
     virtual void refreshAmplitudeData(QString ){};
-    virtual void checkbutton(FacButtonState){};
-    virtual void checkBrushControlState(FacBrushControl){};
+    virtual void checkbutton(ProtocolButtonStateData){};
+    virtual void checkBrushControlState(ProtocolBrushControlData){};
     virtual void refreshImuCaliResult(FacImuCalibResult){};
     virtual void getimuData(FacUploadNineAlex){};
     virtual void refreshPbData(QString);
@@ -197,13 +197,13 @@ public slots:
     virtual void getDongleWifi(QString){};
     virtual void refreshBleState(int){};
     virtual void getWifiMsg(QString){};
-    virtual void refreshBaseData(FacGetDevBaseInfo){};
+    virtual void refreshBaseData(ProtocolBaseInfoData){};
     virtual void refreshBattaryData(ProtocolBatteryData){};
     virtual void refreshMusicState(ProtocolMusicStateData){};
 
     virtual void refreshSn(ProtocolSnData){};
-    virtual void refreshLcdControl(FacLcdControl){};
-    virtual void refreshPeriphData(FacGetPeriphState){};
+    virtual void refreshLcdControl(ProtocolLcdControlData){};
+    virtual void refreshPeriphData(ProtocolPeriphStateData){};
     virtual void refreshAmmeterData(QString){};
     virtual void refreshDongleUartState(int){};
     virtual void refreshUsbUartState(int){};

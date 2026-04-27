@@ -116,7 +116,7 @@ private slots:
     void get_fix_action(int state);
 
     void print_fixture_log(QString data);
-    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshBaseData(ProtocolBaseInfoData data) override;
 
     void set_fix_result(int state);
     void getimuData(FacUploadNineAlex x) override;

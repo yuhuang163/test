@@ -559,7 +559,7 @@ void cameratest::onTimeout() {
     cameradatasize = 0;
 }
 
-void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
+void cameratest::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_times) {
         refresh_times = 0;
         // 读取软件版本字符串
@@ -568,11 +568,11 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
 
         // 检查软件版本、资源版本和老化状态是否匹配
         if (compareVersions(Camera_Id, data.camera_version)) {
-            showlog("摄像头id正确" + QString::fromUtf8(data.camera_version));
+            showlog("摄像头id正确" + data.camera_version);
 
             TestItem test;
             test.testItem = "摄像头id";
-            test.testData = QString::fromUtf8(data.camera_version);
+            test.testData = data.camera_version;
             test.testResult = "通过";
             test.ask = Camera_Id;
             testItems.append(test);
@@ -582,7 +582,7 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
         } else {
             TestItem test;
             test.testItem = "摄像头id";
-            test.testData = QString::fromUtf8(data.camera_version);
+            test.testData = data.camera_version;
             test.testResult = "失败";
             test.ask = Camera_Id;
             testItems.append(test);
@@ -590,7 +590,7 @@ void cameratest::refreshBaseData(FacGetDevBaseInfo data) {
             testResultTableUpdate(testItems);
 
             showlog("状态错误");
-            showlog("当前设备摄像头id" + QString::fromUtf8(data.camera_version) + "配置文件摄像头id" + Camera_Id);
+            showlog("当前设备摄像头id" + data.camera_version + "配置文件摄像头id" + Camera_Id);
             result = failValue;
             isTestContinue = false;
             showlog("停止运行");

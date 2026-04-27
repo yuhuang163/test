@@ -99,16 +99,38 @@ typedef struct {
 } ProtocolMusicStateData;
 
 typedef struct {
-    QString hardVersion;
-    QString softVersion;
-    QString resVersion;
+    int size = 0;
+    uint8_t bytes[6] = {0};
+} ProtocolMacBytesData;
+
+typedef struct {
+    QString product_name;
+    int pb_phone_ver = 0;
+    int pb_factory_ver = 0;
+    QString hw_version;
+    QString soft_version;
+    QString res_version;
+    QString algo_version;
+    QString presure_version;
+    QString motor_version;
+    QString ble_version;
+    QString camera_version;
+    QString fsensor_version;
+    ProtocolMacBytesData ble_mac;
+    ProtocolMacBytesData wifi_mac;
+    int imu_id = 0;
+    int result = 0;
+    int ageing_state = 0;
     int ageingState = 0;
 } ProtocolBaseInfoData;
 
 typedef struct {
-    int periphType = 0;
-    int state = 0;
-    int code = 0;
+    int imu_state = 0;
+    int flash_state = 0;
+    int magnet_state = 0;
+    int press_state = 0;
+    int audio_state = 0;
+    int result = 0;
 } ProtocolPeriphStateData;
 
 typedef struct {

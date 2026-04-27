@@ -30,8 +30,8 @@ public:
     void refreshProductUartState(int state) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
-    void refreshPeriphData(FacGetPeriphState data) override;
-    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshPeriphData(ProtocolPeriphStateData data) override;
+    void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
 
     void refreshAmmeterData(QString data) override;

@@ -99,7 +99,7 @@ wifibletest::wifibletest(int index, QWidget* parent) : test_base(parent), ui(new
 
 wifibletest::~wifibletest() { delete ui; }
 
-void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
+void wifibletest::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
         refresh_base_times = 0;
         showlog("当前产品名字为" + QString(data.product_name));
@@ -173,7 +173,7 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
 
         if (!pressureSenseVersion.contains(data.presure_version) && allow_retry) {
-            showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
+            showlog("当前设备压感版本" + data.presure_version + "配置文件压感要求" +
                     pressureSenseVersion);
             allow_retry = 0;
             showlog("压感版本错误尝试重新获取一次");
@@ -203,27 +203,27 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
             (!isFSensorTest || compareVersions(fsensorVersion, data.fsensor_version)) &&
             (!isMotorTest || compareVersions(motorVersion, data.motor_version)) &&
             (!isAgeStatet || compareVersions(ageState, QString::number(data.ageing_state)))) {
-            showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
-            showlog("资源版本正确" + QString::fromUtf8(data.res_version));
+            showlog("软件版本正确" + data.soft_version);
+            showlog("资源版本正确" + data.res_version);
             showlog("老化状态正确" + QString::number(data.ageing_state));
-            showlog("蓝牙版本正确" + QString::fromUtf8(data.ble_version));
-            showlog("压感状态正确" + QString::fromUtf8(data.presure_version));
-            showlog("电机压感状态正确" + QString::fromUtf8(data.fsensor_version));
-            showlog("电机版本正确" + QString::fromUtf8(data.motor_version));
+            showlog("蓝牙版本正确" + data.ble_version);
+            showlog("压感状态正确" + data.presure_version);
+            showlog("电机压感状态正确" + data.fsensor_version);
+            showlog("电机版本正确" + data.motor_version);
             showlog("软件版本正确");
 
         } else {
             pack.error = "SP03015";
             showlog("版本错误");
-            showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件软件版本" + softwareVersion);
-            showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件资源版本" + resourceVersion);
+            showlog("当前设备软件版本" + data.soft_version + "配置文件软件版本" + softwareVersion);
+            showlog("当前设备资源版本" + data.res_version + "配置文件资源版本" + resourceVersion);
             showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + ageState);
-            showlog("当前设备蓝牙版本" + QString::fromUtf8(data.ble_version) + "配置文件蓝牙要求" + bleVersion);
-            showlog("当前设备压感版本" + QString::fromUtf8(data.presure_version) + "配置文件压感要求" +
+            showlog("当前设备蓝牙版本" + data.ble_version + "配置文件蓝牙要求" + bleVersion);
+            showlog("当前设备压感版本" + data.presure_version + "配置文件压感要求" +
                     pressureSenseVersion);
-            showlog("当前设备电机压感版本" + QString::fromUtf8(data.fsensor_version) + "配置文件电机压感要求" +
+            showlog("当前设备电机压感版本" + data.fsensor_version + "配置文件电机压感要求" +
                     fsensorVersion);
-            showlog("当前设备电机版本" + QString::fromUtf8(data.motor_version) + "配置文件电机要求" + motorVersion);
+            showlog("当前设备电机版本" + data.motor_version + "配置文件电机要求" + motorVersion);
 
             TestResult = failValue;
             isTestContinue = false;
@@ -256,42 +256,42 @@ void wifibletest::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Pressure version
         if (isPresureTest) {
             test.testItem = "按键压感版本";
-            test.testData = QString::fromUtf8(data.presure_version);
+            test.testData = data.presure_version;
             test.ask = pressureSenseVersion;
             testItems.append(test);
         }
 
         if (isFSensorTest) {
             test.testItem = "轴压感版本";
-            test.testData = QString::fromUtf8(data.fsensor_version);
+            test.testData = data.fsensor_version;
             test.ask = fsensorVersion;
             testItems.append(test);
         }
         // Check for BLE version
         if (isBleTest) {
             test.testItem = "蓝牙版本";
-            test.testData = QString::fromUtf8(data.ble_version);
+            test.testData = data.ble_version;
             test.ask = bleVersion;
             testItems.append(test);
         }
         // Check for Motor version
         if (isMotorTest) {
             test.testItem = "电机版本";
-            test.testData = QString::fromUtf8(data.motor_version);
+            test.testData = data.motor_version;
             test.ask = motorVersion;
             testItems.append(test);
         }
         // Check for Resource version
         if (isResourceTest) {
             test.testItem = "资源版本";
-            test.testData = QString::fromUtf8(data.res_version);
+            test.testData = data.res_version;
             test.ask = resourceVersion;
             testItems.append(test);
         }
         // Check for Software version
         if (isSoftwareTest) {
             test.testItem = "软件版本";
-            test.testData = QString::fromUtf8(data.soft_version);
+            test.testData = data.soft_version;
             test.ask = softwareVersion;
             testItems.append(test);
         }

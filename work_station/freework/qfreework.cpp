@@ -463,7 +463,7 @@ void QFreeWork::startTask() {
 
 QFreeWork::~QFreeWork() { delete ui; }
 
-void QFreeWork::refreshBaseData(FacGetDevBaseInfo data) {
+void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
     QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
     QString Age_State = SETTINGS.value("ProductInfo/Age_State").toString();
@@ -485,14 +485,14 @@ void QFreeWork::refreshBaseData(FacGetDevBaseInfo data) {
 
     if (data.soft_version == softwareVersion && data.res_version == resourceVersion &&
         QString::number(data.ageing_state) == Age_State) {
-        showlog("软件版本正确" + QString::fromUtf8(data.soft_version));
-        showlog("资源版本正确" + QString::fromUtf8(data.res_version));
+        showlog("软件版本正确" + data.soft_version);
+        showlog("资源版本正确" + data.res_version);
         showlog("老化状态正确" + QString::number(data.ageing_state));
     } else {
         TestResult = failValue;
         showlog("状态错误");
-        showlog("当前设备软件版本" + QString::fromUtf8(data.soft_version) + "配置文件版本" + softwareVersion);
-        showlog("当前设备资源版本" + QString::fromUtf8(data.res_version) + "配置文件版本" + resourceVersion);
+        showlog("当前设备软件版本" + data.soft_version + "配置文件版本" + softwareVersion);
+        showlog("当前设备资源版本" + data.res_version + "配置文件版本" + resourceVersion);
         showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + Age_State);
 
         // isTestContinue = false;

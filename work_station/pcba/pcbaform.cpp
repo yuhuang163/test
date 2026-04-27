@@ -477,24 +477,24 @@ void PcbaForm::refreshBleRssi(QString data) {
         intblerssi = BLE_RSSI.toInt(&ok);
     }
 }
-void PcbaForm::checkLedControlState(FacLedControl data) {
+void PcbaForm::checkLedControlState(ProtocolLedControlData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "收到led控制状态:" << data.switch_state;
+             << "收到led控制状态:" << data.switchState;
     isledcontrol = 1;
 }
 
-void PcbaForm::checkBrushControlState(FacBrushControl data) {
+void PcbaForm::checkBrushControlState(ProtocolBrushControlData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "收到设备控制状态:" << data.value_item.brush_start;
+             << "收到设备控制状态:" << data.brushStart;
     isbrushcontrol = 1;
 }
-void PcbaForm::checkbutton(FacButtonState data) {
+void PcbaForm::checkbutton(ProtocolButtonStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "获取到开关按键状态" << data.button_state[0].command_data.power_button.button_state_now;
+             << "获取到开关按键状态" << data.powerButtonState;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-             << "获取到模式按键状态" << data.button_state[1].command_data.mode_button.button_state_now;
+             << "获取到模式按键状态" << data.modeButtonState;
 
-    testData = QString::number(static_cast<int>(data.button_state[0].command_data.power_button.button_state_now));
+    testData = QString::number(static_cast<int>(data.powerButtonState));
     if (testData == "2") {
         TestItem test;
         test.testItem = "电源按键";
@@ -514,7 +514,7 @@ PcbaForm::~PcbaForm() {
     delete ui;
 }
 
-void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
+void PcbaForm::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_times) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
                  << "refresh_times" << refresh_times;
@@ -619,7 +619,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for BLE version
         if (isBleTest) {
             test.testItem = "蓝牙版本";
-            test.testData = QString::fromUtf8(data.ble_version);
+            test.testData = data.ble_version;
             test.ask = bleVersion;
             testItems.append(test);
         }
@@ -627,7 +627,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Motor version
         if (isMotorTest) {
             test.testItem = "电机版本";
-            test.testData = QString::fromUtf8(data.motor_version);
+            test.testData = data.motor_version;
             test.ask = motorVersion;
             testItems.append(test);
         }
@@ -635,7 +635,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Resource version
         if (isResourceTest) {
             test.testItem = "资源版本";
-            test.testData = QString::fromUtf8(data.res_version);
+            test.testData = data.res_version;
             test.ask = resourceVersion;
             testItems.append(test);
         }
@@ -643,7 +643,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Software version
         if (isSoftwareTest) {
             test.testItem = "软件版本";
-            test.testData = QString::fromUtf8(data.soft_version);
+            test.testData = data.soft_version;
             test.ask = softwareVersion;
             testItems.append(test);
         }
@@ -651,7 +651,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Product name
         if (isProductTest) {
             test.testItem = "产品名字";
-            test.testData = QString::fromUtf8(data.product_name);
+            test.testData = data.product_name;
             test.ask = productName;
             testItems.append(test);
         }
@@ -659,7 +659,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Hardware version
         if (isHwTest) {
             test.testItem = "硬件版本";
-            test.testData = QString::fromUtf8(data.hw_version);
+            test.testData = data.hw_version;
             test.ask = hardwareVersion;
             testItems.append(test);
         }
@@ -667,7 +667,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Algorithm version
         if (isAlgoTest) {
             test.testItem = "算法版本号";
-            test.testData = QString::fromUtf8(data.algo_version);
+            test.testData = data.algo_version;
             test.ask = algorithmVersion;
             testItems.append(test);
         }
@@ -675,7 +675,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Pressure version
         if (isPresureTest) {
             test.testItem = "压感版本";
-            test.testData = QString::fromUtf8(data.presure_version);
+            test.testData = data.presure_version;
             test.ask = pressureSenseVersion;
             testItems.append(test);
         }
@@ -683,7 +683,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for FSensor version
         if (isFSensorTest) {
             test.testItem = "电机压感版本";
-            test.testData = QString::fromUtf8(data.fsensor_version);
+            test.testData = data.fsensor_version;
             test.ask = fsensorVersion;
             testItems.append(test);
         }
@@ -715,7 +715,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
         // Check for Camera ID
         if (isCameraTest) {
             test.testItem = "摄像头id";
-            test.testData = QString::fromUtf8(data.camera_version);
+            test.testData = data.camera_version;
             test.ask = camera_id;
             testItems.append(test);
         }
@@ -724,7 +724,7 @@ void PcbaForm::refreshBaseData(FacGetDevBaseInfo data) {
     }
 }
 
-void PcbaForm::refreshPeriphData(FacGetPeriphState data) {
+void PcbaForm::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "flash_state" << data.flash_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："

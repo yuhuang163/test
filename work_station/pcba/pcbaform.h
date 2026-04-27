@@ -74,8 +74,8 @@ private slots:
     void refreshUsbUartState(int state) override;
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-    void refreshPeriphData(FacGetPeriphState data) override;
-    void refreshBaseData(FacGetDevBaseInfo data) override;
+    void refreshPeriphData(ProtocolPeriphStateData data) override;
+    void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshDongleUartState(int state) override;
     void refreshBleState(int state) override;
     void refreshWifiState(int state);
@@ -83,9 +83,9 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void checkbutton(FacButtonState data) override;
-    void checkBrushControlState(FacBrushControl data) override;
-    void checkLedControlState(FacLedControl data) override;
+    void checkbutton(ProtocolButtonStateData data) override;
+    void checkBrushControlState(ProtocolBrushControlData data) override;
+    void checkLedControlState(ProtocolLedControlData data) override;
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
     void on_getMac_returnPressed();
