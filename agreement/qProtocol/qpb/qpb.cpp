@@ -2458,21 +2458,25 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
         emit send_sn_data(x);
+        emit send_sn_data({ProtocolSnType::BoardSn, QString::fromUtf8(x.dev_info[0].value_item.board_sn)});
         qDebug() << "获取到板子的sn" << x.dev_info[0].value_item.board_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
         emit send_sn_data(x);
+        emit send_sn_data({ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.tail_sn)});
         qDebug() << "获取到回复尾盖的sn" << x.dev_info[0].value_item.tail_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
         emit send_sn_data(x);
+        emit send_sn_data({ProtocolSnType::SubPid, QString::fromUtf8(x.dev_info[0].value_item.sub_pid)});
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
         emit send_sn_data(x);
+        emit send_sn_data({ProtocolSnType::SkuId, QString::fromUtf8(x.dev_info[0].value_item.sku_id)});
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
         emit sendGetProductResponse(1);
     }

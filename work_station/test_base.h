@@ -201,7 +201,7 @@ public slots:
     virtual void refreshBattaryData(FacDevInfo){};
     virtual void refreshMusicState(FacDevInfo){};
 
-    virtual void refreshSn(FacDevInfo){};
+    virtual void refreshSn(ProtocolSnData){};
     virtual void refreshLcdControl(FacLcdControl){};
     virtual void refreshPeriphData(FacGetPeriphState){};
     virtual void refreshAmmeterData(QString){};

@@ -230,7 +230,7 @@ private slots:
     void refreshCameraControl(FacCameraControl style) override;
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void getDongleWifi(QString data) override;
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;

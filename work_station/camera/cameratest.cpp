@@ -508,9 +508,9 @@ void cameratest::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "开始关闭";
     isTestContinue = false;
 }
-void cameratest::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+void cameratest::refreshSn(ProtocolSnData data) {
+    stringsn = data.value;
+    qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
     ui->tail_sn->setText("存储尾盖sn:" + stringsn);
 }

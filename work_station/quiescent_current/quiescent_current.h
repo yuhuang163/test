@@ -28,7 +28,7 @@ public:
     void refreshUsbUartState(int state) override;
     void refreshJigUartState(int state) override;
     void refreshProductUartState(int state) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
     void refreshPeriphData(FacGetPeriphState data) override;
     void refreshBaseData(FacGetDevBaseInfo data) override;

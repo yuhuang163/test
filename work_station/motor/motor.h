@@ -35,7 +35,7 @@ private slots:
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
     void canGoNextMechine(int x) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
     void refreshDongleUartState(int state) override;
     void refreshBattaryData(FacDevInfo adc) override;

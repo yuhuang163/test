@@ -309,7 +309,9 @@ bool Qfctp::isDataResponse(uint16_t serviceId, uint16_t tlvType) const
 void Qfctp::handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen)
 {
     if (mainValue != nullptr && mainLen > 0) {
-        qInfo() << "FCTP SN读取:" << QByteArray(reinterpret_cast<const char *>(mainValue), mainLen);
+        const QString sn = QString::fromLatin1(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).trimmed();
+        qInfo() << "FCTP SN读取:" << sn;
+        emit send_sn_data({ProtocolSnType::TailSn, sn});
     }
 }
 
@@ -317,9 +319,9 @@ void Qfctp::handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen)
 {
     if (mainValue != nullptr && mainLen >= 38) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), mainLen);
-        const QString prod = QString::fromLatin1(raw.left(6)).trimmed();
-        const QString dev = QString::fromLatin1(raw.mid(6, 16)).trimmed();
-        const QString key = QString::fromLatin1(raw.mid(22, 16)).trimmed();
+        const QString prod = QString::fromLatin1(raw.left(6)).trimmed();//产品ID
+        const QString dev = QString::fromLatin1(raw.mid(6, 16)).trimmed();//设备id
+        const QString key = QString::fromLatin1(raw.mid(22, 16)).trimmed();//key
         qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key;
     }
 }

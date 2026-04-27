@@ -1336,28 +1336,26 @@ void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString 
 void MainWindow::refreshMusicState(FacDevInfo data) {
     showlog("当前曲目为：" + QString::number(data.dev_info[0].value_item.music_state));
 }
-void MainWindow::refreshSn(FacDevInfo data) {
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
-        qDebug() << "原始的board_sn：" << data.dev_info[0].value_item.board_sn;
-        QString board_sn_string = QString::fromUtf8(data.dev_info[0].value_item.board_sn);
-        board_sn->setText("板子sn:" + board_sn_string);
-    }
-
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        qDebug() << "原始的sub_pid：" << data.dev_info[0].value_item.sub_pid;
-        QString sub_pid_string = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
-        sub_pid->setText("sub_pid:" + sub_pid_string);
-    }
-
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        qDebug() << "原始的tail_sn：" << data.dev_info[0].value_item.tail_sn;
-        QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-        tail_sn->setText("尾盖sn:" + tail_sn_string);
-    }
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
-        qDebug() << "原始的skuid：" << data.dev_info[0].value_item.sku_id;
-        QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.sku_id);
-        sku_id->setText("sku:" + tail_sn_string);
+void MainWindow::refreshSn(ProtocolSnData data) {
+    switch (data.type) {
+        case ProtocolSnType::BoardSn:
+            qDebug() << "原始的board_sn：" << data.value;
+            board_sn->setText("板子sn:" + data.value);
+            break;
+        case ProtocolSnType::SubPid:
+            qDebug() << "原始的sub_pid：" << data.value;
+            sub_pid->setText("sub_pid:" + data.value);
+            break;
+        case ProtocolSnType::TailSn:
+            qDebug() << "原始的tail_sn：" << data.value;
+            tail_sn->setText("尾盖sn:" + data.value);
+            break;
+        case ProtocolSnType::SkuId:
+            qDebug() << "原始的skuid：" << data.value;
+            sku_id->setText("sku:" + data.value);
+            break;
+        default:
+            break;
     }
 }
 void MainWindow::refreshBleRssi(QString data) {

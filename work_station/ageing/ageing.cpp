@@ -249,14 +249,13 @@ void ageing::on_exitBurningMode_clicked() {
     }
 }
 
-void ageing::refreshSn(FacDevInfo data) {
-    QString brushstringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    QString brushstringSubpid = QString::fromUtf8(data.dev_info[0].value_item.sub_pid);
-    QString brushstringSkuid = QString::fromUtf8(data.dev_info[0].value_item.sku_id);
-    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+void ageing::refreshSn(ProtocolSnData data) {
+    const QString brushstringsn = data.value;
+    qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "brushstringsn" << brushstringsn;
 
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
+    if (data.type == ProtocolSnType::SubPid) {
+        const QString brushstringSubpid = data.value;
         ui->brush_subpid->setText("存储的subpid:" + brushstringSubpid);
 
         showlog("读取的subpid为" + brushstringSubpid);
@@ -286,7 +285,7 @@ void ageing::refreshSn(FacDevInfo data) {
         }
     }
 
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
+    if (data.type == ProtocolSnType::TailSn) {
         ui->tail_sn->setText("存储的尾盖sn:" + brushstringsn);
 
         showlog("读取的sn为" + brushstringsn);
@@ -315,7 +314,8 @@ void ageing::refreshSn(FacDevInfo data) {
         }
     }
 
-    if (data.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
+    if (data.type == ProtocolSnType::SkuId) {
+        const QString brushstringSkuid = data.value;
         ui->sku_id->setText("存储的skuid:" + brushstringSkuid);
 
         showlog("读取的Skuid为" + brushstringSkuid);

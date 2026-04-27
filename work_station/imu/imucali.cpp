@@ -328,9 +328,9 @@ void imucali::on_connectButton_clicked() {
     openDongleSerialPort();
 }
 
-void imucali::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+void imucali::refreshSn(ProtocolSnData data) {
+    stringsn = data.value;
+    qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
     ui->tail_sn->setText("芯片存储的尾盖sn:" + stringsn);
 }

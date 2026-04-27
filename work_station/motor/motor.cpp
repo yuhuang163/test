@@ -218,9 +218,9 @@ void motor::on_motor_cali_clicked() {
     }
 }
 
-void motor::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    qDebug() << getIndex() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+void motor::refreshSn(ProtocolSnData data) {
+    stringsn = data.value;
+    qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "stringsn" << stringsn;
     ui->tail_sn->setText("存储尾盖sn:" + stringsn);
 }

@@ -463,11 +463,9 @@ quiescent_current::~quiescent_current() {
     delete ui;
 }
 
-void quiescent_current::refreshSn(FacDevInfo data) {
-    // qDebug() << getIndex()<< "qss not load"<<  data.dev_info[0].value_item.board_sn;
-    // qDebug() << getIndex()<< "qss not load"<<  data.dev_info[0].value_item.tail_sn;
-    // QString board_sn_string = QString::fromUtf8(data.dev_info[0].value_item.board_sn);
-    QString tail_sn_string = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
+void quiescent_current::refreshSn(ProtocolSnData data) {
+    // qDebug() << getIndex()<< "qss not load"<<  data.value;
+    QString tail_sn_string = data.value;
     // ui->board_sn->setText("板子sn:"+board_sn_string);
     ui->tail_sn->setText("尾盖sn:" + tail_sn_string);
 

@@ -322,7 +322,7 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(pb, SIGNAL(send_imu_data(FacUploadNineAlex)), this, SLOT(getimuData(FacUploadNineAlex)));
     connect(pb, SIGNAL(send_battary(FacDevInfo)), this, SLOT(refreshBattaryData(FacDevInfo)));
     connect(pb, SIGNAL(send_wifi_State(FacDevInfo)), this, SLOT(updateWifi(FacDevInfo)));
-    connect(pb, SIGNAL(send_sn_data(FacDevInfo)), this, SLOT(refreshSn(FacDevInfo)));
+    connect(pb, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(pb, SIGNAL(send_music_state(FacDevInfo)), this, SLOT(refreshMusicState(FacDevInfo)));
 
     connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,

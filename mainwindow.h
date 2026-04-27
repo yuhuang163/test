@@ -310,7 +310,7 @@ private slots:
     void refreshImuCaliResult(FacImuCalibResult x);
     void updateComboBox();
     void getmacadress(const QByteArray& byte);
-    void refreshSn(FacDevInfo data);
+    void refreshSn(ProtocolSnData data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
     void getWifiIp(QString data);

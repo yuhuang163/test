@@ -1861,9 +1861,9 @@ void PressureSensorForm::delay_msec(unsigned int msec) {
     waitWork(msec);
 }
 
-void PressureSensorForm::refreshSn(FacDevInfo data) {
-    stringsn = QString::fromUtf8(data.dev_info[0].value_item.tail_sn);
-    qDebug() << "dev_info" << data.dev_info[0].value_item.tail_sn;
+void PressureSensorForm::refreshSn(ProtocolSnData data) {
+    stringsn = data.value;
+    qDebug() << "dev_info" << data.value;
     qDebug() << "stringsn" << stringsn;
     showlog("芯片存储的尾盖sn:" + stringsn);
 }

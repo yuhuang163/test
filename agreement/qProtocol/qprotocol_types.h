@@ -69,6 +69,19 @@ typedef struct {
     QByteArray sn;
 } DeviceSnPayload;
 
+enum class ProtocolSnType {
+    Unknown = 0,
+    BoardSn,//板子sn
+    TailSn,//整机sn
+    SubPid,//app颜色id
+    SkuId,//产品id
+};
+
+typedef struct {
+    ProtocolSnType type = ProtocolSnType::Unknown;
+    QString value;
+} ProtocolSnData;
+
 typedef struct {
     QByteArray name;
     QByteArray password;
@@ -202,5 +215,7 @@ public:
     virtual void set(DeviceCmd cmd, const QVariant& data = {}) = 0;
     virtual void get(DeviceCmd cmd, const QVariant& param = {}) = 0;
 };
+
+Q_DECLARE_METATYPE(ProtocolSnData)
 
 #endif  // QPB_TYPES_H

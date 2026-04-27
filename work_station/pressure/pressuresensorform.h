@@ -303,7 +303,7 @@ private slots:
 
     void getTestValue(const int mechines, const QString value) override;
 
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void delay_msec(unsigned int msec);
     void refreshBaseData(FacGetDevBaseInfo data) override;
 

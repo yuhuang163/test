@@ -62,7 +62,7 @@ private slots:
     QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
     void refreshLcdControl(FacLcdControl style) override;
     void refreshBleState(int state) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void refreshDongleUartState(int state) override;
     void processInspection(QString stringsn);
     void canGoNextMechine(int x) override;

@@ -306,6 +306,7 @@ signals:
     void send_battary(FacDevInfo);
     void send_wifi_State(FacDevInfo);
     void send_sn_data(FacDevInfo);
+    void send_sn_data(ProtocolSnData);
     void send_music_state(FacDevInfo);
     void send_button_state(FacButtonState);
     void send_BrushControl_state(FacBrushControl);

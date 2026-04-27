@@ -127,7 +127,7 @@ private slots:
     void on_macInput_returnPressed();
     void refreshDongleUartState(int state) override;
     void refreshBleState(int state) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void on_pushButton_clicked();
     void refreshImuCaliMsg(QString msg);
     void refresh_imu_cali_reslt_msg(QString msg);

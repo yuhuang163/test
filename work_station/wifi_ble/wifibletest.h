@@ -111,7 +111,7 @@ private slots:
 
     void refreshBaseData(FacGetDevBaseInfo data) override;
     void refreshBattaryData(FacDevInfo data) override;
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
 
     void getDongleWifi(QString data) override;

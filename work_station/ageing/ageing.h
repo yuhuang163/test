@@ -67,7 +67,7 @@ private:
 
 private slots:
 
-    void refreshSn(FacDevInfo data) override;
+    void refreshSn(ProtocolSnData data) override;
     void refreshPeriphData(FacGetPeriphState) override;
     void refreshBattaryData(FacDevInfo adc) override;
     void refreshDongleUartState(int state) override;
