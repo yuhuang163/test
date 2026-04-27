@@ -296,5 +296,5 @@ void ydmmes::TestPass(MesPacketData pack) {
     }
 }
 
-void ydmmes::LogIn(MesPacketData pack) {}
-void ydmmes::GetTestData(MesPacketData pack) {}
+void ydmmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
+void ydmmes::GetTestData(MesPacketData pack) {Q_UNUSED(pack);}

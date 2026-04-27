@@ -2242,7 +2242,7 @@ void Qpb::registerCommand() {
         std::bind(&Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA, this, std::placeholders::_1);  // 获取电量信息
 }
 
-void Qpb::process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f) { qDebug() << "收到按键上报状态指令开关回应"; }
+void Qpb::process_FactroyCmd_GET_BUTTON_STATE(FactoryDataPackage& f) {Q_UNUSED(f); qDebug() << "收到按键上报状态指令开关回应"; }
 
 void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     FacPictureDataAck x;

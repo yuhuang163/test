@@ -12,7 +12,6 @@
 #include <QtDebug>
 #include <unordered_map>
 
-#include "Abini.h"
 #include "PressCalibBox.h"
 #include "ageingbox.h"
 #include "camerabox.h"

@@ -185,7 +185,7 @@ public slots:
     virtual void checkLedControlState(FacLedControl){};
     virtual void getPressSensorData(FacUploadPresSensor){};
 
-    virtual void refreshAmplitudeData(QString data){};
+    virtual void refreshAmplitudeData(QString ){};
     virtual void checkbutton(FacButtonState){};
     virtual void checkBrushControlState(FacBrushControl){};
     virtual void refreshImuCaliResult(FacImuCalibResult){};

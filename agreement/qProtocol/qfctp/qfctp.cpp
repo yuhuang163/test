@@ -19,19 +19,7 @@ static uint16_t qfctpReadLe16(const uint8_t *p)
     return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
 }
 
-static QByteArray qfctpHexToBytes(QString hex)
-{
-    hex = hex.trimmed();
-    if (hex.startsWith("0x", Qt::CaseInsensitive)) {
-        hex = hex.mid(2);
-    }
-    hex.remove(' ');
-    hex.remove(':');
-    if (hex.size() % 2 != 0) {
-        return {};
-    }
-    return QByteArray::fromHex(hex.toLatin1());
-}
+
 
 static QByteArray qfctpParseValueString(const QString &text, bool *ok)
 {
@@ -372,7 +360,10 @@ void Qfctp::handleRspTrimGet(const uint8_t *mainValue, uint16_t mainLen)
         const uint32_t trim = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
                             | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
         const QString trimHex = "0x" + QString::number(trim, 16).toUpper().rightJustified(8, '0');
-        const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        QByteArray data((char*)mainValue, mainLen);
+        QByteArray hex = data.toHex(' ');
+        QString rawHex = hex.toUpper();
+
         qInfo() << "FCTP Trim读取" << "trim=" << trim << "(" << trimHex << ")" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP Trim读取 trim=%1(%2) raw=%3").arg(QString::number(trim), trimHex, rawHex));
     }
@@ -475,7 +466,9 @@ void Qfctp::handleRspBatteryRead(const uint8_t *mainValue, uint16_t mainLen)
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen == 1) {
             const int b = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
-            qInfo() << "FCTP 电池电量读取(ACK/单字节) value=" << b + "%" << "raw=" << rawHex;
+            qInfo() << "FCTP 电池电量读取(ACK/单字节) value="
+                    << b << "%"
+                    << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 电池电量读取 value=%1% raw=%2").arg(b).arg(rawHex));
         } else {
             qWarning() << "FCTP 电池电量读取 长度异常 len=" << mainLen << "raw=" << rawHex;
@@ -1117,7 +1110,9 @@ void Qfctp::parseCmd(const QByteArray& byte) {
     // qDebug() << "FCTP 收到外层包"
     //          << "outer=" << byte.toHex(' ')
     //          << "inner_count=" << innerPackets.size();
-    for (const auto &inner : innerPackets) {
+    const QList<QByteArray> &packets = innerPackets;
+
+    for (const auto &inner : packets) {
         // qDebug() << "inner:" << inner.toHex(' ').toUpper();
         const auto *p = reinterpret_cast<const uint8_t *>(inner.constData());
         const int  rc = comm_protocol_assemble_packet(p, static_cast<uint16_t>(inner.size()), qfctp_on_full_frame, this);

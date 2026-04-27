@@ -174,30 +174,30 @@ void Qat::sendotaMac(QString mac) {
     QString s = "AT+OTA=" + mac + "\r\n";
     sendCmd(s);
 }
-void Qat::WIFI_connected(QString p) {
+void Qat::WIFI_connected(QString p) {Q_UNUSED(p);
     iswifiConnected = true;
     // qDebug() << "wifi连接成功";
     emit send_WIFI_state(1);
 }
-void Qat::WIFI_disconnected(QString p) {
+void Qat::WIFI_disconnected(QString p) {Q_UNUSED(p);
     iswifiConnected = false;
     //  qDebug() << "wifi连接断开";
     emit send_WIFI_state(0);
 }
 
-void Qat::connected(QString p) {
+void Qat::connected(QString p) {Q_UNUSED(p);
     qDebug() << "at蓝牙连接成功";
 
     emit send_ble_state(1);
     isConnected = true;
 }
-void Qat::disconnected(QString p) {
+void Qat::disconnected(QString p) {Q_UNUSED(p);
     emit send_ble_state(0);
     isConnected = false;
     qDebug() << "at蓝牙连接断开";
 }
 
-void Qat::help(QString p) { qDebug() << "this is AT help"; }
+void Qat::help(QString p) {Q_UNUSED(p); qDebug() << "this is AT help"; }
 
 void Qat::dongle_ver(QString p) {
     qDebug() << "dongle版本为= " + p;

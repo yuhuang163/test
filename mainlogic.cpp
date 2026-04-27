@@ -1278,7 +1278,7 @@ void MainWindow::refreshBattaryData(FacDevInfo adc) {
 void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres) {
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
     QString folderPath = "D:/测试结果";
-
+    Q_UNUSED(charge_state);
     // 如果 "测试结果" 文件夹不存在，则创建它
     if (!QDir(folderPath).exists()) {
         QDir().mkpath(folderPath);
@@ -1442,6 +1442,9 @@ void MainWindow::updateMainStyle(QString style) {
 }
 
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {
+
+    Q_UNUSED(csvFilename);
+    Q_UNUSED(xlsFilename);
     // QFile csvFile(csvFilename);
     // if (!csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
     //     qDebug() << "无法打开 CSV 文件进行读取：" << csvFilename;
@@ -2580,8 +2583,7 @@ void MainWindow::initBasicInfo() {
                                   {"bleVersion", "蓝牙版本号", bleVersion}
 
     };
-
-    for (auto name : basicItems) {
+    for (const auto &name : basicItems){
         basicInfoModel->addTestItem(new TestItems(name.name, name.displayName, name.settings));
     }
 
@@ -2847,6 +2849,7 @@ bool MainWindow::deleteCsvFile(const QString& filePath) {
     }
 }
 void MainWindow::getPictureSendOver(FacPictureDataAck x) {
+    Q_UNUSED(x);
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
     qDebug() << "错误个数" + QString::number(faultData.size());
@@ -3337,6 +3340,10 @@ void MainWindow::uploadFile(const QString& filePath) {
     // 打开文件
     QFile* file = new QFile(filePath);
     if (!file->open(QIODevice::ReadOnly)) {
+        delete multiPart;
+        multiPart = nullptr;
+        delete manager;
+        manager = nullptr;
         qWarning("无法打开文件");
         return;
     }

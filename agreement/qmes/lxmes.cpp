@@ -126,7 +126,7 @@ void lxmes::AgeTimeCheck(MesPacketData pack) {
         reply->deleteLater();
     }
 }
-void lxmes::LogIn(MesPacketData pack) {}
+void lxmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
 
 // sn和上位机号获取mac
 void lxmes::GetTestData(MesPacketData pack) {

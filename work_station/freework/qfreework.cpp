@@ -97,7 +97,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     // 定义行列数
     size_t colCount = 3;  // 例如：3列
 
-    canUserCol = colCount;
+    canUserCol = (int)colCount;
     // 计算 canUserRow 并向上取整
     canUserRow = (testFunctions.size() + colCount - 1) / colCount;
 
@@ -107,8 +107,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         checkBoxes.append(checkBox);  // 添加到复选框列表
 
         // 计算行和列的位置
-        int Row = i / colCount;
-        int Col = i % colCount;
+        int Row = i / (int)colCount;
+        int Col = i % (int)colCount;
 
         // 将复选框添加到网格布局的指定位置
         canUselayout->addWidget(checkBox, Row, Col);
@@ -163,7 +163,7 @@ void QFreeWork::paintEvent(QPaintEvent* event) {
     QRect canUseLayoutArea = ui->can_use->geometry();
 
     singleCheckBoxHeight = (canUseLayoutArea.height() - (2 * MARGIN) + ROW_SPACING) /
-                           canUserRow;  // checkBoxes[0]->height() + ROW_SPACING;
+                           (int)canUserRow;  // checkBoxes[0]->height() + ROW_SPACING;
 
     singleCheckBoxWidth =
         (canUseLayoutArea.width() - 2 * MARGIN + COLUMN_SPACING) / canUserCol;  // checkBoxes[0]->width() +
@@ -242,8 +242,8 @@ void QFreeWork::moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* wi
 }
 
 void QFreeWork::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) {
-    int singleCheckBoxHeight = (area.height() - 2 * MARGIN + ROW_SPACING) / canUserRow;
-    int singleCheckBoxWidth = (area.width() - 2 * MARGIN + COLUMN_SPACING) / canUserCol;
+    int singleCheckBoxHeight = (area.height() - 2 * MARGIN + ROW_SPACING) / (int)canUserRow;
+    int singleCheckBoxWidth =(area.width() - 2 * MARGIN + COLUMN_SPACING) /(int) canUserCol;
 
     row = qBound(0, (globalPos.y() - area.y() - MARGIN) / singleCheckBoxHeight, canUselayout->rowCount() - 1);
     col = qBound(0, (globalPos.x() - area.x() - MARGIN) / singleCheckBoxWidth, canUselayout->columnCount() - 1);
@@ -1094,6 +1094,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
 }
 
 void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
+    Q_UNUSED(bandingsn);
     pack.mechines = 1;  // 1脱1,1号上位机
     pack.sn = snbanding;
     pack.result = "PASS";

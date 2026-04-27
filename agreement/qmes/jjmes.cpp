@@ -36,7 +36,7 @@ QString processString(const QString &input)
 
     return result;
 }
-void jjmes::LogIn(MesPacketData pack) {}
+void jjmes::LogIn(MesPacketData pack) { Q_UNUSED(pack);}
 // sn和工站，站前检测
 void jjmes::ProcessInspection(MesPacketData pack)
 {

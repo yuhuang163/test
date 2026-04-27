@@ -1448,6 +1448,11 @@ void QBulk::parseCmd(QByteArray &buffer) {
             break;
         if (cmdID == 0Xf1)
             break;
+        Q_UNUSED(reserve);
+        Q_UNUSED(headCRC);
+        Q_UNUSED(sequenceNum);
+        Q_UNUSED(sender);
+        Q_UNUSED(receiver);
 
         // qDebug() << "USB RX:" << hexdata;
 
@@ -1582,7 +1587,9 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
-    DeviceInfo info;
+
+    DeviceInfo info = {0};
+
     const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
 
     uint8_t retCode = p[0];
@@ -1698,7 +1705,8 @@ void QBulk::process_dji_amt_task_get_log(QByteArray &f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
-    DeviceInfo info;
+    DeviceInfo info = {0};
+
 
     if (f.size() < 9) {
         qWarning() << "[AMT] get_log ack too short:" << f.size();

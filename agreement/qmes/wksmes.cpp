@@ -103,10 +103,10 @@ void wksmes::ProcessInspection(MesPacketData pack) {
         reply->deleteLater();
     }
 }
-void wksmes::LogIn(MesPacketData pack) {}
+void wksmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
 
 // sn和上位机号获取mac
-void wksmes::GetTestData(MesPacketData pack) {}
+void wksmes::GetTestData(MesPacketData pack) {Q_UNUSED(pack);}
 QString wksmes::transformString(const QString& input) {
     // 去掉开头和结尾的 '|'
     QString modifiedString = input;

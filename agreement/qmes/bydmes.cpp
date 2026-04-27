@@ -1,4 +1,4 @@
-#include "bydmes.h"
+﻿#include "bydmes.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

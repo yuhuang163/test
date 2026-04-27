@@ -29,6 +29,9 @@ QMAKE_CXXFLAGS += /MP
 # text codec for tools用local
 # 语言用中文
 
+# Qt Creator编写代码时界面经常卡死解决办法
+# 帮助->关于插件->C+±>取消勾选ClangCodeModel（重启QtCreator）
+
 
 INCLUDEPATH += agreement
 INCLUDEPATH += agreement/qmes
@@ -159,7 +162,6 @@ HEADERS += \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol.h \
-    agreement/qProtocol/qfctp/common_protocl/root_common_base.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_defs.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
