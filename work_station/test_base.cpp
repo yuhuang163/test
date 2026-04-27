@@ -300,7 +300,7 @@ void test_base::readDongleSerialPortData() {
 
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
-    pb->parseCmd(dataTemp);
+    protocolManager.parseCmd(dataTemp);
     getmacadress(dataTemp);  // 搜索设备用
     // getmacadress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);

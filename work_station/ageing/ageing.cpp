@@ -621,8 +621,11 @@ void ageing::startTask() {
 }
 
 void ageing::on_pushButton_clicked() {
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    on_macInput_returnPressed();
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // on_macInput_returnPressed();
+    at->sendMac(ui->macInput->text());  // 发送mac地址
+    waitWork(8000);
+    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
 }
 
 void ageing::on_getMac_returnPressed() {
