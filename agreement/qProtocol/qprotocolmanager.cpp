@@ -205,9 +205,11 @@ bool QProtocolManager::isQfctpProtocolActive() const {
 void QProtocolManager::syncActivePointer() {
     if (qpb_ != nullptr) {
         disconnect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
+        disconnect(qpb_, &Qpb::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
     }
     if (qfctp_ != nullptr) {
         disconnect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
+        disconnect(qfctp_, &Qfctp::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
     }
 
     switch (currentType_) {
@@ -215,12 +217,14 @@ void QProtocolManager::syncActivePointer() {
             active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
             if (qpb_ != nullptr) {
                 connect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
+                connect(qpb_, &Qpb::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
             }
             break;
         case ProtocolType::Qfctp:
             active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
             if (qfctp_ != nullptr) {
                 connect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
+                connect(qfctp_, &Qfctp::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
             }
             break;
         default:

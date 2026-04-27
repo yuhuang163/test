@@ -58,6 +58,7 @@ public:
 
 signals:
     void send_pb_date(QString data);
+    void sendGetProductResponse(int data);
 
 private:
     void syncActivePointer();

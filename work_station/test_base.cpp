@@ -69,7 +69,7 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_press_cali_data(FacPreSensorCalibResult)), this,
             SLOT(getPresscalidata(FacPreSensorCalibResult)));
     connect(pb, SIGNAL(send_press_data(FacUploadPresSensor)), this, SLOT(getPressSensorData(FacUploadPresSensor)));
-    connect(pb, SIGNAL(sendGetBrushResponse(int)), this, SLOT(solveGetBrushResponse(int)));
+    connect(pb, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(pb, SIGNAL(send_button_state(FacButtonState)), this, SLOT(checkbutton(FacButtonState)));
     connect(pb, SIGNAL(send_BrushControl_state(FacBrushControl)), this, SLOT(checkBrushControlState(FacBrushControl)));
     connect(pb, SIGNAL(send_LED_CONTROL_state(FacLedControl)), this, SLOT(checkLedControlState(FacLedControl)));

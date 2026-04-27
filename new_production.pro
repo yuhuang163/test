@@ -12,10 +12,11 @@ QMAKE_CXXFLAGS += /MP
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+
 #D:\qt\5.15.2\msvc2019_64\bin\windeployqt.exe new_production_20250304.exe
 # E:\qt\MaintenanceTool.exe --urlreplace download.qt.io mirrors.tuna.tsinghua.edu.cn/qt
 # E:\qt\MaintenanceTool.exe --urlreplace download.qt.io mirrors.ustc.edu.cn/qtproject
-
 # E:\qt\MaintenanceTool.exe --urlreplace download.qt.io mirrors.aliyun.com/qt
 
 

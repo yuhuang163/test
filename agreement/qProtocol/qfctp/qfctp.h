@@ -21,10 +21,6 @@ public:
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     bool sendCustomMessage(const QVariantMap &map) override;
 
-signals:
-    void send_pb_date(QString data);
-    void send_fw_version(QString version);
-    void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
 
 private:
     using ResponseHandler = void (Qfctp::*)(const uint8_t *mainValue, uint16_t mainLen);
@@ -123,6 +119,13 @@ private:
     uint8_t       m_fctpSeq = 0;
     QHash<uint8_t, PendingRequest> m_pendingRequests;
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
+
+signals:
+    void send_pb_date(QString data);
+    void send_fw_version(QString version);
+    void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
+    void sendGetProductResponse(int data);
+
 };
 
 #endif // Qfctp_H

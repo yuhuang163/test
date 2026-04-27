@@ -2249,7 +2249,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.send_data_over == FacErrorCode_NO_ERROR) {
         emit send_get_picture_send_over(x);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     qDebug() << "收到发送数据包结束回应" << x.send_data_over;
@@ -2261,7 +2261,7 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
 
     emit send_FactroyCmd_WIFI_DEMAND(x);
     qDebug() << "收到wifi连接回应" << x.result;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 
     is_wif_set = 1;
 }
@@ -2270,7 +2270,7 @@ void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_FactroyCmd_INTERNET_OTA(x);
     qDebug() << "收到本地ota控制回应:" << x.result;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     FacCameraControl x;
@@ -2278,7 +2278,7 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     emit send_camera_CONTROL_state(x);
     qDebug() << "收到摄像头控制回应:" << x.type;
     is_camera_control = true;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     FacMotorCalibResult x;
@@ -2286,7 +2286,7 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     emit send_pb_date("收到设备上报信息");
     if (x.which_value_item == FacMotorCalibResult_hall_calibration_data_tag &&
         x.type == FacMotorUploadType_HALL_CALIBRATION_DATA) {
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         emit send_pb_date("hall_calibration_data" + QString::number(x.value_item.hall_calibration_data));
         qDebug() << "获取到霍尔校准结果" << x.value_item.hall_calibration_data;
         if (x.value_item.hall_calibration_data == 0)
@@ -2296,7 +2296,7 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     }
     if (x.which_value_item == FacMotorCalibResult_zero_calibration_data_tag &&
         x.type == FacMotorUploadType_ZERO_CALIBRATION_DATA) {
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         emit send_pb_date("获取到0点校准结果为" + QString::number(x.value_item.zero_calibration_data));
         qDebug() << "获取到0点校准结果" << x.value_item.zero_calibration_data;
         if (x.value_item.zero_calibration_data == 0) {
@@ -2312,14 +2312,14 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
         qDebug() << "收到电机信息"
                  << "new" << x.value_item.servo_info.opera_info.zero_info;
         emit send_servo_motor_info_msg(x);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.which_value_item == FacMotorCalibResult_motor_log_tag && x.type == FacMotorUploadType_MOTOR_LOG) {
         qDebug() << "收到电机日志" << x.value_item.motor_log;
         QString motorLogString = QString::fromLatin1(x.value_item.motor_log);
         emit send_motor_cali_msg(motorLogString);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     qDebug() << "收到电机校准回应:" << x.type;
@@ -2333,41 +2333,41 @@ void Qpb::process_FactroyCmd_MOTO_CONTROL(FactoryDataPackage& f) {
     if (x.type == FacMotoControlType_motor_param) {
         is_motor_param_set = 1;
         qDebug() << "电机参数设置操作";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.type == FacMotoControlType_motor_test) {
         qDebug() << "电机测试操作";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_motor_test_state = 1;
     }
     if (x.type == FacMotoControlType_damping_state) {
         qDebug() << "电机阻尼操作";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_damping_state = 1;
     }
     if (x.type == FacMotoControlType_servo_param) {
         qDebug() << "电机参数设置成功";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_motor_test_state = 1;
     }
     if (x.type == FacMotoControlType_motor_cali_data) {
         qDebug() << "电机校准参数设置完成";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_motor_cali_data_set = 1;
     }
     if (x.type == FacMotoControlType_get_servo_info_data) {
         qDebug() << "伺服电机信息获取成功";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.type == FacMotoControlType_motor_cali && x.value_item.switch_cali == FacMotoCali_MOTOR_CALI_STOP) {
         qDebug() << "停止校准流程";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_stop_motor_cali = 1;
     }
 
     if (x.type == FacMotoControlType_motor_cali) {
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         qDebug() << "电机校准流程操作（0是霍尔校准1是零点校准）" << x.value_item.switch_cali;
     }
 }
@@ -2376,14 +2376,14 @@ void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_Lcd_CONTROL_state(x);
     qDebug() << "收到屏幕控制回应:" << x.type;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_AGEING_TEST(FactoryDataPackage& f) {
     FacAgeingTest x;
     memcpy(&x, &f.command_data, sizeof(x));
 
     if (x.switch_state == 1) {
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 
@@ -2412,7 +2412,7 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     } else {
         emit send_pb_date("设备六轴校准数据是工厂值,是可靠的");
     }
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     FacLedControl x;
@@ -2421,14 +2421,14 @@ void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     qDebug() << "收到灯光控制回应:" << x.switch_state;
 
     qDebug() << "收到灯光count:" << x.led_state_count;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     FacBrushControl x;
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_BrushControl_state(x);
     qDebug() << "收到设备控制回应:" << x.value_item.brush_start;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     FacButtonState x;
@@ -2438,7 +2438,7 @@ void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     qDebug() << "获取到开关按键状态" << x.button_state[0].command_data.power_button.button_state_now;
 
     emit send_button_state(x);
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 
 void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
@@ -2448,50 +2448,50 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     if (x.dev_info[0].which_value_item == FacDevInfoValue_battery_tag) {
         emit send_battary(x);
         qDebug() << "获取到电量信息";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         is_get_battery_data = 1;
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_wifi_info_tag) {
         emit send_wifi_State(x);
         qDebug() << "获取到wifi信息";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到板子的sn" << x.dev_info[0].value_item.board_sn;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回复尾盖的sn" << x.dev_info[0].value_item.tail_sn;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
         emit send_sn_data(x);
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_music_state_tag) {
         emit send_music_state(x);
         qDebug() << "获取到音乐状态回应" << x.dev_info[0].value_item.music_state;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sdcard_tag) {
         emit send_sd_info(x);
         qDebug() << "获取到sd卡命令" << x.dev_info[0].value_item.sdcard.cmd;
         qDebug() << "获取到sd卡信息" << x.dev_info[0].value_item.sdcard.data;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_light_sensor_tag) {
         emit send_photosensitive_info(x);
         qDebug() << "获取到光敏电阻信息" << x.dev_info[0].value_item.light_sensor;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     emit send_pb_date("获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));
@@ -2502,18 +2502,18 @@ void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     emit send_periph_data(x);
     qDebug() << "获取到外设状态";
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     FacGetDevBaseInfo x;
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "获取到设备信息";
     emit send_base_data(x);
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
     qDebug() << "收到保存imu校准值回应" << f.command_data.set_imu_calib.result;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacPreSensorCalibResult x;
@@ -2525,7 +2525,7 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     qDebug() << "获取模式辅助元器件校准的assistant_component=" << x.assistant_component;
     emit send_press_cali_data(x);
     is_save_press_cali_ok = 1;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     FacDevInfo x;
@@ -2541,23 +2541,23 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
         x.result == FacErrorCode_NO_ERROR) {
         qDebug() << "进入禁止休眠成功";
         is_disable_sleep = 1;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_state_type == DevStateType_FORBID_SLEEP && x.state == FacSwitch_CLOSE &&
         x.result == FacErrorCode_NO_ERROR) {
         qDebug() << "取消禁止休眠成功";
         is_close_forbid_sleep = 1;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.dev_state_type == DevStateType_SLEEP) {
         qDebug() << "设置休眠成功";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_state_type == DevStateType_SHIP) {
         qDebug() << "设置船运成功";
         emit send_pb_date("设置船运成功" + QString::number(shipCount));
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
         if (shipCount) {
             increaseShipCount();
         }
@@ -2565,12 +2565,12 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
         qDebug() << "设置工厂模式成功";
         emit send_pb_date("设置工厂模式成功");
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_state_type == DevStateType_UART_RECEIVE) {
         qDebug() << "设置串口状态成功";
         emit send_pb_date("设置串口状态成功");
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 
@@ -2586,38 +2586,38 @@ void Qpb::process_FactroyCmd_SET_DEVICE_INFO(FactoryDataPackage& f) {
         qDebug() << "进入亮白模式成功";
         is_dev_into_white_mode = 1;
 
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.dev_info[0].info_item == FacDevInfoType_BOARD_SN) {  //  qDebug() << "已经收到板子的sn";
         get_sn(FacDevInfoType_BOARD_SN);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].info_item == FacDevInfoType_SUB_PID) {
         qDebug() << "已经收到板子的subpid设置回应";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.dev_info[0].info_item == FacDevInfoType_TAIL_SN) {
         is_banding_ok = 1;
         qDebug() << "已经收到写入尾盖的sn回应";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 
     if (x.dev_info[0].info_item == FacDevInfoType_SKUID) {
         qDebug() << "已经收到skuid回应";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].info_item == FacDevInfoType_WIFI_INFO) {
         qDebug() << "wifi连接回应";
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 void Qpb::process_CommandId_ROTAS_FILE_STATUS_REQ(DataPackage& f) {
     RotasFileStatusReq x;
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.fileType == RotasUpdateFile_BLE_FIRMWARE) {
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 void Qpb::process_CommandId_GET_USER_INFO(DataPackage& f) {
@@ -2628,14 +2628,14 @@ void Qpb::process_CommandId_GET_USER_INFO(DataPackage& f) {
     {
         emit send_pb_date("成功收到获取user_info指令回应");
         is_set_i_am_app = 1;
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 
 void Qpb::process_CommandId_CONNECT_PRO(DataPackage& f) {
     emit send_pb_info(QString("firmware version : %1").arg(f.command_data.connect_pro.firmware_id));
     qDebug() << "获取到版本号" << f.command_data.connect_pro.firmware_id;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 
 void Qpb::process_CommandId_ROTAS_RESULT_RSP(DataPackage& f) {
@@ -2644,12 +2644,12 @@ void Qpb::process_CommandId_ROTAS_RESULT_RSP(DataPackage& f) {
     if (x.rotaStatus == RotaFileStatus_ROTA_PAUSE) {
         emit send_pb_date("流控停止");
         emit send_ota_flow_control(0);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
     if (x.rotaStatus == RotaFileStatus_ROTA_START) {
         emit send_pb_date("流控开始");
         emit send_ota_flow_control(1);
-        emit sendGetBrushResponse(1);
+        emit sendGetProductResponse(1);
     }
 }
 void Qpb::process_CommandId_ROTAS(DataPackage& f) {
@@ -2854,7 +2854,7 @@ void Qpb::process_FactroyCmd_SET_COLLECT_PARAM(FactoryDataPackage& f) {
 
     qDebug() << "接收到imu状态设置为" << x.param[0].command_data.nine_axle.state;
     qDebug() << "接收到压感状态设置为" << x.param[0].command_data.pressure_sensor.state;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     FacUploadPresSensor x;
@@ -2862,7 +2862,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
     // qDebug () << "sensor data";
     emit send_press_data(x);
     is_set_press_collect_param = 1;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 
 void Qpb::process_FactroyCmd_FAC_LOG(FactoryDataPackage& f) {
@@ -2870,7 +2870,7 @@ void Qpb::process_FactroyCmd_FAC_LOG(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     qDebug() << "收到设备黑盒日志回应";
 
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
     FacUploadNineAlex x;
@@ -2878,7 +2878,7 @@ void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
     qDebug() << "收到imu数据包";
     emit send_imu_data(x);
     is_setimu_collect_param = 1;
-    emit sendGetBrushResponse(1);
+    emit sendGetProductResponse(1);
 }
 
 void Qpb::set_config_network_app(WifiInfo info) {

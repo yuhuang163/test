@@ -38,7 +38,7 @@ public:
     // 【需要虚函数】来自 IDevice，必须保留 override。
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     // 【需要虚函数】来自 qProtocol，必须保留 override。
-    void parseCmd(const QByteArray& byte);
+    void parseCmd(const QByteArray& byte) override;
     // qpb 当前不支持该通用TLV发送，统一返回 false。
     bool sendCustomMessage(const QVariantMap& map);
 
@@ -325,7 +325,7 @@ signals:
     void send_ota_result(int result);
     void send_press_cali_data(FacPreSensorCalibResult x);
 
-    void sendGetBrushResponse(int data);
+    void sendGetProductResponse(int data);
 };
 
 #endif  // QPB_H

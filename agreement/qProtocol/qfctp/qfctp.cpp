@@ -266,6 +266,7 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
 
     handleRequestResult(seq, req, mainValueAsInt, hasMainValueAsInt, errCode, hasErrCode);
     handleResponseByType(req, mainValue, mainLen);
+    emit sendGetProductResponse(1);
 }
 
 void Qfctp::registerResponseHandlers()
@@ -741,11 +742,11 @@ bool Qfctp::tryUnwrapPhyPacket(const QByteArray &packet, QList<QByteArray> &outP
 bool Qfctp::sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket) const
 {
     if (serialPort == nullptr) {
-        qWarning() << "FCTP 串口对象为空，未发送产测模式帧";
+        qWarning() << "FCTP 串口对象为空，未发送数据包";
         return false;
     }
     if (!serialPort->isOpen()) {
-        qWarning() << "FCTP 串口未打开，未发送产测模式帧";
+        qWarning() << "FCTP 串口未打开，未发送数据包";
         return false;
     }
     const QByteArray phyPacket = wrapPhyPacket(innerPacket);
