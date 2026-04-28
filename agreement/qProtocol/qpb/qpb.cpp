@@ -26,7 +26,7 @@ extern "C" {
 #define MAX_DATA_CNT (APP_BLE_MAX_DATA_LEN - PACKET_NUM_LENGTH)  // first byte is packet number
 #define MAX_DATA_CNT_FOR_PHONE (20 - PACKET_NUM_LENGTH)
 
-Qpb::Qpb(QSerialPort* parent) : QSerialPort{parent} {
+Qpb::Qpb(QSerialPort* parent) : qProtocol(parent) {
     serialPort = parent;
     registerCommand();
 }

@@ -9,6 +9,33 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
+namespace {
+void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool shouldConnect) {
+    if (protocol == nullptr || manager == nullptr) {
+        return;
+    }
+
+    if (shouldConnect) {
+        QObject::connect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
+        QObject::connect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
+        QObject::connect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
+        QObject::connect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
+        QObject::connect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
+        QObject::connect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
+        QObject::connect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
+        return;
+    }
+
+    QObject::disconnect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
+    QObject::disconnect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
+    QObject::disconnect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
+    QObject::disconnect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
+    QObject::disconnect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
+    QObject::disconnect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
+    QObject::disconnect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
+}
+}  // namespace
+
 QProtocolManager::QProtocolManager(QObject* parent) : QObject(parent) {}
 
 QProtocolManager::ProtocolType QProtocolManager::currentProtocolType() const {
@@ -203,49 +230,17 @@ bool QProtocolManager::isQfctpProtocolActive() const {
 }
 
 void QProtocolManager::syncActivePointer() {
-    if (qpb_ != nullptr) {
-        disconnect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
-        disconnect(qpb_, &Qpb::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
-        disconnect(qpb_, &Qpb::send_sn_data, this, &QProtocolManager::send_sn_data);
-        disconnect(qpb_, &Qpb::send_battary, this, &QProtocolManager::send_battary);
-        disconnect(qpb_, &Qpb::send_button_state, this, &QProtocolManager::send_button_state);
-        disconnect(qpb_, &Qpb::send_periph_data, this, &QProtocolManager::send_periph_data);
-        disconnect(qpb_, &Qpb::send_photosensitive_info, this, &QProtocolManager::send_photosensitive_info);
-    }
-    if (qfctp_ != nullptr) {
-        disconnect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
-        disconnect(qfctp_, &Qfctp::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
-        disconnect(qfctp_, &Qfctp::send_sn_data, this, &QProtocolManager::send_sn_data);
-        disconnect(qfctp_, &Qfctp::send_battary, this, &QProtocolManager::send_battary);
-        disconnect(qfctp_, &Qfctp::send_button_state, this, &QProtocolManager::send_button_state);
-        disconnect(qfctp_, &Qfctp::send_periph_data, this, &QProtocolManager::send_periph_data);
-        disconnect(qfctp_, &Qfctp::send_photosensitive_info, this, &QProtocolManager::send_photosensitive_info);
-    }
+    syncManagerSignals(qpb_, this, false);
+    syncManagerSignals(qfctp_, this, false);
 
     switch (currentType_) {
         case ProtocolType::Qpb:
             active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
-            if (qpb_ != nullptr) {
-                connect(qpb_, &Qpb::send_pb_date, this, &QProtocolManager::send_pb_date);
-                connect(qpb_, &Qpb::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
-                connect(qpb_, &Qpb::send_sn_data, this, &QProtocolManager::send_sn_data);
-                connect(qpb_, &Qpb::send_battary, this, &QProtocolManager::send_battary);
-                connect(qpb_, &Qpb::send_button_state, this, &QProtocolManager::send_button_state);
-                connect(qpb_, &Qpb::send_periph_data, this, &QProtocolManager::send_periph_data);
-                connect(qpb_, &Qpb::send_photosensitive_info, this, &QProtocolManager::send_photosensitive_info);
-            }
+            syncManagerSignals(active_, this, true);
             break;
         case ProtocolType::Qfctp:
             active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
-            if (qfctp_ != nullptr) {
-                connect(qfctp_, &Qfctp::send_pb_date, this, &QProtocolManager::send_pb_date);
-                connect(qfctp_, &Qfctp::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
-                connect(qfctp_, &Qfctp::send_sn_data, this, &QProtocolManager::send_sn_data);
-                connect(qfctp_, &Qfctp::send_battary, this, &QProtocolManager::send_battary);
-                connect(qfctp_, &Qfctp::send_button_state, this, &QProtocolManager::send_button_state);
-                connect(qfctp_, &Qfctp::send_periph_data, this, &QProtocolManager::send_periph_data);
-                connect(qfctp_, &Qfctp::send_photosensitive_info, this, &QProtocolManager::send_photosensitive_info);
-            }
+            syncManagerSignals(active_, this, true);
             break;
         default:
             active_ = nullptr;

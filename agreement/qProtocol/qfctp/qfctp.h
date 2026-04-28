@@ -10,7 +10,7 @@
 
 #include "qprotocol.h"
 
-class Qfctp : public QSerialPort, public qProtocol {
+class Qfctp : public qProtocol {
     Q_OBJECT
     friend void qfctp_on_full_frame(const uint8_t *frame_data, uint16_t frame_len, void *user_data);
 
@@ -46,6 +46,8 @@ private:
     void        registerResponseHandlers();
     void        handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen);
     bool        isDataResponse(uint16_t serviceId, uint16_t tlvType) const;
+
+
     void        handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspAgingStatus(const uint8_t *mainValue, uint16_t mainLen);
@@ -63,10 +65,10 @@ private:
     void        handleRspLightReportCtrl(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen);
     void        handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLen);
-    bool        handleSetSn(const QVariant &data);
 
 
 
+    bool        setSn(const QVariant &data);
     bool        setCaseAgingMode(const QVariantMap &map);
     bool        setCaseAgingExit();
     bool        setCaseSuctionMode(const QVariantMap &map);
@@ -121,15 +123,21 @@ private:
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
 
 signals:
-    void send_pb_date(QString data);
-    void send_sn_data(ProtocolSnData);
-    void send_battary(ProtocolBatteryData);
-    void send_button_state(ProtocolButtonStateData);
-    void send_periph_data(ProtocolPeriphStateData data);
-    void send_photosensitive_info(ProtocolPhotosensitiveData);
+    void send_tuple_parsed(QString productId, QString deviceId, QString key);
+    void send_aging_status(int status, int loops, uint32_t seconds);
+    void send_device_exception(int status, QString statusText);
+    void send_trim_read(uint32_t trimValue);
+    void send_factory_done_read(bool done);
+    void send_rssi_read(int rssiDbm);
+    void send_mac_read(QString mac);
+    void send_key_signal_read(uint32_t capacitance);
+    void send_light_calib_read(uint32_t calibValue);
+    void send_lcd_backlight_ack(int ack);
+    void send_light_report_ctrl_ack(int ack);
+    void send_light_calib_write_ack(uint32_t value);
+    void send_charge_current_read(uint32_t currentMa);
     void send_fw_version(QString version);
     void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
-    void sendGetProductResponse(int data);
 
 };
 

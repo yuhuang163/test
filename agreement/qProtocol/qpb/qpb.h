@@ -26,7 +26,7 @@ Q_DECLARE_METATYPE(SevorMotorParamPayload)
 Q_DECLARE_METATYPE(LocalOtaPayload)
 Q_DECLARE_METATYPE(StartMultiBleOtaPayload)
 
-class Qpb : public QSerialPort, public qProtocol, public IDevice {
+class Qpb : public qProtocol, public IDevice {
     Q_OBJECT
 public:
     // ==================== 对外接口（协议层） ====================
@@ -297,17 +297,12 @@ private slots:
     void process_FactroyCmd_FAC_LOG(FactoryDataPackage& f);
 signals:
     // ==================== 信号输出（上层订阅） ====================
-    void send_photosensitive_info(ProtocolPhotosensitiveData);
     void send_sd_info(ProtocolSdInfoData);
     void send_press_data(ProtocolPressSampleData);
     void send_base_data(ProtocolBaseInfoData data);
-    void send_periph_data(ProtocolPeriphStateData data);
     void send_imu_data(ProtocolImuSampleData);
-    void send_battary(ProtocolBatteryData);
     void send_wifi_State(ProtocolWifiStateData);
-    void send_sn_data(ProtocolSnData);
     void send_music_state(ProtocolMusicStateData);
-    void send_button_state(ProtocolButtonStateData);
     void send_BrushControl_state(ProtocolBrushControlData);
     void send_LED_CONTROL_state(ProtocolLedControlData);
     void send_Lcd_CONTROL_state(ProtocolLcdControlData);
@@ -319,13 +314,11 @@ signals:
     void send_get_picture_send_over(ProtocolPictureSendOverData);
     void send_press_cali_data(ProtocolPressCalibResultData x);
 
-    void send_pb_date(QString data);
     void send_ota_flow_control(int state);
     void send_motor_cali_msg(QString data);
     void send_pb_info(QString info);
     void send_ota_progress(int progress);
     void send_ota_result(int result);
-    void sendGetProductResponse(int data);
 };
 
 #endif  // QPB_H
