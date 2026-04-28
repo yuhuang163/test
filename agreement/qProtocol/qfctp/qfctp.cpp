@@ -323,7 +323,7 @@ void Qfctp::handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen)
         const QString dev = QString::fromLatin1(raw.mid(6, 16)).trimmed();//设备id
         const QString key = QString::fromLatin1(raw.mid(22, 16)).trimmed();//key
         qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key;
-        emit send_tuple_parsed(prod, dev, key);
+        emit send_tuple_parsed({prod, dev, key});
     }
 }
 
@@ -336,7 +336,7 @@ void Qfctp::handleRspAgingStatus(const uint8_t *mainValue, uint16_t mainLen)
         const uint32_t seconds = static_cast<uint32_t>(mainValue[3]) | (static_cast<uint32_t>(mainValue[4]) << 8)
                                | (static_cast<uint32_t>(mainValue[5]) << 16) | (static_cast<uint32_t>(mainValue[6]) << 24);
         qInfo() << "FCTP 老化状态 raw=" << raw.toHex(' ') << "老化结果=" << status << "循环次数=" << loops << "已经老化时间=" << seconds;
-        emit send_aging_status(static_cast<int>(status), static_cast<int>(loops), seconds);
+        emit send_aging_status({static_cast<int>(status), static_cast<int>(loops), seconds});
     }
 }
 
@@ -356,7 +356,7 @@ void Qfctp::handleRspDeviceException(const uint8_t *mainValue, uint16_t mainLen)
                 << "status=0x" + QString::number(status, 16).toUpper().rightJustified(2, '0')
                 << "(" << statusText << ")"
                 << "raw=" << QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
-        emit send_device_exception(static_cast<int>(status), statusText);
+        emit send_device_exception({static_cast<int>(status), statusText});
     }
 }
 
@@ -372,7 +372,7 @@ void Qfctp::handleRspTrimGet(const uint8_t *mainValue, uint16_t mainLen)
 
         qInfo() << "FCTP Trim读取" << "trim=" << trim << "(" << trimHex << ")" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP Trim读取 trim=%1(%2) raw=%3").arg(QString::number(trim), trimHex, rawHex));
-        emit send_trim_read(trim);
+        emit send_trim_read({trim});
     }
 }
 
@@ -387,7 +387,7 @@ void Qfctp::handleRspFactoryDoneRead(const uint8_t *mainValue, uint16_t mainLen)
                 << "(" << doneText << ")" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP 产测完成标识 value=0x%1(%2) raw=%3")
                               .arg(QString::number(done, 16).toUpper().rightJustified(2, '0'), doneText, rawHex));
-        emit send_factory_done_read(done == 0x01);
+        emit send_factory_done_read({done == 0x01});
     }
 }
 
@@ -399,7 +399,7 @@ void Qfctp::handleRspRssiRead(const uint8_t *mainValue, uint16_t mainLen)
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         qInfo() << "FCTP RSSI读取" << "rssi=" << rssi << "dBm" << "raw=" << rawHex;
         emit send_pb_date(QString("FCTP RSSI读取 rssi=%1 dBm raw=%2").arg(rssi).arg(rawHex));
-        emit send_rssi_read(static_cast<int>(rssi));
+        emit send_rssi_read({static_cast<int>(rssi)});
     }
 }
 
@@ -436,8 +436,7 @@ void Qfctp::handleRspSensorState(const uint8_t *mainValue, uint16_t mainLen)
         periphData.result = periphData.press_state && periphData.flash_state && periphData.magnet_state
                           && periphData.imu_state && (periphData.audio_state != 0);
         emit send_periph_data(periphData);
-        emit send_periph_sensor_state(static_cast<int>(press0), static_cast<int>(press1), static_cast<int>(battIc),
-                                      static_cast<int>(touchIc), static_cast<int>(ledIc), hasPdIc ? static_cast<int>(pdIc) : -1);
+      
     }
 }
 
@@ -476,7 +475,7 @@ void Qfctp::handleRspMacRead(const uint8_t *mainValue, uint16_t mainLen)
         }
         qInfo() << "FCTP MAC读取" << "raw=" << hex << "mac=" << macText;
         emit send_pb_date(QString("FCTP MAC读取 raw=%1 mac=%2").arg(hex, macText));
-        emit send_mac_read(macText);
+        emit send_mac_read({macText});
     }
 }
 
@@ -508,7 +507,7 @@ void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
                                | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 按键电容读取 capacitance_u32=" << cap << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 按键电容读取 value=%1 raw=%2").arg(cap).arg(rawHex));
-            emit send_key_signal_read(cap);
+            emit send_key_signal_read({cap});
         } else {
             qWarning() << "FCTP 按键电容读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -524,7 +523,7 @@ void Qfctp::handleRspLightCalibRead(const uint8_t *mainValue, uint16_t mainLen)
                                | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准读取 calib_u32=" << cal << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准读取 value=%1 raw=%2").arg(cal).arg(rawHex));
-            emit send_light_calib_read(cal);
+            emit send_light_calib_read({cal});
         } else {
             qWarning() << "FCTP 光感校准读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -540,7 +539,7 @@ void Qfctp::handleRspLcdBacklight(const uint8_t *mainValue, uint16_t mainLen)
             const QString ackText = (ack == 1) ? "成功" : "失败";
             qInfo() << "FCTP LCD背光控制应答 响应结果=" << ackText << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP LCD背光控制应答 响应结果=%1 raw=%2").arg(ackText).arg(rawHex));
-            emit send_lcd_backlight_ack(ack);
+            emit send_lcd_backlight_ack({ack});
         } else {
             qInfo() << "FCTP LCD背光控制应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP LCD背光控制应答 raw=%1").arg(rawHex));
@@ -557,7 +556,7 @@ void Qfctp::handleRspLightReportCtrl(const uint8_t *mainValue, uint16_t mainLen)
             const QString ackText = (ack == 1) ? "成功" : "失败";
             qInfo() << "FCTP 光感上报控制应答 响应结果=" << ackText << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感上报控制应答 响应结果=%1 raw=%2").arg(ackText).arg(rawHex));
-            emit send_light_report_ctrl_ack(ack);
+            emit send_light_report_ctrl_ack({ack});
         } else {
             qInfo() << "FCTP 光感上报控制应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感上报控制应答 raw=%1").arg(rawHex));
@@ -574,7 +573,7 @@ void Qfctp::handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen)
                              | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准写入应答 value_u32=" << v << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准写入应答 value=%1 raw=%2").arg(v).arg(rawHex));
-            emit send_light_calib_write_ack(v);
+            emit send_light_calib_write_ack({v});
         } else {
             qInfo() << "FCTP 光感校准写入应答 len=" << mainLen << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 光感校准写入应答 raw=%1").arg(rawHex));
@@ -591,7 +590,7 @@ void Qfctp::handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLe
             qInfo() << "FCTP 充电电流值 current_mA=" << chargeCurrentMa;
             const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
             emit send_pb_date(QString("FCTP 充电电流读取 current_mA=%1 raw=%2").arg(chargeCurrentMa).arg(rawHex));
-            emit send_charge_current_read(chargeCurrentMa);
+            emit send_charge_current_read({chargeCurrentMa});
         } else {
             qWarning() << "FCTP ChargeCurrentGet 长度异常 len=" << mainLen;
         }

@@ -2709,8 +2709,8 @@ void MainWindow::initPeriphState() {
         }
     });
 
-    QObject::connect(qfctp, &Qfctp::send_periph_sensor_state, this,
-                     [=](int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc) {
+    QObject::connect(qfctp, QOverload<ProtocolPeriphStateData>::of(&Qfctp::send_periph_data), this,
+                     [=](ProtocolPeriphStateData state) {
                          auto *press0Item = peripheralModel->getTestItemByName("press0_state");
                          auto *press1Item = peripheralModel->getTestItemByName("press1_state");
                          auto *batteryItem = peripheralModel->getTestItemByName("battery_ic_state");
@@ -2718,13 +2718,14 @@ void MainWindow::initPeriphState() {
                          auto *ledItem = peripheralModel->getTestItemByName("led_ic_state");
                          auto *pdItem = peripheralModel->getTestItemByName("pd_ic_state");
 
-                         if (press0Item) press0Item->setData(QString::number(press0), Qt::DisplayRole);
-                         if (press1Item) press1Item->setData(QString::number(press1), Qt::DisplayRole);
-                         if (batteryItem) batteryItem->setData(QString::number(batteryIc), Qt::DisplayRole);
-                         if (touchItem) touchItem->setData(QString::number(touchIc), Qt::DisplayRole);
-                         if (ledItem) ledItem->setData(QString::number(ledIc), Qt::DisplayRole);
+                         if (press0Item) press0Item->setData(QString::number(state.press0_state), Qt::DisplayRole);
+                         if (press1Item) press1Item->setData(QString::number(state.press1_state), Qt::DisplayRole);
+                         if (batteryItem) batteryItem->setData(QString::number(state.magnet_state), Qt::DisplayRole);
+                         if (touchItem) touchItem->setData(QString::number(state.imu_state), Qt::DisplayRole);
+                         if (ledItem) ledItem->setData(QString::number(state.flash_state), Qt::DisplayRole);
                          if (pdItem) {
-                             pdItem->setData(pdIc >= 0 ? QString::number(pdIc) : QString("未上报"), Qt::DisplayRole);
+                             pdItem->setData(state.audio_state >= 0 ? QString::number(state.audio_state) : QString("未上报"),
+                                             Qt::DisplayRole);
                          }
                          writePeripheralDataToCSVFile();
                      });

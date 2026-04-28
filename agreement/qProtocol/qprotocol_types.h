@@ -151,7 +151,9 @@ typedef struct {
 
 typedef struct {
     int type = 0;
-} ProtocolLcdControlData;
+} ProtocolTypeData;
+
+typedef ProtocolTypeData ProtocolLcdControlData;
 
 typedef struct {
     int timeStamp = 0;
@@ -191,15 +193,11 @@ typedef struct {
 
 typedef struct {
     int result = 0;
-} ProtocolInternetOtaData;
+} ProtocolResultData;
 
-typedef struct {
-    int result = 0;
-} ProtocolWifiDemandData;
-
-typedef struct {
-    int type = 0;
-} ProtocolCameraControlData;
+typedef ProtocolResultData ProtocolInternetOtaData;
+typedef ProtocolResultData ProtocolWifiDemandData;
+typedef ProtocolTypeData ProtocolCameraControlData;
 
 typedef struct {
     int uploadType = 0;
@@ -213,9 +211,7 @@ typedef struct {
     QString zeroInfo;
 } ProtocolServoMotorInfoData;
 
-typedef struct {
-    int result = 0;
-} ProtocolPictureSendOverData;
+typedef ProtocolResultData ProtocolPictureSendOverData;
 
 typedef struct {
     int lightSensor = 0;
@@ -225,6 +221,43 @@ typedef struct {
     int cmd = 0;
     QString data;
 } ProtocolSdInfoData;
+
+typedef struct {
+    QString productId;
+    QString deviceId;
+    QString key;
+} ProtocolTupleData;
+
+typedef struct {
+    int status = 0;
+    int loops = 0;
+    uint32_t seconds = 0;
+} ProtocolAgingStatusData;
+
+typedef struct {
+    int status = 0;
+    QString statusText;
+} ProtocolDeviceExceptionData;
+
+typedef struct {
+    uint32_t value = 0;
+} ProtocolUInt32ValueData;
+
+typedef struct {
+    bool done = false;
+} ProtocolFactoryDoneData;
+
+typedef struct {
+    int dbm = 0;
+} ProtocolRssiData;
+
+typedef struct {
+    QString mac;
+} ProtocolMacData;
+
+typedef struct {
+    int ack = 0;
+} ProtocolAckData;
 
 typedef struct {
     QByteArray name;
@@ -367,17 +400,22 @@ Q_DECLARE_METATYPE(ProtocolPeriphStateData)
 Q_DECLARE_METATYPE(ProtocolButtonStateData)
 Q_DECLARE_METATYPE(ProtocolBrushControlData)
 Q_DECLARE_METATYPE(ProtocolLedControlData)
-Q_DECLARE_METATYPE(ProtocolLcdControlData)
+Q_DECLARE_METATYPE(ProtocolTypeData)
 Q_DECLARE_METATYPE(ProtocolPressSampleData)
 Q_DECLARE_METATYPE(ProtocolImuSampleData)
 Q_DECLARE_METATYPE(ProtocolImuCalibResultData)
 Q_DECLARE_METATYPE(ProtocolPressCalibResultData)
-Q_DECLARE_METATYPE(ProtocolInternetOtaData)
-Q_DECLARE_METATYPE(ProtocolWifiDemandData)
-Q_DECLARE_METATYPE(ProtocolCameraControlData)
+Q_DECLARE_METATYPE(ProtocolResultData)
 Q_DECLARE_METATYPE(ProtocolServoMotorInfoData)
-Q_DECLARE_METATYPE(ProtocolPictureSendOverData)
 Q_DECLARE_METATYPE(ProtocolPhotosensitiveData)
 Q_DECLARE_METATYPE(ProtocolSdInfoData)
+Q_DECLARE_METATYPE(ProtocolTupleData)
+Q_DECLARE_METATYPE(ProtocolAgingStatusData)
+Q_DECLARE_METATYPE(ProtocolDeviceExceptionData)
+Q_DECLARE_METATYPE(ProtocolUInt32ValueData)
+Q_DECLARE_METATYPE(ProtocolFactoryDoneData)
+Q_DECLARE_METATYPE(ProtocolRssiData)
+Q_DECLARE_METATYPE(ProtocolMacData)
+Q_DECLARE_METATYPE(ProtocolAckData)
 
 #endif  // QPB_TYPES_H

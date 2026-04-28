@@ -123,21 +123,20 @@ private:
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
 
 signals:
-    void send_tuple_parsed(QString productId, QString deviceId, QString key);
-    void send_aging_status(int status, int loops, uint32_t seconds);
-    void send_device_exception(int status, QString statusText);
-    void send_trim_read(uint32_t trimValue);
-    void send_factory_done_read(bool done);
-    void send_rssi_read(int rssiDbm);
-    void send_mac_read(QString mac);
-    void send_key_signal_read(uint32_t capacitance);
-    void send_light_calib_read(uint32_t calibValue);
-    void send_lcd_backlight_ack(int ack);
-    void send_light_report_ctrl_ack(int ack);
-    void send_light_calib_write_ack(uint32_t value);
-    void send_charge_current_read(uint32_t currentMa);
+    void send_tuple_parsed(ProtocolTupleData data);
+    void send_aging_status(ProtocolAgingStatusData data);
+    void send_device_exception(ProtocolDeviceExceptionData data);
+    void send_trim_read(ProtocolUInt32ValueData data);
+    void send_factory_done_read(ProtocolFactoryDoneData data);
+    void send_rssi_read(ProtocolRssiData data);
+    void send_mac_read(ProtocolMacData data);
+    void send_key_signal_read(ProtocolUInt32ValueData data);
+    void send_light_calib_read(ProtocolUInt32ValueData data);
+    void send_lcd_backlight_ack(ProtocolAckData data);
+    void send_light_report_ctrl_ack(ProtocolAckData data);
+    void send_light_calib_write_ack(ProtocolUInt32ValueData data);
+    void send_charge_current_read(ProtocolUInt32ValueData data);
     void send_fw_version(QString version);
-    void send_periph_sensor_state(int press0, int press1, int batteryIc, int touchIc, int ledIc, int pdIc);
 
 };
 
