@@ -167,6 +167,15 @@ void QFreeWork::startTask() {
                     break;
                 }
 
+                // 发送重试超时：将当前步骤判失败并放行，避免卡住不判定。
+                if (sendRetryOver) {
+                    sendRetryOver = false;
+                    stepRuntime_.done = true;
+                    stepRuntime_.pass = false;
+                    TestResult = failValue;
+                    showlog("步骤超时未收到响应，判定失败：" + functionName);
+                }
+
                 // 需要业务判定的步骤必须等异步回调将 done 置位后再推进，
                 // 防止“有回包即通过”。
                 if (currentFunction.needCaseDone && !stepRuntime_.done) {
@@ -416,12 +425,29 @@ void QFreeWork::refreshWifiState(int state) {
 }
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
-    stringsn = data.value;
+    deviceTailSnFromDevice = data.value.trimmed();
+    const QString expectedTailSnFromUiText = ui->getMac->text().trimmed();
     qDebug() << getIndex() << "dev_info" << data.value;
-    qDebug() << getIndex() << "stringsn" << stringsn;
-    ui->product_sn->setText("芯片存储的整机sn:" + stringsn);
+    qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
+    ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
-    // if (stringsn == "")
+    // “获取整机SN码”步骤采用异步判定：设备返回SN必须与UI输入SN一致才通过。
+    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
+        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+        if (it != testFunctions.end() && it->name == "获取整机SN码") {
+            stepRuntime_.done = true;
+            stepRuntime_.pass = (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
+            if (!stepRuntime_.pass) {
+                TestResult = failValue;
+                showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
+            } else {
+                showlog("整机SN校验通过");
+            }
+        }
+    }
+
+    // if (deviceTailSnFromDevice == "")
     // {
     //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
     // }
@@ -560,7 +586,7 @@ void QFreeWork::initDate() {
     ui->battary_state->setText("充电状态为:");
     ui->battary_value->setText("电量为:");
     ui->battary_voltage->setText("电压为:");
-    stringsn = "";
+    deviceTailSnFromDevice = "";
     TestTime.start();
 }
 
@@ -688,18 +714,18 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    sn = ui->getMac->text().toUtf8();
+    expectedTailSnFromUi = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测
     processGetMesTestValue();               // mes获取
 }
 
-void QFreeWork::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void QFreeWork::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 

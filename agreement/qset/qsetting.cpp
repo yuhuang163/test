@@ -71,6 +71,7 @@ void qsetting::initFreeWorkTestOrderUi() {
 
     for (int i = 0; i < catalog.size(); ++i) {
         auto* checkBox = new DraggableCheckBox(catalog.at(i).name, catalog.at(i).id, this);
+        connect(checkBox, &QCheckBox::stateChanged, this, [this](int) { saveCurrentTestOrder(); });
         freeWorkCheckBoxes_.append(checkBox);
         freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
     }
@@ -153,7 +154,7 @@ void qsetting::saveCurrentTestOrder() {
     QVector<int> indexes;
     for (int i = 0; i < freeWorkConfigLayout_->count(); ++i) {
         auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkConfigLayout_->itemAt(i)->widget());
-        if (checkBox) {
+        if (checkBox && checkBox->isChecked()) {
             indexes.append(checkBox->getIndex());
         }
     }

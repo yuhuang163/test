@@ -36,7 +36,7 @@ private:
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
 
-    QString stringsn = "";
+    QString deviceTailSnFromDevice = "";
     QString tailsn = "";
     QString macAddress = "没有mac地址";
 
@@ -90,7 +90,7 @@ private:
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
-    QByteArray sn;
+    QByteArray expectedTailSnFromUi;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
         int id = -1;
@@ -147,7 +147,7 @@ private slots:
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
     void updateComboBox() override;
     void getmacadress(const QByteArray& byte);
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void processGetMesTestValue();
     void getTestValue(const int mechines, const QString value) override;
     void on_macInput_returnPressed();

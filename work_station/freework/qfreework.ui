@@ -133,6 +133,9 @@
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
+                <property name="text">
+                 <string>AIR1BP314GR1122334455660A4309N00189</string>
+                </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>
                 </property>

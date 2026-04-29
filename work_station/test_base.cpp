@@ -691,6 +691,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
                 getRespone = 0;
                 retryCount = 0;
                 sendRetryOver = 1;
+                canGoNext = 1;  // 超时后放行状态机，由上层根据 sendRetryOver 判失败
                 timer->stop();  // 达到最大重试次数，停止定时器
 
                 showlog("达到最大重试次数，停止定时器");
