@@ -889,6 +889,17 @@ void MainWindow::on_enterBurningMode_clicked() {
         showlog("请等待连接设备后再试");
     }
 }
+void MainWindow::on_exitBurningMode_clicked() {
+    if (at->getConnected()) {
+        QVariantMap m;
+        m["mode"] = 1;
+        m["switch"] = static_cast<int>(FacSwitch_CLOSE);
+        protocolManager.set(DeviceCmd::BurningMode, m);
+        showlog("已退出老化模式");
+    } else {
+        showlog("请等待连接设备后再试");
+    }
+}
 void MainWindow::on_pushButton_2_clicked() {
     FacSetBrushRecord record;
 
@@ -929,17 +940,7 @@ void MainWindow::on_pushButton_2_clicked() {
     }
 }
 
-void MainWindow::on_exitBurningMode_clicked() {
-    if (at->getConnected()) {
-        QVariantMap m;
-        m["mode"] = 1;
-        m["switch"] = static_cast<int>(FacSwitch_CLOSE);
-        protocolManager.set(DeviceCmd::BurningMode, m);
-        showlog("已退出老化模式");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
-}
+
 
 void MainWindow::on_music_play_clicked() {
     myAudioRecorde(1);

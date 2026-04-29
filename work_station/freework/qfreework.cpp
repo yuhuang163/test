@@ -1,6 +1,5 @@
 ﻿#include "qfreework.h"
 
-#include "qpainter.h"
 #include "ui_qfreework.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -9,11 +8,6 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 {
 #include "lib/nfc/dcrf32.h"
 }
-// 行间距和列间距的宏定义
-#define ROW_SPACING 10
-#define COLUMN_SPACING 10
-#define MARGIN 10
-
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     m_index = index;
     pack.mechines = getIndex();
@@ -83,263 +77,25 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
 
     ui->tabWidget->setTabText(0, "自由工站");
     createTestFunctions();
-
-    // conFiglayout = qobject_cast<QVBoxLayout*>(ui->tabWidget->widget(3)->findChild<QVBoxLayout*>("config_areas"));
-
-    // // 获取QGridLayout，而不是QVBoxLayout
-    // canUselayout = qobject_cast<QGridLayout*>(ui->tabWidget->widget(3)->findChild<QGridLayout*>("use_areas"));
-
-    conFiglayout = qobject_cast<QVBoxLayout*>(ui->config_areas);
-
-    // 获取QGridLayout，而不是QVBoxLayout
-    canUselayout = qobject_cast<QGridLayout*>(ui->use_areas);
-
-    // 定义行列数
-    size_t colCount = 3;  // 例如：3列
-
-    canUserCol = (int)colCount;
-    // 计算 canUserRow 并向上取整
-    canUserRow = (testFunctions.size() + colCount - 1) / colCount;
-
-    for (int i = 0; i < testFunctions.size(); ++i) {
-        // 创建复选框，使用 NamedFunction 结构体中的名称
-        DraggableCheckBox* checkBox = new DraggableCheckBox(testFunctions[i].name, i, this);
-        checkBoxes.append(checkBox);  // 添加到复选框列表
-
-        // 计算行和列的位置
-        int Row = i / (int)colCount;
-        int Col = i % (int)colCount;
-
-        // 将复选框添加到网格布局的指定位置
-        canUselayout->addWidget(checkBox, Row, Col);
-    }
-
-    // 设置网格布局的行间距和列间距
-    canUselayout->setVerticalSpacing(ROW_SPACING);                     // 设置行间距为 10 像素
-    canUselayout->setHorizontalSpacing(COLUMN_SPACING);                // 设置列间距为 10 像素
-    canUselayout->setContentsMargins(MARGIN, MARGIN, MARGIN, MARGIN);  // 边距设置为 10 像素
-
-    setAcceptDrops(true);  // 允许接收拖放操作
+    refreshOrderedTestIndexes();
     testResultTableInit();
-
-    reorderCheckBoxes();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
-void QFreeWork::reorderCheckBoxes() {
-    QVector<int> indexes = loadIndexesFromConfig();  // 从配置文件加载测试顺序
-
+void QFreeWork::refreshOrderedTestIndexes() {
+    orderedTestIndexes_.clear();
+    const QVector<int> indexes = loadIndexesFromConfig();
     for (int index : indexes) {
-        DraggableCheckBox* checkBox = getCanUseCheckBoxByIndex(index);  // 根据索引获取对应的复选框
-        if (checkBox) {
-            canUselayout->removeWidget(checkBox);  // 从原布局移除复选框
-            conFiglayout->addWidget(checkBox);     // 将复选框添加到目标布局
+        if (index >= 0 && index < static_cast<int>(testFunctions.size()) && !orderedTestIndexes_.contains(index)) {
+            orderedTestIndexes_.append(index);
         }
     }
-
-    qDebug() << "复选框已按照测试顺序重新排列";
-}
-
-void QFreeWork::dragEnterEvent(QDragEnterEvent* event) {
-    if (event->mimeData()->hasText()) {  // 如果拖动的数据有文本
-        // qDebug() << "拖动数据有文本Enter";
-        event->acceptProposedAction();  // 接受拖动操作
-    }
-}
-
-void QFreeWork::dragMoveEvent(QDragMoveEvent* event) {
-    if (event->mimeData()->hasText()) {  // 如果拖动的数据有文本
-        dragPos = event->pos();
-        update();
-        event->acceptProposedAction();  // 接受拖动操作
-    }
-}
-
-void QFreeWork::paintEvent(QPaintEvent* event) {
-    QWidget::paintEvent(event);
-
-    // 只创建一个 QPainter 对象
-    QPainter painter(this);
-    // 获取 can_use 控件的几何信息
-    QRect canUseLayoutArea = ui->can_use->geometry();
-
-    singleCheckBoxHeight = (canUseLayoutArea.height() - (2 * MARGIN) + ROW_SPACING) /
-                           (int)canUserRow;  // checkBoxes[0]->height() + ROW_SPACING;
-
-    singleCheckBoxWidth =
-        (canUseLayoutArea.width() - 2 * MARGIN + COLUMN_SPACING) / canUserCol;  // checkBoxes[0]->width() +
-                                                                                // COLUMN_SPACING; 绘制矩形在拖动位置
-    if (!dragPos.isNull()) {
-        painter.fillRect(
-            QRect(dragPos, QSize(singleCheckBoxWidth - COLUMN_SPACING, singleCheckBoxHeight - ROW_SPACING)), Qt::green);
-    }
-}
-
-void QFreeWork::dropEvent(QDropEvent* event) {
-    qDebug() << "放下了" << event->pos();
-    QPoint mouseGlobalPos = mapToGlobal(event->pos());
-    qDebug() << "mouseGlobalPos Global Position:" << mouseGlobalPos;
-
-    const QMimeData* mimeData = event->mimeData();  // 获取拖动的数据
-    if (!mimeData->hasText())
-        return;  // 如果没有文本数据，直接返回
-
-    int sourceIndex = mimeData->text().toInt();
-    DraggableCheckBox* sourceCheckBox = getCheckBoxByIndex(sourceIndex);
-    if (!sourceCheckBox)
-        sourceCheckBox = getCanUseCheckBoxByIndex(sourceIndex);  // 尝试获取can_use中的复选框
-
-    if (!conFiglayout || !canUselayout || !sourceCheckBox)
-        return;
-
-    QRect configLayoutArea = ui->config->geometry();
-    QPoint configGlobalPos = ui->config->mapToGlobal(QPoint(0, 0));
-    QRect configGlobalArea(configGlobalPos.x(), configGlobalPos.y(), configLayoutArea.width(),
-                           configLayoutArea.height());
-
-    QRect canUseLayoutArea = ui->can_use->geometry();
-    QPoint canUseGlobalPos = ui->can_use->mapToGlobal(QPoint(0, 0));
-    QRect canUseGlobalArea(canUseGlobalPos.x(), canUseGlobalPos.y(), canUseLayoutArea.width(),
-                           canUseLayoutArea.height());
-
-    // 如果目标区域是 config 布局
-    if (configGlobalArea.contains(mouseGlobalPos)) {
-        qDebug() << "在config区域放置复选框";
-        moveToLayout(canUselayout, conFiglayout, sourceCheckBox);
-
-        int destIndex = getIndexAt(mouseGlobalPos);  // 位置第几个
-        if (destIndex >= 0 && destIndex != conFiglayout->indexOf(sourceCheckBox)) {
-            qDebug() << "在config区域调整" << destIndex;
-            conFiglayout->removeWidget(sourceCheckBox);
-            conFiglayout->insertWidget(destIndex, sourceCheckBox);
-        }
-        event->acceptProposedAction();
-    }
-    // 如果目标区域是 can_use 布局
-    else if (canUseGlobalArea.contains(mouseGlobalPos)) {
-        qDebug() << "在can_use区域放置复选框";
-        int row, col;
-        calculateGridPosition(mouseGlobalPos, canUseGlobalArea, row, col);
-        moveToGrid(canUselayout, sourceCheckBox, row, col);
-        int destIndex = getIndexAt(mouseGlobalPos);  // 位置第几个
-        if (destIndex >= 0 && destIndex != canUselayout->indexOf(sourceCheckBox)) {
-            qDebug() << "在can_use区域调整" << destIndex;
-            canUselayout->removeWidget(sourceCheckBox);         // 从布局中移除控件
-            canUselayout->addWidget(sourceCheckBox, row, col);  // 在指定行和列添加控件
-        }
-        event->acceptProposedAction();
-    } else {
-        qDebug() << "配置区域鼠标放下的位置不对"
-                 << "目标" << configGlobalArea << canUseGlobalArea << "实际" << mouseGlobalPos;
-    }
-
-    dragPos = QPoint();
-}
-
-void QFreeWork::moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) {
-    if (fromLayout)
-        fromLayout->removeWidget(widget);
-    toLayout->addWidget(widget);
-}
-
-void QFreeWork::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) {
-    int singleCheckBoxHeight = (area.height() - 2 * MARGIN + ROW_SPACING) / (int)canUserRow;
-    int singleCheckBoxWidth =(area.width() - 2 * MARGIN + COLUMN_SPACING) /(int) canUserCol;
-
-    row = qBound(0, (globalPos.y() - area.y() - MARGIN) / singleCheckBoxHeight, canUselayout->rowCount() - 1);
-    col = qBound(0, (globalPos.x() - area.x() - MARGIN) / singleCheckBoxWidth, canUselayout->columnCount() - 1);
-
-    qDebug() << "计算的网格位置 - row:" << row << ", col:" << col;
-}
-
-void QFreeWork::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col) {
-    if (!layout)
-        return;
-    if (layout->indexOf(widget) != -1)
-        layout->removeWidget(widget);
-    layout->addWidget(widget, row, col);
-}
-
-DraggableCheckBox* QFreeWork::getCanUseCheckBoxByIndex(int index) {
-    if (!canUselayout) {
-        qDebug() << "特定布局不存在";
-        return nullptr;
-    }
-    qDebug() << "canUselayout个数" << canUselayout->count();
-    // 遍历布局中的所有子项
-    for (int i = 0; i < canUselayout->count(); ++i) {
-        DraggableCheckBox* checkBox = qobject_cast<DraggableCheckBox*>(canUselayout->itemAt(i)->widget());
-
-        if (checkBox && checkBox->getIndex() == index) {
-            qDebug() << "拿起的索引为" << index;
-            return checkBox;  // 返回匹配的复选框
+    if (orderedTestIndexes_.isEmpty()) {
+        for (int i = 0; i < static_cast<int>(testFunctions.size()); ++i) {
+            orderedTestIndexes_.append(i);
         }
     }
-
-    qDebug() << "CanUse源复选框不存在" << index << canUselayout->count();
-    return nullptr;  // 如果没有找到匹配的复选框，返回空指针
 }
 
-DraggableCheckBox* QFreeWork::getCheckBoxByIndex(int index) {
-    if (!conFiglayout) {
-        qDebug() << "特定布局不存在";
-        return nullptr;
-    }
-
-    // 遍历布局中的所有子项
-    for (int i = 0; i < conFiglayout->count(); ++i) {
-        DraggableCheckBox* checkBox = qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(i)->widget());
-
-        if (checkBox && checkBox->getIndex() == index) {
-            qDebug() << "拿起的索引为" << index;
-            return checkBox;  // 返回匹配的复选框
-        }
-    }
-
-    qDebug() << "源复选框不存在" << conFiglayout->count();
-    return nullptr;  // 如果没有找到匹配的复选框，返回空指针
-}
-
-int QFreeWork::getIndexAt(const QPoint& pos) {
-    qDebug() << "鼠标位置为" << pos << conFiglayout->count();
-    // 遍历布局中的所有子项
-    for (int i = 0; i < conFiglayout->count(); ++i) {
-        // 获取当前子项的控件
-        QWidget* widget = conFiglayout->itemAt(i)->widget();
-        if (!widget)
-            continue;  // 跳过空的子项
-
-        // 创建新的 QRect
-        QRect newconfigArea(widget->mapToGlobal(QPoint(0, 0)).x(), widget->mapToGlobal(QPoint(0, 0)).y(),
-                            widget->geometry().width(), widget->geometry().height());
-
-        // 扩大控件范围，考虑到偏移
-        QRect expandedRect = newconfigArea;
-        // QRect expandedRect = widget->geometry().adjusted(-5, -5, 5, 5);  // 有问题获取的
-        qDebug() << "检查第" << i << "个子项，几何位置:" << expandedRect;
-        // 如果位置在扩大后的范围内，则认为匹配到了该子项
-        if (expandedRect.contains(pos)) {
-            qDebug() << "匹配到的是这个" << i;
-            return i;  // 返回该子项的位置索引
-        }
-    }
-
-    qDebug() << "这个位置无匹配内容";
-    return -1;  // 如果没有找到匹配的位置，返回-1
-}
-
-void QFreeWork::showTestIndexes() {
-    qDebug() << "当前测试顺序为";                      // 更新复选框的索引
-    for (int i = 0; i < conFiglayout->count(); ++i) {  // 遍历布局中的所有子项
-        DraggableCheckBox* checkBox =
-            qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(i)->widget());  // 获取复选框
-        if (checkBox) {                                                           // 如果复选框存在
-            qDebug() << checkBox->getIndex();                                     // 更新复选框的索引
-            testIndexes.append(checkBox->getIndex());                             // 将索引添加到容器中
-        }
-    }
-    // 将索引列表保存到文件中
-    saveIndexesToConfig(testIndexes);
-}
 QVector<int> QFreeWork::loadIndexesFromConfig() {
     QVector<int> indexes;
 
@@ -354,15 +110,6 @@ QVector<int> QFreeWork::loadIndexesFromConfig() {
     qDebug() << "测试顺序已从配置文件中加载:" << indexes;
     return indexes;
 }
-void QFreeWork::saveIndexesToConfig(const QVector<int>& indexes) {
-    SETTINGS.beginGroup("TestOrder");  // 创建一个分组
-    SETTINGS.remove("");               // 清空当前组的所有项，以免覆盖
-    for (int i = 0; i < indexes.size(); ++i) {
-        SETTINGS.setValue(QString::number(i), indexes[i]);  // 将每个索引存入配置文件
-    }
-    SETTINGS.endGroup();
-}
-
 // 获取下一个状态的函数
 QFreeWork::State QFreeWork::getNextState(State currentState) {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
@@ -380,38 +127,37 @@ void QFreeWork::startTask() {
             teststate++;
         }
         if (at->getConnected()) {
-            for (; teststate < conFiglayout->count();) {
+            for (; teststate < orderedTestIndexes_.count();) {
                 // qDebug() << "程序在跑" << teststate;
                 if (canGoNext) {
-                    DraggableCheckBox* checkBox =
-                        qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate)->widget());  // 获取复选框
-                    if (checkBox->checkState()) {
-                        showlog("开始测试内容：" + checkBox->text());
-                        executeFunctionByName(checkBox->text());  //执行操作
-                        qDebug() << "程序在跑" << teststate << conFiglayout->count();
+                    const int functionIndex = orderedTestIndexes_.at(teststate);
+                    const QString functionName = testFunctions.at(functionIndex).name;
+                    showlog("开始测试内容：" + functionName);
+                    executeFunctionByName(functionName);  //执行操作
+                    qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
 
-                        if (teststate >= 1) {
-                            TestItem test;
-                            test.testItem =
-                                qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
-                            test.testData = "";
-                            test.testResult = "通过";
-                            test.ask = "通过";
-                            testItems.append(test);
+                    if (teststate >= 1) {
+                        const int prevFunctionIndex = orderedTestIndexes_.at(teststate - 1);
+                        TestItem test;
+                        test.testItem = testFunctions.at(prevFunctionIndex).name;
+                        test.testData = "";
+                        test.testResult = "通过";
+                        test.ask = "通过";
+                        testItems.append(test);
 
-                            testResultTableUpdate(testItems);
-                        }
-                        ++teststate;
+                        testResultTableUpdate(testItems);
                     }
+                    ++teststate;
                 }
 
                 break;
             }
         }
 
-        if (teststate == conFiglayout->count()&&teststate!=0) {
+        if (teststate == orderedTestIndexes_.count() && teststate != 0) {
+            const int lastFunctionIndex = orderedTestIndexes_.at(teststate - 1);
             TestItem test;
-            test.testItem = qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(teststate - 1)->widget())->text();
+            test.testItem = testFunctions.at(lastFunctionIndex).name;
             test.testData = "";
             test.testResult = "通过";
             test.ask = "通过";
@@ -1401,7 +1147,9 @@ void QFreeWork::on_stopTest_clicked() {
     on_disconnectButton_clicked();
 }
 
-void QFreeWork::on_save_config_clicked() { showTestIndexes(); }
+void QFreeWork::on_save_config_clicked() {
+    showlog("测试顺序配置已迁移到设置页面，请在 qsetting 的测试配置页调整并保存。");
+}
 
 
 

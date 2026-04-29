@@ -489,10 +489,10 @@ void ageing::startTask() {
             case STATE_DISABLE_SLEEP_1:
                 if (pb->getState(Qpb::PbStateType::DisableSleep)) {
                     showlog("已进入禁止休眠模式");
- if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
+                if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
                  {   protocolManager.get(DeviceCmd::GetBattery);
                     state = STATE_GETBATTERY;}
- else
+                else
                     state = STATE_CHECK_FLASH;
 
                 } else {
@@ -625,7 +625,12 @@ void ageing::on_pushButton_clicked() {
     // on_macInput_returnPressed();
     at->sendMac(ui->macInput->text());  // 发送mac地址
     waitWork(8000);
-    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
+    sendCommandWithRetry([&]() {     
+    qDebug() << "on_pushButton_clicked";
+    QVariantMap m;
+    m["mode"] = 1;
+    m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+    protocolManager.set(DeviceCmd::BurningMode, m); });
 }
 
 void ageing::on_getMac_returnPressed() {

@@ -1183,15 +1183,24 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         return;
     case DeviceCmd::BurningMode: {
         const QVariantMap map = toBurningMap(data);
-        const bool shouldExit = (map.value("enter").isValid() && map.value("enter").toInt() == 0) ||
-                                (map.value("switch").isValid() && map.value("switch").toInt() == 0);
-        if (shouldExit) {
-            if (setCaseAgingExit()) return;
-        } else if (setCaseAgingMode(map)) {
+        // 退出：显式 enter==0 或 switch==0（与 Qpb 侧“关闭老化”语义对齐）
+        const QVariant vEnter = map.value("enter");
+        const QVariant vSwitch = map.value("switch");
+        const bool wantExit =
+            (vEnter.isValid() && vEnter.toInt() == 0) || (vSwitch.isValid() && vSwitch.toInt() == 0);
+        if (wantExit) {
+            if (!setCaseAgingExit()) {
+                qWarning() << "Qfctp BurningMode 退出老化失败（发送 TLV 失败），当前参数:" << map;
+            }
             return;
-        } else {
-            qWarning() << "Qfctp BurningMode 参数无效，期望 map{mode,seconds,enter?/switch?}";
         }
+        // 进入：必须带 mode>0；seconds 缺省由 toBurningMap 补 3600
+        if (setCaseAgingMode(map)) {
+            return;
+        }
+        qWarning() << "Qfctp BurningMode 进入老化失败，已解析参数:" << map
+                   << "；规则: QVariantMap{mode(必填>0), seconds(可选)}，或 QVariantList{mode,switch?}，"
+                      "退出用 enter:0 / switch:0";
         break;
     }
     case DeviceCmd::SuctionMode:

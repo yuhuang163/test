@@ -1,11 +1,20 @@
 ﻿#include "qsetting.h"
 
 #include "qevent.h"
+#include <QMimeData>
+#include "qpainter.h"
 #include "ui_qsetting.h"
+
+namespace {
+constexpr int kRowSpacing = 10;
+constexpr int kColumnSpacing = 10;
+constexpr int kMargin = 10;
+}
 
 qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
+    setAcceptDrops(true);
     // 假设你已经定义了 QButtonGroup* StationGroup;
     // 假设 StationGroup 已经被定义并初始化
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonDebug"), 0);
@@ -39,11 +48,247 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->comboBox_factory->addItems(factoryList);
 
     loadConfig();
+    initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 
 
     ui->groupBox_SubPIDSettings->hide();
+}
+
+QStringList qsetting::buildFreeWorkTestNames() const {
+    return {
+        "禁止休眠", "蓝牙升级", "电机升级", "压感升级", "打开串口接收", "关闭串口接收", "设置屏幕颜色",
+        "获取整机SN码", "获取基本信息", "获取电量信息", "进入船运模式", "设置UART接收状态", "设置RGB颜色",
+        "设置电机校准状态", "设置电机阻尼状态", "设置电机测试状态", "设置工厂结果状态", "设置LED颜色",
+        "设置声波电机参数", "打开声波电机", "设置电机校准结果参数", "连接WiFi", "设置音乐", "设置老化测试模式",
+        "设置使用记录", "设置使用时间", "设置休眠状态", "设置摄像头状态", "设置屏幕摄像头状态", "设置摄像头灯光状态",
+        "设置摄像头支持状态", "设置摄像头曝光时间", "设备复位", "使用复位", "设置压力校准结果", "发送IMU校准结果",
+        "发送新的IMU校准结果", "设置舵机电机参数", "设置设备模式", "设置亮白模式", "设置使用控制状态", "设置工厂模式",
+        "绑定SN码", "设置摄像头图片状态", "设置本地OTA", "启动OTA应用", "配置网络应用", "断开WiFi",
+        "设置新的WiFi连接", "设置压力采集参数", "设置IMU采集参数", "获取按钮状态", "获取IMU校准结果",
+        "获取设备信息(ota)", "获取外围设备状态", "获取连接信息", "获取WiFi信息"
+    };
+}
+
+void qsetting::initFreeWorkTestOrderUi() {
+    freeWorkConfigLayout_ = qobject_cast<QVBoxLayout*>(ui->config_areas);
+    freeWorkOptionalLayout_ = qobject_cast<QGridLayout*>(ui->use_areas);
+    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+        return;
+    }
+
+    const QStringList testNames = buildFreeWorkTestNames();
+    freeWorkRows_ = (testNames.size() + freeWorkCols_ - 1) / freeWorkCols_;
+    freeWorkCheckBoxes_.clear();
+    freeWorkCheckBoxes_.reserve(testNames.size());
+
+    for (int i = 0; i < testNames.size(); ++i) {
+        auto* checkBox = new DraggableCheckBox(testNames.at(i), i, this);
+        freeWorkCheckBoxes_.append(checkBox);
+        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+    }
+
+    freeWorkOptionalLayout_->setVerticalSpacing(kRowSpacing);
+    freeWorkOptionalLayout_->setHorizontalSpacing(kColumnSpacing);
+    freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
+    reorderFreeWorkCheckBoxes();
+}
+
+QVector<int> qsetting::loadTestOrderIndexes() const {
+    QVector<int> indexes;
+    SETTINGS.beginGroup("TestOrder");
+    const QStringList keys = SETTINGS.childKeys();
+    for (const QString& key : keys) {
+        indexes.append(SETTINGS.value(key).toInt());
+    }
+    SETTINGS.endGroup();
+    return indexes;
+}
+
+void qsetting::saveTestOrderIndexes(const QVector<int>& indexes) const {
+    SETTINGS.beginGroup("TestOrder");
+    SETTINGS.remove("");
+    for (int i = 0; i < indexes.size(); ++i) {
+        SETTINGS.setValue(QString::number(i), indexes.at(i));
+    }
+    SETTINGS.endGroup();
+}
+
+DraggableCheckBox* qsetting::getConfiguredCheckBoxByIndex(int index) const {
+    if (!freeWorkConfigLayout_) {
+        return nullptr;
+    }
+    for (int i = 0; i < freeWorkConfigLayout_->count(); ++i) {
+        auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkConfigLayout_->itemAt(i)->widget());
+        if (checkBox && checkBox->getIndex() == index) {
+            return checkBox;
+        }
+    }
+    return nullptr;
+}
+
+DraggableCheckBox* qsetting::getOptionalCheckBoxByIndex(int index) const {
+    if (!freeWorkOptionalLayout_) {
+        return nullptr;
+    }
+    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
+        auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
+        if (checkBox && checkBox->getIndex() == index) {
+            return checkBox;
+        }
+    }
+    return nullptr;
+}
+
+void qsetting::reorderFreeWorkCheckBoxes() {
+    const QVector<int> indexes = loadTestOrderIndexes();
+    for (int index : indexes) {
+        DraggableCheckBox* checkBox = getOptionalCheckBoxByIndex(index);
+        if (!checkBox) {
+            checkBox = getConfiguredCheckBoxByIndex(index);
+        }
+        if (checkBox) {
+            if (freeWorkOptionalLayout_) {
+                freeWorkOptionalLayout_->removeWidget(checkBox);
+            }
+            if (freeWorkConfigLayout_) {
+                freeWorkConfigLayout_->removeWidget(checkBox);
+                freeWorkConfigLayout_->addWidget(checkBox);
+            }
+        }
+    }
+}
+
+void qsetting::saveCurrentTestOrder() {
+    if (!freeWorkConfigLayout_) {
+        return;
+    }
+    QVector<int> indexes;
+    for (int i = 0; i < freeWorkConfigLayout_->count(); ++i) {
+        auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkConfigLayout_->itemAt(i)->widget());
+        if (checkBox) {
+            indexes.append(checkBox->getIndex());
+        }
+    }
+    saveTestOrderIndexes(indexes);
+}
+
+void qsetting::moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) {
+    if (!widget || !toLayout) {
+        return;
+    }
+    if (fromLayout) {
+        fromLayout->removeWidget(widget);
+    }
+    toLayout->addWidget(widget);
+}
+
+void qsetting::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col) {
+    if (!layout || !widget) {
+        return;
+    }
+    if (layout->indexOf(widget) != -1) {
+        layout->removeWidget(widget);
+    }
+    layout->addWidget(widget, row, col);
+}
+
+void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const {
+    if (!freeWorkOptionalLayout_) {
+        row = 0;
+        col = 0;
+        return;
+    }
+    const int singleHeight = qMax(1, (area.height() - 2 * kMargin + kRowSpacing) / qMax(1, freeWorkRows_));
+    const int singleWidth = qMax(1, (area.width() - 2 * kMargin + kColumnSpacing) / qMax(1, freeWorkCols_));
+    row = qBound(0, (globalPos.y() - area.y() - kMargin) / singleHeight, qMax(0, freeWorkRows_ - 1));
+    col = qBound(0, (globalPos.x() - area.x() - kMargin) / singleWidth, qMax(0, freeWorkCols_ - 1));
+}
+
+int qsetting::getIndexAt(const QPoint& globalPos) const {
+    if (!freeWorkConfigLayout_) {
+        return -1;
+    }
+    for (int i = 0; i < freeWorkConfigLayout_->count(); ++i) {
+        QWidget* widget = freeWorkConfigLayout_->itemAt(i)->widget();
+        if (!widget) {
+            continue;
+        }
+        const QRect globalRect(widget->mapToGlobal(QPoint(0, 0)), widget->size());
+        if (globalRect.contains(globalPos)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void qsetting::dragEnterEvent(QDragEnterEvent* event) {
+    if (event->mimeData()->hasText()) {
+        event->acceptProposedAction();
+    }
+}
+
+void qsetting::dragMoveEvent(QDragMoveEvent* event) {
+    if (event->mimeData()->hasText()) {
+        dragPos_ = event->pos();
+        update();
+        event->acceptProposedAction();
+    }
+}
+
+void qsetting::dropEvent(QDropEvent* event) {
+    const QMimeData* mimeData = event->mimeData();
+    if (!mimeData->hasText()) {
+        return;
+    }
+
+    const int sourceIndex = mimeData->text().toInt();
+    DraggableCheckBox* sourceCheckBox = getConfiguredCheckBoxByIndex(sourceIndex);
+    if (!sourceCheckBox) {
+        sourceCheckBox = getOptionalCheckBoxByIndex(sourceIndex);
+    }
+    if (!sourceCheckBox || !freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+        return;
+    }
+
+    const QPoint mouseGlobalPos = mapToGlobal(event->pos());
+    const QRect configGlobalArea(ui->config->mapToGlobal(QPoint(0, 0)), ui->config->size());
+    const QRect optionalGlobalArea(ui->can_use->mapToGlobal(QPoint(0, 0)), ui->can_use->size());
+
+    if (configGlobalArea.contains(mouseGlobalPos)) {
+        moveToLayout(freeWorkOptionalLayout_, freeWorkConfigLayout_, sourceCheckBox);
+        const int destIndex = getIndexAt(mouseGlobalPos);
+        if (destIndex >= 0 && destIndex != freeWorkConfigLayout_->indexOf(sourceCheckBox)) {
+            freeWorkConfigLayout_->removeWidget(sourceCheckBox);
+            freeWorkConfigLayout_->insertWidget(destIndex, sourceCheckBox);
+        }
+        event->acceptProposedAction();
+    } else if (optionalGlobalArea.contains(mouseGlobalPos)) {
+        int row = 0;
+        int col = 0;
+        calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col);
+        freeWorkConfigLayout_->removeWidget(sourceCheckBox);
+        moveToGrid(freeWorkOptionalLayout_, sourceCheckBox, row, col);
+        event->acceptProposedAction();
+    }
+
+    dragPos_ = QPoint();
+    saveCurrentTestOrder();
+}
+
+void qsetting::paintEvent(QPaintEvent* event) {
+    QWidget::paintEvent(event);
+    if (dragPos_.isNull() || !ui->can_use) {
+        return;
+    }
+
+    const QRect optionalArea = ui->can_use->geometry();
+    const int singleHeight = qMax(1, (optionalArea.height() - (2 * kMargin) + kRowSpacing) / qMax(1, freeWorkRows_));
+    const int singleWidth = qMax(1, (optionalArea.width() - (2 * kMargin) + kColumnSpacing) / qMax(1, freeWorkCols_));
+
+    QPainter painter(this);
+    painter.fillRect(QRect(dragPos_, QSize(singleWidth - kColumnSpacing, singleHeight - kRowSpacing)), Qt::green);
 }
 
 void qsetting::readSubPIDAndFilter() {
@@ -635,6 +880,7 @@ void qsetting::saveConfig() {
 }
 
 void qsetting::closeEvent(QCloseEvent* event) {
+    saveCurrentTestOrder();
     saveConfig();
     qDebug() << "已经保存配置信息";
     event->accept();

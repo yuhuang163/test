@@ -17,7 +17,7 @@
    <item row="4" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -30,24 +30,24 @@
           <string>MES相关设置</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_13">
-         <item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_52">
             <item>
              <widget class="QLabel" name="label_56">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
-           <property name="text">
+              <property name="text">
                <string>工厂</string>
-           </property>
-          </widget>
-         </item>
-         <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QComboBox" name="comboBox_factory"/>
-         </item>
-        </layout>
-       </item>
-         <item>
+            </item>
+           </layout>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_53">
             <item>
              <widget class="QLabel" name="label_57">
@@ -57,61 +57,61 @@
 }
 </string>
               </property>
-           <property name="text">
+              <property name="text">
                <string>产品名字</string>
-           </property>
-          </widget>
-         </item>
-         <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QComboBox" name="comboBox_productName"/>
-         </item>
-        </layout>
-       </item>
+            </item>
+           </layout>
+          </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_71">
-          <item>
+            <item>
              <widget class="QLabel" name="label_75">
-            <property name="text">
+              <property name="text">
                <string>工站</string>
-            </property>
-           </widget>
-          </item>
-          <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit_station"/>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_70">
-          <item>
+            <item>
              <widget class="QLabel" name="label_74">
               <property name="styleSheet">
                <string notr="true"/>
-            </property>
-            <property name="text">
+              </property>
+              <property name="text">
                <string>获取mac的站名</string>
-            </property>
-           </widget>
-          </item>
-          <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit_macStation"/>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_74">
             <item>
              <widget class="QLabel" name="label_78">
-            <property name="text">
+              <property name="text">
                <string>mes网址</string>
-            </property>
-           </widget>
-          </item>
-          <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit_mesUrl"/>
+            </item>
+           </layout>
           </item>
-         </layout>
-       </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_75">
             <item>
@@ -139,8 +139,8 @@
              <widget class="QLineEdit" name="lineEdit_modelName"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_line_huaqin">
             <item>
              <widget class="QLabel" name="label_line_huaqin">
@@ -167,8 +167,8 @@
              <widget class="QLineEdit" name="lineEdit_action_huaqin"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_weikesen_order">
             <item>
              <widget class="QLabel" name="label_weikesen_order">
@@ -195,8 +195,8 @@
              <widget class="QLineEdit" name="lineEdit_mac_field"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_mes_login_account">
             <item>
              <widget class="QLabel" name="label_mes_login_account">
@@ -223,8 +223,8 @@
              <widget class="QLineEdit" name="lineEdit_mes_login_password"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_mes_login_station">
             <item>
              <widget class="QLabel" name="label_mes_login_station">
@@ -251,10 +251,10 @@
              <widget class="QLineEdit" name="lineEdit_mes_operator"/>
             </item>
            </layout>
-            </item>
-           </layout>
-        </widget>
           </item>
+         </layout>
+        </widget>
+       </item>
        <item row="0" column="4" rowspan="2" colspan="2">
         <widget class="QGroupBox" name="groupBox_camera_position">
          <property name="title">
@@ -288,8 +288,8 @@
              <widget class="QLineEdit" name="lineEdit_camera_y"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_camera_width">
             <item>
              <widget class="QLabel" name="label_camera_width">
@@ -316,8 +316,8 @@
              <widget class="QLineEdit" name="lineEdit_camera_height"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_image_interval">
             <item>
              <widget class="QLabel" name="label_image_interval">
@@ -344,10 +344,10 @@
              <widget class="QLineEdit" name="lineEdit_start_dirty_time"/>
             </item>
            </layout>
-            </item>
-           </layout>
-        </widget>
           </item>
+         </layout>
+        </widget>
+       </item>
        <item row="7" column="4" rowspan="6" colspan="2">
         <widget class="QGroupBox" name="imuCalibrationWidget">
          <property name="title">
@@ -381,8 +381,8 @@
              <widget class="QLineEdit" name="lineEdit_comparisonValue"/>
             </item>
            </layout>
-            </item>
-            <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_singlePointTimeout">
             <item>
              <widget class="QLabel" name="label_singlePointTimeout">
@@ -407,152 +407,152 @@
             </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_zAxisUpper">
-            <item>
+              <item>
                <widget class="QLabel" name="label_zAxisUpper">
-              <property name="text">
+                <property name="text">
                  <string>上限</string>
-              </property>
-             </widget>
-            </item>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_zAxisUpper"/>
               </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_zAxisLower">
+              <item>
+               <widget class="QLabel" name="label_zAxisLower">
+                <property name="text">
+                 <string>下限</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_zAxisLower"/>
+              </item>
+             </layout>
+            </item>
            </layout>
           </item>
           <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_zAxisLower">
+           <layout class="QHBoxLayout" name="horizontalLayout_xAxis">
             <item>
-               <widget class="QLabel" name="label_zAxisLower">
+             <widget class="QLabel" name="label_xAxis">
               <property name="text">
-                 <string>下限</string>
+               <string>imu的x轴</string>
               </property>
              </widget>
             </item>
             <item>
-               <widget class="QLineEdit" name="lineEdit_zAxisLower"/>
-            </item>
-           </layout>
-          </item>
-         </layout>
-       </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_xAxis">
-          <item>
-             <widget class="QLabel" name="label_xAxis">
-            <property name="text">
-               <string>imu的x轴</string>
-            </property>
-           </widget>
-          </item>
-          <item>
              <layout class="QHBoxLayout" name="horizontalLayout_xAxisUpper">
               <item>
                <widget class="QLabel" name="label_xAxisUpper">
-            <property name="text">
+                <property name="text">
                  <string>上限</string>
-            </property>
-           </widget>
-          </item>
-          <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="lineEdit_xAxisUpper"/>
-          </item>
-         </layout>
-       </item>
+              </item>
+             </layout>
+            </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_xAxisLower">
               <item>
                <widget class="QLabel" name="label_xAxisLower">
-            <property name="text">
+                <property name="text">
                  <string>下限</string>
-            </property>
-           </widget>
-          </item>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_xAxisLower"/>
-          </item>
+              </item>
              </layout>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_yAxis">
             <item>
              <widget class="QLabel" name="label_yAxis">
-            <property name="text">
+              <property name="text">
                <string>imu的y轴</string>
-            </property>
-           </widget>
-          </item>
+              </property>
+             </widget>
+            </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_yAxisUpper">
               <item>
                <widget class="QLabel" name="label_yAxisUpper">
-            <property name="text">
+                <property name="text">
                  <string>上限</string>
-            </property>
-           </widget>
-          </item>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_yAxisUpper"/>
-          </item>
+              </item>
              </layout>
-          </item>
+            </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_yAxisLower">
               <item>
                <widget class="QLabel" name="label_yAxisLower">
-            <property name="text">
+                <property name="text">
                  <string>下限</string>
-            </property>
-           </widget>
-          </item>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_yAxisLower"/>
-          </item>
+              </item>
              </layout>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_threshold">
             <item>
              <widget class="QLabel" name="label_threshold">
-            <property name="text">
+              <property name="text">
                <string>数据波动阈值</string>
-            </property>
-           </widget>
-          </item>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_threshold"/>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_sampleFrames">
             <item>
              <widget class="QLabel" name="label_sampleFrames">
-            <property name="text">
+              <property name="text">
                <string>样本帧数</string>
-            </property>
-           </widget>
-          </item>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_sampleFrames"/>
-          </item>
+            </item>
            </layout>
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_delayFrames">
             <item>
              <widget class="QLabel" name="label_delayFrames">
-            <property name="text">
+              <property name="text">
                <string>延时帧数</string>
-            </property>
-           </widget>
-          </item>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_delayFrames"/>
-          </item>
+            </item>
            </layout>
           </item>
          </layout>
@@ -703,31 +703,31 @@
             </item>
             <item>
              <layout class="QHBoxLayout" name="bluetoothUpperLimitLayout">
-          <item>
+              <item>
                <widget class="QLabel" name="bluetoothUpperLimitLabel">
-              <property name="text">
+                <property name="text">
                  <string>上限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="bluetoothUpperLimitLineEdit"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
-          <item>
+            <item>
              <layout class="QHBoxLayout" name="bluetoothLowerLimitLayout">
-            <item>
+              <item>
                <widget class="QLabel" name="bluetoothLowerLimitLabel">
-              <property name="text">
+                <property name="text">
                  <string>下限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="bluetoothLowerLimitLineEdit"/>
-            </item>
-           </layout>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -742,31 +742,31 @@
             </item>
             <item>
              <layout class="QHBoxLayout" name="wifiUpperLimitLayout">
-          <item>
+              <item>
                <widget class="QLabel" name="wifiUpperLimitLabel">
-              <property name="text">
+                <property name="text">
                  <string>上限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="wifiUpperLimitLineEdit"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
-          <item>
+            <item>
              <layout class="QHBoxLayout" name="wifiLowerLimitLayout">
-            <item>
+              <item>
                <widget class="QLabel" name="wifiLowerLimitLabel">
-              <property name="text">
+                <property name="text">
                  <string>下限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="wifiLowerLimitLineEdit"/>
-            </item>
-           </layout>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -783,32 +783,32 @@
              <layout class="QHBoxLayout" name="wifiAccountLayout">
               <item>
                <widget class="QLineEdit" name="wifiIPLineEdit"/>
-          </item>
-          <item>
+              </item>
+              <item>
                <widget class="QLabel" name="wifiAccountLabel">
-              <property name="text">
+                <property name="text">
                  <string>wifi账号</string>
-              </property>
-             </widget>
-            </item>
+                </property>
+               </widget>
+              </item>
               <item alignment="Qt::AlignLeft">
                <widget class="QLineEdit" name="wifiAccountLineEdit"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
-          <item>
-             <layout class="QHBoxLayout" name="wifiPasswordLayout">
             <item>
+             <layout class="QHBoxLayout" name="wifiPasswordLayout">
+              <item>
                <widget class="QLabel" name="wifiPasswordLabel">
-              <property name="text">
+                <property name="text">
                  <string>wifi密码</string>
-              </property>
-             </widget>
-            </item>
+                </property>
+               </widget>
+              </item>
               <item alignment="Qt::AlignLeft">
                <widget class="QLineEdit" name="wifiPasswordLineEdit"/>
-            </item>
-           </layout>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -939,7 +939,7 @@
             <property name="topMargin">
              <number>0</number>
             </property>
-         <item>
+            <item>
              <widget class="QLabel" name="label_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -947,19 +947,19 @@
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
-           <property name="text">
+              <property name="text">
                <string>压感治具第几代</string>
-           </property>
-          </widget>
-         </item>
-         <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit_PressMechine"/>
-         </item>
-        </layout>
-       </item>
+            </item>
+           </layout>
+          </item>
           <item row="11" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_6">
-          <item>
+            <item>
              <widget class="QLabel" name="pressSignalStrengthLabel">
               <property name="text">
                <string>电机校准系数</string>
@@ -998,7 +998,7 @@
           </item>
           <item row="13" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_9">
-          <item>
+            <item>
              <widget class="QLabel" name="pressSignalStrengthLabel_3">
               <property name="text">
                <string>电源校准系数</string>
@@ -1040,7 +1040,7 @@
             <property name="topMargin">
              <number>0</number>
             </property>
-          <item>
+            <item>
              <widget class="QLabel" name="label_BrushThresholdCount">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -1055,7 +1055,7 @@
             </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_BrushThresholdCount"/>
-              </item>
+            </item>
            </layout>
           </item>
           <item row="10" column="0">
@@ -1063,7 +1063,7 @@
             <property name="topMargin">
              <number>0</number>
             </property>
-              <item>
+            <item>
              <widget class="QLabel" name="label_BrushThresholdCount_2">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -1071,23 +1071,23 @@
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
-                <property name="text">
+              <property name="text">
                <string>adc值震荡幅度</string>
-                </property>
-               </widget>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_press_adc_shake">
               <property name="enabled">
                <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+           </layout>
+          </item>
           <item row="1" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime_2">
-          <item>
+            <item>
              <widget class="QLabel" name="label_caliWaitTime">
               <property name="text">
                <string>校准等待时间</string>
@@ -1110,28 +1110,28 @@
             </item>
             <item>
              <widget class="QComboBox" name="comboBox_pressFunctionSwitch"/>
-              </item>
-             </layout>
             </item>
+           </layout>
+          </item>
           <item row="3" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_displayImageType">
             <item>
              <widget class="QLabel" name="label_displayImageType">
-                <property name="text">
+              <property name="text">
                <string>显示图像类型</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-             <widget class="QComboBox" name="comboBox_displayImageType"/>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_displayImageType"/>
+            </item>
+           </layout>
+          </item>
           <item row="8" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_19">
             <property name="topMargin">
              <number>0</number>
-              </property>
+            </property>
             <item>
              <widget class="QLabel" name="label_BrushThreshold">
               <property name="sizePolicy">
@@ -1140,30 +1140,30 @@
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
-                <property name="text">
+              <property name="text">
                <string>电机adc阈值</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_BrushThreshold"/>
+            </item>
+           </layout>
+          </item>
           <item row="2" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_individualMode">
             <item>
              <widget class="QLabel" name="label_individualMode">
-                <property name="text">
+              <property name="text">
                <string>单独哪个模式</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-             <widget class="QComboBox" name="comboBox_individualMode"/>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+            <item>
+             <widget class="QComboBox" name="comboBox_individualMode"/>
+            </item>
+           </layout>
+          </item>
           <item row="31" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_amplitude">
             <item>
@@ -1176,25 +1176,25 @@
             <item>
              <widget class="QLineEdit" name="lineEdit_amplitudeLimitLower"/>
             </item>
-              <item>
+            <item>
              <widget class="QLabel" name="label_amplitude_to">
-                <property name="text">
+              <property name="text">
                <string>至</string>
-                </property>
-               </widget>
-              </item>
-              <item>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit_amplitudeLimitUpper"/>
             </item>
             <item>
              <widget class="QCheckBox" name="checkBox_amplitudeLimit">
-                <property name="text">
+              <property name="text">
                <string>启用</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+           </layout>
+          </item>
           <item row="32" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_amplitude_error">
             <item>
@@ -1206,23 +1206,23 @@
             </item>
             <item>
              <widget class="QLineEdit" name="lineEdit_amplitudeError"/>
-              </item>
-             </layout>
             </item>
+           </layout>
+          </item>
           <item row="0" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_testWaitTime">
             <item>
              <widget class="QLabel" name="label_testWaitTime">
-                <property name="text">
+              <property name="text">
                <string>测试等待时间</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
-              </item>
-             </layout>
+              </property>
+             </widget>
             </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_testWaitTime"/>
+            </item>
+           </layout>
+          </item>
           <item row="12" column="0">
            <layout class="QHBoxLayout" name="horizontalLayout_8">
             <item>
@@ -1266,7 +1266,7 @@
            <layout class="QHBoxLayout" name="horizontalLayout_17">
             <property name="topMargin">
              <number>0</number>
-              </property>
+            </property>
             <item>
              <widget class="QLabel" name="label_ButtonThreshold">
               <property name="sizePolicy">
@@ -1274,7 +1274,7 @@
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
-         </property>
+              </property>
               <property name="text">
                <string>按键adc阈值</string>
               </property>
@@ -1289,7 +1289,7 @@
            <layout class="QHBoxLayout" name="horizontalLayout_18">
             <property name="topMargin">
              <number>0</number>
-              </property>
+            </property>
             <item>
              <widget class="QLabel" name="label_ButtonThresholdCount">
               <property name="sizePolicy">
@@ -1494,27 +1494,27 @@
             <item>
              <widget class="QLineEdit" name="lineEdit_ResourceVersion"/>
             </item>
-              <item>
+            <item>
              <widget class="QCheckBox" name="checkBox_ResourceVersion">
-                <property name="text">
+              <property name="text">
                <string>启用</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layoutAgingStatus">
+            <item>
+             <widget class="QLabel" name="labelAgingStatus">
+              <property name="text">
+               <string>老化状态</string>
+              </property>
+             </widget>
             </item>
             <item>
-           <layout class="QHBoxLayout" name="layoutAgingStatus">
-              <item>
-             <widget class="QLabel" name="labelAgingStatus">
-                <property name="text">
-               <string>老化状态</string>
-                </property>
-               </widget>
-              </item>
-              <item>
              <widget class="QLineEdit" name="lineEdit_AgingStatus"/>
-              </item>
+            </item>
             <item>
              <widget class="QCheckBox" name="checkBox_AgingStatus">
               <property name="text">
@@ -1536,16 +1536,16 @@
             <item>
              <widget class="QLineEdit" name="lineEdit_MotorVersion"/>
             </item>
-              <item>
+            <item>
              <widget class="QCheckBox" name="checkBox_MotorVersion">
-                <property name="text">
+              <property name="text">
                <string>启用</string>
-                </property>
-               </widget>
+              </property>
+             </widget>
             </item>
            </layout>
-              </item>
-              <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="layoutBluetoothVersion">
             <item>
              <widget class="QLabel" name="labelBluetoothVersion">
@@ -1563,21 +1563,21 @@
                <string>启用</string>
               </property>
              </widget>
-              </item>
-             </layout>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layoutAppPB">
+            <item>
+             <widget class="QLabel" name="labelAppPB">
+              <property name="text">
+               <string>app的pb</string>
+              </property>
+             </widget>
             </item>
             <item>
-           <layout class="QHBoxLayout" name="layoutAppPB">
-              <item>
-             <widget class="QLabel" name="labelAppPB">
-                <property name="text">
-               <string>app的pb</string>
-                </property>
-               </widget>
-              </item>
-              <item>
              <widget class="QLineEdit" name="lineEdit_AppPB"/>
-              </item>
+            </item>
             <item>
              <widget class="QCheckBox" name="checkBox_AppPB">
               <property name="text">
@@ -1599,16 +1599,16 @@
             <item>
              <widget class="QLineEdit" name="lineEdit_FactoryPB"/>
             </item>
-              <item>
+            <item>
              <widget class="QCheckBox" name="checkBox_FactoryPB">
-                <property name="text">
+              <property name="text">
                <string>启用</string>
-                </property>
-               </widget>
+              </property>
+             </widget>
             </item>
            </layout>
-              </item>
-              <item>
+          </item>
+          <item>
            <layout class="QHBoxLayout" name="layoutAlgorithmVersion">
             <item>
              <widget class="QLabel" name="labelAlgorithmVersion">
@@ -1626,21 +1626,21 @@
                <string>启用</string>
               </property>
              </widget>
-              </item>
-             </layout>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="layoutPressureVersion">
+            <item>
+             <widget class="QLabel" name="labelPressureVersion">
+              <property name="text">
+               <string>压感版本</string>
+              </property>
+             </widget>
             </item>
             <item>
-           <layout class="QHBoxLayout" name="layoutPressureVersion">
-              <item>
-             <widget class="QLabel" name="labelPressureVersion">
-                <property name="text">
-               <string>压感版本</string>
-                </property>
-               </widget>
-              </item>
-              <item>
              <widget class="QLineEdit" name="lineEdit_PressureVersion"/>
-              </item>
+            </item>
             <item>
              <widget class="QCheckBox" name="checkBox_PressureVersion">
               <property name="text">
@@ -1859,23 +1859,23 @@
            <widget class="QCheckBox" name="checkBox_IMUCalibrationWakeup">
             <property name="text">
              <string>是否imu校准需要晃动唤醒设备</string>
-              </property>
+            </property>
            </widget>
           </item>
           <item row="8" column="0">
            <widget class="QCheckBox" name="checkBox_NeedWriteSubpid">
-              <property name="text">
+            <property name="text">
              <string>是否需要写入subpid</string>
-              </property>
-             </widget>
-            </item>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="0">
            <widget class="QCheckBox" name="checkBox_ShowLocalOTAFunc">
             <property name="text">
              <string>界面是否显示设备本地ota功能</string>
             </property>
            </widget>
-            </item>
+          </item>
           <item row="6" column="0">
            <widget class="QCheckBox" name="checkBox_IMULastEnterStartTest">
             <property name="text">
@@ -1990,23 +1990,23 @@
              <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLimits">
               <item>
                <widget class="QLabel" name="label_WorkingCurrentUpper">
-              <property name="text">
+                <property name="text">
                  <string>上限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="lineEdit_WorkingCurrentUpper"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_WorkingCurrentLower">
               <item>
                <widget class="QLabel" name="label_WorkingCurrentLower">
                 <property name="text">
                  <string>下限</string>
-              </property>
+                </property>
                </widget>
               </item>
               <item>
@@ -2031,24 +2031,24 @@
                <widget class="QLabel" name="label_StaticCurrentUpper">
                 <property name="text">
                  <string>上限</string>
-              </property>
-             </widget>
-            </item>
+                </property>
+               </widget>
+              </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_StaticCurrentUpper"/>
               </item>
-           </layout>
-          </item>
+             </layout>
+            </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_StaticCurrentLower">
               <item>
                <widget class="QLabel" name="label_StaticCurrentLower">
-              <property name="text">
+                <property name="text">
                  <string>下限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="lineEdit_StaticCurrentLower"/>
               </item>
              </layout>
@@ -2075,23 +2075,23 @@
               </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_AudioCurrentUpper"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_AudioCurrentLower">
               <item>
                <widget class="QLabel" name="label_AudioCurrentLower">
-              <property name="text">
+                <property name="text">
                  <string>下限</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+                </property>
+               </widget>
+              </item>
+              <item>
                <widget class="QLineEdit" name="lineEdit_AudioCurrentLower"/>
+              </item>
+             </layout>
             </item>
-           </layout>
-          </item>
            </layout>
           </item>
           <item row="5" column="0">
@@ -2113,34 +2113,34 @@
        </item>
        <item row="6" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
-            <item>
+         <item>
           <widget class="QLabel" name="label_5">
-              <property name="text">
+           <property name="text">
             <string>sn检查条件设置</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLineEdit" name="snLineEdit">
            <property name="text">
             <string/>
            </property>
           </widget>
-            </item>
-           </layout>
-          </item>
+         </item>
+        </layout>
+       </item>
        <item row="5" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_10">
-            <item>
+         <item>
           <widget class="QLabel" name="label_battery_voltage_control">
-              <property name="text">
+           <property name="text">
             <string>电池电压卡控</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLineEdit" name="lineEdit_battery_voltage_control"/>
-            </item>
+         </item>
         </layout>
        </item>
        <item row="4" column="0">
@@ -2148,39 +2148,39 @@
          <property name="topMargin">
           <number>0</number>
          </property>
-            <item>
+         <item>
           <widget class="QLabel" name="label_3">
-              <property name="text">
+           <property name="text">
             <string>曲目卡控</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLineEdit" name="lineEdit_music_state"/>
-            </item>
-            <item>
+         </item>
+         <item>
           <widget class="QCheckBox" name="checkBox_MusicState">
-              <property name="text">
-               <string>启用</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
+           <property name="text">
+            <string>启用</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
        <item row="3" column="0">
         <widget class="QGroupBox" name="groupBox_2">
          <property name="title">
           <string>1拖多设置</string>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_1">
-            <item>
+          <item>
            <widget class="QLabel" name="rowLabel">
-              <property name="text">
+            <property name="text">
              <string>行</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QLineEdit" name="rowLineEdit">
             <property name="text">
              <string/>
@@ -2189,79 +2189,79 @@
              <string>行</string>
             </property>
            </widget>
-            </item>
-            <item>
+          </item>
+          <item>
            <widget class="QLabel" name="columnLabel">
-              <property name="text">
+            <property name="text">
              <string>列</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QLineEdit" name="columnLineEdit">
             <property name="placeholderText">
              <string>列</string>
             </property>
            </widget>
-            </item>
-           </layout>
-        </widget>
           </item>
+         </layout>
+        </widget>
+       </item>
        <item row="0" column="0" rowspan="3">
         <widget class="QGroupBox" name="radioButtonGroupWidget">
          <property name="title">
           <string>工站选择</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayoutRadioButtons">
-            <item>
+          <item>
            <widget class="QRadioButton" name="radioButtonDebug">
-              <property name="text">
+            <property name="text">
              <string>调试上位机</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonMotorCalibration">
-                <property name="text">
+            <property name="text">
              <string>电机校准上位机</string>
-                </property>
-               </widget>
-              </item>
-              <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonStaticCurrent">
             <property name="text">
              <string>静态电流上位机</string>
             </property>
            </widget>
-            </item>
-            <item>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonImuCalibration">
-                <property name="text">
+            <property name="text">
              <string>imu校准上位机</string>
-                </property>
-               </widget>
-              </item>
-              <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonScreenTest">
             <property name="text">
              <string>屏幕测试上位机</string>
             </property>
            </widget>
           </item>
-            <item>
+          <item>
            <widget class="QRadioButton" name="radioButtonCameraTest">
-              <property name="text">
+            <property name="text">
              <string>摄像头测试上位机</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonSignalTest">
             <property name="text">
              <string>信号测试上位机</string>
             </property>
            </widget>
-            </item>
+          </item>
           <item>
            <widget class="QRadioButton" name="radioButtonAgingTest">
             <property name="text">
@@ -2269,21 +2269,21 @@
             </property>
            </widget>
           </item>
-            <item>
+          <item>
            <widget class="QRadioButton" name="radioButtonPressTest">
             <property name="text">
              <string>压感上位机</string>
-              </property>
+            </property>
            </widget>
           </item>
           <item>
            <widget class="QRadioButton" name="radioButtonBoardFactoryTest">
-              <property name="text">
+            <property name="text">
              <string>板厂测试上位机</string>
-              </property>
-             </widget>
-            </item>
-            <item>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonFreeWorkstation">
             <property name="text">
              <string>自由工站上位机</string>
@@ -2299,6 +2299,72 @@
       <attribute name="title">
        <string>说明页面</string>
       </attribute>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>测试配置</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_6">
+       <item row="0" column="0">
+        <widget class="QWidget" name="widget" native="true">
+         <layout class="QHBoxLayout" name="horizontalLayout_21">
+          <item>
+           <widget class="QGroupBox" name="config">
+            <property name="styleSheet">
+             <string notr="true">QGroupBox {
+           border-width: 2px;
+           border-style: solid;
+         border-color: rgb(255, 165, 0);
+        }
+        QGroupBox::title {
+          font-weight: bold;
+         color: blue;
+       }</string>
+            </property>
+            <property name="title">
+             <string>配置区域</string>
+            </property>
+            <layout class="QVBoxLayout" name="config_area">
+             <property name="spacing">
+              <number>6</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
+             <item>
+              <layout class="QVBoxLayout" name="config_areas"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="can_use">
+            <property name="styleSheet">
+             <string notr="true">
+QGroupBox {
+           border-width: 2px;
+           border-style: solid;
+         border-color: rgb(255, 165, 0);
+        }
+        QGroupBox::title {
+          font-weight: bold;
+         color: blue;
+       }</string>
+            </property>
+            <property name="title">
+             <string>可选区域</string>
+            </property>
+            <layout class="QVBoxLayout" name="can_use_area">
+             <item>
+              <layout class="QGridLayout" name="use_areas"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>

@@ -4,7 +4,6 @@
 #include <QWidget>
 
 #include "Abini.h"
-#include "draggablecheckbox.h"
 #include "qapplication.h"
 #include "test_base.h"
 #include "ui_qfreework.h"
@@ -86,40 +85,12 @@ private:
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
 
-public:
-    QVector<DraggableCheckBox*> checkBoxes;
-
-protected:
-    void dragEnterEvent(QDragEnterEvent* event) override;
-    void dragMoveEvent(QDragMoveEvent* event) override;
-    void dropEvent(QDropEvent* event) override;
-
 private:
-    DraggableCheckBox* checkBox1;
-    DraggableCheckBox* checkBox2;
-    DraggableCheckBox* getCheckBoxByIndex(int index);
-    DraggableCheckBox* getCanUseCheckBoxByIndex(int index);
-    int getIndexAt(const QPoint& pos);
-    void showTestIndexes();
-    void saveIndexesToConfig(const QVector<int>& indexes);
+    void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
-    void reorderCheckBoxes();
-    void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col);
-    void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
-    void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
-    QVector<int> testIndexes;  // 存储索引的容器
-    QVBoxLayout* conFiglayout;
-    QGridLayout* canUselayout;
-    size_t canUserRow;
-    int canUserCol;
-    int singleCheckBoxHeight;
-    int singleCheckBoxWidth;
-    QWidget* settingWidget;
+    QVector<int> orderedTestIndexes_;
     QByteArray sn;
-    void paintEvent(QPaintEvent* event) override;
-    void showInsertIndicator(const QPoint& pos);
     void executeFunctionByName(const QString functionName);
-    QPoint dragPos;  // 存储拖动位置
     struct NamedFunction {
         QString name;
         std::function<void()> function;

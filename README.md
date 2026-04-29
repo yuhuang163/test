@@ -48,8 +48,8 @@ new_product_test/
 │   ├── qusb/                             ← USB电流表协议（SCPI/HQ/LX统一入口）
 │   │   └── qusb.h/.cpp
 │   ├── qjig/                             ← 治具串口协议（气缸/继电器）
-│   │   ├── qjig.h/.cpp
-│   │   └── fixture_uart.h/.cpp/.ui       ← 治具串口调试工具
+│   │   ├── qjig.h/.cpp                   ← 治具串口调试工具（不带ui，每一路都单独控制）
+│   │   └── fixture_uart.h/.cpp/.ui       ← 治具串口调试工具（带ui，一个治具）
 │   ├── qbrush/
 │   │   └── qproduct.h/.cpp               ← 产品串口通信封装
 │   ├── qbulk/

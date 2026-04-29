@@ -2,7 +2,15 @@
 #define QSETTING_H
 
 #include <QWidget>
+#include <QGridLayout>
+#include <QLayout>
+#include <QPoint>
+#include <QRect>
+#include <QStringList>
+#include <QVector>
+#include <QVBoxLayout>
 
+#include "advance/imagewindow/draggablecheckbox.h"
 #include "my_set/my_typedef.h"
 #include "qbuttongroup.h"
 
@@ -25,9 +33,31 @@ private:
     void updateMainStyle(QString style);
     void readSubPIDAndFilter();
     void saveSubPIDAndFilter();
+    void initFreeWorkTestOrderUi();
+    QStringList buildFreeWorkTestNames() const;
+    void reorderFreeWorkCheckBoxes();
+    void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
+    void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
+    void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const;
+    int getIndexAt(const QPoint& globalPos) const;
+    DraggableCheckBox* getConfiguredCheckBoxByIndex(int index) const;
+    DraggableCheckBox* getOptionalCheckBoxByIndex(int index) const;
+    QVector<int> loadTestOrderIndexes() const;
+    void saveTestOrderIndexes(const QVector<int>& indexes) const;
+    void saveCurrentTestOrder();
+    QVBoxLayout* freeWorkConfigLayout_ = nullptr;
+    QGridLayout* freeWorkOptionalLayout_ = nullptr;
+    QVector<DraggableCheckBox*> freeWorkCheckBoxes_;
+    int freeWorkCols_ = 3;
+    int freeWorkRows_ = 0;
+    QPoint dragPos_;
 
 protected:
     virtual void closeEvent(QCloseEvent*);
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
 private slots:
     void RestoreProductDefaultSetting();
     void RestoreFacDefaultSetting();
