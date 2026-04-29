@@ -1,5 +1,7 @@
 ﻿#include "qfreework.h"
 
+#include <algorithm>
+#include <QSet>
 #include "ui_qfreework.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -83,15 +85,19 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
 }
 void QFreeWork::refreshOrderedTestIndexes() {
     orderedTestIndexes_.clear();
+    QSet<int> validIds;
+    for (const auto& testFunction : testFunctions) {
+        validIds.insert(testFunction.id);
+    }
     const QVector<int> indexes = loadIndexesFromConfig();
     for (int index : indexes) {
-        if (index >= 0 && index < static_cast<int>(testFunctions.size()) && !orderedTestIndexes_.contains(index)) {
+        if (validIds.contains(index) && !orderedTestIndexes_.contains(index)) {
             orderedTestIndexes_.append(index);
         }
     }
     if (orderedTestIndexes_.isEmpty()) {
-        for (int i = 0; i < static_cast<int>(testFunctions.size()); ++i) {
-            orderedTestIndexes_.append(i);
+        for (const auto& testFunction : testFunctions) {
+            orderedTestIndexes_.append(testFunction.id);
         }
     }
 }
@@ -121,6 +127,8 @@ void QFreeWork::startTask() {
         if (teststate == -1) {
             showlog("开始测试");
             initDate();
+            // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
+            refreshOrderedTestIndexes();
             waitWork(1000);
             at->sendMac(macAddress);  // 开始连接
             showlog("MAC地址为：" + ui->macInput->text());
@@ -128,43 +136,63 @@ void QFreeWork::startTask() {
         }
         if (at->getConnected()) {
             for (; teststate < orderedTestIndexes_.count();) {
-                // qDebug() << "程序在跑" << teststate;
-                if (canGoNext) {
-                    const int functionIndex = orderedTestIndexes_.at(teststate);
-                    const QString functionName = testFunctions.at(functionIndex).name;
+                const int functionId = orderedTestIndexes_.at(teststate);
+                auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                                       [functionId](const NamedFunction& item) { return item.id == functionId; });
+                if (it == testFunctions.end()) {
+                    ++teststate;
+                    stepRuntime_.reset();
+                    break;
+                }
+                const NamedFunction& currentFunction = *it;
+                const QString functionName = currentFunction.name;
+
+                // 阶段1：首次进入当前步骤，仅触发一次动作（通常是发协议命令）
+                if (!stepRuntime_.started) {
+                    if (!canGoNext) {
+                        break;
+                    }
+                    stepRuntime_.started = true;
+                    stepRuntime_.functionId = functionId;
+                    stepRuntime_.done = !currentFunction.needCaseDone;
+                    stepRuntime_.pass = true;
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
-
-                    if (teststate >= 1) {
-                        const int prevFunctionIndex = orderedTestIndexes_.at(teststate - 1);
-                        TestItem test;
-                        test.testItem = testFunctions.at(prevFunctionIndex).name;
-                        test.testData = "";
-                        test.testResult = "通过";
-                        test.ask = "通过";
-                        testItems.append(test);
-
-                        testResultTableUpdate(testItems);
-                    }
-                    ++teststate;
+                    break;
                 }
+
+                // 阶段2：等待通信链路允许继续
+                if (!canGoNext) {
+                    break;
+                }
+
+                // 需要业务判定的步骤必须等异步回调将 done 置位后再推进，
+                // 防止“有回包即通过”。
+                if (currentFunction.needCaseDone && !stepRuntime_.done) {
+                    break;
+                }
+
+                if (!stepRuntime_.pass) {
+                    TestResult = failValue;
+                }
+
+                TestItem test;
+                test.testItem = functionName;
+                test.testData = "";
+                test.testResult = stepRuntime_.pass ? "通过" : "失败";
+                test.ask = "通过";
+                testItems.append(test);
+                testResultTableUpdate(testItems);
+
+                ++teststate;
+                stepRuntime_.reset();
 
                 break;
             }
         }
 
         if (teststate == orderedTestIndexes_.count() && teststate != 0) {
-            const int lastFunctionIndex = orderedTestIndexes_.at(teststate - 1);
-            TestItem test;
-            test.testItem = testFunctions.at(lastFunctionIndex).name;
-            test.testData = "";
-            test.testResult = "通过";
-            test.ask = "通过";
-            testItems.append(test);
-
-            testResultTableUpdate(testItems);
-
             if (TestResult == failValue) {
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
@@ -193,6 +221,7 @@ void QFreeWork::startTask() {
 
             qDebug() << "测试结束";
             teststate = -1;
+            stepRuntime_.reset();
             ui->macInput->clear();
             ui->snInput->clear();
             ui->nfc_sn->clear();
@@ -251,107 +280,126 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
 }
 
 void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
-    QString chargeStateStr;
-    switch (adc.chargeState) {
-        case 1:
-            chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
-            chargestate = "CHARGE_FULL";
-            break;
-        case 2:
-            chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
-            chargestate = "CHARGING";
-            break;
-        case 3:
-            chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
-            chargestate = "UNCHARGED";
-            break;
-        case 4:
-            chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
-            chargestate = "NO_BATTER";
-            break;
-        default:
-            chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
-            chargestate = "UNKOWN_STATE";
-            break;
-    }
-    ui->battary_state->setText(chargeStateStr);
+    // QString chargeStateStr;
+    // switch (adc.chargeState) {
+    //     case 1:
+    //         chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
+    //         chargestate = "CHARGE_FULL";
+    //         break;
+    //     case 2:
+    //         chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
+    //         chargestate = "CHARGING";
+    //         break;
+    //     case 3:
+    //         chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
+    //         chargestate = "UNCHARGED";
+    //         break;
+    //     case 4:
+    //         chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
+    //         chargestate = "NO_BATTER";
+    //         break;
+    //     default:
+    //         chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
+    //         chargestate = "UNKOWN_STATE";
+    //         break;
+    // }
+    // ui->battary_state->setText(chargeStateStr);
 
-    // 修改电量的显示样式
-    QString batteryPercentStr =
-        "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
-    ui->battary_value->setText(batteryPercentStr);
+    // // 修改电量的显示样式
+    // QString batteryPercentStr =
+    //     "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
+    // ui->battary_value->setText(batteryPercentStr);
 
-    // 修改电压的显示样式
-    QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-                                "V</span>";
-    ui->battary_voltage->setText(batteryVoltageStr);
+    // // 修改电压的显示样式
+    // QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
+    //                             QString::number(adc.voltageMv / 1000.0, 'f', 3) +
+    //                             "V</span>";
+    // ui->battary_voltage->setText(batteryVoltageStr);
 
-    voltage = adc.voltageMv / 1000.0;
-    // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
-    // QRegularExpressionMatch match = regex.match(chargeStateStr);
-    // chargestate = match.captured(2);
-    is_battary_test = 1;
-    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "通过";
-        test.ask = "通过";
-        testItems.append(test);
+    // voltage = adc.voltageMv / 1000.0;
+    // // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
+    // // QRegularExpressionMatch match = regex.match(chargeStateStr);
+    // // chargestate = match.captured(2);
+    // is_battary_test = 1;
+    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
+    //     TestItem test;
+    //     test.testItem = "充电测试";
+    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+    //     test.testResult = "通过";
+    //     test.ask = "通过";
+    //     testItems.append(test);
 
-        testResultTableUpdate(testItems);
+    //     testResultTableUpdate(testItems);
 
-        charageresult = "通过";
-        voltageresult = "通过";
-        showlog("电量和充电测试通过");
-    }
-    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
+    //     charageresult = "通过";
+    //     voltageresult = "通过";
+    //     showlog("电量和充电测试通过");
+    // }
+    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
+    //     TestItem test;
+    //     test.testItem = "充电测试";
+    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+    //     test.testResult = "失败";
+    //     test.ask = "通过";
+    //     testItems.append(test);
 
-        testResultTableUpdate(testItems);
+    //     testResultTableUpdate(testItems);
 
-        showlog("充电状态不通过");
-        charageresult = "失败";
-        voltageresult = "通过";
-        TestResult = failValue;
-    }
-    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary)
+    //     showlog("充电状态不通过");
+    //     charageresult = "失败";
+    //     voltageresult = "通过";
+    //     TestResult = failValue;
+    // }
+    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary)
 
-    {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
+    // {
+    //     TestItem test;
+    //     test.testItem = "充电测试";
+    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+    //     test.testResult = "失败";
+    //     test.ask = "通过";
+    //     testItems.append(test);
 
-        testResultTableUpdate(testItems);
+    //     testResultTableUpdate(testItems);
 
-        showlog("电量测试不通过");
-        voltageresult = "失败";
-        charageresult = "通过";
-        TestResult = failValue;
-    }
-    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
+    //     showlog("电量测试不通过");
+    //     voltageresult = "失败";
+    //     charageresult = "通过";
+    //     TestResult = failValue;
+    // }
+    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
+    //     TestItem test;
+    //     test.testItem = "充电测试";
+    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+    //     test.testResult = "失败";
+    //     test.ask = "通过";
+    //     testItems.append(test);
 
-        testResultTableUpdate(testItems);
+    //     testResultTableUpdate(testItems);
 
-        showlog("电量和充电测试都不通过");
-        voltageresult = "失败";
-        charageresult = "失败";
-        TestResult = failValue;
+    //     showlog("电量和充电测试都不通过");
+    //     voltageresult = "失败";
+    //     charageresult = "失败";
+    //     TestResult = failValue;
+    // }
+
+    // 电量测试为异步判定：在电池回调里回填当前步骤的 done/pass。
+    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
+        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+        if (it == testFunctions.end() || it->name != "获取电量信息") {
+            return;
+        }
+        // bool cardControlPass = pb->getState(Qpb::PbStateType::DisableSleep);
+        // if (!cardControlPass) {
+        //     showlog("电量测试卡控状态未满足：DisableSleep 未就绪");
+        // }
+
+        stepRuntime_.done = true;
+        stepRuntime_.pass = (adc.percent >= standbattary);
+        if (!stepRuntime_.pass) {
+            TestResult = failValue;
+        }
     }
 }
 
@@ -496,6 +544,7 @@ void QFreeWork::initDate() {
     measure_ammeter = 0;
     dongleOutTime = 10;
     canGoNext = 1;
+    stepRuntime_.reset();
     isovertime = 0;
     BLE_RSSI = "";
     WIFI_RSSI = "";

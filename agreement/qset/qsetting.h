@@ -34,7 +34,6 @@ private:
     void readSubPIDAndFilter();
     void saveSubPIDAndFilter();
     void initFreeWorkTestOrderUi();
-    QStringList buildFreeWorkTestNames() const;
     void reorderFreeWorkCheckBoxes();
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);

@@ -660,7 +660,7 @@ void test_base::updateMainStyle(QString style) {
 
 void test_base::solveGetBrushResponse(int data) { getRespone = data; }
 
-// condition=1是成功
+// canGoNext=1是成功
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
     canGoNext = false;

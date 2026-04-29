@@ -4,6 +4,7 @@
 #include <QWidget>
 
 #include "Abini.h"
+#include "freework_test_catalog.h"
 #include "qapplication.h"
 #include "test_base.h"
 #include "ui_qfreework.h"
@@ -92,11 +93,31 @@ private:
     QByteArray sn;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
+        int id = -1;
         QString name;
         std::function<void()> function;
+        bool needCaseDone = false;
     };
     void createTestFunctions();
     std::vector<NamedFunction> testFunctions;
+    // 单个测试步骤的运行态：
+    // started: 已经触发过该步骤 action（避免重复发送命令）
+    // done/pass: 业务判定完成与结果（例如电量+卡控的异步判定）
+    // functionId: 当前正在等待判定的测试项稳定ID
+    struct StepRuntime {
+        bool started = false;
+        bool done = false;
+        bool pass = true;
+        int functionId = -1;
+
+        // 每进入下一步或流程结束时统一复位
+        void reset() {
+            started = false;
+            done = false;
+            pass = true;
+            functionId = -1;
+        }
+    } stepRuntime_;
 
 private slots:
     void initDate();

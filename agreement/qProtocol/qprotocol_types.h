@@ -292,7 +292,7 @@ enum class DeviceCmd {
     MotorDampingState,      // 【Qpb】电机阻尼状态（int，set_motor_damping_state）
     MotorTestState,         // 【Qpb】电机测试状态（int，set_motor_test_state）
     MotorCaliState,         // 【Qpb】电机校准状态（int，set_motor_cali_state）
-    FacResult,              // 【Qpb】产测结果码（int，set_fac_result）
+    FacResult,              // 【统一入口】产测结果/完成标识；Qpb: set_fac_result(int)，Qfctp: FactoryDoneWrite(done)
     ScreenColor,            // 【Qpb】屏幕纯色/显示测试（int，set_screen_color）
     LedColor,               // 【Qpb】LED 颜色两参数（QVariantList{区/路, 色值}，set_led_color）
     ShipMode,               // 【Qpb】船运模式（int，set_ship_mode）；【Qfctp】复用枚举名→关机 TLV（与 Qpb 语义不同）
@@ -342,7 +342,6 @@ enum class DeviceCmd {
     BtNoSignalMode,         // 【兼容别名】Qfctp 蓝牙非信令入口（保留兼容）
     BtFreqMode,             // 【兼容别名】Qfctp 蓝牙校频入口（保留兼容）
     WriteKey,               // 【兼容别名】Qfctp 写密钥入口（建议优先走 Sn 主入口）
-    FactoryDoneWrite,       // 【兼容别名】Qfctp 专有入口（保留兼容）
     TrimSet,                // 【Qfctp】写 trim（QVariantMap，setCaseTrimSet）
     MacWrite,               // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
     NightLightSet,          // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）

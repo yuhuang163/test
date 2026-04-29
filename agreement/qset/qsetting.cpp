@@ -4,6 +4,7 @@
 #include <QMimeData>
 #include "qpainter.h"
 #include "ui_qsetting.h"
+#include "work_station/freework/freework_test_catalog.h"
 
 namespace {
 constexpr int kRowSpacing = 10;
@@ -56,21 +57,6 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->groupBox_SubPIDSettings->hide();
 }
 
-QStringList qsetting::buildFreeWorkTestNames() const {
-    return {
-        "禁止休眠", "蓝牙升级", "电机升级", "压感升级", "打开串口接收", "关闭串口接收", "设置屏幕颜色",
-        "获取整机SN码", "获取基本信息", "获取电量信息", "进入船运模式", "设置UART接收状态", "设置RGB颜色",
-        "设置电机校准状态", "设置电机阻尼状态", "设置电机测试状态", "设置工厂结果状态", "设置LED颜色",
-        "设置声波电机参数", "打开声波电机", "设置电机校准结果参数", "连接WiFi", "设置音乐", "设置老化测试模式",
-        "设置使用记录", "设置使用时间", "设置休眠状态", "设置摄像头状态", "设置屏幕摄像头状态", "设置摄像头灯光状态",
-        "设置摄像头支持状态", "设置摄像头曝光时间", "设备复位", "使用复位", "设置压力校准结果", "发送IMU校准结果",
-        "发送新的IMU校准结果", "设置舵机电机参数", "设置设备模式", "设置亮白模式", "设置使用控制状态", "设置工厂模式",
-        "绑定SN码", "设置摄像头图片状态", "设置本地OTA", "启动OTA应用", "配置网络应用", "断开WiFi",
-        "设置新的WiFi连接", "设置压力采集参数", "设置IMU采集参数", "获取按钮状态", "获取IMU校准结果",
-        "获取设备信息(ota)", "获取外围设备状态", "获取连接信息", "获取WiFi信息"
-    };
-}
-
 void qsetting::initFreeWorkTestOrderUi() {
     freeWorkConfigLayout_ = qobject_cast<QVBoxLayout*>(ui->config_areas);
     freeWorkOptionalLayout_ = qobject_cast<QGridLayout*>(ui->use_areas);
@@ -78,13 +64,13 @@ void qsetting::initFreeWorkTestOrderUi() {
         return;
     }
 
-    const QStringList testNames = buildFreeWorkTestNames();
-    freeWorkRows_ = (testNames.size() + freeWorkCols_ - 1) / freeWorkCols_;
+    const auto catalog = getFreeWorkTestCatalog();
+    freeWorkRows_ = (catalog.size() + freeWorkCols_ - 1) / freeWorkCols_;
     freeWorkCheckBoxes_.clear();
-    freeWorkCheckBoxes_.reserve(testNames.size());
+    freeWorkCheckBoxes_.reserve(catalog.size());
 
-    for (int i = 0; i < testNames.size(); ++i) {
-        auto* checkBox = new DraggableCheckBox(testNames.at(i), i, this);
+    for (int i = 0; i < catalog.size(); ++i) {
+        auto* checkBox = new DraggableCheckBox(catalog.at(i).name, catalog.at(i).id, this);
         freeWorkCheckBoxes_.append(checkBox);
         freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
     }

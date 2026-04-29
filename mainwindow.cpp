@@ -3969,7 +3969,7 @@ void MainWindow::on_factory_flag_clicked()
 {
     QVariantMap m;
     m["done"] = 1;
-    protocolManager.set(DeviceCmd::FactoryDoneWrite, m);
+    protocolManager.set(DeviceCmd::FacResult, m);
     showlog("已发送产测完成标识写入");
 }
 

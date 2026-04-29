@@ -1226,9 +1226,14 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
             return;
         }
         break;
-    case DeviceCmd::FactoryDoneWrite:  // 兼容别名：暂无 Qpb 主入口可替代
-        if (setCaseFactoryDoneWrite(data.toMap())) return;
+    case DeviceCmd::FacResult: { // FacResult 与 FactoryDoneWrite 已合并，兼容 int/map 两种传参
+        QVariantMap map = data.toMap();
+        if (map.isEmpty()) {
+            map.insert("done", data.toInt());
+        }
+        if (setCaseFactoryDoneWrite(map)) return;
         break;
+    }
     case DeviceCmd::TrimSet:
         if (setCaseTrimSet(data.toMap())) return;
         break;
