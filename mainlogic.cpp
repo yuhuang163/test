@@ -2720,11 +2720,11 @@ void MainWindow::initPeriphState() {
 
                          if (press0Item) press0Item->setData(QString::number(state.press0_state), Qt::DisplayRole);
                          if (press1Item) press1Item->setData(QString::number(state.press1_state), Qt::DisplayRole);
-                         if (batteryItem) batteryItem->setData(QString::number(state.magnet_state), Qt::DisplayRole);
-                         if (touchItem) touchItem->setData(QString::number(state.imu_state), Qt::DisplayRole);
-                         if (ledItem) ledItem->setData(QString::number(state.flash_state), Qt::DisplayRole);
+                         if (batteryItem) batteryItem->setData(QString::number(state.battery_ic_state), Qt::DisplayRole);
+                         if (touchItem) touchItem->setData(QString::number(state.touch_ic_state), Qt::DisplayRole);
+                         if (ledItem) ledItem->setData(QString::number(state.led_ic_state), Qt::DisplayRole);
                          if (pdItem) {
-                             pdItem->setData(state.audio_state >= 0 ? QString::number(state.audio_state) : QString("未上报"),
+                             pdItem->setData(state.pd_ic_state >= 0 ? QString::number(state.pd_ic_state) : QString("未上报"),
                                              Qt::DisplayRole);
                          }
                          writePeripheralDataToCSVFile();

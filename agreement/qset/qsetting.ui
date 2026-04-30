@@ -17,7 +17,7 @@
    <item row="4" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -676,6 +676,132 @@
             </item>
             <item>
              <widget class="QCheckBox" name="checkBox_audio_status">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_press0">
+            <item>
+             <widget class="QLabel" name="label_freework_press0">
+              <property name="text">
+               <string>压感0状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_press0_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_press0">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_press1">
+            <item>
+             <widget class="QLabel" name="label_freework_press1">
+              <property name="text">
+               <string>压感1状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_press1_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_press1">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_battery_ic">
+            <item>
+             <widget class="QLabel" name="label_freework_battery_ic">
+              <property name="text">
+               <string>电池IC状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_battery_ic_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_battery_ic">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_touch_ic">
+            <item>
+             <widget class="QLabel" name="label_freework_touch_ic">
+              <property name="text">
+               <string>触摸IC状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_touch_ic_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_touch_ic">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_led_ic">
+            <item>
+             <widget class="QLabel" name="label_freework_led_ic">
+              <property name="text">
+               <string>LED IC状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_led_ic_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_led_ic">
+              <property name="text">
+               <string>启用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_freework_pd_ic">
+            <item>
+             <widget class="QLabel" name="label_freework_pd_ic">
+              <property name="text">
+               <string>PD IC状态</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lineEdit_freework_pd_ic_status"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_freework_pd_ic">
               <property name="text">
                <string>启用</string>
               </property>

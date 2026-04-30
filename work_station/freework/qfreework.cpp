@@ -156,6 +156,7 @@ void QFreeWork::startTask() {
                     stepRuntime_.functionId = functionId;
                     stepRuntime_.done = !currentFunction.needCaseDone;
                     stepRuntime_.pass = true;
+                    stepRuntime_.testData = "-";
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
@@ -186,13 +187,15 @@ void QFreeWork::startTask() {
                     TestResult = failValue;
                 }
 
-                TestItem test;
-                test.testItem = functionName;
-                test.testData = "";
-                test.testResult = stepRuntime_.pass ? "通过" : "失败";
-                test.ask = "通过";
-                testItems.append(test);
-                testResultTableUpdate(testItems);
+                if (functionName != "获取外围设备状态") {
+                    TestItem test;
+                    test.testItem = functionName;
+                    test.testData = stepRuntime_.testData;
+                    test.testResult = stepRuntime_.pass ? "通过" : "失败";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+                }
 
                 ++teststate;
                 stepRuntime_.reset();
@@ -406,6 +409,7 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 
         stepRuntime_.done = true;
         stepRuntime_.pass = (adc.percent >= standbattary);
+        stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
         if (!stepRuntime_.pass) {
             TestResult = failValue;
         }
@@ -438,6 +442,7 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
         if (it != testFunctions.end() && it->name == "获取整机SN码") {
             stepRuntime_.done = true;
             stepRuntime_.pass = (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
+            stepRuntime_.testData = deviceTailSnFromDevice;
             if (!stepRuntime_.pass) {
                 TestResult = failValue;
                 showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
@@ -451,6 +456,74 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     // {
     //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
     // }
+}
+
+void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
+    // “获取外围设备状态”步骤采用异步判定：按设置项勾选和期望值判定通过。
+    if (!(stepRuntime_.started && stepRuntime_.functionId >= 0)) {
+        return;
+    }
+    auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+    if (it == testFunctions.end() || it->name != "获取外围设备状态") {
+        return;
+    }
+
+    const QString press0Status = SETTINGS.value("PeripheralStatus/Press0_Status").toString();
+    const QString press1Status = SETTINGS.value("PeripheralStatus/Press1_Status").toString();
+    const QString batteryIcStatus = SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString();
+    const QString touchIcStatus = SETTINGS.value("PeripheralStatus/TouchIc_Status").toString();
+    const QString ledIcStatus = SETTINGS.value("PeripheralStatus/LedIc_Status").toString();
+    const QString pdIcStatus = SETTINGS.value("PeripheralStatus/PdIc_Status").toString();
+
+    // freework 外设分项使用独立勾选开关，避免复用旧的外围配置导致误判。
+    const bool checkPress0 = SETTINGS.value("FreeWorkPeripheral/Press0_checkBox").toBool();
+    const bool checkPress1 = SETTINGS.value("FreeWorkPeripheral/Press1_checkBox").toBool();
+    const bool checkBatteryIc = SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox").toBool();
+    const bool checkTouchIc = SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox").toBool();
+    const bool checkLedIc = SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox").toBool();
+    const bool checkPdIc = SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox").toBool();
+
+    const QString press0StateStr = QString::number(data.press0_state);
+    const QString press1StateStr = QString::number(data.press1_state);
+    const QString batteryStateStr = QString::number(data.battery_ic_state);
+    const QString touchStateStr = QString::number(data.touch_ic_state);
+    const QString ledStateStr = QString::number(data.led_ic_state);
+    const QString pdStateStr = QString::number(data.pd_ic_state);
+
+    QVector<TestItem> periphTestItems;
+    periphTestItems.reserve(6);
+    bool pass = true;
+    auto appendPeriphItem = [&](const QString& name, const QString& value, const QString& expect, bool needCompare) {
+        TestItem item;
+        item.testItem = name;
+        item.testData = value;
+        item.ask = needCompare ? expect : "-";
+        item.testResult = (!needCompare || compareVersions(expect, value)) ? "通过" : "失败";
+        if (item.testResult == "失败") {
+            pass = false;
+        }
+        periphTestItems.append(item);
+    };
+
+    appendPeriphItem("压感0状态", press0StateStr, press0Status, checkPress0);
+    appendPeriphItem("压感1状态", press1StateStr, press1Status, checkPress1);
+    appendPeriphItem("电池IC状态", batteryStateStr, batteryIcStatus, checkBatteryIc);
+    appendPeriphItem("触摸IC状态", touchStateStr, touchIcStatus, checkTouchIc);
+    appendPeriphItem("LED IC状态", ledStateStr, ledIcStatus, checkLedIc);
+    appendPeriphItem("PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
+    testResultTableUpdate(periphTestItems);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = "详见外设分项";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
+                    .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr));
+    } else {
+        showlog("外围状态校验通过");
+    }
 }
 
 void QFreeWork::getDongleWifi(QString data) {
