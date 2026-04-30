@@ -132,6 +132,11 @@ typedef struct {
     int press0_state = 0;
     int press1_state = 0;
     int audio_state = 0;
+    // 新增明确语义字段：用于区分“IC状态”与历史复用字段
+    int battery_ic_state = -1;
+    int touch_ic_state = -1;
+    int led_ic_state = -1;
+    int pd_ic_state = -1;
     int result = 0;
 } ProtocolPeriphStateData;
 

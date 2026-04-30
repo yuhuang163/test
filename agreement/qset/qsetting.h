@@ -37,6 +37,7 @@ private:
     void reorderFreeWorkCheckBoxes();
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
+    void moveToOptionalByPosition(DraggableCheckBox* checkBox, int row, int col);
     void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const;
     int getIndexAt(const QPoint& globalPos) const;
     DraggableCheckBox* getConfiguredCheckBoxByIndex(int index) const;

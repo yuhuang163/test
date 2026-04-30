@@ -8,15 +8,15 @@
     /* X(5, "关闭串口接收", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); })) */      \
     /* X(6, "设置屏幕颜色", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenColor, 1); })) */      \
     X(7, "获取整机SN码", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); })) \
-    X(8, "获取基本信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))                \
+    /* X(8, "获取基本信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))  */               \
     X(9, "获取电量信息", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); }))               \
-    X(10, "进入船运模式", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); }))           \
+    X(10, "关机", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); }))           \
     /* X(11, "设置UART接收状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 1); })) */ \
     /* X(12, "设置RGB颜色", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::RgbColor, QVariant::fromValue(FacLedControl{params})); })) */ \
     /* X(13, "设置电机校准状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorCali, 1); })) */   \
     /* X(14, "设置电机阻尼状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorDampingState, 1); })) */ \
     /* X(15, "设置电机测试状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorTestState, 1); })) */ \
-    X(16, "设置工厂结果状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacResult, 1); }))      \
+    X(16, "产测完成写入", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacResult, 1); }))      \
     /* X(17, "设置LED颜色", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 1}); })) */ \
     /* X(18, "设置声波电机参数", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60}); })) */ \
     /* X(19, "打开声波电机", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorState, 1); })) */      \
@@ -42,7 +42,7 @@
     /* X(39, "设置亮白模式", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DeviceMode, 4); })) */      \
     /* X(40, "设置使用控制状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushControl, 1); })) */ \
     X(41, "设置工厂模式", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); }))            \
-    X(42, "绑定SN码", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromUi})); })) \
+    X(42, "写入SN码", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromUi})); })) \
     /* X(43, "设置摄像头图片状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraPictureState, 1); })) */ \
     /* X(44, "设置本地OTA", false, local_ota_data x[2] = {params}; sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); })) */ \
     /* X(45, "启动OTA应用", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFileStatusReq{params})); })) */ \
@@ -51,10 +51,10 @@
     /* X(48, "设置新的WiFi连接", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{QByteArray("SSID"), QByteArray("password"), QString("192.168.1.1"), QString("8080")})); })) */ \
     /* X(49, "设置压力采集参数", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_START)); })) */ \
     /* X(50, "设置IMU采集参数", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); })) */ \
-    X(51, "获取按钮状态", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ButtonState, 1); }))        \
+    /* X(51, "获取按钮状态", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ButtonState, 1); }))  */      \
     /* X(52, "获取IMU校准结果", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetImuCaliResult); })) */ \
     /* X(53, "获取设备信息(ota)", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::DeviceInfo); })) */    \
-    /* X(54, "获取外围设备状态", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); })) */    \
+    X(54, "获取外围设备状态", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); }))    \
     /* X(55, "获取连接信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
    X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) 
 

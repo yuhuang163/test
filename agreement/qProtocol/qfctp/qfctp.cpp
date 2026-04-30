@@ -427,14 +427,13 @@ void Qfctp::handleRspSensorState(const uint8_t *mainValue, uint16_t mainLen)
                               .arg(stateText(press0)).arg(stateText(press1)).arg(stateText(battIc)).arg(stateText(touchIc))
                               .arg(stateText(ledIc)).arg(hasPdIc ? stateText(pdIc) : "未上报").arg(rawHex));
         ProtocolPeriphStateData periphData;
-        periphData.press0_state = (press0 == 0x01) ? 1 : 0;
-        periphData.press1_state = (press1 == 0x01) ? 1 : 0;
-        periphData.flash_state = (ledIc == 0x01) ? 1 : 0;
-        periphData.magnet_state = (battIc == 0x01) ? 1 : 0;
-        periphData.imu_state = (touchIc == 0x01) ? 1 : 0;
-        periphData.audio_state = hasPdIc ? ((pdIc == 0x01) ? 1 : 0) : -1;
-        periphData.result = periphData.press_state && periphData.flash_state && periphData.magnet_state
-                          && periphData.imu_state && (periphData.audio_state != 0);
+        // 回什么传什么：协议层不做通过/失败判定。
+        periphData.press0_state = static_cast<int>(press0);
+        periphData.press1_state = static_cast<int>(press1);
+        periphData.battery_ic_state = static_cast<int>(battIc);
+        periphData.touch_ic_state = static_cast<int>(touchIc);
+        periphData.led_ic_state = static_cast<int>(ledIc);
+        periphData.pd_ic_state = hasPdIc ? static_cast<int>(pdIc) : -1;
         emit send_periph_data(periphData);
       
     }

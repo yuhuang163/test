@@ -2,6 +2,7 @@
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>
+#include <QRegularExpression>
 
 #include "ui_ageing.h"
 
@@ -170,7 +171,7 @@ void ageing::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     refreshBleState(0);
-    // isTestContinue = false;
+    isTestContinue = false;
 }
 
 void ageing::on_connectButton_clicked() {
@@ -225,16 +226,11 @@ void ageing:: on_enterBurningMode_clicked() {
             return;
         }
 
-        waitWork(8000);
         sendCommandWithRetry([&]() {
         QVariantMap m;
         m["mode"] = mode;
         m["seconds"] = ui->burningModetime->text();  // 统一上层入参，协议层做兼容
         protocolManager.set(DeviceCmd::BurningMode, m); });
-        // QVariantMap m;
-        // m["mode"] = mode;
-        // m["seconds"] = ui->burningModetime->text();
-        //     protocolManager.set(DeviceCmd::BurningMode, m);
         showlog("已发送老化");
     } else {
         showlog("请等待连接设备后再试");

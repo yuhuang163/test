@@ -181,6 +181,40 @@ void qsetting::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col
     layout->addWidget(widget, row, col);
 }
 
+void qsetting::moveToOptionalByPosition(DraggableCheckBox* checkBox, int row, int col) {
+    if (!freeWorkOptionalLayout_ || !checkBox) {
+        return;
+    }
+
+    const int targetIndex = qMax(0, row * freeWorkCols_ + col);
+    QVector<DraggableCheckBox*> optionalWidgets;
+    optionalWidgets.reserve(freeWorkOptionalLayout_->count() + 1);
+
+    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
+        auto* widget = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
+        if (widget && widget != checkBox) {
+            optionalWidgets.append(widget);
+        }
+    }
+
+    int insertIndex = qBound(0, targetIndex, optionalWidgets.size());
+    optionalWidgets.insert(insertIndex, checkBox);
+
+    if (freeWorkConfigLayout_ && freeWorkConfigLayout_->indexOf(checkBox) != -1) {
+        freeWorkConfigLayout_->removeWidget(checkBox);
+    }
+    if (freeWorkOptionalLayout_->indexOf(checkBox) != -1) {
+        freeWorkOptionalLayout_->removeWidget(checkBox);
+    }
+
+    for (DraggableCheckBox* widget : optionalWidgets) {
+        freeWorkOptionalLayout_->removeWidget(widget);
+    }
+    for (int i = 0; i < optionalWidgets.size(); ++i) {
+        freeWorkOptionalLayout_->addWidget(optionalWidgets.at(i), i / freeWorkCols_, i % freeWorkCols_);
+    }
+}
+
 void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const {
     if (!freeWorkOptionalLayout_) {
         row = 0;
@@ -255,8 +289,7 @@ void qsetting::dropEvent(QDropEvent* event) {
         int row = 0;
         int col = 0;
         calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col);
-        freeWorkConfigLayout_->removeWidget(sourceCheckBox);
-        moveToGrid(freeWorkOptionalLayout_, sourceCheckBox, row, col);
+        moveToOptionalByPosition(sourceCheckBox, row, col);
         event->acceptProposedAction();
     }
 
@@ -535,6 +568,18 @@ void qsetting::loadConfig() {
     ui->checkBox_magnetic_status->setChecked(SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool());
     ui->checkBox_pressure_status->setChecked(SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool());
     ui->checkBox_audio_status->setChecked(SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool());
+    ui->lineEdit_freework_press0_status->setText(SETTINGS.value("PeripheralStatus/Press0_Status").toString());
+    ui->lineEdit_freework_press1_status->setText(SETTINGS.value("PeripheralStatus/Press1_Status").toString());
+    ui->lineEdit_freework_battery_ic_status->setText(SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString());
+    ui->lineEdit_freework_touch_ic_status->setText(SETTINGS.value("PeripheralStatus/TouchIc_Status").toString());
+    ui->lineEdit_freework_led_ic_status->setText(SETTINGS.value("PeripheralStatus/LedIc_Status").toString());
+    ui->lineEdit_freework_pd_ic_status->setText(SETTINGS.value("PeripheralStatus/PdIc_Status").toString());
+    ui->checkBox_freework_press0->setChecked(SETTINGS.value("FreeWorkPeripheral/Press0_checkBox", true).toBool());
+    ui->checkBox_freework_press1->setChecked(SETTINGS.value("FreeWorkPeripheral/Press1_checkBox", true).toBool());
+    ui->checkBox_freework_battery_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox", true).toBool());
+    ui->checkBox_freework_touch_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox", true).toBool());
+    ui->checkBox_freework_led_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox", true).toBool());
+    ui->checkBox_freework_pd_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox", true).toBool());
 
     // Battery Control
     ui->lineEdit_battery_voltage_control->setText(SETTINGS.value("BATTARY/standbattary").toString());  // 电池电压
@@ -836,6 +881,18 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("PeripheralStatus/MagneticStatus_checkBox", ui->checkBox_magnetic_status->isChecked());
     SETTINGS.setValue("PeripheralStatus/PressureStatus_checkBox", ui->checkBox_pressure_status->isChecked());
     SETTINGS.setValue("PeripheralStatus/AudioStatus_checkBox", ui->checkBox_audio_status->isChecked());
+    SETTINGS.setValue("PeripheralStatus/Press0_Status", ui->lineEdit_freework_press0_status->text());
+    SETTINGS.setValue("PeripheralStatus/Press1_Status", ui->lineEdit_freework_press1_status->text());
+    SETTINGS.setValue("PeripheralStatus/BatteryIc_Status", ui->lineEdit_freework_battery_ic_status->text());
+    SETTINGS.setValue("PeripheralStatus/TouchIc_Status", ui->lineEdit_freework_touch_ic_status->text());
+    SETTINGS.setValue("PeripheralStatus/LedIc_Status", ui->lineEdit_freework_led_ic_status->text());
+    SETTINGS.setValue("PeripheralStatus/PdIc_Status", ui->lineEdit_freework_pd_ic_status->text());
+    SETTINGS.setValue("FreeWorkPeripheral/Press0_checkBox", ui->checkBox_freework_press0->isChecked());
+    SETTINGS.setValue("FreeWorkPeripheral/Press1_checkBox", ui->checkBox_freework_press1->isChecked());
+    SETTINGS.setValue("FreeWorkPeripheral/BatteryIC_checkBox", ui->checkBox_freework_battery_ic->isChecked());
+    SETTINGS.setValue("FreeWorkPeripheral/TouchIC_checkBox", ui->checkBox_freework_touch_ic->isChecked());
+    SETTINGS.setValue("FreeWorkPeripheral/LedIC_checkBox", ui->checkBox_freework_led_ic->isChecked());
+    SETTINGS.setValue("FreeWorkPeripheral/PdIC_checkBox", ui->checkBox_freework_pd_ic->isChecked());
 
     // Battery Control
     SETTINGS.setValue("BATTARY/standbattary", ui->lineEdit_battery_voltage_control->text());

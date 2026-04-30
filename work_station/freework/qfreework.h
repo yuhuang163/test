@@ -109,6 +109,7 @@ private:
         bool done = false;
         bool pass = true;
         int functionId = -1;
+        QString testData;
 
         // 每进入下一步或流程结束时统一复位
         void reset() {
@@ -116,6 +117,7 @@ private:
             done = false;
             pass = true;
             functionId = -1;
+            testData.clear();
         }
     } stepRuntime_;
 
@@ -138,6 +140,7 @@ private slots:
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
+    void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBleState(int state) override;
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;
