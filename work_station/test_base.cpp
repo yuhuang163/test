@@ -1,4 +1,9 @@
-﻿#include "test_base.h"
+﻿// #ifndef WIN32_LEAN_AND_MEAN
+// #define WIN32_LEAN_AND_MEAN
+// #endif
+// #include <winsock2.h>
+// #include <ws2tcpip.h>
+#include "test_base.h"
 
 #include <dbt.h>
 #include <devguid.h>
@@ -60,6 +65,7 @@ void test_base::initData() {
     snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
+    connect(&protocolManager, &QProtocolManager::send_pb_date, this, &test_base::refreshPbData);
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
@@ -321,7 +327,13 @@ void test_base::readDongleSerialPortData() {
     saveDongleUartLog(logEntry);
 }
 void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
-    qDebug() << "DongleSerialPort串口问题" << error;
+    if (error == QSerialPort::NoError) {
+        return;
+    }
+    qWarning() << "DongleSerialPort串口异常"
+               << "port=" << dongleSerialPort->portName()
+               << "code=" << error
+               << "detail=" << dongleSerialPort->errorString();
     if (error == QSerialPort::PermissionError) {
         closeDongleSerialPort();
 
@@ -660,7 +672,7 @@ void test_base::updateMainStyle(QString style) {
 
 void test_base::solveGetBrushResponse(int data) { getRespone = data; }
 
-// canGoNext=1是成功
+// condition=1是成功
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
     canGoNext = false;
@@ -1010,4 +1022,31 @@ QString test_base::getValueBySN(const QString& sn) {
     }
 
     return "SUBPID_ERRO";
+}
+QString test_base::parseMacFromSn(const QString& snCode) {
+    QString sn = snCode;
+    sn.remove(QRegularExpression("\\s+"));
+    if (sn.length() < 16) {
+        return QString();
+    }
+    QString macRaw = sn.mid(4, 12).toUpper();
+    if (!QRegularExpression("^[0-9A-F]{12}$").match(macRaw).hasMatch()) {
+        return QString();
+    }
+    return QString("%1:%2:%3:%4:%5:%6")
+        .arg(macRaw.mid(0, 2))
+        .arg(macRaw.mid(2, 2))
+        .arg(macRaw.mid(4, 2))
+        .arg(macRaw.mid(6, 2))
+        .arg(macRaw.mid(8, 2))
+        .arg(macRaw.mid(10, 2));
+}
+    
+void test_base::appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result) {
+    TestItem test;
+    test.testItem = item;
+    test.testData = data;
+    test.testResult = result;
+    test.ask = "通过";
+    testItems.append(test);
 }
