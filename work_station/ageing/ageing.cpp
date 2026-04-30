@@ -1,6 +1,7 @@
 ﻿#include "ageing.h"
 
 #include <QGraphicsPixmapItem>
+#include <QRegularExpression>
 
 #include "ui_ageing.h"
 
@@ -74,7 +75,7 @@ void ageing::getTestValue(const int mechines, const QString value) {
         if (match.hasMatch()) {
             // 提取MAC地址
             mesmacAddress = match.captured(1);
-            qDebug() << getIndex() << "MAC地址：" << mesmacAddress;
+            qDebug() << getIndex() << "MAC地址:" << mesmacAddress;
             if (mechines == getIndex()) {
                 ui->macInput->setText(mesmacAddress);
                 on_macInput_returnPressed();
@@ -122,39 +123,36 @@ void ageing::refreshBattaryData(ProtocolBatteryData adc) {
         default: chargeStateStr = "充电状态为：<span style='color:red'>未知</span>"; break;
     }
     ui->battary_state->setText(chargeStateStr);
-
+    battary = adc.percent;
     // 修改电量的显示样式
     QString batteryPercentStr =
-        "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
+        "电量为：<span style='color:blue'>" + QString::number(battary) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
-
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
                                 QString::number(adc.voltageMv / 1000.0, 'f', 3) +
                                 "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
-
     voltage = adc.voltageMv / 1000.0;
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     // QRegularExpressionMatch match = regex.match(chargeStateStr);
     // chargestate = match.captured(2);
-
-    if (adc.voltageMv / 1000.0 > standbattary) {
+    if (battary >= standbattary) {
         is_battary_test = 1;  // 正常
     }
-    if (adc.voltageMv / 1000.0 <= standbattary)
+    if (battary < standbattary)
         is_battary_test = 2;  // 低电量
 }
 
 void ageing::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        //   showlog("蓝牙连接成功");
+          showlog("蓝牙连接成功");
         protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // showlog("蓝牙连接断开");
+        showlog("蓝牙连接断开");
     }
 }
 
@@ -172,6 +170,7 @@ void ageing::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     refreshBleState(0);
+    isTestContinue = false;
 }
 
 void ageing::on_connectButton_clicked() {
@@ -203,7 +202,6 @@ void ageing::on_macInput_returnPressed() {
         // 主状态机流程
         isTestContinue = true;
         emit send_go_next_focus();
-
         state = STATE_IDLE;
     }
 }
@@ -227,10 +225,11 @@ void ageing:: on_enterBurningMode_clicked() {
             return;
         }
 
+        sendCommandWithRetry([&]() {
         QVariantMap m;
         m["mode"] = mode;
-        m["seconds"] = ui->burningModetime->text();
-        protocolManager.set(DeviceCmd::BurningMode, m);
+        m["seconds"] = ui->burningModetime->text();  // 统一上层入参，协议层做兼容
+        protocolManager.set(DeviceCmd::BurningMode, m); });
         showlog("已发送老化");
     } else {
         showlog("请等待连接设备后再试");
@@ -242,8 +241,8 @@ void ageing::on_exitBurningMode_clicked() {
         QVariantMap m;
         m["mode"] = 1;
         m["switch"] = static_cast<int>(FacSwitch_CLOSE);
-        protocolManager.set(DeviceCmd::BurningMode, m);
-        // showlog("已退出老化模式");
+            protocolManager.set(DeviceCmd::BurningMode, m);
+            // showlog("已退出老化模式");
     } else {
         // showlog("请等待连接设备后再试");
     }
@@ -370,16 +369,15 @@ void ageing::startTask() {
     if (isTestContinue) {
         // ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);  // 转换为浮动数
-
+   
         switch (state) {
-            case STATE_IDLE:  // 复位一切
+            case STATE_IDLE:   // 复位
                 is_battary_test = 0;
-
                 showlog("开始测试");
-                pb->reset_all_pb();
+                protocolManager.resetAllPb();
                 at->resetConnected();
-                ui->product_sn->setText("存储的整机sn:");
-                ui->brush_subpid->setText("存储的subpid:");
+                // ui->tail_sn->setText("存储的尾盖sn:");
+                // ui->brush_subpid->setText("存储的subpid:");
                 snCompareOk = 0;
                 result = "";
                 TestTime.start();
@@ -389,12 +387,26 @@ void ageing::startTask() {
                 waitWork(1000);
                 at->sendMac(ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
-                state = STATE_WATI_CONNECT;
+                state = STATE_DISABLE_SLEEP_1;
                 break;
-            case STATE_WATI_CONNECT:
+
+            case STATE_DISABLE_SLEEP_1:
                 if (at->getConnected()) {
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
+                    showlog("已进入工厂模式");
+                    appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
+                    testResultTableUpdate(testItems);
+                    state = STATE_WATI_CONNECT;
+                }
+                break;
+
+            case STATE_WATI_CONNECT:
+                if (canGoNext) {
                     sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, writesn})); });
-                    showlog("sn绑定保存内容为：" + stringsn);
+                    showlog(QString::number(canGoNext));
+                    showlog("sn写入内容为：" + stringsn);
+                    appendStationResult(testItems, "sn写入", "0.0000", passValue);
+                    testResultTableUpdate(testItems);
                     state = STATE_WAIT_BANDING;
                 }
                 break;
@@ -404,124 +416,48 @@ void ageing::startTask() {
                     sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
                     state = STATE_WAIT_CORRECT_BANDING;
                 }
-
                 break;
 
             case STATE_WAIT_CORRECT_BANDING:
 
                 if (canGoNext) {
                     if (snCompareOk == 1) {
-                        if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
-                            showlog("已发送subpid");
-                            sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
-                            state = STATE_WAIT_BANDING_SUBPID;
-                        } else {
-                            // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
-                            //     showlog("已发送Skuid");
-                            //     sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, writeskuid})); });
-                            //     state = STATE_WAIT_BANDING_SKUID;
-                            // } else {
-                            state = STATE_DISABLE_SLEEP_1;
-                            // }
-                        }
-
+                        state = STATE_GETBATTERY;
                         showlog("sn已比对成功");
+                        appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        protocolManager.get(DeviceCmd::GetBattery);
                     } else if (snCompareOk == 2) {
                         showlog("sn已比对失败"); pack.error="SP03011";
-
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                }
-
-                break;
-            case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
-                if (canGoNext) {
-                    showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); });
-
-                    state = STATE_WAIT_CORRECT_BANDING_SUBPID;
-                }
-                break;
-            case STATE_WAIT_CORRECT_BANDING_SUBPID:  // 设置设备采集
-
-                if (canGoNext) {
-                    if (subpidCompareOk == 1) {
-                        // if (SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool()) {
-                        //     showlog("已发送Skuid");
-                        //     sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, writeskuid})); });
-                        //     state = STATE_WAIT_BANDING_SKUID;
-                        // } else {
-                        state = STATE_DISABLE_SLEEP_1;
-                        // }
-
-                        showlog("subpid已比对成功");
-                    } else if (subpidCompareOk == 2) {
-                        showlog("subpid已比对失败");
                         result = failValue;
                         state = STATE_SAVE_RESULT;
                     }
                 }
                 break;
 
-            case STATE_WAIT_BANDING_SKUID:  // 设置设备采集
-                if (canGoNext) {
-                    showlog("已绑定成功SKUID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SKUID)); });
-
-                    state = STATE_WAIT_CORRECT_BANDING_SKUID;
-                }
-                break;
-            case STATE_WAIT_CORRECT_BANDING_SKUID:  // 设置设备采集
-
-                if (canGoNext) {
-                    if (skuCompareOk == 1) {
-                        state = STATE_DISABLE_SLEEP_1;
-                        showlog("subpid已比对成功");
-                    } else if (skuCompareOk == 2) {
-                        showlog("subpid已比对失败");
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                }
-                break;
-
-            case STATE_DISABLE_SLEEP_1:
-                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
-                    showlog("已进入禁止休眠模式");
-                if (SETTINGS.value("Mes/Product_Name").toString() == "P20P")
-                 {   protocolManager.get(DeviceCmd::GetBattery);
-                    state = STATE_GETBATTERY;}
-                else
-                    state = STATE_CHECK_FLASH;
-
-                } else {
-                    waitWork(500);
-                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-                    showlog("已重发禁止休眠");
-                }
-                break;
-            case STATE_GETBATTERY:
+            case STATE_GETBATTERY: {
+                waitWork(100);
                 if (is_battary_test != 0) {
+
                     if (is_battary_test == 1) {
-                        showlog("电量正常" + QString::number(voltage));
+                        showlog("电量正常" + QString::number(battary) + "%");
                         TestItem test;
-                        test.testItem = "当前电压";
-                        test.testData = QString::number(voltage);
+                        test.testItem = "当前电量";
+                        test.testData = QString::number(battary) + "%";
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
                         testResultTableUpdate(testItems);
-                        protocolManager.get(DeviceCmd::PeriphState);
-                        state = STATE_CHECK_FLASH;
+                        // protocolManager.get(DeviceCmd::PeriphState);
+                        state = STATE_AGE;
                     }
 
                     if (is_battary_test == 2) {
-                        showlog("当前电压低为" + QString::number(voltage));
-                        pack.error="SP03010";
+                        showlog("当前电量低，为" + QString::number(battary) + "%");
+                        // pack.error="SP03010";
                         TestItem test;
-                        test.testItem = "当前电压";
-                        test.testData = QString::number(voltage);
+                        test.testItem = "当前电量";
+                        test.testData = QString::number(battary);
                         test.testResult = "失败";
                         test.ask = "通过";
                         testItems.append(test);
@@ -531,26 +467,17 @@ void ageing::startTask() {
                         state = STATE_SAVE_RESULT;
                     }
                 } else {
-                    waitWork(500);
                     showlog("正在重发获取电量信息");
                     protocolManager.get(DeviceCmd::GetBattery);
                 }
                 break;
+            }
 
             case STATE_CHECK_FLASH:
                 if (flash_state == 1) {
-                    showlog("已发送进入老化");
-                    sendCommandWithRetry([&]() {
-                        QVariantMap m;
-                        m["mode"] = 1;
-                        m["switch"] = static_cast<int>(FacSwitch_OPEN);
-                        protocolManager.set(DeviceCmd::BurningMode, m);
-                    });
-
                     ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
                     showlog("Flash资源正常");
                     state = STATE_AGE;
-
                 } else if (flash_state == 2) {
                     ui->flash_state->setText("Flash State:<font color='red'>异常</font>");
                     showlog("Flash资源异常");
@@ -565,10 +492,27 @@ void ageing::startTask() {
 
             case STATE_AGE:
                 if (canGoNext) {
-                    result = passValue;
-                    state = STATE_SAVE_RESULT;
+                    // waitWork(100);
+                    sendCommandWithRetry([&]() {
+                    QVariantMap m;
+                    m["mode"] = 1;
+                    m["seconds"] = 14400;
+                    // m["switch"] = static_cast<int>(FacSwitch_OPEN);
+                    // showlog(QString::number(m["switch"]));
+                    protocolManager.set(DeviceCmd::BurningMode, m);
+                    });
+                    showlog("已发送进入老化");
+                    ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
+                    state = STATE_AGE_CHECK;
                 }
                 break;
+
+            case STATE_AGE_CHECK:
+            if (canGoNext) {
+                result = passValue;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
 
             case STATE_SAVE_RESULT: {
                 if (result == passValue) {
@@ -577,10 +521,11 @@ void ageing::startTask() {
                     pack.itemvalue = QString("|AGE_TEST:PASS|");
                     pack.mechines = getIndex();
                     pack.sn = ui->getMac->text();
-
-                    //  pack.itemvalue = "083";
+                    pack.itemvalue = "083";
                     if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
+                        // emit send_end_testPass(pack);
+                        appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
                     }
 
                     ui->test_result->setText("PASS");
@@ -592,6 +537,9 @@ void ageing::startTask() {
                     ui->test_result->setStyleSheet(
                         "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
+                    // emit send_end_testPass(pack);
+                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
+                    testResultTableUpdate(testItems);
                 }
 
                 ui->getMac->clear();
@@ -607,18 +555,20 @@ void ageing::startTask() {
 
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                emit send_end_test(getIndex());
-                showlog("测试结束");
+                // emit send_end_test(getIndex());
+                
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
-                on_disconnectButton_clicked();
                 isTestContinue = false;
+                on_disconnectButton_clicked();
+                showlog(QString::number(isTestContinue));
+                showlog("测试结束");
             } break;
             case STATE_PROCESS_INSPECTION: break;
         }
         QCoreApplication::processEvents();
+        }
     }
-}
 
 void ageing::on_pushButton_clicked() {
     // ui->macInput->setText("3C:84:27:07:A8:D2");
@@ -626,7 +576,6 @@ void ageing::on_pushButton_clicked() {
     at->sendMac(ui->macInput->text());  // 发送mac地址
     waitWork(8000);
     sendCommandWithRetry([&]() {     
-    qDebug() << "on_pushButton_clicked";
     QVariantMap m;
     m["mode"] = 1;
     m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
@@ -673,7 +622,7 @@ void ageing::on_getMac_returnPressed() {
             showlog("sn与上一台机器重复,机子异常" + last_sn + writesn);
             return;
         }
-
+        
         writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
 
         if ("SUBPID_ERRO" == writesubpid) {
@@ -683,10 +632,27 @@ void ageing::on_getMac_returnPressed() {
         stringsubpid = writesubpid;
         show_product(writesubpid);
     }
+    const QString parsedMac = parseMacFromSn(ui->getMac->text());
+    if (parsedMac.isEmpty()) {
+        ui->getMac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        showlog("SN解析MAC失败");
+        ui->getMac->setFocus();
+        return;
+    }
 
-    getMac(ui->getMac->text());  // 文件获取
-    processInspection(ui->getMac->text());
-    processGetMesTestValue();  // mes获取
+    ui->macInput->setText(parsedMac);
+    showlog("SN解析MAC成功: " + parsedMac);
+    stringsn = ui->getMac->text();
+    appendStationResult(testItems, "主板条码", "0.0000", passValue);
+    testResultTableUpdate(testItems);
+    // 获取比亚迪mes的sn校验规则
+    // processGetMesTestValue();
+    // 获取比亚迪mes的站前检测
+    // processInspection(stringsn);
+    appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    on_macInput_returnPressed();
+
 }
 
 void ageing::show_product(QString name) {
@@ -756,6 +722,9 @@ void ageing::on_snInput_returnPressed() {
 }
 
 void ageing::on_stopTest_clicked() {
+    isTestContinue = false;
+    state = STATE_IDLE;
+
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 

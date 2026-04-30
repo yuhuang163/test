@@ -30,6 +30,7 @@ public:
 
 private:
     double voltage = 0;
+    double battary = 0;
     double standbattary = 0;
     int is_battary_test = 0;
 
@@ -46,7 +47,8 @@ private:
         STATE_GETBATTERY,
         STATE_PROCESS_INSPECTION,  // 工序核对检查
         STATE_CHECK_FLASH,         // 检查flash资源
-        STATE_AGE,                 // 开始老化
+        STATE_AGE,  
+        STATE_AGE_CHECK,           // 等待老化完成
         STATE_SAVE_RESULT          // 保存结果在本地
     } State;
     State state = STATE_IDLE;

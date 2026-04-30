@@ -76,6 +76,8 @@ public:
     void testResultTableInit();
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);
+    QString parseMacFromSn(const QString& snCode);
+    void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     void getMac(QString sn_to_search);
@@ -146,9 +148,9 @@ public:
 public slots:
     QString getValueBySN(const QString& sn);
     bool compareVersions(const QString& versionList, const QString& versionToCompare);
-    void set_independent_state(STATE_INDEPENDENT_E state) {
-        qDebug() << "机器" << getIndex() << "independent_state状态被设置" << state;
-        independent_state = state;
+    void set_independent_state(STATE_INDEPENDENT_E newState) {
+        qDebug() << "机器" << getIndex() << "independent_state状态被设置" << newState;
+        independent_state = newState;
     };
     STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };  //获取当前上位机状态
     void solveGetBrushResponse(int);
@@ -218,6 +220,9 @@ private slots:
     void refreshMesState(int state);
 
 signals:
+    void send_go_next_focus();
+    void send_startTest(int data);
+    void send_go_next_test(int data);
     void send_dongle_serialPort_state(int);
     void refreshUsbSerialPortState(int);
     void refreshJigSerialPortState(int);
