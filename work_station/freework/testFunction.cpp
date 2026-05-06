@@ -1,6 +1,13 @@
 ﻿
 #include "qfreework.h"
-#include "freework_test_catalog.h"
+
+#include <QString>
+#include <QVector>
+
+struct FreeWorkTestCatalogItem {
+    int id;
+    QString name;
+};
 
 #define FREEWORK_TEST_LIST(X)                                                                                              \
     X(0, "禁止休眠", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); })) \

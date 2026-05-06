@@ -4,7 +4,6 @@
 #include <QWidget>
 
 #include "Abini.h"
-#include "freework_test_catalog.h"
 #include "qapplication.h"
 #include "test_base.h"
 #include "ui_qfreework.h"
@@ -65,7 +64,6 @@ private:
     QTimer* comparewaittime = new QTimer(this);
     QElapsedTimer TestTime;
     QString productName;
-    QString ReadNfcData = "";
     QString TestResult = "";
     QString product = "";
 
@@ -120,6 +118,9 @@ private:
             testData.clear();
         }
     } stepRuntime_;
+    bool isCurrentStep(const QString& functionName) const;
+    bool completeCurrentStep(const QString& functionName, bool pass, const QString& testData,
+                             const QString& failLog = QString(), const QString& passLog = QString());
 
 private slots:
     void initDate();
@@ -160,12 +161,6 @@ private slots:
     void refreshAmmeterData(QString data) override;
     void on_get_battery_clicked();
 
-    // nfc部分
-    void on_nfc_write_read_clicked();
-    void on_clear_nfc_data_clicked();
-
-    QString generateDateCode();
-    void on_nfc_sn_returnPressed();
     void on_getMac_returnPressed();
 
     void on_mac_combo_textActivated(const QString& arg1);

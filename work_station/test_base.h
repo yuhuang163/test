@@ -77,6 +77,7 @@ public:
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);
     QString parseMacFromSn(const QString& snCode);
+    QString generateDateCode();
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息

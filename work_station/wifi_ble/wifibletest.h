@@ -140,7 +140,6 @@ private slots:
     void on_nfc_write_read_clicked();
     void on_clear_nfc_data_clicked();
 
-    QString generateDateCode();
     void on_getMac_returnPressed();
 
     void on_mac_combo_textActivated(const QString& arg1);

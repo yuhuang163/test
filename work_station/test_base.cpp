@@ -8,6 +8,7 @@
 #include <setupapi.h>
 #include <windows.h>
 
+#include <QDateTime>
 #include <QSet>
 #include <QString>
 
@@ -1019,6 +1020,29 @@ QString test_base::getValueBySN(const QString& sn) {
 
     return "SUBPID_ERRO";
 }
+QString test_base::generateDateCode() {
+    const QDateTime currentDateTime = QDateTime::currentDateTime();
+    const int year = currentDateTime.date().year() % 100;
+    const int month = currentDateTime.date().month();
+    const int day = currentDateTime.date().day();
+
+    char monthCode;
+    if (month >= 1 && month <= 9) {
+        monthCode = static_cast<char>('0' + month);
+    } else {
+        monthCode = static_cast<char>('A' + (month - 10));
+    }
+
+    char dayCode;
+    if (day >= 1 && day <= 9) {
+        dayCode = static_cast<char>('0' + day);
+    } else {
+        dayCode = static_cast<char>('A' + (day - 10));
+    }
+
+    return QString::number(year) + QChar::fromLatin1(monthCode) + QChar::fromLatin1(dayCode);
+}
+
 QString test_base::parseMacFromSn(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression("\\s+"));
