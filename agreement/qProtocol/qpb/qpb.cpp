@@ -292,7 +292,6 @@ void Qpb::get(DeviceCmd cmd, const QVariant& param) {
             get_battery();
             break;
         case DeviceCmd::BaseInfo:
-        case DeviceCmd::GetBaseInfo:
             get_base_info();
             break;
         case DeviceCmd::ImuCaliResult:

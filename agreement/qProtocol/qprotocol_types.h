@@ -367,7 +367,7 @@ enum class DeviceCmd {
     GetPressCaliResult,     // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,       // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
     DeviceInfo,             // 【主入口】设备信息查询（Qpb）
-    GetBaseInfo,            // 【主入口】基础信息读取；
+
     TupleRead,            // 【主入口】Qfctp 兼容映射三元组读取
 
     PeriphState,            // 【主入口】外设状态读取；Qfctp 映射 sensor 状态 TLV
@@ -376,7 +376,6 @@ enum class DeviceCmd {
     GetServoMotorInfo,      // 【Qpb】读舵机信息（无参，get_servo_motor_info）
     BurshBacklog,           // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
     TrimRead,               // 【Qfctp】读 trim（无参，getCaseTrimRead）
-    FwVersionRead,          // 【Qfctp】读固件版本（无参，getCaseFwVersionRead）
     MacRead,                // 【Qfctp】读 MAC（无参，getCaseMacRead）
     RssiRead,               // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
     KeySignalRead,          // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）

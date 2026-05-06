@@ -119,8 +119,8 @@ private:
         }
     } stepRuntime_;
     bool isCurrentStep(const QString& functionName) const;
-    bool completeCurrentStep(const QString& functionName, bool pass, const QString& testData,
-                             const QString& failLog = QString(), const QString& passLog = QString());
+    void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
+                          const QString& expect, bool needCompare);
 
 private slots:
     void initDate();

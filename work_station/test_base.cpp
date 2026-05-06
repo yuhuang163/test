@@ -85,7 +85,7 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
     connect(&protocolManager, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));
     connect(pb, SIGNAL(send_Lcd_CONTROL_state(ProtocolLcdControlData)), this, SLOT(refreshLcdControl(ProtocolLcdControlData)));
-    connect(pb, SIGNAL(send_base_data(ProtocolBaseInfoData)), this, SLOT(refreshBaseData(ProtocolBaseInfoData)));
+    connect(&protocolManager, SIGNAL(send_base_data(ProtocolBaseInfoData)), this, SLOT(refreshBaseData(ProtocolBaseInfoData)));
     connect(&protocolManager, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
     connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
@@ -785,12 +785,14 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
 
         // 设置每列的数据
         // testResultTable()->setItem(row, 0, new QTableWidgetItem(timestamp));
-        testResultTable()->setItem(row, 0, new QTableWidgetItem(item.testItem));
-        testResultTable()->setItem(row, 1, new QTableWidgetItem(item.testData));
-
-        // 设置结果列的数据，假设结果是一个字符串
+        QTableWidgetItem* testItemCell = new QTableWidgetItem(item.testItem);
+        QTableWidgetItem* testDataCell = new QTableWidgetItem(item.testData);
         QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
         QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
+        testItemCell->setTextAlignment(Qt::AlignCenter);
+        testDataCell->setTextAlignment(Qt::AlignCenter);
+        resultItem->setTextAlignment(Qt::AlignCenter);
+        askItem->setTextAlignment(Qt::AlignCenter);
 
         // 设置失败状态的背景颜色为红色
         if (item.testResult == "失败") {
@@ -799,6 +801,8 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
             resultItem->setBackground(QBrush(Qt::green));
         }
 
+        testResultTable()->setItem(row, 0, testItemCell);
+        testResultTable()->setItem(row, 1, testDataCell);
         testResultTable()->setItem(row, 2, resultItem);
         testResultTable()->setItem(row, 3, askItem);
     }
@@ -907,8 +911,10 @@ void test_base::testResultTableInit() {
             << "结果"
             << "要求";
     testResultTable()->setHorizontalHeaderLabels(headers);
-    // 设置表格自适应列宽
-    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    testResultTable()->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+    // 列宽随表格尺寸变化，拖拽外部大小时同步缩放
+    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    testResultTable()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 void test_base::LockProductUI() {
     if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())

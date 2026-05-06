@@ -18,6 +18,7 @@ void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool sho
     if (shouldConnect) {
         QObject::connect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
         QObject::connect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
+        QObject::connect(protocol, &qProtocol::send_base_data, manager, &QProtocolManager::send_base_data);
         QObject::connect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
         QObject::connect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
         QObject::connect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
@@ -28,6 +29,7 @@ void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool sho
 
     QObject::disconnect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
     QObject::disconnect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
+    QObject::disconnect(protocol, &qProtocol::send_base_data, manager, &QProtocolManager::send_base_data);
     QObject::disconnect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
     QObject::disconnect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
     QObject::disconnect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);

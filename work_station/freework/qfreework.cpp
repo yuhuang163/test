@@ -183,7 +183,8 @@ void QFreeWork::startTask() {
                     TestResult = failValue;
                 }
 
-                if (functionName != "获取外围设备状态") {
+                // static const QSet<QString> skipTableFunctions = {"获取外围设备状态", "获取基本信息"};
+                // if (!skipTableFunctions.contains(functionName)) {
                     TestItem test;
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
@@ -191,7 +192,7 @@ void QFreeWork::startTask() {
                     test.ask = "通过";
                     testItems.append(test);
                     testResultTableUpdate(testItems);
-                }
+                // }
 
                 ++teststate;
                 stepRuntime_.reset();

@@ -13,30 +13,31 @@ bool QFreeWork::isCurrentStep(const QString& functionName) const {
     return it != testFunctions.cend() && it->name == functionName;
 }
 
-bool QFreeWork::completeCurrentStep(const QString& functionName, bool pass, const QString& testData,
-                                    const QString& failLog, const QString& passLog) {
-    if (!isCurrentStep(functionName)) {
-        return false;
+void QFreeWork::appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name,
+                                 const QString& value, const QString& expect, bool needCompare) {
+    if (!needCompare) {
+        return;
     }
-
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    stepRuntime_.testData = testData;
-    if (!pass) {
-        TestResult = failValue;
-        if (!failLog.isEmpty()) {
-            showlog(failLog);
-        }
-    } else if (!passLog.isEmpty()) {
-        showlog(passLog);
+    TestItem item;
+    item.testItem = name;
+    item.testData = value;
+    item.ask = expect;
+    item.testResult = compareVersions(expect, value) ? "通过" : "失败";
+    if (item.testResult == "失败") {
+        pass = false;
     }
-    return true;
+    periphTestItems.append(item);
 }
-
 void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
+    const QString productName = SETTINGS.value("ProductInfo/Product_Name").toString();
     QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
     QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
     QString Age_State = SETTINGS.value("ProductInfo/Age_State").toString();
+    const bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+    const bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
+    const bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+    const bool isAgingStatusTest = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
+
     product = data.product_name;
     wifiMac.clear();
     for (int var = 0; var < data.wifi_mac.size; ++var) {
@@ -46,40 +47,47 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     }
     qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
 
-    if (data.soft_version == softwareVersion && data.res_version == resourceVersion &&
-        QString::number(data.ageing_state) == Age_State) {
-        showlog("软件版本正确" + data.soft_version);
-        showlog("资源版本正确" + data.res_version);
-        showlog("老化状态正确" + QString::number(data.ageing_state));
-    } else {
+    if (!isCurrentStep("获取基本信息")) {
+        return;
+    }
+
+    QVector<TestItem> baseItems;
+    baseItems.reserve(4);
+    bool pass = true;
+    appendPeriphItem(baseItems, pass, "产品名称", data.product_name, productName, isProductTest);
+    appendPeriphItem(baseItems, pass, "软件版本", data.soft_version, softwareVersion, isSoftwareTest);
+    appendPeriphItem(baseItems, pass, "资源版本", data.res_version, resourceVersion, isResourceTest);
+    appendPeriphItem(baseItems, pass, "老化状态", QString::number(data.ageing_state), Age_State, isAgingStatusTest);
+    testResultTableUpdate(baseItems);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = "详细如上";
+    if (!pass) {
         TestResult = failValue;
-        showlog("状态错误");
-        showlog("当前设备软件版本" + data.soft_version + "配置文件版本" + softwareVersion);
-        showlog("当前设备资源版本" + data.res_version + "配置文件版本" + resourceVersion);
-        showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + Age_State);
-
-        // isTestContinue = false;
-        // showlog("停止运行");
-
-        // ui->macInput->clear();
-        // ui->getMac->clear();
-        // ui->getMac->setFocus();
+        showlog(QString("基本信息校验失败：soft=%1(%2) res=%3(%4) age=%5(%6)")
+                    .arg(data.soft_version, softwareVersion, data.res_version, resourceVersion,
+                         QString::number(data.ageing_state), Age_State));
+    } else {
+        showlog("基本信息校验通过");
     }
 }
 
 void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 
 
-    // 电量测试为异步判定：在电池回调里通过 completeCurrentStep 回填当前步骤。
+    // 电量测试为异步判定：在电池回调里显式回填当前步骤。
     if (!isCurrentStep("获取电量信息")) {
         return;
     }
     const bool pass = (adc.percent >= standbattary);
-    const QString testData = QString("电量:%1%").arg(adc.percent);
-    const QString failLog =
-        pass ? QString()
-             : QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary);
-    completeCurrentStep("获取电量信息", pass, testData, failLog, QString());
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary));
+    }
 }
 
 void QFreeWork::refreshWifiState(int state) {
@@ -102,13 +110,22 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
     // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
-    const bool snPass =
-        (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
-    const QString failLog =
-        snPass ? QString()
-               : ("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
-    completeCurrentStep("获取整机SN码", snPass, deviceTailSnFromDevice, failLog,
-                        snPass ? ("整机SN校验通过") : QString());
+    if (!isCurrentStep("获取整机SN码")) {
+        return;
+    }
+    QVector<TestItem> snItems;
+    snItems.reserve(1);
+    bool snPass = !expectedTailSnFromUiText.isEmpty();
+    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedTailSnFromUiText, true);
+    stepRuntime_.done = true;
+    stepRuntime_.pass = snPass;
+    stepRuntime_.testData = deviceTailSnFromDevice;
+    if (!snPass) {
+        TestResult = failValue;
+        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
+    } else {
+        showlog("整机SN校验通过");
+    }
 
     // if (deviceTailSnFromDevice == "")
     // {
@@ -147,32 +164,24 @@ void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
     QVector<TestItem> periphTestItems;
     periphTestItems.reserve(6);
     bool pass = true;
-    auto appendPeriphItem = [&](const QString& name, const QString& value, const QString& expect, bool needCompare) {
-        TestItem item;
-        item.testItem = name;
-        item.testData = value;
-        item.ask = needCompare ? expect : "-";
-        item.testResult = (!needCompare || compareVersions(expect, value)) ? "通过" : "失败";
-        if (item.testResult == "失败") {
-            pass = false;
-        }
-        periphTestItems.append(item);
-    };
-
-    appendPeriphItem("压感0状态", press0StateStr, press0Status, checkPress0);
-    appendPeriphItem("压感1状态", press1StateStr, press1Status, checkPress1);
-    appendPeriphItem("电池IC状态", batteryStateStr, batteryIcStatus, checkBatteryIc);
-    appendPeriphItem("触摸IC状态", touchStateStr, touchIcStatus, checkTouchIc);
-    appendPeriphItem("LED IC状态", ledStateStr, ledIcStatus, checkLedIc);
-    appendPeriphItem("PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
+    appendPeriphItem(periphTestItems, pass, "压感0状态", press0StateStr, press0Status, checkPress0);
+    appendPeriphItem(periphTestItems, pass, "压感1状态", press1StateStr, press1Status, checkPress1);
+    appendPeriphItem(periphTestItems, pass, "电池IC状态", batteryStateStr, batteryIcStatus, checkBatteryIc);
+    appendPeriphItem(periphTestItems, pass, "触摸IC状态", touchStateStr, touchIcStatus, checkTouchIc);
+    appendPeriphItem(periphTestItems, pass, "LED IC状态", ledStateStr, ledIcStatus, checkLedIc);
+    appendPeriphItem(periphTestItems, pass, "PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
     testResultTableUpdate(periphTestItems);
 
-    const QString failLog =
-        pass ? QString()
-             : QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
-                       .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr);
-    completeCurrentStep("获取外围设备状态", pass, QStringLiteral("详见外设分项"), failLog,
-                        pass ? QStringLiteral("外围状态校验通过") : QString());
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = "详细如上";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
+                    .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr));
+    } else {
+        showlog("外围状态校验通过");
+    }
 }
 
 void QFreeWork::refreshBleRssi(QString data) {
@@ -200,7 +209,14 @@ void QFreeWork::refreshAmmeterData(QString data) {
 
     if (!conversionOk) {
         qDebug() << getIndex() << "无法将字符串转换为 double 类型";
-        completeCurrentStep("读取治具电流测量值", false, "电流解析失败", "电流卡控失败：无法解析电流数据");
+        if (!isCurrentStep("读取治具电流测量值")) {
+            return;
+        }
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "电流解析失败";
+        TestResult = failValue;
+        showlog("电流卡控失败：无法解析电流数据");
         return;
     }
 
@@ -210,10 +226,20 @@ void QFreeWork::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
     showlog(formattedValue + "ma");
 
+    if (!isCurrentStep("读取治具电流测量值")) {
+        return;
+    }
     const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
-    const QString failLog = QString("电流卡控失败，测量值=%1ma，范围=[%2,%3]ma")
-                                .arg(formattedValue, QString::number(LowCurrent), QString::number(HighCurrent));
-    completeCurrentStep("读取治具电流测量值", pass, formattedValue + "ma", failLog, "电流卡控通过");
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = formattedValue + "ma";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("电流卡控失败，测量值=%1ma，范围=[%2,%3]ma")
+                    .arg(formattedValue, QString::number(LowCurrent), QString::number(HighCurrent)));
+    } else {
+        showlog("电流卡控通过");
+    }
 }
 
 void QFreeWork::getWifiMsg(QString data) {

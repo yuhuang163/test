@@ -453,7 +453,10 @@ void Qfctp::handleRspFwVersionRead(const uint8_t *mainValue, uint16_t mainLen)
         const QString versionText = versionParts.join(".");
         qInfo() << "FCTP 固件版本" << "raw=" << hex << "ascii=" << ascii << "version=" << versionText;
         emit send_pb_date(QString("FCTP 固件版本 raw=%1").arg(hex));
-        emit send_fw_version(versionText);
+        ProtocolBaseInfoData data;
+        data.soft_version = versionText;
+        emit send_base_data(data);
+     
     }
 }
 
@@ -1294,9 +1297,6 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
     }
     case DeviceCmd::TrimRead:
         if (getCaseTrimRead()) return;
-        break;
-    case DeviceCmd::FwVersionRead:
-        if (getCaseFwVersionRead()) return;
         break;
     case DeviceCmd::MacRead:
         if (getCaseMacRead()) return;

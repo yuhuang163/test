@@ -2526,31 +2526,49 @@ void MainWindow::initBasicInfo() {
         QString settings;
     };
 
-    // 读取 ProductInfo 节下的键值对
-    QString productName = "=" + SETTINGS.value("ProductInfo/Product_Name").toString();
-    QString appProtocolVersion = "=" + SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
-    QString factoryProtocolVersion = "=" + SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
-    QString hardwareVersion = "=" + SETTINGS.value("ProductInfo/Hardware_Version").toString();
-    QString softwareVersion = "=" + SETTINGS.value("ProductInfo/Software_Version").toString();
-    QString camera_id = "=" + SETTINGS.value("ProductInfo/Camera_Id").toString();
+    // 读取 ProductInfo 节下的键值对（按勾选决定是否参与测试）
+    const bool checkProductName = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+    const bool checkHardwareVersion = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
+    const bool checkSoftwareVersion = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
+    const bool checkResourceVersion = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+    const bool checkAgingStatus = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
+    const bool checkMotorVersion = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
+    const bool checkBluetoothVersion = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
+    const bool checkAppPB = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
+    const bool checkFactoryPB = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
+    const bool checkAlgorithmVersion = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
+    const bool checkPressureVersion = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
+    const bool checkFSensorVersion = SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool();
+    const bool checkImuID = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
+    const bool checkCameraID = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
 
-    QString resourceVersion = "=" + SETTINGS.value("ProductInfo/Resource_Version").toString();
-    QString algorithmVersion = "=" + SETTINGS.value("ProductInfo/Algorithm_Version").toString();
-    QString pressureSenseVersion = "=" + SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
-    QString fsensorVersion = "=" + SETTINGS.value("ProductInfo/FSensor_Version").toString();
-    QString imuId = "=" + SETTINGS.value("ProductInfo/IMU_ID").toString();
-    QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
+    QString productName = checkProductName ? ("=" + SETTINGS.value("ProductInfo/Product_Name").toString()) : "";
+    QString appProtocolVersion = checkAppPB ? ("=" + SETTINGS.value("ProductInfo/App_Protocol_Version").toString()) : "";
+    QString factoryProtocolVersion =
+        checkFactoryPB ? ("=" + SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString()) : "";
+    QString hardwareVersion = checkHardwareVersion ? ("=" + SETTINGS.value("ProductInfo/Hardware_Version").toString()) : "";
+    QString softwareVersion = checkSoftwareVersion ? ("=" + SETTINGS.value("ProductInfo/Software_Version").toString()) : "";
+    QString camera_id = checkCameraID ? ("=" + SETTINGS.value("ProductInfo/Camera_Id").toString()) : "";
 
-    QString age_state = "=" + SETTINGS.value("ProductInfo/Age_State").toString();
+    QString resourceVersion = checkResourceVersion ? ("=" + SETTINGS.value("ProductInfo/Resource_Version").toString()) : "";
+    QString algorithmVersion =
+        checkAlgorithmVersion ? ("=" + SETTINGS.value("ProductInfo/Algorithm_Version").toString()) : "";
+    QString pressureSenseVersion =
+        checkPressureVersion ? ("=" + SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString()) : "";
+    QString fsensorVersion = checkFSensorVersion ? ("=" + SETTINGS.value("ProductInfo/FSensor_Version").toString()) : "";
+    QString imuId = checkImuID ? ("=" + SETTINGS.value("ProductInfo/IMU_ID").toString()) : "";
+    QString motorVersion = checkMotorVersion ? ("=" + SETTINGS.value("ProductInfo/Motor_Ver").toString()) : "";
 
-    QString motor_ver = "=" + SETTINGS.value("ProductInfo/Motor_Ver").toString();
-    QString bleVersion = "=" + SETTINGS.value("ProductInfo/Ble_Ver").toString();
+    QString age_state = checkAgingStatus ? ("=" + SETTINGS.value("ProductInfo/Age_State").toString()) : "";
+
+    QString motor_ver = checkMotorVersion ? ("=" + SETTINGS.value("ProductInfo/Motor_Ver").toString()) : "";
+    QString bleVersion = checkBluetoothVersion ? ("=" + SETTINGS.value("ProductInfo/Ble_Ver").toString()) : "";
 
     imu_wait_time = SETTINGS.value("IMU/IMU_Wait_Time", "15000").toInt();
 
     QList<namePair> basicItems = {{"product_name", "产品名称", productName},
                                   {"pb_phone_ver", "app协议版本号", appProtocolVersion},
-                                  {"camera_id", "摄像头版本号", camera_id},
+                                  {"camera_id", "摄像头id", camera_id},
                                   {"pb_factory_ver", "工厂协议版本号", factoryProtocolVersion},
                                   {"hw_version", "硬件版本号", hardwareVersion},
                                   {"soft_version", "软件版本号", softwareVersion},
@@ -2577,7 +2595,7 @@ void MainWindow::initBasicInfo() {
 
     basicInfoModel->resetAllTestResult();
 
-    QObject::connect(pb, QOverload<ProtocolBaseInfoData>::of(&Qpb::send_base_data), this,
+    QObject::connect(&protocolManager, &QProtocolManager::send_base_data, this,
                      [=](ProtocolBaseInfoData baseInfo) {
         connectProductName = baseInfo.product_name;
 
@@ -2642,12 +2660,6 @@ void MainWindow::initBasicInfo() {
         }
     });
 
-    QObject::connect(qfctp, &Qfctp::send_fw_version, this, [=](const QString& versionText) {
-        auto* softVersionItem = basicInfoModel->getTestItemByName("soft_version");
-        if (softVersionItem && !versionText.isEmpty()) {
-            softVersionItem->setData(versionText, Qt::DisplayRole);
-        }
-    });
 }
 
 void MainWindow::initPeriphState() {
@@ -2668,18 +2680,24 @@ void MainWindow::initPeriphState() {
     QString touchIcStatus = "=" + SETTINGS.value("PeripheralStatus/TouchIc_Status").toString();
     QString ledIcStatus = "=" + SETTINGS.value("PeripheralStatus/LedIc_Status").toString();
     QString pdIcStatus = "=" + SETTINGS.value("PeripheralStatus/PdIc_Status").toString();
+    const bool checkPress0 = SETTINGS.value("FreeWorkPeripheral/Press0_checkBox").toBool();
+    const bool checkPress1 = SETTINGS.value("FreeWorkPeripheral/Press1_checkBox").toBool();
+    const bool checkBatteryIc = SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox").toBool();
+    const bool checkTouchIc = SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox").toBool();
+    const bool checkLedIc = SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox").toBool();
+    const bool checkPdIc = SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox").toBool();
 
     QList<namePair> items = {
         {"imu_state", "imu状态", imuStatus},
         {"flash_state", "flash状态", flashStatus},
         {"magnet_state", "地磁状态", magneticStatus},
         {"press_state", "压感状态", pressureStatus},
-        {"press0_state", "气压传感器0状态", press0Status},
-        {"press1_state", "气压传感器1状态", press1Status},
-        {"battery_ic_state", "电池IC状态", batteryIcStatus},
-        {"touch_ic_state", "触摸按键IC状态", touchIcStatus},
-        {"led_ic_state", "LED IC状态", ledIcStatus},
-        {"pd_ic_state", "PD IC充电状态", pdIcStatus},
+        {"press0_state", "气压传感器0状态", checkPress0 ? press0Status : ""},
+        {"press1_state", "气压传感器1状态", checkPress1 ? press1Status : ""},
+        {"battery_ic_state", "电池IC状态", checkBatteryIc ? batteryIcStatus : ""},
+        {"touch_ic_state", "触摸按键IC状态", checkTouchIc ? touchIcStatus : ""},
+        {"led_ic_state", "LED IC状态", checkLedIc ? ledIcStatus : ""},
+        {"pd_ic_state", "PD IC充电状态", checkPdIc ? pdIcStatus : ""},
     };
 
     for (auto name : items) {

@@ -15,7 +15,7 @@ struct FreeWorkTestCatalogItem {
     /* X(5, "关闭串口接收", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); })) */      \
     /* X(6, "设置屏幕颜色", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenColor, 1); })) */      \
     X(7, "获取整机SN码", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); })) \
-    /* X(8, "获取基本信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))  */               \
+    X(8, "获取基本信息", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))                \
     X(9, "获取电量信息", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); }))               \
     X(10, "关机", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); }))           \
     /* X(11, "设置UART接收状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 1); })) */ \
