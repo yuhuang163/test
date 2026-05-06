@@ -70,7 +70,7 @@ void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *
     unsigned long currentMillis = millis();   // 或者使用 micros() 函数获取微秒级时间戳
     String timestamp = String(currentMillis); // 将时间戳转换为字符串
     Serial.println();
-    Serial.print("产测数据包的时间戳:"); // 打印带有时间戳的消息
+    Serial.print("产测设备数据包的时间戳:"); // 打印带有时间戳的消息
     Serial.print(timestamp);
     Serial.print("长度为:"); // 打印带有时间戳的消息
     Serial.print(length);
