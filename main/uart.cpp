@@ -179,15 +179,8 @@ void processATCommand(byte *get_cmd, int length)
             // 不触发后台扫描，直接走 loop 内 connectToServer() 的直连分支
             ble_scan_over = true;
 
-            // 直连前先停止扫描，避免扫描/连接并行导致异常断开
-            if (BLEDevice::getScan() != nullptr)
-            {
-                BLEDevice::getScan()->stop();
-                BLEDevice::getScan()->clearResults();
-
-            }
-
-            // 确保不会沿用旧的扫描设备缓存（deinit_ble 会 delete myDevice）
+            // 直连命令只切换状态，不在此线程直接操作 BLEScan 结果容器，
+            // 避免与 GAP 回调线程并发访问导致崩溃。
             doConnect = true;
         }
         break;
