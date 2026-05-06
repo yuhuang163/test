@@ -66,6 +66,7 @@ public slots:
     void sendCmd(QString cmd);
     void sendotaMac(QString mac);
     void sendMac(QString mac);
+    void sendDcon(QString mac);
     void sendBLEDEVICELOG(int state);
     void sendOTADATA(int state);
     void sendMAIN(QString mac);

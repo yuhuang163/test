@@ -126,7 +126,7 @@ void QFreeWork::startTask() {
             // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
             refreshOrderedTestIndexes();
             waitWork(1000);
-            at->sendMac(macAddress);  // 开始连接
+            at->sendDcon(macAddress);  // 开始连接
             showlog("MAC地址为：" + ui->macInput->text());
             teststate++;
         }

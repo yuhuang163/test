@@ -141,6 +141,8 @@ public:
     bool getRespone = 0;
     bool canGoNext = false;
     bool sendRetryOver = false;
+    QTimer* commandRetryTimer = nullptr;
+    int commandRetryCount = 0;
 
     bool isTestContinue = false;  //测试是否继续
     bool bandingresult = false;   // mes绑定结果

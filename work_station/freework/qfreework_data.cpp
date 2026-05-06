@@ -68,128 +68,18 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
 }
 
 void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
-    // QString chargeStateStr;
-    // switch (adc.chargeState) {
-    //     case 1:
-    //         chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
-    //         chargestate = "CHARGE_FULL";
-    //         break;
-    //     case 2:
-    //         chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
-    //         chargestate = "CHARGING";
-    //         break;
-    //     case 3:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
-    //         chargestate = "UNCHARGED";
-    //         break;
-    //     case 4:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
-    //         chargestate = "NO_BATTER";
-    //         break;
-    //     default:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
-    //         chargestate = "UNKOWN_STATE";
-    //         break;
-    // }
-    // ui->battary_state->setText(chargeStateStr);
 
-    // // 修改电量的显示样式
-    // QString batteryPercentStr =
-    //     "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
-    // ui->battary_value->setText(batteryPercentStr);
 
-    // // 修改电压的显示样式
-    // QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-    //                             QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-    //                             "V</span>";
-    // ui->battary_voltage->setText(batteryVoltageStr);
-
-    // voltage = adc.voltageMv / 1000.0;
-    // // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
-    // // QRegularExpressionMatch match = regex.match(chargeStateStr);
-    // // chargestate = match.captured(2);
-    // is_battary_test = 1;
-    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "通过";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     charageresult = "通过";
-    //     voltageresult = "通过";
-    //     showlog("电量和充电测试通过");
-    // }
-    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("充电状态不通过");
-    //     charageresult = "失败";
-    //     voltageresult = "通过";
-    //     TestResult = failValue;
-    // }
-    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary)
-
-    // {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("电量测试不通过");
-    //     voltageresult = "失败";
-    //     charageresult = "通过";
-    //     TestResult = failValue;
-    // }
-    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("电量和充电测试都不通过");
-    //     voltageresult = "失败";
-    //     charageresult = "失败";
-    //     TestResult = failValue;
-    // }
-
-    // 电量测试为异步判定：在电池回调里回填当前步骤的 done/pass。
-    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
-        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-        if (it == testFunctions.end() || it->name != "获取电量信息") {
-            return;
-        }
-        // bool cardControlPass = pb->getState(Qpb::PbStateType::DisableSleep);
-        // if (!cardControlPass) {
-        //     showlog("电量测试卡控状态未满足：DisableSleep 未就绪");
-        // }
-
-        stepRuntime_.done = true;
-        stepRuntime_.pass = (adc.percent >= standbattary);
-        stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
-        if (!stepRuntime_.pass) {
-            TestResult = failValue;
-        }
+    // 电量测试为异步判定：在电池回调里通过 completeCurrentStep 回填当前步骤。
+    if (!isCurrentStep("获取电量信息")) {
+        return;
     }
+    const bool pass = (adc.percent >= standbattary);
+    const QString testData = QString("电量:%1%").arg(adc.percent);
+    const QString failLog =
+        pass ? QString()
+             : QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary);
+    completeCurrentStep("获取电量信息", pass, testData, failLog, QString());
 }
 
 void QFreeWork::refreshWifiState(int state) {
@@ -211,22 +101,14 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
-    // “获取整机SN码”步骤采用异步判定：设备返回SN必须与UI输入SN一致才通过。
-    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
-        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-        if (it != testFunctions.end() && it->name == "获取整机SN码") {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
-            stepRuntime_.testData = deviceTailSnFromDevice;
-            if (!stepRuntime_.pass) {
-                TestResult = failValue;
-                showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
-            } else {
-                showlog("整机SN校验通过");
-            }
-        }
-    }
+    // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
+    const bool snPass =
+        (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
+    const QString failLog =
+        snPass ? QString()
+               : ("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
+    completeCurrentStep("获取整机SN码", snPass, deviceTailSnFromDevice, failLog,
+                        snPass ? ("整机SN校验通过") : QString());
 
     // if (deviceTailSnFromDevice == "")
     // {
@@ -236,12 +118,7 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
 
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
     // “获取外围设备状态”步骤采用异步判定：按设置项勾选和期望值判定通过。
-    if (!(stepRuntime_.started && stepRuntime_.functionId >= 0)) {
-        return;
-    }
-    auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-    if (it == testFunctions.end() || it->name != "获取外围设备状态") {
+    if (!isCurrentStep("获取外围设备状态")) {
         return;
     }
 
@@ -290,16 +167,12 @@ void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
     appendPeriphItem("PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
     testResultTableUpdate(periphTestItems);
 
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    stepRuntime_.testData = "详见外设分项";
-    if (!pass) {
-        TestResult = failValue;
-        showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
-                    .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr));
-    } else {
-        showlog("外围状态校验通过");
-    }
+    const QString failLog =
+        pass ? QString()
+             : QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
+                       .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr);
+    completeCurrentStep("获取外围设备状态", pass, QStringLiteral("详见外设分项"), failLog,
+                        pass ? QStringLiteral("外围状态校验通过") : QString());
 }
 
 void QFreeWork::refreshBleRssi(QString data) {

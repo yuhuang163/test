@@ -114,6 +114,10 @@ void Qat::sendMac(QString mac) {
     QString s = "AT+MAC=" + mac + "\r\n";
     sendCmd(s);
 }
+void Qat::sendDcon(QString mac) {
+    QString s = "AT+DCON=" + mac + "\r\n";
+    sendCmd(s);
+}
 void Qat::sendMAIN(QString mac) {
     QString s = "AT+MAIN=" + mac + "\r\n";
     sendCmd(s);

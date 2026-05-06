@@ -666,11 +666,30 @@ void test_base::updateMainStyle(QString style) {
     }
 }
 
-void test_base::solveGetBrushResponse(int data) { getRespone = data; }
+void test_base::solveGetBrushResponse(int data) {
+    getRespone = data;
+    if (data && commandRetryTimer) {
+        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+        commandRetryTimer->stop();
+        commandRetryTimer->deleteLater();
+        commandRetryTimer = nullptr;
+        commandRetryCount = 0;
+        canGoNext = 1;
+        sendRetryOver = 0;
+        getRespone = 0;
+        showlog("sendCommandWithRetry完成，收到设备响应");
+    }
+}
 
 // condition=1是成功；timeoutMs 控制等待超时时间
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
-    static int retryCount = 0;
+    if (commandRetryTimer) {
+        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+        commandRetryTimer->stop();
+        commandRetryTimer->deleteLater();
+        commandRetryTimer = nullptr;
+    }
+    commandRetryCount = 0;
     canGoNext = false;
     sendRetryOver = false;
     getRespone = 0;
@@ -680,38 +699,40 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     }
 
     // 启动定时器
-    QTimer* timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, [=]() {
+    commandRetryTimer = new QTimer(this);
+    connect(commandRetryTimer, &QTimer::timeout, this, [=]() {
         QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        qDebug() << "retryCount=" << retryCount
+        qDebug() << "retryCount=" << commandRetryCount
                  << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
                         .arg(currentTime)
-                        .arg(reinterpret_cast<quintptr>(timer), 0, 16);  // 以16进制显示地址
+                        .arg(reinterpret_cast<quintptr>(commandRetryTimer), 0, 16);  // 以16进制显示地址
 
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr && !(retryCount % 5)) {
-                    showlog("重新发送指令" + QString::number(retryCount));
+            if (commandRetryCount < 20) {  // 如果还有重试次数
+                if (commandFunc != nullptr && !(commandRetryCount % 5)) {
+                    showlog("重新发送指令" + QString::number(commandRetryCount));
                     commandFunc();  // 重新发送指令
                 }
-                retryCount++;
+                commandRetryCount++;
             } else {
-                disconnect(timer, &QTimer::timeout, this, nullptr);
+                disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
                 getRespone = 0;
-                retryCount = 0;
+                commandRetryCount = 0;
                 sendRetryOver = 1;
                 canGoNext = 1;  // 超时后放行状态机，由上层根据 sendRetryOver 判失败
-                timer->stop();  // 达到最大重试次数，停止定时器
+                commandRetryTimer->stop();  // 达到最大重试次数，停止定时器
 
                 showlog("达到最大重试次数，停止定时器");
-                delete timer;
+                commandRetryTimer->deleteLater();
+                commandRetryTimer = nullptr;
                 return 0;
             }
         } else {  // 如果收到响应
-            disconnect(timer, &QTimer::timeout, this, nullptr);
-            timer->stop();
-            delete timer;
-            retryCount = 0;
+            disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+            commandRetryTimer->stop();
+            commandRetryTimer->deleteLater();
+            commandRetryTimer = nullptr;
+            commandRetryCount = 0;
             getRespone = 0;
             canGoNext = 1;
 
@@ -721,7 +742,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
         return 0;
     });
 
-    timer->start(timeoutMs);  // 启动定时器
+    commandRetryTimer->start(timeoutMs);  // 启动定时器
     return 0;
 }
 QString test_base::exportTableContent() {
