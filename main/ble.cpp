@@ -343,6 +343,14 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
          
                 ble_scan_over = true;   
+                {
+                    uint8_t addrType = myadvertisedDevice.getAddressType();
+                    Serial.print("目标设备地址类型 addrType=");
+                    Serial.print(addrType);
+                    Serial.print(" (");
+                    Serial.print((addrType == BLE_ADDR_TYPE_PUBLIC) ? "public" : ((addrType == BLE_ADDR_TYPE_RANDOM) ? "random" : "other"));
+                    Serial.println(")");
+                }
                 esp_bd_addr_t target_device_addr;
                 strToBdAddr(targetDeviceAddress, target_device_addr);
 
@@ -543,8 +551,27 @@ bool connectToServer()
     Serial.println(targetDeviceAddress);
     if (pClient != nullptr)
     {
-        delete pClient;
-        pClient = nullptr;
+        // 先请求断开，并等待异步 DISCONNECT_EVT 回调收敛。
+        // 这里不立即 delete，避免 BT 线程仍在回调旧对象导致 UAF。
+        if (pClient->isConnected())
+        {
+            pClient->disconnect();
+            uint32_t waitMs = 0;
+            while (waitMs < 1000)
+            {
+                if (!pClient->isConnected() && pClient->getGattcIf() == ESP_GATT_IF_NONE)
+                {
+                    break;
+                }
+                delay(10);
+                waitMs += 10;
+            }
+            if (waitMs >= 1000)
+            {
+                Serial.println("等待旧连接回落超时，继续尝试重连");
+            }
+        }
+
         WriteCharacteristic = nullptr;
         mainNotifyCharacteristic = nullptr;
         mainWriteCharacteristic = nullptr;
@@ -556,20 +583,52 @@ bool connectToServer()
         AppWriteCharacteristic = nullptr;
         normolNotifyCharacteristic = nullptr;
         normolWriteCharacteristic = nullptr;
-
-        Serial.println("已释放pClient和WriteCharacteristic");
     }
-    pClient = BLEDevice::createClient(); // 需要反初始化
-    Serial.println("创建客户端...");
+    else
+    {
+        pClient = BLEDevice::createClient(); // 首次创建
+        Serial.println("创建客户端...");
+    }
 
     pClient->setClientCallbacks(connect_callback); // 设置客户端回调函数
     Serial.println("创建完成,连接到设备");
-    Serial.println(myDevice->getAddress().toString());
 
-    if (pClient->connect(myDevice)) // 连接到远程BLE服务器
+    bool connected = false;
+    if (myDevice != nullptr)
+    {
+        Serial.println(myDevice->getAddress().toString());
+        connected = pClient->connect(myDevice); // 来自扫描的连接
+    }
+    else
+    {
+        Serial.println("未提供扫描设备信息，尝试按 MAC 直连");
+        BLEAddress addr(targetDeviceAddress);
+        // 按用户要求：只尝试一次连接，不做地址类型重试。
+        const uint32_t dconTimeoutMs = 15000;
+        const esp_ble_addr_type_t type = BLE_ADDR_TYPE_RANDOM;
+        Serial.print("直连尝试 addrType=");
+        Serial.print((type == BLE_ADDR_TYPE_PUBLIC) ? "public" : "random");
+        Serial.print(", timeoutMs=");
+        Serial.println(dconTimeoutMs);
+
+        connected = pClient->connect(addr, type, dconTimeoutMs);
+        if (connected && !pClient->isConnected())
+        {
+            Serial.println("connect() 返回成功但 isConnected() 为 false，视为失败");
+            connected = false;
+        }
+    }
+
+    if (connected) // 连接到远程BLE服务器
     {
         Serial.print("连接到UUID  ");
         Serial.println(use_normal_service);
+        if (!pClient->isConnected())
+        {
+            Serial.println("connect 返回成功但实际已断开，取消服务发现");
+            candeleteble = true;
+            return false;
+        }
         if (pClient != nullptr)
         {
             // 连接在服务发现过程中可能被对端断开，逐个检查避免阻塞卡住 loop。

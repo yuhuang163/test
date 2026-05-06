@@ -38,6 +38,7 @@ enum CommandType
     BOMB,
     OTADATA,
     MAINDATA,
+    DCON,
     // 加入其他的at命令
 };
 bool isValidMacAddress(const byte *address, size_t length)
@@ -109,6 +110,7 @@ void processATCommand(byte *get_cmd, int length)
         {"BLE=", 4, BLE, CLIENT},            // 使用显式指定的 CLIENT
         {"OTA=", 4, OTA_, OTA},              // 使用显式指定的 OTA
         {"MAIN=", 5, MAIN_, MAIN},           // 使用显式指定的 MAIN
+        {"DCON=", 5, DCON, FAC},          // FAC 通道）
         {"GMAC", 4, GMAC},                   // 默认使用 FAC
         {"BOMB=", 5, BOMB},                  // 默认使用 FAC
         {"BLELOG=", 7, BLELOG},              // 默认使用 FAC
@@ -157,10 +159,36 @@ void processATCommand(byte *get_cmd, int length)
             Serial.println(targetDeviceAddress);
 
             ble_scan_over = false;
-            if (ble_connected && candeleteble)
+        }
+        break;
+
+    case DCON:
+        if (isValidMacAddress(get_cmd, length))
+        {
+            String packetString = "";
+            for (int i = 0; i < length; i++)
             {
-                deinit_ble(); // 重置蓝牙
+                packetString += char(get_cmd[i]);
             }
+            strcpy(targetDeviceAddress, packetString.c_str());
+            is_need_reset_adress = false;
+
+            Serial.print("AT+DCON 直连目标 MAC：");
+            Serial.println(targetDeviceAddress);
+
+            // 不触发后台扫描，直接走 loop 内 connectToServer() 的直连分支
+            ble_scan_over = true;
+
+            // 直连前先停止扫描，避免扫描/连接并行导致异常断开
+            if (BLEDevice::getScan() != nullptr)
+            {
+                BLEDevice::getScan()->stop();
+                BLEDevice::getScan()->clearResults();
+
+            }
+
+            // 确保不会沿用旧的扫描设备缓存（deinit_ble 会 delete myDevice）
+            doConnect = true;
         }
         break;
 
@@ -228,7 +256,6 @@ void processATCommand(byte *get_cmd, int length)
         Serial.println("伤害距离: " + damageDistance);
         Serial.println("连接间隔时间: " + connectionInterval);
         Serial.println("发送指令: " + sendCommand);
-        deinit_ble();
         ble_scan_over = false;
         StartBombState = true;
         break;

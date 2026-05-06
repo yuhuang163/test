@@ -41,10 +41,11 @@
     "list": "cpp",
     "vector": "cpp"
   },
-  "idf.portWin": "COM3",
+  "idf.portWin": "COM4",
   "idf.monitorBaudRate": "921600",
   "C_Cpp.errorSquiggles": "disabled",
   "idf.espIdfPathWin": "C:\\Users\\Administrator\\esp\\v5.1.4\\esp-idf",
   "idf.toolsPathWin": "C:\\Users\\Administrator\\.espressif",
-  "idf.pythonInstallPath": "C:\\Users\\Administrator\\.espressif\\tools\\idf-python\\3.11.2\\python.exe"
+  "idf.pythonInstallPath": "C:\\Users\\Administrator\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.currentSetup": "C:\\Users\\Administrator\\esp\\v5.1.4\\esp-idf"
 }
