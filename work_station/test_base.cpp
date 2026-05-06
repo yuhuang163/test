@@ -62,6 +62,7 @@ void test_base::initData() {
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::send_pb_date, this, &test_base::refreshPbData);
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
+    connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
@@ -80,7 +81,6 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
     connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
             SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
-    connect(&protocolManager, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
     connect(&protocolManager, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));
     connect(pb, SIGNAL(send_Lcd_CONTROL_state(ProtocolLcdControlData)), this, SLOT(refreshLcdControl(ProtocolLcdControlData)));
@@ -667,13 +667,14 @@ void test_base::updateMainStyle(QString style) {
 
 void test_base::solveGetBrushResponse(int data) { getRespone = data; }
 
-// condition=1是成功
-int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
+// condition=1是成功；timeoutMs 控制等待超时时间
+int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
     static int retryCount = 0;
     canGoNext = false;
     sendRetryOver = false;
+    getRespone = 0;
     if (commandFunc != nullptr) {
-        showlog("发送pb初始指令");
+        showlog("首次发送指令");
         commandFunc();  // 重新发送指令
     }
 
@@ -689,7 +690,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
                 if (commandFunc != nullptr && !(retryCount % 5)) {
-                    showlog("重新发送指令发送pb指令" + QString::number(retryCount));
+                    showlog("重新发送指令" + QString::number(retryCount));
                     commandFunc();  // 重新发送指令
                 }
                 retryCount++;
@@ -719,7 +720,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         return 0;
     });
 
-    timer->start(300);  // 启动定时器
+    timer->start(timeoutMs);  // 启动定时器
     return 0;
 }
 QString test_base::exportTableContent() {

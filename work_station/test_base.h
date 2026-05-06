@@ -70,7 +70,7 @@ public:
     // 通用函数
     void waitWork(int ms);
     void updateMainStyle(QString style);
-    int sendCommandWithRetry(std::function<void()> commandFunc);
+    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();

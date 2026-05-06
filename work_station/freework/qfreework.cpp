@@ -599,9 +599,38 @@ void QFreeWork::refreshAmmeterData(QString data) {
         qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
         // ui->log->appendPlainText(formattedValue+"ma");
         showlog(formattedValue + "ma");
+
+        // “读取治具电流测量值”步骤异步卡控：电流在阈值范围内才通过。
+        if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
+            auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                                   [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+            if (it != testFunctions.end() && it->name == "读取治具电流测量值") {
+                stepRuntime_.done = true;
+                stepRuntime_.pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
+                stepRuntime_.testData = formattedValue + "ma";
+                if (!stepRuntime_.pass) {
+                    TestResult = failValue;
+                    showlog(QString("电流卡控失败，测量值=%1ma，范围=[%2,%3]ma")
+                                .arg(formattedValue, QString::number(LowCurrent), QString::number(HighCurrent)));
+                } else {
+                    showlog("电流卡控通过");
+                }
+            }
+        }
     } else {
         // 转换失败
         qDebug() << getIndex() << "无法将字符串转换为 double 类型";
+        if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
+            auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                                   [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+            if (it != testFunctions.end() && it->name == "读取治具电流测量值") {
+                stepRuntime_.done = true;
+                stepRuntime_.pass = false;
+                stepRuntime_.testData = "电流解析失败";
+                TestResult = failValue;
+                showlog("电流卡控失败：无法解析电流数据");
+            }
+        }
     }
 }
 
@@ -791,7 +820,21 @@ void QFreeWork::on_getMac_returnPressed() {
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测
-    processGetMesTestValue();               // mes获取
+    // processGetMesTestValue();               // mes获取
+
+    const QString parsedMac = parseMacFromSn(ui->getMac->text());
+    if (parsedMac.isEmpty()) {
+        ui->getMac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        showlog("SN解析MAC失败");
+        ui->getMac->setFocus();
+        return;
+    }
+
+    ui->macInput->setText(parsedMac);
+    showlog("SN解析MAC成功: " + parsedMac);
+
+on_macInput_returnPressed();
 }
 
 void QFreeWork::processInspection(QString inputSnText) {

@@ -22,6 +22,7 @@ public:
 
 signals:
     void command(QString cmd, QString parameter);
+    void sendGetProductResponse(int data);
     void send_ble_state(int state);
     void send_rssi(QString state);
     void send_dongle_ver(QString state);

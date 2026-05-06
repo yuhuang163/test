@@ -188,6 +188,7 @@ void Qat::WIFI_disconnected(QString p) {Q_UNUSED(p);
 void Qat::connected(QString p) {Q_UNUSED(p);
     qDebug() << "at蓝牙连接成功";
 
+    emit sendGetProductResponse(1);
     emit send_ble_state(1);
     isConnected = true;
 }

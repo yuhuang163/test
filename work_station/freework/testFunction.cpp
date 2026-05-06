@@ -56,7 +56,9 @@
     /* X(53, "获取设备信息(ota)", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::DeviceInfo); })) */    \
     X(54, "获取外围设备状态", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); }))    \
     /* X(55, "获取连接信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
-   X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) 
+    X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
+    X(57, "读取治具电流测量值", true, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
+    X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendMac(macAddress); }, 6 * 1000))
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
