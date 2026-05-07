@@ -105,13 +105,6 @@
            </layout>
           </item>
           <item>
-           <widget class="QLineEdit" name="nfc_sn">
-            <property name="text">
-             <string>5504867023111111</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_17">
             <property name="topMargin">
              <number>0</number>
@@ -134,7 +127,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string>AIR1BP314GR1122334455660A4309N00189</string>
+                 <string>AIR1123456C29BA91BMB5A700501</string>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>
@@ -465,13 +458,6 @@
         <string>蓝牙绑定工站</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item row="4" column="1">
-         <widget class="QLineEdit" name="nfc_count">
-          <property name="text">
-           <string>0</string>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout_16">
           <item>
@@ -534,27 +520,6 @@
          <widget class="QPushButton" name="clear_scan">
           <property name="text">
            <string>清空扫描</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
-         <widget class="QPushButton" name="nfc_write_read">
-          <property name="text">
-           <string>nfc读写</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="1">
-         <widget class="QPushButton" name="clear_nfc_data">
-          <property name="text">
-           <string>清空nfc数据</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="nfc_mac">
-          <property name="text">
-           <string>3C:84:27:07:A8:D2</string>
           </property>
          </widget>
         </item>

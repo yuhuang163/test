@@ -13,6 +13,7 @@
 #include <setupapi.h>
 #include <windows.h>
 
+#include <QDateTime>
 #include <QSet>
 #include <QString>
 
@@ -67,6 +68,7 @@ void test_base::initData() {
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::send_pb_date, this, &test_base::refreshPbData);
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
+    connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
@@ -85,7 +87,6 @@ void test_base::signalAndslot() {
     connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
     connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
             SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
-    connect(&protocolManager, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
     connect(&protocolManager, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));
     connect(pb, SIGNAL(send_Lcd_CONTROL_state(ProtocolLcdControlData)), this, SLOT(refreshLcdControl(ProtocolLcdControlData)));
@@ -671,51 +672,73 @@ void test_base::updateMainStyle(QString style) {
     }
 }
 
-void test_base::solveGetBrushResponse(int data) { getRespone = data; }
+void test_base::solveGetBrushResponse(int data) {
+    getRespone = data;
+    if (data && commandRetryTimer) {
+        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+        commandRetryTimer->stop();
+        commandRetryTimer->deleteLater();
+        commandRetryTimer = nullptr;
+        commandRetryCount = 0;
+        canGoNext = 1;
+        sendRetryOver = 0;
+        getRespone = 0;
+        showlog("sendCommandWithRetry完成，收到设备响应");
+    }
+}
 
-// condition=1是成功
-int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
-    static int retryCount = 0;
+// condition=1是成功；timeoutMs 控制等待超时时间
+int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
+    if (commandRetryTimer) {
+        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+        commandRetryTimer->stop();
+        commandRetryTimer->deleteLater();
+        commandRetryTimer = nullptr;
+    }
+    commandRetryCount = 0;
     canGoNext = false;
     sendRetryOver = false;
+    getRespone = 0;
     if (commandFunc != nullptr) {
-        showlog("发送pb初始指令");
+        showlog("首次发送指令");
         commandFunc();  // 重新发送指令
     }
 
     // 启动定时器
-    QTimer* timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, [=]() {
+    commandRetryTimer = new QTimer(this);
+    connect(commandRetryTimer, &QTimer::timeout, this, [=]() {
         QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        qDebug() << "retryCount=" << retryCount
+        qDebug() << "retryCount=" << commandRetryCount
                  << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
                         .arg(currentTime)
-                        .arg(reinterpret_cast<quintptr>(timer), 0, 16);  // 以16进制显示地址
+                        .arg(reinterpret_cast<quintptr>(commandRetryTimer), 0, 16);  // 以16进制显示地址
 
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr && !(retryCount % 5)) {
-                    showlog("重新发送指令发送pb指令" + QString::number(retryCount));
+            if (commandRetryCount < 20) {  // 如果还有重试次数
+                if (commandFunc != nullptr && !(commandRetryCount % 5)) {
+                    showlog("重新发送指令" + QString::number(commandRetryCount));
                     commandFunc();  // 重新发送指令
                 }
-                retryCount++;
+                commandRetryCount++;
             } else {
-                disconnect(timer, &QTimer::timeout, this, nullptr);
+                disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
                 getRespone = 0;
-                retryCount = 0;
+                commandRetryCount = 0;
                 sendRetryOver = 1;
                 canGoNext = 1;  // 超时后放行状态机，由上层根据 sendRetryOver 判失败
-                timer->stop();  // 达到最大重试次数，停止定时器
+                commandRetryTimer->stop();  // 达到最大重试次数，停止定时器
 
                 showlog("达到最大重试次数，停止定时器");
-                delete timer;
+                commandRetryTimer->deleteLater();
+                commandRetryTimer = nullptr;
                 return 0;
             }
         } else {  // 如果收到响应
-            disconnect(timer, &QTimer::timeout, this, nullptr);
-            timer->stop();
-            delete timer;
-            retryCount = 0;
+            disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+            commandRetryTimer->stop();
+            commandRetryTimer->deleteLater();
+            commandRetryTimer = nullptr;
+            commandRetryCount = 0;
             getRespone = 0;
             canGoNext = 1;
 
@@ -725,7 +748,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc) {
         return 0;
     });
 
-    timer->start(300);  // 启动定时器
+    commandRetryTimer->start(timeoutMs);  // 启动定时器
     return 0;
 }
 QString test_base::exportTableContent() {
@@ -768,12 +791,14 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
 
         // 设置每列的数据
         // testResultTable()->setItem(row, 0, new QTableWidgetItem(timestamp));
-        testResultTable()->setItem(row, 0, new QTableWidgetItem(item.testItem));
-        testResultTable()->setItem(row, 1, new QTableWidgetItem(item.testData));
-
-        // 设置结果列的数据，假设结果是一个字符串
+        QTableWidgetItem* testItemCell = new QTableWidgetItem(item.testItem);
+        QTableWidgetItem* testDataCell = new QTableWidgetItem(item.testData);
         QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
         QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
+        testItemCell->setTextAlignment(Qt::AlignCenter);
+        testDataCell->setTextAlignment(Qt::AlignCenter);
+        resultItem->setTextAlignment(Qt::AlignCenter);
+        askItem->setTextAlignment(Qt::AlignCenter);
 
         // 设置失败状态的背景颜色为红色
         if (item.testResult == "失败") {
@@ -782,6 +807,8 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
             resultItem->setBackground(QBrush(Qt::green));
         }
 
+        testResultTable()->setItem(row, 0, testItemCell);
+        testResultTable()->setItem(row, 1, testDataCell);
         testResultTable()->setItem(row, 2, resultItem);
         testResultTable()->setItem(row, 3, askItem);
     }
@@ -890,8 +917,10 @@ void test_base::testResultTableInit() {
             << "结果"
             << "要求";
     testResultTable()->setHorizontalHeaderLabels(headers);
-    // 设置表格自适应列宽
-    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    testResultTable()->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+    // 列宽随表格尺寸变化，拖拽外部大小时同步缩放
+    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    testResultTable()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 void test_base::LockProductUI() {
     if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
@@ -1024,6 +1053,29 @@ QString test_base::getValueBySN(const QString& sn) {
 
     return "SUBPID_ERRO";
 }
+QString test_base::generateDateCode() {
+    const QDateTime currentDateTime = QDateTime::currentDateTime();
+    const int year = currentDateTime.date().year() % 100;
+    const int month = currentDateTime.date().month();
+    const int day = currentDateTime.date().day();
+
+    char monthCode;
+    if (month >= 1 && month <= 9) {
+        monthCode = static_cast<char>('0' + month);
+    } else {
+        monthCode = static_cast<char>('A' + (month - 10));
+    }
+
+    char dayCode;
+    if (day >= 1 && day <= 9) {
+        dayCode = static_cast<char>('0' + day);
+    } else {
+        dayCode = static_cast<char>('A' + (day - 10));
+    }
+
+    return QString::number(year) + QChar::fromLatin1(monthCode) + QChar::fromLatin1(dayCode);
+}
+
 QString test_base::parseMacFromSn(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression("\\s+"));

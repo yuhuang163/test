@@ -22,6 +22,7 @@ public:
 
 signals:
     void command(QString cmd, QString parameter);
+    void sendGetProductResponse(int data);
     void send_ble_state(int state);
     void send_rssi(QString state);
     void send_dongle_ver(QString state);
@@ -65,6 +66,7 @@ public slots:
     void sendCmd(QString cmd);
     void sendotaMac(QString mac);
     void sendMac(QString mac);
+    void sendDcon(QString mac);
     void sendBLEDEVICELOG(int state);
     void sendOTADATA(int state);
     void sendMAIN(QString mac);

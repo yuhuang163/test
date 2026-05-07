@@ -1,0 +1,272 @@
+﻿#include "qfreework.h"
+
+#include <algorithm>
+
+// 协议 / 治具 / dongle 回包：解析与条件判定（仍为 QFreeWork 成员，仅拆到本翻译单元）
+
+bool QFreeWork::isCurrentStep(const QString& functionName) const {
+    if (!stepRuntime_.started || stepRuntime_.functionId < 0) {
+        return false;
+    }
+    auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
+                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
+    return it != testFunctions.cend() && it->name == functionName;
+}
+
+void QFreeWork::appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name,
+                                 const QString& value, const QString& expect, bool needCompare) {
+    if (!needCompare) {
+        return;
+    }
+    TestItem item;
+    item.testItem = name;
+    item.testData = value;
+    item.ask = expect;
+    item.testResult = compareVersions(expect, value) ? "通过" : "失败";
+    if (item.testResult == "失败") {
+        pass = false;
+    }
+    periphTestItems.append(item);
+}
+void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
+    const QString productName = SETTINGS.value("ProductInfo/Product_Name").toString();
+    QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
+    QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
+    QString Age_State = SETTINGS.value("ProductInfo/Age_State").toString();
+    const bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+    const bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
+    const bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+    const bool isAgingStatusTest = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
+
+    product = data.product_name;
+    wifiMac.clear();
+    for (int var = 0; var < data.wifi_mac.size; ++var) {
+        wifiMac += QString::number(data.wifi_mac.bytes[var], 16);
+        if (var < data.wifi_mac.size - 1)
+            wifiMac += ":";
+    }
+    qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
+
+    if (!isCurrentStep("获取基本信息")) {
+        return;
+    }
+
+    QVector<TestItem> baseItems;
+    baseItems.reserve(4);
+    bool pass = true;
+    appendPeriphItem(baseItems, pass, "产品名称", data.product_name, productName, isProductTest);
+    appendPeriphItem(baseItems, pass, "软件版本", data.soft_version, softwareVersion, isSoftwareTest);
+    appendPeriphItem(baseItems, pass, "资源版本", data.res_version, resourceVersion, isResourceTest);
+    appendPeriphItem(baseItems, pass, "老化状态", QString::number(data.ageing_state), Age_State, isAgingStatusTest);
+    testResultTableUpdate(baseItems);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = "详细如上";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("基本信息校验失败：soft=%1(%2) res=%3(%4) age=%5(%6)")
+                    .arg(data.soft_version, softwareVersion, data.res_version, resourceVersion,
+                         QString::number(data.ageing_state), Age_State));
+    } else {
+        showlog("基本信息校验通过");
+    }
+}
+
+void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
+
+
+    // 电量测试为异步判定：在电池回调里显式回填当前步骤。
+    if (!isCurrentStep("获取电量信息")) {
+        return;
+    }
+    const bool pass = (adc.percent >= standbattary);
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary));
+    }
+}
+
+void QFreeWork::refreshWifiState(int state) {
+    if (state) {
+        // ui->WIFIStatusLabel->setText("WIFI连接：<font color='green'>成功</font>");
+        //  showlog("WIFI连接成功");
+        wifistate = 1;
+    } else {
+        //  ui->WIFIStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
+        //  showlog("WIFI连接断开");
+        wifistate = 0;
+    }
+}
+
+void QFreeWork::refreshSn(ProtocolSnData data) {
+    deviceTailSnFromDevice = data.value.trimmed();
+    const QString expectedTailSnFromUiText = ui->getMac->text().trimmed();
+    qDebug() << getIndex() << "dev_info" << data.value;
+    qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
+    ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
+
+    // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
+    if (!isCurrentStep("获取整机SN码")) {
+        return;
+    }
+    QVector<TestItem> snItems;
+    snItems.reserve(1);
+    bool snPass = !expectedTailSnFromUiText.isEmpty();
+    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedTailSnFromUiText, true);
+    stepRuntime_.done = true;
+    stepRuntime_.pass = snPass;
+    stepRuntime_.testData = deviceTailSnFromDevice;
+    if (!snPass) {
+        TestResult = failValue;
+        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
+    } else {
+        showlog("整机SN校验通过");
+    }
+
+    // if (deviceTailSnFromDevice == "")
+    // {
+    //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
+    // }
+}
+
+void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
+    // “获取外围设备状态”步骤采用异步判定：按设置项勾选和期望值判定通过。
+    if (!isCurrentStep("获取外围设备状态")) {
+        return;
+    }
+
+    const QString press0Status = SETTINGS.value("PeripheralStatus/Press0_Status").toString();
+    const QString press1Status = SETTINGS.value("PeripheralStatus/Press1_Status").toString();
+    const QString batteryIcStatus = SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString();
+    const QString touchIcStatus = SETTINGS.value("PeripheralStatus/TouchIc_Status").toString();
+    const QString ledIcStatus = SETTINGS.value("PeripheralStatus/LedIc_Status").toString();
+    const QString pdIcStatus = SETTINGS.value("PeripheralStatus/PdIc_Status").toString();
+
+    // freework 外设分项使用独立勾选开关，避免复用旧的外围配置导致误判。
+    const bool checkPress0 = SETTINGS.value("FreeWorkPeripheral/Press0_checkBox").toBool();
+    const bool checkPress1 = SETTINGS.value("FreeWorkPeripheral/Press1_checkBox").toBool();
+    const bool checkBatteryIc = SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox").toBool();
+    const bool checkTouchIc = SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox").toBool();
+    const bool checkLedIc = SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox").toBool();
+    const bool checkPdIc = SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox").toBool();
+
+    const QString press0StateStr = QString::number(data.press0_state);
+    const QString press1StateStr = QString::number(data.press1_state);
+    const QString batteryStateStr = QString::number(data.battery_ic_state);
+    const QString touchStateStr = QString::number(data.touch_ic_state);
+    const QString ledStateStr = QString::number(data.led_ic_state);
+    const QString pdStateStr = QString::number(data.pd_ic_state);
+
+    QVector<TestItem> periphTestItems;
+    periphTestItems.reserve(6);
+    bool pass = true;
+    appendPeriphItem(periphTestItems, pass, "压感0状态", press0StateStr, press0Status, checkPress0);
+    appendPeriphItem(periphTestItems, pass, "压感1状态", press1StateStr, press1Status, checkPress1);
+    appendPeriphItem(periphTestItems, pass, "电池IC状态", batteryStateStr, batteryIcStatus, checkBatteryIc);
+    appendPeriphItem(periphTestItems, pass, "触摸IC状态", touchStateStr, touchIcStatus, checkTouchIc);
+    appendPeriphItem(periphTestItems, pass, "LED IC状态", ledStateStr, ledIcStatus, checkLedIc);
+    appendPeriphItem(periphTestItems, pass, "PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
+    testResultTableUpdate(periphTestItems);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = "详细如上";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
+                    .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr));
+    } else {
+        showlog("外围状态校验通过");
+    }
+}
+
+void QFreeWork::refreshBleRssi(QString data) {
+    // qDebug() << data;
+    ui->BLE_RSSI->setText("BLE的RSSI:" + data);
+    // showlog("zzzzz"+data);
+    BLE_RSSI = data;
+    bool ok;
+    BLE_RSSI.toInt(&ok);
+
+    if (!ok) {
+        qDebug() << "转换蓝牙rssi失败,内容为" + BLE_RSSI + "内容结束";
+    } else {
+        // showlog("转换成功");
+        intblerssi = BLE_RSSI.toInt(&ok);
+    }
+}
+
+void QFreeWork::refreshAmmeterData(QString data) {
+    qDebug() << getIndex() << "收到电流数据" << data;
+
+    // 使用 toDouble() 进行转换
+    bool conversionOk = false;
+    double normalValue = data.toDouble(&conversionOk) / 100;
+
+    if (!conversionOk) {
+        qDebug() << getIndex() << "无法将字符串转换为 double 类型";
+        if (!isCurrentStep("读取治具电流测量值")) {
+            return;
+        }
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "电流解析失败";
+        TestResult = failValue;
+        showlog("电流卡控失败：无法解析电流数据");
+        return;
+    }
+
+    qDebug() << getIndex() << "转换后的数值：" << normalValue << "ma";
+    measure_ammeter = normalValue;
+    const QString formattedValue = QString::number(normalValue, 'f', 4);
+    qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
+    showlog(formattedValue + "ma");
+
+    if (!isCurrentStep("读取治具电流测量值")) {
+        return;
+    }
+    const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = formattedValue + "ma";
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("电流卡控失败，测量值=%1ma，范围=[%2,%3]ma")
+                    .arg(formattedValue, QString::number(LowCurrent), QString::number(HighCurrent)));
+    } else {
+        showlog("电流卡控通过");
+    }
+}
+
+void QFreeWork::getWifiMsg(QString data) {
+    // qDebug() << getIndex()<< "收到wifi数据为" << data;
+    QStringList parts = data.split("-");
+    int numPairs = parts.size() / 2;
+    for (int i = 0; i < numPairs; ++i) {
+        QString macAddress = parts[i * 2];
+        QString rssi = "-" + parts[i * 2 + 1];
+        wifiMac = wifiMac.toUpper();
+        // qDebug() << getIndex() << "dongle的的wifiMac:" << macAddress;
+        // qDebug() << getIndex() << "RSSI:" << rssi;
+        // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
+        if (macAddress == wifiMac) {
+            ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
+            // qDebug() << getIndex()<< getIndex() << " 比对成功";
+            refreshWifiState(1);
+            WIFI_RSSI = rssi;
+            bool ok;
+            WIFI_RSSI.toInt(&ok);
+
+            if (!ok) {
+                qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
+            } else {
+                //  showlog("转换成功");
+                intwifirssi = WIFI_RSSI.toInt(&ok);
+            }
+        }
+    }
+}

@@ -1,4 +1,4 @@
-
+﻿
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
@@ -58,6 +58,7 @@
 #define AGE_VER "老化测试工站   V1.3.7"
 #define MOTOR_VER "电机校准工站   V1.3.4"
 #define QC_VER "静态电流测试   V1.5.3"
+#define SUCTION_VER "吸力测试工站   V1.0.0"
 #define KEY_VER "按键测试工站   V1.0.0"
 #define SCREEN_VER "屏幕测试工站   V1.2.4"
 #define LIGHT_VER "灯光测试工站   V1.2.2"

@@ -1337,35 +1337,6 @@ void wifibletest::on_clear_nfc_data_clicked() {
     }
     return;
 }
-QString wifibletest::generateDateCode() {
-    // 获取当前日期时间
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-
-    // 获取当前年份、月份和日期
-    int year = currentDateTime.date().year() % 100;  // 获取后两位年份
-    int month = currentDateTime.date().month();
-    int day = currentDateTime.date().day();
-
-    // 月份编码
-    char monthCode;
-    if (month >= 1 && month <= 9) {
-        monthCode = '0' + month;
-    } else {
-        monthCode = 'A' + (month - 10);
-    }
-
-    // 日期编码
-    char dayCode;
-    if (day >= 1 && day <= 9) {
-        dayCode = '0' + day;
-    } else {
-        dayCode = 'A' + (day - 10);
-    }
-
-    // 构造日期编码
-    QString dateCode = QString::number(year) + monthCode + dayCode;
-    return dateCode;
-}
 
 void wifibletest::on_nfc_write_read_clicked() {
     // TODO: 在此添加控件通知处理程序代码

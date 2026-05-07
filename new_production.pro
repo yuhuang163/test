@@ -142,6 +142,7 @@ SOURCES += \
     work_station/camera/cameratest.cpp \
     work_station/common_class.cpp \
     work_station/freework/qfreework.cpp \
+    work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/testFunction.cpp \
     work_station/imu/imubox.cpp \

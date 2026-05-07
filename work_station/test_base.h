@@ -70,13 +70,14 @@ public:
     // 通用函数
     void waitWork(int ms);
     void updateMainStyle(QString style);
-    int sendCommandWithRetry(std::function<void()> commandFunc);
+    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
     void updateTestData(QVector<TestItem>& testItems);
     QString toHex(const QByteArray& data);
     QString parseMacFromSn(const QString& snCode);
+    QString generateDateCode();
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
@@ -140,6 +141,8 @@ public:
     bool getRespone = 0;
     bool canGoNext = false;
     bool sendRetryOver = false;
+    QTimer* commandRetryTimer = nullptr;
+    int commandRetryCount = 0;
 
     bool isTestContinue = false;  //测试是否继续
     bool bandingresult = false;   // mes绑定结果

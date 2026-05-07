@@ -6,10 +6,6 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
-extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加extern "C" {},注意
-{
-#include "lib/nfc/dcrf32.h"
-}
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     m_index = index;
     pack.mechines = getIndex();
@@ -69,7 +65,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
 
     if (pack.factory == "lx" || pack.factory == "jj") {
         usbBaudRate = 9600;
-        connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
     } else {
         usbBaudRate = 115200;
         ui->usbdisconnectButton->setDisabled(true);
@@ -116,6 +111,7 @@ QVector<int> QFreeWork::loadIndexesFromConfig() {
     qDebug() << "测试顺序已从配置文件中加载:" << indexes;
     return indexes;
 }
+
 // 获取下一个状态的函数
 QFreeWork::State QFreeWork::getNextState(State currentState) {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
@@ -130,7 +126,7 @@ void QFreeWork::startTask() {
             // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
             refreshOrderedTestIndexes();
             waitWork(1000);
-            at->sendMac(macAddress);  // 开始连接
+            at->sendDcon(macAddress);  // 开始连接
             showlog("MAC地址为：" + ui->macInput->text());
             teststate++;
         }
@@ -187,7 +183,8 @@ void QFreeWork::startTask() {
                     TestResult = failValue;
                 }
 
-                if (functionName != "获取外围设备状态") {
+                // static const QSet<QString> skipTableFunctions = {"获取外围设备状态", "获取基本信息"};
+                // if (!skipTableFunctions.contains(functionName)) {
                     TestItem test;
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
@@ -195,7 +192,7 @@ void QFreeWork::startTask() {
                     test.ask = "通过";
                     testItems.append(test);
                     testResultTableUpdate(testItems);
-                }
+                // }
 
                 ++teststate;
                 stepRuntime_.reset();
@@ -236,7 +233,6 @@ void QFreeWork::startTask() {
             stepRuntime_.reset();
             ui->macInput->clear();
             ui->snInput->clear();
-            ui->nfc_sn->clear();
             ui->macInput->setDisabled(0);
             ui->getMac->setDisabled(0);
             waitWork(50);
@@ -250,282 +246,6 @@ void QFreeWork::startTask() {
 
 QFreeWork::~QFreeWork() { delete ui; }
 
-void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
-    QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-    QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
-    QString Age_State = SETTINGS.value("ProductInfo/Age_State").toString();
-    product = data.product_name;
-    if (QString(data.product_name).compare("U7P") == 0 || QString(data.product_name).compare("U7") == 0) {
-        // sku = "55040701";
-        showlog("开始写入nfc数据");
-
-        on_nfc_write_read_clicked();
-    } else {
-    }
-    wifiMac.clear();
-    for (int var = 0; var < data.wifi_mac.size; ++var) {
-        wifiMac += QString::number(data.wifi_mac.bytes[var], 16);
-        if (var < data.wifi_mac.size - 1)
-            wifiMac += ":";
-    }
-    qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
-
-    if (data.soft_version == softwareVersion && data.res_version == resourceVersion &&
-        QString::number(data.ageing_state) == Age_State) {
-        showlog("软件版本正确" + data.soft_version);
-        showlog("资源版本正确" + data.res_version);
-        showlog("老化状态正确" + QString::number(data.ageing_state));
-    } else {
-        TestResult = failValue;
-        showlog("状态错误");
-        showlog("当前设备软件版本" + data.soft_version + "配置文件版本" + softwareVersion);
-        showlog("当前设备资源版本" + data.res_version + "配置文件版本" + resourceVersion);
-        showlog("当前设备老化状态" + QString::number(data.ageing_state) + "配置文件老化要求" + Age_State);
-
-        // isTestContinue = false;
-        // showlog("停止运行");
-
-        // ui->macInput->clear();
-        // ui->getMac->clear();
-        // ui->getMac->setFocus();
-    }
-}
-
-void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
-    // QString chargeStateStr;
-    // switch (adc.chargeState) {
-    //     case 1:
-    //         chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
-    //         chargestate = "CHARGE_FULL";
-    //         break;
-    //     case 2:
-    //         chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
-    //         chargestate = "CHARGING";
-    //         break;
-    //     case 3:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
-    //         chargestate = "UNCHARGED";
-    //         break;
-    //     case 4:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
-    //         chargestate = "NO_BATTER";
-    //         break;
-    //     default:
-    //         chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
-    //         chargestate = "UNKOWN_STATE";
-    //         break;
-    // }
-    // ui->battary_state->setText(chargeStateStr);
-
-    // // 修改电量的显示样式
-    // QString batteryPercentStr =
-    //     "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
-    // ui->battary_value->setText(batteryPercentStr);
-
-    // // 修改电压的显示样式
-    // QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-    //                             QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-    //                             "V</span>";
-    // ui->battary_voltage->setText(batteryVoltageStr);
-
-    // voltage = adc.voltageMv / 1000.0;
-    // // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
-    // // QRegularExpressionMatch match = regex.match(chargeStateStr);
-    // // chargestate = match.captured(2);
-    // is_battary_test = 1;
-    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "通过";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     charageresult = "通过";
-    //     voltageresult = "通过";
-    //     showlog("电量和充电测试通过");
-    // }
-    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("充电状态不通过");
-    //     charageresult = "失败";
-    //     voltageresult = "通过";
-    //     TestResult = failValue;
-    // }
-    // if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary)
-
-    // {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("电量测试不通过");
-    //     voltageresult = "失败";
-    //     charageresult = "通过";
-    //     TestResult = failValue;
-    // }
-    // if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
-    //     TestItem test;
-    //     test.testItem = "充电测试";
-    //     test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-    //     test.testResult = "失败";
-    //     test.ask = "通过";
-    //     testItems.append(test);
-
-    //     testResultTableUpdate(testItems);
-
-    //     showlog("电量和充电测试都不通过");
-    //     voltageresult = "失败";
-    //     charageresult = "失败";
-    //     TestResult = failValue;
-    // }
-
-    // 电量测试为异步判定：在电池回调里回填当前步骤的 done/pass。
-    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
-        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-        if (it == testFunctions.end() || it->name != "获取电量信息") {
-            return;
-        }
-        // bool cardControlPass = pb->getState(Qpb::PbStateType::DisableSleep);
-        // if (!cardControlPass) {
-        //     showlog("电量测试卡控状态未满足：DisableSleep 未就绪");
-        // }
-
-        stepRuntime_.done = true;
-        stepRuntime_.pass = (adc.percent >= standbattary);
-        stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
-        if (!stepRuntime_.pass) {
-            TestResult = failValue;
-        }
-    }
-}
-
-void QFreeWork::refreshWifiState(int state) {
-    if (state) {
-        // ui->WIFIStatusLabel->setText("WIFI连接：<font color='green'>成功</font>");
-        //  showlog("WIFI连接成功");
-        wifistate = 1;
-    } else {
-        //  ui->WIFIStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
-        //  showlog("WIFI连接断开");
-        wifistate = 0;
-    }
-}
-
-void QFreeWork::refreshSn(ProtocolSnData data) {
-    deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedTailSnFromUiText = ui->getMac->text().trimmed();
-    qDebug() << getIndex() << "dev_info" << data.value;
-    qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
-    ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
-
-    // “获取整机SN码”步骤采用异步判定：设备返回SN必须与UI输入SN一致才通过。
-    if (stepRuntime_.started && stepRuntime_.functionId >= 0) {
-        auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                               [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-        if (it != testFunctions.end() && it->name == "获取整机SN码") {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = (!expectedTailSnFromUiText.isEmpty() && deviceTailSnFromDevice == expectedTailSnFromUiText);
-            stepRuntime_.testData = deviceTailSnFromDevice;
-            if (!stepRuntime_.pass) {
-                TestResult = failValue;
-                showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
-            } else {
-                showlog("整机SN校验通过");
-            }
-        }
-    }
-
-    // if (deviceTailSnFromDevice == "")
-    // {
-    //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
-    // }
-}
-
-void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
-    // “获取外围设备状态”步骤采用异步判定：按设置项勾选和期望值判定通过。
-    if (!(stepRuntime_.started && stepRuntime_.functionId >= 0)) {
-        return;
-    }
-    auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-    if (it == testFunctions.end() || it->name != "获取外围设备状态") {
-        return;
-    }
-
-    const QString press0Status = SETTINGS.value("PeripheralStatus/Press0_Status").toString();
-    const QString press1Status = SETTINGS.value("PeripheralStatus/Press1_Status").toString();
-    const QString batteryIcStatus = SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString();
-    const QString touchIcStatus = SETTINGS.value("PeripheralStatus/TouchIc_Status").toString();
-    const QString ledIcStatus = SETTINGS.value("PeripheralStatus/LedIc_Status").toString();
-    const QString pdIcStatus = SETTINGS.value("PeripheralStatus/PdIc_Status").toString();
-
-    // freework 外设分项使用独立勾选开关，避免复用旧的外围配置导致误判。
-    const bool checkPress0 = SETTINGS.value("FreeWorkPeripheral/Press0_checkBox").toBool();
-    const bool checkPress1 = SETTINGS.value("FreeWorkPeripheral/Press1_checkBox").toBool();
-    const bool checkBatteryIc = SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox").toBool();
-    const bool checkTouchIc = SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox").toBool();
-    const bool checkLedIc = SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox").toBool();
-    const bool checkPdIc = SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox").toBool();
-
-    const QString press0StateStr = QString::number(data.press0_state);
-    const QString press1StateStr = QString::number(data.press1_state);
-    const QString batteryStateStr = QString::number(data.battery_ic_state);
-    const QString touchStateStr = QString::number(data.touch_ic_state);
-    const QString ledStateStr = QString::number(data.led_ic_state);
-    const QString pdStateStr = QString::number(data.pd_ic_state);
-
-    QVector<TestItem> periphTestItems;
-    periphTestItems.reserve(6);
-    bool pass = true;
-    auto appendPeriphItem = [&](const QString& name, const QString& value, const QString& expect, bool needCompare) {
-        TestItem item;
-        item.testItem = name;
-        item.testData = value;
-        item.ask = needCompare ? expect : "-";
-        item.testResult = (!needCompare || compareVersions(expect, value)) ? "通过" : "失败";
-        if (item.testResult == "失败") {
-            pass = false;
-        }
-        periphTestItems.append(item);
-    };
-
-    appendPeriphItem("压感0状态", press0StateStr, press0Status, checkPress0);
-    appendPeriphItem("压感1状态", press1StateStr, press1Status, checkPress1);
-    appendPeriphItem("电池IC状态", batteryStateStr, batteryIcStatus, checkBatteryIc);
-    appendPeriphItem("触摸IC状态", touchStateStr, touchIcStatus, checkTouchIc);
-    appendPeriphItem("LED IC状态", ledStateStr, ledIcStatus, checkLedIc);
-    appendPeriphItem("PD IC状态", pdStateStr, pdIcStatus, checkPdIc);
-    testResultTableUpdate(periphTestItems);
-
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    stepRuntime_.testData = "详见外设分项";
-    if (!pass) {
-        TestResult = failValue;
-        showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
-                    .arg(press0StateStr, press1StateStr, batteryStateStr, touchStateStr, ledStateStr, pdStateStr));
-    } else {
-        showlog("外围状态校验通过");
-    }
-}
-
 void QFreeWork::getDongleWifi(QString data) {
     // 保存密码
     SETTINGS.setValue("WIFI/Password", "usmile123");
@@ -535,22 +255,6 @@ void QFreeWork::getDongleWifi(QString data) {
     ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
-}
-
-void QFreeWork::refreshBleRssi(QString data) {
-    // qDebug() << data;
-    ui->BLE_RSSI->setText("BLE的RSSI:" + data);
-    // showlog("zzzzz"+data);
-    BLE_RSSI = data;
-    bool ok;
-    BLE_RSSI.toInt(&ok);
-
-    if (!ok) {
-        qDebug() << "转换蓝牙rssi失败,内容为" + BLE_RSSI + "内容结束";
-    } else {
-        // showlog("转换成功");
-        intblerssi = BLE_RSSI.toInt(&ok);
-    }
 }
 
 void QFreeWork::refreshBleState(int state) {
@@ -582,55 +286,6 @@ void QFreeWork::refreshUsbUartState(int state) {
 
         ui->usbconnectButton->setDisabled(true);
         ui->usbcomNameCombo->setDisabled(true);
-    }
-}
-void QFreeWork::refreshAmmeterData(QString data) {
-    qDebug() << getIndex() << "收到电流数据" << data;
-
-    // 使用 toDouble() 进行转换
-    bool conversionOk = false;
-    double normalValue = data.toDouble(&conversionOk) / 100;
-
-    if (conversionOk) {
-        // 转换成功
-        qDebug() << getIndex() << "转换后的数值：" << normalValue << "ma";
-        measure_ammeter = normalValue;
-        QString formattedValue = QString::number(normalValue, 'f', 4);
-        qDebug() << getIndex() << "转换后的数值：" << formattedValue << "ma";
-        // ui->log->appendPlainText(formattedValue+"ma");
-        showlog(formattedValue + "ma");
-    } else {
-        // 转换失败
-        qDebug() << getIndex() << "无法将字符串转换为 double 类型";
-    }
-}
-
-void QFreeWork::getWifiMsg(QString data) {
-    // qDebug() << getIndex()<< "收到wifi数据为" << data;
-    QStringList parts = data.split("-");
-    int numPairs = parts.size() / 2;
-    for (int i = 0; i < numPairs; ++i) {
-        QString macAddress = parts[i * 2];
-        QString rssi = "-" + parts[i * 2 + 1];
-        wifiMac = wifiMac.toUpper();
-        // qDebug() << getIndex() << "dongle的的wifiMac:" << macAddress;
-        // qDebug() << getIndex() << "RSSI:" << rssi;
-        // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
-        if (macAddress == wifiMac) {
-            ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
-            // qDebug() << getIndex()<< getIndex() << " 比对成功";
-            refreshWifiState(1);
-            WIFI_RSSI = rssi;
-            bool ok;
-            WIFI_RSSI.toInt(&ok);
-
-            if (!ok) {
-                qDebug() << "转换WIFIrssi失败,内容为" + WIFI_RSSI + "内容结束";
-            } else {
-                //  showlog("转换成功");
-                intwifirssi = WIFI_RSSI.toInt(&ok);
-            }
-        }
     }
 }
 void QFreeWork::initDate() {
@@ -791,7 +446,21 @@ void QFreeWork::on_getMac_returnPressed() {
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测
-    processGetMesTestValue();               // mes获取
+    // processGetMesTestValue();               // mes获取
+
+    const QString parsedMac = parseMacFromSn(ui->getMac->text());
+    if (parsedMac.isEmpty()) {
+        ui->getMac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        showlog("SN解析MAC失败");
+        ui->getMac->setFocus();
+        return;
+    }
+
+    ui->macInput->setText(parsedMac);
+    showlog("SN解析MAC成功: " + parsedMac);
+
+on_macInput_returnPressed();
 }
 
 void QFreeWork::processInspection(QString inputSnText) {
@@ -1068,208 +737,6 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         }
     }
 }
-void QFreeWork::on_clear_nfc_data_clicked() {
-    // TODO: 在此添加控件通知处理程序代码
-    HANDLE icdev = (HANDLE)-1;
-    int st = -1;
-    unsigned char _Snr[100] = "\0";
-    unsigned char szSnr[100] = "\0";
-    unsigned int SnrLen = 0;
-    unsigned char writedata[8] = {0x03, 0x00, 0xFE, 0x00};  // 写入数据缓冲区
-    unsigned char rdata[100] = "\0";
-    unsigned char rdatahex[100] = "\0";
-
-    icdev = dc_init(100, 115200);
-    if ((intptr_t)icdev <= 0) {
-        showlog("Init Com Error!");
-        return;
-    } else {
-        showlog("Init Com OK!");
-    }
-    dc_beep(icdev, 10);
-    // 射频复位
-    dc_reset(icdev, 1);
-    st = dc_card_n(icdev, 0, &SnrLen, _Snr);
-    if (st != 0) {
-        showlog("dc_card_n Error!");
-        return;
-    } else {
-        showlog("dc_card_n Ok!");
-        memset(szSnr, 0x00, sizeof(szSnr));
-        hex_a(_Snr, szSnr, SnrLen);
-        std::string str1 = (char*)szSnr;
-        showlog(QString::fromStdString(str1));
-    }
-
-    int ret = dc_write(icdev, 4, writedata);  // 将写入数据缓冲区中的数据写入设备
-
-    if (ret != 0) {
-        QString errMsg = QString("数据写入错误，ret = %1").arg(ret);
-        qDebug() << getIndex() << "errMsg: " << writedata << errMsg;
-    }
-
-    st = dc_read(icdev, 4, rdata);
-    if (st != 0) {
-        showlog("dc_read Error!");
-        return;
-    } else {
-        memset(rdatahex, 0x00, sizeof(rdatahex));
-        hex_a(rdata, rdatahex, 4);
-        std::string str1 = (char*)rdatahex;
-        showlog(QString::fromStdString(str1));
-    }
-
-    if ((intptr_t)icdev > 0) {
-        st = dc_exit(icdev);
-        if (st != 0) {
-            showlog("dc_exit Error!");
-            return;
-        } else {
-            showlog("dc_exit OK!");
-            icdev = (HANDLE)-1;
-        }
-    }
-    return;
-}
-QString QFreeWork::generateDateCode() {
-    // 获取当前日期时间
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-
-    // 获取当前年份、月份和日期
-    int year = currentDateTime.date().year() % 100;  // 获取后两位年份
-    int month = currentDateTime.date().month();
-    int day = currentDateTime.date().day();
-
-    // 月份编码
-    char monthCode;
-    if (month >= 1 && month <= 9) {
-        monthCode = '0' + month;
-    } else {
-        monthCode = 'A' + (month - 10);
-    }
-
-    // 日期编码
-    char dayCode;
-    if (day >= 1 && day <= 9) {
-        dayCode = '0' + day;
-    } else {
-        dayCode = 'A' + (day - 10);
-    }
-
-    // 构造日期编码
-    QString dateCode = QString::number(year) + monthCode + dayCode;
-    return dateCode;
-}
-
-void QFreeWork::on_nfc_write_read_clicked() {
-    // TODO: 在此添加控件通知处理程序代码
-    HANDLE icdev = (HANDLE)-1;
-    int st = -1;
-    unsigned char _Snr[100] = "\0";
-    unsigned char szSnr[100] = "\0";
-    unsigned int SnrLen = 0;
-    unsigned char writedata[8];  // 写入数据缓冲区
-    ReadNfcData = "";
-    // 033BD2023668772001004800324F30450081080027200014178591141035353034303730313233313131313131170102910B0101010A063C842707A8D1
-    // 3C842707A8D1
-    // 35353034303730313233313131313131
-    // 5504070123111111    //55040701华为固定开头sku2311年月日1111数量
-    QString hexString;
-
-    static int productionNumber = ui->nfc_count->text().toInt();  // 记录生产数量
-
-    QString text = ui->nfc_sn->text();  // 外部给
-    ui->nfc_count->setText(QString::number(productionNumber));
-
-    for (int i = 0; i < text.length(); ++i) {
-        hexString += QString("%1").arg(text[i].toLatin1(), 2, 16, QChar('0'));
-    }
-
-    QString dataText = "033BD2023668772001004800324F304500810800272000141785911410" + hexString +
-                       "170102910B0101010A06" + macAddress.remove(":").toUpper();
-
-    QByteArray dataBytes = QByteArray::fromHex(dataText.toLatin1());  // 将十六进制字符串转换为字节数组
-    int dataSize = dataBytes.size();                                  // 获取字节数组的大小
-    qDebug() << getIndex() << "dataSize: " << dataSize << dataText;
-    unsigned char rdata[100] = "\0";
-    unsigned char rdatahex[100] = "\0";
-
-    icdev = dc_init(100, 115200);
-    if ((intptr_t)icdev <= 0) {
-        showlog("初始化nfc接口失败!");
-        TestResult = failValue;
-        return;
-    } else {
-        showlog("初始化nfc接口成功");
-    }
-    dc_beep(icdev, 10);
-    // 射频复位
-    dc_reset(icdev, 1);
-    st = dc_card_n(icdev, 0, &SnrLen, _Snr);
-    if (st != 0) {
-        if (st == 1)
-            showlog("nfc卡识别不到");
-        if (st < 0)
-            showlog("nfc卡查询失败");
-
-        TestResult = failValue;
-        return;
-    } else {
-        showlog("nfc卡查询成功");
-        memset(szSnr, 0x00, sizeof(szSnr));
-        hex_a(_Snr, szSnr, SnrLen);
-        std::string str1 = (char*)szSnr;
-        showlog("卡的序列号为" + QString::fromStdString(str1));
-    }
-
-    for (int i = 0; i < dataSize; i += 4) {        // 每次处理8个字节
-        int bytesToWrite = qMin(8, dataSize - i);  // 计算本次需要写入的字节数，最多8个
-
-        memcpy(writedata, dataBytes.constData() + i, bytesToWrite);  // 将数据复制到写入数据缓冲区
-
-        int ret = dc_write(icdev, 4 + i / 4, writedata);  // 将写入数据缓冲区中的数据写入设备
-
-        if (ret != 0) {
-            QString errMsg = QString("数据写入错误，ret = %1").arg(ret);
-            showlog(errMsg);
-
-            qDebug() << getIndex() << "errMsg: " << writedata << errMsg;
-        }
-    }
-    showlog("nfc信息读取内容为：");
-    for (int i = 4; i * 4 < dataSize; i += 4) {  // 每次处理16个字节
-        st = dc_read(icdev, i, rdata);
-        if (st != 0) {
-            // showlog("dc_read Error!");
-            showlog("nfc信息读取失败");
-            TestResult = failValue;
-            return;
-        } else {
-            memset(rdatahex, 0x00, sizeof(rdatahex));
-            hex_a(rdata, rdatahex, 16);
-            std::string str1 = (char*)rdatahex;
-            ReadNfcData = ReadNfcData + QString::fromStdString(str1);
-            showlog(QString::fromStdString(str1));
-        }
-    }
-    if (dataSize % 16) {
-        st = dc_read(icdev, 4 + (dataSize / 16) * 4, rdata);
-        if (st != 0) {
-            showlog("nfc信息读取失败");
-            TestResult = failValue;
-            //  showlog("dc_read Error!");
-            return;
-        } else {
-            memset(rdatahex, 0x00, sizeof(rdatahex));
-            hex_a(rdata, rdatahex, dataSize % 16);
-            std::string str1 = (char*)rdatahex;
-            ReadNfcData = ReadNfcData + QString::fromStdString(str1);
-            showlog(QString::fromStdString(str1));
-        }
-    }
-    showlog("nfc信息读取结束");
-}
-void QFreeWork::on_nfc_sn_returnPressed() { ui->getMac->setFocus(); }
 
 void QFreeWork::on_connectButton_clicked() {
     ui->comNameCombo->setEnabled(false);

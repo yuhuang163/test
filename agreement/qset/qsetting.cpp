@@ -2,9 +2,17 @@
 
 #include "qevent.h"
 #include <QMimeData>
+#include <QString>
+#include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
-#include "work_station/freework/freework_test_catalog.h"
+
+struct FreeWorkTestCatalogItem {
+    int id;
+    QString name;
+};
+
+QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog();
 
 namespace {
 constexpr int kRowSpacing = 10;

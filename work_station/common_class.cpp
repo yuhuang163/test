@@ -158,7 +158,7 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
         if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
             if (retryCount < 20) {  // 如果还有重试次数
                 if (commandFunc != nullptr && !(retryCount % 5)) {
-                    qDebug() << "重新发送指令发送pb指令";
+                    qDebug() << "重新发送指令";
                     commandFunc();  // 重新发送指令
                 }
                 retryCount++;

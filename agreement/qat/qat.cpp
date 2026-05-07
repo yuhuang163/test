@@ -114,6 +114,10 @@ void Qat::sendMac(QString mac) {
     QString s = "AT+MAC=" + mac + "\r\n";
     sendCmd(s);
 }
+void Qat::sendDcon(QString mac) {
+    QString s = "AT+DCON=" + mac + "\r\n";
+    sendCmd(s);
+}
 void Qat::sendMAIN(QString mac) {
     QString s = "AT+MAIN=" + mac + "\r\n";
     sendCmd(s);
@@ -188,6 +192,7 @@ void Qat::WIFI_disconnected(QString p) {Q_UNUSED(p);
 void Qat::connected(QString p) {Q_UNUSED(p);
     qDebug() << "at蓝牙连接成功";
 
+    emit sendGetProductResponse(1);
     emit send_ble_state(1);
     isConnected = true;
 }

@@ -1,6 +1,13 @@
 ﻿
 #include "qfreework.h"
-#include "freework_test_catalog.h"
+
+#include <QString>
+#include <QVector>
+
+struct FreeWorkTestCatalogItem {
+    int id;
+    QString name;
+};
 
 #define FREEWORK_TEST_LIST(X)                                                                                              \
     X(0, "禁止休眠", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); })) \
@@ -8,7 +15,7 @@
     /* X(5, "关闭串口接收", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); })) */      \
     /* X(6, "设置屏幕颜色", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenColor, 1); })) */      \
     X(7, "获取整机SN码", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); })) \
-    /* X(8, "获取基本信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))  */               \
+    X(8, "获取基本信息", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }))                \
     X(9, "获取电量信息", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); }))               \
     X(10, "关机", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); }))           \
     /* X(11, "设置UART接收状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 1); })) */ \
@@ -56,7 +63,9 @@
     /* X(53, "获取设备信息(ota)", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::DeviceInfo); })) */    \
     X(54, "获取外围设备状态", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); }))    \
     /* X(55, "获取连接信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
-   X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) 
+    X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
+    X(57, "读取治具电流测量值", true, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
+    X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000))
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

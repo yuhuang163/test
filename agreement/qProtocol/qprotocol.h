@@ -26,6 +26,7 @@ public:
 signals:
     void send_pb_date(QString data);
     void sendGetProductResponse(int data);
+    void send_base_data(ProtocolBaseInfoData data);
     void send_sn_data(ProtocolSnData data);
     void send_battary(ProtocolBatteryData data);
     void send_button_state(ProtocolButtonStateData data);
