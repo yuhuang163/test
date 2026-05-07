@@ -159,6 +159,8 @@ public slots:
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
+    void solveMesSucess(const int mechines);
+    void solveMesData(const int mechines, QString msg);
     virtual void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
     void openDongleSerialPort(void);

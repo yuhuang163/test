@@ -583,6 +583,7 @@ void wifibletest::startTask() {
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");
                 state = getNextState(state);
+                
                 break;
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
