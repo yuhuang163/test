@@ -33,7 +33,6 @@ public:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
-    void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
@@ -143,8 +142,7 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
-    void solveMesSucess(const int mechines) override;
-    void solveMesData(const int mechines, QString msg) override;
+
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();

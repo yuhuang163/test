@@ -840,25 +840,7 @@ void key_test::processInspection(QString stringsn) {
     }
 }
 
-void key_test::solveMesSucess(const int mechines) {
-    test_base::solveMesSucess(mechines);
-    if (mechines != getIndex() || !waitingMesInspection) {
-        return;
-    }
-    waitingMesInspection = false;
-    const QString parsedMac = parseMacFromSn(stringsn);
-    if (parsedMac.isEmpty()) {
-        showlog("MES站前通过，但SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
-    startFlowWithMac(parsedMac);
-}
 
-void key_test::solveMesData(const int mechines, QString msg) {
-    waitingMesInspection = false;
-    test_base::solveMesData(mechines, msg);
-}
 
 bool key_test::validateCompanySnRule(const QString& snValue) {
     // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：

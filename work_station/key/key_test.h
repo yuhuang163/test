@@ -172,8 +172,6 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
-    void solveMesSucess(const int mechines) override;
-    void solveMesData(const int mechines, QString msg) override;
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();

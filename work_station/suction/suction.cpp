@@ -160,34 +160,6 @@ void suction::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void suction::refreshfwVersion(QString data) {
-    if (refresh_fw_times) {
-        refresh_fw_times = 0;
-        pumpsoft_version = data;
-        TestItem test;
-        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-        bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
-        showlog("收到固件信号：" + data);
-        if (!isSoftwareTest || compareVersions(softwareVersion, data)) {
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = passValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 1;
-        } else {
-            showlog("固件版本错误，期望：" + softwareVersion + "，实际：" + data);
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = failValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 2;
-        }
-        testResultTableUpdate(testItems);
-    }
-
-}   
 
 void suction::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
@@ -746,25 +718,7 @@ void suction::processInspection(QString stringsn) {
     }
 }
 
-void suction::solveMesSucess(const int mechines) {
-    test_base::solveMesSucess(mechines);
-    if (mechines != getIndex() || !waitingMesInspection) {
-        return;
-    }
-    waitingMesInspection = false;
-    const QString parsedMac = parseMacFromSn(stringsn);
-    if (parsedMac.isEmpty()) {
-        showlog("MES站前通过，但SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
-    startFlowWithMac(parsedMac);
-}
 
-void suction::solveMesData(const int mechines, QString msg) {
-    waitingMesInspection = false;
-    test_base::solveMesData(mechines, msg);
-}
 
 bool suction::validateCompanySnRule(const QString& snValue) {
     // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：
