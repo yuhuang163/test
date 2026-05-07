@@ -32,7 +32,6 @@ signals:
     void send_button_state(ProtocolButtonStateData data);
     void send_periph_data(ProtocolPeriphStateData data);
     void send_photosensitive_info(ProtocolPhotosensitiveData data);
-    void send_fw_version(QString version);
 };
 
 #endif  // QPROTOCOL_H

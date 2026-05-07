@@ -24,7 +24,6 @@ void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool sho
         QObject::connect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
         QObject::connect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
         QObject::connect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
-        QObject::connect(protocol, &qProtocol::send_fw_version, manager, &QProtocolManager::send_fw_version);
         return;
     }
 
@@ -36,7 +35,6 @@ void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool sho
     QObject::disconnect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
     QObject::disconnect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
     QObject::disconnect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
-    QObject::disconnect(protocol, &qProtocol::send_fw_version, manager, &QProtocolManager::send_fw_version);
 }
 }  // namespace
 

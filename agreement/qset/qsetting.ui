@@ -2384,6 +2384,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QRadioButton" name="radioButtonSuctionTest">
+            <property name="text">
+             <string>吸力测试上位机</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButtonFreeWorkstation">
             <property name="text">
              <string>自由工站上位机</string>

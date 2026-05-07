@@ -282,34 +282,6 @@ void key_test::checkbutton(ProtocolButtonStateData x) {
 }
 
 
-void key_test::refreshfwVersion(QString data) {
-    if (refresh_fw_times) {
-        refresh_fw_times = 0;
-        pumpsoft_version = data;
-        TestItem test;
-        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-        bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
-        showlog("收到固件信号：" + data);
-        if (!isSoftwareTest || compareVersions(softwareVersion, data)) {
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = passValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 1;
-        } else {
-            showlog("固件版本错误，期望：" + softwareVersion + "，实际：" + data);
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = failValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 2;
-        }
-        testResultTableUpdate(testItems);
-    }
-
-}   
 
 void key_test::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
@@ -1049,9 +1021,6 @@ void key_test::startTask() {
                 // usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
 
                 protocolManager.resetAllPb();
-                // periph_state = 0;
-                // base_state = 0;
-                // fw_state = 0;
                 isovertime = 0;
                 KeyPowerState = 0;
                 KeyStartPauseState = 0; 

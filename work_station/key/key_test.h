@@ -35,7 +35,6 @@ public:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
-    void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
     void checkbutton(ProtocolButtonStateData data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口

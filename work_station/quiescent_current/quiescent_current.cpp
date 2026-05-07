@@ -1,4 +1,4 @@
-#include "quiescent_current.h"
+﻿#include "quiescent_current.h"
 
 #include "ui_quiescent_current.h"
 #include <QVector>
@@ -160,34 +160,6 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void quiescent_current::refreshfwVersion(QString data) {
-    if (refresh_fw_times) {
-        refresh_fw_times = 0;
-        pumpsoft_version = data;
-        TestItem test;
-        QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-        bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
-        showlog("收到固件信号：" + data);
-        if (!isSoftwareTest || compareVersions(softwareVersion, data)) {
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = passValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 1;
-        } else {
-            showlog("固件版本错误，期望：" + softwareVersion + "，实际：" + data);
-            test.testItem = "软件版本";
-            test.testData = data;
-            test.testResult = failValue;
-            test.ask = softwareVersion;
-            testItems.append(test);
-            fw_state = 2;
-        }
-        testResultTableUpdate(testItems);
-    }
-
-}   
 
 void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
@@ -204,47 +176,37 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
         qDebug() << getIndex() << "soft_version" << QString("%1").arg(data.soft_version);
         qDebug() << getIndex() << "res_version" << data.res_version;
 
-        QString productName = SETTINGS.value("ProductInfo/Product_Name").toString();
-        QString appProtocolVersion = SETTINGS.value("ProductInfo/App_Protocol_Version").toString();
-        QString factoryProtocolVersion = SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString();
-        QString hardwareVersion = SETTINGS.value("ProductInfo/Hardware_Version").toString();
+  
         QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-        QString resourceVersion = SETTINGS.value("ProductInfo/Resource_Version").toString();
-        QString motorVersion = SETTINGS.value("ProductInfo/Motor_Ver").toString();
-        QString algorithmVersion = SETTINGS.value("ProductInfo/Algorithm_Version").toString();
-        QString pressureSenseVersion = SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString();
-        QString fsensorVersion = SETTINGS.value("ProductInfo/FSensor_Version").toString();
-        QString imuId = SETTINGS.value("ProductInfo/IMU_ID").toString();
-        QString bleVersion = SETTINGS.value("ProductInfo/Ble_Ver").toString();
-        QString camera_id = SETTINGS.value("ProductInfo/Camera_Id").toString();
 
-        bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
-        bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
+
+        // bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
+        // bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
         bool isSoftwareTest = SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool();
-        bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
-        bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
-        bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
-        bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
-        bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
-        bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
-        bool isFSensorTest = SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool();
-        bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
-        bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
-        bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
+        // bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
+        // bool isMotorTest = SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool();
+        // bool isAppProtocolTest = SETTINGS.value("ProductInfo/AppPB_checkBox").toBool();
+        // bool isFactoryProtocolTest = SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool();
+        // bool isAlgoTest = SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool();
+        // bool isPresureTest = SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool();
+        // bool isFSensorTest = SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool();
+        // bool isImuTest = SETTINGS.value("ProductInfo/ImuID_checkBox").toBool();
+        // bool isCameraTest = SETTINGS.value("ProductInfo/CameraID_checkBox").toBool();
+        // bool isBleTest = SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool();
 
-        if ((!isAlgoTest || compareVersions(algorithmVersion, data.algo_version)) &&
-            (!isHwTest || compareVersions(hardwareVersion, data.hw_version)) &&
-            (!isPresureTest || compareVersions(pressureSenseVersion, data.presure_version)) &&
-            (!isFSensorTest || compareVersions(fsensorVersion, data.fsensor_version)) &&
-            (!isProductTest || compareVersions(productName, data.product_name)) &&
-            (!isAppProtocolTest || compareVersions(appProtocolVersion, QString::number(data.pb_phone_ver))) &&
-            (!isFactoryProtocolTest || compareVersions(factoryProtocolVersion, QString::number(data.pb_factory_ver))) &&
-            (!isSoftwareTest || compareVersions(softwareVersion, data.soft_version)) &&
-            (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
-            (!isMotorTest || compareVersions(motorVersion, data.motor_version)) &&
-            (!isImuTest || compareVersions(imuId, QString::number(data.imu_id))) &&
-            (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
-            (!isCameraTest || compareVersions(camera_id, data.camera_version))) {
+        if ((!isSoftwareTest || compareVersions(softwareVersion, data.soft_version))) {
+            // (!isHwTest || compareVersions(hardwareVersion, data.hw_version)) &&
+            // (!isPresureTest || compareVersions(pressureSenseVersion, data.presure_version)) &&
+            // (!isFSensorTest || compareVersions(fsensorVersion, data.fsensor_version)) &&
+            // (!isProductTest || compareVersions(productName, data.product_name)) &&
+            // (!isAppProtocolTest || compareVersions(appProtocolVersion, QString::number(data.pb_phone_ver))) &&
+            // (!isFactoryProtocolTest || compareVersions(factoryProtocolVersion, QString::number(data.pb_factory_ver))) &&
+            // (!isAlgoTest || compareVersions(algorithmVersion, data.algo_version)) &&
+            // (!isResourceTest || compareVersions(resourceVersion, data.res_version)) &&
+            // (!isMotorTest || compareVersions(motorVersion, data.motor_version)) &&
+            // (!isImuTest || compareVersions(imuId, QString::number(data.imu_id))) &&
+            // (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
+            // (!isCameraTest || compareVersions(camera_id, data.camera_version))) {
             base_state = 1;
         } else {
             base_state = 2;
@@ -253,28 +215,28 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
         TestItem test;
 
         // Check for BLE version
-        if (isBleTest) {
-            test.testItem = "蓝牙版本";
-            test.testData = data.ble_version;
-            test.ask = bleVersion;
-            testItems.append(test);
-        }
+        // if (isBleTest) {
+        //     test.testItem = "蓝牙版本";
+        //     test.testData = data.ble_version;
+        //     test.ask = bleVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Motor version
-        if (isMotorTest) {
-            test.testItem = "电机版本";
-            test.testData = data.motor_version;
-            test.ask = motorVersion;
-            testItems.append(test);
-        }
+        // // Check for Motor version
+        // if (isMotorTest) {
+        //     test.testItem = "电机版本";
+        //     test.testData = data.motor_version;
+        //     test.ask = motorVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Resource version
-        if (isResourceTest) {
-            test.testItem = "资源版本";
-            test.testData = data.res_version;
-            test.ask = resourceVersion;
-            testItems.append(test);
-        }
+        // // Check for Resource version
+        // if (isResourceTest) {
+        //     test.testItem = "资源版本";
+        //     test.testData = data.res_version;
+        //     test.ask = resourceVersion;
+        //     testItems.append(test);
+        // }
 
         // Check for Software version
         if (isSoftwareTest) {
@@ -284,77 +246,77 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
             testItems.append(test);
         }
 
-        // Check for Product name
-        if (isProductTest) {
-            test.testItem = "产品名字";
-            test.testData = data.product_name;
-            test.ask = productName;
-            testItems.append(test);
-        }
+        // // Check for Product name
+        // if (isProductTest) {
+        //     test.testItem = "产品名字";
+        //     test.testData = data.product_name;
+        //     test.ask = productName;
+        //     testItems.append(test);
+        // }
 
-        // Check for Hardware version
-        if (isHwTest) {
-            test.testItem = "硬件版本";
-            test.testData = data.hw_version;
-            test.ask = hardwareVersion;
-            testItems.append(test);
-        }
+        // // Check for Hardware version
+        // if (isHwTest) {
+        //     test.testItem = "硬件版本";
+        //     test.testData = data.hw_version;
+        //     test.ask = hardwareVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Algorithm version
-        if (isAlgoTest) {
-            test.testItem = "算法版本号";
-            test.testData = data.algo_version;
-            test.ask = algorithmVersion;
-            testItems.append(test);
-        }
+        // // Check for Algorithm version
+        // if (isAlgoTest) {
+        //     test.testItem = "算法版本号";
+        //     test.testData = data.algo_version;
+        //     test.ask = algorithmVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Pressure version
-        if (isPresureTest) {
-            test.testItem = "压感版本";
-            test.testData = data.presure_version;
-            test.ask = pressureSenseVersion;
-            testItems.append(test);
-        }
+        // // Check for Pressure version
+        // if (isPresureTest) {
+        //     test.testItem = "压感版本";
+        //     test.testData = data.presure_version;
+        //     test.ask = pressureSenseVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for FSensor version
-        if (isFSensorTest) {
-            test.testItem = "电机压感版本";
-            test.testData = data.fsensor_version;
-            test.ask = fsensorVersion;
-            testItems.append(test);
-        }
+        // // Check for FSensor version
+        // if (isFSensorTest) {
+        //     test.testItem = "电机压感版本";
+        //     test.testData = data.fsensor_version;
+        //     test.ask = fsensorVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for IMU ID
-        if (isImuTest) {
-            test.testItem = "六轴id";
-            test.testData = QString::number(data.imu_id);
-            test.ask = imuId;
-            testItems.append(test);
-        }
+        // // Check for IMU ID
+        // if (isImuTest) {
+        //     test.testItem = "六轴id";
+        //     test.testData = QString::number(data.imu_id);
+        //     test.ask = imuId;
+        //     testItems.append(test);
+        // }
 
-        // Check for APP Protocol version
-        if (isAppProtocolTest) {
-            test.testItem = "APP的pb版本";
-            test.testData = QString("%1").arg(data.pb_phone_ver);
-            test.ask = appProtocolVersion;
-            testItems.append(test);
-        }
+        // // Check for APP Protocol version
+        // if (isAppProtocolTest) {
+        //     test.testItem = "APP的pb版本";
+        //     test.testData = QString("%1").arg(data.pb_phone_ver);
+        //     test.ask = appProtocolVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Factory Protocol version
-        if (isFactoryProtocolTest) {
-            test.testItem = "工厂的pb版本";
-            test.testData = QString("%1").arg(data.pb_factory_ver);
-            test.ask = factoryProtocolVersion;
-            testItems.append(test);
-        }
+        // // Check for Factory Protocol version
+        // if (isFactoryProtocolTest) {
+        //     test.testItem = "工厂的pb版本";
+        //     test.testData = QString("%1").arg(data.pb_factory_ver);
+        //     test.ask = factoryProtocolVersion;
+        //     testItems.append(test);
+        // }
 
-        // Check for Camera ID
-        if (isCameraTest) {
-            test.testItem = "摄像头id";
-            test.testData = data.camera_version;
-            test.ask = camera_id;
-            testItems.append(test);
-        }
+        // // Check for Camera ID
+        // if (isCameraTest) {
+        //     test.testItem = "摄像头id";
+        //     test.testData = data.camera_version;
+        //     test.ask = camera_id;
+        //     testItems.append(test);
+        // }
 
         updateTestData(testItems);
     }
@@ -929,7 +891,6 @@ void quiescent_current::startTask() {
                 protocolManager.resetAllPb();
                 periph_state = 0;
                 base_state = 0;
-                fw_state = 0;
                 isovertime = 0;
                 refresh_base_times = 1;
                 refresh_periph_times = 1;
@@ -966,24 +927,13 @@ void quiescent_current::startTask() {
                         protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
                     });
                     state = STATE_BANDING;
-                    // showlog("校验工厂模式");
-
-                    // modeCheckPassed =verifyTestModeState();
-                    // if (modeCheckPassed) {
-                    //     showlog("工厂模式校验通过");
-                    //     state = STATE_SLEEP_CURRENT_TEST;
-                    // } else {
-                    //     showlog("工厂模式校验失败");
-                    //     totalresult = failValue;
-                    //     state = STATE_SAVE_RESULT;
-                    // }
-                }
                 break;
 
             case STATE_BANDING: {
                 if (canGoNext) {
                     if (snCompareOk == 1) {
-                        state = STATE_WATI_GET_BASE_STATE;                        showlog("sn已比对成功");
+                        state = STATE_WATI_GET_BASE_STATE;                        
+                        showlog("sn已比对成功");
                         appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                         sendCommandWithRetry([&]() { 
@@ -996,7 +946,7 @@ void quiescent_current::startTask() {
                         state = STATE_SAVE_RESULT;
                     } else {
                     waitWork(500);
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
                     showlog("已发送sn绑定");
                     }
                 }
@@ -1004,60 +954,52 @@ void quiescent_current::startTask() {
             }
 
             case STATE_WATI_GET_BASE_STATE:
-                if (canGoNext) {
-                    if (fw_state == 1)  // 基础信息正常
-                    {
-                        waitWork(WAITTIME);
-                        showlog("固件版本验证通过");
-                        sendCommandWithRetry([&]() { 
-                            protocolManager.get(DeviceCmd::PeriphState);
-                        });
-                        state = STATE_WATI_GET_PERIPHERAL_STATE;
-                    }
-                    else if (fw_state == 2) {
-                        waitWork(WAITTIME);
-                        showlog("固件版本验证失败");
+                if (base_state == 1)  // 基础信息正常
+                {
+                    waitWork(WAITTIME);
+                    showlog("固件版本验证通过");
+                    sendCommandWithRetry([&]() { 
                         protocolManager.get(DeviceCmd::PeriphState);
-                        pack.itemvalue = "fw_state=NG";
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-
-                    else {
-                        waitWork(500);
-                        sendCommandWithRetry([&]() { 
-                            protocolManager.get(DeviceCmd::BaseInfo);
-                        });
-                        showlog("正在重发获取固件版本");
-                    }
+                    });
+                    state = STATE_WATI_GET_PERIPHERAL_STATE;
+                }
+                else if (base_state == 2) {
+                    waitWork(WAITTIME);
+                    showlog("固件版本验证失败");
+                    protocolManager.get(DeviceCmd::PeriphState);
+                    pack.itemvalue = "base_state=NG";
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
+                else {
+                    waitWork(500);
+                    protocolManager.get(DeviceCmd::BaseInfo);
+                    showlog("正在重发获取固件版本");
                 }
                 break;
 
             case STATE_WATI_GET_PERIPHERAL_STATE:
-                if (canGoNext) {
-                    if (periph_state == 1)  // 设备信息正常
-                    {
-                        showlog("外设状态正常");
-                        // showlog("正在发送取消静止休眠");
-                        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
-                        // qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
-                        // ble_waittime->setInterval(disconnect_wait_time);
-                        // ble_waittime->start();
-                        totalresult = passValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                    if (periph_state == 2)  // 设备信息异常
-                    {
-                        showlog("外设状态异常");
-                        pack.itemvalue = "periph_state=NG";
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                    if (periph_state == 0) {
-                        waitWork(500);
-                        protocolManager.get(DeviceCmd::PeriphState);
-                        showlog("正在重发获取外设信息");
-                    }
+                if (periph_state == 1)  // 设备信息正常
+                {
+                    showlog("外设状态正常");
+                    // showlog("正在发送取消静止休眠");
+                    // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
+                    // qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
+                    // ble_waittime->setInterval(disconnect_wait_time);
+                    // ble_waittime->start();
+                    totalresult = passValue;
+                    state = STATE_SAVE_RESULT;
+                } else if (periph_state == 2)  // 设备信息异常
+                {
+                    showlog("外设状态异常");
+                    pack.itemvalue = "periph_state=NG";
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
+                else {
+                    waitWork(500);
+                    protocolManager.get(DeviceCmd::PeriphState);
+                    showlog("正在重发获取外设信息");
                 }
                 break;
 
@@ -1099,7 +1041,7 @@ void quiescent_current::startTask() {
                     pack.itemvalue = pack.sn + "," + macAddress + ",STATIC_CURRENT_RESULT*" + pack.result +
                                      QString("@STATIC_CURRENT*0");
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1117,7 +1059,7 @@ void quiescent_current::startTask() {
                                          QString("@STATIC_CURRENT*0");
                     }
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1146,15 +1088,15 @@ void quiescent_current::startTask() {
                 ui->snInput->setDisabled(0);
                 ui->macInput->setDisabled(1);
                 ui->getMac->setDisabled(0);
-                // emit send_end_test(getIndex());
+                emit send_end_test(getIndex());
 
                 state = STATE_IDLE;
                 break;
         }
         //   QCoreApplication::processEvents();
     }
+    }
 }
-
 void quiescent_current::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");

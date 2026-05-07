@@ -456,7 +456,6 @@ void Qfctp::handleRspFwVersionRead(const uint8_t *mainValue, uint16_t mainLen)
         ProtocolBaseInfoData data;
         data.soft_version = versionText;
         emit send_base_data(data);
-        emit send_fw_version(versionText);
      
     }
 }

@@ -76,6 +76,7 @@ INCLUDEPATH += work_station/pcba
 INCLUDEPATH += work_station/pressure
 INCLUDEPATH += work_station/freework
 INCLUDEPATH += work_station/key
+INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 
@@ -148,6 +149,8 @@ SOURCES += \
     work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
     work_station/key/key_test_box.cpp \
+    work_station/suction/suction.cpp \
+    work_station/suction/suction_box.cpp \
     work_station/imu/imucali.cpp \
     work_station/motor/motor.cpp \
     work_station/motor/motorbox.cpp \
@@ -228,6 +231,8 @@ HEADERS += \
     work_station/imu/imucali.h \
     work_station/key/key_test.h \
     work_station/key/key_test_box.h \
+    work_station/suction/suction.h \
+    work_station/suction/suction_box.h \
     work_station/motor/motor.h \
     work_station/motor/motorbox.h \
     work_station/pcba/pcbabox.h \
@@ -258,6 +263,8 @@ FORMS += \
     work_station/imu/imucali.ui \
     work_station/key/key_test.ui \
     work_station/key/key_test_box.ui \
+    work_station/suction/suction.ui \
+    work_station/suction/suction_box.ui \
     work_station/motor/motor.ui \
     work_station/motor/motorbox.ui \
     work_station/pcba/pcbabox.ui \

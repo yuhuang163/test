@@ -33,7 +33,7 @@ public:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
-    void refreshfwVersion(QString data) override;
+    // void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
@@ -67,7 +67,6 @@ private:
     QLabel* product_sn;
     int periph_state = 0;
     int base_state = 0;
-    int fw_state = 0;
     int snCompareOk = 0;
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
