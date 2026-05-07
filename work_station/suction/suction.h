@@ -1,5 +1,5 @@
-﻿#ifndef QUIESCENT_CURRENT_H
-#define QUIESCENT_CURRENT_H
+﻿#ifndef SUCTION_H
+#define SUCTION_H
 
 #include "test_base.h"
 #include "ui_suction.h"
@@ -14,12 +14,12 @@ namespace Ui {
     class suction;
 }
 
-class quiescent_current : public test_base {
+class suction : public test_base {
     Q_OBJECT
 
 public:
-    explicit quiescent_current(int index, QWidget* parent = nullptr);
-    ~quiescent_current();
+    explicit suction(int index, QWidget* parent = nullptr);
+    ~suction();
     Ui::suction* ui;
     ImuDataT orgData;
     void startTask() override;
@@ -164,4 +164,4 @@ private slots:
     void on_stopTest_clicked();
 };
 
-#endif  // QUIESCENT_CURRENT_H
+#endif  // SUCTION_H
