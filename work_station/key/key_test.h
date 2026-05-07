@@ -1,8 +1,8 @@
-﻿#ifndef QUIESCENT_CURRENT_H
-#define QUIESCENT_CURRENT_H
+﻿#ifndef KEY_TEST_H
+#define KEY_TEST_H
 
 #include "test_base.h"
-#include "ui_quiescent_current.h"
+#include "ui_key_test.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -11,16 +11,18 @@
 #include "testmodel.h"
 
 namespace Ui {
-    class quiescent_current;
+    class key_test;
 }
 
-class quiescent_current : public test_base {
+class QMessageBox;
+
+class key_test : public test_base {
     Q_OBJECT
 
 public:
-    explicit quiescent_current(int index, QWidget* parent = nullptr);
-    ~quiescent_current();
-    Ui::quiescent_current* ui;
+    explicit key_test(int index, QWidget* parent = nullptr);
+    ~key_test();
+    Ui::key_test* ui;
     ImuDataT orgData;
     void startTask() override;
     void processReceivedData(const QByteArray& data) override;
@@ -35,6 +37,7 @@ public:
     void refreshMusicState(ProtocolMusicStateData data) override;
     void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
+    void checkbutton(ProtocolButtonStateData data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
@@ -51,13 +54,12 @@ public:
     void disconnect_dongle();
 
 private:
-    void applyCurrentProtocolConfig();
+    void applyKeyProtocolConfig();
     QByteArray sn;
-    double HighCurrent;
-    double LowCurrent;
     QString M_USERNO;
     QString stringsn;
     QString pumpsoft_version;
+    QString keytest_focus;
 
     QLabel* bleStatusLabel;
     QLabel* uartStatusLabel;
@@ -68,6 +70,22 @@ private:
     int periph_state = 0;
     int base_state = 0;
     int fw_state = 0;
+    int key_state = 0;
+    int KeyPowerState = 0;
+    int KeyStartPauseState = 0;
+    int KeyModeState = 0;
+    int KeySpeedState = 0;
+    int KeyProgramState = 0;
+    int KeyLeftState = 0;
+    int KeyRightState = 0;
+    int KeyLeftRotateState = 0;
+    int KeyRightRotateState = 0;
+    /// 与 keyWaitPrompt 生命周期同步；onKeyWaitPromptDestroyed 内必置 false，避免续测时不弹窗
+    bool keyWaitPromptShown = false;
+    /// 为 true 时 close 弹窗视为流程内关闭，不记失败
+    bool keyWaitPromptProgrammaticClose = false;
+    bool factoryModeLogged = false;
+    QMessageBox* keyWaitPrompt = nullptr;
     int snCompareOk = 0;
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
@@ -78,17 +96,26 @@ private:
     TestModel* peripheralModel;
     QString logString = "";
     QString totalresult = "";
-    Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
+    Qusb::ProtocolType keyProtocolType = Qusb::ProtocolType::Scpi;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接
         STATE_BANDING,            // SN 绑定
         STATE_SET_TEST_MODE,      // 设置测试模式（工厂模式）
         STATE_VERIFY_TEST_MODE,   // 校验测试模式
-        STATE_SLEEP_CURRENT_TEST,  // 工作电流等测量
+        STATE_KEY_TEST,            // 按键测试
         STATE_SAVE_RESULT,         // 保存结果 / 界面复位
         STATE_VERIFY_SN,           // 校验SN
-        STATE_WATI_GET_BASE_STATE,  // 基础信息获取
+        STATE_WATI_GET_KEY_STATE,  // 基础信息获取
+        STATE_WAIT_GET_KEY_POWER_STATE,
+        STATE_WAIT_GET_KEY_STARTPAUSE_STATE,
+        STATE_WAIT_GET_KEY_MODE_STATE,
+        STATE_WAIT_GET_KEY_SPEED_STATE,
+        STATE_WAIT_GET_KEY_PROGRAM_STATE,
+        STATE_WAIT_GET_KEY_LEFT_STATE,
+        STATE_WAIT_GET_KEY_RIGHT_STATE,
+        STATE_WAIT_GET_KEY_LEFTROTATE_STATE,
+        STATE_WAIT_GET_KEY_RIGHTROTATE_STATE,
         STATE_WATI_GET_PERIPHERAL_STATE  // 外设信息获取
 
     } State;
@@ -110,12 +137,13 @@ private:
     int refresh_base_times;
     int refresh_periph_times;
     int refresh_fw_times;
+    int refresh_key_times = 0;
     int firstconnectbrush = 1;
     QTimer* usblogwaittime = new QTimer(this);
     QString last_macAddress = "没有mac地址";
     QTimer* waittime = new QTimer(this);
     QTimer* ble_waittime = new QTimer(this);
-    int measure_wait_time = 15000;
+    int key_test_wait_time = 15000;
     int disconnect_wait_time = 5000;
     bool isovertime = 0;  // 是否开始发送校验结果
     bool waitingMesInspection = false;
@@ -136,6 +164,8 @@ private:
     bool controlProgrammablePowerForCharge(bool enable);
     CurrentStats collectCurrentStats(const QString& itemName, int sampleCount, int sampleIntervalMs);
     bool evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high);
+
+    void closeKeyWaitPromptProgrammatically();
 
 signals:
     void send_go_next_focus();
@@ -162,6 +192,7 @@ private slots:
     void on_pushButton_3_clicked();
     void on_pushButton_4_clicked();
     void on_stopTest_clicked();
+    void onKeyWaitPromptDestroyed();
 };
 
-#endif  // QUIESCENT_CURRENT_H
+#endif  // KEY_TEST_H

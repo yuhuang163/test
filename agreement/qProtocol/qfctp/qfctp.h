@@ -136,8 +136,6 @@ signals:
     void send_light_report_ctrl_ack(ProtocolAckData data);
     void send_light_calib_write_ack(ProtocolUInt32ValueData data);
     void send_charge_current_read(ProtocolUInt32ValueData data);
-    void send_fw_version(QString version);
-
 };
 
 #endif // Qfctp_H

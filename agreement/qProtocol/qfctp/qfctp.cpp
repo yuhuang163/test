@@ -618,11 +618,14 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
                     << "key=" << keyId
                     << "raw=" << raw.toHex(' ');
             ProtocolButtonStateData buttonData;
-            if (keyId == 1u) {
-                buttonData.modeButtonState = static_cast<int>(event);
-            } else if (keyId == 2u) {
-                buttonData.powerButtonState = static_cast<int>(event);
-            }
+            buttonData.modeButtonState = static_cast<int>(event);
+            buttonData.keyButtonId = static_cast<int>(keyId);
+            // if (keyId == 1u) {
+            //     buttonData.modeButtonState = static_cast<int>(event);
+            //     buttonData.keyButtonId = static_cast<int>(keyId);
+            // } else if (keyId == 2u) {
+            //     buttonData.powerButtonState = static_cast<int>(event);
+            // }
             emit send_button_state(buttonData);
         } else if (serviceId == kTestsService && type == kTlvEncoderStatusReport && len >= 2) {
             // ENCODER_STATUS_REPORT: value[0]=dir(1左旋/2右旋), value[1]=encoderId(1-255)
@@ -634,6 +637,11 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
                     << "dir=" << dir << "(" << dirText << ")"
                     << "id=" << encoderId
                     << "raw=" << raw.toHex(' ');
+            ProtocolButtonStateData buttonData;
+            buttonData.modeButtonState = static_cast<int>(dir);
+            buttonData.powerButtonState = static_cast<int>(encoderId);
+            buttonData.keyButtonId = static_cast<int>(encoderId);
+            emit send_button_state(buttonData);
         } else if (serviceId == kAlgoService && type == 0x0006 && len > 0) {
             // 协议 8.2.31：光感数据上报（NOTIFY，Algo Service TLV 0x0006）
             const QByteArray raw(reinterpret_cast<const char *>(value), static_cast<int>(len));

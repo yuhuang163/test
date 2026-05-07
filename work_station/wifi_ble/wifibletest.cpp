@@ -583,7 +583,6 @@ void wifibletest::startTask() {
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");
                 state = getNextState(state);
-
                 break;
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
@@ -988,9 +987,23 @@ void wifibletest::on_getMac_returnPressed() {
         return;
     }
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());             // 文件获取
-    processInspection(ui->getMac->text());  // 站前检测
-    processGetMesTestValue();               // mes获取
+    const QString parsedMac = parseMacFromSn(ui->getMac->text());
+    if (parsedMac.isEmpty()) {
+        ui->getMac->setDisabled(0);
+        ui->macInput->setDisabled(0);
+        showlog("SN解析MAC失败");
+        ui->getMac->setFocus();
+        return;
+    }
+
+    ui->macInput->setText(parsedMac);
+    showlog("SN解析MAC成功: " + parsedMac);
+    stringsn = ui->getMac->text();
+    appendStationResult(testItems, "主板条码", "0.0000", passValue);
+    testResultTableUpdate(testItems);
+    // processInspection(ui->getMac->text());  // 站前检测
+    appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    on_macInput_returnPressed();
 }
 
 void wifibletest::processInspection(QString stringsn) {

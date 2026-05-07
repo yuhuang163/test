@@ -143,6 +143,7 @@ typedef struct {
 typedef struct {
     int modeButtonState = 0;
     int powerButtonState = 0;
+    int keyButtonId = 0;
 } ProtocolButtonStateData;
 
 typedef struct {

@@ -2,7 +2,6 @@
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>
-#include <QRegularExpression>
 
 #include "ui_ageing.h"
 
@@ -473,24 +472,7 @@ void ageing::startTask() {
                 }
                 break;
             }
-
-            case STATE_CHECK_FLASH:
-                if (flash_state == 1) {
-                    ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
-                    showlog("Flash资源正常");
-                    state = STATE_AGE;
-                } else if (flash_state == 2) {
-                    ui->flash_state->setText("Flash State:<font color='red'>异常</font>");
-                    showlog("Flash资源异常");
-                    result = failValue;
-                    state = STATE_SAVE_RESULT;
-                } else {
-                    waitWork(500);
-                    protocolManager.get(DeviceCmd::PeriphState);
-                    showlog("正在重新获取Flash资源状态");
-                }
-                break;
-
+            
             case STATE_AGE:
                 if (canGoNext) {
                     // waitWork(100);
@@ -571,17 +553,17 @@ void ageing::startTask() {
         }
     }
 
-
 void ageing::on_pushButton_clicked() {
     // ui->macInput->setText("3C:84:27:07:A8:D2");
     // on_macInput_returnPressed();
     at->sendMac(ui->macInput->text());  // 发送mac地址
     waitWork(8000);
     sendCommandWithRetry([&]() {     
-    QVariantMap m;
-    m["mode"] = 1;
-    m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
-    protocolManager.set(DeviceCmd::BurningMode, m); });
+        QVariantMap m;
+        m["mode"] = 1;
+        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+        protocolManager.set(DeviceCmd::BurningMode, m); 
+    });
 }
 
 void ageing::on_getMac_returnPressed() {
@@ -616,24 +598,6 @@ void ageing::on_getMac_returnPressed() {
     showlog("正在查询mac地址");
     writesn = ui->getMac->text().toUtf8();
     stringsn = ui->getMac->text();
-    if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
-        if (writesn != last_sn) {
-            last_sn = writesn;
-
-        } else {
-            showlog("sn与上一台机器重复,机子异常" + last_sn + writesn);
-            return;
-        }
-        
-        writesubpid = getValueBySN(ui->getMac->text()).toUtf8();
-
-        if ("SUBPID_ERRO" == writesubpid) {
-            QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
-            return;
-        }
-        stringsubpid = writesubpid;
-        show_product(writesubpid);
-    }
     const QString parsedMac = parseMacFromSn(ui->getMac->text());
     if (parsedMac.isEmpty()) {
         ui->getMac->setDisabled(0);

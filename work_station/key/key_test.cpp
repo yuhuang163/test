@@ -1,6 +1,7 @@
-#include "quiescent_current.h"
+﻿#include "key_test.h"
 
-#include "ui_quiescent_current.h"
+#include "ui_key_test.h"
+#include <QMessageBox>
 #include <QVector>
 
 #if _MSC_VER >= 1600
@@ -23,11 +24,11 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     return Qusb::ProtocolType::Auto;
 }
 }
-quiescent_current::quiescent_current(int index, QWidget* parent) :
-    test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
+key_test::key_test(int index, QWidget* parent) :
+    test_base(parent), ui(new Ui::key_test), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
-    upperComputerVer = QC_VER;
+    upperComputerVer = KEY_VER;
 
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
@@ -50,18 +51,15 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     });
     connect(ble_waittime, &QTimer::timeout, [=]() {
         ble_waittime->stop();
-        state = STATE_SLEEP_CURRENT_TEST;
-        qDebug() << getIndex() << "计时结束，进入电流测试" << QDateTime::currentDateTime();
+        state = STATE_KEY_TEST;
+        qDebug() << getIndex() << "计时结束，进入按键测试" << QDateTime::currentDateTime();
     });
     connect(usblogwaittime, &QTimer::timeout, [=]() {
         at->ask_mac();
         showlog("正在定时器复位设备");
     });
 
-    HighCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();
-    LowCurrent = SETTINGS.value("Current/LowstaticCurrent").toDouble();
-
-    measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
+    key_test_wait_time = SETTINGS.value("Key/TestWaitTime", 15000).toInt();
 
     showlog("action=" + pack.test_station);
     showlog("line=" + pack.line);
@@ -69,10 +67,8 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     showlog("model=" + pack.model);
 
     showlog("machineNo=" + pack.machineNo);
-    showlog("HighCurrent=" + QString::number(HighCurrent));
-    showlog("LowCurrent=" + QString::number(LowCurrent));
-    showlog("measure_wait_time=" + QString::number(measure_wait_time));
-    applyCurrentProtocolConfig();
+    showlog("key_test_wait_time=" + QString::number(key_test_wait_time));
+    applyKeyProtocolConfig();
 
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
@@ -100,7 +96,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
-void quiescent_current::applyCurrentProtocolConfig() {
+void key_test::applyKeyProtocolConfig() {
     Qusb::ProtocolConfig cfg;
     cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Current/ProtocolType", "auto").toString());
     cfg.luxshareMachineId = SETTINGS.value("Current/LxMachineId", getIndex()).toInt();
@@ -119,18 +115,49 @@ void quiescent_current::applyCurrentProtocolConfig() {
         }
     }
 
-    currentProtocolType = cfg.protocol;
+    keyProtocolType = cfg.protocol;
     usb->setProtocolConfig(cfg);
 
-    showlog("静态电流协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
-            " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
-    showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
+    showlog("按键测试协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
+            " 实际生效协议=" + QString::number(static_cast<int>(keyProtocolType)));
+    showlog("按键测试配置: machineId=" + QString::number(cfg.luxshareMachineId) +
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
 }
 
-void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
+void key_test::closeKeyWaitPromptProgrammatically() {
+    if (keyWaitPrompt == nullptr) {
+        return;
+    }
+    keyWaitPromptProgrammaticClose = true;
+    // close()/delete 是异步的，先清空成员指针，避免下一个状态机判断仍认为弹窗存在
+    QMessageBox* prompt = keyWaitPrompt;
+    keyWaitPrompt = nullptr;
+    prompt->close();
+}
 
-void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
+void key_test::onKeyWaitPromptDestroyed() {
+    keyWaitPrompt = nullptr;
+    // 弹窗已销毁，必须复位，否则后续 STATE_WAIT_GET_KEY_* 会因 !keyWaitPromptShown 而永远不建框
+    keyWaitPromptShown = false;
+
+    if (keyWaitPromptProgrammaticClose) {
+        keyWaitPromptProgrammaticClose = false;
+        return;
+    }
+    if (!isTestContinue) {
+        return;
+    }
+
+    // 需求：点击弹窗右上角 X 直接停止测试，且不上传 MES。
+    // 因此不进入 STATE_SAVE_RESULT，不触发 send_end_testPass。
+    showlog(QStringLiteral("用户关闭按键提示，测试已中止，不上传MES"));
+    state = STATE_IDLE;
+    on_stopTest_clicked();
+}
+
+void key_test::disconnect_dongle() { on_disconnectButton_clicked(); }
+
+void key_test::refreshMusicState(ProtocolMusicStateData data) {
     bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
     showlog("当前曲目为：" + QString::number(data.musicState));
 
@@ -160,7 +187,102 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void quiescent_current::refreshfwVersion(QString data) {
+
+void key_test::checkbutton(ProtocolButtonStateData x) {
+    if (refresh_key_times) {
+        refresh_key_times = 0;
+        showlog("获取到按键上报");
+        TestItem test;
+        bool isKeyIdPowerTest = SETTINGS.value("ProductInfo/KeyIdPower_checkBox").toBool();
+        bool isKeyIdStartPauseTest = SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox").toBool();
+        bool isKeyIdModeTest = SETTINGS.value("ProductInfo/KeyIdMode_checkBox").toBool();
+        bool isKeyIdSpeedTest = SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox").toBool();
+        bool isKeyIdProgramTest = SETTINGS.value("ProductInfo/KeyIdProgram_checkBox").toBool();
+        bool isKeyIdLeftTest = SETTINGS.value("ProductInfo/KeyIdLeft_checkBox").toBool();
+        bool isKeyIdRightTest = SETTINGS.value("ProductInfo/KeyIdRight_checkBox").toBool();
+        bool isKeyIdLeftRotateTest = SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox").toBool();
+        bool isKeyIdRightRotateTest = SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox").toBool();
+
+        QString keyIdPower = SETTINGS.value("ProductInfo/KeyIdPower").toString();
+        QString keyIdStartPause = SETTINGS.value("ProductInfo/KeyIdStartPause").toString();
+        QString keyIdMode = SETTINGS.value("ProductInfo/KeyIdMode").toString();
+        QString keyIdSpeed = SETTINGS.value("ProductInfo/KeyIdSpeed").toString();
+        QString keyIdProgram = SETTINGS.value("ProductInfo/KeyIdProgram").toString();
+        QString keyIdLeft = SETTINGS.value("ProductInfo/KeyIdLeft").toString();
+        QString keyIdRight = SETTINGS.value("ProductInfo/KeyIdRight").toString();
+        QString keyIdLeftRotate = SETTINGS.value("ProductInfo/KeyIdLeftRotate").toString();
+        QString keyIdRightRotate = SETTINGS.value("ProductInfo/KeyIdRightRotate").toString();
+
+
+        if (isKeyIdPowerTest && state == STATE_WAIT_GET_KEY_POWER_STATE) {
+            if (compareVersions(keyIdPower, QString::number(x.keyButtonId))) {
+                KeyPowerState = 1;
+            } else {
+                KeyPowerState = 2;
+            }
+        }
+        if (isKeyIdStartPauseTest && state == STATE_WAIT_GET_KEY_STARTPAUSE_STATE) {
+            if (compareVersions(keyIdStartPause, QString::number(x.keyButtonId))) {
+                KeyStartPauseState = 1;
+            } else {
+                KeyStartPauseState = 2;
+            }
+        }
+        if (isKeyIdModeTest && state == STATE_WAIT_GET_KEY_MODE_STATE) {
+            if (compareVersions(keyIdMode, QString::number(x.keyButtonId))) {
+                KeyModeState = 1;
+            } else {
+                KeyModeState = 2;
+            }   
+        }
+        if (isKeyIdSpeedTest && state == STATE_WAIT_GET_KEY_SPEED_STATE) {
+            if (compareVersions(keyIdSpeed, QString::number(x.keyButtonId))) {
+                KeySpeedState = 1;
+            } else {
+                KeySpeedState = 2;
+            }
+        }
+        if (isKeyIdProgramTest && state == STATE_WAIT_GET_KEY_PROGRAM_STATE) {
+            if (compareVersions(keyIdProgram, QString::number(x.keyButtonId))) {
+                KeyProgramState = 1;
+            } else {
+                KeyProgramState = 2;
+            }
+        }
+        if (isKeyIdLeftTest && state == STATE_WAIT_GET_KEY_LEFT_STATE) {
+            if (compareVersions(keyIdLeft, QString::number(x.keyButtonId))) {
+                KeyLeftState = 1;
+            } else {
+                KeyLeftState = 2;
+            }
+        }
+        if (isKeyIdRightTest && state == STATE_WAIT_GET_KEY_RIGHT_STATE) {
+            if (compareVersions(keyIdRight, QString::number(x.keyButtonId))) {
+                KeyRightState = 1;
+            } else {
+                KeyRightState = 2;
+            }
+        }
+        if (isKeyIdLeftRotateTest && state == STATE_WAIT_GET_KEY_LEFTROTATE_STATE) {
+            if (compareVersions(keyIdLeftRotate, QString::number(x.keyButtonId))) {
+                KeyLeftRotateState = 1;
+            } else {
+                KeyLeftRotateState = 2;
+            }
+        }
+        if (isKeyIdRightRotateTest && state == STATE_WAIT_GET_KEY_RIGHTROTATE_STATE) {
+            if (compareVersions(keyIdRightRotate, QString::number(x.keyButtonId))) {
+                KeyRightRotateState = 1;
+            } else {
+                KeyRightRotateState = 2;
+            }
+        }
+        updateTestData(testItems);
+    }
+}
+
+
+void key_test::refreshfwVersion(QString data) {
     if (refresh_fw_times) {
         refresh_fw_times = 0;
         pumpsoft_version = data;
@@ -189,7 +311,7 @@ void quiescent_current::refreshfwVersion(QString data) {
 
 }   
 
-void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
+void key_test::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
@@ -360,7 +482,7 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
     }
 }
 
-void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
+void key_test::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "flash_state" << data.flash_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -477,14 +599,14 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
     }
 }
 
-void quiescent_current::refreshAmmeterData(QString data) {
-    qDebug() << getIndex() << "收到电流数据" << data;
+void key_test::refreshAmmeterData(QString data) {
+    qDebug() << getIndex() << "收到按键数据" << data;
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (currentProtocolType == Qusb::ProtocolType::LxModbus)
+    if (keyProtocolType == Qusb::ProtocolType::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (currentProtocolType == Qusb::ProtocolType::HqModbus)
+    else if (keyProtocolType == Qusb::ProtocolType::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;
@@ -501,7 +623,7 @@ void quiescent_current::refreshAmmeterData(QString data) {
     }
 }
 
-quiescent_current::~quiescent_current() {
+key_test::~key_test() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
     if (dongleSerialPort->isOpen()) {
@@ -523,7 +645,7 @@ quiescent_current::~quiescent_current() {
     delete ui;
 }
 
-void quiescent_current::refreshSn(ProtocolSnData data) {
+void key_test::refreshSn(ProtocolSnData data) {
 
     QString tail_sn_string = data.value;
     ui->product_sn->setText("整机sn:" + tail_sn_string);
@@ -552,7 +674,7 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
     }
     }
 
-void quiescent_current::on_snInput_returnPressed() {
+void key_test::on_snInput_returnPressed() {
     clearDisplay();
     macAddress = "没有mac地址";
     logString = "";
@@ -592,12 +714,12 @@ void quiescent_current::on_snInput_returnPressed() {
     // processInspection(ui->snInput->text());
     startFlowWithMac(parsedMac);
 }
-void quiescent_current::on_macInput_returnPressed() {
-    // 静态电流工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
+void key_test::on_macInput_returnPressed() {
+    // 按键测试工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
     showlog("当前工站不支持手动输入MAC，请扫描SN后回车启动测试");
 }
 
-void quiescent_current::clearDisplay() {
+void key_test::clearDisplay() {
     ui->msgEdit->clear();
     testResultTableInit();
     ui->test_result->setText("WAIT");
@@ -611,7 +733,7 @@ void quiescent_current::clearDisplay() {
                                  "padding: 10px; text-align: center; ");
     ui->macInput->clear();
 }
-void quiescent_current::refreshBleState(int state) {
+void key_test::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
@@ -625,7 +747,7 @@ void quiescent_current::refreshBleState(int state) {
     }
 }
 
-void quiescent_current::refreshProductUartState(int state) {
+void key_test::refreshProductUartState(int state) {
     if (state)
         showlog("product串口连接成功");
     else {
@@ -635,7 +757,7 @@ void quiescent_current::refreshProductUartState(int state) {
     }
 }
 
-void quiescent_current::refreshDongleUartState(int state) {
+void key_test::refreshDongleUartState(int state) {
     if (state)
         showlog("dongle串口连接成功");
     else {
@@ -645,7 +767,7 @@ void quiescent_current::refreshDongleUartState(int state) {
     }
 }
 
-void quiescent_current::refreshJigUartState(int state) {
+void key_test::refreshJigUartState(int state) {
     if (state)
         showlog("治具串口连接成功");
     else {
@@ -655,7 +777,7 @@ void quiescent_current::refreshJigUartState(int state) {
     }
 }
 
-void quiescent_current::refreshUsbUartState(int state) {
+void key_test::refreshUsbUartState(int state) {
     if (state)
         showlog("usb串口连接成功");
     else {
@@ -664,55 +786,55 @@ void quiescent_current::refreshUsbUartState(int state) {
         showlog("usb串口连接断开");
     }
 }
-void quiescent_current::on_connectButton_clicked() {
+void key_test::on_connectButton_clicked() {
     openDongleSerialPort();
     ui->comNameCombo->setEnabled(false);
     ui->connectButton->setEnabled(false);
 }
 
-void quiescent_current::on_disconnectButton_clicked() {
+void key_test::on_disconnectButton_clicked() {
     closeDongleSerialPort();
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     refreshBleState(0);
 }
-void quiescent_current::on_usbconnectButton_clicked() {
+void key_test::on_usbconnectButton_clicked() {
     openUsbSerialPort();
     ui->usbcomNameCombo->setEnabled(false);
     ui->usbconnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_usbdisconnectButton_clicked() {
+void key_test::on_usbdisconnectButton_clicked() {
     closeUsbSerialPort();
     ui->usbcomNameCombo->setEnabled(true);
     ui->usbconnectButton->setEnabled(true);
 }
 
-void quiescent_current::on_productConnectButton_clicked() {
+void key_test::on_productConnectButton_clicked() {
     openProductSerialPort();
     ui->productComNameCombo->setEnabled(false);
     ui->productConnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_productDisconnectButton_clicked() {
+void key_test::on_productDisconnectButton_clicked() {
     closeProductSerialPort();
     ui->productComNameCombo->setEnabled(true);
     ui->productConnectButton->setEnabled(true);
 }
 
-void quiescent_current::on_jigConnectButton_clicked() {
+void key_test::on_jigConnectButton_clicked() {
     openJigSerialPort();
     ui->jigComNameCombo->setEnabled(false);
     ui->jigConnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_jigDisconnectButton_clicked() {
+void key_test::on_jigDisconnectButton_clicked() {
     closeJigSerialPort();
     ui->jigComNameCombo->setEnabled(true);
     ui->jigConnectButton->setEnabled(true);
 }
 
-void quiescent_current::processInspection(QString stringsn) {
+void key_test::processInspection(QString stringsn) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     if (stringsn != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
@@ -746,7 +868,7 @@ void quiescent_current::processInspection(QString stringsn) {
     }
 }
 
-void quiescent_current::solveMesSucess(const int mechines) {
+void key_test::solveMesSucess(const int mechines) {
     test_base::solveMesSucess(mechines);
     if (mechines != getIndex() || !waitingMesInspection) {
         return;
@@ -761,12 +883,12 @@ void quiescent_current::solveMesSucess(const int mechines) {
     startFlowWithMac(parsedMac);
 }
 
-void quiescent_current::solveMesData(const int mechines, QString msg) {
+void key_test::solveMesData(const int mechines, QString msg) {
     waitingMesInspection = false;
     test_base::solveMesData(mechines, msg);
 }
 
-bool quiescent_current::validateCompanySnRule(const QString& snValue) {
+bool key_test::validateCompanySnRule(const QString& snValue) {
     // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：
     // 1) 去空白后必须为字母数字
     // 2) 总长度需大于 12（可包含型号/SKU + 12 位 MAC）
@@ -783,7 +905,7 @@ bool quiescent_current::validateCompanySnRule(const QString& snValue) {
     return true;
 }
 
-QString quiescent_current::parseMacFromSn(const QString& snValue) {
+QString key_test::parseMacFromSn(const QString& snValue) {
     // 参考 prod_test_for_trae/core/common/sn_mac_parser.py 的 get_mac_from_scan:
     // - 默认从第4位后取12位MAC
     // - 若 Mes/model(视作SKU码)出现在型号后、合理偏移内，则从SKU结束位置取12位
@@ -829,7 +951,7 @@ QString quiescent_current::parseMacFromSn(const QString& snValue) {
     return mac;
 }
 
-void quiescent_current::startFlowWithMac(const QString& mac) {
+void key_test::startFlowWithMac(const QString& mac) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     usblogwaittime->stop();
     firstconnectbrush = 0;
@@ -854,18 +976,18 @@ void quiescent_current::startFlowWithMac(const QString& mac) {
     isTestContinue = true;
 }
 
-bool quiescent_current::verifyTestModeState() {
+bool key_test::verifyTestModeState() {
     // TODO: 预留测试模式回读校验逻辑
     return true;
 }
 
-bool quiescent_current::controlProgrammablePowerForCharge(bool enable) {
+bool key_test::controlProgrammablePowerForCharge(bool enable) {
     // TODO: 预留程控电源控制逻辑
     showlog(enable ? "程控电源: 开启供电（占位）" : "程控电源: 关闭供电（占位）");
     return true;
 }
 
-quiescent_current::CurrentStats quiescent_current::collectCurrentStats(const QString& itemName, int sampleCount,
+key_test::CurrentStats key_test::collectCurrentStats(const QString& itemName, int sampleCount,
                                                                        int sampleIntervalMs) {
     CurrentStats stats;
     if (sampleCount <= 0) {
@@ -910,7 +1032,7 @@ quiescent_current::CurrentStats quiescent_current::collectCurrentStats(const QSt
     return stats;
 }
 
-bool quiescent_current::evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high) {
+bool key_test::evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high) {
     if (!stats.valid) {
         showlog(itemName + "采样无效");
         return false;
@@ -918,7 +1040,7 @@ bool quiescent_current::evaluateCurrentStats(const QString& itemName, const Curr
     return stats.avgValue >= low && stats.avgValue <= high;
 }
 
-void quiescent_current::startTask() {
+void key_test::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
@@ -927,13 +1049,22 @@ void quiescent_current::startTask() {
                 // usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
 
                 protocolManager.resetAllPb();
-                periph_state = 0;
-                base_state = 0;
-                fw_state = 0;
+                // periph_state = 0;
+                // base_state = 0;
+                // fw_state = 0;
                 isovertime = 0;
-                refresh_base_times = 1;
-                refresh_periph_times = 1;
-                refresh_fw_times = 1;
+                KeyPowerState = 0;
+                KeyStartPauseState = 0; 
+                KeyModeState = 0;
+                KeySpeedState = 0;
+                KeyProgramState = 0;
+                KeyLeftState = 0;
+                KeyRightState = 0;
+                KeyLeftRotateState = 0;
+                KeyRightRotateState = 0;
+                closeKeyWaitPromptProgrammatically();
+                keyWaitPromptShown = false;
+                factoryModeLogged = false;
                 totalresult = "";
                 at->resetConnected();
                 measure_ammeter = 0;
@@ -953,153 +1084,332 @@ void quiescent_current::startTask() {
                         protocolManager.set(DeviceCmd::FacMode, 1);
                     });
                     waitWork(300);
-                    state = STATE_VERIFY_TEST_MODE;
+                    state = STATE_WAIT_GET_KEY_POWER_STATE;
                 }
                 break;
 
-            case STATE_VERIFY_TEST_MODE:
+            // 等待获取电源键状态
+            case STATE_WAIT_GET_KEY_POWER_STATE:
                 if (canGoNext) {
-                    showlog("已进入工厂模式");
-                    appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
-                    testResultTableUpdate(testItems);
-                    sendCommandWithRetry([&]() { 
-                        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
-                    });
-                    state = STATE_BANDING;
-                    // showlog("校验工厂模式");
-
-                    // modeCheckPassed =verifyTestModeState();
-                    // if (modeCheckPassed) {
-                    //     showlog("工厂模式校验通过");
-                    //     state = STATE_SLEEP_CURRENT_TEST;
-                    // } else {
-                    //     showlog("工厂模式校验失败");
-                    //     totalresult = failValue;
-                    //     state = STATE_SAVE_RESULT;
-                    // }
-                }
-                break;
-
-            case STATE_BANDING: {
-                if (canGoNext) {
-                    if (snCompareOk == 1) {
-                        state = STATE_WATI_GET_BASE_STATE;                        showlog("sn已比对成功");
-                        appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
+                    if (!factoryModeLogged) {
+                        showlog("已进入工厂模式");
+                        appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
                         testResultTableUpdate(testItems);
-                        sendCommandWithRetry([&]() { 
-                            protocolManager.get(DeviceCmd::BaseInfo);
-                        });
-                    } else if (snCompareOk == 2) {
-                        showlog("sn已比对失败"); 
-                        // pack.error="SP03011";
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
+                        factoryModeLogged = true;
+                    }
+                    if (KeyPowerState != 0) {
+                        closeKeyWaitPromptProgrammatically();
+                        if (KeyPowerState == 1) {
+                            appendStationResult(testItems, "电源键测试", "0.0000", passValue);
+                            testResultTableUpdate(testItems);
+                            keyWaitPromptShown = false;
+                            showlog("电源按钮测试通过");
+                            state = STATE_WAIT_GET_KEY_STARTPAUSE_STATE;
+                        } else {
+                            appendStationResult(testItems, "电源键测试", "0.0000", failValue);
+                            testResultTableUpdate(testItems);
+                            keyWaitPromptShown = false;
+                            totalresult = failValue;
+                            state = STATE_SAVE_RESULT;
+                        }
                     } else {
-                    waitWork(500);
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
-                    showlog("已发送sn绑定");
+                        if (keyWaitPrompt == nullptr) {
+                            keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                            "按键测试",
+                                                            "请短按下电源按钮",
+                                                            QMessageBox::NoButton,
+                                                            this);
+                            keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                            connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                            keyWaitPrompt->show();
+                        }
+                        refresh_key_times = 1;
                     }
                 }
                 break;
-            }
 
-            case STATE_WATI_GET_BASE_STATE:
-                if (canGoNext) {
-                    if (fw_state == 1)  // 基础信息正常
-                    {
-                        waitWork(WAITTIME);
-                        showlog("固件版本验证通过");
-                        sendCommandWithRetry([&]() { 
-                            protocolManager.get(DeviceCmd::PeriphState);
-                        });
-                        state = STATE_WATI_GET_PERIPHERAL_STATE;
-                    }
-                    else if (fw_state == 2) {
-                        waitWork(WAITTIME);
-                        showlog("固件版本验证失败");
-                        protocolManager.get(DeviceCmd::PeriphState);
-                        pack.itemvalue = "fw_state=NG";
+            // 等待获取开始/暂停键状态
+            case STATE_WAIT_GET_KEY_STARTPAUSE_STATE:
+                if (KeyStartPauseState != 0) {
+                    showlog("开始/暂停键状态：" + QString::number(KeyStartPauseState));
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyStartPauseState == 1) {
+                        showlog("开始/暂停键短按");
+                        appendStationResult(testItems, "开始/暂停键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("开始/暂停键测试通过");
+                        state = STATE_WAIT_GET_KEY_MODE_STATE;
+                    } else {
+                        appendStationResult(testItems, "开始/暂停键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
                         totalresult = failValue;
                         state = STATE_SAVE_RESULT;
                     }
-
-                    else {
-                        waitWork(500);
-                        sendCommandWithRetry([&]() { 
-                            protocolManager.get(DeviceCmd::BaseInfo);
-                        });
-                        showlog("正在重发获取固件版本");
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                        "按键测试",  
+                                                        "请短按下开始/暂停按钮",
+                                                        QMessageBox::NoButton,
+                                                        this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
                     }
+
+                    refresh_key_times = 1;
+                }
+                break;
+            // 等待获取模式键状态
+            case STATE_WAIT_GET_KEY_MODE_STATE:
+                if (KeyModeState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyModeState == 1) {
+                        showlog("模式键短按");
+                        appendStationResult(testItems, "模式键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("模式键测试通过");
+                        state = STATE_WAIT_GET_KEY_SPEED_STATE;
+                    } else {
+                        appendStationResult(testItems, "模式键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下模式按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+            // 等待获取速度键状态
+            case STATE_WAIT_GET_KEY_SPEED_STATE:
+                if (KeySpeedState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeySpeedState == 1) {
+                        showlog("速度键短按");
+                        appendStationResult(testItems, "速度键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("速度键测试通过");
+                        state = STATE_WAIT_GET_KEY_PROGRAM_STATE;
+                    } else {
+                        appendStationResult(testItems, "速度键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下速度按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
                 }
                 break;
 
-            case STATE_WATI_GET_PERIPHERAL_STATE:
-                if (canGoNext) {
-                    if (periph_state == 1)  // 设备信息正常
-                    {
-                        showlog("外设状态正常");
-                        // showlog("正在发送取消静止休眠");
-                        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
-                        // qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
-                        // ble_waittime->setInterval(disconnect_wait_time);
-                        // ble_waittime->start();
+            // 等待获取程序键状态
+            case STATE_WAIT_GET_KEY_PROGRAM_STATE:
+                if (KeyProgramState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyProgramState == 1) {
+                        showlog("程序键短按");
+                        appendStationResult(testItems, "程序键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("程序键测试通过");
+                        state = STATE_WAIT_GET_KEY_LEFT_STATE;
+                    } else {
+                        appendStationResult(testItems, "程序键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下程序按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+            // 等待获取左键状态
+            case STATE_WAIT_GET_KEY_LEFT_STATE:
+                if (KeyLeftState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyLeftState == 1) {
+                        showlog("左键短按");
+                        appendStationResult(testItems, "左键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("左键测试通过");
+                        state = STATE_WAIT_GET_KEY_RIGHT_STATE;
+                    } else {
+                        appendStationResult(testItems, "左键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下左按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+            // 等待获取右键状态
+            case STATE_WAIT_GET_KEY_RIGHT_STATE:
+                if (KeyRightState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyRightState == 1) {
+                        showlog("右键短按");
+                        appendStationResult(testItems, "右键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("右键测试通过");
+                        state = STATE_WAIT_GET_KEY_LEFTROTATE_STATE;
+                    } else {
+                        appendStationResult(testItems, "右键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下右按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+            // 等待获取左旋键状态
+            case STATE_WAIT_GET_KEY_LEFTROTATE_STATE:
+                if (KeyLeftRotateState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyLeftRotateState == 1) {
+                        showlog("左旋键短按");
+                        appendStationResult(testItems, "左旋键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("左旋键测试通过");
+                        state = STATE_WAIT_GET_KEY_RIGHTROTATE_STATE;
+                    } else {
+                        appendStationResult(testItems, "左旋键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下左旋按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+
+            // 等待获取右旋键状态
+            case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE:
+                if (KeyRightRotateState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyRightRotateState == 1) {
+                        showlog("右旋键短按");
+                        appendStationResult(testItems, "右旋键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("右旋键测试通过");
                         totalresult = passValue;
                         state = STATE_SAVE_RESULT;
-                    }
-                    if (periph_state == 2)  // 设备信息异常
-                    {
-                        showlog("外设状态异常");
-                        pack.itemvalue = "periph_state=NG";
+                    } else {
+                        appendStationResult(testItems, "右旋键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
                         totalresult = failValue;
                         state = STATE_SAVE_RESULT;
                     }
-                    if (periph_state == 0) {
-                        waitWork(500);
-                        protocolManager.get(DeviceCmd::PeriphState);
-                        showlog("正在重发获取外设信息");
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下右旋按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
                     }
+
+                    refresh_key_times = 1;
                 }
                 break;
 
-            // case STATE_SLEEP_CURRENT_TEST: {  // 工作电流 / 可选充电电流
-            //     const bool enableWorkCurrent = stepEnabled("work_current");
-            //     const bool enableChargeCurrent = stepEnabled("charge_current");
-            //     workPass = true;
-            //     chargePass = true;
-
-            //     if (enableWorkCurrent) {
-            //         workCurrentStats = collectCurrentStats("工作电流", 8, 400);
-            //         workPass = evaluateCurrentStats("工作电流", workCurrentStats, LowCurrent, HighCurrent);
-
-            //         TestItem workTest;
-            //         workTest.testItem = "工作电流(ma)";
-            //         workTest.testData = QString("min:%1 max:%2 avg:%3 fluct:%4")
-            //                                 .arg(workCurrentStats.minValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.maxValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.avgValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.fluctuation, 0, 'f', 4);
-            //         workTest.testResult = workPass ? passValue : failValue;
-            //         workTest.ask = QString("%1~%2").arg(LowCurrent).arg(HighCurrent);
-            //         testItems.append(workTest);
-            //         testResultTableUpdate(testItems);
-            //     }
-            //     totalresult = (workPass && chargePass) ? passValue : failValue;
-            //     state = STATE_SAVE_RESULT;
-            //     break;
-            // }
-
-
-
-            case STATE_SAVE_RESULT:
+            case STATE_SAVE_RESULT: {
+                const QString endedSn = ui->snInput->text();
                 stringsn = "";
                 if (totalresult == passValue) {
                     pack.result = "PASS";
-                    pack.sn = ui->snInput->text();
-                    pack.instruct_num = "076";
-                    pack.itemvalue = pack.sn + "," + macAddress + ",STATIC_CURRENT_RESULT*" + pack.result +
-                                     QString("@STATIC_CURRENT*0");
+                    pack.sn = endedSn;
+                    pack.mechines = getIndex();
+                    pack.instruct_num = "079";
+                    pack.itemvalue = pack.sn + "," + macAddress + ",KEY_TEST_RESULT*" + pack.result +
+                                     QString("@KEY_TEST*0");
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
+                        showlog("Running send_end_testPass");
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1110,14 +1420,16 @@ void quiescent_current::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center;");
                 } else if ((totalresult == failValue)) {
                     pack.result = "NG";
-                    pack.sn = ui->snInput->text();
-                    pack.instruct_num = "076";
+                    pack.sn = endedSn;
+                    pack.mechines = getIndex();
+                    pack.instruct_num = "079";
                     if (pack.itemvalue.isEmpty()) {
-                        pack.itemvalue = pack.sn + "," + macAddress + ",STATIC_CURRENT_RESULT*" + pack.result +
-                                         QString("@STATIC_CURRENT*0");
+                        pack.itemvalue = pack.sn + "," + macAddress + ",KEY_TEST_RESULT*" + pack.result +
+                                         QString("@KEY_TEST*0");
                     }
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
+                        showlog("Running send_end_testPass");
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1128,34 +1440,35 @@ void quiescent_current::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center; ");
                 }
 
-                showlog("测试结束，sn为：" + ui->snInput->text());
+                showlog("测试结束，sn为：" + endedSn);
                 ui->macInput->clear();
                 ui->snInput->clear();
 
                 isTestContinue = false;  // 结束
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                } else {
-                    if (pack.factory == "xwd")
-                        jig->set_cylinder_state(0, getIndex());
-                }
+                // if (SETTINGS.value("SYSTEM/KeyMechine").toInt() == 3 ||
+                //     SETTINGS.value("SYSTEM/KeyMechine").toInt() == 2) {
+                // } else {
+                //     if (pack.factory == "xwd")
+                //         jig->set_cylinder_state(0, getIndex());
+                // }
 
                 on_disconnectButton_clicked();
                 on_usbdisconnectButton_clicked();
                 ui->snInput->setDisabled(0);
                 ui->macInput->setDisabled(1);
                 ui->getMac->setDisabled(0);
-                // emit send_end_test(getIndex());
+                emit send_end_test(getIndex());
 
                 state = STATE_IDLE;
                 break;
+            }
         }
         //   QCoreApplication::processEvents();
     }
 }
 
-void quiescent_current::on_pushButton_clicked() {
+void key_test::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");
     // on_snInput_returnPressed();
@@ -1169,13 +1482,13 @@ void quiescent_current::on_pushButton_clicked() {
     //     save_brush_log("dataTemp");
 }
 
-void quiescent_current::on_pushButton_3_clicked() {
+void key_test::on_pushButton_3_clicked() {
     usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
 
     // at->ask_mac();
     // MesInit();
 }
-void quiescent_current::processReceivedData(const QByteArray& data) {
+void key_test::processReceivedData(const QByteArray& data) {
     // 将接收到的数据添加到日志字符串中
     logString += data;
 
@@ -1215,14 +1528,14 @@ void quiescent_current::processReceivedData(const QByteArray& data) {
     }
 }
 
-void quiescent_current::on_pushButton_4_clicked() {
+void key_test::on_pushButton_4_clicked() {
     static int clickStep = 1;  // 用于跟踪当前运行的步骤
     pack.mechines = 1;
     pack.sn = "U03000077I1H00007D";
 
     pack.result = "PASS";
     pack.line = "1C3A04";
-    pack.itemvalue = QString("|BTMAC:3C:84:27:07:A8:D2|") + QString("CURRENT:0.24|");
+    pack.itemvalue = QString("|BTMAC:3C:84:27:07:A8:D2|") + QString("KEY:PASS|");
 
     switch (clickStep) {
         case 1: showlog("Running processInspection"); break;
@@ -1241,7 +1554,7 @@ void quiescent_current::on_pushButton_4_clicked() {
     }
 }
 
-void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
+void key_test::bandingMacSn(QString bandingmac, QString bandingsn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
@@ -1286,7 +1599,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     }
 }
 
-void quiescent_current::on_stopTest_clicked() {
+void key_test::on_stopTest_clicked() {
     showlog("触发停止测试");
     usblogwaittime->stop();
     ui->macInput->clear();
