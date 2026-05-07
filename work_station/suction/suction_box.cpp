@@ -9,7 +9,7 @@
 
 suction_box::suction_box(QWidget* parent) : box_base(parent), ui(new Ui::suction_box) {
     ui->setupUi(this);
-    CreatWindow<quiescent_current>(this);
+    CreatWindow<suction>(this);
     signalAndslot();
     recoverCustom();
     ShowData(this);

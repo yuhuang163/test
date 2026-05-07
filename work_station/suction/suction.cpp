@@ -23,7 +23,7 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     return Qusb::ProtocolType::Auto;
 }
 }
-quiescent_current::quiescent_current(int index, QWidget* parent) :
+suction::suction(int index, QWidget* parent) :
     test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
@@ -100,7 +100,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
-void quiescent_current::applySuctionProtocolConfig() {
+void suction::applySuctionProtocolConfig() {
     Qusb::ProtocolConfig cfg;
     cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString());
     cfg.luxshareMachineId = SETTINGS.value("Suction/LxMachineId", SETTINGS.value("Current/LxMachineId", getIndex())).toInt();
@@ -128,9 +128,9 @@ void quiescent_current::applySuctionProtocolConfig() {
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
 }
 
-void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
+void suction::disconnect_dongle() { on_disconnectButton_clicked(); }
 
-void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
+void suction::refreshMusicState(ProtocolMusicStateData data) {
     bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
     showlog("当前曲目为：" + QString::number(data.musicState));
 
@@ -160,7 +160,7 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void quiescent_current::refreshfwVersion(QString data) {
+void suction::refreshfwVersion(QString data) {
     if (refresh_fw_times) {
         refresh_fw_times = 0;
         pumpsoft_version = data;
@@ -189,7 +189,7 @@ void quiescent_current::refreshfwVersion(QString data) {
 
 }   
 
-void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
+void suction::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
         qDebug() << getIndex() << "refresh_times" << refresh_base_times;
         refresh_base_times = 0;
@@ -360,7 +360,7 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
     }
 }
 
-void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
+void suction::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "flash_state" << data.flash_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -477,7 +477,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
     }
 }
 
-void quiescent_current::refreshAmmeterData(QString data) {
+void suction::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到吸力数据" << data;
     double normalValue = 0;
     // 使用 toDouble() 进行转换
@@ -501,7 +501,7 @@ void quiescent_current::refreshAmmeterData(QString data) {
     }
 }
 
-quiescent_current::~quiescent_current() {
+suction::~suction() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
     if (dongleSerialPort->isOpen()) {
@@ -523,7 +523,7 @@ quiescent_current::~quiescent_current() {
     delete ui;
 }
 
-void quiescent_current::refreshSn(ProtocolSnData data) {
+void suction::refreshSn(ProtocolSnData data) {
 
     QString tail_sn_string = data.value;
     ui->product_sn->setText("整机sn:" + tail_sn_string);
@@ -552,7 +552,7 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
     }
     }
 
-void quiescent_current::on_snInput_returnPressed() {
+void suction::on_snInput_returnPressed() {
     clearDisplay();
     macAddress = "没有mac地址";
     logString = "";
@@ -592,12 +592,12 @@ void quiescent_current::on_snInput_returnPressed() {
     // processInspection(ui->snInput->text());
     startFlowWithMac(parsedMac);
 }
-void quiescent_current::on_macInput_returnPressed() {
+void suction::on_macInput_returnPressed() {
     // 吸力工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
     showlog("当前吸力工站不支持手动输入MAC，请扫描SN后回车启动测试");
 }
 
-void quiescent_current::clearDisplay() {
+void suction::clearDisplay() {
     ui->msgEdit->clear();
     testResultTableInit();
     ui->test_result->setText("WAIT");
@@ -611,7 +611,7 @@ void quiescent_current::clearDisplay() {
                                  "padding: 10px; text-align: center; ");
     ui->macInput->clear();
 }
-void quiescent_current::refreshBleState(int state) {
+void suction::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
@@ -625,7 +625,7 @@ void quiescent_current::refreshBleState(int state) {
     }
 }
 
-void quiescent_current::refreshProductUartState(int state) {
+void suction::refreshProductUartState(int state) {
     if (state)
         showlog("product串口连接成功");
     else {
@@ -635,7 +635,7 @@ void quiescent_current::refreshProductUartState(int state) {
     }
 }
 
-void quiescent_current::refreshDongleUartState(int state) {
+void suction::refreshDongleUartState(int state) {
     if (state)
         showlog("dongle串口连接成功");
     else {
@@ -645,7 +645,7 @@ void quiescent_current::refreshDongleUartState(int state) {
     }
 }
 
-void quiescent_current::refreshJigUartState(int state) {
+void suction::refreshJigUartState(int state) {
     if (state)
         showlog("治具串口连接成功");
     else {
@@ -655,7 +655,7 @@ void quiescent_current::refreshJigUartState(int state) {
     }
 }
 
-void quiescent_current::refreshUsbUartState(int state) {
+void suction::refreshUsbUartState(int state) {
     if (state)
         showlog("usb串口连接成功");
     else {
@@ -664,55 +664,55 @@ void quiescent_current::refreshUsbUartState(int state) {
         showlog("usb串口连接断开");
     }
 }
-void quiescent_current::on_connectButton_clicked() {
+void suction::on_connectButton_clicked() {
     openDongleSerialPort();
     ui->comNameCombo->setEnabled(false);
     ui->connectButton->setEnabled(false);
 }
 
-void quiescent_current::on_disconnectButton_clicked() {
+void suction::on_disconnectButton_clicked() {
     closeDongleSerialPort();
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     refreshBleState(0);
 }
-void quiescent_current::on_usbconnectButton_clicked() {
+void suction::on_usbconnectButton_clicked() {
     openUsbSerialPort();
     ui->usbcomNameCombo->setEnabled(false);
     ui->usbconnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_usbdisconnectButton_clicked() {
+void suction::on_usbdisconnectButton_clicked() {
     closeUsbSerialPort();
     ui->usbcomNameCombo->setEnabled(true);
     ui->usbconnectButton->setEnabled(true);
 }
 
-void quiescent_current::on_productConnectButton_clicked() {
+void suction::on_productConnectButton_clicked() {
     openProductSerialPort();
     ui->productComNameCombo->setEnabled(false);
     ui->productConnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_productDisconnectButton_clicked() {
+void suction::on_productDisconnectButton_clicked() {
     closeProductSerialPort();
     ui->productComNameCombo->setEnabled(true);
     ui->productConnectButton->setEnabled(true);
 }
 
-void quiescent_current::on_jigConnectButton_clicked() {
+void suction::on_jigConnectButton_clicked() {
     openJigSerialPort();
     ui->jigComNameCombo->setEnabled(false);
     ui->jigConnectButton->setEnabled(false);
 }
 
-void quiescent_current::on_jigDisconnectButton_clicked() {
+void suction::on_jigDisconnectButton_clicked() {
     closeJigSerialPort();
     ui->jigComNameCombo->setEnabled(true);
     ui->jigConnectButton->setEnabled(true);
 }
 
-void quiescent_current::processInspection(QString stringsn) {
+void suction::processInspection(QString stringsn) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     if (stringsn != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
@@ -746,7 +746,7 @@ void quiescent_current::processInspection(QString stringsn) {
     }
 }
 
-void quiescent_current::solveMesSucess(const int mechines) {
+void suction::solveMesSucess(const int mechines) {
     test_base::solveMesSucess(mechines);
     if (mechines != getIndex() || !waitingMesInspection) {
         return;
@@ -761,12 +761,12 @@ void quiescent_current::solveMesSucess(const int mechines) {
     startFlowWithMac(parsedMac);
 }
 
-void quiescent_current::solveMesData(const int mechines, QString msg) {
+void suction::solveMesData(const int mechines, QString msg) {
     waitingMesInspection = false;
     test_base::solveMesData(mechines, msg);
 }
 
-bool quiescent_current::validateCompanySnRule(const QString& snValue) {
+bool suction::validateCompanySnRule(const QString& snValue) {
     // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：
     // 1) 去空白后必须为字母数字
     // 2) 总长度需大于 12（可包含型号/SKU + 12 位 MAC）
@@ -783,7 +783,7 @@ bool quiescent_current::validateCompanySnRule(const QString& snValue) {
     return true;
 }
 
-QString quiescent_current::parseMacFromSn(const QString& snValue) {
+QString suction::parseMacFromSn(const QString& snValue) {
     // 参考 prod_test_for_trae/core/common/sn_mac_parser.py 的 get_mac_from_scan:
     // - 默认从第4位后取12位MAC
     // - 若 Mes/model(视作SKU码)出现在型号后、合理偏移内，则从SKU结束位置取12位
@@ -829,7 +829,7 @@ QString quiescent_current::parseMacFromSn(const QString& snValue) {
     return mac;
 }
 
-void quiescent_current::startFlowWithMac(const QString& mac) {
+void suction::startFlowWithMac(const QString& mac) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     usblogwaittime->stop();
     firstconnectbrush = 0;
@@ -854,18 +854,18 @@ void quiescent_current::startFlowWithMac(const QString& mac) {
     isTestContinue = true;
 }
 
-bool quiescent_current::verifyTestModeState() {
+bool suction::verifyTestModeState() {
     // TODO: 预留测试模式回读校验逻辑
     return true;
 }
 
-bool quiescent_current::controlProgrammablePowerForCharge(bool enable) {
+bool suction::controlProgrammablePowerForCharge(bool enable) {
     // TODO: 预留程控电源控制逻辑
     showlog(enable ? "程控电源: 开启供电（占位）" : "程控电源: 关闭供电（占位）");
     return true;
 }
 
-quiescent_current::SuctionStats quiescent_current::collectSuctionStats(const QString& itemName, int sampleCount,
+suction::SuctionStats suction::collectSuctionStats(const QString& itemName, int sampleCount,
                                                                        int sampleIntervalMs) {
     SuctionStats stats;
     if (sampleCount <= 0) {
@@ -910,7 +910,7 @@ quiescent_current::SuctionStats quiescent_current::collectSuctionStats(const QSt
     return stats;
 }
 
-bool quiescent_current::evaluateSuctionStats(const QString& itemName, const SuctionStats& stats, double low, double high) {
+bool suction::evaluateSuctionStats(const QString& itemName, const SuctionStats& stats, double low, double high) {
     if (!stats.valid) {
         showlog(itemName + "采样无效");
         return false;
@@ -918,7 +918,7 @@ bool quiescent_current::evaluateSuctionStats(const QString& itemName, const Suct
     return stats.avgValue >= low && stats.avgValue <= high;
 }
 
-void quiescent_current::startTask() {
+void suction::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
@@ -1155,7 +1155,7 @@ void quiescent_current::startTask() {
     }
 }
 
-void quiescent_current::on_pushButton_clicked() {
+void suction::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");
     // on_snInput_returnPressed();
@@ -1169,13 +1169,13 @@ void quiescent_current::on_pushButton_clicked() {
     //     save_brush_log("dataTemp");
 }
 
-void quiescent_current::on_pushButton_3_clicked() {
+void suction::on_pushButton_3_clicked() {
     usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
 
     // at->ask_mac();
     // MesInit();
 }
-void quiescent_current::processReceivedData(const QByteArray& data) {
+void suction::processReceivedData(const QByteArray& data) {
     // 将接收到的数据添加到日志字符串中
     logString += data;
 
@@ -1215,7 +1215,7 @@ void quiescent_current::processReceivedData(const QByteArray& data) {
     }
 }
 
-void quiescent_current::on_pushButton_4_clicked() {
+void suction::on_pushButton_4_clicked() {
     static int clickStep = 1;  // 用于跟踪当前运行的步骤
     pack.mechines = 1;
     pack.sn = "U03000077I1H00007D";
@@ -1241,7 +1241,7 @@ void quiescent_current::on_pushButton_4_clicked() {
     }
 }
 
-void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
+void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
@@ -1286,7 +1286,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
     }
 }
 
-void quiescent_current::on_stopTest_clicked() {
+void suction::on_stopTest_clicked() {
     showlog("触发停止测试");
     usblogwaittime->stop();
     ui->macInput->clear();

@@ -518,16 +518,15 @@ void quiescent_current::on_snInput_returnPressed() {
     clearDisplay();
     macAddress = "没有mac地址";
     logString = "";
-    waitingMesInspection = false;
-    modeCheckPassed = false;
-    workCurrentStats = CurrentStats();
-    chargeCurrentStats = CurrentStats();
     usblogwaittime->setInterval(5000);
     usblogwaittime->start();
     firstconnectbrush = 1;
-    // 与按键测试工站保持一致：仅使用公司SN规则校验（字母数字且长度>12）
-    if (!validateCompanySnRule(ui->snInput->text())) {
-        showlog("SN未通过公司规则校验");
+
+    QRegularExpression snRegex(snPattern);
+    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
     }
@@ -675,21 +674,8 @@ void quiescent_current::on_jigDisconnectButton_clicked() {
 }
 
 void quiescent_current::processInspection(QString stringsn) {
-    const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     if (stringsn != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
-            if (simulateFlow) {
-                // 联调模拟：MES站前检查直接通过
-                showlog("MES站前检测(模拟通过)");
-                ui->mes_state->setText("MES PASS(模拟)");
-                ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border-radius: 10px; "
-                                             "padding: 10px; text-align: center;");
-                waitingMesInspection = false;
-
-                const QString parsedMac = parseMacFromSn(stringsn);
-                startFlowWithMac(parsedMac);
-                return;
-            }
             showlog("正在进行站前检测");
             pack.sn = stringsn;
             pack.mechines = getIndex();
@@ -708,88 +694,7 @@ void quiescent_current::processInspection(QString stringsn) {
     }
 }
 
-void quiescent_current::solveMesSucess(const int mechines) {
-    test_base::solveMesSucess(mechines);
-    if (mechines != getIndex() || !waitingMesInspection) {
-        return;
-    }
-    waitingMesInspection = false;
-    const QString parsedMac = parseMacFromSn(stringsn);
-    if (parsedMac.isEmpty()) {
-        showlog("MES站前通过，但SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
-    startFlowWithMac(parsedMac);
-}
 
-void quiescent_current::solveMesData(const int mechines, QString msg) {
-    waitingMesInspection = false;
-    test_base::solveMesData(mechines, msg);
-}
-
-bool quiescent_current::validateCompanySnRule(const QString& snValue) {
-    // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：
-    // 1) 去空白后必须为字母数字
-    // 2) 总长度需大于 12（可包含型号/SKU + 12 位 MAC）
-    const QString normalized = QString(snValue).remove(QRegularExpression("\\s+")).trimmed().toUpper();
-    static const QRegularExpression alnumRegex("^[0-9A-Z]+$");
-    if (!alnumRegex.match(normalized).hasMatch()) {
-        showlog("SN规则校验失败：仅允许字母数字");
-        return false;
-    }
-    if (normalized.length() <= 12) {
-        showlog("SN规则校验失败：长度不足，需大于12位");
-        return false;
-    }
-    return true;
-}
-
-QString quiescent_current::parseMacFromSn(const QString& snValue) {
-    // 参考 prod_test_for_trae/core/common/sn_mac_parser.py 的 get_mac_from_scan:
-    // - 默认从第4位后取12位MAC
-    // - 若 Mes/model(视作SKU码)出现在型号后、合理偏移内，则从SKU结束位置取12位
-    QString normalized = QString(snValue).remove(QRegularExpression("\\s+")).trimmed().toUpper();
-    static const QRegularExpression alnumRegex("^[0-9A-Z]+$");
-    if (!alnumRegex.match(normalized).hasMatch() || normalized.length() <= 12) {
-        return QString();
-    }
-
-    const int modelLen = 4;
-    const int middleLen = 7;
-    const int macLen = 12;
-    int startIdx = modelLen;
-
-    QString skuCode = SETTINGS.value("Mes/model").toString().trimmed().toUpper();
-    if (!skuCode.isEmpty()) {
-        int searchPos = normalized.indexOf(skuCode);
-        while (searchPos >= 0) {
-            if (searchPos >= modelLen && searchPos <= (modelLen + middleLen - skuCode.length())) {
-                startIdx = searchPos + skuCode.length();
-                break;
-            }
-            searchPos = normalized.indexOf(skuCode, searchPos + 1);
-        }
-    }
-
-    if (startIdx + macLen > normalized.length()) {
-        return QString();
-    }
-    const QString rawMac = normalized.mid(startIdx, macLen);
-    static const QRegularExpression hexRegex("^[0-9A-F]{12}$");
-    if (!hexRegex.match(rawMac).hasMatch()) {
-        return QString();
-    }
-
-    QString mac;
-    for (int i = 0; i < macLen; i += 2) {
-        if (!mac.isEmpty()) {
-            mac += ":";
-        }
-        mac += rawMac.mid(i, 2);
-    }
-    return mac;
-}
 
 void quiescent_current::startFlowWithMac(const QString& mac) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
@@ -816,70 +721,6 @@ void quiescent_current::startFlowWithMac(const QString& mac) {
     isTestContinue = true;
 }
 
-bool quiescent_current::verifyTestModeState() {
-    // TODO: 预留测试模式回读校验逻辑
-    return true;
-}
-
-bool quiescent_current::controlProgrammablePowerForCharge(bool enable) {
-    // TODO: 预留程控电源控制逻辑
-    showlog(enable ? "程控电源: 开启供电（占位）" : "程控电源: 关闭供电（占位）");
-    return true;
-}
-
-quiescent_current::CurrentStats quiescent_current::collectCurrentStats(const QString& itemName, int sampleCount,
-                                                                       int sampleIntervalMs) {
-    CurrentStats stats;
-    if (sampleCount <= 0) {
-        return stats;
-    }
-
-    QVector<double> samples;
-    samples.reserve(sampleCount);
-    for (int i = 0; i < sampleCount; ++i) {
-        if (pack.factory == "hq") {
-            usb->gethqMEASure();
-        } else if (pack.factory == "lx") {
-            usb->getlxMEASure(getIndex());
-        } else {
-            usb->getMEASure("");
-        }
-        waitWork(sampleIntervalMs);
-        samples.append(measure_ammeter);
-    }
-
-    if (samples.isEmpty()) {
-        return stats;
-    }
-    stats.minValue = samples.first();
-    stats.maxValue = samples.first();
-    double sum = 0.0;
-    for (double value : samples) {
-        stats.minValue = qMin(stats.minValue, value);
-        stats.maxValue = qMax(stats.maxValue, value);
-        sum += value;
-    }
-    stats.avgValue = sum / samples.size();
-    stats.fluctuation = stats.maxValue - stats.minValue;
-    stats.valid = true;
-
-    showlog(QString("%1统计 -> 最小:%2mA 最大:%3mA 平均:%4mA 波动:%5mA")
-                .arg(itemName)
-                .arg(stats.minValue, 0, 'f', 4)
-                .arg(stats.maxValue, 0, 'f', 4)
-                .arg(stats.avgValue, 0, 'f', 4)
-                .arg(stats.fluctuation, 0, 'f', 4));
-    return stats;
-}
-
-bool quiescent_current::evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high) {
-    if (!stats.valid) {
-        showlog(itemName + "采样无效");
-        return false;
-    }
-    return stats.avgValue >= low && stats.avgValue <= high;
-}
-
 void quiescent_current::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
@@ -894,7 +735,6 @@ void quiescent_current::startTask() {
                 isovertime = 0;
                 refresh_base_times = 1;
                 refresh_periph_times = 1;
-                refresh_fw_times = 1;
                 totalresult = "";
                 at->resetConnected();
                 measure_ammeter = 0;
