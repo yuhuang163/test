@@ -1,4 +1,4 @@
-﻿
+
 // #include <DbgHelp.h>  // 包含 Windows 头文件后再引入
 // #include <Windows.h>  // 必须放在最前
 
@@ -16,12 +16,14 @@
 #include "ageingbox.h"
 #include "camerabox.h"
 #include "imubox.h"
+#include "key_test_box.h"
 #include "mainwindow.h"
 #include "motorbox.h"
 #include "pcbabox.h"
 #include "qfreeworkbox.h"
 #include "quiescent_current_box.h"
 #include "screenbox.h"
+#include "suction_box.h"
 #include "wifibox.h"
 #include "factory_analyzer.h"
 // #include <Windows.h>
@@ -288,7 +290,8 @@ int main(int argc, char* argv[]) {
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},
                                             {"AGE_TEST", 7},          {"PCBA_TEST", 8},   {"PRESS_TEST", 9},
-                                            {"FREE_WORK", 10},        {"MAIN_TEST", 11},  {"dji_TEST", 12}};
+                                            {"FREE_WORK", 10},        {"MAIN_TEST", 11},  {"dji_TEST", 12},
+                                            {"KEY_TEST", 13},         {"SUCTION_TEST", 14}};
 
     switch (map[station]) {
         case 1: {
@@ -376,6 +379,20 @@ int main(int argc, char* argv[]) {
             factory_analyzer dji;  // 主测试
             dji.show();
             return a.exec();
+        }
+        case 13: {
+            key_test_box* k = new key_test_box;  // 按键测试
+            k->show();
+            k->TotallyTask();
+            delete k;
+            break;
+        }
+        case 14: {
+            suction_box* s = new suction_box;  // 吸力测试
+            s->show();
+            s->TotallyTask();
+            delete s;
+            break;
         }
         default:
             factory_analyzer dji;  // 主测试

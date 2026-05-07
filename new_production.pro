@@ -9,6 +9,8 @@ QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG /MAP
 
 CONFIG += c++17
 QMAKE_CXXFLAGS += /MP
+# MSVC: keep UTF-8 source files with Chinese literals parsed consistently.
+QMAKE_CXXFLAGS += /utf-8
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -73,6 +75,8 @@ INCLUDEPATH += work_station/wifi_ble
 INCLUDEPATH += work_station/pcba
 INCLUDEPATH += work_station/pressure
 INCLUDEPATH += work_station/freework
+INCLUDEPATH += work_station/key
+INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 
@@ -143,6 +147,10 @@ SOURCES += \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/testFunction.cpp \
     work_station/imu/imubox.cpp \
+    work_station/key/key_test.cpp \
+    work_station/key/key_test_box.cpp \
+    work_station/suction/suction.cpp \
+    work_station/suction/suction_box.cpp \
     work_station/imu/imucali.cpp \
     work_station/motor/motor.cpp \
     work_station/motor/motorbox.cpp \
@@ -221,6 +229,10 @@ HEADERS += \
     work_station/freework/qfreeworkbox.h \
     work_station/imu/imubox.h \
     work_station/imu/imucali.h \
+    work_station/key/key_test.h \
+    work_station/key/key_test_box.h \
+    work_station/suction/suction.h \
+    work_station/suction/suction_box.h \
     work_station/motor/motor.h \
     work_station/motor/motorbox.h \
     work_station/pcba/pcbabox.h \
@@ -249,6 +261,10 @@ FORMS += \
     work_station/freework/qfreeworkbox.ui \
     work_station/imu/imubox.ui \
     work_station/imu/imucali.ui \
+    work_station/key/key_test.ui \
+    work_station/key/key_test_box.ui \
+    work_station/suction/suction.ui \
+    work_station/suction/suction_box.ui \
     work_station/motor/motor.ui \
     work_station/motor/motorbox.ui \
     work_station/pcba/pcbabox.ui \

@@ -1,4 +1,4 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -82,6 +82,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonBoardFactoryTest"), 8);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonPressTest"), 9);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonKeyTest"), 11);
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
     QStringList productList = {"U7",  "U7P",  "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P",
@@ -628,6 +630,8 @@ void qsetting::loadConfig() {
                                                {"AGE_TEST", ui->radioButtonAgingTest},
                                                {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
                                                {"FREE_WORK", ui->radioButtonFreeWorkstation},
+                                               {"KEY_TEST", ui->radioButtonKeyTest},
+                                               {"SUCTION_TEST", ui->radioButtonSuctionTest},
                                                {"MAIN_TEST", ui->radioButtonDebug},
                                                {"PRESS_TEST", ui->radioButtonPressTest}};
 
@@ -954,6 +958,8 @@ void qsetting::saveConfig() {
                                         ui->radioButtonAgingTest->isChecked()        ? "AGE_TEST" :
                                         ui->radioButtonPressTest->isChecked()        ? "PRESS_TEST" :
                                         ui->radioButtonBoardFactoryTest->isChecked() ? "PCBA_TEST" :
+                                        ui->radioButtonKeyTest->isChecked()          ? "KEY_TEST" :
+                                        ui->radioButtonSuctionTest->isChecked()      ? "SUCTION_TEST" :
                                         ui->radioButtonFreeWorkstation->isChecked()  ? "FREE_WORK" :
                                                                                        "MAIN_TEST");
 

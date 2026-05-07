@@ -1,8 +1,8 @@
-﻿#ifndef QUIESCENT_CURRENT_H
-#define QUIESCENT_CURRENT_H
+﻿#ifndef SUCTION_H
+#define SUCTION_H
 
 #include "test_base.h"
-#include "ui_quiescent_current.h"
+#include "ui_suction.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -11,16 +11,16 @@
 #include "testmodel.h"
 
 namespace Ui {
-    class quiescent_current;
+    class suction;
 }
 
-class quiescent_current : public test_base {
+class suction : public test_base {
     Q_OBJECT
 
 public:
-    explicit quiescent_current(int index, QWidget* parent = nullptr);
-    ~quiescent_current();
-    Ui::quiescent_current* ui;
+    explicit suction(int index, QWidget* parent = nullptr);
+    ~suction();
+    Ui::suction* ui;
     ImuDataT orgData;
     void startTask() override;
     void processReceivedData(const QByteArray& data) override;
@@ -33,7 +33,6 @@ public:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
-    // void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
@@ -51,10 +50,10 @@ public:
     void disconnect_dongle();
 
 private:
-    void applyCurrentProtocolConfig();
+    void applySuctionProtocolConfig();
     QByteArray sn;
-    double HighCurrent;
-    double LowCurrent;
+    double HighSuction;
+    double LowSuction;
     QString M_USERNO;
     QString stringsn;
     QString pumpsoft_version;
@@ -67,6 +66,7 @@ private:
     QLabel* product_sn;
     int periph_state = 0;
     int base_state = 0;
+    int fw_state = 0;
     int snCompareOk = 0;
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
@@ -77,14 +77,14 @@ private:
     TestModel* peripheralModel;
     QString logString = "";
     QString totalresult = "";
-    Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
+    Qusb::ProtocolType suctionProtocolType = Qusb::ProtocolType::Scpi;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接
         STATE_BANDING,            // SN 绑定
         STATE_SET_TEST_MODE,      // 设置测试模式（工厂模式）
         STATE_VERIFY_TEST_MODE,   // 校验测试模式
-        STATE_SLEEP_CURRENT_TEST,  // 工作电流等测量
+        STATE_SUCTION_TEST,  // 吸力等测量
         STATE_SAVE_RESULT,         // 保存结果 / 界面复位
         STATE_VERIFY_SN,           // 校验SN
         STATE_WATI_GET_BASE_STATE,  // 基础信息获取
@@ -93,6 +93,13 @@ private:
     } State;
     QElapsedTimer TestTime;
     State state = STATE_IDLE;
+    struct SuctionStats {
+        bool valid = false;
+        double minValue = 0.0;
+        double maxValue = 0.0;
+        double avgValue = 0.0;
+        double fluctuation = 0.0;
+    };
     // 操作员工号
     // 设备编号
     // 制程
@@ -101,15 +108,19 @@ private:
     // 动作
     int refresh_base_times;
     int refresh_periph_times;
+    int refresh_fw_times;
     int firstconnectbrush = 1;
     QTimer* usblogwaittime = new QTimer(this);
     QString last_macAddress = "没有mac地址";
     QTimer* waittime = new QTimer(this);
     QTimer* ble_waittime = new QTimer(this);
-    int measure_wait_time = 15000;
+    int suction_wait_time = 15000;
     int disconnect_wait_time = 5000;
     bool isovertime = 0;  // 是否开始发送校验结果
-   
+    bool waitingMesInspection = false;
+    bool modeCheckPassed = false;
+    SuctionStats workSuctionStats;
+    SuctionStats chargeSuctionStats;
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();
     void initPeriphState();
@@ -117,11 +128,13 @@ private:
     void writeDataToCSVFile();
     void clearDisplay();
     void bandingMacSn(QString bandingmac, QString bandingsn);
- 
-
+    bool validateCompanySnRule(const QString& snValue);
+    QString parseMacFromSn(const QString& snValue);
     void startFlowWithMac(const QString& mac);
-
-
+    bool verifyTestModeState();
+    bool controlProgrammablePowerForCharge(bool enable);
+    SuctionStats collectSuctionStats(const QString& itemName, int sampleCount, int sampleIntervalMs);
+    bool evaluateSuctionStats(const QString& itemName, const SuctionStats& stats, double low, double high);
 
 signals:
     void send_go_next_focus();
@@ -129,6 +142,7 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
+
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();
@@ -148,4 +162,4 @@ private slots:
     void on_stopTest_clicked();
 };
 
-#endif  // QUIESCENT_CURRENT_H
+#endif  // SUCTION_H

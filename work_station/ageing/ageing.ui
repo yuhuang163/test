@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -88,11 +88,14 @@
              </property>
              <item>
               <widget class="QCheckBox" name="isformmes">
+               <property name="mouseTracking">
+                <bool>true</bool>
+               </property>
                <property name="text">
                 <string>是否从mes获取mac</string>
                </property>
                <property name="checked">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
               </widget>
              </item>
@@ -105,7 +108,7 @@
                 <bool>true</bool>
                </property>
                <property name="checked">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
               </widget>
              </item>

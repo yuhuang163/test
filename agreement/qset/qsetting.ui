@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>qsetting</class>
  <widget class="QWidget" name="qsetting">
@@ -2373,6 +2373,20 @@
            <widget class="QRadioButton" name="radioButtonBoardFactoryTest">
             <property name="text">
              <string>板厂测试上位机</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioButtonKeyTest">
+            <property name="text">
+             <string>按键测试上位机</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioButtonSuctionTest">
+            <property name="text">
+             <string>吸力测试上位机</string>
             </property>
            </widget>
           </item>
