@@ -2,6 +2,7 @@
 
 #include "qevent.h"
 #include <algorithm>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
 #include <QString>
@@ -123,7 +124,10 @@ void qsetting::initFreeWorkTestOrderUi() {
 
     for (int i = 0; i < catalog.size(); ++i) {
         auto* checkBox = new DraggableCheckBox(catalog.at(i).name, catalog.at(i).id, this);
-        connect(checkBox, &QCheckBox::stateChanged, this, [this](int) { saveCurrentTestOrder(); });
+        connect(checkBox, &QCheckBox::stateChanged, this, [this](int) {
+            testOrderDirty_ = true;
+            saveCurrentTestOrder();
+        });
         freeWorkCheckBoxes_.append(checkBox);
         freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
     }
@@ -249,15 +253,15 @@ QVector<int> qsetting::loadTestOrderIndexes(const QString& station) const {
     if (indexes.isEmpty() && !trimmedStation.isEmpty()) {
         loadIndexesFromGroup(QString("TestOrder/%1").arg(trimmedStation));
     }
-    if (indexes.isEmpty()) {
-        loadIndexesFromGroup("TestOrder");
-    }
-    if (indexes.isEmpty()) {
-        loadIndexesFromGroup(orderGroupName("default"));
-    }
-    if (indexes.isEmpty()) {
-        loadIndexesFromGroup("TestOrder/default");
-    }
+    // if (indexes.isEmpty()) {
+    //     loadIndexesFromGroup("TestOrder");
+    // }
+    // if (indexes.isEmpty()) {
+    //     loadIndexesFromGroup(orderGroupName("default"));
+    // }
+    // if (indexes.isEmpty()) {
+    //     loadIndexesFromGroup("TestOrder/default");
+    // }
     return indexes;
 }
 
@@ -387,7 +391,8 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     qDebug() << "[TestOrder] after rebuild, config count =" << freeWorkConfigLayout_->count()
              << ", optional count =" << freeWorkOptionalLayout_->count() << ", selected ids =" << selectedIds.values();
 
-    saveCurrentTestOrder();
+    savedTestOrderSnapshot_ = indexes;
+    testOrderDirty_ = false;
 }
 
 void qsetting::saveCurrentTestOrder() {
@@ -537,6 +542,7 @@ void qsetting::dropEvent(QDropEvent* event) {
     }
 
     dragPos_ = QPoint();
+    testOrderDirty_ = true;
     saveCurrentTestOrder();
 }
 
@@ -684,6 +690,10 @@ void qsetting::loadConfig() {
 
     // 加载信号测试次数
     ui->signalTestCountLineEdit->setText(SETTINGS.value("BLE/RssiCount").toString());
+
+    // 加载老化工站配置
+    ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
+    ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
 
     // 加载行和列
     ui->rowLineEdit->setText(SETTINGS.value("User/formRow").toString());
@@ -996,6 +1006,10 @@ void qsetting::saveConfig() {
 
     // 保存信号测试次数
     SETTINGS.setValue("BLE/RssiCount", ui->signalTestCountLineEdit->text());
+
+    // 保存老化工站配置
+    SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
+    SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
 
     // 保存行和列
     SETTINGS.setValue("User/formRow", ui->rowLineEdit->text());
@@ -1524,10 +1538,61 @@ void qsetting::on_comboBox_testOrderStation_currentTextChanged(const QString& te
         qDebug() << "[TestOrder] station unchanged/empty, skip reorder";
         return;
     }
-    saveCurrentTestOrder();
+    if (testOrderDirty_) {
+        const auto result = QMessageBox::question(this, "保存测试流程配置", "当前工站的测试流程已变化，是否保存？",
+                                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (result == QMessageBox::Yes) {
+            saveCurrentTestOrder();
+        } else {
+            saveTestOrderIndexes(activeTestOrderStation_, savedTestOrderSnapshot_);
+        }
+        testOrderDirty_ = false;
+    }
     activeTestOrderStation_ = nextStation;
     SETTINGS.setValue(kSelectedStationKey, activeTestOrderStation_);
     SETTINGS.setValue(kSelectedStationNameKey, stationDisplayNameFromKey(activeTestOrderStation_));
     applyStationUiState(activeTestOrderStation_);
     reorderFreeWorkCheckBoxes();
+}
+
+void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
+    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+        return;
+    }
+
+    while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
+        delete item;
+    }
+    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
+        delete item;
+    }
+
+    QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
+    blockedStates.reserve(freeWorkCheckBoxes_.size());
+    for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
+        if (checkBox) {
+            blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
+
+        }
+    }
+
+    for (int i = 0; i < freeWorkCheckBoxes_.size(); ++i) {
+        DraggableCheckBox* checkBox = freeWorkCheckBoxes_.at(i);
+        if (!checkBox) {
+            continue;
+        }
+        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+        checkBox->show();
+    }
+
+    for (const auto& state : blockedStates) {
+        if (state.first) {
+            state.first->blockSignals(state.second);
+        }
+    }
+
+    freeWorkConfigLayout_->invalidate();
+    freeWorkOptionalLayout_->invalidate();
+    testOrderDirty_ = true;
+    saveCurrentTestOrder();
 }

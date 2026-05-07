@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -2429,12 +2429,51 @@
      </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
-       <string>说明页面</string>
+       <string>测试详细配置</string>
       </attribute>
+      <layout class="QGridLayout" name="gridLayout_testDetailConfig">
+       <item row="0" column="0">
+        <widget class="QGroupBox" name="groupBox_ageingConfig">
+         <property name="title">
+          <string>老化工站配置</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_ageingConfig">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_ageingBurningMode">
+            <property name="text">
+             <string>老化模式</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_ageingBurningMode">
+            <property name="text">
+             <string>1</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_ageingBurningSeconds">
+            <property name="text">
+             <string>老化测试时长(秒)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_ageingBurningSeconds">
+            <property name="text">
+             <string>14400</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="tab_3">
       <attribute name="title">
-       <string>测试配置</string>
+       <string>测试流程配置</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
        <item row="2" column="0">
@@ -2513,6 +2552,13 @@ QGroupBox {
          </item>
          <item>
           <widget class="QComboBox" name="comboBox_testOrderStation"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_clearConfiguredTestOrder">
+           <property name="text">
+            <string>清空已配置区域</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>

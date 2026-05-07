@@ -55,6 +55,8 @@ private:
     int freeWorkRows_ = 0;
     QPoint dragPos_;
     QString activeTestOrderStation_;
+    QVector<int> savedTestOrderSnapshot_;
+    bool testOrderDirty_ = false;
     bool switchingTestOrderStation_ = false;
 
 protected:
@@ -69,6 +71,7 @@ private slots:
     void on_comboBox_productName_textActivated(const QString& arg1);
     void on_comboBox_factory_textActivated(const QString& arg1);
     void on_comboBox_testOrderStation_currentTextChanged(const QString& text);
+    void on_pushButton_clearConfiguredTestOrder_clicked();
 };
 
 #endif  // QSETTING_H
