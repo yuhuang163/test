@@ -108,6 +108,7 @@ private:
         bool pass = true;
         int functionId = -1;
         QString testData;
+        QString ask = "通过";
 
         // 每进入下一步或流程结束时统一复位
         void reset() {
@@ -116,6 +117,7 @@ private:
             pass = true;
             functionId = -1;
             testData.clear();
+            ask = "通过";
         }
     } stepRuntime_;
     bool isCurrentStep(const QString& functionName) const;
@@ -142,6 +144,8 @@ private slots:
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
+    void refreshRssiRead(ProtocolRssiData data) override;
+    void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
     void refreshBleState(int state) override;
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;

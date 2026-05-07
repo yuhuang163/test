@@ -185,6 +185,7 @@ void QFreeWork::startTask() {
                     stepRuntime_.done = !currentFunction.needCaseDone;
                     stepRuntime_.pass = true;
                     stepRuntime_.testData = "-";
+                    stepRuntime_.ask = "通过";
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
@@ -221,7 +222,7 @@ void QFreeWork::startTask() {
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
                     test.testResult = stepRuntime_.pass ? "通过" : "失败";
-                    test.ask = "通过";
+                    test.ask = stepRuntime_.ask;
                     testItems.append(test);
                     testResultTableUpdate(testItems);
                 // }

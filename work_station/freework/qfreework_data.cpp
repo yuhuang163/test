@@ -200,6 +200,59 @@ void QFreeWork::refreshBleRssi(QString data) {
     }
 }
 
+void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
+    const int rssi = data.dbm;
+    const bool isBtStep = isCurrentStep("获取BT RSSI");
+    const bool isBleStep = isCurrentStep("获取BLE RSSI");
+    if (!isBtStep && !isBleStep) {
+        return;
+    }
+
+    const QString itemName = isBtStep ? "BT RSSI" : "BLE RSSI";
+    const QString value = QString::number(rssi);
+    const QString ask = QString("[%1,%2]").arg(BleLowRssi).arg(BleHighRssi);
+    const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
+
+    if (isBtStep) {
+        ui->WIFI_RSSI->setText("BT的RSSI：" + value);
+    } else {
+        ui->BLE_RSSI->setText("BLE的RSSI:" + value);
+    }
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = value;
+    stepRuntime_.ask = ask;
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("%1卡控失败，当前=%2，范围=%3").arg(itemName, value, ask));
+    } else {
+        showlog(QString("%1卡控通过，当前=%2").arg(itemName, value));
+    }
+}
+
+void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
+    if (!isCurrentStep("读取充电电流")) {
+        return;
+    }
+
+    const double currentMa = static_cast<double>(data.value);
+    const QString value = QString::number(currentMa, 'f', 0) + "ma";
+    const QString ask = QString("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+    const bool pass = (currentMa >= LowCurrent && currentMa <= HighCurrent);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = value;
+    stepRuntime_.ask = ask;
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("充电电流卡控失败，当前=%1，范围=%2").arg(value, ask));
+    } else {
+        showlog(QString("充电电流卡控通过，当前=%1").arg(value));
+    }
+}
+
 void QFreeWork::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到电流数据" << data;
 

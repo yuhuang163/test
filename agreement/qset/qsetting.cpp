@@ -1559,6 +1559,11 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
         return;
     }
+    const auto result = QMessageBox::question(this, "确认清空", "确定要清空当前工站的已配置测试流程吗？",
+                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (result != QMessageBox::Yes) {
+        return;
+    }
 
     while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
         delete item;

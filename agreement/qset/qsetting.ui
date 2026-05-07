@@ -825,45 +825,6 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_12">
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_3">
-            <item>
-             <widget class="QLabel" name="bluetoothSignalStrengthLabel">
-              <property name="text">
-               <string>蓝牙信号强度</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="bluetoothUpperLimitLayout">
-              <item>
-               <widget class="QLabel" name="bluetoothUpperLimitLabel">
-                <property name="text">
-                 <string>上限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="bluetoothUpperLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="bluetoothLowerLimitLayout">
-              <item>
-               <widget class="QLabel" name="bluetoothLowerLimitLabel">
-                <property name="text">
-                 <string>下限</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="bluetoothLowerLimitLineEdit"/>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-          <item>
            <layout class="QHBoxLayout" name="horizontalLayout_4">
             <item>
              <widget class="QLabel" name="wifiSignalStrengthLabel">
@@ -2431,45 +2392,108 @@
       <attribute name="title">
        <string>测试详细配置</string>
       </attribute>
-      <layout class="QGridLayout" name="gridLayout_testDetailConfig">
-       <item row="0" column="0">
-        <widget class="QGroupBox" name="groupBox_ageingConfig">
-         <property name="title">
-          <string>老化工站配置</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_ageingConfig">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_ageingBurningMode">
+      <widget class="QGroupBox" name="groupBox_ageingConfig">
+       <property name="geometry">
+        <rect>
+         <x>9</x>
+         <y>9</y>
+         <width>251</width>
+         <height>83</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>老化工站配置</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_ageingBurningMode">
+          <property name="text">
+           <string>老化模式</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_ageingBurningMode">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>1</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_ageingBurningSeconds">
+          <property name="text">
+           <string>老化测试时长(秒)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="lineEdit_ageingBurningSeconds">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>14400</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="layoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>130</y>
+         <width>416</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="bluetoothSignalStrengthLabel">
+          <property name="text">
+           <string>蓝牙信号强度</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="bluetoothUpperLimitLayout">
+          <item>
+           <widget class="QLabel" name="bluetoothUpperLimitLabel">
             <property name="text">
-             <string>老化模式</string>
+             <string>上限</string>
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="lineEdit_ageingBurningMode">
-            <property name="text">
-             <string>1</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_ageingBurningSeconds">
-            <property name="text">
-             <string>老化测试时长(秒)</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_ageingBurningSeconds">
-            <property name="text">
-             <string>14400</string>
-            </property>
-           </widget>
+          <item>
+           <widget class="QLineEdit" name="bluetoothUpperLimitLineEdit"/>
           </item>
          </layout>
-        </widget>
-       </item>
-      </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="bluetoothLowerLimitLayout">
+          <item>
+           <widget class="QLabel" name="bluetoothLowerLimitLabel">
+            <property name="text">
+             <string>下限</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="bluetoothLowerLimitLineEdit"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
      </widget>
      <widget class="QWidget" name="tab_3">
       <attribute name="title">
