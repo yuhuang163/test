@@ -42,8 +42,11 @@ private:
     int getIndexAt(const QPoint& globalPos) const;
     DraggableCheckBox* getConfiguredCheckBoxByIndex(int index) const;
     DraggableCheckBox* getOptionalCheckBoxByIndex(int index) const;
-    QVector<int> loadTestOrderIndexes() const;
-    void saveTestOrderIndexes(const QVector<int>& indexes) const;
+    void initTestOrderStationSelector();
+    void applyStationUiState(const QString& stationKey);
+    QString currentTestOrderStation() const;
+    QVector<int> loadTestOrderIndexes(const QString& station) const;
+    void saveTestOrderIndexes(const QString& station, const QVector<int>& indexes) const;
     void saveCurrentTestOrder();
     QVBoxLayout* freeWorkConfigLayout_ = nullptr;
     QGridLayout* freeWorkOptionalLayout_ = nullptr;
@@ -51,6 +54,8 @@ private:
     int freeWorkCols_ = 3;
     int freeWorkRows_ = 0;
     QPoint dragPos_;
+    QString activeTestOrderStation_;
+    bool switchingTestOrderStation_ = false;
 
 protected:
     virtual void closeEvent(QCloseEvent*);
@@ -63,6 +68,7 @@ private slots:
     void RestoreFacDefaultSetting();
     void on_comboBox_productName_textActivated(const QString& arg1);
     void on_comboBox_factory_textActivated(const QString& arg1);
+    void on_comboBox_testOrderStation_currentTextChanged(const QString& text);
 };
 
 #endif  // QSETTING_H

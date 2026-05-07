@@ -1,7 +1,9 @@
 ﻿#include "qsetting.h"
 
 #include "qevent.h"
+#include <algorithm>
 #include <QMimeData>
+#include <QSet>
 #include <QString>
 #include <QVector>
 #include "qpainter.h"
@@ -18,6 +20,48 @@ namespace {
 constexpr int kRowSpacing = 10;
 constexpr int kColumnSpacing = 10;
 constexpr int kMargin = 10;
+const QString kSelectedStationKey = "TestOrderMeta/SelectedStation";
+const QString kSelectedStationNameKey = "TestOrderMeta/SelectedStationName";
+
+struct StationItem {
+    QString name;
+    QString key;
+};
+
+const QVector<StationItem> kPresetStations = {
+    {"组装电流测试工站", "ASSEMBLY_CURRENT_TEST"},
+    {"老化测试工站", "AGING_TEST"},
+    {"按键测试工站", "BUTTON_TEST"},
+    {"屏幕测试工站", "SCREEN_TEST"},
+    {"蓝牙测试工站", "BLUETOOTH_TEST"},
+    {"吸力测试工站", "SUCTION_TEST"},
+};
+
+QString orderGroupName(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    return key.isEmpty() ? "TestOrder_default" : QString("TestOrder_%1").arg(key);
+}
+
+QString stationKeyFromDisplayName(const QString& name) {
+    const QString trimmedName = name.trimmed();
+    for (const auto& item : kPresetStations) {
+        if (item.name == trimmedName) {
+            return item.key;
+        }
+    }
+    return trimmedName;
+}
+
+QString stationDisplayNameFromKey(const QString& key) {
+    const QString trimmedKey = key.trimmed();
+    for (const auto& item : kPresetStations) {
+        if (item.key == trimmedKey) {
+            return item.name;
+        }
+    }
+    return trimmedKey;
+}
+
 }
 
 qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
@@ -87,22 +131,143 @@ void qsetting::initFreeWorkTestOrderUi() {
     freeWorkOptionalLayout_->setVerticalSpacing(kRowSpacing);
     freeWorkOptionalLayout_->setHorizontalSpacing(kColumnSpacing);
     freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
+    initTestOrderStationSelector();
     reorderFreeWorkCheckBoxes();
 }
 
-QVector<int> qsetting::loadTestOrderIndexes() const {
-    QVector<int> indexes;
-    SETTINGS.beginGroup("TestOrder");
-    const QStringList keys = SETTINGS.childKeys();
-    for (const QString& key : keys) {
-        indexes.append(SETTINGS.value(key).toInt());
+void qsetting::initTestOrderStationSelector() {
+    if (!ui->comboBox_testOrderStation) {
+        return;
     }
+
+    QVector<StationItem> stationCandidates = kPresetStations;
+    auto appendCandidate = [&stationCandidates](const QString& rawValue) {
+        const QString key = stationKeyFromDisplayName(rawValue);
+        if (key.isEmpty()) {
+            return;
+        }
+        stationCandidates.append({stationDisplayNameFromKey(key), key});
+    };
+    appendCandidate(SETTINGS.value(kSelectedStationKey).toString());
+    appendCandidate(SETTINGS.value(kSelectedStationNameKey).toString());
+
+
+
+    SETTINGS.beginGroup("TestOrder");
+    const QStringList legacyGroupKeys = SETTINGS.childGroups();
     SETTINGS.endGroup();
+    for (const QString& groupKey : legacyGroupKeys) {
+        appendCandidate(groupKey);
+    }
+
+    const QStringList rootGroups = SETTINGS.childGroups();
+    for (const QString& group : rootGroups) {
+        if (group.startsWith("TestOrder_")) {
+            appendCandidate(group.mid(QString("TestOrder_").size()));
+        }
+    }
+
+    QSet<QString> uniqueStations;
+    QVector<StationItem> stations;
+    for (const auto& station : stationCandidates) {
+        const QString key = station.key.trimmed();
+
+        if (!key.isEmpty() && !uniqueStations.contains(key)) {
+            uniqueStations.insert(key);
+            stations.append({station.name.trimmed(), key});
+        }
+    }
+    if (stations.isEmpty()) {
+        stations.append({"default", "default"});
+    }
+
+    switchingTestOrderStation_ = true;
+    ui->comboBox_testOrderStation->clear();
+    for (const auto& station : stations) {
+        ui->comboBox_testOrderStation->addItem(station.name, station.key);
+    }
+
+    activeTestOrderStation_ = stationKeyFromDisplayName(
+        SETTINGS.value(kSelectedStationKey, SETTINGS.value("MES/test_station", "default")).toString());
+    if (activeTestOrderStation_.isEmpty()) {
+        activeTestOrderStation_ = "default";
+    }
+    int idx = ui->comboBox_testOrderStation->findData(activeTestOrderStation_);
+    if (idx < 0) {
+        idx = ui->comboBox_testOrderStation->findText(stationDisplayNameFromKey(activeTestOrderStation_));
+    }
+    if (idx >= 0) {
+        ui->comboBox_testOrderStation->setCurrentIndex(idx);
+    } else {
+        ui->comboBox_testOrderStation->setCurrentIndex(0);
+        activeTestOrderStation_ = ui->comboBox_testOrderStation->currentData().toString().trimmed();
+    }
+    switchingTestOrderStation_ = false;
+    SETTINGS.setValue(kSelectedStationKey, activeTestOrderStation_);
+    SETTINGS.setValue(kSelectedStationNameKey, stationDisplayNameFromKey(activeTestOrderStation_));
+    applyStationUiState(activeTestOrderStation_);
+
+}
+
+void qsetting::applyStationUiState(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    if (ui->config) {
+        ui->config->setTitle(QString("配置区域（%1）").arg(stationDisplayNameFromKey(key)));
+    }
+}
+
+QString qsetting::currentTestOrderStation() const {
+    if (!activeTestOrderStation_.isEmpty()) {
+        return activeTestOrderStation_;
+    }
+    if (ui->comboBox_testOrderStation) {
+        const QString currentStation = ui->comboBox_testOrderStation->currentData().toString().trimmed();
+        if (!currentStation.isEmpty()) {
+            return currentStation;
+        }
+    }
+    return SETTINGS.value("MES/test_station", "default").toString().trimmed();
+}
+
+QVector<int> qsetting::loadTestOrderIndexes(const QString& station) const {
+    QVector<int> indexes;
+    auto loadIndexesFromGroup = [&indexes](const QString& groupPath) {
+        SETTINGS.beginGroup(groupPath);
+        QStringList keys = SETTINGS.childKeys();
+        std::sort(keys.begin(), keys.end(), [](const QString& left, const QString& right) { return left.toInt() < right.toInt(); });
+        for (const QString& key : keys) {
+            indexes.append(SETTINGS.value(key).toInt());
+        }
+        SETTINGS.endGroup();
+    };
+
+    const QString trimmedStation = station.trimmed();
+    if (!trimmedStation.isEmpty()) {
+        loadIndexesFromGroup(orderGroupName(trimmedStation));
+    }
+    // 兼容旧版写法: [TestOrder] 下的 station\index
+    if (indexes.isEmpty() && !trimmedStation.isEmpty()) {
+        loadIndexesFromGroup(QString("TestOrder/%1").arg(trimmedStation));
+    }
+    if (indexes.isEmpty()) {
+        loadIndexesFromGroup("TestOrder");
+    }
+    if (indexes.isEmpty()) {
+        loadIndexesFromGroup(orderGroupName("default"));
+    }
+    if (indexes.isEmpty()) {
+        loadIndexesFromGroup("TestOrder/default");
+    }
     return indexes;
 }
 
-void qsetting::saveTestOrderIndexes(const QVector<int>& indexes) const {
-    SETTINGS.beginGroup("TestOrder");
+void qsetting::saveTestOrderIndexes(const QString& station, const QVector<int>& indexes) const {
+    QString groupPath = "TestOrder";
+    const QString trimmedStation = station.trimmed();
+    if (!trimmedStation.isEmpty()) {
+        groupPath = orderGroupName(trimmedStation);
+    }
+    SETTINGS.beginGroup(groupPath);
     SETTINGS.remove("");
     for (int i = 0; i < indexes.size(); ++i) {
         SETTINGS.setValue(QString::number(i), indexes.at(i));
@@ -137,22 +302,92 @@ DraggableCheckBox* qsetting::getOptionalCheckBoxByIndex(int index) const {
 }
 
 void qsetting::reorderFreeWorkCheckBoxes() {
-    const QVector<int> indexes = loadTestOrderIndexes();
-    for (int index : indexes) {
-        DraggableCheckBox* checkBox = getOptionalCheckBoxByIndex(index);
-        if (!checkBox) {
-            checkBox = getConfiguredCheckBoxByIndex(index);
-        }
+    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+        qDebug() << "[TestOrder] reorder skipped, layout null";
+        return;
+    }
+
+    const QString stationKey = currentTestOrderStation();
+    const QVector<int> indexes = loadTestOrderIndexes(stationKey);
+    qDebug() << "[TestOrder] reorder begin, station =" << stationKey << ", indexes =" << indexes;
+    qDebug() << "[TestOrder] before rebuild, config count =" << freeWorkConfigLayout_->count()
+             << ", optional count =" << freeWorkOptionalLayout_->count();
+
+    while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
+        delete item;
+    }
+    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
+        delete item;
+    }
+
+    QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
+    blockedStates.reserve(freeWorkCheckBoxes_.size());
+    for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (checkBox) {
-            if (freeWorkOptionalLayout_) {
-                freeWorkOptionalLayout_->removeWidget(checkBox);
-            }
-            if (freeWorkConfigLayout_) {
-                freeWorkConfigLayout_->removeWidget(checkBox);
-                freeWorkConfigLayout_->addWidget(checkBox);
-            }
+            blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
+            // 强制从两个区域解绑，避免切站后旧布局残留。
+            freeWorkConfigLayout_->removeWidget(checkBox);
+            freeWorkOptionalLayout_->removeWidget(checkBox);
         }
     }
+
+    QSet<int> selectedIds;
+    for (int index : indexes) {
+        if (selectedIds.contains(index)) {
+            qDebug() << "[TestOrder] duplicate index ignored:" << index;
+            continue;
+        }
+        DraggableCheckBox* checkBox = nullptr;
+        for (DraggableCheckBox* item : freeWorkCheckBoxes_) {
+            if (item && item->getIndex() == index) {
+                checkBox = item;
+                break;
+            }
+        }
+        if (!checkBox) {
+            qDebug() << "[TestOrder] index has no checkbox, ignored:" << index;
+            continue;
+        }
+        selectedIds.insert(index);
+        
+        freeWorkConfigLayout_->addWidget(checkBox);
+        checkBox->show();
+        qDebug() << "[TestOrder] add to config:" << index;
+    }
+
+    int optionalPos = 0;
+    for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
+        if (!checkBox || selectedIds.contains(checkBox->getIndex())) {
+            continue;
+        }
+        
+        freeWorkOptionalLayout_->addWidget(checkBox, optionalPos / freeWorkCols_, optionalPos % freeWorkCols_);
+        checkBox->show();
+        ++optionalPos;
+    }
+
+    for (const auto& state : blockedStates) {
+        if (state.first) {
+            state.first->blockSignals(state.second);
+        }
+    }
+
+    freeWorkConfigLayout_->invalidate();
+    freeWorkOptionalLayout_->invalidate();
+    if (ui->config) {
+        ui->config->updateGeometry();
+        ui->config->update();
+    }
+    if (ui->can_use) {
+        ui->can_use->updateGeometry();
+        ui->can_use->update();
+    }
+    updateGeometry();
+    update();
+    qDebug() << "[TestOrder] after rebuild, config count =" << freeWorkConfigLayout_->count()
+             << ", optional count =" << freeWorkOptionalLayout_->count() << ", selected ids =" << selectedIds.values();
+
+    saveCurrentTestOrder();
 }
 
 void qsetting::saveCurrentTestOrder() {
@@ -166,7 +401,7 @@ void qsetting::saveCurrentTestOrder() {
             indexes.append(checkBox->getIndex());
         }
     }
-    saveTestOrderIndexes(indexes);
+    saveTestOrderIndexes(currentTestOrderStation(), indexes);
 }
 
 void qsetting::moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) {
@@ -1274,4 +1509,25 @@ void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
 void qsetting::on_comboBox_factory_textActivated(const QString& arg1) {
     qDebug() << "选择的工厂" << arg1;
     RestoreFacDefaultSetting();
+}
+
+void qsetting::on_comboBox_testOrderStation_currentTextChanged(const QString& text) {
+    Q_UNUSED(text);
+    if (switchingTestOrderStation_ || !ui->comboBox_testOrderStation) {
+        qDebug() << "[TestOrder] station changed ignored, switching =" << switchingTestOrderStation_;
+        return;
+    }
+    const QString nextStation = ui->comboBox_testOrderStation->currentData().toString().trimmed();
+    qDebug() << "[TestOrder] station changed, current =" << activeTestOrderStation_ << ", next =" << nextStation
+             << ", display =" << ui->comboBox_testOrderStation->currentText();
+    if (nextStation.isEmpty() || nextStation == activeTestOrderStation_) {
+        qDebug() << "[TestOrder] station unchanged/empty, skip reorder";
+        return;
+    }
+    saveCurrentTestOrder();
+    activeTestOrderStation_ = nextStation;
+    SETTINGS.setValue(kSelectedStationKey, activeTestOrderStation_);
+    SETTINGS.setValue(kSelectedStationNameKey, stationDisplayNameFromKey(activeTestOrderStation_));
+    applyStationUiState(activeTestOrderStation_);
+    reorderFreeWorkCheckBoxes();
 }
