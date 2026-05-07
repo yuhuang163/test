@@ -30,7 +30,7 @@ struct FreeWorkTestCatalogItem {
     /* X(20, "设置电机校准结果参数", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::MotorCaliResultParam, 100); })) */ \
     /* X(21, "连接WiFi", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{QByteArray("SSID"), QByteArray("password")})); })) */ \
     /* X(22, "设置音乐", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Music, QByteArray("music data")); })) */ \
-    X(23, "设置老化测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; m["switch"] = static_cast<int>(FacSwitch_START); protocolManager.set(DeviceCmd::BurningMode, m); })) \
+    X(23, "设置老化测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = SETTINGS.value("AGING/BurningMode", 1).toInt(); m["seconds"] = SETTINGS.value("AGING/BurningSeconds", 60*60*4).toInt(); m["switch"] = static_cast<int>(FacSwitch_START); protocolManager.set(DeviceCmd::BurningMode, m); })) \
     /* X(24, "设置使用记录", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(FacSetBrushRecord{params})); })) */ \
     /* X(25, "设置使用时间", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushTime, 1625140800); })) */ \
     X(26, "设置休眠状态", false, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_START)); })) \
@@ -65,7 +65,10 @@ struct FreeWorkTestCatalogItem {
     /* X(55, "获取连接信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
     X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
     X(57, "读取治具电流测量值", true, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
-    X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000))
+    X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000)) \
+    X(59, "获取BT RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BT RSSI"); })) \
+    X(60, "获取BLE RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BLE RSSI"); })) \
+    X(61, "读取充电电流", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); showlog("开始读取充电电流"); }))
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

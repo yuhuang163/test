@@ -209,6 +209,8 @@ public slots:
     virtual void refreshSn(ProtocolSnData){};
     virtual void refreshLcdControl(ProtocolLcdControlData){};
     virtual void refreshPeriphData(ProtocolPeriphStateData){};
+    virtual void refreshRssiRead(ProtocolRssiData){};
+    virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData){};
     virtual void refreshAmmeterData(QString){};
     virtual void refreshfwVersion(QString){};
     virtual void refreshDongleUartState(int){};

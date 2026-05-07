@@ -6,6 +6,14 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+QString orderGroupName(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    return key.isEmpty() ? "TestOrder_default" : QString("TestOrder_%1").arg(key);
+}
+}
+
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     m_index = index;
     pack.mechines = getIndex();
@@ -72,13 +80,17 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->usbcomNameCombo->setDisabled(true);
     }
 
-    ui->tabWidget->setTabText(0, "自由工站");
     createTestFunctions();
     refreshOrderedTestIndexes();
     testResultTableInit();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 void QFreeWork::refreshOrderedTestIndexes() {
+    const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
+    const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
+    ui->tabWidget->setTabText(0, tabName);
+    qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
+
     orderedTestIndexes_.clear();
     QSet<int> validIds;
     for (const auto& testFunction : testFunctions) {
@@ -99,16 +111,36 @@ void QFreeWork::refreshOrderedTestIndexes() {
 
 QVector<int> QFreeWork::loadIndexesFromConfig() {
     QVector<int> indexes;
+    const QString selectedStation = SETTINGS.value("TestOrderMeta/SelectedStation").toString().trimmed();
+    qDebug() << "[FreeWork] loadIndexesFromConfig, SelectedStationName =" << selectedStation;
 
-    SETTINGS.beginGroup("TestOrder");         // 打开 "TestOrder" 分组
-    QStringList keys = SETTINGS.childKeys();  // 获取分组中的所有键
+    auto loadFromGroup = [&indexes](const QString& groupPath) {
+        SETTINGS.beginGroup(groupPath);
+        QStringList keys = SETTINGS.childKeys();
+        std::sort(keys.begin(), keys.end(), [](const QString& left, const QString& right) { return left.toInt() < right.toInt(); });
+        for (const QString& key : keys) {
+            indexes.append(SETTINGS.value(key).toInt());
+        }
+        SETTINGS.endGroup();
+    };
 
-    for (const QString& key : keys) {
-        indexes.append(SETTINGS.value(key).toInt());  // 读取每个键的值并转换为整数
+    if (!selectedStation.isEmpty()) {
+        loadFromGroup(orderGroupName(selectedStation));
     }
-    SETTINGS.endGroup();
+    if (indexes.isEmpty() && !selectedStation.isEmpty()) {
+        loadFromGroup(QString("TestOrder/%1").arg(selectedStation));
+    }
+    if (indexes.isEmpty()) {
+        loadFromGroup("TestOrder");
+    }
+    if (indexes.isEmpty()) {
+        loadFromGroup(orderGroupName("default"));
+    }
+    if (indexes.isEmpty()) {
+        loadFromGroup("TestOrder/default");
+    }
 
-    qDebug() << "测试顺序已从配置文件中加载:" << indexes;
+    qDebug() << "[FreeWork] loaded indexes, station =" << selectedStation << ", indexes =" << indexes;
     return indexes;
 }
 
@@ -153,6 +185,7 @@ void QFreeWork::startTask() {
                     stepRuntime_.done = !currentFunction.needCaseDone;
                     stepRuntime_.pass = true;
                     stepRuntime_.testData = "-";
+                    stepRuntime_.ask = "通过";
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
@@ -189,7 +222,7 @@ void QFreeWork::startTask() {
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
                     test.testResult = stepRuntime_.pass ? "通过" : "失败";
-                    test.ask = "通过";
+                    test.ask = stepRuntime_.ask;
                     testItems.append(test);
                     testResultTableUpdate(testItems);
                 // }
