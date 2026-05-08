@@ -16,9 +16,22 @@ struct BleRuntime
     bool scanStarted;
     bool hasPendingStateAfterDisconnect;
     BleState pendingStateAfterDisconnect;
+    bool hasScanDevice;
+    char scanDeviceAddress[18];
+    esp_ble_addr_type_t scanDeviceAddressType;
+    int scanDeviceRssi;
 };
 
-static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN, false, false, BLE_IDLE};
+static BleRuntime bleRuntime = {
+    BLE_IDLE,
+    CONNECT_BY_SCAN,
+    false,
+    false,
+    BLE_IDLE,
+    false,
+    "00:00:00:00:00:00",
+    BLE_ADDR_TYPE_PUBLIC,
+    0};
 
 static BLEScan *pBLEScan;
 
@@ -26,8 +39,6 @@ static BLERemoteService *facRemoteService = nullptr;
 static BLERemoteService *appRemoteService = nullptr;
 static BLERemoteService *mainRemoteService = nullptr;
 static BLERemoteService *normolRemoteService = nullptr;
-
-static BLEAdvertisedDevice *myDevice = nullptr; // 这个设备要反初始化
 
 static BLEUUID mainserviceUUID("a6ed0301-d344-460a-8075-b9e8ec90d71b"); // main
 static BLEUUID mainWriteUUID("a6ed0302-d344-460a-8075-b9e8ec90d71b");
@@ -115,6 +126,23 @@ BleConnectMode get_ble_connect_mode()
 bool is_ble_connected()
 {
     return bleRuntime.state == BLE_CONNECTED;
+}
+
+void remember_scan_device(BLEAdvertisedDevice &advertisedDevice)
+{
+    String address = advertisedDevice.getAddress().toString();
+    strncpy(bleRuntime.scanDeviceAddress, address.c_str(), sizeof(bleRuntime.scanDeviceAddress) - 1);
+    bleRuntime.scanDeviceAddress[sizeof(bleRuntime.scanDeviceAddress) - 1] = '\0';
+    bleRuntime.scanDeviceAddressType = advertisedDevice.getAddressType();
+    bleRuntime.scanDeviceRssi = advertisedDevice.getRSSI();
+    bleRuntime.hasScanDevice = true;
+
+    Serial.print("记录扫描设备 addr=");
+    Serial.print(bleRuntime.scanDeviceAddress);
+    Serial.print(", addrType=");
+    Serial.print(bleRuntime.scanDeviceAddressType);
+    Serial.print(", rssi=");
+    Serial.println(bleRuntime.scanDeviceRssi);
 }
 
 void set_ble_connect_mode(BleConnectMode mode)
@@ -412,12 +440,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 }
 
                 BLEDevice::getScan()->stop();
-                if (myDevice != nullptr)
-                {
-                    delete myDevice;
-                    myDevice = nullptr;
-                }
-                myDevice = new BLEAdvertisedDevice(advertisedDevice); // 有释放内存
+                remember_scan_device(advertisedDevice);
                 set_ble_state(BLE_SCAN_FOUND);
             }
         }
@@ -477,12 +500,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 // colorWipe(strip.Color(0, 255, 0));  // 绿色
                 // colorWipe(strip.Color(0, 0, 255));  // 蓝色
                 BLEDevice::getScan()->stop();
-                if (myDevice != nullptr)
-                {
-                    delete myDevice;
-                    myDevice = nullptr;
-                }
-                myDevice = new BLEAdvertisedDevice(myadvertisedDevice); // 有释放内存
+                remember_scan_device(myadvertisedDevice);
                 set_ble_state(BLE_SCAN_FOUND);
             }
         }
@@ -602,11 +620,8 @@ void deinit_ble(BleState nextState)
         bleRuntime.pendingStateAfterDisconnect = BLE_IDLE;
         set_ble_state(nextState);
     }
-    if (myDevice != nullptr)
-    {
-        delete myDevice;
-        myDevice = nullptr;
-    }
+    bleRuntime.hasScanDevice = false;
+    strcpy(bleRuntime.scanDeviceAddress, "00:00:00:00:00:00");
 }
 
 void clear_ble_scan_device()
@@ -617,10 +632,10 @@ void clear_ble_scan_device()
         Serial.println("当前连接流程中，暂不清理扫描设备缓存");
         return;
     }
-    if (myDevice != nullptr)
+    if (bleRuntime.hasScanDevice)
     {
-        delete myDevice;
-        myDevice = nullptr;
+        bleRuntime.hasScanDevice = false;
+        strcpy(bleRuntime.scanDeviceAddress, "00:00:00:00:00:00");
         Serial.println("已清理扫描设备缓存");
     }
 }
@@ -758,13 +773,22 @@ bool connectTobleServer()
     bool connected = false;
     if (get_ble_connect_mode() == CONNECT_BY_SCAN)
     {
-        if (myDevice == nullptr)
+        if (!bleRuntime.hasScanDevice)
         {
             Serial.println("扫描连接模式缺少扫描设备信息");
             return false;
         }
-        Serial.println(myDevice->getAddress().toString());
-        connected = pClient->connect(myDevice); // 来自扫描的连接
+        Serial.print("使用扫描设备连接：");
+        Serial.print(bleRuntime.scanDeviceAddress);
+        Serial.print(", addrType=");
+        Serial.println(bleRuntime.scanDeviceAddressType);
+        BLEAddress addr(bleRuntime.scanDeviceAddress);
+        connected = pClient->connect(addr, bleRuntime.scanDeviceAddressType, 15000);
+        if (connected && !pClient->isConnected())
+        {
+            Serial.println("扫描连接返回成功但 isConnected() 为 false，视为失败");
+            connected = false;
+        }
     }
     else if (get_ble_connect_mode() == CONNECT_DIRECT)
     {
