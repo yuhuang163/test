@@ -4,6 +4,7 @@
 #include <QWidget>
 
 #include "Abini.h"
+#include "qtupleservice.h"
 #include "qapplication.h"
 #include "test_base.h"
 #include "ui_qfreework.h"
@@ -83,6 +84,7 @@ private:
     State getNextState(State currentState);
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
+    TupleApplyResult tupleData_;
 
 private:
     void refreshOrderedTestIndexes();
@@ -123,6 +125,9 @@ private:
     bool isCurrentStep(const QString& functionName) const;
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
+    void applyTupleByMac();
+    void reportTupleWriteRecord();
+    void debugUpdateTupleMacStatus();
 
 private slots:
     void initDate();
@@ -146,6 +151,7 @@ private slots:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
+    void refreshTupleData(ProtocolTupleData data) override;
     void refreshBleState(int state) override;
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;

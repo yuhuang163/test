@@ -127,7 +127,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string>AIR1123456C29BA91BMB5A700501</string>
+                 <string>AIR1DFF1100000101BMB5A700501</string>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>
@@ -157,7 +157,7 @@
                  <string/>
                 </property>
                 <property name="text">
-                 <string>12:34:56:c2:9b:a9</string>
+                 <string>DF:F1:10:00:00:10</string>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>

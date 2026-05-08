@@ -317,11 +317,14 @@ void Qfctp::handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen)
 
 void Qfctp::handleRspTupleRead(const uint8_t *mainValue, uint16_t mainLen)
 {
-    if (mainValue != nullptr && mainLen >= 38) {
+    if (mainValue != nullptr && mainLen > 0) {
         const QByteArray raw(reinterpret_cast<const char *>(mainValue), mainLen);
         const QString prod = QString::fromLatin1(raw.left(6)).trimmed();//产品ID
         const QString dev = QString::fromLatin1(raw.mid(6, 16)).trimmed();//设备id
         const QString key = QString::fromLatin1(raw.mid(22, 16)).trimmed();//key
+        if (mainLen < 38) {
+            qWarning() << "FCTP 三元组读取长度不足 len=" << mainLen << "raw=" << raw.toHex(' ').toUpper();
+        }
         qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key;
         emit send_tuple_parsed({prod, dev, key});
     }

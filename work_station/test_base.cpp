@@ -90,6 +90,7 @@ void test_base::signalAndslot() {
     connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(qfctp, SIGNAL(send_rssi_read(ProtocolRssiData)), this, SLOT(refreshRssiRead(ProtocolRssiData)));
     connect(qfctp, SIGNAL(send_charge_current_read(ProtocolUInt32ValueData)), this, SLOT(refreshChargeCurrentRead(ProtocolUInt32ValueData)));
+    connect(qfctp, SIGNAL(send_tuple_parsed(ProtocolTupleData)), this, SLOT(refreshTupleData(ProtocolTupleData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));

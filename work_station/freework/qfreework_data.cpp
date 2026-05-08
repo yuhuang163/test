@@ -253,6 +253,143 @@ void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
     }
 }
 
+void QFreeWork::applyTupleByMac() {
+    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
+    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
+    const QString sku = SETTINGS.value("Tuple/Sku", "").toString();
+    const QString position = SETTINGS.value("Tuple/Position", "L").toString();
+    QString tupleMac = ui->macInput->text();
+    tupleMac.remove(":");
+    tupleMac.remove("-");
+    tupleMac.remove(" ");
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    stepRuntime_.done = true;
+    stepRuntime_.ask = "获取成功";
+    if (tupleMac.isEmpty() || tupleMac == "没有MAC地址") {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "MAC为空";
+        TestResult = failValue;
+        showlog("三元组获取失败：MAC为空");
+        return;
+    }
+    if (userName.isEmpty() || password.isEmpty()) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "账号未配置";
+        TestResult = failValue;
+        showlog("三元组获取失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(userName, password, &error)) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "登录失败";
+        TestResult = failValue;
+        showlog("三元组登录失败：" + error);
+        return;
+    }
+
+    tupleData_ = service.applyTupleByMac(tupleMac, sku, position);
+    stepRuntime_.pass = tupleData_.success;
+    stepRuntime_.testData = tupleData_.success
+                                 ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+                                       .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
+                                 : tupleData_.error;
+    if (!tupleData_.success) {
+        TestResult = failValue;
+        showlog("三元组获取失败：" + tupleData_.error);
+        return;
+    }
+    showlog("三元组获取成功：productKey=" + tupleData_.productKey + " deviceName=" + tupleData_.deviceName);
+}
+
+void QFreeWork::debugUpdateTupleMacStatus() {
+    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
+    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
+    QString tupleMac = ui->macInput->text();
+    tupleMac.remove(":");
+    tupleMac.remove("-");
+    tupleMac.remove(" ");
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    if (tupleMac.isEmpty() || tupleMac == "没有MAC地址") {
+        showlog("调试更新MAC状态失败：MAC为空");
+        return;
+    }
+    if (userName.isEmpty() || password.isEmpty()) {
+        showlog("调试更新MAC状态失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(userName, password, &error)) {
+        showlog("调试更新MAC状态登录失败：" + error);
+        return;
+    }
+    if (!service.debugUpdateMacStatus(tupleMac, 2, &error)) {
+        showlog("调试更新MAC状态失败：" + error);
+        return;
+    }
+    showlog("调试更新MAC状态成功：mac=" + tupleMac + " status=1");
+}
+
+void QFreeWork::reportTupleWriteRecord() {
+    stepRuntime_.done = true;
+    const QString productSn = ui->getMac->text().trimmed().isEmpty() ? deviceTailSnFromDevice.trimmed() : ui->getMac->text().trimmed();
+    stepRuntime_.testData = productSn;
+    if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "无有效三元组";
+        TestResult = failValue;
+        showlog("三元组写入记录上报失败：未获取到有效三元组");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(SETTINGS.value("Tuple/AuthUser").toString(), SETTINGS.value("Tuple/AuthPassword").toString(), &error)) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog("三元组写入记录上报登录失败：" + error);
+        return;
+    }
+    if (!service.reportWriteRecord(tupleData_, productSn, TestResult == failValue ? "NG" : "OK", &error)) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog("三元组写入记录上报失败：" + error);
+        return;
+    }
+    stepRuntime_.pass = true;
+    showlog("三元组写入记录上报成功");
+}
+
+void QFreeWork::refreshTupleData(ProtocolTupleData data) {
+    if (!isCurrentStep("读取设备三元组并比较")) {
+        return;
+    }
+
+    stepRuntime_.done = true;
+    const bool productKeyPass = data.productId == tupleData_.productKey;
+    const bool deviceNamePass = data.deviceId == tupleData_.deviceName;
+    const bool deviceSecretPass = data.key == tupleData_.deviceSecret;
+    const bool pass = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
+
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    stepRuntime_.ask = QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+                           .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("设备三元组比较失败，设备 productKey=%1 deviceName=%2，云端 productKey=%3 deviceName=%4")
+                    .arg(data.productId, data.deviceId, tupleData_.productKey, tupleData_.deviceName));
+    } else {
+        showlog("设备三元组比较通过");
+    }
+}
+
 void QFreeWork::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到电流数据" << data;
 

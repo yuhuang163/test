@@ -699,6 +699,13 @@ void qsetting::loadConfig() {
     ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
 
+    // 加载三元组配置
+    ui->lineEdit_tupleBaseUrl->setText(SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString());
+    ui->lineEdit_tupleAuthUser->setText(SETTINGS.value("Tuple/AuthUser").toString());
+    ui->lineEdit_tupleAuthPassword->setText(SETTINGS.value("Tuple/AuthPassword").toString());
+    ui->lineEdit_tupleSku->setText(SETTINGS.value("Tuple/Sku", "").toString());
+    ui->lineEdit_tuplePosition->setText(SETTINGS.value("Tuple/Position", "L").toString());
+
     // 加载行和列
     ui->rowLineEdit->setText(SETTINGS.value("User/formRow").toString());
     ui->columnLineEdit->setText(SETTINGS.value("User/formColumn").toString());
@@ -1016,6 +1023,13 @@ void qsetting::saveConfig() {
     // 保存老化工站配置
     SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
+
+    // 保存三元组配置
+    SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
+    SETTINGS.setValue("Tuple/AuthUser", ui->lineEdit_tupleAuthUser->text());
+    SETTINGS.setValue("Tuple/AuthPassword", ui->lineEdit_tupleAuthPassword->text());
+    SETTINGS.setValue("Tuple/Sku", ui->lineEdit_tupleSku->text());
+    SETTINGS.setValue("Tuple/Position", ui->lineEdit_tuplePosition->text());
 
     // 保存行和列
     SETTINGS.setValue("User/formRow", ui->rowLineEdit->text());

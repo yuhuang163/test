@@ -66,9 +66,15 @@ struct FreeWorkTestCatalogItem {
     X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
     X(57, "读取治具电流测量值", true, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
     X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000)) \
-    X(59, "获取BT RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BT RSSI"); })) \
-    X(60, "获取BLE RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BLE RSSI"); })) \
-    X(61, "读取充电电流", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); showlog("开始读取充电电流"); }))
+    X(59, "获取BT RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); })) \
+    X(60, "获取BLE RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); })) \
+    X(61, "读取充电电流", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); })) \
+    X(62, "获取云端三元组", true, applyTupleByMac()) \
+    X(63, "写入productKey", false, sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.productKey; protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, tupleData_.productKey.toUtf8()})); })) \
+    X(64, "写入deviceName", false, sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.deviceName; protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, tupleData_.deviceName.toUtf8()})); })) \
+    X(65, "写入deviceSecret", false, sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.deviceSecret; QVariantMap map; map["value"] = tupleData_.deviceSecret.toUtf8(); protocolManager.set(DeviceCmd::WriteKey, map); })) \
+    X(66, "读取设备三元组并比较", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::TupleRead); })) \
+    X(67, "上报三元组写入记录", true, reportTupleWriteRecord())
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
