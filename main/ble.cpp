@@ -544,7 +544,7 @@ void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t len
     }
 }
 
-bool connectToServer()
+bool connectTobleServer()
 {
     candeleteble = false;
     Serial.print("正在连接到：");

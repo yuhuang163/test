@@ -111,7 +111,7 @@ void serialEventTask(void *pvParameters);
 void processDataTask(void *pvParameters);
 void processATChar(byte currentChar);
 bool isValidMacAddress(const byte *address, size_t length);
-bool connectToServer();
+bool connectTobleServer();
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify);
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,

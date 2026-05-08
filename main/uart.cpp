@@ -159,6 +159,12 @@ void processATCommand(byte *get_cmd, int length)
             Serial.println(targetDeviceAddress);
 
             ble_scan_over = false;
+            Serial.printf("状态重置后: doConnect=%d, ble_connected=%d, ble_scan_over=%d\r\n",
+                doConnect, ble_connected, ble_scan_over);
+            if (ble_connected && candeleteble)
+            {
+                deinit_ble(); // 重置蓝牙
+            }
         }
         break;
 
@@ -176,7 +182,7 @@ void processATCommand(byte *get_cmd, int length)
             Serial.print("AT+DCON 直连目标 MAC：");
             Serial.println(targetDeviceAddress);
 
-            // 不触发后台扫描，直接走 loop 内 connectToServer() 的直连分支
+            // 不触发后台扫描，直接走 loop 内 connectTobleServer() 的直连分支
             ble_scan_over = true;
 
             // 直连命令只切换状态，不在此线程直接操作 BLEScan 结果容器，

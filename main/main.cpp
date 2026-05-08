@@ -179,7 +179,7 @@ void loop()
 
   if (doConnect == true)
   {
-    if (connectToServer()) // 连接必须在loop里面，不能在回调里面
+    if (connectTobleServer()) // 连接必须在loop里面，不能在回调里面
     {
       Serial.println("AT+CONNECT_SUCCESS");
       colorWipe(strip.Color(0, 255, 0)); // 绿色
