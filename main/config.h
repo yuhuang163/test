@@ -92,6 +92,11 @@ enum ServiceType
     MAIN
 
 };
+enum BleConnectMode
+{
+    CONNECT_BY_SCAN,
+    CONNECT_DIRECT
+};
 typedef enum
 {
     PHY_CHANNEL_INVALID_SEND = 0, // 无效值
@@ -102,6 +107,7 @@ typedef enum
 } ext_ble_phy_channel_send_e;
 // 声明全局变量
 extern ServiceType use_normal_service;
+extern BleConnectMode ble_connect_mode;
 bool ServerStateCheck();
 void wifi_init();
 void getImage();
@@ -122,6 +128,7 @@ void ble_init();
 void start_ble_scan();
 void print_ble_rssi();
 void deinit_ble();
+void clear_ble_scan_device();
 void colorWipe(uint32_t color);
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length);
 void print_wifi_rssi(int numClients);

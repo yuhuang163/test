@@ -12,6 +12,7 @@ boolean StartSendOtaData = false;
 boolean StartSendmainData = false;
 boolean StartBombState = false;
 boolean candeleteble = true; // 是否可以销毁蓝牙实例
+BleConnectMode ble_connect_mode = CONNECT_BY_SCAN;
 
 static BLEScan *pBLEScan;
 
@@ -462,6 +463,21 @@ void deinit_ble()
     }
 }
 
+void clear_ble_scan_device()
+{
+    if (!candeleteble)
+    {
+        Serial.println("当前连接流程中，暂不清理扫描设备缓存");
+        return;
+    }
+    if (myDevice != nullptr)
+    {
+        delete myDevice;
+        myDevice = nullptr;
+        Serial.println("已清理扫描设备缓存");
+    }
+}
+
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length)
 {
     const size_t MAX_PACKET_SIZE = MY_MTU - 3; // 最大每包大小
@@ -594,12 +610,18 @@ bool connectTobleServer()
     Serial.println("创建完成,连接到设备");
 
     bool connected = false;
-    if (myDevice != nullptr)
+    if (ble_connect_mode == CONNECT_BY_SCAN)
     {
+        if (myDevice == nullptr)
+        {
+            Serial.println("扫描连接模式缺少扫描设备信息");
+            candeleteble = true;
+            return false;
+        }
         Serial.println(myDevice->getAddress().toString());
         connected = pClient->connect(myDevice); // 来自扫描的连接
     }
-    else
+    else if (ble_connect_mode == CONNECT_DIRECT)
     {
         Serial.println("未提供扫描设备信息，尝试按 MAC 直连");
         BLEAddress addr(targetDeviceAddress);
@@ -617,6 +639,10 @@ bool connectTobleServer()
             Serial.println("connect() 返回成功但 isConnected() 为 false，视为失败");
             connected = false;
         }
+    }
+    else
+    {
+        Serial.println("未知连接模式");
     }
 
     if (connected) // 连接到远程BLE服务器

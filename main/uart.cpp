@@ -154,6 +154,7 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
+            ble_connect_mode = CONNECT_BY_SCAN;
 
             Serial.print("已设置新的目标设备 MAC 地址：");
             Serial.println(targetDeviceAddress);
@@ -164,6 +165,10 @@ void processATCommand(byte *get_cmd, int length)
             if (ble_connected && candeleteble)
             {
                 deinit_ble(); // 重置蓝牙
+            }
+            else
+            {
+                clear_ble_scan_device();
             }
         }
         break;
@@ -178,6 +183,8 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
+            ble_connect_mode = CONNECT_DIRECT;
+            clear_ble_scan_device();
 
             Serial.print("AT+DCON 直连目标 MAC：");
             Serial.println(targetDeviceAddress);
@@ -255,6 +262,7 @@ void processATCommand(byte *get_cmd, int length)
         Serial.println("伤害距离: " + damageDistance);
         Serial.println("连接间隔时间: " + connectionInterval);
         Serial.println("发送指令: " + sendCommand);
+        ble_connect_mode = CONNECT_BY_SCAN;
         ble_scan_over = false;
         StartBombState = true;
         break;
