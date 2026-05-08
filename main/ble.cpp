@@ -13,9 +13,10 @@ struct BleRuntime
 {
     BleState state;
     BleConnectMode connectMode;
+    bool scanStarted;
 };
 
-static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN};
+static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN, false};
 
 static BLEScan *pBLEScan;
 
@@ -138,6 +139,7 @@ void set_ble_state(BleState state)
     Serial.print(" -> ");
     Serial.println(ble_state_name(state));
     bleRuntime.state = state;
+    bleRuntime.scanStarted = false;
 }
 
 // 消息提醒函数
@@ -479,6 +481,16 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 };
 #define scantime 1
 
+void scanCompleteCallback(BLEScanResults scanResults)
+{
+    if (get_ble_state() == BLE_SCANNING)
+    {
+        bleRuntime.scanStarted = false;
+        Serial.print("本轮扫描结束，设备数：");
+        Serial.println(scanResults.getCount());
+    }
+}
+
 void ble_init()
 {
     BLEDevice::init("");
@@ -492,14 +504,28 @@ void ble_init()
 
     pBLEScan->setActiveScan(true);
     set_ble_state(BLE_SCANNING);
-    pBLEScan->start(scantime, false);
+    start_ble_scan();
 }
 void start_ble_scan()
 {
     set_ble_state(BLE_SCANNING);
+    if (bleRuntime.scanStarted)
+    {
+        return;
+    }
+    if (pBLEScan == nullptr)
+    {
+        Serial.println("BLE 扫描器未初始化，无法开启扫描");
+        return;
+    }
+    bleRuntime.scanStarted = true;
     Serial.println("开启扫描" + String(scantime) + "s");
     pBLEScan->clearResults();         // memory，释放扫描缓存消耗
-    pBLEScan->start(scantime, false); // 设置太久在很多设备的情况下会崩溃
+    if (!pBLEScan->start(scantime, scanCompleteCallback, false))
+    {
+        bleRuntime.scanStarted = false;
+        Serial.println("开启扫描失败");
+    }
 }
 
 const int numReadings = 100; // 设置读取的数量
