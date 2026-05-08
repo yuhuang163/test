@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>qsetting</class>
  <widget class="QWidget" name="qsetting">
@@ -2535,6 +2535,111 @@
            <string>L</string>
           </property>
          </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QGroupBox" name="groupBox_keyConfig">
+       <property name="geometry">
+        <rect>
+         <x>820</x>
+         <y>9</y>
+         <width>360</width>
+         <height>320</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>按键测试配置</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_keyConfig">
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdMode"/>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdLeft"/>
+        </item>
+        <item row="8" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdRightRotate"/>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdRight"/>
+        </item>
+        <item row="4" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdProgram"/>
+        </item>
+        <item row="8" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdRightRotate">
+          <property name="text">
+           <string>右旋键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdProgram">
+          <property name="text">
+           <string>程序键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdSpeed"/>
+        </item>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdPower">
+          <property name="text">
+           <string>电源键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdStartPause">
+          <property name="text">
+           <string>开始/暂停键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdStartPause"/>
+        </item>
+        <item row="5" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdLeft">
+          <property name="text">
+           <string>左键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdLeftRotate">
+          <property name="text">
+           <string>左旋键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdRight">
+          <property name="text">
+           <string>右键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdLeftRotate"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdMode">
+          <property name="text">
+           <string>模式键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="checkBox_KeyIdSpeed">
+          <property name="text">
+           <string>速度键</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyIdPower"/>
         </item>
        </layout>
       </widget>

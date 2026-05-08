@@ -1,4 +1,4 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -797,6 +797,26 @@ void qsetting::loadConfig() {
     ui->checkBox_ImuID->setChecked(SETTINGS.value("ProductInfo/ImuID_checkBox").toBool());
     ui->checkBox_CameraID->setChecked(SETTINGS.value("ProductInfo/CameraID_checkBox").toBool());
 
+    // 按键测试 KeyId 配置
+    ui->checkBox_KeyIdPower->setChecked(SETTINGS.value("ProductInfo/KeyIdPower_checkBox", true).toBool());
+    ui->lineEdit_KeyIdPower->setText(SETTINGS.value("ProductInfo/KeyIdPower", "1").toString());
+    ui->checkBox_KeyIdStartPause->setChecked(SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox", true).toBool());
+    ui->lineEdit_KeyIdStartPause->setText(SETTINGS.value("ProductInfo/KeyIdStartPause", "2").toString());
+    ui->checkBox_KeyIdMode->setChecked(SETTINGS.value("ProductInfo/KeyIdMode_checkBox", true).toBool());
+    ui->lineEdit_KeyIdMode->setText(SETTINGS.value("ProductInfo/KeyIdMode", "3").toString());
+    ui->checkBox_KeyIdSpeed->setChecked(SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox", true).toBool());
+    ui->lineEdit_KeyIdSpeed->setText(SETTINGS.value("ProductInfo/KeyIdSpeed", "4").toString());
+    ui->checkBox_KeyIdProgram->setChecked(SETTINGS.value("ProductInfo/KeyIdProgram_checkBox", true).toBool());
+    ui->lineEdit_KeyIdProgram->setText(SETTINGS.value("ProductInfo/KeyIdProgram", "5").toString());
+    ui->checkBox_KeyIdLeft->setChecked(SETTINGS.value("ProductInfo/KeyIdLeft_checkBox", true).toBool());
+    ui->lineEdit_KeyIdLeft->setText(SETTINGS.value("ProductInfo/KeyIdLeft", "6").toString());
+    ui->checkBox_KeyIdRight->setChecked(SETTINGS.value("ProductInfo/KeyIdRight_checkBox", true).toBool());
+    ui->lineEdit_KeyIdRight->setText(SETTINGS.value("ProductInfo/KeyIdRight", "7").toString());
+    ui->checkBox_KeyIdLeftRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox", true).toBool());
+    ui->lineEdit_KeyIdLeftRotate->setText(SETTINGS.value("ProductInfo/KeyIdLeftRotate", "10").toString());
+    ui->checkBox_KeyIdRightRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox", true).toBool());
+    ui->lineEdit_KeyIdRightRotate->setText(SETTINGS.value("ProductInfo/KeyIdRightRotate", "11").toString());
+
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
     ui->lineEdit_CargoCurrentLower->setText(SETTINGS.value("Current/LowshipCurrent").toString());
@@ -1121,6 +1141,25 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/FSensorVersion_checkBox", ui->checkBox_FSensorVersion->isChecked());
     SETTINGS.setValue("ProductInfo/ImuID_checkBox", ui->checkBox_ImuID->isChecked());
     SETTINGS.setValue("ProductInfo/CameraID_checkBox", ui->checkBox_CameraID->isChecked());
+
+    SETTINGS.setValue("ProductInfo/KeyIdPower_checkBox", ui->checkBox_KeyIdPower->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdPower", ui->lineEdit_KeyIdPower->text());
+    SETTINGS.setValue("ProductInfo/KeyIdStartPause_checkBox", ui->checkBox_KeyIdStartPause->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdStartPause", ui->lineEdit_KeyIdStartPause->text());
+    SETTINGS.setValue("ProductInfo/KeyIdMode_checkBox", ui->checkBox_KeyIdMode->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdMode", ui->lineEdit_KeyIdMode->text());
+    SETTINGS.setValue("ProductInfo/KeyIdSpeed_checkBox", ui->checkBox_KeyIdSpeed->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdSpeed", ui->lineEdit_KeyIdSpeed->text());
+    SETTINGS.setValue("ProductInfo/KeyIdProgram_checkBox", ui->checkBox_KeyIdProgram->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdProgram", ui->lineEdit_KeyIdProgram->text());
+    SETTINGS.setValue("ProductInfo/KeyIdLeft_checkBox", ui->checkBox_KeyIdLeft->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdLeft", ui->lineEdit_KeyIdLeft->text());
+    SETTINGS.setValue("ProductInfo/KeyIdRight_checkBox", ui->checkBox_KeyIdRight->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdRight", ui->lineEdit_KeyIdRight->text());
+    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate_checkBox", ui->checkBox_KeyIdLeftRotate->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate", ui->lineEdit_KeyIdLeftRotate->text());
+    SETTINGS.setValue("ProductInfo/KeyIdRightRotate_checkBox", ui->checkBox_KeyIdRightRotate->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdRightRotate", ui->lineEdit_KeyIdRightRotate->text());
 
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());

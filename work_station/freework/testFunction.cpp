@@ -76,6 +76,15 @@ struct FreeWorkTestCatalogItem {
     X(66, "读取设备三元组并比较", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::TupleRead); })) \
     X(67, "上报三元组写入记录", true, reportTupleWriteRecord()) \
     X(68, "扫描连接蓝牙", false, sendCommandWithRetry([&]() { at->sendMac(macAddress); }, 6 * 1000)) \
+    X(69, "电源键测试", true, startKeyButtonTest("电源键测试", "请短按下旋钮", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox")) \
+    X(70, "开始/暂停键测试", true, startKeyButtonTest("开始/暂停键测试", "请短按下开始/暂停按钮", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox")) \
+    X(71, "模式键测试", true, startKeyButtonTest("模式键测试", "请短按下模式按钮", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox")) \
+    X(72, "速度键测试", true, startKeyButtonTest("速度键测试", "请短按下速度按钮", "ProductInfo/KeyIdSpeed", "ProductInfo/KeyIdSpeed_checkBox")) \
+    X(73, "程序键测试", true, startKeyButtonTest("程序键测试", "请短按下程序按钮", "ProductInfo/KeyIdProgram", "ProductInfo/KeyIdProgram_checkBox")) \
+    X(74, "左键测试", true, startKeyButtonTest("左键测试", "请短按下左按钮", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox")) \
+    X(75, "右键测试", true, startKeyButtonTest("右键测试", "请短按下右按钮", "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox")) \
+    X(76, "左旋键测试", true, startKeyButtonTest("左旋键测试", "请左旋按钮", "ProductInfo/KeyIdLeftRotate", "ProductInfo/KeyIdLeftRotate_checkBox")) \
+    X(77, "右旋键测试", true, startKeyButtonTest("右旋键测试", "请右旋按钮", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

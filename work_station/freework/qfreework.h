@@ -9,6 +9,8 @@
 #include "test_base.h"
 #include "ui_qfreework.h"
 
+class QMessageBox;
+
 namespace Ui {
     class QFreeWork;
 }
@@ -88,6 +90,11 @@ private:
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
     TupleApplyResult tupleData_;
+    QString currentKeyTestName_;
+    QString currentKeyExpectedKey_;
+    QMessageBox* keyWaitPrompt_ = nullptr;
+    bool freeWorkKeyWaiting_ = false;
+    bool keyWaitPromptProgrammaticClose_ = false;
 
 private:
     void refreshOrderedTestIndexes();
@@ -133,6 +140,9 @@ private:
     void applyTupleByMac();
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus();
+    void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
+                            const QString& enableKey);
+    void closeKeyWaitPrompt();
 
 private slots:
     void initDate();
@@ -157,6 +167,7 @@ private slots:
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
+    void checkbutton(ProtocolButtonStateData data) override;
     void refreshBleState(int state) override;
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;

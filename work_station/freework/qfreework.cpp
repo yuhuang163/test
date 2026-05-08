@@ -1,6 +1,8 @@
 ﻿#include "qfreework.h"
 
 #include <algorithm>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QSet>
 #include "ui_qfreework.h"
 #if _MSC_VER >= 1600
@@ -329,6 +331,84 @@ void QFreeWork::refreshUsbUartState(int state) {
         ui->usbcomNameCombo->setDisabled(true);
     }
 }
+
+void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
+                                   const QString& enableKey) {
+    if (!SETTINGS.value(enableKey).toBool()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "按键配置未启用";
+        stepRuntime_.ask = "请检查配置";
+        TestResult = failValue;
+        showlog(testName + "失败：按键配置未启用");
+        return;
+    }
+
+    currentKeyTestName_ = testName;
+    currentKeyExpectedKey_ = expectedKey;
+    freeWorkKeyWaiting_ = true;
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = "等待按键上报";
+    stepRuntime_.ask = SETTINGS.value(expectedKey).toString();
+
+    closeKeyWaitPrompt();
+    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, "按键测试", promptText, QMessageBox::NoButton, this);
+    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
+    QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
+    hiddenCloseButton->hide();
+    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
+    keyWaitPromptProgrammaticClose_ = false;
+    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
+        keyWaitPrompt_ = nullptr;
+        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
+            freeWorkKeyWaiting_ = false;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = "用户关闭按键弹窗";
+            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
+            TestResult = failValue;
+            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
+        }
+        keyWaitPromptProgrammaticClose_ = false;
+    });
+    keyWaitPrompt_->show();
+    showlog("等待按键测试：" + testName);
+}
+
+void QFreeWork::closeKeyWaitPrompt() {
+    if (keyWaitPrompt_ != nullptr) {
+        keyWaitPromptProgrammaticClose_ = true;
+        keyWaitPrompt_->close();
+        keyWaitPrompt_ = nullptr;
+    }
+}
+
+void QFreeWork::checkbutton(ProtocolButtonStateData data) {
+    if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
+        return;
+    }
+
+    closeKeyWaitPrompt();
+    freeWorkKeyWaiting_ = false;
+    const QString actualKeyId = QString::number(data.keyButtonId);
+    const QString expectedKeyId = SETTINGS.value(currentKeyExpectedKey_).toString();
+    const bool pass = compareVersions(expectedKeyId, actualKeyId);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("按键ID:%1 期望:%2").arg(actualKeyId, expectedKeyId);
+    stepRuntime_.ask = expectedKeyId;
+    if (!pass) {
+        TestResult = failValue;
+    }
+
+    showlog(QString("%1%2：实际按键ID=%3 期望=%4")
+                .arg(currentKeyTestName_)
+                .arg(pass ? "通过" : "失败")
+                .arg(actualKeyId, expectedKeyId));
+}
+
 void QFreeWork::initDate() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -346,6 +426,11 @@ void QFreeWork::initDate() {
     WIFI_RSSI = "";
     softwareVersionForReport_.clear();
     softwareVersionPassForReport_ = true;
+    freeWorkKeyWaiting_ = false;
+    keyWaitPromptProgrammaticClose_ = false;
+    currentKeyTestName_.clear();
+    currentKeyExpectedKey_.clear();
+    closeKeyWaitPrompt();
     is_battary_test = 0;
     charageresult = "未测";
     voltageresult = "未测";
