@@ -96,7 +96,10 @@ bool QTupleService::debugUpdateMacStatus(const QString& mac, int status, QString
     return true;
 }
 
-bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QString& productSn, const QString& result, QString* error) {
+bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
+                                      const QString& btRssi, bool btRssiPass,
+                                      const QString& bleRssi, bool bleRssiPass,
+                                      const QString& softwareVersion, bool softwareVersionPass, QString* error) {
     const bool pass = result == "OK" || result == "通过" || result == "true";
     const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
     const QString reportTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
@@ -106,6 +109,15 @@ bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QStri
 
     QJsonArray inspectionItems;
     inspectionItems.append(inspectionItem);
+    if (!btRssi.trimmed().isEmpty()) {
+        inspectionItems.append(QString("R_BT_RSSI:%1:%2:%3").arg(btRssi.trimmed(), btRssiPass ? "true" : "false").arg(timestamp));
+    }
+    if (!bleRssi.trimmed().isEmpty()) {
+        inspectionItems.append(QString("R_BLE_RSSI:%1:%2:%3").arg(bleRssi.trimmed(), bleRssiPass ? "true" : "false").arg(timestamp));
+    }
+    if (!softwareVersion.trimmed().isEmpty()) {
+        inspectionItems.append(QString("R_MO_VAR:%1:%2:%3").arg(softwareVersion.trimmed(), softwareVersionPass ? "true" : "false").arg(timestamp));
+    }
 
     QJsonObject bodyObj;
     bodyObj.insert("sn", sn);
@@ -113,7 +125,7 @@ bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QStri
     bodyObj.insert("inspectionItems", inspectionItems);
     const QByteArray body = QJsonDocument(bodyObj).toJson(QJsonDocument::Compact);
 
-    qDebug().noquote() << "[Tuple] reportWriteRecord body:" << QString::fromUtf8(body);
+    // qDebug().noquote() << "[Tuple] reportWriteRecord body:" << QString::fromUtf8(body);
     QByteArray response;
     if (!requestPost("/api/inspection/report", body, &response, error)) {
         return false;

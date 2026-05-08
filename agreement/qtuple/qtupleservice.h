@@ -23,7 +23,11 @@ public:
     bool login(const QString& userName, const QString& password, QString* error = nullptr);
     TupleApplyResult applyTupleByMac(const QString& mac, const QString& sku, const QString& position);
     bool debugUpdateMacStatus(const QString& mac, int status, QString* error = nullptr);
-    bool reportWriteRecord(const TupleApplyResult& tuple, const QString& productSn, const QString& result, QString* error = nullptr);
+    bool reportWriteRecord(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
+                           const QString& btRssi = QString(), bool btRssiPass = true,
+                           const QString& bleRssi = QString(), bool bleRssiPass = true,
+                           const QString& softwareVersion = QString(), bool softwareVersionPass = true,
+                           QString* error = nullptr);
 
 private:
     QString normalizedBaseUrl() const;

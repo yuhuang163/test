@@ -333,8 +333,11 @@ void QFreeWork::initDate() {
     canGoNext = 1;
     stepRuntime_.reset();
     isovertime = 0;
+    BT_RSSI = "";
     BLE_RSSI = "";
     WIFI_RSSI = "";
+    softwareVersionForReport_.clear();
+    softwareVersionPassForReport_ = true;
     is_battary_test = 0;
     charageresult = "未测";
     voltageresult = "未测";

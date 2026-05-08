@@ -33,6 +33,7 @@ private:
     double standbattary = 0;
     int is_battary_test = 0;
     int RssiTestTime = 0;
+    QString BT_RSSI = "";
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
 
@@ -65,6 +66,8 @@ private:
     QTimer* comparewaittime = new QTimer(this);
     QElapsedTimer TestTime;
     QString productName;
+    QString softwareVersionForReport_;
+    bool softwareVersionPassForReport_ = true;
     QString TestResult = "";
     QString product = "";
 
