@@ -161,13 +161,13 @@ void processATCommand(byte *get_cmd, int length)
 
             if (is_ble_connected())
             {
-                deinit_ble(); // 重置蓝牙
+                deinit_ble(BLE_SCANNING); // 等待异步断开回调后再进入扫描
             }
             else
             {
                 clear_ble_scan_device();
+                set_ble_state(BLE_SCANNING);
             }
-            set_ble_state(BLE_SCANNING);
             Serial.printf("状态重置后: ble_state=%d\r\n", get_ble_state());
         }
         break;
@@ -260,13 +260,13 @@ void processATCommand(byte *get_cmd, int length)
         set_ble_connect_mode(CONNECT_BY_SCAN);
         if (is_ble_connected())
         {
-            deinit_ble();
+            deinit_ble(BLE_SCANNING);
         }
         else
         {
             clear_ble_scan_device();
+            set_ble_state(BLE_SCANNING);
         }
-        set_ble_state(BLE_SCANNING);
         StartBombState = true;
         break;
     }

@@ -14,9 +14,11 @@ struct BleRuntime
     BleState state;
     BleConnectMode connectMode;
     bool scanStarted;
+    bool hasPendingStateAfterDisconnect;
+    BleState pendingStateAfterDisconnect;
 };
 
-static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN, false};
+static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN, false, false, BLE_IDLE};
 
 static BLEScan *pBLEScan;
 
@@ -264,7 +266,14 @@ class MyClientCallback : public BLEClientCallbacks
     void onDisconnect(BLEClient *ppclient)
     {
         BleState state = get_ble_state();
-        if (state == BLE_CONNECTED || state == BLE_CONNECTING || state == BLE_DISCONNECTING)
+        if (state == BLE_DISCONNECTING && bleRuntime.hasPendingStateAfterDisconnect)
+        {
+            BleState nextState = bleRuntime.pendingStateAfterDisconnect;
+            bleRuntime.hasPendingStateAfterDisconnect = false;
+            bleRuntime.pendingStateAfterDisconnect = BLE_IDLE;
+            set_ble_state(nextState);
+        }
+        else if (state == BLE_CONNECTED || state == BLE_CONNECTING || state == BLE_DISCONNECTING)
         {
             set_ble_state(BLE_IDLE);
         }
@@ -568,13 +577,30 @@ void print_ble_rssi()
     }
 }
 
-void deinit_ble()
+void deinit_ble(BleState nextState)
 {
+    bleRuntime.hasPendingStateAfterDisconnect = true;
+    bleRuntime.pendingStateAfterDisconnect = nextState;
     if (pClient != nullptr)
     {
-        set_ble_state(BLE_DISCONNECTING);
-        pClient->disconnect(); // 必须先断开连接触发回调函数再初始化回调函数
-        Serial.println("已断开pClient");
+        if (pClient->isConnected())
+        {
+            set_ble_state(BLE_DISCONNECTING);
+            pClient->disconnect(); // 必须先断开连接触发回调函数再初始化回调函数
+            Serial.println("已断开pClient");
+        }
+        else
+        {
+            bleRuntime.hasPendingStateAfterDisconnect = false;
+            bleRuntime.pendingStateAfterDisconnect = BLE_IDLE;
+            set_ble_state(nextState);
+        }
+    }
+    else
+    {
+        bleRuntime.hasPendingStateAfterDisconnect = false;
+        bleRuntime.pendingStateAfterDisconnect = BLE_IDLE;
+        set_ble_state(nextState);
     }
     if (myDevice != nullptr)
     {

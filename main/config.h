@@ -136,7 +136,7 @@ extern void (*timeoutfunc)();
 void ble_init();
 void start_ble_scan();
 void print_ble_rssi();
-void deinit_ble();
+void deinit_ble(BleState nextState = BLE_IDLE);
 void clear_ble_scan_device();
 void colorWipe(uint32_t color);
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length);
