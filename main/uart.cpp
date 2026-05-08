@@ -154,15 +154,12 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
-            ble_connect_mode = CONNECT_BY_SCAN;
+            set_ble_connect_mode(CONNECT_BY_SCAN);
 
             Serial.print("已设置新的目标设备 MAC 地址：");
             Serial.println(targetDeviceAddress);
 
-            ble_scan_over = false;
-            Serial.printf("状态重置后: doConnect=%d, ble_connected=%d, ble_scan_over=%d\r\n",
-                doConnect, ble_connected, ble_scan_over);
-            if (ble_connected && candeleteble)
+            if (is_ble_connected())
             {
                 deinit_ble(); // 重置蓝牙
             }
@@ -170,6 +167,8 @@ void processATCommand(byte *get_cmd, int length)
             {
                 clear_ble_scan_device();
             }
+            set_ble_state(BLE_SCANNING);
+            Serial.printf("状态重置后: ble_state=%d\r\n", get_ble_state());
         }
         break;
 
@@ -183,18 +182,14 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
-            ble_connect_mode = CONNECT_DIRECT;
+            set_ble_connect_mode(CONNECT_DIRECT);
             clear_ble_scan_device();
 
             Serial.print("AT+DCON 直连目标 MAC：");
             Serial.println(targetDeviceAddress);
 
-            // 不触发后台扫描，直接走 loop 内 connectTobleServer() 的直连分支
-            ble_scan_over = true;
-
-            // 直连命令只切换状态，不在此线程直接操作 BLEScan 结果容器，
-            // 避免与 GAP 回调线程并发访问导致崩溃。
-            doConnect = true;
+            // 不触发后台扫描，直接由 loop 内状态机走直连分支。
+            set_ble_state(BLE_CONNECTING);
         }
         break;
 
@@ -262,8 +257,16 @@ void processATCommand(byte *get_cmd, int length)
         Serial.println("伤害距离: " + damageDistance);
         Serial.println("连接间隔时间: " + connectionInterval);
         Serial.println("发送指令: " + sendCommand);
-        ble_connect_mode = CONNECT_BY_SCAN;
-        ble_scan_over = false;
+        set_ble_connect_mode(CONNECT_BY_SCAN);
+        if (is_ble_connected())
+        {
+            deinit_ble();
+        }
+        else
+        {
+            clear_ble_scan_device();
+        }
+        set_ble_state(BLE_SCANNING);
         StartBombState = true;
         break;
     }

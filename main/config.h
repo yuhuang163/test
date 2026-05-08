@@ -62,7 +62,6 @@ extern int image_len;
 extern int image_get_n;
 extern int image_get_time;
 extern int cmdtime;
-extern boolean candeleteble;
 extern boolean StartSendOtaData;
 extern boolean StartSendmainData;
 extern boolean StartBombState;
@@ -72,9 +71,6 @@ extern String connectionInterval; // 提取连接间隔时间
 extern String sendCommand;        // 提取发送指令
 extern boolean send_img_flag;
 extern boolean send_video_flag;
-extern boolean doConnect;            // 是否可以开始连接
-extern boolean ble_connected;        // 是否是连接的状态
-extern boolean ble_scan_over;        // 是否scan完成
 extern char targetDeviceAddress[18]; // 历程的地址
 extern bool is_need_reset_adress;
 extern RingbufHandle_t ringBuffer;
@@ -97,6 +93,15 @@ enum BleConnectMode
     CONNECT_BY_SCAN,
     CONNECT_DIRECT
 };
+enum BleState
+{
+    BLE_IDLE,
+    BLE_SCANNING,
+    BLE_SCAN_FOUND,
+    BLE_CONNECTING,
+    BLE_CONNECTED,
+    BLE_DISCONNECTING
+};
 typedef enum
 {
     PHY_CHANNEL_INVALID_SEND = 0, // 无效值
@@ -107,7 +112,6 @@ typedef enum
 } ext_ble_phy_channel_send_e;
 // 声明全局变量
 extern ServiceType use_normal_service;
-extern BleConnectMode ble_connect_mode;
 bool ServerStateCheck();
 void wifi_init();
 void getImage();
@@ -118,6 +122,11 @@ void processDataTask(void *pvParameters);
 void processATChar(byte currentChar);
 bool isValidMacAddress(const byte *address, size_t length);
 bool connectTobleServer();
+BleState get_ble_state();
+BleConnectMode get_ble_connect_mode();
+bool is_ble_connected();
+void set_ble_connect_mode(BleConnectMode mode);
+void set_ble_state(BleState state);
 void cameranotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
                           size_t length, bool isNotify);
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,

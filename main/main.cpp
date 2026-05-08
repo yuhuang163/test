@@ -167,9 +167,6 @@ void loop()
 {
 
   // LOG_DEBUG("心跳包/r/n");
-  // LOG_DEBUG(ble_connected);
-  // LOG_DEBUG(ble_scan_over);
-  // LOG_DEBUG(doConnect);
   // vTaskDelay(1000); // 循环之间延迟一秒。
 
   //  checkTaskStatus(serialEventTaskHandle, "串口事件任务");
@@ -177,10 +174,14 @@ void loop()
   // Serial.printf("Free heap memory: %lu bytes\r\n", ESP.getFreeHeap());
   // Serial.printf("Max allocatable block size: %lu bytes\r\n", ESP.getMaxAllocHeap());
 
-  if (doConnect == true)
+  switch (get_ble_state())
   {
+  case BLE_SCAN_FOUND:
+  case BLE_CONNECTING:
+    set_ble_state(BLE_CONNECTING);
     if (connectTobleServer()) // 连接必须在loop里面，不能在回调里面
     {
+      set_ble_state(BLE_CONNECTED);
       Serial.println("AT+CONNECT_SUCCESS");
       colorWipe(strip.Color(0, 255, 0)); // 绿色
       if (StartBombState)
@@ -196,19 +197,30 @@ void loop()
         Serial.println("已发送船运");
       }
     }
-    doConnect = false;
-  }
+    else if (get_ble_connect_mode() == CONNECT_BY_SCAN)
+    {
+      clear_ble_scan_device();
+      set_ble_state(BLE_SCANNING);
+    }
+    else
+    {
+      set_ble_state(BLE_IDLE);
+    }
+    break;
 
-  if (ble_connected) // 这里是为了处理连接被断开的问题
-  {
+  case BLE_CONNECTED:
     print_ble_rssi();
-  }
- 
- 
-  if (!doConnect&&!ble_connected&&!ble_scan_over) // 没有连接且扫描被关闭了
-  {
+    break;
+
+  case BLE_SCANNING:
     start_ble_scan();
     colorWipe(strip.Color(255, 0, 0)); // 红色
+    break;
+
+  case BLE_IDLE:
+  case BLE_DISCONNECTING:
+  default:
+    break;
   }
 
 #if wifiuse == 1

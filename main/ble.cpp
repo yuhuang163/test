@@ -5,14 +5,17 @@
 uint16_t conn_id = -1;
 static BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
-boolean doConnect = false;     // 是否可以开始连接
-boolean ble_connected = false; // 是否是连接的状态
-boolean ble_scan_over = false; // 是否停止扫描
 boolean StartSendOtaData = false;
 boolean StartSendmainData = false;
 boolean StartBombState = false;
-boolean candeleteble = true; // 是否可以销毁蓝牙实例
-BleConnectMode ble_connect_mode = CONNECT_BY_SCAN;
+
+struct BleRuntime
+{
+    BleState state;
+    BleConnectMode connectMode;
+};
+
+static BleRuntime bleRuntime = {BLE_IDLE, CONNECT_BY_SCAN};
 
 static BLEScan *pBLEScan;
 
@@ -61,6 +64,81 @@ typedef enum
     PHY_CHANNEL_LOG,         // ota数据通道
 
 } ext_ble_phy_send_channel_e;
+
+const char *ble_state_name(BleState state)
+{
+    switch (state)
+    {
+    case BLE_IDLE:
+        return "BLE_IDLE";
+    case BLE_SCANNING:
+        return "BLE_SCANNING";
+    case BLE_SCAN_FOUND:
+        return "BLE_SCAN_FOUND";
+    case BLE_CONNECTING:
+        return "BLE_CONNECTING";
+    case BLE_CONNECTED:
+        return "BLE_CONNECTED";
+    case BLE_DISCONNECTING:
+        return "BLE_DISCONNECTING";
+    default:
+        return "BLE_UNKNOWN";
+    }
+}
+
+const char *ble_connect_mode_name(BleConnectMode mode)
+{
+    switch (mode)
+    {
+    case CONNECT_BY_SCAN:
+        return "CONNECT_BY_SCAN";
+    case CONNECT_DIRECT:
+        return "CONNECT_DIRECT";
+    default:
+        return "CONNECT_UNKNOWN";
+    }
+}
+
+BleState get_ble_state()
+{
+    return bleRuntime.state;
+}
+
+BleConnectMode get_ble_connect_mode()
+{
+    return bleRuntime.connectMode;
+}
+
+bool is_ble_connected()
+{
+    return bleRuntime.state == BLE_CONNECTED;
+}
+
+void set_ble_connect_mode(BleConnectMode mode)
+{
+    if (bleRuntime.connectMode == mode)
+    {
+        return;
+    }
+    Serial.print("BLE_CONNECT_MODE: ");
+    Serial.print(ble_connect_mode_name(bleRuntime.connectMode));
+    Serial.print(" -> ");
+    Serial.println(ble_connect_mode_name(mode));
+    bleRuntime.connectMode = mode;
+}
+
+void set_ble_state(BleState state)
+{
+    if (bleRuntime.state == state)
+    {
+        return;
+    }
+    Serial.print("BLE_STATE: ");
+    Serial.print(ble_state_name(bleRuntime.state));
+    Serial.print(" -> ");
+    Serial.println(ble_state_name(state));
+    bleRuntime.state = state;
+}
 
 // 消息提醒函数
 void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData,
@@ -178,12 +256,16 @@ class MyClientCallback : public BLEClientCallbacks
     void onConnect(BLEClient *ppclient)
     {
         pClient->setMTU(MY_MTU);
-        ble_connected = true;
+        set_ble_state(BLE_CONNECTED);
         conn_id = pClient->getConnId();
     }
     void onDisconnect(BLEClient *ppclient)
     {
-        ble_connected = false;
+        BleState state = get_ble_state();
+        if (state == BLE_CONNECTED || state == BLE_CONNECTING || state == BLE_DISCONNECTING)
+        {
+            set_ble_state(BLE_IDLE);
+        }
         Serial.println("AT+DISCONNECT");
         delay(100);
         Serial.println("AT+DISCONNECT");
@@ -195,8 +277,7 @@ class MyClientCallback : public BLEClientCallbacks
             strcpy(targetDeviceAddress, packetString.c_str());
             // delay(5000);
             Serial.println("已经重置mac地址");
-            Serial.printf("状态重置后: doConnect=%d, ble_connected=%d, ble_scan_over=%d\r\n",
-                          doConnect, ble_connected, ble_scan_over);
+            Serial.printf("状态重置后: ble_state=%d\r\n", get_ble_state());
            
         }
     }
@@ -293,6 +374,10 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
      */
     void onResult(BLEAdvertisedDevice advertisedDevice)
     {
+        if (get_ble_state() != BLE_SCANNING || get_ble_connect_mode() != CONNECT_BY_SCAN)
+        {
+            return;
+        }
 
         if (StartBombState)
         {
@@ -301,7 +386,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             String deviceName = advertisedDevice.getName();
             if (deviceName.indexOf(BOMBdevicename) != -1 && rssi > damageDistance.toInt() && !isDeviceStored(advertisedDevice.getAddress().toString().c_str()))
             {
-                          ble_scan_over = true;   
                 Serial.print("找到设备:" + deviceName);
                 Serial.print(", deviceRssi:");
                 Serial.println(rssi);
@@ -311,15 +395,19 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 printStoredDevices();
                 digitalWrite(D2_PIN, LOW);
 
-                if (ble_connected && candeleteble) // 连接上了且可以开始连接才会去清空，否则连接中途被删掉就出问题了，导致卡死
+                if (is_ble_connected())
                 {
                     deinit_ble(); // 重置蓝牙
                 }
 
                 BLEDevice::getScan()->stop();
+                if (myDevice != nullptr)
+                {
+                    delete myDevice;
+                    myDevice = nullptr;
+                }
                 myDevice = new BLEAdvertisedDevice(advertisedDevice); // 有释放内存
-                doConnect = true;                                     // 是否可以开始连接
-                ble_scan_over = false;                                 // 是否完成了scan
+                set_ble_state(BLE_SCAN_FOUND);
             }
         }
         else
@@ -343,7 +431,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             { // mac地址可以，那么准备开始连接
 
          
-                ble_scan_over = true;   
                 {
                     uint8_t addrType = myadvertisedDevice.getAddressType();
                     Serial.print("目标设备地址类型 addrType=");
@@ -379,9 +466,13 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 // colorWipe(strip.Color(0, 255, 0));  // 绿色
                 // colorWipe(strip.Color(0, 0, 255));  // 蓝色
                 BLEDevice::getScan()->stop();
+                if (myDevice != nullptr)
+                {
+                    delete myDevice;
+                    myDevice = nullptr;
+                }
                 myDevice = new BLEAdvertisedDevice(myadvertisedDevice); // 有释放内存
-                doConnect = true;                                     // 是否可以开始连接
-                ble_scan_over = false;                                 // 是否完成了scan
+                set_ble_state(BLE_SCAN_FOUND);
             }
         }
     }
@@ -400,10 +491,12 @@ void ble_init()
     // 目标设备地址（设置为你希望配置参数的设备地址）
 
     pBLEScan->setActiveScan(true);
+    set_ble_state(BLE_SCANNING);
     pBLEScan->start(scantime, false);
 }
 void start_ble_scan()
 {
+    set_ble_state(BLE_SCANNING);
     Serial.println("开启扫描" + String(scantime) + "s");
     pBLEScan->clearResults();         // memory，释放扫描缓存消耗
     pBLEScan->start(scantime, false); // 设置太久在很多设备的情况下会崩溃
@@ -453,6 +546,7 @@ void deinit_ble()
 {
     if (pClient != nullptr)
     {
+        set_ble_state(BLE_DISCONNECTING);
         pClient->disconnect(); // 必须先断开连接触发回调函数再初始化回调函数
         Serial.println("已断开pClient");
     }
@@ -465,7 +559,8 @@ void deinit_ble()
 
 void clear_ble_scan_device()
 {
-    if (!candeleteble)
+    BleState state = get_ble_state();
+    if (state == BLE_CONNECTING || state == BLE_DISCONNECTING)
     {
         Serial.println("当前连接流程中，暂不清理扫描设备缓存");
         return;
@@ -562,7 +657,6 @@ void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t len
 
 bool connectTobleServer()
 {
-    candeleteble = false;
     Serial.print("正在连接到：");
     Serial.println(targetDeviceAddress);
     if (pClient != nullptr)
@@ -610,18 +704,17 @@ bool connectTobleServer()
     Serial.println("创建完成,连接到设备");
 
     bool connected = false;
-    if (ble_connect_mode == CONNECT_BY_SCAN)
+    if (get_ble_connect_mode() == CONNECT_BY_SCAN)
     {
         if (myDevice == nullptr)
         {
             Serial.println("扫描连接模式缺少扫描设备信息");
-            candeleteble = true;
             return false;
         }
         Serial.println(myDevice->getAddress().toString());
         connected = pClient->connect(myDevice); // 来自扫描的连接
     }
-    else if (ble_connect_mode == CONNECT_DIRECT)
+    else if (get_ble_connect_mode() == CONNECT_DIRECT)
     {
         Serial.println("未提供扫描设备信息，尝试按 MAC 直连");
         BLEAddress addr(targetDeviceAddress);
@@ -652,7 +745,6 @@ bool connectTobleServer()
         if (!pClient->isConnected())
         {
             Serial.println("connect 返回成功但实际已断开，取消服务发现");
-            candeleteble = true;
             return false;
         }
         if (pClient != nullptr)
@@ -662,7 +754,6 @@ bool connectTobleServer()
             if (!pClient->isConnected())
             {
                 Serial.println("服务发现中连接已断开(facRemoteService)");
-                candeleteble = true;
                 return false;
             }
 
@@ -670,7 +761,6 @@ bool connectTobleServer()
             if (!pClient->isConnected())
             {
                 Serial.println("服务发现中连接已断开(appRemoteService)");
-                candeleteble = true;
                 return false;
             }
 
@@ -678,7 +768,6 @@ bool connectTobleServer()
             if (!pClient->isConnected())
             {
                 Serial.println("服务发现中连接已断开(mainRemoteService)");
-                candeleteble = true;
                 return false;
             }
 
@@ -686,14 +775,12 @@ bool connectTobleServer()
             if (!pClient->isConnected())
             {
                 Serial.println("服务发现中连接已断开(normolRemoteService)");
-                candeleteble = true;
                 return false;
             }
         }
         else
         {
             Serial.println("pClient 是空指针"); // pClient 是空指针，处理错误逻辑
-            candeleteble = true;
             return false;
         }
 
@@ -750,7 +837,6 @@ bool connectTobleServer()
         Serial.println("AT+DISCONNECT");
 
     }
-    candeleteble = true;
     return false;
 }
 
@@ -768,7 +854,6 @@ bool ServerStateCheck()
             else
             {
                 Serial.println("蓝牙没有连接");
-                candeleteble = true;
                 return false;
             }
         }
@@ -791,7 +876,6 @@ bool ServerStateCheck()
             else
             {
                 Serial.println("蓝牙没有连接");
-                candeleteble = true;
                 return false;
             }
         }
@@ -815,7 +899,6 @@ bool ServerStateCheck()
             else
             {
                 Serial.println("蓝牙还没有连接");
-                candeleteble = true;
                 return false;
             }
         }
@@ -840,7 +923,6 @@ bool ServerStateCheck()
             else
             {
                 Serial.println("蓝牙还没有连接");
-                candeleteble = true;
                 return false;
             }
         }
@@ -864,7 +946,6 @@ bool ServerStateCheck()
             else
             {
                 Serial.println("蓝牙没有连接");
-                candeleteble = true;
                 return false;
             }
         }
@@ -885,6 +966,5 @@ bool ServerStateCheck()
         Serial.println("找不到写入特征");
     }
 
-    candeleteble = true;
     return true; // 连接成功
 }
