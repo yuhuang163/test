@@ -676,7 +676,9 @@ void test_base::solveGetBrushResponse(int data) {
         commandRetryTimer->stop();
         commandRetryTimer->deleteLater();
         commandRetryTimer = nullptr;
+        lastCommandRetryCount = commandRetrySendCount;
         commandRetryCount = 0;
+        commandRetrySendCount = 0;
         canGoNext = 1;
         sendRetryOver = 0;
         getRespone = 0;
@@ -693,11 +695,13 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
         commandRetryTimer = nullptr;
     }
     commandRetryCount = 0;
+    commandRetrySendCount = 0;
+    lastCommandRetryCount = 0;
     canGoNext = false;
     sendRetryOver = false;
     getRespone = 0;
     if (commandFunc != nullptr) {
-        showlog("首次发送指令");
+        // showlog("首次发送指令");
         commandFunc();  // 重新发送指令
     }
 
@@ -714,13 +718,16 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
             if (commandRetryCount < 20) {  // 如果还有重试次数
                 if (commandFunc != nullptr && !(commandRetryCount % 5)) {
                     showlog("重新发送指令" + QString::number(commandRetryCount));
+                    commandRetrySendCount++;
                     commandFunc();  // 重新发送指令
                 }
                 commandRetryCount++;
             } else {
                 disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
                 getRespone = 0;
+                lastCommandRetryCount = commandRetrySendCount;
                 commandRetryCount = 0;
+                commandRetrySendCount = 0;
                 sendRetryOver = 1;
                 canGoNext = 1;  // 超时后放行状态机，由上层根据 sendRetryOver 判失败
                 commandRetryTimer->stop();  // 达到最大重试次数，停止定时器
@@ -735,7 +742,9 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
             commandRetryTimer->stop();
             commandRetryTimer->deleteLater();
             commandRetryTimer = nullptr;
+            lastCommandRetryCount = commandRetrySendCount;
             commandRetryCount = 0;
+            commandRetrySendCount = 0;
             getRespone = 0;
             canGoNext = 1;
 

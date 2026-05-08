@@ -313,7 +313,7 @@ void QFreeWork::applyTupleByMac() {
         showlog("三元组获取失败：" + tupleData_.error);
         return;
     }
-    showlog("三元组获取成功：productKey=" + tupleData_.productKey + " deviceName=" + tupleData_.deviceName);
+    showlog("三元组获取成功：productKey=" + tupleData_.productKey + " deviceName=" + tupleData_.deviceName + " deviceSecret=" + tupleData_.deviceSecret);
 }
 
 void QFreeWork::debugUpdateTupleMacStatus() {

@@ -114,6 +114,7 @@ private:
         int functionId = -1;
         QString testData;
         QString ask = "通过";
+        QElapsedTimer caseTimer;
 
         // 每进入下一步或流程结束时统一复位
         void reset() {
@@ -123,6 +124,7 @@ private:
             functionId = -1;
             testData.clear();
             ask = "通过";
+            caseTimer.invalidate();
         }
     } stepRuntime_;
     bool isCurrentStep(const QString& functionName) const;

@@ -186,6 +186,8 @@ void QFreeWork::startTask() {
                     stepRuntime_.pass = true;
                     stepRuntime_.testData = "-";
                     stepRuntime_.ask = "通过";
+                    stepRuntime_.caseTimer.restart();
+                    lastCommandRetryCount = 0;
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
@@ -218,6 +220,12 @@ void QFreeWork::startTask() {
 
                 // static const QSet<QString> skipTableFunctions = {"获取外围设备状态", "获取基本信息"};
                 // if (!skipTableFunctions.contains(functionName)) {
+                    const qint64 caseElapsedMs = stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0;
+                    const int caseRetryCount = lastCommandRetryCount;
+                    showlog(QString("测试内容完成：%1，重试次数=%2，测试时长=%3ms")
+                                .arg(functionName)
+                                .arg(caseRetryCount)
+                                .arg(caseElapsedMs));
                     TestItem test;
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
@@ -294,7 +302,7 @@ void QFreeWork::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -483,7 +491,7 @@ void QFreeWork::on_getMac_returnPressed() {
     }
     expectedTailSnFromUi = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());             // 文件获取
+    // getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测
     // processGetMesTestValue();               // mes获取
 

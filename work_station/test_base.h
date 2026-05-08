@@ -1,4 +1,4 @@
-#ifndef TEST_BASE_H
+﻿#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 // #include <qat.h>      // 与esp32的at指令
@@ -143,6 +143,8 @@ public:
     bool sendRetryOver = false;
     QTimer* commandRetryTimer = nullptr;
     int commandRetryCount = 0;
+    int commandRetrySendCount = 0;
+    int lastCommandRetryCount = 0;
 
     bool isTestContinue = false;  //测试是否继续
     bool bandingresult = false;   // mes绑定结果
