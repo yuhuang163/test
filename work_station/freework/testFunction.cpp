@@ -85,6 +85,8 @@ struct FreeWorkTestCatalogItem {
     X(75, "右键测试", true, startKeyButtonTest("右键测试", "请短按下右按钮", "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox")) \
     X(76, "左旋键测试", true, startKeyButtonTest("左旋键测试", "请左旋按钮", "ProductInfo/KeyIdLeftRotate", "ProductInfo/KeyIdLeftRotate_checkBox")) \
     X(77, "右旋键测试", true, startKeyButtonTest("右旋键测试", "请右旋按钮", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
+    X(78, "进入吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
+    X(79, "退出吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 0; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

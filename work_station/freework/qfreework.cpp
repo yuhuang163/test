@@ -81,6 +81,11 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->usbconnectButton->setDisabled(true);
         ui->usbcomNameCombo->setDisabled(true);
     }
+    if (pack.factory == "hq" || pack.factory == "jj") {
+        ui->jigComNameCombo->setEnabled(false);
+        ui->jigConnectButton->setEnabled(false);
+        ui->jigDisconnectButton->setEnabled(false);
+    }
 
     createTestFunctions();
     refreshOrderedTestIndexes();
@@ -287,7 +292,14 @@ void QFreeWork::startTask() {
     }
 }
 
-QFreeWork::~QFreeWork() { delete ui; }
+QFreeWork::~QFreeWork() {
+    if (jigSerialPort->isOpen()) {
+        disconnect(jigSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
+        jigSerialPort->close();
+        qDebug() << getIndex() << "已关闭jig串口";
+    }
+    delete ui;
+}
 
 void QFreeWork::getDongleWifi(QString data) {
     // 保存密码
@@ -329,6 +341,16 @@ void QFreeWork::refreshUsbUartState(int state) {
 
         ui->usbconnectButton->setDisabled(true);
         ui->usbcomNameCombo->setDisabled(true);
+    }
+}
+
+void QFreeWork::refreshJigUartState(int state) {
+    if (state)
+        showlog("治具串口连接成功");
+    else {
+        ui->jigComNameCombo->setEnabled(true);
+        ui->jigConnectButton->setEnabled(true);
+        showlog("治具串口连接断开");
     }
 }
 
@@ -880,6 +902,18 @@ void QFreeWork::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     closeDongleSerialPort();
+}
+
+void QFreeWork::on_jigConnectButton_clicked() {
+    openJigSerialPort();
+    ui->jigComNameCombo->setEnabled(false);
+    ui->jigConnectButton->setEnabled(false);
+}
+
+void QFreeWork::on_jigDisconnectButton_clicked() {
+    closeJigSerialPort();
+    ui->jigComNameCombo->setEnabled(true);
+    ui->jigConnectButton->setEnabled(true);
 }
 
 void QFreeWork::on_stopTest_clicked() {

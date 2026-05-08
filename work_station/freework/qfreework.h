@@ -150,6 +150,7 @@ private slots:
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口（治具）
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };  // 治具口
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -172,6 +173,7 @@ private slots:
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
+    void refreshJigUartState(int state) override;
     void refreshWifiState(int state);
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
@@ -196,6 +198,8 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
+    void on_jigConnectButton_clicked();
+    void on_jigDisconnectButton_clicked();
 
     void on_stopTest_clicked();
 
