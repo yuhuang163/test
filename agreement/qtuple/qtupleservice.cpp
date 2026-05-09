@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QEventLoop>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -34,6 +35,109 @@ QString maskDeviceSecretTail3(const QString& secret) {
 }
 
 }  // namespace
+
+static const QHash<QString, QString>& tupleInspectionOpLabels() {
+    // 源文件为 UTF-8 时，用 QString::fromUtf8 显式按 UTF-8 解码字面量（与工程内其它中文用法一致）
+    static const QHash<QString, QString> kTable = {
+        {QString::fromUtf8("Z_BLE_WAITE_BOX"), QString::fromUtf8("连接蓝牙测试盒")},
+        {QString::fromUtf8("Z_WIFI_WAITE_BOX"), QString::fromUtf8("连接WiFi测试盒")},
+        {QString::fromUtf8("AT_MODE"), QString::fromUtf8("修改串口模式")},
+        {QString::fromUtf8("AT_MULTI"), QString::fromUtf8("修改串口连接模式")},
+        {QString::fromUtf8("AT_REBOOT"), QString::fromUtf8("重启串口")},
+        {QString::fromUtf8("AT_UUID"), QString::fromUtf8("订阅UUID")},
+        {QString::fromUtf8("AT_DISC"), QString::fromUtf8("断开连接")},
+        {QString::fromUtf8("AT_SCAN"), QString::fromUtf8("发现设备中...")},
+        {QString::fromUtf8("AT_CONN"), QString::fromUtf8("建立连接")},
+        {QString::fromUtf8("AT_GAT_STATE"), QString::fromUtf8("查询连接状态")},
+        {QString::fromUtf8("AT_GATT_SEND"), QString::fromUtf8("发送数据")},
+        {QString::fromUtf8("Q_UPDATE_MAC_STATUS"), QString::fromUtf8("更新烧录状态")},
+        {QString::fromUtf8("C_POWER_OFF"), QString::fromUtf8("控制关机")},
+        {QString::fromUtf8("R_SN"), QString::fromUtf8("读SN")},
+        {QString::fromUtf8("R_BATTERY_LEVEL"), QString::fromUtf8("读电量")},
+        {QString::fromUtf8("R_MODE_SIDE"), QString::fromUtf8("读左右标记")},
+        {QString::fromUtf8("R_MAC"), QString::fromUtf8("读MAC")},
+        {QString::fromUtf8("R_CODE"), QString::fromUtf8("读CODE")},
+        {QString::fromUtf8("R_VAR"), QString::fromUtf8("读版本信息")},
+        {QString::fromUtf8("R_MC11_F_MILK_CAPACITY"), QString::fromUtf8("读奶量检测数据")},
+        {QString::fromUtf8("W_MC11_N_MILK_CAPACITY_STABLE"), QString::fromUtf8("写空杯检测数据")},
+        {QString::fromUtf8("W_MC11_F_MILK_CAPACITY_STABLE"), QString::fromUtf8("写满杯检测数据")},
+        {QString::fromUtf8("R_MC11_F_MILK_CAPACITY_STABLE"), QString::fromUtf8("读溢奶检测标定值")},
+        {QString::fromUtf8("R_D_TUPLE"), QString::fromUtf8("读三元组")},
+        {QString::fromUtf8("R_JL_F_MAC"), QString::fromUtf8("检测蓝牙地址")},
+        {QString::fromUtf8("R_JL_F_BLE_FREQ"), QString::fromUtf8("检测频偏")},
+        {QString::fromUtf8("R_JL_F_BLE_RSSI"), QString::fromUtf8("检测信号")},
+        {QString::fromUtf8("R_LX_FB_RX_RSSI"), QString::fromUtf8("信号板信号强度")},
+        {QString::fromUtf8("R_LX_DUT_RX_RSSI"), QString::fromUtf8("待测品信号强度")},
+        {QString::fromUtf8("R_LX_TXP_RESULT"), QString::fromUtf8("收发包总数")},
+        {QString::fromUtf8("R_LX_FREQ_OFFSET"), QString::fromUtf8("频偏")},
+        {QString::fromUtf8("R_LX_RSSI_DIFF"), QString::fromUtf8("信号强度差")},
+        {QString::fromUtf8("R_ESP_GPIO_TEST_L"), QString::fromUtf8("GPIO连通性0")},
+        {QString::fromUtf8("R_ESP_GPIO_TEST_H"), QString::fromUtf8("GPIO连通性1")},
+        {QString::fromUtf8("W_SN"), QString::fromUtf8("写入SN")},
+        {QString::fromUtf8("W_MODE_SIDE"), QString::fromUtf8("写入左右标记")},
+        {QString::fromUtf8("W_MAC"), QString::fromUtf8("写入MAC")},
+        {QString::fromUtf8("W_CODE"), QString::fromUtf8("写入CODE")},
+        {QString::fromUtf8("W_P_KEY"), QString::fromUtf8("写入ProductKey")},
+        {QString::fromUtf8("W_D_NAME"), QString::fromUtf8("写入DeviceName")},
+        {QString::fromUtf8("W_D_SECRET"), QString::fromUtf8("写入DeviceSecret")},
+        {QString::fromUtf8("W_SE_OPEN"), QString::fromUtf8("打开屏蔽箱")},
+        {QString::fromUtf8("W_SE_LIGHT_ON"), QString::fromUtf8("打开信号灯")},
+        {QString::fromUtf8("R_MO_MAC"), QString::fromUtf8("读MAC")},
+        {QString::fromUtf8("R_MO_SN"), QString::fromUtf8("读SN")},
+        {QString::fromUtf8("R_MO_TUPLE"), QString::fromUtf8("读三元组")},
+        {QString::fromUtf8("R_MO_PROD_TYPE"), QString::fromUtf8("读产品类型")},
+        {QString::fromUtf8("R_MO_BROADCAST_NAME"), QString::fromUtf8("读广播名称")},
+        {QString::fromUtf8("R_MO_VAR"), QString::fromUtf8("读版本信息")},
+        {QString::fromUtf8("W_MO_TUPLE"), QString::fromUtf8("写入三元组")},
+        {QString::fromUtf8("W_MO_SN"), QString::fromUtf8("写入SN")},
+        {QString::fromUtf8("W_MO_PROD_TYPE"), QString::fromUtf8("写入产品类型")},
+        {QString::fromUtf8("W_MO_VALID_CODE"), QString::fromUtf8("写入数据校验")},
+        {QString::fromUtf8("W_MO_BROADCAST_NAME"), QString::fromUtf8("写入广播名称")},
+        {QString::fromUtf8("C_MO_WIFI_SSID_PASS"), QString::fromUtf8("连接路由器")},
+        {QString::fromUtf8("X_LOAD_RAM"), QString::fromUtf8("加载测试RAM")},
+        {QString::fromUtf8("X_PING_LAN"), QString::fromUtf8("域网Ping丢包率")},
+        // 上位机 reportWriteRecord 使用，与前端 OP_KEY_NAME 并列维护
+        {QString::fromUtf8("R_BT_RSSI"), QString::fromUtf8("蓝牙链路RSSI")},
+    };
+    return kTable;
+}
+
+/** 三元组写入记录上报：业务侧只写与 tupleInspectionOpLabels 一致的中文名，再映射为线上 R_* 操作码。 */
+static QString tupleReportWireKeyFromDisplayZh(const QString& displayZh) {
+    static const QHash<QString, QString> kZhToWire = {
+        {QString::fromUtf8("读三元组"), QString::fromUtf8("R_D_TUPLE")},
+        {QString::fromUtf8("蓝牙链路RSSI"), QString::fromUtf8("R_BT_RSSI")},
+        {QString::fromUtf8("检测信号"), QString::fromUtf8("R_JL_F_BLE_RSSI")},
+        {QString::fromUtf8("读版本信息"), QString::fromUtf8("R_MO_VAR")},
+    };
+    return kZhToWire.value(displayZh.trimmed());
+}
+
+static QString formatTupleReportInspectionItem(const QString& displayZh, const QString& payload, bool itemPass, qint64 ts) {
+    const QString wire = tupleReportWireKeyFromDisplayZh(displayZh);
+    if (wire.isEmpty()) {
+        qWarning() << "[Tuple] reportWriteRecord unknown inspection label:" << displayZh;
+        return QString();
+    }
+    return QString("%1:%2:%3:%4")
+        .arg(wire)
+        .arg(payload)
+        .arg(itemPass ? QString::fromUtf8("true") : QString::fromUtf8("false"))
+        .arg(ts);
+}
+
+QString QTupleService::inspectionOpDisplayName(const QString& opKey) {
+    const QString k = opKey.trimmed();
+    const auto& t = tupleInspectionOpLabels();
+    const auto it = t.constFind(k);
+    return it == t.cend() ? k : it.value();
+}
+
+QString QTupleService::inspectionOpDisplayNameFromItem(const QString& itemOrKey) {
+    const int cut = itemOrKey.indexOf(QLatin1Char(':'));
+    const QString key = cut < 0 ? itemOrKey.trimmed() : itemOrKey.left(cut).trimmed();
+    return inspectionOpDisplayName(key);
+}
 
 QTupleService::QTupleService(const QString& baseUrl)
     : baseUrl_(baseUrl.isEmpty() ? SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString() : baseUrl) {}
@@ -120,20 +224,32 @@ bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QStri
     const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
     const QString reportTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     const QString sn =  productSn.trimmed();
-    // R_D_TUPLE 载荷：productKey + deviceName + 脱敏后的 deviceSecret（与 R_MO_TUPLE 拼接习惯一致，避免明文密钥）
+    // 载荷：productKey + deviceName + 脱敏后的 deviceSecret（与 R_MO_TUPLE 拼接习惯一致，避免明文密钥）
     const QString tupleValue = tuple.productKey + tuple.deviceName + maskDeviceSecretTail3(tuple.deviceSecret);
-    const QString inspectionItem = QString("R_D_TUPLE:%1:%2:%3").arg(tupleValue, pass ? "true" : "false").arg(timestamp);
+    const QString zhTuple = QString::fromUtf8("读三元组");
+    const QString inspectionItem = formatTupleReportInspectionItem(zhTuple, tupleValue, pass, timestamp);
 
     QJsonArray inspectionItems;
-    inspectionItems.append(inspectionItem);
+    if (!inspectionItem.isEmpty()) {
+        inspectionItems.append(inspectionItem);
+    }
     if (!btRssi.trimmed().isEmpty()) {
-        inspectionItems.append(QString("R_BT_RSSI:%1:%2:%3").arg(btRssi.trimmed(), btRssiPass ? "true" : "false").arg(timestamp));
+        const QString row = formatTupleReportInspectionItem(QString::fromUtf8("蓝牙链路RSSI"), btRssi.trimmed(), btRssiPass, timestamp);
+        if (!row.isEmpty()) {
+            inspectionItems.append(row);
+        }
     }
     if (!bleRssi.trimmed().isEmpty()) {
-        inspectionItems.append(QString("R_JL_F_BLE_RSSI:%1:%2:%3").arg(bleRssi.trimmed(), bleRssiPass ? "true" : "false").arg(timestamp));
+        const QString row = formatTupleReportInspectionItem(QString::fromUtf8("检测信号"), bleRssi.trimmed(), bleRssiPass, timestamp);
+        if (!row.isEmpty()) {
+            inspectionItems.append(row);
+        }
     }
     if (!softwareVersion.trimmed().isEmpty()) {
-        inspectionItems.append(QString("R_MO_VAR:%1:%2:%3").arg(softwareVersion.trimmed(), softwareVersionPass ? "true" : "false").arg(timestamp));
+        const QString row = formatTupleReportInspectionItem(QString::fromUtf8("读版本信息"), softwareVersion.trimmed(), softwareVersionPass, timestamp);
+        if (!row.isEmpty()) {
+            inspectionItems.append(row);
+        }
     }
 
     QJsonObject bodyObj;

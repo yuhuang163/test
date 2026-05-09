@@ -1,0 +1,6 @@
+﻿# Windows 下 *.cmd 使用 CRLF，避免批处理换行异常；若编辑器写入 UTF-8 BOM，仍可能破坏首行，需单独注意保存方式。
+*.cmd text eol=crlf
+
+# commit-msg 由 sh 执行；CRLF 会使 #!/bin/sh 带 \r，导致 Windows 上无法正确启动钩子。
+.githooks/commit-msg text eol=lf
+*.sh text eol=lf

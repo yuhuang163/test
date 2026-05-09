@@ -1,4 +1,4 @@
-﻿#ifndef QTUPLESERVICE_H
+#ifndef QTUPLESERVICE_H
 #define QTUPLESERVICE_H
 
 #include <QByteArray>
@@ -19,6 +19,11 @@ struct TupleApplyResult {
 class QTupleService {
 public:
     explicit QTupleService(const QString& baseUrl = QString());
+
+    /** 检验项操作码（如 R_D_TUPLE、R_MO_VAR）→ 人可读中文名；未知则返回 \a opKey。 */
+    static QString inspectionOpDisplayName(const QString& opKey);
+    /** \a itemOrKey 为完整检验项字符串时取首段（':' 前）为操作码再查表；否则等同 \ref inspectionOpDisplayName。 */
+    static QString inspectionOpDisplayNameFromItem(const QString& itemOrKey);
 
     bool login(const QString& userName, const QString& password, QString* error = nullptr);
     TupleApplyResult applyTupleByMac(const QString& mac, const QString& sku, const QString& position);

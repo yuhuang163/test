@@ -131,8 +131,8 @@ def save_commits_to_md(commits, file_path):
             max_def_length = max(len(definition) for definition in COMMIT_DEFINITIONS.values()) + 1  # 加1是为了留出空格
             padding_length = max_def_length - len(definition)
             
-            # 写入版本号及其更新信息
-            file.write(f"{index:2}. {definition}{padding_length * ' '}")
+            # 行首统一「空格 + 序号」，避免 1～9 为「 1.」而 10+ 为「10.」导致 Markdown 预览在 9 条后列表断裂
+            file.write(f" {index}. {definition}{padding_length * ' '}")
             if version_updates[tag]:
                 file.write(f" ({', '.join(version_updates[tag])})")
             else:

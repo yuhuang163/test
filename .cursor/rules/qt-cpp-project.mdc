@@ -41,20 +41,25 @@ alwaysApply: true
 
 ## Git 提交信息（按工站标签）
 
-编写 **Git 提交说明**或协助用户写 commit message 时，若涉及工站代码，采用与 **`my_set/AbIni.h`** 中历史注释相同的风格（见该文件约 73 行起示例）。
+编写或生成 **Git 提交说明**时，**以仓库根目录 `.copilot-commit-message-instructions.md` 为准**（与 Copilot 提交生成共用）；本节只列要点，避免与上文冲突。
 
-**格式**（可多行，每行一个本次有改动的工站）：
+**必遵守的判定顺序**：
+
+1. 先看变更文件路径：若**全部**只在**某一个** `work_station/<子目录>/` 下，且**未**混改 `agreement/`、`test_base.cpp`、`box_base.cpp`、`mainwindow` 等 → 提交信息 **只写一行**该子目录对应的 **`[XXX_VER]`**（例：只改 `work_station/ageing/` → **`[AGE_VER] …`**）。**不要**误用 `[DEBUG_VER]`，**不要**对全部 `XXX_VER` 逐行复制（那是「公共模块」专用规则）。
+2. **说明文字必须与 diff 一致**：不得写未改动模块（见 `.copilot-commit-message-instructions.md`「必须与 diff 一致」节）。
+3. **工站 + 公共模块同一次提交**：不得把公共改动只写在工站行；须 **`[XXX_VER]` + `[DEBUG_VER]`（或全量 VER）** 分行（见该文档第 5 条）。
+4. 公共模块、多工站、仅主窗口/文档等情形，见 **`.copilot-commit-message-instructions.md`** 全文。
+5. **`[AGREEMENT_VER]` 禁止使用**：`AbIni.h` 无此宏；`agreement/qtuple` 类改动用 **`[DEBUG_VER]`** 或公共模块多行规则（详见该文档专节）。
+
+**格式**（可多行时：每行一个本次实际涉及的工站或规则要求的行）：
 
 ```text
 [XXX_VER] 改动要点1，改动要点2，改动要点3
 ```
 
-- **`XXX_VER`** 必须与 `AbIni.h` 里 **`#define XXX_VER`** 宏名完全一致（如 `PCBA_VER`、`QC_VER`、`FREE_VER`）。
-- **只写本次变更实际涉及的工站**；未改动的工站不要凑行。
-- 描述用**简体中文**，多条用**中文逗号**分隔；避免「修改代码」「优化」等空话。
-- 改动 **`test_base` / `box_base` / `agreement/qset` / `agreement/qProtocol` / `agreement/qtuple`** 等公共模块时：在**受影响工站**对应行用逗号附带说明（例如协议、设置页、三元组上报）；若仅主程序/产测工具界面逻辑，用 **`DEBUG_VER`**。
+- **`XXX_VER`** 与 `my_set/AbIni.h` 中 **`#define XXX_VER`** 完全一致；描述**简体中文**，逗号分隔。
 
-**路径与标签对照**（按改动文件路径优先判断）：
+**路径与标签对照**（与 `.copilot-commit-message-instructions.md` 一致）：
 
 | 路径包含 | 宏标签 |
 |----------|--------|
@@ -70,19 +75,20 @@ alwaysApply: true
 | `work_station/camera/` | `CAMERA_VER` |
 | `work_station/motor/` | `MOTOR_VER` |
 | `work_station/suction/` | `SUCTION_VER` |
-| `mainwindow` 或根目录产测主流程（且不属于单一工站目录） | `DEBUG_VER` |
-| `LIGHT_VER` 等其余宏 | 以 `AbIni.h` 定义为准，目录按工程实际归类 |
+| `agreement/qtuple/`（三元组服务/上报） | **禁止** `AGREEMENT_VER`；未全量多行时 → **`FREE_VER`**（与 `.copilot-commit-message-instructions.md` 一致，勿用 `DEBUG_VER` 写三元组） |
+| `mainwindow` 或根目录产测主流程（且不属于上述单一工站目录） | `DEBUG_VER` |
+| `LIGHT_VER` 等其余宏 | 以 `AbIni.h` 定义为准 |
 
-**给用户用的可复制提示词**：根据当前 **git diff / 变更文件列表**，按 `AbIni.h` 中 `[XXX_VER]` 注释格式生成提交说明：每行 `[宏名] 中文要点（逗号分隔）`，仅包含本次实际修改涉及的工站；宏名与 `AbIni.h` 中 `#define XXX_VER` 一致。
+**GitHub Copilot**：`github.copilot.chat.commitMessageGeneration.instructions` 指向 **`.copilot-commit-message-instructions.md`**。
 
-**GitHub Copilot「生成提交信息」**：若在 VS Code/Cursor 中安装并启用 Copilot，可在用户设置里配置 `github.copilot.chat.commitMessageGeneration.instructions` 指向仓库根目录 **`.copilot-commit-message-instructions.md`**（与本节规则一致，便于侧边栏生成时使用）。
+## 文档、映射表与输出
 
-## 文档与输出
-
+- **不要**未经任务明确要求就**新建文件**（含单独 `.md`、`.ts`、`.h` 等）来存放「参数大全」「操作码与中文对照」等；**本规则文件不收录**具体键值清单全文，清单以**代码里单一出处**为准。
+- **三元组上报 / MES / 日志**等场景下的 **操作码或字段 → 人可读中文名**：在**已有**协议、上报或工站模块内就地维护（与枚举、`switch`、`QMap`/常量表等现有写法一致），**禁止**为对照表再拆一个「大全」文件。
 - **不要**未经要求新建或大范围改写 `docs/`、`README` 等说明文档。
 
 ## 协作提示
 
-- **提交说明**：若本次改动涉及具体工站代码，按「Git 提交信息」节的 **`[XXX_VER]`** 多行格式书写；否则用完整句子说明「改了什么、为什么」。
+- **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须 **`[XXX_VER]` 与 `[FREE_VER]` 分行**；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿混写一行。
 - 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
 - **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`agreement/qset/`**、**`agreement/qProtocol/`**（不含 Python39）等。
