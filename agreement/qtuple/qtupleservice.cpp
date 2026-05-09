@@ -19,6 +19,22 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
+namespace {
+
+/** 上报检验项中的 deviceSecret 脱敏：保留前面内容，末尾 3 个字符用 '*' 代替（过短则全部打码）。 */
+QString maskDeviceSecretTail3(const QString& secret) {
+    const int n = secret.size();
+    if (n <= 0) {
+        return QString();
+    }
+    if (n <= 3) {
+        return QString(n, QLatin1Char('*'));
+    }
+    return secret.left(n - 3) + QLatin1String("***");
+}
+
+}  // namespace
+
 QTupleService::QTupleService(const QString& baseUrl)
     : baseUrl_(baseUrl.isEmpty() ? SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString() : baseUrl) {}
 
@@ -104,7 +120,8 @@ bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QStri
     const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
     const QString reportTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
     const QString sn =  productSn.trimmed();
-    const QString tupleValue = tuple.productKey + tuple.deviceName + "***";
+    // R_D_TUPLE 载荷：productKey + deviceName + 脱敏后的 deviceSecret（与 R_MO_TUPLE 拼接习惯一致，避免明文密钥）
+    const QString tupleValue = tuple.productKey + tuple.deviceName + maskDeviceSecretTail3(tuple.deviceSecret);
     const QString inspectionItem = QString("R_D_TUPLE:%1:%2:%3").arg(tupleValue, pass ? "true" : "false").arg(timestamp);
 
     QJsonArray inspectionItems;
@@ -113,7 +130,7 @@ bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QStri
         inspectionItems.append(QString("R_BT_RSSI:%1:%2:%3").arg(btRssi.trimmed(), btRssiPass ? "true" : "false").arg(timestamp));
     }
     if (!bleRssi.trimmed().isEmpty()) {
-        inspectionItems.append(QString("R_BLE_RSSI:%1:%2:%3").arg(bleRssi.trimmed(), bleRssiPass ? "true" : "false").arg(timestamp));
+        inspectionItems.append(QString("R_JL_F_BLE_RSSI:%1:%2:%3").arg(bleRssi.trimmed(), bleRssiPass ? "true" : "false").arg(timestamp));
     }
     if (!softwareVersion.trimmed().isEmpty()) {
         inspectionItems.append(QString("R_MO_VAR:%1:%2:%3").arg(softwareVersion.trimmed(), softwareVersionPass ? "true" : "false").arg(timestamp));

@@ -1,0 +1,88 @@
+﻿---
+description: new_product_test Qt/C++ 工程约定与 AI 协作规则
+alwaysApply: true
+---
+
+# new_product_test — Cursor Agent 规则
+
+## 技术栈
+
+- **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
+- **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8 with BOM** 保存，避免 MSVC/工具链对无 BOM UTF-8 的误判；已有文件若非任务要求不要随意改编码。
+- 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
+
+## 代码风格（与仓库一致）
+
+- **配置**：统一通过 **`SETTINGS`（`Abini.h` / Ini）** 读写；键名已有惯例如 `BLE/LowRssi`、`BLE/HighRssi`、`Current/LowCharCurrent`、`Current/HighCharCurrent`、`BATTARY/standbattary`、`TestOrderMeta/SelectedStation` 等，新增项沿用 **`分类/键名`**，并在 **`agreement/qset/qsetting`** 做加载/保存/UI（避免「只写代码、设置页缺项」）。
+- **测试结果**：继承 **`test_base`** 的工站使用 **`passValue` / `failValue`**（中文「通过」「失败」）、**`TestResult`** 与 **`showlog`**；表格分项用 **`TestItem` + `testResultTableUpdate`**。与用户可见结论用 **`showlog`**，调试细节可用 **`qDebug()`**。
+- **字符串比对**：期望值与实测比较优先 **`compareVersions`**（与现有关键键测等逻辑一致），不要随意换成裸 `==` 除非周边代码如此。
+- **头文件 / Qt**：保持与邻文件一致的包含风格（工程内多为 **`#include "..."`**，Qt 模块多为小写 **`#include <qxxx.h>`** 形式）。
+
+## 测试卡控（阈值与判定）
+
+- **阈值来源**：卡控上下限应从 **`SETTINGS`** 读取（构造函数或步骤开始前缓存到成员变量），与 **`qsetting::loadConfig` / `saveConfig`** 同源；不要硬编码生产阈值。
+- **异步步骤**：在 **`refresh*` / 协议回调**里判定卡控时，必须 **`isCurrentStep("步骤中文名")`** 守卫，避免串步骤误判定。
+- **回填状态机**：判定结束后设置 **`stepRuntime_.done = true`**、**`stepRuntime_.pass`**，失败时 **`TestResult = failValue`**；日志建议带「卡控通过/失败、当前值、允许范围」，与现有 RSSI/电流等句式一致。
+- **边界含义**：新建卡控时与同类步骤保持一致（例如 RSSI 现为 **`>` / `<` 非 `>=`**）；若改边界语义须在注释与设置说明里写清。
+- **`sendCommandWithRetry`**：仅表示「等到设备回包」；**`needCaseDone == false`** 的步骤默认不会因协议 FAIL 自动 **`pass = false`**，卡控类步骤应用 **`needCaseDone == true`** 并在回调里写入 **`stepRuntime_.pass`**，或在做不到时用显式预检/单独判定（参见自由工站三元组写入）。
+
+## 改代码的原则
+
+- **只改与任务直接相关的文件与逻辑**，避免顺带重构、删注释或扩大范围。
+- **命名、类型、错误处理、日志风格与周边代码保持一致**；优先复用已有函数与模式。
+- UI（`.ui`）改完后需在本地用 Qt Creator / `uic` 重新生成并编译验证。
+- **HTTPS（QSslSocket）**：Windows 部署需注意 OpenSSL DLL；与三元组/网络相关的改动要考虑 TLS 与 `Tuple/BaseUrl` 配置。
+
+## 语言与注释
+
+- **必须使用简体中文**回复用户（说明、总结、提交描述、聊天中的解释与步骤）。
+- **关键处补充中文注释**：非一目了然的逻辑、状态机/异步边界、协议与 UI 的隐含约定、容易误判的分支（例如「为何跳过发送」「为何阻塞信号」）等，用**简短中文**写在代码里。
+- 注释风格与当前文件一致；**不写**赘述型注释（重复代码字面含义）或大块教案式注释。
+
+## Git 提交信息（按工站标签）
+
+编写 **Git 提交说明**或协助用户写 commit message 时，若涉及工站代码，采用与 **`my_set/AbIni.h`** 中历史注释相同的风格（见该文件约 73 行起示例）。
+
+**格式**（可多行，每行一个本次有改动的工站）：
+
+```text
+[XXX_VER] 改动要点1，改动要点2，改动要点3
+```
+
+- **`XXX_VER`** 必须与 `AbIni.h` 里 **`#define XXX_VER`** 宏名完全一致（如 `PCBA_VER`、`QC_VER`、`FREE_VER`）。
+- **只写本次变更实际涉及的工站**；未改动的工站不要凑行。
+- 描述用**简体中文**，多条用**中文逗号**分隔；避免「修改代码」「优化」等空话。
+- 改动 **`test_base` / `box_base` / `agreement/qset` / `agreement/qProtocol` / `agreement/qtuple`** 等公共模块时：在**受影响工站**对应行用逗号附带说明（例如协议、设置页、三元组上报）；若仅主程序/产测工具界面逻辑，用 **`DEBUG_VER`**。
+
+**路径与标签对照**（按改动文件路径优先判断）：
+
+| 路径包含 | 宏标签 |
+|----------|--------|
+| `work_station/pcba/` | `PCBA_VER` |
+| `work_station/quiescent_current/` | `QC_VER` |
+| `work_station/pressure/` | `PRESSURE_VER` |
+| `work_station/ageing/` | `AGE_VER` |
+| `work_station/wifi_ble/` | `SINGLE_VER` |
+| `work_station/freework/` | `FREE_VER` |
+| `work_station/imu/` | `IMU_VER` |
+| `work_station/key/` | `KEY_VER` |
+| `work_station/screen/` | `SCREEN_VER` |
+| `work_station/camera/` | `CAMERA_VER` |
+| `work_station/motor/` | `MOTOR_VER` |
+| `work_station/suction/` | `SUCTION_VER` |
+| `mainwindow` 或根目录产测主流程（且不属于单一工站目录） | `DEBUG_VER` |
+| `LIGHT_VER` 等其余宏 | 以 `AbIni.h` 定义为准，目录按工程实际归类 |
+
+**给用户用的可复制提示词**：根据当前 **git diff / 变更文件列表**，按 `AbIni.h` 中 `[XXX_VER]` 注释格式生成提交说明：每行 `[宏名] 中文要点（逗号分隔）`，仅包含本次实际修改涉及的工站；宏名与 `AbIni.h` 中 `#define XXX_VER` 一致。
+
+**GitHub Copilot「生成提交信息」**：若在 VS Code/Cursor 中安装并启用 Copilot，可在用户设置里配置 `github.copilot.chat.commitMessageGeneration.instructions` 指向仓库根目录 **`.copilot-commit-message-instructions.md`**（与本节规则一致，便于侧边栏生成时使用）。
+
+## 文档与输出
+
+- **不要**未经要求新建或大范围改写 `docs/`、`README` 等说明文档。
+
+## 协作提示
+
+- **提交说明**：若本次改动涉及具体工站代码，按「Git 提交信息」节的 **`[XXX_VER]`** 多行格式书写；否则用完整句子说明「改了什么、为什么」。
+- 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
+- **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`agreement/qset/`**、**`agreement/qProtocol/`**（不含 Python39）等。
