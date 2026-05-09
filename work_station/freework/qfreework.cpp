@@ -91,6 +91,9 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     refreshOrderedTestIndexes();
     testResultTableInit();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    // 隐藏第 2、3 页（待拓展 / 蓝牙绑定）；Qt 5.15+ 标签栏一并隐藏
+    ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_2), false);
+    ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_3), false);
 }
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
@@ -927,11 +930,3 @@ void QFreeWork::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-void QFreeWork::on_save_config_clicked() {
-    showlog("测试顺序配置已迁移到设置页面，请在 qsetting 的测试配置页调整并保存。");
-}
-
-
-
-

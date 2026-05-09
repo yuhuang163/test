@@ -203,8 +203,6 @@ private slots:
 
     void on_stopTest_clicked();
 
-    void on_save_config_clicked();
-
 signals:
     void send_go_next_focus();
     void send_startTest(int data);
