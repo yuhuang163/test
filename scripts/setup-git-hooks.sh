@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env sh
+#!/usr/bin/env sh
 # 将本仓库的 Git 钩子目录设为 .githooks。每个克隆只需执行一次。
 # 用法（在仓库根目录）：  sh scripts/setup-git-hooks.sh
 set -e
@@ -11,3 +11,8 @@ if [ "$val" != ".githooks" ]; then
   exit 1
 fi
 echo "已设置 core.hooksPath=.githooks，提交时将运行 .githooks/commit-msg"
+
+if [ -f "$root/.gitmessage" ]; then
+  git config commit.template ".gitmessage"
+  echo "已设置 commit.template=.gitmessage"
+fi

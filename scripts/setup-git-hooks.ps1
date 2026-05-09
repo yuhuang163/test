@@ -1,4 +1,4 @@
-﻿# 将本仓库的 Git 钩子目录设为 .githooks（提交说明校验等）。
+# 将本仓库的 Git 钩子目录设为 .githooks（提交说明校验等）。
 # 每个克隆/工作副本只需执行一次；之后 git pull 无需再执行。
 # 用法：
 #   - 推荐（绕过执行策略）：在仓库根目录执行
@@ -19,3 +19,9 @@ if ($val -ne ".githooks") {
     Write-Error "设置失败，当前 core.hooksPath=$val"
 }
 Write-Host "已设置 core.hooksPath=.githooks，提交时将运行 .githooks/commit-msg"
+
+$tpl = Join-Path $root ".gitmessage"
+if (Test-Path $tpl) {
+    git config commit.template ".gitmessage"
+    Write-Host "已设置 commit.template=.gitmessage（提交时编辑器会载入该模板）"
+}

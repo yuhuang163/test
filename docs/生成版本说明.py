@@ -114,11 +114,11 @@ def save_commits_to_md(commits, file_path):
         # 初始化版本更新信息列表
         version_updates = {key: [] for key in COMMIT_DEFINITIONS}
 
-        # 每条提交全文（含正文）中解析 [XXX_VER]
+        # 每条提交全文（含正文）中解析 [XXX_VER]；lookahead 兼容「换行接下一标签」或「同一行 ；/; 后接下一标签」
         for commit_text in _split_git_log_records(commits):
             for tag, definition in COMMIT_DEFINITIONS.items():
                 updates = re.findall(
-                    rf"\[{re.escape(tag)}\]\s*(.*?)(?=\s*\[\w+_VER\]|$)",
+                    rf"\[{re.escape(tag)}\]\s*(.*?)(?=(?:\s*\[\w+_VER\]|\s*[；;]\s*\[\w+_VER\])|$)",
                     commit_text,
                     flags=re.DOTALL,
                 )

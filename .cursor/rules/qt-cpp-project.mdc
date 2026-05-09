@@ -1,4 +1,4 @@
-﻿---
+---
 description: new_product_test Qt/C++ 工程约定与 AI 协作规则
 alwaysApply: true
 ---
@@ -47,9 +47,9 @@ alwaysApply: true
 
 1. 先看变更文件路径：若**全部**只在**某一个** `work_station/<子目录>/` 下，且**未**混改 `agreement/`、`test_base.cpp`、`box_base.cpp`、`mainwindow` 等 → 提交信息 **只写一行**该子目录对应的 **`[XXX_VER]`**（例：只改 `work_station/ageing/` → **`[AGE_VER] …`**）。**不要**误用 `[DEBUG_VER]`，**不要**对全部 `XXX_VER` 逐行复制（那是「公共模块」专用规则）。
 2. **说明文字必须与 diff 一致**：不得写未改动模块（见 `.copilot-commit-message-instructions.md`「必须与 diff 一致」节）。
-3. **工站 + 公共模块同一次提交**：不得把公共改动只写在工站行；须 **`[XXX_VER]` + `[DEBUG_VER]`（或全量 VER）** 分行（见该文档第 5 条）。
+3. **工站 + 公共模块同一次提交**：不得把公共改动只写在工站宏的说明文字里却不出现另一宏；须按 `.copilot-commit-message-instructions.md` **分别写出**对应块（如工站 + 三元组 → **`[XXX_VER]`** 与 **`[FREE_VER]`**；可两行，或**同一行**用 **`；`** 分隔；主窗口相关 → **`[DEBUG_VER]`** 等）。
 4. 公共模块、多工站、仅主窗口/文档等情形，见 **`.copilot-commit-message-instructions.md`** 全文。
-5. **`[AGREEMENT_VER]` 禁止使用**：`AbIni.h` 无此宏；`agreement/qtuple` 类改动用 **`[DEBUG_VER]`** 或公共模块多行规则（详见该文档专节）。
+5. **`[AGREEMENT_VER]` 禁止使用**：`AbIni.h` 无此宏；`agreement/qtuple` 类改动用 **`[FREE_VER]`**（勿用 `DEBUG_VER` 概括三元组），或按公共模块多行规则（详见该文档专节）。
 
 **格式**（可多行时：每行一个本次实际涉及的工站或规则要求的行）：
 
@@ -57,7 +57,7 @@ alwaysApply: true
 [XXX_VER] 改动要点1，改动要点2，改动要点3
 ```
 
-- **`XXX_VER`** 与 `my_set/AbIni.h` 中 **`#define XXX_VER`** 完全一致；描述**简体中文**，逗号分隔。
+- **`XXX_VER`** 与 `my_set/AbIni.h` 中 **`#define XXX_VER`** 完全一致；描述**须简体中文**（禁止整段英文提交说明），逗号分隔。
 
 **路径与标签对照**（与 `.copilot-commit-message-instructions.md` 一致）：
 
@@ -89,6 +89,6 @@ alwaysApply: true
 
 ## 协作提示
 
-- **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须 **`[XXX_VER]` 与 `[FREE_VER]` 分行**；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿混写一行。
+- **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须**分别出现** **`[XXX_VER]`** 与 **`[FREE_VER]`**（可两行或同一行用 **`；`** 分隔）；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿把不同模块要点塞进**同一个** `[XXX_VER]` 说明却不写应有宏。
 - 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
 - **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`agreement/qset/`**、**`agreement/qProtocol/`**（不含 Python39）等。

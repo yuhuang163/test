@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 校验提交说明是否满足 docs/生成版本说明.py 的解析约定（与 .copilot-commit-message-instructions.md 对齐）。
 
@@ -104,6 +104,14 @@ def _is_docish_path(p: str) -> bool:
     return any(q.startswith(x) for x in _DOCISH_PREFIXES)
 
 
+def _all_staged_paths_docish(paths: list[str]) -> bool:
+    """暂存文件是否全部为文档/元信息路径（无工站与协议等业务代码）。"""
+    norms = [_normalize(raw).lstrip("./") for raw in paths if raw.strip()]
+    if not norms:
+        return False
+    return all(_is_docish_path(p) for p in norms)
+
+
 def _is_code_touch_path(p: str) -> bool:
     q = p.lstrip("./").replace("\\", "/")
     return bool(
@@ -149,7 +157,13 @@ def _bracket_tokens(text: str) -> list[str]:
     return re.findall(r"\[([A-Za-z][A-Za-z0-9_]*)\]", text)
 
 
-def validate_message(text: str, valid_tags: set[str], required: set[str]) -> list[str]:
+def validate_message(
+    text: str,
+    valid_tags: set[str],
+    required: set[str],
+    *,
+    staged_paths: list[str] | None = None,
+) -> list[str]:
     errors: list[str] = []
     # 常见笔误：写成 _VR 少 E（不会被 tags_in_message 识别，会导致钩子与生成脚本都漏掉）
     for inner in _bracket_tokens(text):
@@ -162,11 +176,7 @@ def validate_message(text: str, valid_tags: set[str], required: set[str]) -> lis
     for t in used:
         if t not in valid_tags:
             errors.append(f"提交说明中出现未在 AbIni.h 定义的 [{t}]（禁止臆造宏名）")
-    # 同一行多个 [XXX_VER]
-    for i, line in enumerate(text.splitlines(), 1):
-        brackets = re.findall(r"\[\w+_VER\]", line)
-        if len(brackets) > 1:
-            errors.append(f"第 {i} 行含多个标签 {brackets}：每个 [XXX_VER] 应独占一行，标签之间用换行分隔")
+    # 允许多个 [XXX_VER] 在同一行，用 ； 或 ; 分隔（与 .copilot-commit-message-instructions.md 一致）
     # 禁止 AGREEMENT_VER
     if "AGREEMENT_VER" in used:
         errors.append("禁止使用 [AGREEMENT_VER]（AbIni.h 无此宏）")
@@ -177,6 +187,11 @@ def validate_message(text: str, valid_tags: set[str], required: set[str]) -> lis
     for tag in required:
         if tag not in used:
             errors.append(f"本次暂存变更需要包含 [{tag}] 行（与变更路径对应）")
+    # 仅 docs/、.githooks 等时禁止任何 [XXX_VER]（避免把脚本/校验误标为三元组）
+    if staged_paths is not None and _all_staged_paths_docish(staged_paths) and used:
+        errors.append(
+            "本次暂存均为 docs/、.githooks、.copilot、.cursor、.github 等文档或元信息路径时，不要写任何 [XXX_VER]（勿用 [FREE_VER] 或「三元组服务」描述生成脚本、校验或钩子，见 .copilot-commit-message-instructions.md「仅改工具脚本 / 校验 / 钩子」）。"
+        )
     return errors
 
 
@@ -223,7 +238,7 @@ def main() -> int:
         return 0
 
     required = infer_required_tags(paths)
-    errs = validate_message(body, valid_tags, required)
+    errs = validate_message(body, valid_tags, required, staged_paths=paths)
     if errs:
         print("[validate_commit_message] 提交说明未通过校验：", file=sys.stderr)
         for e in errs:
