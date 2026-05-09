@@ -58,19 +58,22 @@ def parse_header_file(header_file):
                 definitions[key] = f"{value}"
     return definitions
 
+# 用于分隔 git log 中每条提交（含标题与正文），便于解析多行 [XXX_VER]
+_GIT_LOG_RECORD_MARK = ">>>GIT_LOG_RECORD<<<"
+
 def get_git_commits(repo_path, since, until):
     try:
         # 设置环境变量以使用 UTF-8 编码
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
 
-        # 构建 git log 命令，不包含哈希值
+        # %s 标题 + %b 正文：公共模块可在正文中为每个工站各写一行 [XXX_VER]
         command = [
-            "git", "-C", repo_path, "log", 
-            "--pretty=format:%an, %ar : %s", 
+            "git", "-C", repo_path, "log",
+            f"--pretty=format:{_GIT_LOG_RECORD_MARK}%n%an, %ar : %s%n%b",
             f"--since={since}", f"--until={until}"
         ]
-        
+
         # 运行 git log 命令并捕获输出
         result = subprocess.run(
             command,
@@ -80,7 +83,7 @@ def get_git_commits(repo_path, since, until):
             env=env,
             encoding='utf-8'  # 强制使用 UTF-8 编码
         )
-        
+
         # 返回提交记录
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -89,6 +92,12 @@ def get_git_commits(repo_path, since, until):
         print(f"Command stderr: {e.stderr}")
         return None
     
+def _split_git_log_records(raw):
+    """按记录分隔符拆成单条提交全文（标题行 + 正文）。"""
+    parts = raw.split(_GIT_LOG_RECORD_MARK)
+    return [p.strip() for p in parts if p.strip()]
+
+
 def save_commits_to_md(commits, file_path):
     print(commits)
     with open(file_path, 'a', encoding='utf-8') as file:  # 使用 'a' 模式打开文件，追加内容
@@ -97,25 +106,25 @@ def save_commits_to_md(commits, file_path):
 
         # 构建标题中的日期信息
         date_info = f"日期:从 {SINCE_DATE} 到 {UNTIL_DATE}，发布日期 {current_date}"
-        
+
         # 写入版本发布信息，包含日期信息
         file.write(f"##### 上位机版本 ({date_info})\n")
         file.write("内置版本内容（需要配合新的固件使用）:\n")
-        
+
         # 初始化版本更新信息列表
         version_updates = {key: [] for key in COMMIT_DEFINITIONS}
-        
-        # 按照定义将提交消息格式化为 Markdown
-        for line in commits.splitlines():
+
+        # 每条提交全文（含正文）中解析 [XXX_VER]
+        for commit_text in _split_git_log_records(commits):
             for tag, definition in COMMIT_DEFINITIONS.items():
-                if tag in line:
-                    # 提取包含该标签的所有部分
-                    updates = re.findall(rf"\[{tag}\]\s*(.*?)(?=\s*\[\w+_VER\]|$)", line)
-             
-                    for update_info in updates:
-                        # print(update_info)
-                        version_updates[tag].append(update_info.strip())
-        
+                updates = re.findall(
+                    rf"\[{re.escape(tag)}\]\s*(.*?)(?=\s*\[\w+_VER\]|$)",
+                    commit_text,
+                    flags=re.DOTALL,
+                )
+                for update_info in updates:
+                    version_updates[tag].append(update_info.strip())
+
         # 写入每个版本号及其对应的更新信息
         for index, (tag, definition) in enumerate(COMMIT_DEFINITIONS.items(), start=1):
             # 计算需要的填充空格数，确保括号对齐
