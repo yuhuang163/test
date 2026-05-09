@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>factory_analyzer</class>
  <widget class="QMainWindow" name="factory_analyzer">
@@ -214,7 +214,7 @@ QGroupBox {
         </attribute>
         <layout class="QGridLayout" name="gridLayout_12">
          <item row="0" column="0">
-          <widget class="QGroupBox" name="horizontalGroupBox">
+          <widget class="QGroupBox" name="groupBox_adb_control">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -294,7 +294,7 @@ QGroupBox {
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QGroupBox" name="horizontalGroupBox">
+          <widget class="QGroupBox" name="groupBox_adb_log">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -426,7 +426,7 @@ QGroupBox {
           </widget>
          </item>
          <item row="4" column="0">
-          <widget class="QGroupBox" name="horizontalGroupBox">
+          <widget class="QGroupBox" name="groupBox_adb_upperComputer">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -688,7 +688,7 @@ QGroupBox {
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QGroupBox" name="verticalGroupBox_2">
+          <widget class="QGroupBox" name="groupBox_security">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -787,7 +787,7 @@ QGroupBox {
           </widget>
          </item>
          <item row="2" column="0">
-          <widget class="QGroupBox" name="verticalGroupBox_2">
+          <widget class="QGroupBox" name="groupBox_amt">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -921,7 +921,7 @@ QGroupBox {
           </widget>
          </item>
          <item row="3" column="0">
-          <widget class="QGroupBox" name="verticalGroupBox_2">
+          <widget class="QGroupBox" name="groupBox_2a_transfer">
            <property name="styleSheet">
             <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
            </property>
@@ -1425,7 +1425,7 @@ background-color: lightyellow;
          </widget>
         </item>
         <item>
-         <widget class="QGroupBox" name="horizontalGroupBox">
+         <widget class="QGroupBox" name="groupBox_debug">
           <property name="styleSheet">
            <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
           </property>
