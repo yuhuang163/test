@@ -264,7 +264,26 @@ void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
     }
 }
 
+bool QFreeWork::failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason) {
+    if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("云端三元组未获取成功");
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：云端三元组未获取成功"));
+        return true;
+    }
+    if (!fieldOk) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = emptyReason;
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：") + emptyReason);
+        return true;
+    }
+    return false;
+}
+
 void QFreeWork::applyTupleByMac() {
+    tupleData_ = TupleApplyResult{};
     const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
     const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
     const QString sku = SETTINGS.value("Tuple/Sku", "").toString();

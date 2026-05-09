@@ -43,6 +43,7 @@ private:
     DraggableCheckBox* getConfiguredCheckBoxByIndex(int index) const;
     DraggableCheckBox* getOptionalCheckBoxByIndex(int index) const;
     void initTestOrderStationSelector();
+    void initTupleEnvironmentCombo();
     void applyStationUiState(const QString& stationKey);
     QString currentTestOrderStation() const;
     QVector<int> loadTestOrderIndexes(const QString& station) const;
@@ -71,6 +72,7 @@ private slots:
     void on_comboBox_productName_textActivated(const QString& arg1);
     void on_comboBox_factory_textActivated(const QString& arg1);
     void on_comboBox_testOrderStation_currentTextChanged(const QString& text);
+    void on_comboBox_tupleEnvironment_currentIndexChanged(int index);
     void on_pushButton_clearConfiguredTestOrder_clicked();
 };
 

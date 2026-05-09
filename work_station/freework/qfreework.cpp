@@ -469,6 +469,7 @@ void QFreeWork::initDate() {
     ui->battary_value->setText("电量为:");
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
+    tupleData_ = TupleApplyResult{};
     TestTime.start();
 }
 

@@ -138,6 +138,8 @@ private:
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
     void applyTupleByMac();
+    /** 三元组未就绪或字段为空时置失败并返回 true（调用方应跳过 sendCommandWithRetry）。 */
+    bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus();
     void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,

@@ -2,9 +2,11 @@
 
 #include "qevent.h"
 #include <algorithm>
+#include <QComboBox>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
+#include <QSignalBlocker>
 #include <QString>
 #include <QVector>
 #include "qpainter.h"
@@ -37,6 +39,60 @@ const QVector<StationItem> kPresetStations = {
     {"蓝牙测试工站", "BLUETOOTH_TEST"},
     {"吸力测试工站", "SUCTION_TEST"},
 };
+
+struct TupleEnvPreset {
+    QString key;
+    QString baseUrl;
+};
+
+const QVector<TupleEnvPreset> kTupleEnvPresets = {
+    {QStringLiteral("dev"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
+    {QStringLiteral("build-dev-inner"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("build-dev"), QStringLiteral("https://983ug2va5885.vicp.fun")},
+    {QStringLiteral("build-prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
+};
+
+const QString kTupleEnvCustomKey = QStringLiteral("custom");
+
+QString normalizeTupleBaseUrl(const QString& u) {
+    QString s = u.trimmed();
+    while (s.endsWith('/')) {
+        s.chop(1);
+    }
+    return s;
+}
+
+int tupleEnvIndexForKey(QComboBox* combo, const QString& key) {
+    if (!combo) {
+        return -1;
+    }
+    for (int i = 0; i < combo->count(); ++i) {
+        if (combo->itemData(i).toString() == key) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int tupleEnvIndexForUrl(QComboBox* combo, const QString& url) {
+    const QString n = normalizeTupleBaseUrl(url);
+    for (const auto& p : kTupleEnvPresets) {
+        if (normalizeTupleBaseUrl(p.baseUrl) == n) {
+            return tupleEnvIndexForKey(combo, p.key);
+        }
+    }
+    return -1;
+}
+
+QString tupleBaseUrlForKey(const QString& key) {
+    for (const auto& p : kTupleEnvPresets) {
+        if (p.key == key) {
+            return p.baseUrl;
+        }
+    }
+    return {};
+}
 
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
@@ -103,6 +159,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
 
+    initTupleEnvironmentCombo();
     loadConfig();
     initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
@@ -139,6 +196,36 @@ void qsetting::initFreeWorkTestOrderUi() {
     freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
     initTestOrderStationSelector();
     reorderFreeWorkCheckBoxes();
+}
+
+void qsetting::initTupleEnvironmentCombo() {
+    QComboBox* c = ui->comboBox_tupleEnvironment;
+    if (!c) {
+        return;
+    }
+    c->clear();
+    for (const auto& p : kTupleEnvPresets) {
+        c->addItem(p.key, p.key);
+    }
+    c->addItem(QStringLiteral("自定义"), kTupleEnvCustomKey);
+    connect(c, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &qsetting::on_comboBox_tupleEnvironment_currentIndexChanged);
+}
+
+void qsetting::on_comboBox_tupleEnvironment_currentIndexChanged(int index) {
+    Q_UNUSED(index);
+    QComboBox* c = ui->comboBox_tupleEnvironment;
+    if (!c) {
+        return;
+    }
+    const QString key = c->currentData().toString();
+    if (key == kTupleEnvCustomKey || key.isEmpty()) {
+        return;
+    }
+    const QString url = tupleBaseUrlForKey(key);
+    if (!url.isEmpty()) {
+        ui->lineEdit_tupleBaseUrl->setText(url);
+    }
 }
 
 void qsetting::initTestOrderStationSelector() {
@@ -700,11 +787,26 @@ void qsetting::loadConfig() {
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
 
     // 加载三元组配置
-    ui->lineEdit_tupleBaseUrl->setText(SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString());
+    const QString defaultTupleUrl = kTupleEnvPresets.first().baseUrl;
+    const QString savedTupleUrl = SETTINGS.value("Tuple/BaseUrl", defaultTupleUrl).toString();
+    ui->lineEdit_tupleBaseUrl->setText(savedTupleUrl);
     ui->lineEdit_tupleAuthUser->setText(SETTINGS.value("Tuple/AuthUser").toString());
     ui->lineEdit_tupleAuthPassword->setText(SETTINGS.value("Tuple/AuthPassword").toString());
     ui->lineEdit_tupleSku->setText(SETTINGS.value("Tuple/Sku", "").toString());
     ui->lineEdit_tuplePosition->setText(SETTINGS.value("Tuple/Position", "L").toString());
+
+    {
+        QSignalBlocker blocker(ui->comboBox_tupleEnvironment);
+        QString envKey = SETTINGS.value("Tuple/Environment").toString().trimmed();
+        int idx = envKey.isEmpty() ? -1 : tupleEnvIndexForKey(ui->comboBox_tupleEnvironment, envKey);
+        if (idx < 0) {
+            idx = tupleEnvIndexForUrl(ui->comboBox_tupleEnvironment, savedTupleUrl);
+        }
+        if (idx < 0) {
+            idx = ui->comboBox_tupleEnvironment->count() - 1;
+        }
+        ui->comboBox_tupleEnvironment->setCurrentIndex(idx);
+    }
 
     // 加载行和列
     ui->rowLineEdit->setText(SETTINGS.value("User/formRow").toString());
@@ -1045,6 +1147,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
 
     // 保存三元组配置
+    SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
     SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
     SETTINGS.setValue("Tuple/AuthUser", ui->lineEdit_tupleAuthUser->text());
     SETTINGS.setValue("Tuple/AuthPassword", ui->lineEdit_tupleAuthPassword->text());
