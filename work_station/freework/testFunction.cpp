@@ -65,10 +65,28 @@ struct FreeWorkTestCatalogItem {
     /* X(55, "获取连接信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
     X(56, "获取WiFi信息", false, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
     X(57, "读取治具电流测量值", true, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
-    X(58, "连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000)) \
-    X(59, "获取BT RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BT RSSI"); })) \
-    X(60, "获取BLE RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); showlog("开始获取设备BLE RSSI"); })) \
-    X(61, "读取充电电流", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); showlog("开始读取充电电流"); }))
+    X(58, "直连接蓝牙", false, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000)) \
+    X(59, "获取BT RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); })) \
+    X(60, "获取BLE RSSI", true, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); })) \
+    X(61, "读取充电电流", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); })) \
+    X(62, "获取云端三元组", true, applyTupleByMac()) \
+    X(63, "写入productKey", false, if (failTupleWriteIfNoValidField(QStringLiteral("写入productKey"), !tupleData_.productKey.isEmpty(), QStringLiteral("productKey为空"))) return; sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.productKey; protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, tupleData_.productKey.toUtf8()})); })) \
+    X(64, "写入deviceName", false, if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceName"), !tupleData_.deviceName.isEmpty(), QStringLiteral("deviceName为空"))) return; sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.deviceName; protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, tupleData_.deviceName.toUtf8()})); })) \
+    X(65, "写入deviceSecret", false, if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceSecret"), !tupleData_.deviceSecret.isEmpty(), QStringLiteral("deviceSecret为空"))) return; sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.deviceSecret; QVariantMap map; map["value"] = tupleData_.deviceSecret.toUtf8(); protocolManager.set(DeviceCmd::WriteKey, map); })) \
+    X(66, "读取设备三元组并比较", true, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::TupleRead); })) \
+    X(67, "上报三元组写入记录", true, reportTupleWriteRecord()) \
+    X(68, "扫描连接蓝牙", false, sendCommandWithRetry([&]() { at->sendMac(macAddress); }, 6 * 1000)) \
+    X(69, "电源键测试", true, startKeyButtonTest("电源键测试", "请短按下旋钮", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox")) \
+    X(70, "开始/暂停键测试", true, startKeyButtonTest("开始/暂停键测试", "请短按下开始/暂停按钮", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox")) \
+    X(71, "模式键测试", true, startKeyButtonTest("模式键测试", "请短按下模式按钮", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox")) \
+    X(72, "速度键测试", true, startKeyButtonTest("速度键测试", "请短按下速度按钮", "ProductInfo/KeyIdSpeed", "ProductInfo/KeyIdSpeed_checkBox")) \
+    X(73, "程序键测试", true, startKeyButtonTest("程序键测试", "请短按下程序按钮", "ProductInfo/KeyIdProgram", "ProductInfo/KeyIdProgram_checkBox")) \
+    X(74, "左键测试", true, startKeyButtonTest("左键测试", "请短按下左按钮", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox")) \
+    X(75, "右键测试", true, startKeyButtonTest("右键测试", "请短按下右按钮", "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox")) \
+    X(76, "左旋键测试", true, startKeyButtonTest("左旋键测试", "请左旋按钮", "ProductInfo/KeyIdLeftRotate", "ProductInfo/KeyIdLeftRotate_checkBox")) \
+    X(77, "右旋键测试", true, startKeyButtonTest("右旋键测试", "请右旋按钮", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
+    X(78, "进入吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
+    X(79, "退出吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 0; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

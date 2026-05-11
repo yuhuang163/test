@@ -1,5 +1,16 @@
-# New Product Test Framework (Qt)
+﻿# New Product Test Framework (Qt)
 基于模块化与分层设计的多工站产测上位机工程框架。
+
+## 克隆后首次设置（Git 提交钩子）
+
+在**仓库根目录**执行下面**任选一种**（每个克隆只需一次），启用提交说明校验：
+
+- **Windows（cmd）**：`scripts\setup-git-hooks.cmd`
+- **Windows（PowerShell）**：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-git-hooks.ps1`
+- **Git Bash / Linux / macOS**：`sh scripts/setup-git-hooks.sh`
+- **手动**：`git config core.hooksPath .githooks`
+
+确认：`git config --get core.hooksPath` 应输出 `.githooks`。约定说明见 `docs/上位机版本信息生成说明.md`「提交信息校验」。
 
 ## 目录结构
 

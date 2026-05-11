@@ -4,9 +4,12 @@
 #include <QWidget>
 
 #include "Abini.h"
+#include "qtupleservice.h"
 #include "qapplication.h"
 #include "test_base.h"
 #include "ui_qfreework.h"
+
+class QMessageBox;
 
 namespace Ui {
     class QFreeWork;
@@ -32,6 +35,7 @@ private:
     double standbattary = 0;
     int is_battary_test = 0;
     int RssiTestTime = 0;
+    QString BT_RSSI = "";
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
 
@@ -64,6 +68,8 @@ private:
     QTimer* comparewaittime = new QTimer(this);
     QElapsedTimer TestTime;
     QString productName;
+    QString softwareVersionForReport_;
+    bool softwareVersionPassForReport_ = true;
     QString TestResult = "";
     QString product = "";
 
@@ -83,6 +89,12 @@ private:
     State getNextState(State currentState);
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
+    TupleApplyResult tupleData_;
+    QString currentKeyTestName_;
+    QString currentKeyExpectedKey_;
+    QMessageBox* keyWaitPrompt_ = nullptr;
+    bool freeWorkKeyWaiting_ = false;
+    bool keyWaitPromptProgrammaticClose_ = false;
 
 private:
     void refreshOrderedTestIndexes();
@@ -109,6 +121,7 @@ private:
         int functionId = -1;
         QString testData;
         QString ask = "通过";
+        QElapsedTimer caseTimer;
 
         // 每进入下一步或流程结束时统一复位
         void reset() {
@@ -118,11 +131,20 @@ private:
             functionId = -1;
             testData.clear();
             ask = "通过";
+            caseTimer.invalidate();
         }
     } stepRuntime_;
     bool isCurrentStep(const QString& functionName) const;
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
+    void applyTupleByMac();
+    /** 三元组未就绪或字段为空时置失败并返回 true（调用方应跳过 sendCommandWithRetry）。 */
+    bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
+    void reportTupleWriteRecord();
+    void debugUpdateTupleMacStatus();
+    void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
+                            const QString& enableKey);
+    void closeKeyWaitPrompt();
 
 private slots:
     void initDate();
@@ -130,6 +152,7 @@ private slots:
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };  // usb口（治具）
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };  // 治具口
     QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
     QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
     QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
@@ -146,10 +169,13 @@ private slots:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
+    void refreshTupleData(ProtocolTupleData data) override;
+    void checkbutton(ProtocolButtonStateData data) override;
     void refreshBleState(int state) override;
     void getDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
+    void refreshJigUartState(int state) override;
     void refreshWifiState(int state);
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void bandingMacSn_mes(QString bandingmac, QString bandingsn);
@@ -174,10 +200,10 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
+    void on_jigConnectButton_clicked();
+    void on_jigDisconnectButton_clicked();
 
     void on_stopTest_clicked();
-
-    void on_save_config_clicked();
 
 signals:
     void send_go_next_focus();

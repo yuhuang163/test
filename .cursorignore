@@ -1,0 +1,2 @@
+﻿# 内置 Python 3.9 运行时（与 Qt 上位机业务无关），避免索引与检索命中标准库
+agreement/qProtocol/qpb/Python39/

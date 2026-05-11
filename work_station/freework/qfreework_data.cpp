@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include <algorithm>
 
@@ -54,6 +54,15 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     QVector<TestItem> baseItems;
     baseItems.reserve(4);
     bool pass = true;
+    softwareVersionForReport_ = data.soft_version;
+    const QString actualSoftwareVersion = data.soft_version.trimmed();
+    const QString expectedSoftwareVersion = softwareVersion.trimmed();
+    const QStringList expectedSoftwareVersions = expectedSoftwareVersion.split("=", QString::SkipEmptyParts);
+    softwareVersionPassForReport_ = !isSoftwareTest || expectedSoftwareVersions.contains(actualSoftwareVersion) ||
+                                    expectedSoftwareVersion == actualSoftwareVersion;
+    qDebug() << "[Tuple] software version report, actual =" << actualSoftwareVersion
+             << "expected =" << expectedSoftwareVersion
+             << "pass =" << softwareVersionPassForReport_;
     appendPeriphItem(baseItems, pass, "产品名称", data.product_name, productName, isProductTest);
     appendPeriphItem(baseItems, pass, "软件版本", data.soft_version, softwareVersion, isSoftwareTest);
     appendPeriphItem(baseItems, pass, "资源版本", data.res_version, resourceVersion, isResourceTest);
@@ -215,8 +224,10 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
 
     if (isBtStep) {
         ui->WIFI_RSSI->setText("BT的RSSI：" + value);
+        BT_RSSI = value;
     } else {
         ui->BLE_RSSI->setText("BLE的RSSI:" + value);
+        BLE_RSSI = value;
     }
 
     stepRuntime_.done = true;
@@ -250,6 +261,166 @@ void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
         showlog(QString("充电电流卡控失败，当前=%1，范围=%2").arg(value, ask));
     } else {
         showlog(QString("充电电流卡控通过，当前=%1").arg(value));
+    }
+}
+
+bool QFreeWork::failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason) {
+    if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("云端三元组未获取成功");
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：云端三元组未获取成功"));
+        return true;
+    }
+    if (!fieldOk) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = emptyReason;
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：") + emptyReason);
+        return true;
+    }
+    return false;
+}
+
+void QFreeWork::applyTupleByMac() {
+    tupleData_ = TupleApplyResult{};
+    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
+    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
+    const QString sku = SETTINGS.value("Tuple/Sku", "").toString();
+    const QString position = SETTINGS.value("Tuple/Position", "L").toString();
+    QString tupleMac = ui->macInput->text();
+    tupleMac.remove(":");
+    tupleMac.remove("-");
+    tupleMac.remove(" ");
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    stepRuntime_.done = true;
+    stepRuntime_.ask = "获取成功";
+    if (tupleMac.isEmpty() || tupleMac == "没有MAC地址") {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "MAC为空";
+        TestResult = failValue;
+        showlog("三元组获取失败：MAC为空");
+        return;
+    }
+    if (userName.isEmpty() || password.isEmpty()) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "账号未配置";
+        TestResult = failValue;
+        showlog("三元组获取失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(userName, password, &error)) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "登录失败";
+        TestResult = failValue;
+        showlog("三元组登录失败：" + error);
+        return;
+    }
+
+    tupleData_ = service.applyTupleByMac(tupleMac, sku, position);
+    stepRuntime_.pass = tupleData_.success;
+    stepRuntime_.testData = tupleData_.success
+                                 ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+                                       .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
+                                 : tupleData_.error;
+    if (!tupleData_.success) {
+        TestResult = failValue;
+        showlog("三元组获取失败：" + tupleData_.error);
+        return;
+    }
+    showlog("三元组获取成功：productKey=" + tupleData_.productKey + " deviceName=" + tupleData_.deviceName + " deviceSecret=" + tupleData_.deviceSecret);
+}
+
+void QFreeWork::debugUpdateTupleMacStatus() {
+    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
+    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
+    QString tupleMac = ui->macInput->text();
+    tupleMac.remove(":");
+    tupleMac.remove("-");
+    tupleMac.remove(" ");
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    if (tupleMac.isEmpty() || tupleMac == "没有MAC地址") {
+        showlog("调试更新MAC状态失败：MAC为空");
+        return;
+    }
+    if (userName.isEmpty() || password.isEmpty()) {
+        showlog("调试更新MAC状态失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(userName, password, &error)) {
+        showlog("调试更新MAC状态登录失败：" + error + " user=" + userName + " password=" + password);
+        return;
+    }
+    if (!service.debugUpdateMacStatus(tupleMac, 2, &error)) {
+        showlog("调试更新MAC状态失败：" + error);
+        return;
+    }
+    showlog("调试更新MAC状态成功：mac=" + tupleMac + " status=1");
+}
+
+void QFreeWork::reportTupleWriteRecord() {
+    stepRuntime_.done = true;
+    const QString productSn = tupleData_.sn.trimmed();
+    stepRuntime_.testData = productSn;
+    if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "无有效三元组";
+        TestResult = failValue;
+        showlog("三元组写入记录上报失败：未获取到有效三元组");
+        return;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(SETTINGS.value("Tuple/AuthUser").toString(), SETTINGS.value("Tuple/AuthPassword").toString(), &error)) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog("三元组写入记录上报登录失败：" + error);
+        return;
+    }
+    const bool btRssiPass = BT_RSSI.toInt() > BleLowRssi && BT_RSSI.toInt() < BleHighRssi;
+    const bool bleRssiPass = BLE_RSSI.toInt() > BleLowRssi && BLE_RSSI.toInt() < BleHighRssi;
+    if (!service.reportWriteRecord(tupleData_, productSn, TestResult == failValue ? "NG" : "OK",
+                                   BT_RSSI, btRssiPass, BLE_RSSI, bleRssiPass,
+                                   softwareVersionForReport_, softwareVersionPassForReport_, &error)) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog("三元组写入记录上报失败：" + error);
+        return;
+    }
+    stepRuntime_.pass = true;
+    showlog("三元组写入记录上报成功");
+}
+
+void QFreeWork::refreshTupleData(ProtocolTupleData data) {
+    if (!isCurrentStep("读取设备三元组并比较")) {
+        return;
+    }
+
+    stepRuntime_.done = true;
+    const bool productKeyPass = data.productId == tupleData_.productKey;
+    const bool deviceNamePass = data.deviceId == tupleData_.deviceName;
+    const bool deviceSecretPass = data.key == tupleData_.deviceSecret;
+    const bool pass = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
+
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    stepRuntime_.ask = QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+                           .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QString("设备三元组比较失败，设备 productKey=%1 deviceName=%2，云端 productKey=%3 deviceName=%4")
+                    .arg(data.productId, data.deviceId, tupleData_.productKey, tupleData_.deviceName));
+    } else {
+        showlog("设备三元组比较通过");
     }
 }
 

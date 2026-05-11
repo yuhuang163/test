@@ -1,12 +1,31 @@
 ﻿#include "qfreework.h"
 
 #include <algorithm>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QSet>
 #include "ui_qfreework.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+void QFreeWork::on_pushButton_clicked() {
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");
+    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
+    // // ui->macInput->setText("3c:84:27:06:f7:5e");
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // // // ui->macInput->setText("3c:84:27:29:50:32");
+    // ui->macInput->setText("b4:56:5d:bf:57:9d");
 
+    // on_macInput_returnPressed();
+    // // usb-> getlxMEASure();
+    // // waitWork(1000);
+
+    // showlog("正在获取设备电量");
+    // ui->comNameCombo->setCurrentText("COM134");
+
+    // debugUpdateTupleMacStatus();
+    applyTupleByMac();
+}
 namespace {
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
@@ -79,11 +98,19 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->usbconnectButton->setDisabled(true);
         ui->usbcomNameCombo->setDisabled(true);
     }
+    if (pack.factory == "hq" || pack.factory == "jj") {
+        ui->jigComNameCombo->setEnabled(false);
+        ui->jigConnectButton->setEnabled(false);
+        ui->jigDisconnectButton->setEnabled(false);
+    }
 
     createTestFunctions();
     refreshOrderedTestIndexes();
     testResultTableInit();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    // 隐藏第 2、3 页（待拓展 / 蓝牙绑定）；Qt 5.15+ 标签栏一并隐藏
+    ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_2), false);
+    ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_3), false);
 }
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
@@ -186,6 +213,8 @@ void QFreeWork::startTask() {
                     stepRuntime_.pass = true;
                     stepRuntime_.testData = "-";
                     stepRuntime_.ask = "通过";
+                    stepRuntime_.caseTimer.restart();
+                    lastCommandRetryCount = 0;
                     showlog("开始测试内容：" + functionName);
                     executeFunctionByName(functionName);  //执行操作
                     qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
@@ -218,6 +247,12 @@ void QFreeWork::startTask() {
 
                 // static const QSet<QString> skipTableFunctions = {"获取外围设备状态", "获取基本信息"};
                 // if (!skipTableFunctions.contains(functionName)) {
+                    const qint64 caseElapsedMs = stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0;
+                    const int caseRetryCount = lastCommandRetryCount;
+                    showlog(QString("测试内容完成：%1，重试次数=%2，测试时长=%3ms")
+                                .arg(functionName)
+                                .arg(caseRetryCount)
+                                .arg(caseElapsedMs));
                     TestItem test;
                     test.testItem = functionName;
                     test.testData = stepRuntime_.testData;
@@ -277,7 +312,14 @@ void QFreeWork::startTask() {
     }
 }
 
-QFreeWork::~QFreeWork() { delete ui; }
+QFreeWork::~QFreeWork() {
+    if (jigSerialPort->isOpen()) {
+        disconnect(jigSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
+        jigSerialPort->close();
+        qDebug() << getIndex() << "已关闭jig串口";
+    }
+    delete ui;
+}
 
 void QFreeWork::getDongleWifi(QString data) {
     // 保存密码
@@ -294,7 +336,7 @@ void QFreeWork::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         //   showlog("蓝牙连接成功");
-        protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
@@ -321,6 +363,94 @@ void QFreeWork::refreshUsbUartState(int state) {
         ui->usbcomNameCombo->setDisabled(true);
     }
 }
+
+void QFreeWork::refreshJigUartState(int state) {
+    if (state)
+        showlog("治具串口连接成功");
+    else {
+        ui->jigComNameCombo->setEnabled(true);
+        ui->jigConnectButton->setEnabled(true);
+        showlog("治具串口连接断开");
+    }
+}
+
+void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
+                                   const QString& enableKey) {
+    if (!SETTINGS.value(enableKey).toBool()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = "按键配置未启用";
+        stepRuntime_.ask = "请检查配置";
+        TestResult = failValue;
+        showlog(testName + "失败：按键配置未启用");
+        return;
+    }
+
+    currentKeyTestName_ = testName;
+    currentKeyExpectedKey_ = expectedKey;
+    freeWorkKeyWaiting_ = true;
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = "等待按键上报";
+    stepRuntime_.ask = SETTINGS.value(expectedKey).toString();
+
+    closeKeyWaitPrompt();
+    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, "按键测试", promptText, QMessageBox::NoButton, this);
+    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
+    QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
+    hiddenCloseButton->hide();
+    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
+    keyWaitPromptProgrammaticClose_ = false;
+    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
+        keyWaitPrompt_ = nullptr;
+        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
+            freeWorkKeyWaiting_ = false;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = "用户关闭按键弹窗";
+            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
+            TestResult = failValue;
+            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
+        }
+        keyWaitPromptProgrammaticClose_ = false;
+    });
+    keyWaitPrompt_->show();
+    showlog("等待按键测试：" + testName);
+}
+
+void QFreeWork::closeKeyWaitPrompt() {
+    if (keyWaitPrompt_ != nullptr) {
+        keyWaitPromptProgrammaticClose_ = true;
+        keyWaitPrompt_->close();
+        keyWaitPrompt_ = nullptr;
+    }
+}
+
+void QFreeWork::checkbutton(ProtocolButtonStateData data) {
+    if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
+        return;
+    }
+
+    closeKeyWaitPrompt();
+    freeWorkKeyWaiting_ = false;
+    const QString actualKeyId = QString::number(data.keyButtonId);
+    const QString expectedKeyId = SETTINGS.value(currentKeyExpectedKey_).toString();
+    const bool pass = compareVersions(expectedKeyId, actualKeyId);
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QString("按键ID:%1 期望:%2").arg(actualKeyId, expectedKeyId);
+    stepRuntime_.ask = expectedKeyId;
+    if (!pass) {
+        TestResult = failValue;
+    }
+
+    showlog(QString("%1%2：实际按键ID=%3 期望=%4")
+                .arg(currentKeyTestName_)
+                .arg(pass ? "通过" : "失败")
+                .arg(actualKeyId, expectedKeyId));
+}
+
 void QFreeWork::initDate() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -333,8 +463,16 @@ void QFreeWork::initDate() {
     canGoNext = 1;
     stepRuntime_.reset();
     isovertime = 0;
+    BT_RSSI = "";
     BLE_RSSI = "";
     WIFI_RSSI = "";
+    softwareVersionForReport_.clear();
+    softwareVersionPassForReport_ = true;
+    freeWorkKeyWaiting_ = false;
+    keyWaitPromptProgrammaticClose_ = false;
+    currentKeyTestName_.clear();
+    currentKeyExpectedKey_.clear();
+    closeKeyWaitPrompt();
     is_battary_test = 0;
     charageresult = "未测";
     voltageresult = "未测";
@@ -348,24 +486,11 @@ void QFreeWork::initDate() {
     ui->battary_value->setText("电量为:");
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
+    tupleData_ = TupleApplyResult{};
     TestTime.start();
 }
 
-void QFreeWork::on_pushButton_clicked() {
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
-    // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    ui->macInput->setText("3C:84:27:07:A8:D2");
-    // // ui->macInput->setText("3c:84:27:29:50:32");
-    ui->macInput->setText("b4:56:5d:bf:57:9d");
 
-    on_macInput_returnPressed();
-    // // usb-> getlxMEASure();
-    // // waitWork(1000);
-
-    // showlog("正在获取设备电量");
-    // ui->comNameCombo->setCurrentText("COM134");
-}
 
 void QFreeWork::on_get_battery_clicked() {
     if (at->getConnected()) {
@@ -477,7 +602,7 @@ void QFreeWork::on_getMac_returnPressed() {
     }
     expectedTailSnFromUi = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());             // 文件获取
+    // getMac(ui->getMac->text());             // 文件获取
     processInspection(ui->getMac->text());  // 站前检测
     // processGetMesTestValue();               // mes获取
 
@@ -783,6 +908,18 @@ void QFreeWork::on_disconnectButton_clicked() {
     closeDongleSerialPort();
 }
 
+void QFreeWork::on_jigConnectButton_clicked() {
+    openJigSerialPort();
+    ui->jigComNameCombo->setEnabled(false);
+    ui->jigConnectButton->setEnabled(false);
+}
+
+void QFreeWork::on_jigDisconnectButton_clicked() {
+    closeJigSerialPort();
+    ui->jigComNameCombo->setEnabled(true);
+    ui->jigConnectButton->setEnabled(true);
+}
+
 void QFreeWork::on_stopTest_clicked() {
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     // waitWork(100);
@@ -794,11 +931,3 @@ void QFreeWork::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-void QFreeWork::on_save_config_clicked() {
-    showlog("测试顺序配置已迁移到设置页面，请在 qsetting 的测试配置页调整并保存。");
-}
-
-
-
-

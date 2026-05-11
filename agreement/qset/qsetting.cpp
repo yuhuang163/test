@@ -1,10 +1,14 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
+#include <QApplication>
+#include <QComboBox>
+#include <QCoreApplication>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
+#include <QSignalBlocker>
 #include <QString>
 #include <QVector>
 #include "qpainter.h"
@@ -37,6 +41,60 @@ const QVector<StationItem> kPresetStations = {
     {"蓝牙测试工站", "BLUETOOTH_TEST"},
     {"吸力测试工站", "SUCTION_TEST"},
 };
+
+struct TupleEnvPreset {
+    QString key;
+    QString baseUrl;
+};
+
+const QVector<TupleEnvPreset> kTupleEnvPresets = {
+    {QStringLiteral("dev"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
+    {QStringLiteral("build-dev-inner"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("build-dev"), QStringLiteral("https://983ug2va5885.vicp.fun")},
+    {QStringLiteral("build-prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
+};
+
+const QString kTupleEnvCustomKey = QStringLiteral("custom");
+
+QString normalizeTupleBaseUrl(const QString& u) {
+    QString s = u.trimmed();
+    while (s.endsWith('/')) {
+        s.chop(1);
+    }
+    return s;
+}
+
+int tupleEnvIndexForKey(QComboBox* combo, const QString& key) {
+    if (!combo) {
+        return -1;
+    }
+    for (int i = 0; i < combo->count(); ++i) {
+        if (combo->itemData(i).toString() == key) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int tupleEnvIndexForUrl(QComboBox* combo, const QString& url) {
+    const QString n = normalizeTupleBaseUrl(url);
+    for (const auto& p : kTupleEnvPresets) {
+        if (normalizeTupleBaseUrl(p.baseUrl) == n) {
+            return tupleEnvIndexForKey(combo, p.key);
+        }
+    }
+    return -1;
+}
+
+QString tupleBaseUrlForKey(const QString& key) {
+    for (const auto& p : kTupleEnvPresets) {
+        if (p.key == key) {
+            return p.baseUrl;
+        }
+    }
+    return {};
+}
 
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
@@ -103,7 +161,27 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
 
+    initTupleEnvironmentCombo();
     loadConfig();
+    originalStation_ = SETTINGS.value("SYSTEM/station").toString();
+    connect(StationGroup, QOverload<int>::of(&QButtonGroup::buttonClicked), this, [this](int) {
+        const QString oldStation = originalStation_;
+        saveCurrentTestOrder();
+        saveConfig();
+        SETTINGS.sync();
+        const QString newStation = SETTINGS.value("SYSTEM/station").toString();
+        if (oldStation.isEmpty() || oldStation == newStation) {
+            return;
+        }
+        originalStation_ = newStation;
+        stationReloading_ = true;
+        qApp->setProperty("StationRestartRequested", true);
+        const auto widgets = QApplication::topLevelWidgets();
+        for (QWidget* widget : widgets) {
+            widget->close();
+        }
+        QCoreApplication::exit(0);
+    });
     initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
@@ -139,6 +217,36 @@ void qsetting::initFreeWorkTestOrderUi() {
     freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
     initTestOrderStationSelector();
     reorderFreeWorkCheckBoxes();
+}
+
+void qsetting::initTupleEnvironmentCombo() {
+    QComboBox* c = ui->comboBox_tupleEnvironment;
+    if (!c) {
+        return;
+    }
+    c->clear();
+    for (const auto& p : kTupleEnvPresets) {
+        c->addItem(p.key, p.key);
+    }
+    c->addItem(QStringLiteral("自定义"), kTupleEnvCustomKey);
+    connect(c, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &qsetting::on_comboBox_tupleEnvironment_currentIndexChanged);
+}
+
+void qsetting::on_comboBox_tupleEnvironment_currentIndexChanged(int index) {
+    Q_UNUSED(index);
+    QComboBox* c = ui->comboBox_tupleEnvironment;
+    if (!c) {
+        return;
+    }
+    const QString key = c->currentData().toString();
+    if (key == kTupleEnvCustomKey || key.isEmpty()) {
+        return;
+    }
+    const QString url = tupleBaseUrlForKey(key);
+    if (!url.isEmpty()) {
+        ui->lineEdit_tupleBaseUrl->setText(url);
+    }
 }
 
 void qsetting::initTestOrderStationSelector() {
@@ -358,7 +466,7 @@ void qsetting::reorderFreeWorkCheckBoxes() {
         
         freeWorkConfigLayout_->addWidget(checkBox);
         checkBox->show();
-        qDebug() << "[TestOrder] add to config:" << index;
+        // qDebug() << "[TestOrder] add to config:" << index;
     }
 
     int optionalPos = 0;
@@ -699,6 +807,28 @@ void qsetting::loadConfig() {
     ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
 
+    // 加载三元组配置
+    const QString defaultTupleUrl = kTupleEnvPresets.first().baseUrl;
+    const QString savedTupleUrl = SETTINGS.value("Tuple/BaseUrl", defaultTupleUrl).toString();
+    ui->lineEdit_tupleBaseUrl->setText(savedTupleUrl);
+    ui->lineEdit_tupleAuthUser->setText(SETTINGS.value("Tuple/AuthUser").toString());
+    ui->lineEdit_tupleAuthPassword->setText(SETTINGS.value("Tuple/AuthPassword").toString());
+    ui->lineEdit_tupleSku->setText(SETTINGS.value("Tuple/Sku", "").toString());
+    ui->lineEdit_tuplePosition->setText(SETTINGS.value("Tuple/Position", "L").toString());
+
+    {
+        QSignalBlocker blocker(ui->comboBox_tupleEnvironment);
+        QString envKey = SETTINGS.value("Tuple/Environment").toString().trimmed();
+        int idx = envKey.isEmpty() ? -1 : tupleEnvIndexForKey(ui->comboBox_tupleEnvironment, envKey);
+        if (idx < 0) {
+            idx = tupleEnvIndexForUrl(ui->comboBox_tupleEnvironment, savedTupleUrl);
+        }
+        if (idx < 0) {
+            idx = ui->comboBox_tupleEnvironment->count() - 1;
+        }
+        ui->comboBox_tupleEnvironment->setCurrentIndex(idx);
+    }
+
     // 加载行和列
     ui->rowLineEdit->setText(SETTINGS.value("User/formRow").toString());
     ui->columnLineEdit->setText(SETTINGS.value("User/formColumn").toString());
@@ -789,6 +919,26 @@ void qsetting::loadConfig() {
     ui->checkBox_FSensorVersion->setChecked(SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool());
     ui->checkBox_ImuID->setChecked(SETTINGS.value("ProductInfo/ImuID_checkBox").toBool());
     ui->checkBox_CameraID->setChecked(SETTINGS.value("ProductInfo/CameraID_checkBox").toBool());
+
+    // 按键测试 KeyId 配置
+    ui->checkBox_KeyIdPower->setChecked(SETTINGS.value("ProductInfo/KeyIdPower_checkBox", true).toBool());
+    ui->lineEdit_KeyIdPower->setText(SETTINGS.value("ProductInfo/KeyIdPower", "1").toString());
+    ui->checkBox_KeyIdStartPause->setChecked(SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox", true).toBool());
+    ui->lineEdit_KeyIdStartPause->setText(SETTINGS.value("ProductInfo/KeyIdStartPause", "2").toString());
+    ui->checkBox_KeyIdMode->setChecked(SETTINGS.value("ProductInfo/KeyIdMode_checkBox", true).toBool());
+    ui->lineEdit_KeyIdMode->setText(SETTINGS.value("ProductInfo/KeyIdMode", "3").toString());
+    ui->checkBox_KeyIdSpeed->setChecked(SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox", true).toBool());
+    ui->lineEdit_KeyIdSpeed->setText(SETTINGS.value("ProductInfo/KeyIdSpeed", "4").toString());
+    ui->checkBox_KeyIdProgram->setChecked(SETTINGS.value("ProductInfo/KeyIdProgram_checkBox", true).toBool());
+    ui->lineEdit_KeyIdProgram->setText(SETTINGS.value("ProductInfo/KeyIdProgram", "5").toString());
+    ui->checkBox_KeyIdLeft->setChecked(SETTINGS.value("ProductInfo/KeyIdLeft_checkBox", true).toBool());
+    ui->lineEdit_KeyIdLeft->setText(SETTINGS.value("ProductInfo/KeyIdLeft", "6").toString());
+    ui->checkBox_KeyIdRight->setChecked(SETTINGS.value("ProductInfo/KeyIdRight_checkBox", true).toBool());
+    ui->lineEdit_KeyIdRight->setText(SETTINGS.value("ProductInfo/KeyIdRight", "7").toString());
+    ui->checkBox_KeyIdLeftRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox", true).toBool());
+    ui->lineEdit_KeyIdLeftRotate->setText(SETTINGS.value("ProductInfo/KeyIdLeftRotate", "10").toString());
+    ui->checkBox_KeyIdRightRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox", true).toBool());
+    ui->lineEdit_KeyIdRightRotate->setText(SETTINGS.value("ProductInfo/KeyIdRightRotate", "11").toString());
 
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
@@ -1017,6 +1167,14 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
 
+    // 保存三元组配置
+    SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
+    SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
+    SETTINGS.setValue("Tuple/AuthUser", ui->lineEdit_tupleAuthUser->text());
+    SETTINGS.setValue("Tuple/AuthPassword", ui->lineEdit_tupleAuthPassword->text());
+    SETTINGS.setValue("Tuple/Sku", ui->lineEdit_tupleSku->text());
+    SETTINGS.setValue("Tuple/Position", ui->lineEdit_tuplePosition->text());
+
     // 保存行和列
     SETTINGS.setValue("User/formRow", ui->rowLineEdit->text());
     SETTINGS.setValue("User/formColumn", ui->columnLineEdit->text());
@@ -1108,6 +1266,25 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/ImuID_checkBox", ui->checkBox_ImuID->isChecked());
     SETTINGS.setValue("ProductInfo/CameraID_checkBox", ui->checkBox_CameraID->isChecked());
 
+    SETTINGS.setValue("ProductInfo/KeyIdPower_checkBox", ui->checkBox_KeyIdPower->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdPower", ui->lineEdit_KeyIdPower->text());
+    SETTINGS.setValue("ProductInfo/KeyIdStartPause_checkBox", ui->checkBox_KeyIdStartPause->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdStartPause", ui->lineEdit_KeyIdStartPause->text());
+    SETTINGS.setValue("ProductInfo/KeyIdMode_checkBox", ui->checkBox_KeyIdMode->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdMode", ui->lineEdit_KeyIdMode->text());
+    SETTINGS.setValue("ProductInfo/KeyIdSpeed_checkBox", ui->checkBox_KeyIdSpeed->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdSpeed", ui->lineEdit_KeyIdSpeed->text());
+    SETTINGS.setValue("ProductInfo/KeyIdProgram_checkBox", ui->checkBox_KeyIdProgram->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdProgram", ui->lineEdit_KeyIdProgram->text());
+    SETTINGS.setValue("ProductInfo/KeyIdLeft_checkBox", ui->checkBox_KeyIdLeft->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdLeft", ui->lineEdit_KeyIdLeft->text());
+    SETTINGS.setValue("ProductInfo/KeyIdRight_checkBox", ui->checkBox_KeyIdRight->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdRight", ui->lineEdit_KeyIdRight->text());
+    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate_checkBox", ui->checkBox_KeyIdLeftRotate->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate", ui->lineEdit_KeyIdLeftRotate->text());
+    SETTINGS.setValue("ProductInfo/KeyIdRightRotate_checkBox", ui->checkBox_KeyIdRightRotate->isChecked());
+    SETTINGS.setValue("ProductInfo/KeyIdRightRotate", ui->lineEdit_KeyIdRightRotate->text());
+
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());
     SETTINGS.setValue("Current/LowshipCurrent", ui->lineEdit_CargoCurrentLower->text());
@@ -1187,6 +1364,11 @@ void qsetting::saveConfig() {
 }
 
 void qsetting::closeEvent(QCloseEvent* event) {
+    if (stationReloading_) {
+        qDebug() << "切换工站中，跳过设置页关闭保存";
+        event->accept();
+        return;
+    }
     saveCurrentTestOrder();
     saveConfig();
     qDebug() << "已经保存配置信息";

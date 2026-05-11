@@ -1,4 +1,4 @@
-#ifndef TEST_BASE_H
+﻿#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 // #include <qat.h>      // 与esp32的at指令
@@ -143,6 +143,8 @@ public:
     bool sendRetryOver = false;
     QTimer* commandRetryTimer = nullptr;
     int commandRetryCount = 0;
+    int commandRetrySendCount = 0;
+    int lastCommandRetryCount = 0;
 
     bool isTestContinue = false;  //测试是否继续
     bool bandingresult = false;   // mes绑定结果
@@ -159,8 +161,8 @@ public slots:
     void solveGetBrushResponse(int);
     int getIndex();
     void showlog(QString msg);
-    virtual void solveMesSucess(const int mechines);
-    virtual void solveMesData(const int mechines, QString msg);
+    void solveMesSucess(const int mechines);
+    void solveMesData(const int mechines, QString msg);
     virtual void readDongleSerialPortData(void);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error);
     void openDongleSerialPort(void);
@@ -211,6 +213,7 @@ public slots:
     virtual void refreshPeriphData(ProtocolPeriphStateData){};
     virtual void refreshRssiRead(ProtocolRssiData){};
     virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData){};
+    virtual void refreshTupleData(ProtocolTupleData){};
     virtual void refreshAmmeterData(QString){};
     virtual void refreshDongleUartState(int){};
     virtual void refreshUsbUartState(int){};
