@@ -212,7 +212,6 @@ public slots:
     virtual void refreshRssiRead(ProtocolRssiData){};
     virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData){};
     virtual void refreshAmmeterData(QString){};
-    virtual void refreshfwVersion(QString){};
     virtual void refreshDongleUartState(int){};
     virtual void refreshUsbUartState(int){};
     virtual void refreshJigUartState(int){};
@@ -234,7 +233,6 @@ signals:
     void refreshJigSerialPortState(int);
     void refreshProductSerialPortState(int);
     void sendProcessInspection(MesPacketData);
-    void sendMaterialSnBind(MesPacketData);
     void send_end_testPass(MesPacketData);
     void getMesTestValue(MesPacketData);
     void send_kill_test(int data);

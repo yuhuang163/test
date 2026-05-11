@@ -1,4 +1,4 @@
-﻿#include "key_test.h"
+#include "key_test.h"
 
 #include "ui_key_test.h"
 #include <QMessageBox>
@@ -650,16 +650,16 @@ void key_test::on_snInput_returnPressed() {
     clearDisplay();
     macAddress = "没有mac地址";
     logString = "";
-    waitingMesInspection = false;
-    modeCheckPassed = false;
-    workCurrentStats = CurrentStats();
-    chargeCurrentStats = CurrentStats();
     usblogwaittime->setInterval(5000);
     usblogwaittime->start();
     firstconnectbrush = 1;
     // 与按键测试工站保持一致：仅使用公司SN规则校验（字母数字且长度>12）
-    if (!validateCompanySnRule(ui->snInput->text())) {
-        showlog("SN未通过公司规则校验");
+
+    QRegularExpression snRegex(snPattern);
+    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+        showlog("序列号错误");
+        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
     }
@@ -807,21 +807,8 @@ void key_test::on_jigDisconnectButton_clicked() {
 }
 
 void key_test::processInspection(QString stringsn) {
-    const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     if (stringsn != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
-            if (simulateFlow) {
-                // 联调模拟：MES站前检查直接通过
-                showlog("MES站前检测(模拟通过)");
-                ui->mes_state->setText("MES PASS(模拟)");
-                ui->mes_state->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border-radius: 10px; "
-                                             "padding: 10px; text-align: center;");
-                waitingMesInspection = false;
-
-                const QString parsedMac = parseMacFromSn(stringsn);
-                startFlowWithMac(parsedMac);
-                return;
-            }
             showlog("正在进行站前检测");
             pack.sn = stringsn;
             pack.mechines = getIndex();
@@ -840,91 +827,8 @@ void key_test::processInspection(QString stringsn) {
     }
 }
 
-void key_test::solveMesSucess(const int mechines) {
-    test_base::solveMesSucess(mechines);
-    if (mechines != getIndex() || !waitingMesInspection) {
-        return;
-    }
-    waitingMesInspection = false;
-    const QString parsedMac = parseMacFromSn(stringsn);
-    if (parsedMac.isEmpty()) {
-        showlog("MES站前通过，但SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
-    startFlowWithMac(parsedMac);
-}
-
-void key_test::solveMesData(const int mechines, QString msg) {
-    waitingMesInspection = false;
-    test_base::solveMesData(mechines, msg);
-}
-
-bool key_test::validateCompanySnRule(const QString& snValue) {
-    // 参考 prod_test_for_trae 的 get_mac_from_scan 规则：
-    // 1) 去空白后必须为字母数字
-    // 2) 总长度需大于 12（可包含型号/SKU + 12 位 MAC）
-    const QString normalized = QString(snValue).remove(QRegularExpression("\\s+")).trimmed().toUpper();
-    static const QRegularExpression alnumRegex("^[0-9A-Z]+$");
-    if (!alnumRegex.match(normalized).hasMatch()) {
-        showlog("SN规则校验失败：仅允许字母数字");
-        return false;
-    }
-    if (normalized.length() <= 12) {
-        showlog("SN规则校验失败：长度不足，需大于12位");
-        return false;
-    }
-    return true;
-}
-
-QString key_test::parseMacFromSn(const QString& snValue) {
-    // 参考 prod_test_for_trae/core/common/sn_mac_parser.py 的 get_mac_from_scan:
-    // - 默认从第4位后取12位MAC
-    // - 若 Mes/model(视作SKU码)出现在型号后、合理偏移内，则从SKU结束位置取12位
-    QString normalized = QString(snValue).remove(QRegularExpression("\\s+")).trimmed().toUpper();
-    static const QRegularExpression alnumRegex("^[0-9A-Z]+$");
-    if (!alnumRegex.match(normalized).hasMatch() || normalized.length() <= 12) {
-        return QString();
-    }
-
-    const int modelLen = 4;
-    const int middleLen = 7;
-    const int macLen = 12;
-    int startIdx = modelLen;
-
-    QString skuCode = SETTINGS.value("Mes/model").toString().trimmed().toUpper();
-    if (!skuCode.isEmpty()) {
-        int searchPos = normalized.indexOf(skuCode);
-        while (searchPos >= 0) {
-            if (searchPos >= modelLen && searchPos <= (modelLen + middleLen - skuCode.length())) {
-                startIdx = searchPos + skuCode.length();
-                break;
-            }
-            searchPos = normalized.indexOf(skuCode, searchPos + 1);
-        }
-    }
-
-    if (startIdx + macLen > normalized.length()) {
-        return QString();
-    }
-    const QString rawMac = normalized.mid(startIdx, macLen);
-    static const QRegularExpression hexRegex("^[0-9A-F]{12}$");
-    if (!hexRegex.match(rawMac).hasMatch()) {
-        return QString();
-    }
-
-    QString mac;
-    for (int i = 0; i < macLen; i += 2) {
-        if (!mac.isEmpty()) {
-            mac += ":";
-        }
-        mac += rawMac.mid(i, 2);
-    }
-    return mac;
-}
 
 void key_test::startFlowWithMac(const QString& mac) {
-    const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     usblogwaittime->stop();
     firstconnectbrush = 0;
     ui->macInput->setDisabled(1);
@@ -948,69 +852,7 @@ void key_test::startFlowWithMac(const QString& mac) {
     isTestContinue = true;
 }
 
-bool key_test::verifyTestModeState() {
-    // TODO: 预留测试模式回读校验逻辑
-    return true;
-}
 
-bool key_test::controlProgrammablePowerForCharge(bool enable) {
-    // TODO: 预留程控电源控制逻辑
-    showlog(enable ? "程控电源: 开启供电（占位）" : "程控电源: 关闭供电（占位）");
-    return true;
-}
-
-key_test::CurrentStats key_test::collectCurrentStats(const QString& itemName, int sampleCount,
-                                                                       int sampleIntervalMs) {
-    CurrentStats stats;
-    if (sampleCount <= 0) {
-        return stats;
-    }
-
-    QVector<double> samples;
-    samples.reserve(sampleCount);
-    for (int i = 0; i < sampleCount; ++i) {
-        if (pack.factory == "hq") {
-            usb->gethqMEASure();
-        } else if (pack.factory == "lx") {
-            usb->getlxMEASure(getIndex());
-        } else {
-            usb->getMEASure("");
-        }
-        waitWork(sampleIntervalMs);
-        samples.append(measure_ammeter);
-    }
-
-    if (samples.isEmpty()) {
-        return stats;
-    }
-    stats.minValue = samples.first();
-    stats.maxValue = samples.first();
-    double sum = 0.0;
-    for (double value : samples) {
-        stats.minValue = qMin(stats.minValue, value);
-        stats.maxValue = qMax(stats.maxValue, value);
-        sum += value;
-    }
-    stats.avgValue = sum / samples.size();
-    stats.fluctuation = stats.maxValue - stats.minValue;
-    stats.valid = true;
-
-    showlog(QString("%1统计 -> 最小:%2mA 最大:%3mA 平均:%4mA 波动:%5mA")
-                .arg(itemName)
-                .arg(stats.minValue, 0, 'f', 4)
-                .arg(stats.maxValue, 0, 'f', 4)
-                .arg(stats.avgValue, 0, 'f', 4)
-                .arg(stats.fluctuation, 0, 'f', 4));
-    return stats;
-}
-
-bool key_test::evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high) {
-    if (!stats.valid) {
-        showlog(itemName + "采样无效");
-        return false;
-    }
-    return stats.avgValue >= low && stats.avgValue <= high;
-}
 
 void key_test::startTask() {
     if (isTestContinue) {
@@ -1073,7 +915,7 @@ void key_test::startTask() {
                             testResultTableUpdate(testItems);
                             keyWaitPromptShown = false;
                             showlog("电源按钮测试通过");
-                            state = STATE_WAIT_GET_KEY_STARTPAUSE_STATE;
+                            state = STATE_WAIT_GET_KEY_MODE_STATE;
                         } else {
                             appendStationResult(testItems, "电源键测试", "0.0000", failValue);
                             testResultTableUpdate(testItems);
@@ -1096,19 +938,119 @@ void key_test::startTask() {
                     }
                 }
                 break;
+            // 等待获取模式键状态
+            case STATE_WAIT_GET_KEY_MODE_STATE:
+                if (KeyModeState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyModeState == 1) {
+                        showlog("Mode键短按");
+                        appendStationResult(testItems, "Mode键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("Mode键测试通过");
+                        state = STATE_WAIT_GET_KEY_PROGRAM_STATE;
+                    } else {
+                        appendStationResult(testItems, "Mode键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                        "按键测试",
+                                                        "请短按下Mode按钮",
+                                                        QMessageBox::NoButton,
+                                                        this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
 
+                    refresh_key_times = 1;
+                }
+                break; 
+            // 等待获取程序键状态
+            case STATE_WAIT_GET_KEY_PROGRAM_STATE:
+                if (KeyProgramState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeyProgramState == 1) {
+                        showlog("Program键短按");
+                        appendStationResult(testItems, "Program键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("Program键测试通过");
+                        state = STATE_WAIT_GET_KEY_SPEED_STATE;
+                    } else {
+                        appendStationResult(testItems, "Program键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                        "按键测试",
+                                                        "请短按下Program按钮",
+                                                        QMessageBox::NoButton,
+                                                        this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
+
+            
+            // 等待获取速度键状态
+            case STATE_WAIT_GET_KEY_SPEED_STATE:
+                if (KeySpeedState != 0) {
+                    closeKeyWaitPromptProgrammatically();
+                    if (KeySpeedState == 1) {
+                        showlog("Speed键短按");
+                        appendStationResult(testItems, "Speed键测试", "0.0000", passValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        showlog("Speed键测试通过");
+                        state = STATE_WAIT_GET_KEY_STARTPAUSE_STATE;
+                    } else {
+                        appendStationResult(testItems, "Speed键测试", "0.0000", failValue);
+                        testResultTableUpdate(testItems);
+                        keyWaitPromptShown = false;
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    if (keyWaitPrompt == nullptr) {
+                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
+                                                         "按键测试",
+                                                         "请短按下Speed按钮",
+                                                         QMessageBox::NoButton,
+                                                         this);
+                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
+                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
+                        keyWaitPrompt->show();
+                    }
+
+                    refresh_key_times = 1;
+                }
+                break;
             // 等待获取开始/暂停键状态
             case STATE_WAIT_GET_KEY_STARTPAUSE_STATE:
                 if (KeyStartPauseState != 0) {
-                    showlog("开始/暂停键状态：" + QString::number(KeyStartPauseState));
+                    showlog("Start/Pause开始/暂停键状态：" + QString::number(KeyStartPauseState));
                     closeKeyWaitPromptProgrammatically();
                     if (KeyStartPauseState == 1) {
-                        showlog("开始/暂停键短按");
-                        appendStationResult(testItems, "开始/暂停键测试", "0.0000", passValue);
+                        showlog("Start/Pause开始/暂停键短按");
+                        appendStationResult(testItems, "Start/Pause键测试", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
-                        showlog("开始/暂停键测试通过");
-                        state = STATE_WAIT_GET_KEY_MODE_STATE;
+                        showlog("Start/Pause键测试通过");
+                        state = STATE_WAIT_GET_KEY_LEFT_STATE;
                     } else {
                         appendStationResult(testItems, "开始/暂停键测试", "0.0000", failValue);
                         testResultTableUpdate(testItems);
@@ -1120,7 +1062,7 @@ void key_test::startTask() {
                     if (keyWaitPrompt == nullptr) {
                         keyWaitPrompt = new QMessageBox(QMessageBox::Information,
                                                         "按键测试",  
-                                                        "请短按下开始/暂停按钮",
+                                                        "请短按下Start/Pause按钮",
                                                         QMessageBox::NoButton,
                                                         this);
                         keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
@@ -1131,106 +1073,7 @@ void key_test::startTask() {
                     refresh_key_times = 1;
                 }
                 break;
-            // 等待获取模式键状态
-            case STATE_WAIT_GET_KEY_MODE_STATE:
-                if (KeyModeState != 0) {
-                    closeKeyWaitPromptProgrammatically();
-                    if (KeyModeState == 1) {
-                        showlog("模式键短按");
-                        appendStationResult(testItems, "模式键测试", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        showlog("模式键测试通过");
-                        state = STATE_WAIT_GET_KEY_SPEED_STATE;
-                    } else {
-                        appendStationResult(testItems, "模式键测试", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    if (keyWaitPrompt == nullptr) {
-                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
-                                                         "按键测试",
-                                                         "请短按下模式按钮",
-                                                         QMessageBox::NoButton,
-                                                         this);
-                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
-                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
-                        keyWaitPrompt->show();
-                    }
-
-                    refresh_key_times = 1;
-                }
-                break;
-            // 等待获取速度键状态
-            case STATE_WAIT_GET_KEY_SPEED_STATE:
-                if (KeySpeedState != 0) {
-                    closeKeyWaitPromptProgrammatically();
-                    if (KeySpeedState == 1) {
-                        showlog("速度键短按");
-                        appendStationResult(testItems, "速度键测试", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        showlog("速度键测试通过");
-                        state = STATE_WAIT_GET_KEY_PROGRAM_STATE;
-                    } else {
-                        appendStationResult(testItems, "速度键测试", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    if (keyWaitPrompt == nullptr) {
-                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
-                                                         "按键测试",
-                                                         "请短按下速度按钮",
-                                                         QMessageBox::NoButton,
-                                                         this);
-                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
-                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
-                        keyWaitPrompt->show();
-                    }
-
-                    refresh_key_times = 1;
-                }
-                break;
-
-            // 等待获取程序键状态
-            case STATE_WAIT_GET_KEY_PROGRAM_STATE:
-                if (KeyProgramState != 0) {
-                    closeKeyWaitPromptProgrammatically();
-                    if (KeyProgramState == 1) {
-                        showlog("程序键短按");
-                        appendStationResult(testItems, "程序键测试", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        showlog("程序键测试通过");
-                        state = STATE_WAIT_GET_KEY_LEFT_STATE;
-                    } else {
-                        appendStationResult(testItems, "程序键测试", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    if (keyWaitPrompt == nullptr) {
-                        keyWaitPrompt = new QMessageBox(QMessageBox::Information,
-                                                         "按键测试",
-                                                         "请短按下程序按钮",
-                                                         QMessageBox::NoButton,
-                                                         this);
-                        keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
-                        connect(keyWaitPrompt, &QObject::destroyed, this, &key_test::onKeyWaitPromptDestroyed);
-                        keyWaitPrompt->show();
-                    }
-
-                    refresh_key_times = 1;
-                }
-                break;
+           
             // 等待获取左键状态
             case STATE_WAIT_GET_KEY_LEFT_STATE:
                 if (KeyLeftState != 0) {
@@ -1302,7 +1145,7 @@ void key_test::startTask() {
                 if (KeyLeftRotateState != 0) {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyLeftRotateState == 1) {
-                        showlog("左旋键短按");
+                        showlog("左旋键");
                         appendStationResult(testItems, "左旋键测试", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
@@ -1319,7 +1162,7 @@ void key_test::startTask() {
                     if (keyWaitPrompt == nullptr) {
                         keyWaitPrompt = new QMessageBox(QMessageBox::Information,
                                                          "按键测试",
-                                                         "请短按下左旋按钮",
+                                                         "请短左旋电源屏",
                                                          QMessageBox::NoButton,
                                                          this);
                         keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
@@ -1336,15 +1179,15 @@ void key_test::startTask() {
                 if (KeyRightRotateState != 0) {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyRightRotateState == 1) {
-                        showlog("右旋键短按");
-                        appendStationResult(testItems, "右旋键测试", "0.0000", passValue);
+                        showlog("右旋");
+                        appendStationResult(testItems, "右旋测试", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
-                        showlog("右旋键测试通过");
+                        showlog("右旋测试通过");
                         totalresult = passValue;
                         state = STATE_SAVE_RESULT;
                     } else {
-                        appendStationResult(testItems, "右旋键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "右旋测试", "0.0000", failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1354,7 +1197,7 @@ void key_test::startTask() {
                     if (keyWaitPrompt == nullptr) {
                         keyWaitPrompt = new QMessageBox(QMessageBox::Information,
                                                          "按键测试",
-                                                         "请短按下右旋按钮",
+                                                         "请右旋电源屏",
                                                          QMessageBox::NoButton,
                                                          this);
                         keyWaitPrompt->setAttribute(Qt::WA_DeleteOnClose);
@@ -1484,7 +1327,7 @@ void key_test::processReceivedData(const QByteArray& data) {
             // on_productDisconnectButton_clicked();
 
             if (firstconnectbrush) {
-                startFlowWithMac(macAddress);
+                on_macInput_returnPressed();
             }
             // 在这里可以将提取到的 MAC 地址用于后续处理
         } else {

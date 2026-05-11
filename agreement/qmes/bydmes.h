@@ -1,4 +1,4 @@
-﻿#ifndef BYDMES_H
+#ifndef BYDMES_H
 #define BYDMES_H
 
 #include <QJsonObject>
@@ -29,9 +29,8 @@ private:
     QString normalizeTestResult(const QString& result) const;
     bool isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const;
     QByteArray sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const;
-    QString normalizeMacString(QString value) const;
-    QString extractMacForUi(const QByteArray& responseData) const;
-    void collectMacFromJsonObject(const QJsonObject& obj, QString* out) const;
+    /// 解析 GetCustomData 返回 JSON 中 DATA[] 的 NAME / VALUE / REMARK，供 sendMesTestvalue 下发。
+    QString formatGetCustomDataItemsJson(const QByteArray& responseData) const;
 };
 
 #endif  // BYDMES_H

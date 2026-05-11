@@ -1,4 +1,4 @@
-﻿#include "quiescent_current.h"
+#include "quiescent_current.h"
 
 #include "ui_quiescent_current.h"
 #include <QVector>
@@ -107,6 +107,14 @@ void quiescent_current::applyCurrentProtocolConfig() {
     cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
     cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
     cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+    cfg.scpiPowerVoltageV = SETTINGS.value("Current/ScpiPowerVoltageV", 16.8).toDouble();
+    cfg.scpiPowerCurrentA = SETTINGS.value("Current/ScpiPowerCurrentA", 1.0).toDouble();
+    cfg.scpiSetVoltageCmd = SETTINGS.value("Current/ScpiSetVoltageCmd", "VOLT %1").toString();
+    cfg.scpiSetCurrentCmd = SETTINGS.value("Current/ScpiSetCurrentCmd", "CURR %1").toString();
+    cfg.scpiOutputOnCmd = SETTINGS.value("Current/ScpiOutputOnCmd", "OUTP ON").toString();
+    cfg.scpiOutputOffCmd = SETTINGS.value("Current/ScpiOutputOffCmd", "OUTP OFF").toString();
+    cfg.scpiReadVoltageCmd = SETTINGS.value("Current/ScpiReadVoltageCmd", "MEASure:VOLTage:DC?").toString();
+    cfg.scpiReadCurrentCmd = SETTINGS.value("Current/ScpiReadCurrentCmd", "MEASure:CURRent:DC? 500e-3").toString();
 
     if (cfg.protocol == Qusb::ProtocolType::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
@@ -120,12 +128,16 @@ void quiescent_current::applyCurrentProtocolConfig() {
     }
 
     currentProtocolType = cfg.protocol;
+    useProgrammablePower = SETTINGS.value("Current/UseProgrammablePower", false).toBool();
     usb->setProtocolConfig(cfg);
 
     showlog("静态电流协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
     showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
+    showlog("程控电源开关=" + QString(useProgrammablePower ? "ON" : "OFF") +
+            ", V=" + QString::number(cfg.scpiPowerVoltageV, 'f', 3) +
+            ", A=" + QString::number(cfg.scpiPowerCurrentA, 'f', 3));
 }
 
 void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
@@ -727,7 +739,13 @@ void quiescent_current::startTask() {
         switch (state) {
             case STATE_IDLE:  // 复位一切
 
-                // usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
+                if (useProgrammablePower && currentProtocolType == Qusb::ProtocolType::Scpi) {
+                    const bool initOk = usb->initializeProgrammablePower();
+                    const bool outOk = usb->setProgrammablePowerOutput(true);
+                    showlog(QString("程控电源初始化=%1, 输出打开=%2")
+                                .arg(initOk ? "OK" : "NG")
+                                .arg(outOk ? "OK" : "NG"));
+                }
 
                 protocolManager.resetAllPb();
                 periph_state = 0;
@@ -874,6 +892,10 @@ void quiescent_current::startTask() {
 
             case STATE_SAVE_RESULT:
                 stringsn = "";
+                if (useProgrammablePower && currentProtocolType == Qusb::ProtocolType::Scpi) {
+                    const bool outOffOk = usb->setProgrammablePowerOutput(false);
+                    showlog(QString("程控电源输出关闭=%1").arg(outOffOk ? "OK" : "NG"));
+                }
                 if (totalresult == passValue) {
                     pack.result = "PASS";
                     pack.sn = ui->snInput->text();
@@ -952,7 +974,11 @@ void quiescent_current::on_pushButton_clicked() {
 }
 
 void quiescent_current::on_pushButton_3_clicked() {
-    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+    if (useProgrammablePower && currentProtocolType == Qusb::ProtocolType::Scpi) {
+        usb->readProgrammablePowerCurrent();
+    } else {
+        usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+    }
 
     // at->ask_mac();
     // MesInit();
@@ -984,7 +1010,7 @@ void quiescent_current::processReceivedData(const QByteArray& data) {
             // on_productDisconnectButton_clicked();
 
             if (firstconnectbrush) {
-                startFlowWithMac(macAddress);
+                on_macInput_returnPressed();
             }
             // 在这里可以将提取到的 MAC 地址用于后续处理
         } else {
@@ -1070,6 +1096,10 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
 
 void quiescent_current::on_stopTest_clicked() {
     showlog("触发停止测试");
+    if (useProgrammablePower && currentProtocolType == Qusb::ProtocolType::Scpi) {
+        const bool outOffOk = usb->setProgrammablePowerOutput(false);
+        showlog(QString("程控电源输出关闭=%1").arg(outOffOk ? "OK" : "NG"));
+    }
     usblogwaittime->stop();
     ui->macInput->clear();
     ui->snInput->clear();

@@ -6,11 +6,59 @@
 #include <QJsonValue>
 #include <QNetworkReply>
 #include <QDateTime>
-#include <QRegularExpression>
 #include <QUrl>
 #include <QUrlQuery>
 
 #include "Abini.h"
+
+namespace {
+
+/// BYD MES2 常见约定：query 中 param 为 [KEY:value,...]，键名与字符串值均不加双引号；嵌套对象用 {...}，数组用 [...]。
+QString bydParamValueToken(const QJsonValue& v) {
+    if (v.isBool()) {
+        return v.toBool() ? QStringLiteral("1") : QStringLiteral("0");
+    }
+    if (v.isNull() || v.isUndefined()) {
+        return QString();
+    }
+    if (v.isDouble()) {
+        const double d = v.toDouble();
+        const qint64 i = static_cast<qint64>(d);
+        if (d == static_cast<double>(i)) {
+            return QString::number(i);
+        }
+        return QString::number(d, 'g', 15);
+    }
+    if (v.isString()) {
+        return v.toString();
+    }
+    if (v.isArray()) {
+        QStringList elems;
+        for (const QJsonValue& e : v.toArray()) {
+            elems << bydParamValueToken(e);
+        }
+        return QStringLiteral("[%1]").arg(elems.join(QLatin1Char(',')));
+    }
+    if (v.isObject()) {
+        QStringList pairs;
+        const QJsonObject o = v.toObject();
+        for (auto it = o.constBegin(); it != o.constEnd(); ++it) {
+            pairs << (it.key() + QLatin1Char(':') + bydParamValueToken(it.value()));
+        }
+        return QStringLiteral("{%1}").arg(pairs.join(QLatin1Char(',')));
+    }
+    return QString();
+}
+
+QString bydRootBracketParam(const QJsonObject& param) {
+    QStringList pairs;
+    for (auto it = param.constBegin(); it != param.constEnd(); ++it) {
+        pairs << (it.key() + QLatin1Char(':') + bydParamValueToken(it.value()));
+    }
+    return QStringLiteral("[%1]").arg(pairs.join(QLatin1Char(',')));
+}
+
+}  // namespace
 
 bydmes::bydmes() {}
 
@@ -61,7 +109,7 @@ QJsonObject bydmes::buildBydStartParam(const MesPacketData& pack) const {
     param["LINE"] = settingsValue("Line", "");
     param["SHOPORDER"] = settingsValue("Resource", "");
     param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
-    param["CLIENT_ID"] = "1";
+    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
     return param;
 }
 
@@ -69,7 +117,7 @@ QJsonObject bydmes::buildBydGetCustomDataParam() const {
     // 按 BYD 文档示例: GetCustomData 仅使用以下字段。
     QJsonObject param;
     param["LOGIN_ID"] = settingsValue("LoginID", "-1");
-    param["CLIENT_ID"] = "1";
+    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
     param["STATION_ID"] = settingsValue("StationID", "");
     param["PRODUCT_ID"] = settingsValue("PRODUCT_ID", "");
     return param;
@@ -108,7 +156,7 @@ QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) cons
     const QString testResult = normalizeTestResult(pack.result);
     QJsonObject param;
     param["LOGIN_ID"] = settingsValue("LoginID", "-1");
-    param["CLIENT_ID"] = "1";
+    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
     param["PROJECT_NAME"] = settingsValue("PROJECT", "");
     param["TEST_STATION"] = pack.test_station.isEmpty() ? settingsValue("Operation", "") : pack.test_station;
     param["TDS_NAME"] = settingsValue("TDS_NAME", "VH_C5");
@@ -119,8 +167,8 @@ QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) cons
     param["STARTIME"] = testTime;
     param["SN"] = pack.sn;
     param["TEST_RESULT"] = testResult;
-    param["ELAPSE_TIME"] = "1";
-    param["TEST_COUNT"] = "1";
+    param["ELAPSE_TIME"] = QString::number(qMax(1, pack.elapseTime));
+    param["TEST_COUNT"] = QString::number(qMax(1, pack.testCount));
     param["TEST_DATA_LIST"] = buildBydTestDataList(pack, testTime);
     return param;
 }
@@ -131,7 +179,7 @@ QJsonObject bydmes::buildBydCompleteParam(const MesPacketData& pack) const {
     param["SFC"] = pack.sn;
     param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
     param["STATION_ID"] = settingsValue("StationID", "");
-    param["CLIENT_ID"] = "1";
+    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
     param["REMARK"] = buildRemark(pack);
     return param;
 }
@@ -146,101 +194,52 @@ QJsonObject bydmes::buildBydNcCompleteParam(const MesPacketData& pack) const {
     param["NC_CONTEXT"] = "不良原因:" + ncValue + "; 测试结果:" + buildRemark(pack);
     param["NC_TYPE"] = ncValue;
     param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
-    param["CLIENT_ID"] = "1";
+    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
     return param;
 }
 
-QString bydmes::normalizeMacString(QString value) const {
-    value = value.trimmed();
-    value.remove(' ');
-    if (value.isEmpty()) {
-        return {};
-    }
-    static const QRegularExpression withColons(R"(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)");
-    if (withColons.match(value).hasMatch()) {
-        return value.toUpper();
-    }
-    const QString compact = QString(value).remove(':');
-    static const QRegularExpression hex12(R"(^[0-9A-Fa-f]{12}$)");
-    if (hex12.match(compact).hasMatch()) {
-        const QString u = compact.toUpper();
-        return QString("%1:%2:%3:%4:%5:%6")
-            .arg(u.mid(0, 2), u.mid(2, 2), u.mid(4, 2), u.mid(6, 2), u.mid(8, 2), u.mid(10, 2));
-    }
-    return {};
-}
-
-void bydmes::collectMacFromJsonObject(const QJsonObject& obj, QString* out) const {
-    if (!out || !out->isEmpty()) {
-        return;
-    }
-    static const QStringList keys = {"BT_MAC", "MAC", "Mac", "mac", "BLE_MAC", "BT_MAC_ADDRESS", "WIFI_MAC",
-                                     "DATA", "CUSTOM_DATA", "CustomData"};
-    for (const QString& k : keys) {
-        if (!obj.contains(k)) {
-            continue;
-        }
-        const QJsonValue v = obj.value(k);
-        if (v.isString()) {
-            const QString mac = normalizeMacString(v.toString());
-            if (!mac.isEmpty()) {
-                *out = mac;
-                return;
-            }
-            const QJsonDocument nested = QJsonDocument::fromJson(v.toString().toUtf8());
-            if (nested.isObject()) {
-                collectMacFromJsonObject(nested.object(), out);
-                if (!out->isEmpty()) {
-                    return;
-                }
-            }
-        } else if (v.isObject()) {
-            collectMacFromJsonObject(v.toObject(), out);
-            if (!out->isEmpty()) {
-                return;
-            }
-        } else if (v.isArray()) {
-            for (const QJsonValue& item : v.toArray()) {
-                if (item.isObject()) {
-                    collectMacFromJsonObject(item.toObject(), out);
-                }
-                if (!out->isEmpty()) {
-                    return;
-                }
-            }
-        }
-    }
-}
-
-QString bydmes::extractMacForUi(const QByteArray& responseData) const {
-    QString mac;
+QString bydmes::formatGetCustomDataItemsJson(const QByteArray& responseData) const {
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
-    if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
-        collectMacFromJsonObject(doc.object(), &mac);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        return {};
     }
-    if (!mac.isEmpty()) {
-        return mac;
+    const QJsonObject root = doc.object();
+    const QJsonArray dataArr = root.value(QStringLiteral("DATA")).toArray();
+    if (dataArr.isEmpty()) {
+        return {};
     }
-    const QString text = QString::fromUtf8(responseData);
-    static const QRegularExpression reColon(R"((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})");
-    const QRegularExpressionMatch m1 = reColon.match(text);
-    if (m1.hasMatch()) {
-        return m1.captured(0).toUpper();
+    QJsonArray out;
+    for (const QJsonValue& v : dataArr) {
+        if (!v.isObject()) {
+            continue;
+        }
+        const QJsonObject item = v.toObject();
+        QJsonObject row;
+        row[QStringLiteral("NAME")] = item.value(QStringLiteral("NAME")).toString();
+        row[QStringLiteral("VALUE")] = item.value(QStringLiteral("VALUE")).toString();
+        row[QStringLiteral("REMARK")] = item.value(QStringLiteral("REMARK")).toString();
+        out.append(row);
+        qDebug() << "BYD GetCustomData item:" << row[QStringLiteral("NAME")].toString()
+                 << "VALUE=" << row[QStringLiteral("VALUE")].toString()
+                 << "REMARK=" << row[QStringLiteral("REMARK")].toString();
     }
-    static const QRegularExpression re12(R"(\b[0-9A-Fa-f]{12}\b)");
-    const QRegularExpressionMatch m2 = re12.match(text);
-    if (m2.hasMatch()) {
-        return normalizeMacString(m2.captured(0));
+    if (out.isEmpty()) {
+        return {};
     }
-    return {};
+    return QString::fromUtf8(QJsonDocument(out).toJson(QJsonDocument::Compact));
 }
 
 QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const {
     QUrl url(baseUrl());
     QUrlQuery query;
     query.addQueryItem("method", method);
-    query.addQueryItem("param", QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact)));
+    // TestDataCollect2MainChild 按 MES 示例：param 为紧凑 JSON 对象字符串；其余接口仍为 [KEY:value,...]。
+    const QString paramStr =
+        (method == QLatin1String("TestDataCollect2MainChild"))
+            ? QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact))
+            : bydRootBracketParam(param);
+    query.addQueryItem("param", paramStr);
     url.setQuery(query);
 
     qDebug() << "BYD MES request:" << url.toString(QUrl::FullyDecoded);
@@ -365,9 +364,9 @@ void bydmes::GetTestData(MesPacketData pack) {
         return;
     }
 
-    const QString mac = extractMacForUi(responseData);
-    if (!mac.isEmpty()) {
-        emit sendMesTestvalue(pack.mechines, mac);
+    const QString customJson = formatGetCustomDataItemsJson(responseData);
+    if (!customJson.isEmpty()) {
+        emit sendMesTestvalue(pack.mechines, customJson);
     }
 }
 

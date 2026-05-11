@@ -68,7 +68,6 @@ private:
     QLabel* product_sn;
     int periph_state = 0;
     int base_state = 0;
-    int fw_state = 0;
     int key_state = 0;
     int KeyPowerState = 0;
     int KeyStartPauseState = 0;
@@ -120,13 +119,6 @@ private:
     } State;
     QElapsedTimer TestTime;
     State state = STATE_IDLE;
-    struct CurrentStats {
-        bool valid = false;
-        double minValue = 0.0;
-        double maxValue = 0.0;
-        double avgValue = 0.0;
-        double fluctuation = 0.0;
-    };
     // 操作员工号
     // 设备编号
     // 制程
@@ -135,7 +127,6 @@ private:
     // 动作
     int refresh_base_times;
     int refresh_periph_times;
-    int refresh_fw_times;
     int refresh_key_times = 0;
     int firstconnectbrush = 1;
     QTimer* usblogwaittime = new QTimer(this);
@@ -145,10 +136,6 @@ private:
     int key_test_wait_time = 15000;
     int disconnect_wait_time = 5000;
     bool isovertime = 0;  // 是否开始发送校验结果
-    bool waitingMesInspection = false;
-    bool modeCheckPassed = false;
-    CurrentStats workCurrentStats;
-    CurrentStats chargeCurrentStats;
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();
     void initPeriphState();
@@ -156,14 +143,7 @@ private:
     void writeDataToCSVFile();
     void clearDisplay();
     void bandingMacSn(QString bandingmac, QString bandingsn);
-    bool validateCompanySnRule(const QString& snValue);
-    QString parseMacFromSn(const QString& snValue);
     void startFlowWithMac(const QString& mac);
-    bool verifyTestModeState();
-    bool controlProgrammablePowerForCharge(bool enable);
-    CurrentStats collectCurrentStats(const QString& itemName, int sampleCount, int sampleIntervalMs);
-    bool evaluateCurrentStats(const QString& itemName, const CurrentStats& stats, double low, double high);
-
     void closeKeyWaitPromptProgrammatically();
 
 signals:
@@ -172,8 +152,6 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
-    void solveMesSucess(const int mechines) override;
-    void solveMesData(const int mechines, QString msg) override;
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();

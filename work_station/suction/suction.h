@@ -1,4 +1,4 @@
-﻿#ifndef SUCTION_H
+#ifndef SUCTION_H
 #define SUCTION_H
 
 #include "test_base.h"
@@ -9,6 +9,7 @@
 
 #include "Abini.h"
 #include "testmodel.h"
+#include <QVector>
 
 namespace Ui {
     class suction;
@@ -33,7 +34,7 @@ public:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
-    void refreshfwVersion(QString data) override;
+    // void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
@@ -52,6 +53,8 @@ public:
 
 private:
     void applySuctionProtocolConfig();
+    bool ensurePowerBackendReady();
+    bool dispatchPowerAction(Qusb::PowerAction action);
     QByteArray sn;
     double HighSuction;
     double LowSuction;
@@ -67,7 +70,6 @@ private:
     QLabel* product_sn;
     int periph_state = 0;
     int base_state = 0;
-    int fw_state = 0;
     int snCompareOk = 0;
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
@@ -79,12 +81,37 @@ private:
     QString logString = "";
     QString totalresult = "";
     Qusb::ProtocolType suctionProtocolType = Qusb::ProtocolType::Scpi;
+    // DAM-3158 采集与换算参数（通道为 1-based）
+    int damRangeCode = 0x000C;
+    double damRawMax = 65535.0;
+    double damCurrentFullScale_mA = 10.0;
+    double damPressureAtMinCurrent_kPa = -100.0;
+    double damPressureAtMaxCurrent_kPa = 0.0;
+    QVector<double> damRawChannels_;
+    double damLeftKpa_ = 0.0;
+    double damRightKpa_ = 0.0;
+
+    // 双通道测试参数
+    int damLeftChannel = 1;
+    int damRightChannel = 2;
+    int suctionSampleDurationMs = 15000;
+    int suctionSampleIntervalMs = 100;
+    double suctionPeakTargetKpa = 36.0;
+    double suctionPeakToleranceKpa = 2.6;
+    double suctionPeakDiffMaxKpa = 2.6;
+    bool suctionExternalPowerEnabled = false;
+    int suctionPowerOnWaitMs = 5000;
+    QSerialPort* powerSerialPort = nullptr;
+    Qusb* powerUsb = nullptr;
+    Qusb::ProtocolConfig powerProtocolConfig_;
+    bool powerBackendInitialized = false;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接
         STATE_BANDING,            // SN 绑定
         STATE_SET_TEST_MODE,      // 设置测试模式（工厂模式）
         STATE_VERIFY_TEST_MODE,   // 校验测试模式
+        STATE_VERIFY_SUCTION_MODE,  // 校验吸力模式
         STATE_SUCTION_TEST,  // 吸力等测量
         STATE_SAVE_RESULT,         // 保存结果 / 界面复位
         STATE_VERIFY_SN,           // 校验SN
@@ -94,13 +121,6 @@ private:
     } State;
     QElapsedTimer TestTime;
     State state = STATE_IDLE;
-    struct SuctionStats {
-        bool valid = false;
-        double minValue = 0.0;
-        double maxValue = 0.0;
-        double avgValue = 0.0;
-        double fluctuation = 0.0;
-    };
     // 操作员工号
     // 设备编号
     // 制程
@@ -109,7 +129,6 @@ private:
     // 动作
     int refresh_base_times;
     int refresh_periph_times;
-    int refresh_fw_times;
     int firstconnectbrush = 1;
     QTimer* usblogwaittime = new QTimer(this);
     QString last_macAddress = "没有mac地址";
@@ -118,10 +137,6 @@ private:
     int suction_wait_time = 15000;
     int disconnect_wait_time = 5000;
     bool isovertime = 0;  // 是否开始发送校验结果
-    bool waitingMesInspection = false;
-    bool modeCheckPassed = false;
-    SuctionStats workSuctionStats;
-    SuctionStats chargeSuctionStats;
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initBasicInfo();
     void initPeriphState();
@@ -129,13 +144,7 @@ private:
     void writeDataToCSVFile();
     void clearDisplay();
     void bandingMacSn(QString bandingmac, QString bandingsn);
-    bool validateCompanySnRule(const QString& snValue);
-    QString parseMacFromSn(const QString& snValue);
     void startFlowWithMac(const QString& mac);
-    bool verifyTestModeState();
-    bool controlProgrammablePowerForCharge(bool enable);
-    SuctionStats collectSuctionStats(const QString& itemName, int sampleCount, int sampleIntervalMs);
-    bool evaluateSuctionStats(const QString& itemName, const SuctionStats& stats, double low, double high);
 
 signals:
     void send_go_next_focus();
@@ -143,9 +152,6 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
-    void solveMesSucess(const int mechines) override;
-    void solveMesData(const int mechines, QString msg) override;
-
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
@@ -162,6 +168,12 @@ private slots:
     void on_pushButton_3_clicked();
     void on_pushButton_4_clicked();
     void on_stopTest_clicked();
+    /// 开发用：触发 BYD MES GetCustomData（bydmes::GetTestData）
+    void on_snruler_formes_clicked();
+    /// 开发用：模拟站前检测（sendProcessInspection → BYD Start）
+    void on_start_formes_clicked();
+    /// 开发用：模拟 PASS 过站上报（send_end_testPass → BYD TestDataCollect + Complete）
+    void on_testdata_formes_clicked();
 };
 
 #endif  // SUCTION_H
