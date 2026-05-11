@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include <algorithm>
 
@@ -356,7 +356,7 @@ void QFreeWork::debugUpdateTupleMacStatus() {
     QTupleService service;
     QString error;
     if (!service.login(userName, password, &error)) {
-        showlog("调试更新MAC状态登录失败：" + error);
+        showlog("调试更新MAC状态登录失败：" + error + " user=" + userName + " password=" + password);
         return;
     }
     if (!service.debugUpdateMacStatus(tupleMac, 2, &error)) {

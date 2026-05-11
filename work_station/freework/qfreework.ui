@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>391</width>
-    <height>388</height>
+    <width>881</width>
+    <height>516</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -137,7 +137,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string>AIR1DFF1100000101BMB5A700501</string>
+                 <string>M9P0DAC5100004B31AMB59S00296</string>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>

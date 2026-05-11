@@ -1,10 +1,12 @@
-build/*
+﻿build/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/
 build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/
 build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/上位机设置.ini
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/libusb0.dll
+!build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/libcrypto-1_1-x64.dll
+!build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/libssl-1_1-x64.dll
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/Ubuntu.qss
 new_production.pro.*
 .vscode/
