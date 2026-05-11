@@ -178,7 +178,7 @@ static const QHash<QString, QString>& tupleInspectionOpLabels() {
         {QString::fromUtf8("R_MO_TUPLE"), QString::fromUtf8("读三元组")},
         {QString::fromUtf8("R_MO_PROD_TYPE"), QString::fromUtf8("读产品类型")},
         {QString::fromUtf8("R_MO_BROADCAST_NAME"), QString::fromUtf8("读广播名称")},
-        {QString::fromUtf8("R_MO_VAR"), QString::fromUtf8("读版本信息")},
+        {QString::fromUtf8("R_VAR"), QString::fromUtf8("读版本信息")},
         {QString::fromUtf8("W_MO_TUPLE"), QString::fromUtf8("写入三元组")},
         {QString::fromUtf8("W_MO_SN"), QString::fromUtf8("写入SN")},
         {QString::fromUtf8("W_MO_PROD_TYPE"), QString::fromUtf8("写入产品类型")},
@@ -199,7 +199,7 @@ static QString tupleReportWireKeyFromDisplayZh(const QString& displayZh) {
         {QString::fromUtf8("读三元组"), QString::fromUtf8("R_D_TUPLE")},
         {QString::fromUtf8("蓝牙链路RSSI"), QString::fromUtf8("R_BT_RSSI")},
         {QString::fromUtf8("检测信号"), QString::fromUtf8("R_JL_F_BLE_RSSI")},
-        {QString::fromUtf8("读版本信息"), QString::fromUtf8("R_MO_VAR")},
+        {QString::fromUtf8("读版本信息"), QString::fromUtf8("R_VAR")},
     };
     return kZhToWire.value(displayZh.trimmed());
 }
