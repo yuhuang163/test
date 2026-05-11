@@ -36,7 +36,7 @@ public:
 
 private:
     QString normalizedBaseUrl() const;
-    bool requestGet(const QString& path, const QString& query, QByteArray* response, QString* error);
+    bool requestGet(const QString& path, const QString& query, QByteArray* response, QString* error, int* httpStatus = nullptr);
     bool requestPost(const QString& path, const QByteArray& body, QByteArray* response, QString* error);
     void setCommonHeaders(class QNetworkRequest& request) const;
 

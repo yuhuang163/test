@@ -8,7 +8,24 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+void QFreeWork::on_pushButton_clicked() {
+    // ui->macInput->setText("f4:12:fa:c5:51:c6");
+    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
+    // // ui->macInput->setText("3c:84:27:06:f7:5e");
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // // // ui->macInput->setText("3c:84:27:29:50:32");
+    // ui->macInput->setText("b4:56:5d:bf:57:9d");
 
+    // on_macInput_returnPressed();
+    // // usb-> getlxMEASure();
+    // // waitWork(1000);
+
+    // showlog("正在获取设备电量");
+    // ui->comNameCombo->setCurrentText("COM134");
+
+    // debugUpdateTupleMacStatus();
+    applyTupleByMac();
+}
 namespace {
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
@@ -473,24 +490,7 @@ void QFreeWork::initDate() {
     TestTime.start();
 }
 
-void QFreeWork::on_pushButton_clicked() {
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
-    // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    // ui->macInput->setText("3C:84:27:07:A8:D2");
-    // // // ui->macInput->setText("3c:84:27:29:50:32");
-    // ui->macInput->setText("b4:56:5d:bf:57:9d");
 
-    // on_macInput_returnPressed();
-    // // usb-> getlxMEASure();
-    // // waitWork(1000);
-
-    // showlog("正在获取设备电量");
-    // ui->comNameCombo->setCurrentText("COM134");
-
-    debugUpdateTupleMacStatus();
-    applyTupleByMac();
-}
 
 void QFreeWork::on_get_battery_clicked() {
     if (at->getConnected()) {
