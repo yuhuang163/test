@@ -59,6 +59,8 @@ private:
     QVector<int> savedTestOrderSnapshot_;
     bool testOrderDirty_ = false;
     bool switchingTestOrderStation_ = false;
+    QString originalStation_;
+    bool stationReloading_ = false;
 
 protected:
     virtual void closeEvent(QCloseEvent*);

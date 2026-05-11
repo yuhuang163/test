@@ -2,7 +2,9 @@
 
 #include "qevent.h"
 #include <algorithm>
+#include <QApplication>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
@@ -161,6 +163,25 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
 
     initTupleEnvironmentCombo();
     loadConfig();
+    originalStation_ = SETTINGS.value("SYSTEM/station").toString();
+    connect(StationGroup, QOverload<int>::of(&QButtonGroup::buttonClicked), this, [this](int) {
+        const QString oldStation = originalStation_;
+        saveCurrentTestOrder();
+        saveConfig();
+        SETTINGS.sync();
+        const QString newStation = SETTINGS.value("SYSTEM/station").toString();
+        if (oldStation.isEmpty() || oldStation == newStation) {
+            return;
+        }
+        originalStation_ = newStation;
+        stationReloading_ = true;
+        qApp->setProperty("StationRestartRequested", true);
+        const auto widgets = QApplication::topLevelWidgets();
+        for (QWidget* widget : widgets) {
+            widget->close();
+        }
+        QCoreApplication::exit(0);
+    });
     initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
@@ -445,7 +466,7 @@ void qsetting::reorderFreeWorkCheckBoxes() {
         
         freeWorkConfigLayout_->addWidget(checkBox);
         checkBox->show();
-        qDebug() << "[TestOrder] add to config:" << index;
+        // qDebug() << "[TestOrder] add to config:" << index;
     }
 
     int optionalPos = 0;
@@ -1343,6 +1364,11 @@ void qsetting::saveConfig() {
 }
 
 void qsetting::closeEvent(QCloseEvent* event) {
+    if (stationReloading_) {
+        qDebug() << "切换工站中，跳过设置页关闭保存";
+        event->accept();
+        return;
+    }
     saveCurrentTestOrder();
     saveConfig();
     qDebug() << "已经保存配置信息";

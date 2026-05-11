@@ -261,9 +261,6 @@ int main(int argc, char* argv[]) {
 
     // qDebug() << "串口问题"<<QSslSocket::sslLibraryBuildVersionString();
     a.setFont(QFont("Microsoft Yahei", 9));
-    QString station = SETTINGS.value("SYSTEM/station").toString();  // 工站
-    qDebug() << "工站为：" + station;
-
     qRegisterMetaType<FacErrorCode>("FacErrorCode");
     qRegisterMetaType<ProtocolSnData>("ProtocolSnData");
     qRegisterMetaType<ProtocolBatteryData>("ProtocolBatteryData");
@@ -293,111 +290,122 @@ int main(int argc, char* argv[]) {
                                             {"FREE_WORK", 10},        {"MAIN_TEST", 11},  {"dji_TEST", 12},
                                             {"KEY_TEST", 13},         {"SUCTION_TEST", 14}};
 
-    switch (map[station]) {
-        case 1: {
-            quiescent_current_box* w = new quiescent_current_box;  // 静态电流
-            w->show();
-            w->TotallyTask();
-            delete w;
-            break;
-        }
+    int exitCode = 0;
+    do {
+        a.setProperty("StationRestartRequested", false);
+        QString station = SETTINGS.value("SYSTEM/station").toString();  // 工站
+        qDebug() << "工站为：" + station;
 
-        case 2: {
-            motorbox* m = new motorbox;  // 电机测试
-            m->show();
-            m->TotallyTask();
-            delete m;
-            break;
-        }
+        switch (map[station]) {
+            case 1: {
+                quiescent_current_box* w = new quiescent_current_box;  // 静态电流
+                w->show();
+                w->TotallyTask();
+                delete w;
+                break;
+            }
 
-        case 3: {
-            imubox* i = new imubox;  // imu校准
-            i->show();
-            i->TotallyTask();
-            delete i;
-            break;
-        }
+            case 2: {
+                motorbox* m = new motorbox;  // 电机测试
+                m->show();
+                m->TotallyTask();
+                delete m;
+                break;
+            }
 
-        case 4: {
-            screenbox* c = new screenbox;  // 屏幕测试
-            c->show();
-            c->TotallyTask();
-            delete c;
-            break;
-        }
+            case 3: {
+                imubox* i = new imubox;  // imu校准
+                i->show();
+                i->TotallyTask();
+                delete i;
+                break;
+            }
 
-        case 5: {
-            camerabox* c = new camerabox;  // 摄像头测试
-            c->show();
-            c->TotallyTask();
-            delete c;
-            break;
-        }
+            case 4: {
+                screenbox* c = new screenbox;  // 屏幕测试
+                c->show();
+                c->TotallyTask();
+                delete c;
+                break;
+            }
 
-        case 6: {
-            wifibox* f = new wifibox;  // wifi蓝牙测试
-            f->show();
-            f->TotallyTask();
-            delete f;
-            break;
-        }
+            case 5: {
+                camerabox* c = new camerabox;  // 摄像头测试
+                c->show();
+                c->TotallyTask();
+                delete c;
+                break;
+            }
 
-        case 7: {
-            ageingbox* x = new ageingbox;  // 老化测试工站
-            x->show();
-            x->TotallyTask();
-            delete x;
-            break;
+            case 6: {
+                wifibox* f = new wifibox;  // wifi蓝牙测试
+                f->show();
+                f->TotallyTask();
+                delete f;
+                break;
+            }
+
+            case 7: {
+                ageingbox* x = new ageingbox;  // 老化测试工站
+                x->show();
+                x->TotallyTask();
+                delete x;
+                break;
+            }
+            case 8: {
+                pcbabox* p = new pcbabox;  // 老化测试工站
+                p->show();
+                p->TotallyTask();
+                delete p;
+                break;
+            }
+            case 9: {
+                PressCalibBox* c = new PressCalibBox;  // 压感校准测试工站
+                c->show();
+                c->TotallyTask();
+                delete c;
+                break;
+            }
+            case 10: {
+                QFreeWorkBox* f = new QFreeWorkBox;  // 自由工站
+                f->show();
+                f->TotallyTask();
+                delete f;
+                break;
+            }
+            case 11: {
+                MainWindow h;  // 主测试
+                h.show();
+                exitCode = a.exec();
+                break;
+            }
+            case 12: {
+                factory_analyzer dji;  // 主测试
+                dji.show();
+                exitCode = a.exec();
+                break;
+            }
+            case 13: {
+                key_test_box* k = new key_test_box;  // 按键测试
+                k->show();
+                k->TotallyTask();
+                delete k;
+                break;
+            }
+            case 14: {
+                suction_box* s = new suction_box;  // 吸力测试
+                s->show();
+                s->TotallyTask();
+                delete s;
+                break;
+            }
+            default:
+                factory_analyzer dji;  // 主测试
+                dji.show();
+                exitCode = a.exec();
+                break;
         }
-        case 8: {
-            pcbabox* p = new pcbabox;  // 老化测试工站
-            p->show();
-            p->TotallyTask();
-            delete p;
-            break;
-        }
-        case 9: {
-            PressCalibBox* c = new PressCalibBox;  // 压感校准测试工站
-            c->show();
-            c->TotallyTask();
-            delete c;
-            break;
-        }
-        case 10: {
-            QFreeWorkBox* f = new QFreeWorkBox;  // 自由工站
-            f->show();
-            f->TotallyTask();
-            delete f;
-            break;
-        }
-        case 11: {
-            MainWindow h;  // 主测试
-            h.show();
-            return a.exec();
-        }
-        case 12: {
-            factory_analyzer dji;  // 主测试
-            dji.show();
-            return a.exec();
-        }
-        case 13: {
-            key_test_box* k = new key_test_box;  // 按键测试
-            k->show();
-            k->TotallyTask();
-            delete k;
-            break;
-        }
-        case 14: {
-            suction_box* s = new suction_box;  // 吸力测试
-            s->show();
-            s->TotallyTask();
-            delete s;
-            break;
-        }
-        default:
-            factory_analyzer dji;  // 主测试
-            dji.show();
-            return a.exec();
-            break;
-    }
+    } while (a.property("StationRestartRequested").toBool());
+
+    return exitCode;
 }
