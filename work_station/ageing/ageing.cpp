@@ -506,7 +506,7 @@ void ageing::startTask() {
                     pack.sn = ui->getMac->text();
                     pack.itemvalue = "083";
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -520,7 +520,7 @@ void ageing::startTask() {
                     ui->test_result->setStyleSheet(
                         "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
-                    // emit send_end_testPass(pack);
+                    emit send_end_testPass(pack);
                     appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                     testResultTableUpdate(testItems);
                 }
@@ -538,7 +538,7 @@ void ageing::startTask() {
 
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                // emit send_end_test(getIndex());
+                emit send_end_test(getIndex());
                 
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
@@ -614,9 +614,11 @@ void ageing::on_getMac_returnPressed() {
     testResultTableUpdate(testItems);
     // 获取比亚迪mes的sn校验规则
     // processGetMesTestValue();
-    // 获取比亚迪mes的站前检测
-    // processInspection(stringsn);
-    appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    // MES站前检测，成功再开始测试
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->snInput->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
     on_macInput_returnPressed();
 
 }

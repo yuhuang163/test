@@ -711,12 +711,10 @@ void suction::on_snInput_returnPressed() {
         return;
     }
     // MES站前检测，成功再开始测试
-    // if (ui->isusemes->checkState()) {
-    //     waitingMesInspection = true;
-    //     processInspection(ui->snInput->text());
-    //     return;
-    // }
-    // processInspection(ui->snInput->text());
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->snInput->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
     startFlowWithMac(parsedMac);
 }
 void suction::on_macInput_returnPressed() {

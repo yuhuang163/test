@@ -1278,7 +1278,10 @@ void imucali::on_getMac_returnPressed() {
     dataInit();
     showlog("正在查询mac地址");
     getMac(ui->getMac->text());  // 文件获取
-    processInspection(ui->getMac->text());
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->snInput->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
 
     processGetMesTestValue();  // mes获取
 }

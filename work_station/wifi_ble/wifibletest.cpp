@@ -905,11 +905,6 @@ void wifibletest::on_macInput_returnPressed() {
         on_connectButton_clicked();
     }
 
-    if (pack.factory == "lx" || pack.factory == "jj") {
-        if (!usbSerialPort->isOpen()) {
-            openUsbSerialPort();
-        }
-    }
 
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
@@ -980,8 +975,10 @@ void wifibletest::on_getMac_returnPressed() {
     stringsn = ui->getMac->text();
     appendStationResult(testItems, "主板条码", "0.0000", passValue);
     testResultTableUpdate(testItems);
-    // processInspection(ui->getMac->text());  // 站前检测
-    // appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->snInput->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
     on_macInput_returnPressed();
 }
 
