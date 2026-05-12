@@ -638,7 +638,7 @@ void test_base::showlog(QString msg) {
     qDebug() << getIndex() << msg;
 }
 
-int test_base::getIndex() { return m_index; }
+int test_base::getIndex() const { return m_index; }
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
