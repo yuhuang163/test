@@ -1,4 +1,7 @@
 #include "qusb.h"
+
+#include "Abini.h"
+
 #include <QDebug>
 #include <QMessageBox>
 #include <QSerialPort>
@@ -80,6 +83,31 @@ void qusbWarnVisaNotConnectedOnce()
 #if _MSC_VER >= 1600
     #pragma execution_character_set(push, "utf-8")
 #endif
+
+const Qusb::ProtocolConfig& Qusb::programmablePowerDefaultsWfp60h()
+{
+    static Qusb::ProtocolConfig k;
+    static bool stringsInited = false;
+    if (!stringsInited) {
+        stringsInited = true;
+        k.protocol = ProtocolType::Scpi;
+        // 与《WFP60H双通道电池通讯说明》6.3.2 / 6.3.1 长名一致；短名可按实机微调
+        k.scpiSetVoltageCmd = QStringLiteral("SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1");
+        k.scpiSetCurrentCmd = QStringLiteral("SOURce1:CURRent:LIMit:VALue %1");
+        k.scpiOutputOnCmd = QStringLiteral("OUTPut1:STATe ON");
+        k.scpiOutputOffCmd = QStringLiteral("OUTPut1:STATe OFF");
+        // 通讯说明 6.3.4.6：MEASure1:<function>? 明确测电压或电流（勿用裸 READ1?）
+        k.scpiReadVoltageCmd = QStringLiteral("MEASure1:VOLTage:DC?");
+        k.scpiReadCurrentCmd = QStringLiteral("MEASure1:CURRent:DC?");
+        k.scpiPowerVoltageV = 12.0;
+        k.scpiPowerCurrentA = 2.5;
+    }
+    // VISA 开关与地址仅读 [VisaPower]（全工程程控电源共用，不再读 ProgrammablePower）
+    k.scpiUseVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool();
+    k.scpiVisaAddress = SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString();
+    return k;
+}
+
 Qusb::Qusb(QSerialPort *parent) :
 QSerialPort(parent), serialPort(parent)
 {
@@ -133,6 +161,11 @@ void Qusb::parseCmd(const QByteArray &byte)
     }
 }
 
+bool Qusb::programmablePowerVisaConfigured() const
+{
+    return protocolConfig_.scpiUseVisa && !protocolConfig_.scpiVisaAddress.trimmed().isEmpty();
+}
+
 bool Qusb::configureProgrammablePower(double voltageV, double currentA)
 {
     if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
@@ -167,30 +200,59 @@ bool Qusb::setProgrammablePowerOutput(bool enable)
 
 bool Qusb::readProgrammablePowerVoltage()
 {
-    if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
+    if (!programmablePowerVisaConfigured() && (!serialPort || !serialPort->isOpen()))
     {
         return false;
     }
-    if (resolveProtocolForOutput() != ProtocolType::Scpi)
+    if (programmablePowerVisaConfigured())
     {
-        qDebug() << "当前协议不支持程控电源电压读取";
-        return false;
+        if (!ensureVisaConnected())
+        {
+            emit programmablePowerVoltageRead(0.0, false);
+            return false;
+        }
+        QString resp;
+        if (!visaQuery(protocolConfig_.scpiReadVoltageCmd, &resp))
+        {
+            emit programmablePowerVoltageRead(0.0, false);
+            return false;
+        }
+        bool ok = false;
+        const double v = resp.trimmed().toDouble(&ok);
+        emit programmablePowerVoltageRead(v, ok);
+        return true;
     }
+    // 串口：下一行 SCPI 回包在 processCmd 中按 pending 解析并 emit
+    pendingProgPowerRead_ = ProgrammablePowerReadPending::Voltage;
     sendCmd(protocolConfig_.scpiReadVoltageCmd);
     return true;
 }
 
 bool Qusb::readProgrammablePowerCurrent()
 {
-    if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
+    if (!programmablePowerVisaConfigured() && (!serialPort || !serialPort->isOpen()))
     {
         return false;
     }
-    if (resolveProtocolForOutput() != ProtocolType::Scpi)
+    if (programmablePowerVisaConfigured())
     {
-        qDebug() << "当前协议不支持程控电源电流读取";
-        return false;
+        if (!ensureVisaConnected())
+        {
+            emit programmablePowerCurrentRead(0.0, false);
+            return false;
+        }
+        QString resp;
+        if (!visaQuery(protocolConfig_.scpiReadCurrentCmd, &resp))
+        {
+            emit programmablePowerCurrentRead(0.0, false);
+            return false;
+        }
+        bool ok = false;
+        const double v = resp.trimmed().toDouble(&ok);
+        emit programmablePowerCurrentRead(v, ok);
+        return true;
     }
+    pendingProgPowerRead_ = ProgrammablePowerReadPending::Current;
     sendCmd(protocolConfig_.scpiReadCurrentCmd);
     return true;
 }
@@ -322,6 +384,13 @@ bool Qusb::handleScpiAction(PowerAction action)
     case PowerAction::InitializeDevice:
         sendCmd("*RST");
         return true;
+    case PowerAction::ReadProgrammablePowerVoltage:
+        return readProgrammablePowerVoltage();
+    case PowerAction::ReadProgrammablePowerCurrent:
+        return readProgrammablePowerCurrent();
+    case PowerAction::ReadsuctionData:
+        qDebug() << "SCPI 未实现 ReadsuctionData";
+        return false;
     }
     return false;
 }
@@ -340,6 +409,11 @@ bool Qusb::handleHqAction(PowerAction action)
     case PowerAction::ReadConfiguration:
         qDebug() << "华勤Modbus协议暂无读取配置指令，已跳过";
         return false;
+    case PowerAction::ReadsuctionData:
+    case PowerAction::ReadProgrammablePowerVoltage:
+    case PowerAction::ReadProgrammablePowerCurrent:
+        qDebug() << "华勤Modbus协议不支持该程控电源动作";
+        return false;
     }
     return false;
 }
@@ -355,6 +429,11 @@ bool Qusb::handleLxAction(PowerAction action)
     case PowerAction::ReadConfiguration:
     case PowerAction::InitializeDevice:
         qDebug() << "立讯协议当前仅支持读取测量值";
+        return false;
+    case PowerAction::ReadsuctionData:
+    case PowerAction::ReadProgrammablePowerVoltage:
+    case PowerAction::ReadProgrammablePowerCurrent:
+        qDebug() << "立讯协议不支持该程控电源动作";
         return false;
     }
     return false;
@@ -372,6 +451,7 @@ bool Qusb::handlebydAction(PowerAction action)
         sendCONF(protocolConfig_.scpiCurrentType, protocolConfig_.scpiCurrentMode, protocolConfig_.scpiRange);
         sendCmd(protocolConfig_.scpiSetVoltageCmd.arg(QString::number(protocolConfig_.scpiPowerVoltageV, 'f', 3)));
         sendCmd(protocolConfig_.scpiSetCurrentCmd.arg(QString::number(protocolConfig_.scpiPowerCurrentA, 'f', 3)));
+        sendCmd(protocolConfig_.scpiOutputOnCmd);
         return true;
     case PowerAction::ReadConfiguration:
         // BYD 电源读配置
@@ -381,8 +461,32 @@ bool Qusb::handlebydAction(PowerAction action)
         // BYD 电源初始化
         sendCmd("*RST");
         return true;
+    case PowerAction::ReadProgrammablePowerVoltage:
+        return readProgrammablePowerVoltage();
+    case PowerAction::ReadProgrammablePowerCurrent:
+        return readProgrammablePowerCurrent();
+    case PowerAction::ReadsuctionData:
+        qDebug() << "BYD 协议未实现 ReadsuctionData";
+        return false;
     }
     return false;
+}
+
+void Qusb::emitProgrammablePowerReadIfPending(const QString& scpiLine)
+{
+    if (pendingProgPowerRead_ == ProgrammablePowerReadPending::None) {
+        return;
+    }
+    const QString t = scpiLine.trimmed();
+    bool ok = false;
+    const double v = t.toDouble(&ok);
+    const ProgrammablePowerReadPending p = pendingProgPowerRead_;
+    pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
+    if (p == ProgrammablePowerReadPending::Voltage) {
+        emit programmablePowerVoltageRead(v, ok);
+    } else if (p == ProgrammablePowerReadPending::Current) {
+        emit programmablePowerCurrentRead(v, ok);
+    }
 }
 
 void Qusb::processCmd(QString cmd, QString parameter)
@@ -392,6 +496,11 @@ void Qusb::processCmd(QString cmd, QString parameter)
     {
         // 调用回调函数
         it->second(parameter);
+    }
+    else if (pendingProgPowerRead_ != ProgrammablePowerReadPending::None)
+    {
+        // 程控电源读 V/I 后发「?」得到的纯数值行，勿走电流表 send_ammeter_data
+        emitProgrammablePowerReadIfPending(cmd);
     }
     else
     {
@@ -421,15 +530,17 @@ void Qusb::sendCmd(QString cmd)
 
 bool Qusb::isVisaScpiEnabled() const
 {
-    return protocolConfig_.scpiUseVisa &&
-           !protocolConfig_.scpiVisaAddress.trimmed().isEmpty() &&
-           resolveProtocolForOutput() == ProtocolType::Scpi;
+    // Scpi：整口 SCPI；Byd：DAM 等为 Modbus，程控电源仍用同一套 VisaPower SCPI 走 VISA
+    if (!programmablePowerVisaConfigured()) {
+        return false;
+    }
+    const ProtocolType p = resolveProtocolForOutput();
+    return p == ProtocolType::Scpi || p == ProtocolType::Byd;
 }
 
 bool Qusb::ensureVisaConnected()
 {
-    if (!isVisaScpiEnabled())
-    {
+    if (!isVisaScpiEnabled()) {
         return false;
     }
 #ifdef HAVE_NI_VISA

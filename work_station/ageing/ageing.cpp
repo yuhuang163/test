@@ -8,7 +8,27 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
-
+void ageing::on_pushButton_clicked() {
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // on_macInput_returnPressed();
+    // at->sendMac(ui->macInput->text());  // 发送mac地址
+    // waitWork(8000);
+    // sendCommandWithRetry([&]() {
+    //     QVariantMap m;
+    //     m["mode"] = 1;
+    //     m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+    //     protocolManager.set(DeviceCmd::BurningMode, m);
+    // });
+    const QString entered = ui->getMac->text().trimmed();
+    MesPacketData p = pack;
+    p.factory = QStringLiteral("byd");
+    p.mechines = getIndex();
+    p.sn = entered;
+    p.itemvalue = entered;
+    p.instruct_num = QStringLiteral("079");
+    showlog(QStringLiteral("MES：getMesTestValue → 按过程码请求 SN"));
+    emit getMesTestValue(p);
+}
 ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::ageing) {
     m_index = index;
     pack.mechines = getIndex();
@@ -553,18 +573,7 @@ void ageing::startTask() {
         }
     }
 
-void ageing::on_pushButton_clicked() {
-    // ui->macInput->setText("3C:84:27:07:A8:D2");
-    // on_macInput_returnPressed();
-    at->sendMac(ui->macInput->text());  // 发送mac地址
-    waitWork(8000);
-    sendCommandWithRetry([&]() {     
-        QVariantMap m;
-        m["mode"] = 1;
-        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
-        protocolManager.set(DeviceCmd::BurningMode, m); 
-    });
-}
+
 
 void ageing::on_getMac_returnPressed() {
     testResultTableInit();

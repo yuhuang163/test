@@ -178,7 +178,7 @@
                <item>
                 <widget class="QLineEdit" name="getMac">
                  <property name="text">
-                  <string/>
+                  <string>V32604140014</string>
                  </property>
                  <property name="placeholderText">
                   <string>切换英文输入再扫码</string>
