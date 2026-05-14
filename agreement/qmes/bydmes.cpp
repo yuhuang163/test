@@ -15,6 +15,7 @@
 #include <QUrlQuery>
 #include <QFile>
 #include <QFileInfo>
+#include <QDir>
 #include <QSettings>
 #include <QTextCodec>
 
@@ -28,7 +29,7 @@ static QMap<QString, QString> g_externalMesConfigMap;
 
 namespace {
 
-/// 上位机设置.ini：与 qsetting 一致支持 [mes]/[Mes]/[MES] 下的 ConfigFilePath
+/// 上位机设置.ini：与 qsetting 一致支持 [mes]/[Mes]/[MES] 下的 ConfigFilePath/configfilepath
 QString bydMesReadExternalConfigPathFromMainIni() {
     QString p = SETTINGS.value(QStringLiteral("mes/ConfigFilePath")).toString().trimmed();
     if (p.isEmpty()) {
@@ -37,7 +38,29 @@ QString bydMesReadExternalConfigPathFromMainIni() {
     if (p.isEmpty()) {
         p = SETTINGS.value(QStringLiteral("MES/ConfigFilePath")).toString().trimmed();
     }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("mes/configfilepath")).toString().trimmed();
+    }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("Mes/configfilepath")).toString().trimmed();
+    }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("MES/configfilepath")).toString().trimmed();
+    }
     return p;
+}
+
+QString bydMesResolveMesConfigFilePath(const QString& configFilePath) {
+    const QFileInfo selectedInfo(configFilePath);
+    const QDir dir = selectedInfo.isDir() ? QDir(selectedInfo.absoluteFilePath()) : selectedInfo.dir();
+    const QStringList candidates = {dir.filePath(QStringLiteral("mes_config.ini")),
+                                    dir.filePath(QStringLiteral("mes_config_ini"))};
+    for (const QString& candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return QFileInfo(candidate).absoluteFilePath();
+        }
+    }
+    return candidates.first();
 }
 
 
@@ -184,22 +207,24 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
             g_externalMesConfigMap.clear();
         }
         if (errorMessage) {
-            *errorMessage = QStringLiteral("上位机设置.ini 中 [mes]/[Mes]/[MES] 下 ConfigFilePath 为空，已清除 BYD 外部 MES 缓存");
+            *errorMessage = QStringLiteral("请选择MES配置文件");
         }
-        qDebug() << QStringLiteral("[BYD MES 外部配置] ConfigFilePath 未配置，bydmes 仍读主 ini 的 Mes/MES");
+        qWarning() << QStringLiteral("[BYD MES 外部配置] ConfigFilePath 未配置，请选择MES配置文件");
         return false;
     }
-    
-    QFileInfo fileInfo(configFilePath);
+
+    const QString mesConfigPath = bydMesResolveMesConfigFilePath(configFilePath);
+    QFileInfo fileInfo(mesConfigPath);
     if (!fileInfo.exists()) {
         {
             QMutexLocker locker(&g_externalMesConfigMutex);
             g_externalMesConfigMap.clear();
         }
         if (errorMessage) {
-            *errorMessage = QStringLiteral("外部 MES 配置文件不存在: %1").arg(configFilePath);
+            *errorMessage = QStringLiteral("MES配置文件不存在: %1").arg(mesConfigPath);
         }
-        qWarning() << QStringLiteral("[BYD MES 外部配置] 配置文件不存在: %1").arg(configFilePath);
+        qWarning() << QStringLiteral("[BYD MES 外部配置] ConfigFilePath=%1，对应 mes_config.ini 不存在: %2")
+                          .arg(configFilePath, mesConfigPath);
         return false;
     }
 
@@ -209,14 +234,14 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
             g_externalMesConfigMap.clear();
         }
         if (errorMessage) {
-            *errorMessage = QStringLiteral("外部 MES 配置文件不可读: %1").arg(configFilePath);
+            *errorMessage = QStringLiteral("MES配置文件不可读: %1").arg(mesConfigPath);
         }
-        qWarning() << QStringLiteral("[BYD MES 外部配置] 配置文件不可读: %1").arg(configFilePath);
+        qWarning() << QStringLiteral("[BYD MES 外部配置] 配置文件不可读: %1").arg(mesConfigPath);
         return false;
     }
     
-    QTextCodec* iniCodec = bydMesPickIniFileCodec(configFilePath);
-    QSettings externalConfig(configFilePath, QSettings::IniFormat);
+    QTextCodec* iniCodec = bydMesPickIniFileCodec(mesConfigPath);
+    QSettings externalConfig(mesConfigPath, QSettings::IniFormat);
     externalConfig.setIniCodec(iniCodec);
 
     QMap<QString, QString> configMap;
@@ -230,8 +255,8 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
         g_externalMesConfigMap = configMap;
     }
 
-    qDebug() << QStringLiteral("[BYD MES 外部配置] 已从 %1 加载 %2 条，INI 解析编码: %3")
-                    .arg(configFilePath)
+    qDebug() << QStringLiteral("[BYD MES 外部配置] 已按 ConfigFilePath 目录从 %1 加载 %2 条，INI 解析编码: %3")
+                    .arg(mesConfigPath)
                     .arg(configMap.size())
                     .arg(QString::fromLatin1(iniCodec->name()));
     return true;
@@ -634,6 +659,12 @@ void bydmes::LogIn(MesPacketData pack) {
 
 void bydmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory != "byd") {
+        return;
+    }
+
+    QString configError;
+    if (!bydmes::loadExternalMesConfig(&configError)) {
+        emit operateMesError(pack.mechines, configError);
         return;
     }
 
