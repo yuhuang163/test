@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1745</width>
-    <height>971</height>
+    <width>1365</width>
+    <height>1085</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -21,7 +21,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
-    <item row="0" column="0">
+    <item row="4" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_45">
       <property name="leftMargin">
        <number>0</number>
@@ -48,9 +48,6 @@
           <font>
            <bold>false</bold>
           </font>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
          </property>
          <property name="title">
           <string>基础属性</string>
@@ -94,9 +91,6 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="styleSheet">
-          <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-         </property>
          <property name="title">
           <string>外设状态</string>
          </property>
@@ -138,14 +132,11 @@
             <verstretch>1</verstretch>
            </sizepolicy>
           </property>
-          <property name="styleSheet">
-           <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-          </property>
           <property name="title">
            <string>信息显示</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_13">
-           <item row="0" column="0">
+           <item row="2" column="0">
             <widget class="QSplitter" name="splitter_3">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -175,929 +166,11 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>3</number>
+               <number>0</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
               </property>
-              <widget class="QWidget" name="tab_2">
-               <attribute name="title">
-                <string>老化测试</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_2">
-                <item row="0" column="0">
-                 <widget class="QGroupBox" name="groupBox_4">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-                  </property>
-                  <property name="title">
-                   <string>老化测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_2">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout">
-                     <item>
-                      <widget class="QLabel" name="label">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string>老化模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="burningModeCombo">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="editable">
-                        <bool>false</bool>
-                       </property>
-                       <item>
-                        <property name="text">
-                         <string>老化1</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>老化2</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>老化3</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>老化4</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_103">
-                     <item>
-                      <widget class="QLabel" name="label_108">
-                       <property name="text">
-                        <string>老化时间(秒)</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="burningModetime">
-                       <property name="text">
-                        <string>1800</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_10">
-                     <property name="leftMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QPushButton" name="enterBurningMode">
-                       <property name="text">
-                        <string>进入老化</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="exitBurningMode">
-                       <property name="text">
-                        <string>退出老化</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="readBurningModestatus">
-                       <property name="text">
-                        <string>读取老化状态</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_3">
-               <attribute name="title">
-                <string>信号测试</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout">
-                <item row="3" column="0">
-                 <widget class="QPushButton" name="start_wifible_test">
-                  <property name="text">
-                   <string>开始wifi蓝牙信号测试</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="0">
-                 <widget class="QGroupBox" name="groupBox_3">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-                  </property>
-                  <property name="title">
-                   <string>WIFI测试</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_4">
-                   <item>
-                    <layout class="QVBoxLayout" name="verticalLayout">
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_4">
-                       <item>
-                        <widget class="QLabel" name="label_3">
-                         <property name="text">
-                          <string>wifi 账号</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="wifiUserName">
-                         <property name="readOnly">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_5">
-                       <item>
-                        <widget class="QLabel" name="label_4">
-                         <property name="text">
-                          <string>wifi 密码</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLineEdit" name="wifiPassword">
-                         <property name="echoMode">
-                          <enum>QLineEdit::Password</enum>
-                         </property>
-                         <property name="readOnly">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_7">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="BLE_RSSI">
-                       <property name="text">
-                        <string>BLE的RSSI：</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="WIFI_RSSI">
-                       <property name="text">
-                        <string>wifi的RSSI：</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_3">
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QCheckBox" name="show_rssi">
-                       <property name="text">
-                        <string>显示蓝牙rssi</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_rssi_device">
-                       <property name="text">
-                        <string>获取对端bt的rssi</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_ble_rssi_device">
-                       <property name="text">
-                        <string>获取对端ble的rssi</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="connectwifi">
-                       <property name="text">
-                        <string>连接wifi</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="disconnectwifi">
-                       <property name="enabled">
-                        <bool>true</bool>
-                       </property>
-                       <property name="text">
-                        <string>断开wifi</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="getwifi">
-                       <property name="text">
-                        <string>获取wifi设置信息</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="new_connectwifi">
-                       <property name="text">
-                        <string>新的连接wifi接口</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_25">
-                  <item>
-                   <widget class="QLabel" name="ble_test_result">
-                    <property name="text">
-                     <string>TextLabel</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="wifi_test_result">
-                    <property name="text">
-                     <string>TextLabel</string>
-                    </property>
-                    <property name="alignment">
-                     <set>Qt::AlignCenter</set>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_106">
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QPushButton" name="get_trim_data">
-                    <property name="text">
-                     <string>获取trim值</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="set_trim_data">
-                    <property name="text">
-                     <string>设置trim值</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="trim_data_line">
-                    <property name="text">
-                     <string>255</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="enter_ble_cali">
-                    <property name="text">
-                     <string>进入蓝牙校频</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="exit_ble_cali">
-                    <property name="text">
-                     <string>退出蓝牙校频</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="enter_ble_test">
-                    <property name="text">
-                     <string>进入蓝牙信令测试</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="exit_ble_test">
-                    <property name="text">
-                     <string>退出蓝牙信令测试</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="enter_no_ble_test">
-                    <property name="text">
-                     <string>进入蓝牙非信令测试</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="exit_no_ble_test">
-                    <property name="text">
-                     <string>退出蓝牙非信令测试</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </widget>
-              <widget class="QWidget" name="tab_13">
-               <attribute name="title">
-                <string>屏幕和RGB灯光控制</string>
-               </attribute>
-               <layout class="QGridLayout" name="gridLayout_17">
-                <item row="0" column="0">
-                 <widget class="QPushButton" name="lcdTestButton">
-                  <property name="text">
-                   <string>屏幕测试</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
-                 <layout class="QVBoxLayout" name="verticalLayout_30">
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_67">
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_29">
-                      <item>
-                       <widget class="QLineEdit" name="light1">
-                        <property name="readOnly">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_58">
-                        <property name="text">
-                         <string>左上灯区</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_64">
-                        <item>
-                         <widget class="QLabel" name="label_55">
-                          <property name="text">
-                           <string>R1</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="R1">
-                          <property name="mouseTracking">
-                           <bool>false</bool>
-                          </property>
-                          <property name="tabletTracking">
-                           <bool>false</bool>
-                          </property>
-                          <property name="contextMenuPolicy">
-                           <enum>Qt::DefaultContextMenu</enum>
-                          </property>
-                          <property name="layoutDirection">
-                           <enum>Qt::LeftToRight</enum>
-                          </property>
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                          <property name="invertedAppearance">
-                           <bool>false</bool>
-                          </property>
-                          <property name="tickPosition">
-                           <enum>QSlider::NoTicks</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_46">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_65">
-                        <item>
-                         <widget class="QLabel" name="label_56">
-                          <property name="text">
-                           <string>G1</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="G1">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_47">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_66">
-                        <item>
-                         <widget class="QLabel" name="label_57">
-                          <property name="text">
-                           <string>B1</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="B1">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_48">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_28">
-                      <item>
-                       <widget class="QLineEdit" name="light2">
-                        <property name="readOnly">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_59">
-                        <property name="text">
-                         <string>右上灯区</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_61">
-                        <item>
-                         <widget class="QLabel" name="label_52">
-                          <property name="text">
-                           <string>R2</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="R2">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_62">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_62">
-                        <item>
-                         <widget class="QLabel" name="label_53">
-                          <property name="text">
-                           <string>G2</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="G2">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_63">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_63">
-                        <item>
-                         <widget class="QLabel" name="label_54">
-                          <property name="text">
-                           <string>B2</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="B2">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_64">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </item>
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_68">
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_27">
-                      <item>
-                       <widget class="QLineEdit" name="light3">
-                        <property name="readOnly">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_60">
-                        <property name="text">
-                         <string>左下灯区</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_58">
-                        <item>
-                         <widget class="QLabel" name="label_49">
-                          <property name="text">
-                           <string>R3</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="R3">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_65">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_59">
-                        <item>
-                         <widget class="QLabel" name="label_50">
-                          <property name="text">
-                           <string>G3</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="G3">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_66">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_60">
-                        <item>
-                         <widget class="QLabel" name="label_51">
-                          <property name="text">
-                           <string>B3</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="B3">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_67">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_9">
-                      <item>
-                       <widget class="QLineEdit" name="light4">
-                        <property name="readOnly">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <widget class="QLabel" name="label_61">
-                        <property name="text">
-                         <string>右下灯区</string>
-                        </property>
-                        <property name="alignment">
-                         <set>Qt::AlignCenter</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_54">
-                        <item>
-                         <widget class="QLabel" name="label_43">
-                          <property name="text">
-                           <string>R4</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="R4">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_68">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_53">
-                        <item>
-                         <widget class="QLabel" name="label_44">
-                          <property name="text">
-                           <string>G4</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="G4">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_69">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_52">
-                        <item>
-                         <widget class="QLabel" name="label_45">
-                          <property name="text">
-                           <string>B4</string>
-                          </property>
-                          <property name="alignment">
-                           <set>Qt::AlignCenter</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QSlider" name="B4">
-                          <property name="maximum">
-                           <number>255</number>
-                          </property>
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="label_70">
-                          <property name="text">
-                           <string>0</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </item>
-                <item row="3" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_51">
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QPushButton" name="white_led">
-                    <property name="text">
-                     <string>白灯开关</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="pink_led">
-                    <property name="text">
-                     <string>红灯开关</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="light_test">
-                    <property name="text">
-                     <string>RGB灯光测试</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="4" column="1">
-                 <widget class="QSlider" name="yedengslider">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
-                 <widget class="QPushButton" name="night_brightness">
-                  <property name="text">
-                   <string>夜灯亮度</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
               <widget class="QWidget" name="tab_4">
                <attribute name="title">
                 <string>成品测试</string>
@@ -1110,9 +183,6 @@
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
                   </property>
                   <property name="title">
                    <string>功能测试</string>
@@ -1138,6 +208,20 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="factory_flag">
+                       <property name="text">
+                        <string>产测完成写入</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="factory_flag_read">
+                       <property name="text">
+                        <string>产测完成读取</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <widget class="QPushButton" name="enterShipModeButton">
                        <property name="text">
                         <string>关机</string>
@@ -1159,27 +243,6 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="buruing1">
-                       <property name="text">
-                        <string>工厂老化1开关</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="get_now_music">
-                       <property name="text">
-                        <string>获取当前曲目</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="getCaseDeviceException">
-                       <property name="text">
-                        <string>获取设备异常状态</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QPushButton" name="read_current_charge">
                        <property name="text">
                         <string>读取充电电流</string>
@@ -1187,16 +250,9 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="light_repo_stop">
+                      <widget class="QPushButton" name="get_now_music">
                        <property name="text">
-                        <string>关闭光感上报</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="light_repo_start">
-                       <property name="text">
-                        <string>开启光感上报</string>
+                        <string>获取当前曲目</string>
                        </property>
                       </widget>
                      </item>
@@ -1222,20 +278,6 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="enterSuctionMode">
-                       <property name="text">
-                        <string>进入吸力测试</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="exitSuctionMode">
-                       <property name="text">
-                        <string>退出吸力测试</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QPushButton" name="clean_mode">
                        <property name="text">
                         <string>清洁模式</string>
@@ -1243,9 +285,9 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="start_brush">
+                      <widget class="QPushButton" name="get_keysignal">
                        <property name="text">
-                        <string>开启产品使用流程</string>
+                        <string>读取按键电容</string>
                        </property>
                       </widget>
                      </item>
@@ -1257,23 +299,30 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="start_brush">
+                       <property name="text">
+                        <string>开启刷牙流程</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="set_light_sensor">
+                       <property name="text">
+                        <string>设置光照校准值</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="getCaseDeviceException">
+                       <property name="text">
+                        <string>获取设备状态</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <widget class="QPushButton" name="forbidsleep">
                        <property name="text">
                         <string>禁止休眠模式</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="backlight_start">
-                       <property name="text">
-                        <string>背光开启</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="backlight_stop">
-                       <property name="text">
-                        <string>背光关闭</string>
                        </property>
                       </widget>
                      </item>
@@ -1285,30 +334,30 @@
                       <number>0</number>
                      </property>
                      <item>
-                      <widget class="QPushButton" name="factory_flag">
+                      <widget class="QPushButton" name="light_repo_start">
                        <property name="text">
-                        <string>产测完成写入</string>
+                        <string>开启光感上报</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="factory_flag_read">
+                      <widget class="QPushButton" name="light_repo_stop">
                        <property name="text">
-                        <string>产测完成读取</string>
+                        <string>关闭光感上报</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="get_device_mac">
+                      <widget class="QPushButton" name="enterSuctionMode">
                        <property name="text">
-                        <string>获取mac地址</string>
+                        <string>进入吸力测试</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="set_device_mac">
+                      <widget class="QPushButton" name="exitSuctionMode">
                        <property name="text">
-                        <string>写入mac地址</string>
+                        <string>退出吸力测试</string>
                        </property>
                       </widget>
                      </item>
@@ -1327,16 +376,16 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="get_keysignal">
+                      <widget class="QPushButton" name="backlight_start">
                        <property name="text">
-                        <string>读取按键电容</string>
+                        <string>背光开启</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="set_light_sensor">
+                      <widget class="QPushButton" name="backlight_stop">
                        <property name="text">
-                        <string>设置光照校准值</string>
+                        <string>背光关闭</string>
                        </property>
                       </widget>
                      </item>
@@ -1354,6 +403,13 @@
                      <property name="topMargin">
                       <number>0</number>
                      </property>
+                     <item>
+                      <widget class="QPushButton" name="set_device_mac">
+                       <property name="text">
+                        <string>写入mac地址</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item>
                       <widget class="QPushButton" name="write_device_sn">
                        <property name="text">
@@ -1396,6 +452,13 @@
                      <property name="topMargin">
                       <number>0</number>
                      </property>
+                     <item>
+                      <widget class="QPushButton" name="get_device_mac">
+                       <property name="text">
+                        <string>获取mac地址</string>
+                       </property>
+                      </widget>
+                     </item>
                      <item>
                       <widget class="QPushButton" name="get_device_sn">
                        <property name="text">
@@ -1688,6 +751,837 @@
                 </item>
                </layout>
               </widget>
+              <widget class="QWidget" name="tab_3">
+               <attribute name="title">
+                <string>信号测试</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout">
+                <item row="3" column="0">
+                 <widget class="QPushButton" name="start_wifible_test">
+                  <property name="toolTip">
+                   <string>启动 Wi-Fi/蓝牙信号测试流程，可能耗时较长，请确认当前工位允许中断。</string>
+                  </property>
+                  <property name="text">
+                   <string>开始 Wi-Fi / 蓝牙信号测试</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QGroupBox" name="groupBox_3">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="title">
+                   <string>Wi-Fi 与蓝牙测试</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_4">
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_wifi_net">
+                     <property name="title">
+                      <string>配网与 RSSI 显示</string>
+                     </property>
+                     <layout class="QVBoxLayout" name="verticalLayout_wifi_net_inner">
+                      <item>
+                       <layout class="QVBoxLayout" name="verticalLayout">
+                        <item>
+                         <layout class="QHBoxLayout" name="horizontalLayout_4">
+                          <item>
+                           <widget class="QLabel" name="label_3">
+                            <property name="text">
+                             <string>Wi-Fi 账号</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QLineEdit" name="wifiUserName">
+                            <property name="readOnly">
+                             <bool>false</bool>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
+                        <item>
+                         <layout class="QHBoxLayout" name="horizontalLayout_5">
+                          <item>
+                           <widget class="QLabel" name="label_4">
+                            <property name="text">
+                             <string>Wi-Fi 密码</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QLineEdit" name="wifiPassword">
+                            <property name="echoMode">
+                             <enum>QLineEdit::Password</enum>
+                            </property>
+                            <property name="readOnly">
+                             <bool>false</bool>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_7">
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <item>
+                         <widget class="QLabel" name="BLE_RSSI">
+                          <property name="text">
+                           <string>蓝牙 RSSI：</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QLabel" name="WIFI_RSSI">
+                          <property name="text">
+                           <string>Wi-Fi RSSI：</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="groupBox_wifi_connect_actions">
+                     <property name="title">
+                      <string>连接与测量</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="horizontalLayout_3">
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QCheckBox" name="show_rssi">
+                        <property name="text">
+                         <string>显示蓝牙 RSSI</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="get_rssi_device">
+                        <property name="text">
+                         <string>获取对端经典蓝牙 RSSI</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="get_ble_rssi_device">
+                        <property name="text">
+                         <string>获取对端 BLE RSSI</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="connectwifi">
+                        <property name="toolTip">
+                         <string>按账号密码连接当前设置的 Wi-Fi 网络。</string>
+                        </property>
+                        <property name="text">
+                         <string>连接 Wi-Fi</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="disconnectwifi">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="toolTip">
+                         <string>断开当前 Wi-Fi 连接。</string>
+                        </property>
+                        <property name="text">
+                         <string>断开 Wi-Fi</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="getwifi">
+                        <property name="text">
+                         <string>获取 Wi-Fi 设置信息</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="new_connectwifi">
+                        <property name="toolTip">
+                         <string>调用新版连接 Wi-Fi 接口，用于与「连接 Wi-Fi」对比或专项调试；现场请优先使用成熟入口。</string>
+                        </property>
+                        <property name="text">
+                         <string>连接 Wi-Fi（新接口）</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_25">
+                  <item>
+                   <widget class="QLabel" name="ble_test_result">
+                    <property name="text">
+                     <string>WAIT</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignCenter</set>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="wifi_test_result">
+                    <property name="text">
+                     <string>WAIT</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignCenter</set>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QGroupBox" name="groupBox_signal_debug">
+                  <property name="title">
+                   <string>调试（慎用）</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_106">
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QPushButton" name="get_trim_data">
+                     <property name="text">
+                      <string>获取trim值</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="set_trim_data">
+                     <property name="text">
+                      <string>设置trim值</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="trim_data_line">
+                     <property name="text">
+                      <string>255</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="enter_ble_cali">
+                     <property name="text">
+                      <string>进入蓝牙校频</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="exit_ble_cali">
+                     <property name="text">
+                      <string>退出蓝牙校频</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="enter_ble_test">
+                     <property name="text">
+                      <string>进入蓝牙信令测试</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="exit_ble_test">
+                     <property name="text">
+                      <string>退出蓝牙信令测试</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="enter_no_ble_test">
+                     <property name="text">
+                      <string>进入蓝牙非信令测试</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="exit_no_ble_test">
+                     <property name="text">
+                      <string>退出蓝牙非信令测试</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_13">
+               <attribute name="title">
+                <string>屏幕和灯光控制</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_tab13_root">
+                <item>
+                 <widget class="QGroupBox" name="groupBox_screen_lights">
+                  <property name="title">
+                   <string>灯光分区与屏幕</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_17">
+                   <item row="0" column="0">
+                    <widget class="QPushButton" name="lcdTestButton">
+                     <property name="toolTip">
+                      <string>进入屏幕显示相关测试；与下方 RGB 分区调节配合使用。</string>
+                     </property>
+                     <property name="text">
+                      <string>屏幕测试</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <layout class="QVBoxLayout" name="verticalLayout_30">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_67">
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_29">
+                         <item>
+                          <widget class="QLineEdit" name="light1">
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_58">
+                           <property name="text">
+                            <string>左上灯区</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignCenter</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_64">
+                           <item>
+                            <widget class="QLabel" name="label_55">
+                             <property name="text">
+                              <string>R1</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="R1">
+                             <property name="mouseTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="tabletTracking">
+                              <bool>false</bool>
+                             </property>
+                             <property name="contextMenuPolicy">
+                              <enum>Qt::DefaultContextMenu</enum>
+                             </property>
+                             <property name="layoutDirection">
+                              <enum>Qt::LeftToRight</enum>
+                             </property>
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                             <property name="invertedAppearance">
+                              <bool>false</bool>
+                             </property>
+                             <property name="tickPosition">
+                              <enum>QSlider::NoTicks</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_46">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_65">
+                           <item>
+                            <widget class="QLabel" name="label_56">
+                             <property name="text">
+                              <string>G1</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="G1">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_47">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_66">
+                           <item>
+                            <widget class="QLabel" name="label_57">
+                             <property name="text">
+                              <string>B1</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="B1">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_48">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_28">
+                         <item>
+                          <widget class="QLineEdit" name="light2">
+                           <property name="readOnly">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_59">
+                           <property name="text">
+                            <string>右上灯区</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignCenter</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_61">
+                           <item>
+                            <widget class="QLabel" name="label_52">
+                             <property name="text">
+                              <string>R2</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="R2">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_62">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_62">
+                           <item>
+                            <widget class="QLabel" name="label_53">
+                             <property name="text">
+                              <string>G2</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="G2">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_63">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_63">
+                           <item>
+                            <widget class="QLabel" name="label_54">
+                             <property name="text">
+                              <string>B2</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="B2">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_64">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_68">
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_27">
+                         <item>
+                          <widget class="QLineEdit" name="light3">
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_60">
+                           <property name="text">
+                            <string>左下灯区</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignCenter</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_58">
+                           <item>
+                            <widget class="QLabel" name="label_49">
+                             <property name="text">
+                              <string>R3</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="R3">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_65">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_59">
+                           <item>
+                            <widget class="QLabel" name="label_50">
+                             <property name="text">
+                              <string>G3</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="G3">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_66">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_60">
+                           <item>
+                            <widget class="QLabel" name="label_51">
+                             <property name="text">
+                              <string>B3</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="B3">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_67">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QVBoxLayout" name="verticalLayout_9">
+                         <item>
+                          <widget class="QLineEdit" name="light4">
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_61">
+                           <property name="text">
+                            <string>右下灯区</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignCenter</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_54">
+                           <item>
+                            <widget class="QLabel" name="label_43">
+                             <property name="text">
+                              <string>R4</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="R4">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_68">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_53">
+                           <item>
+                            <widget class="QLabel" name="label_44">
+                             <property name="text">
+                              <string>G4</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="G4">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_69">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_52">
+                           <item>
+                            <widget class="QLabel" name="label_45">
+                             <property name="text">
+                              <string>B4</string>
+                             </property>
+                             <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QSlider" name="B4">
+                             <property name="maximum">
+                              <number>255</number>
+                             </property>
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_70">
+                             <property name="text">
+                              <string>0</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="3" column="1">
+                    <layout class="QHBoxLayout" name="horizontalLayout_51">
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="white_led">
+                       <property name="text">
+                        <string>白灯开关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="pink_led">
+                       <property name="text">
+                        <string>红灯开关</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="light_test">
+                       <property name="text">
+                        <string>RGB灯光测试</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="4" column="1">
+                    <widget class="QSlider" name="yedengslider">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="0">
+                    <widget class="QPushButton" name="night_brightness">
+                     <property name="text">
+                      <string>夜灯亮度</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
               <widget class="QWidget" name="tab_11">
                <attribute name="title">
                 <string>摄像头测试</string>
@@ -1709,7 +1603,7 @@
                        </sizepolicy>
                       </property>
                       <property name="title">
-                       <string>WIFI配网</string>
+                       <string>Wi-Fi 配网</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_21">
                        <item row="3" column="2">
@@ -1967,14 +1861,14 @@
                      <item row="10" column="0">
                       <widget class="QPushButton" name="open_camera_picture">
                        <property name="text">
-                        <string>开启ble视频流</string>
+                        <string>开启 BLE 视频流</string>
                        </property>
                       </widget>
                      </item>
                      <item row="10" column="1">
                       <widget class="QPushButton" name="close_camera_picture">
                        <property name="text">
-                        <string>关闭ble视频流</string>
+                        <string>关闭 BLE 视频流</string>
                        </property>
                       </widget>
                      </item>
@@ -1992,7 +1886,7 @@
                           </sizepolicy>
                          </property>
                          <property name="text">
-                          <string>wifi摄像头开</string>
+                          <string>Wi-Fi 摄像头开</string>
                          </property>
                         </widget>
                        </item>
@@ -2005,7 +1899,7 @@
                           </sizepolicy>
                          </property>
                          <property name="text">
-                          <string>wifi摄像头关</string>
+                          <string>Wi-Fi 摄像头关</string>
                          </property>
                         </widget>
                        </item>
@@ -2597,7 +2491,7 @@
                 </item>
                </layout>
               </widget>
-              <widget class="QWidget" name="tab">
+              <widget class="QWidget" name="tab_pcba_factory">
                <attribute name="title">
                 <string>板厂简易测试</string>
                </attribute>
@@ -2692,7 +2586,7 @@
                    <item>
                     <widget class="QLabel" name="test_result">
                      <property name="text">
-                      <string>TextLabel</string>
+                      <string>WAIT</string>
                      </property>
                      <property name="alignment">
                       <set>Qt::AlignCenter</set>
@@ -3124,6 +3018,137 @@
                    </widget>
                   </item>
                  </layout>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="tab_2">
+               <attribute name="title">
+                <string>老化测试</string>
+               </attribute>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="0">
+                 <widget class="QGroupBox" name="groupBox_4">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="title">
+                   <string>老化测试</string>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_24">
+                   <item row="0" column="0">
+                    <layout class="QHBoxLayout" name="horizontalLayout">
+                     <item>
+                      <widget class="QLabel" name="label">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="text">
+                        <string>老化模式</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="burningModeCombo">
+                       <property name="enabled">
+                        <bool>true</bool>
+                       </property>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="editable">
+                        <bool>false</bool>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>老化1</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>老化2</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>老化3</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>老化4</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="1" column="0">
+                    <layout class="QHBoxLayout" name="horizontalLayout_103">
+                     <item>
+                      <widget class="QLabel" name="label_108">
+                       <property name="text">
+                        <string>老化时间(秒)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="burningModetime">
+                       <property name="text">
+                        <string>1800</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item row="2" column="0">
+                    <layout class="QHBoxLayout" name="horizontalLayout_10">
+                     <property name="leftMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QPushButton" name="enterBurningMode">
+                       <property name="text">
+                        <string>进入老化</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exitBurningMode">
+                       <property name="text">
+                        <string>退出老化</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="readBurningModestatus">
+                       <property name="text">
+                        <string>读取老化状态</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="buruing1">
+                       <property name="text">
+                        <string>工厂老化1开关</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
                 </item>
                </layout>
               </widget>
@@ -3670,7 +3695,7 @@
                   <item>
                    <widget class="QLabel" name="label_89">
                     <property name="text">
-                     <string>wifi 账号</string>
+                     <string>Wi-Fi 账号</string>
                     </property>
                    </widget>
                   </item>
@@ -3687,7 +3712,7 @@
                   <item>
                    <widget class="QLabel" name="label_90">
                     <property name="text">
-                     <string>wifi 密码</string>
+                     <string>Wi-Fi 密码</string>
                     </property>
                    </widget>
                   </item>
@@ -4206,9 +4231,6 @@
                       <verstretch>0</verstretch>
                      </sizepolicy>
                     </property>
-                    <property name="styleSheet">
-                     <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-                    </property>
                     <property name="title">
                      <string>连接蓝牙</string>
                     </property>
@@ -4230,9 +4252,6 @@
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
                     </property>
                     <property name="title">
                      <string>配网信息</string>
@@ -4366,9 +4385,6 @@
                     <verstretch>0</verstretch>
                    </sizepolicy>
                   </property>
-                  <property name="styleSheet">
-                   <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-                  </property>
                   <property name="title">
                    <string>压测</string>
                   </property>
@@ -4481,7 +4497,7 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLabel" name="label_96">
                     <property name="text">
-                     <string>wifi账号</string>
+                     <string>Wi-Fi 账号</string>
                     </property>
                    </widget>
                   </item>
@@ -4495,7 +4511,7 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLabel" name="label_97">
                     <property name="text">
-                     <string>wifi密码</string>
+                     <string>Wi-Fi 密码</string>
                     </property>
                    </widget>
                   </item>
@@ -5034,220 +5050,71 @@ border-color: rgb(255, 165, 0)</string>
                  </item>
                 </layout>
                </widget>
+               <widget class="QWidget" name="horizontalLayoutWidget">
+                <property name="geometry">
+                 <rect>
+                  <x>640</x>
+                  <y>230</y>
+                  <width>271</width>
+                  <height>80</height>
+                 </rect>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_107">
+                 <item>
+                  <widget class="QLabel" name="label_101">
+                   <property name="text">
+                    <string>AI指令：</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="AITestLine">
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="placeholderText">
+                    <string>输入AI处理需求，也可长按语音输入</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="speakAi">
+                   <property name="text">
+                    <string>长按语音</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QPushButton" name="pushButton">
+                <property name="geometry">
+                 <rect>
+                  <x>420</x>
+                  <y>30</y>
+                  <width>234</width>
+                  <height>23</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>测试(开发用)</string>
+                </property>
+               </widget>
+               <widget class="QPushButton" name="pushButton_3">
+                <property name="geometry">
+                 <rect>
+                  <x>180</x>
+                  <y>30</y>
+                  <width>234</width>
+                  <height>23</height>
+                 </rect>
+                </property>
+                <property name="text">
+                 <string>指令测试</string>
+                </property>
+               </widget>
               </widget>
              </widget>
             </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_5">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QGroupBox::title { font-weight: bold; color:blue;}</string>
-          </property>
-          <property name="title">
-           <string>设备连接</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QPushButton" name="start_search">
-               <property name="text">
-                <string>开始搜索</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="pick_device">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="editable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="name_range">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="editable">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="rssi_range">
-               <property name="text">
-                <string>-60</string>
-               </property>
-               <property name="placeholderText">
-                <string>输入筛选的设备信号强度</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QGridLayout" name="gridLayout_6">
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="getMac">
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="2" colspan="2">
-              <widget class="QLabel" name="label_6">
-               <property name="text">
-                <string>输入SN  绑定：</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="4">
-              <widget class="QLineEdit" name="snInput">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>AIR1BP314GR1122334455660A4309N00189</string>
-               </property>
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>输入sn回车获取mac（文件）</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="5">
-              <widget class="QCheckBox" name="checkbanding">
-               <property name="text">
-                <string>只绑定不获取版本号</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>输入MAC连接：</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="macInput">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="inputMask">
-                <string/>
-               </property>
-               <property name="text">
-                <string>DF:F1:10:00:00:10</string>
-               </property>
-               <property name="placeholderText">
-                <string>切换英文输入再扫码</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="2">
-              <widget class="QLabel" name="label_101">
-               <property name="text">
-                <string>AI控制：</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="5">
-              <widget class="QPushButton" name="speakAi">
-               <property name="text">
-                <string>长按语音输入</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3" colspan="2">
-              <widget class="QLineEdit" name="AITestLine">
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>输入内容，ai处理需求</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_6">
-             <item>
-              <widget class="QPushButton" name="pushButton_3">
-               <property name="text">
-                <string>指令测试</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="pushButton">
-               <property name="text">
-                <string>测试(开发用)</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comNameCombo"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="connectButton">
-               <property name="text">
-                <string>连接串口</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="disconnectButton">
-               <property name="text">
-                <string>断开连接</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="is_reset_dongle">
-               <property name="text">
-                <string>连接串口复位dongle</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
            </item>
           </layout>
          </widget>
@@ -5256,6 +5123,325 @@ border-color: rgb(255, 165, 0)</string>
       </item>
      </layout>
     </item>
+    <item row="0" column="0">
+     <widget class="QGroupBox" name="groupBox_5">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="title">
+       <string>1、设备连接</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_8">
+       <property name="spacing">
+        <number>10</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <item>
+          <widget class="QLabel" name="label_dongle_serial">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Dongle串口：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comNameCombo">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="toolTip">
+            <string>选择蓝牙Dongle所在的串口</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="connectButton">
+           <property name="toolTip">
+            <string>打开所选串口并与蓝牙 Dongle 建立通信。</string>
+           </property>
+           <property name="text">
+            <string>连接Dongle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="disconnectButton">
+           <property name="toolTip">
+            <string>关闭串口，断开与 Dongle 的通信。</string>
+           </property>
+           <property name="text">
+            <string>断开Dongle</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="is_reset_dongle">
+           <property name="toolTip">
+            <string>勾选后，连接串口成功会复位蓝牙Dongle，便于恢复初始状态</string>
+           </property>
+           <property name="text">
+            <string>连接后自动复位Dongle</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_ble_search_block">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QPushButton" name="start_search">
+             <property name="toolTip">
+              <string>扫描附近蓝牙设备，按名称与最低信号强度筛选，结果填入「已发现设备」。</string>
+             </property>
+             <property name="text">
+              <string>开始搜索设备</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_pick_device">
+             <property name="text">
+              <string>已发现设备：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="pick_device">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="editable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_name_range">
+             <property name="text">
+              <string>名称筛选：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="name_range">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="editable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_rssi_row">
+             <item>
+              <widget class="QLabel" name="label_rssi_range">
+               <property name="text">
+                <string>最低信号：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSlider" name="rssi_range">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>1</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimum">
+                <number>-100</number>
+               </property>
+               <property name="maximum">
+                <number>-20</number>
+               </property>
+               <property name="singleStep">
+                <number>1</number>
+               </property>
+               <property name="pageStep">
+                <number>5</number>
+               </property>
+               <property name="value">
+                <number>-60</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="tickPosition">
+                <enum>QSlider::TicksBelow</enum>
+               </property>
+               <property name="tickInterval">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="rssi_range_value">
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>-60 dBm</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="gridLayout_6">
+         <property name="horizontalSpacing">
+          <number>8</number>
+         </property>
+         <property name="verticalSpacing">
+          <number>6</number>
+         </property>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>蓝牙MAC连接：</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLineEdit" name="macInput">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="inputMask">
+            <string/>
+           </property>
+           <property name="text">
+            <string>DF:F1:10:00:00:10</string>
+           </property>
+           <property name="placeholderText">
+            <string>扫描/输入MAC后连接</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QPushButton" name="connectProductButton">
+           <property name="toolTip">
+            <string>使用上方「蓝牙 MAC」连接待测产品，效果与在 MAC 输入框按回车相同。</string>
+           </property>
+           <property name="text">
+            <string>连接产品</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QGroupBox" name="verticalGroupBox">
+      <property name="title">
+       <string>2、设备信息绑定</string>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_110">
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_108">
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>SN取MAC：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="getMac">
+           <property name="placeholderText">
+            <string>扫描/输入SN，回车后从文件获取MAC</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_109">
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>绑定SN：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="snInput">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>AIR1BP314GR1122334455660A4309N00189</string>
+           </property>
+           <property name="placeholderText">
+            <string>扫描/输入需要绑定的SN</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkbanding">
+           <property name="text">
+            <string>仅绑定SN，不读取版本</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -5263,7 +5449,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1745</width>
+     <width>1365</width>
      <height>21</height>
     </rect>
    </property>

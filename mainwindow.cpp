@@ -2,7 +2,10 @@
 
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QRandomGenerator>
+#include <QSlider>
+#include <QTabBar>
 #include <QtConcurrent>
 
 #include "md5.h"
@@ -86,6 +89,7 @@ MainWindow::MainWindow(QWidget* parent) :
     qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
+    ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     const std::string protocolName =
@@ -161,6 +165,11 @@ MainWindow::MainWindow(QWidget* parent) :
     QStringList productList = {"V3",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
                                "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
+    ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
+    connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
+        ui->rssi_range_value->setText(QString("%1 dBm").arg(value));
+    });
+    connect(ui->connectProductButton, &QPushButton::clicked, this, &MainWindow::on_macInput_returnPressed);
 
     initBasicInfo();
     initPeriphState();
@@ -432,7 +441,11 @@ MainWindow::MainWindow(QWidget* parent) :
     //  }
 
     ui->progressBar->hide();
-    ui->tabWidget->setTabVisible(8, SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
+    {
+        const int otaTabIdx = ui->tabWidget->indexOf(ui->tab_7);
+        if (otaTabIdx >= 0)
+            ui->tabWidget->setTabVisible(otaTabIdx, SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
+    }
 
     if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toInt())
         updata->setVisible(false);
