@@ -444,7 +444,7 @@ bool Qusb::handlebydAction(PowerAction action)
     switch (action)
     {
     case PowerAction::ReadMeasurement:
-        getMEASure(QString());
+        getbydmeaSure(QString());
         return true;
     case PowerAction::ConfigurePowerSupply:
         // BYD 电源配置：统一入口调度到 SCPI 指令链（WFP60H 等）
@@ -455,7 +455,7 @@ bool Qusb::handlebydAction(PowerAction action)
         return true;
     case PowerAction::ReadConfiguration:
         // BYD 电源读配置
-        getCONF(QString());
+        getbydCONF(QString());
         return true;
     case PowerAction::InitializeDevice:
         // BYD 电源初始化
@@ -657,6 +657,15 @@ void Qusb::sendCONF(QString current, QString dc, QString range)
 void Qusb::getCONF(QString mac)
 {
     Q_UNUSED(mac);
+    QString s;
+    // s = "CONFigure:RANGe?";
+    // sendCmd(s);
+    s = "CONFigure:FUNCtion?";
+    sendCmd(s);
+}
+void Qusb::getbydCONF(QString mac)
+{
+    Q_UNUSED(mac);
     const QString s = "CONFigure:FUNCtion?";
     if (isVisaScpiEnabled())
     {
@@ -669,7 +678,7 @@ void Qusb::getCONF(QString mac)
     }
     sendCmd(s);
 }
-void Qusb::getMEASure(QString mac)
+void Qusb::getbydmeaSure(QString mac)
 {
     Q_UNUSED(mac);
     QString s = protocolConfig_.scpiReadCurrentCmd;
@@ -683,6 +692,12 @@ void Qusb::getMEASure(QString mac)
         }
         return;
     }
+    sendCmd(s);
+}
+void Qusb::getMEASure(QString mac)
+{
+    Q_UNUSED(mac);
+    QString s = "MEASure:CURRent:DC? 500e-3";
     sendCmd(s);
 }
 void Qusb::gethqMEASure()
@@ -706,7 +721,6 @@ void Qusb::getlxMEASure(int mechine)
     QByteArray data = QByteArray::fromHex(machineCmdList.at(mechine).toLatin1());
     serialPort->write(data);
 }
-
 void Qusb::sethqMEASure()
 {
     QString s = "010600030006F9C8";   // 设置波特率115200
