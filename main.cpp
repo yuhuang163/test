@@ -104,8 +104,14 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     QString filePath = dir.filePath(folderName + "/" + fileName);
 
     QFile file(filePath);
-    file.open(QIODevice::WriteOnly | QIODevice::Append);
+    const bool isNewLogFile = !file.exists() || file.size() == 0;
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        return;
+    }
     QTextStream text_stream(&file);
+    text_stream.setCodec("UTF-8");
+    // 新建日志写入 UTF-8 BOM，避免中文 Windows 上被误识别为 GBK/ANSI。
+    text_stream.setGenerateByteOrderMark(isNewLogFile);
 
     printf("%s", current_date.toLocal8Bit().constData());
     // 打印 msg 并换行
