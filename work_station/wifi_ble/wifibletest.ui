@@ -200,6 +200,50 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_product_uart">
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="label_product_uart">
+             <property name="text">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;产品串口&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="productComNameCombo">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="productConnectButton">
+             <property name="text">
+              <string>连接串口</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="productDisconnectButton">
+             <property name="text">
+              <string>断开串口</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_15">
            <item>
             <widget class="QLabel" name="label_7">
@@ -225,16 +269,16 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="usbdisconnectButton">
+            <widget class="QPushButton" name="usbconnectButton">
              <property name="text">
-              <string>断开串口</string>
+              <string>连接串口</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="usbconnectButton">
+            <widget class="QPushButton" name="usbdisconnectButton">
              <property name="text">
-              <string>连接串口</string>
+              <string>断开串口</string>
              </property>
             </widget>
            </item>

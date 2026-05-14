@@ -80,9 +80,7 @@ key_test::key_test(int index, QWidget* parent) :
         ui->productComNameCombo->setEnabled(true);
         ui->productConnectButton->setEnabled(true);
         ui->productDisconnectButton->setEnabled(true);
-    }
-
-    else {
+    }else {
         ui->productComNameCombo->setEnabled(false);
         ui->productConnectButton->setEnabled(false);
         ui->productDisconnectButton->setEnabled(false);

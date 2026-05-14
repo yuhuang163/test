@@ -94,6 +94,7 @@ private slots:
     void initDate();
 
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 产品串口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };          // nfc的usb口
@@ -118,6 +119,7 @@ private slots:
 
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
+    void refreshProductUartState(int state) override;
 
     void refreshWifiState(int state);
 
@@ -149,6 +151,8 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
+    void on_productConnectButton_clicked();
+    void on_productDisconnectButton_clicked();
     void on_stopTest_clicked();
     void on_nfc_read_clicked();
     void on_nfc_decode_clicked();

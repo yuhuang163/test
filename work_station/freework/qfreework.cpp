@@ -214,9 +214,9 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         usbBaudRate = 9600;
     } else {
         usbBaudRate = 115200;
-        ui->usbdisconnectButton->setDisabled(true);
-        ui->usbconnectButton->setDisabled(true);
-        ui->usbcomNameCombo->setDisabled(true);
+        // ui->usbdisconnectButton->setDisabled(true);
+        // ui->usbconnectButton->setDisabled(true);
+        // ui->usbcomNameCombo->setDisabled(true);
     }
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);

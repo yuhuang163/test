@@ -83,10 +83,20 @@ wifibletest::wifibletest(int index, QWidget* parent) : test_base(parent), ui(new
         usbBaudRate = 9600;
     } else {
         usbBaudRate = 115200;
-        ui->usbdisconnectButton->setDisabled(true);
-        ui->usbconnectButton->setDisabled(true);
-        ui->usbcomNameCombo->setDisabled(true);
+        // ui->usbdisconnectButton->setDisabled(true);
+        // ui->usbconnectButton->setDisabled(true);
+        // ui->usbcomNameCombo->setDisabled(true);
     }
+
+    // if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
+    //     ui->productComNameCombo->setEnabled(true);
+    //     ui->productConnectButton->setEnabled(true);
+    //     ui->productDisconnectButton->setEnabled(true);
+    // } else {
+    //     ui->productComNameCombo->setEnabled(false);
+    //     ui->productConnectButton->setEnabled(false);
+    //     ui->productDisconnectButton->setEnabled(false);
+    // }
 
     ui->tabWidget->setTabText(0, "信号测试");
     // on_nfcComFresh_clicked();
@@ -492,6 +502,17 @@ void wifibletest::refreshUsbUartState(int state) {
         ui->usbcomNameCombo->setDisabled(true);
     }
 }
+
+void wifibletest::refreshProductUartState(int state) {
+    if (state)
+        showlog("product串口连接成功");
+    else {
+        ui->productComNameCombo->setEnabled(true);
+        ui->productConnectButton->setEnabled(true);
+        showlog("product串口连接断开");
+    }
+}
+
 void wifibletest::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到电流数据" << data;
 
@@ -1513,6 +1534,18 @@ void wifibletest::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
     ui->connectButton->setEnabled(true);
     closeDongleSerialPort();
+}
+
+void wifibletest::on_productConnectButton_clicked() {
+    openProductSerialPort();
+    ui->productComNameCombo->setEnabled(false);
+    ui->productConnectButton->setEnabled(false);
+}
+
+void wifibletest::on_productDisconnectButton_clicked() {
+    closeProductSerialPort();
+    ui->productComNameCombo->setEnabled(true);
+    ui->productConnectButton->setEnabled(true);
 }
 
 void wifibletest::on_stopTest_clicked() {
