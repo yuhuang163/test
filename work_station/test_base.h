@@ -159,7 +159,7 @@ public slots:
     };
     STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };  //获取当前上位机状态
     void solveGetBrushResponse(int);
-    int getIndex();
+    int getIndex() const;
     void showlog(QString msg);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);

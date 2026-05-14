@@ -87,6 +87,16 @@ struct FreeWorkTestCatalogItem {
     X(77, "右旋键测试", true, startKeyButtonTest("右旋键测试", "请右旋按钮", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
     X(78, "进入吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
     X(79, "退出吸力测试模式", false, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 0; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
+    X(80, "PLC_Modbus连接", false, runPlcModbusConnectTest()) \
+    X(81, "PLC_V3_mode触摸整步", true, startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0)) \
+    X(82, "PLC_V3_program触摸整步", true, startPlcKeyButtonTest("PLC+V3程序键", "治具将自动按压程序键，请确认设备按键上报", "ProductInfo/KeyIdProgram", "ProductInfo/KeyIdProgram_checkBox", 1)) \
+    X(83, "PLC_V3_speed触摸整步", true, startPlcKeyButtonTest("PLC+V3速度键", "治具将自动按压速度键，请确认设备按键上报", "ProductInfo/KeyIdSpeed", "ProductInfo/KeyIdSpeed_checkBox", 2)) \
+    X(84, "PLC_V3_right触摸整步", true, startPlcKeyButtonTest("PLC+V3右键", "治具将自动按压右键，请确认设备按键上报", "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox", 3)) \
+    X(85, "PLC_V3_start_pause触摸整步", true, startPlcKeyButtonTest("PLC+V3开始暂停键", "治具将自动按压开始/暂停键，请确认设备按键上报", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox", 4)) \
+    X(86, "PLC_V3_left触摸整步", true, startPlcKeyButtonTest("PLC+V3左键", "治具将自动按压左键，请确认设备按键上报", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox", 5)) \
+    X(87, "PLC_V3_power触摸整步", true, startPlcKeyButtonTest("PLC+V3电源键", "治具将自动按压电源键，请确认设备按键上报", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
+    X(88, "PLC_V3_switch旋钮整步左旋", true, startPlcSwitchPlcAndWaitLeftRotate()) \
+    X(89, "PLC_V3_switch旋钮右旋上报", true, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮左旋整步通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

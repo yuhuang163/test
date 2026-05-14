@@ -53,6 +53,7 @@ INCLUDEPATH += agreement/qjig
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/adb
 INCLUDEPATH += agreement/qtuple
+INCLUDEPATH += agreement/qplc
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
 INCLUDEPATH += my_set
@@ -148,6 +149,7 @@ SOURCES += \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/testFunction.cpp \
+    agreement/qplc/inovance_h5u_modbus_tcp.cpp \
     work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
     work_station/key/key_test_box.cpp \
@@ -230,6 +232,7 @@ HEADERS += \
     work_station/common_class.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
+    agreement/qplc/inovance_h5u_modbus_tcp.h \
     work_station/imu/imubox.h \
     work_station/imu/imucali.h \
     work_station/key/key_test.h \
