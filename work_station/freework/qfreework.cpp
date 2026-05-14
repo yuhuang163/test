@@ -31,12 +31,20 @@ void QFreeWork::on_pushButton_clicked() {
     // ui->comNameCombo->setCurrentText("COM134");
 
     // debugUpdateTupleMacStatus();
-    applyTupleByMac();
+    // applyTupleByMac();
+    runPlcModbusConnectTest();
+    // startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
+
+
 }
 namespace {
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
     return key.isEmpty() ? "TestOrder_default" : QString("TestOrder_%1").arg(key);
+}
+
+QString plcBoolText(bool on) {
+    return on ? QStringLiteral("开启") : QStringLiteral("关闭");
 }
 }
 
@@ -1260,11 +1268,10 @@ void QFreeWork::syncPlcModbusTraceFromSettings() {
 }
 
 void QFreeWork::maybeShowlogPlcSessionSummary(const QString& stepTag) {
-    if (!inovancePlcTcp_.traceEnabled()) {
-        return;
-    }
-    showlog(QStringLiteral("[PLC调试 %1] IP=%2 Port=%3 UnitId=%4 M偏移=%5 MBase=%6 PosReady基=%7 StepDone基=%8 KeyDoneM=%9 "
-                           "ConnectTimeoutMs=%10 RequestTimeoutMs=%11")
+    showlog(QStringLiteral("[PLC调试 %1] IP=%2 Port=%3 UnitId=%4 M偏移=%5 MBase=%6 PosReady基=%7 StepDone基=%8 "
+                           "KeyDoneM=%9 ConnectVerifyM=%10 ConnectTimeoutMs=%11 RequestTimeoutMs=%12 "
+                           "Trace=%13 验证读=%14 握手=%15 等KeyDone=%16 完成后释放=%17 KeyDone预复位=%18 KeyDone复位等待=%19 "
+                           "CommandGapMs=%20 PosTimeoutMs=%21 PosPollMs=%22 KeyDoneTimeoutMs=%23 KeyDonePollMs=%24")
                 .arg(stepTag)
                 .arg(resolvedPlcIpAddress())
                 .arg(resolvedPlcPort())
@@ -1274,8 +1281,25 @@ void QFreeWork::maybeShowlogPlcSessionSummary(const QString& stepTag) {
                 .arg(resolvedPlcPositionReadyBase())
                 .arg(resolvedPlcStepDoneBase())
                 .arg(resolvedPlcKeyDoneM())
+                .arg(resolvedPlcConnectVerifyM())
                 .arg(SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt()));
+                .arg(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt())
+                .arg(plcBoolText(inovancePlcTcp_.traceEnabled()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/UseStepHandshake"), true).toBool()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneAfterStepDone"), true).toBool()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/ReleasePositionAfterKeyDone"), true).toBool()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/EnsureKeyDoneIdleBeforeStep"), false).toBool()))
+                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool()))
+                .arg(SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt())
+                .arg(SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
+                                    SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
+                         .toInt())
+                .arg(SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
+                                    SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt())
+                         .toInt())
+                .arg(SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
+                .arg(SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt()));
 }
 
 void QFreeWork::runPlcModbusConnectTest() {
@@ -1288,26 +1312,72 @@ void QFreeWork::runPlcModbusConnectTest() {
     const quint8 uid = resolvedPlcUnitId();
     const int offset = resolvedPlcMCoilAddressOffset();
 
+    showlog(QStringLiteral("PLC_Modbus连接开始(工位%1): IP=%2 Port=%3 UnitId=%4 ConnectTimeoutMs=%5 RequestTimeoutMs=%6")
+                .arg(getIndex())
+                .arg(host)
+                .arg(port)
+                .arg(uid)
+                .arg(connMs)
+                .arg(reqMs));
+
     QString err;
     if (!inovancePlcTcp_.connectPlc(host, quint16(port), uid, connMs, &err)) {
         stepRuntime_.pass = false;
-        stepRuntime_.testData = err;
-        showlog(QStringLiteral("PLC_Modbus连接失败(工位%1): %2").arg(getIndex()).arg(err));
+        const QString detail = QStringLiteral("%1；配置: IP=%2 Port=%3 UnitId=%4 ConnectTimeoutMs=%5 "
+                                              "RequestTimeoutMs=%6 M偏移=%7 验证读=%8；请检查PLC IP/端口、网线、"
+                                              "PLC Modbus TCP服务和防火墙")
+                                   .arg(err)
+                                   .arg(host)
+                                   .arg(port)
+                                   .arg(uid)
+                                   .arg(connMs)
+                                   .arg(reqMs)
+                                   .arg(offset)
+                                   .arg(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()
+                                            ? QStringLiteral("开启")
+                                            : QStringLiteral("关闭"));
+        stepRuntime_.testData = detail;
+        showlog(QStringLiteral("PLC_Modbus连接失败(工位%1): %2").arg(getIndex()).arg(detail));
         return;
     }
+    showlog(QStringLiteral("PLC_Modbus TCP已连接(工位%1): IP=%2 Port=%3 UnitId=%4")
+                .arg(getIndex())
+                .arg(host)
+                .arg(port)
+                .arg(uid));
     bool ok = true;
     if (SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()) {
         const int verifyM = resolvedPlcConnectVerifyM();
+        showlog(QStringLiteral("PLC_Modbus连接验证读: M%1(addr=%2) Quantity=1 TimeoutMs=%3")
+                    .arg(verifyM)
+                    .arg(verifyM + offset)
+                    .arg(reqMs));
         QVector<bool> bits;
         if (!inovancePlcTcp_.readMCoils(verifyM, 1, offset, uid, reqMs, &bits, &err)) {
             ok = false;
-            stepRuntime_.testData = err;
-            showlog(QStringLiteral("PLC 连接后读线圈失败(可关 PLC/ConnectVerifyRead): %1").arg(err));
+            stepRuntime_.testData = QStringLiteral("连接验证读失败: M%1(addr=%2) %3")
+                                        .arg(verifyM)
+                                        .arg(verifyM + offset)
+                                        .arg(err);
+            showlog(QStringLiteral("PLC 连接后读线圈失败(可关 PLC/ConnectVerifyRead): M%1(addr=%2) %3")
+                        .arg(verifyM)
+                        .arg(verifyM + offset)
+                        .arg(err));
         } else {
-            stepRuntime_.testData = QStringLiteral("已读M%1=%2").arg(verifyM).arg(bits.value(0) ? 1 : 0);
+            stepRuntime_.testData = QStringLiteral("已连 %1:%2，已读M%3(addr=%4)=%5")
+                                        .arg(host)
+                                        .arg(port)
+                                        .arg(verifyM)
+                                        .arg(verifyM + offset)
+                                        .arg(bits.value(0) ? 1 : 0);
+            showlog(QStringLiteral("PLC_Modbus连接验证读通过: M%1(addr=%2)=%3")
+                        .arg(verifyM)
+                        .arg(verifyM + offset)
+                        .arg(bits.value(0) ? 1 : 0));
         }
     } else {
-        stepRuntime_.testData = QStringLiteral("已连 %1:%2").arg(host).arg(port);
+        stepRuntime_.testData = QStringLiteral("已连 %1:%2 UnitId=%3，验证读关闭").arg(host).arg(port).arg(uid);
+        showlog(QStringLiteral("PLC_Modbus连接验证读关闭"));
     }
     inovancePlcTcp_.disconnect();
     stepRuntime_.pass = ok;
@@ -1391,6 +1461,12 @@ bool QFreeWork::plcSendStepDone(QString* errorMessage) {
     const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
     const int pulseMs = SETTINGS.value(QStringLiteral("PLC/StepDonePulseMs"), 0).toInt();
     const int m = resolvedPlcStepDoneBase();
+    const int offset = resolvedPlcMCoilAddressOffset();
+    showlog(QStringLiteral("PLC发送 StepDone: M%1(addr=%2)=1 GapMs=%3 PulseMs=%4")
+                .arg(m)
+                .arg(m + offset)
+                .arg(gapMs)
+                .arg(pulseMs));
     if (!plcWriteCoil(m, true, errorMessage)) {
         return false;
     }
@@ -1399,6 +1475,7 @@ bool QFreeWork::plcSendStepDone(QString* errorMessage) {
     }
     if (pulseMs > 0) {
         QThread::msleep(static_cast<unsigned long>(pulseMs));
+        showlog(QStringLiteral("PLC复位 StepDone 脉冲: M%1(addr=%2)=0").arg(m).arg(m + offset));
         if (!plcWriteCoil(m, false, errorMessage)) {
             return false;
         }
@@ -1442,6 +1519,12 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const int port = resolvedPlcPort();
     const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
     QString err;
+    showlog(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
+                .arg(keyIndex0To6)
+                .arg(getIndex())
+                .arg(host)
+                .arg(port)
+                .arg(resolvedPlcUnitId()));
     if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
         fail(QStringLiteral("PLC 连接失败: %1").arg(err));
         return;
@@ -1469,15 +1552,31 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
     const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
     const int keyResetTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneResetTimeoutMs"), 1500).toInt();
+    const int offset = resolvedPlcMCoilAddressOffset();
 
     const int mBase = resolvedPlcMBase();
     const int keyM = mBase + keyIndex0To6;
     const int posReadyM = resolvedPlcPositionReadyBase() + keyIndex0To6;
     const int stepDoneM = resolvedPlcStepDoneBase();
     const int keyDoneM = resolvedPlcKeyDoneM();
+    showlog(QStringLiteral("PLC按键整步开始: 键Index=%1 KeyM=M%2(addr=%3) PosReady=M%4(addr=%5) "
+                           "StepDone=M%6(addr=%7) KeyDone=M%8(addr=%9) 握手=%10 等KeyDone=%11 完成后释放=%12")
+                .arg(keyIndex0To6)
+                .arg(keyM)
+                .arg(keyM + offset)
+                .arg(posReadyM)
+                .arg(posReadyM + offset)
+                .arg(stepDoneM)
+                .arg(stepDoneM + offset)
+                .arg(keyDoneM)
+                .arg(keyDoneM + offset)
+                .arg(plcBoolText(useHandshake))
+                .arg(plcBoolText(waitKeyDone))
+                .arg(plcBoolText(releaseAfter)));
 
     if (ensureKeyIdle) {
         bool kd = false;
+        showlog(QStringLiteral("PLC预检 KeyDone 空闲: 读 M%1(addr=%2)").arg(keyDoneM).arg(keyDoneM + offset));
         if (!plcReadCoil(keyDoneM, &kd, &err)) {
             fail(QStringLiteral("读 KeyDone 失败: %1").arg(err));
             return;
@@ -1490,11 +1589,13 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
 
     if (useHandshake) {
         bool sd = false;
+        showlog(QStringLiteral("PLC预检 StepDone: 读 M%1(addr=%2)").arg(stepDoneM).arg(stepDoneM + offset));
         if (!plcReadCoil(stepDoneM, &sd, &err)) {
             fail(QStringLiteral("读 StepDone 失败: %1").arg(err));
             return;
         }
         if (sd) {
+            showlog(QStringLiteral("PLC复位残留 StepDone: M%1(addr=%2)=0").arg(stepDoneM).arg(stepDoneM + offset));
             if (!plcWriteCoil(stepDoneM, false, &err)) {
                 fail(QStringLiteral("复位 StepDone 失败: %1").arg(err));
                 return;
@@ -1505,6 +1606,7 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
         }
     }
 
+    showlog(QStringLiteral("PLC按键下压: M%1(addr=%2)=1").arg(keyM).arg(keyM + offset));
     if (!plcWriteCoil(keyM, true, &err)) {
         fail(QStringLiteral("下压 M%1 失败: %2").arg(keyM).arg(err));
         return;
@@ -1514,6 +1616,11 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     }
 
     if (useHandshake) {
+        showlog(QStringLiteral("PLC等待位置到位: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
+                    .arg(posReadyM)
+                    .arg(posReadyM + offset)
+                    .arg(posTimeout)
+                    .arg(posPoll));
         if (!plcWaitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
             fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
             return;
@@ -1536,6 +1643,11 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
 
     bool sawKeyDone = false;
     if (waitKeyDone) {
+        showlog(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
+                    .arg(keyDoneM)
+                    .arg(keyDoneM + offset)
+                    .arg(keyDoneTimeout)
+                    .arg(keyDonePoll));
         if (!plcWaitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
             return;
@@ -1544,6 +1656,7 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     }
 
     if (releaseAfter) {
+        showlog(QStringLiteral("PLC按键抬起: M%1(addr=%2)=0").arg(keyM).arg(keyM + offset));
         if (!plcWriteCoil(keyM, false, &err)) {
             fail(QStringLiteral("抬起 M%1 失败: %2").arg(keyM).arg(err));
             return;
@@ -1558,6 +1671,11 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     }
 
     if (sawKeyDone && waitKeyReset) {
+        showlog(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
+                    .arg(keyDoneM)
+                    .arg(keyDoneM + offset)
+                    .arg(keyResetTimeout)
+                    .arg(keyDonePoll));
         if (!plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
             return;
@@ -1600,6 +1718,11 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     const int port = resolvedPlcPort();
     const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
     QString err;
+    showlog(QStringLiteral("PLC旋钮整步连接: 工位=%1 IP=%2 Port=%3 UnitId=%4")
+                .arg(getIndex())
+                .arg(host)
+                .arg(port)
+                .arg(resolvedPlcUnitId()));
     if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
         fail(QStringLiteral("PLC 连接失败: %1").arg(err));
         return;
@@ -1627,15 +1750,32 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
     const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
     const int keyResetTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneResetTimeoutMs"), 1500).toInt();
+    const int offset = resolvedPlcMCoilAddressOffset();
 
     const int forwardM = resolvedPlcSwitchForwardM();
     const int pressM = resolvedPlcSwitchPressM();
     const int posReadyM = resolvedPlcPositionReadyBase() + 7;
     const int stepDoneM = resolvedPlcStepDoneBase();
     const int keyDoneM = resolvedPlcKeyDoneM();
+    showlog(QStringLiteral("PLC旋钮整步开始: Forward=M%1(addr=%2) Press=M%3(addr=%4) PosReady=M%5(addr=%6) "
+                           "StepDone=M%7(addr=%8) KeyDone=M%9(addr=%10) 握手=%11 等KeyDone=%12 完成后释放=%13")
+                .arg(forwardM)
+                .arg(forwardM + offset)
+                .arg(pressM)
+                .arg(pressM + offset)
+                .arg(posReadyM)
+                .arg(posReadyM + offset)
+                .arg(stepDoneM)
+                .arg(stepDoneM + offset)
+                .arg(keyDoneM)
+                .arg(keyDoneM + offset)
+                .arg(plcBoolText(useHandshake))
+                .arg(plcBoolText(waitKeyDone))
+                .arg(plcBoolText(releaseAfter)));
 
     if (ensureKeyIdle) {
         bool kd = false;
+        showlog(QStringLiteral("PLC预检 KeyDone 空闲: 读 M%1(addr=%2)").arg(keyDoneM).arg(keyDoneM + offset));
         if (!plcReadCoil(keyDoneM, &kd, &err)) {
             fail(QStringLiteral("读 KeyDone 失败: %1").arg(err));
             return;
@@ -1648,11 +1788,13 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
 
     if (useHandshake) {
         bool sd = false;
+        showlog(QStringLiteral("PLC预检 StepDone: 读 M%1(addr=%2)").arg(stepDoneM).arg(stepDoneM + offset));
         if (!plcReadCoil(stepDoneM, &sd, &err)) {
             fail(QStringLiteral("读 StepDone 失败: %1").arg(err));
             return;
         }
         if (sd) {
+            showlog(QStringLiteral("PLC复位残留 StepDone: M%1(addr=%2)=0").arg(stepDoneM).arg(stepDoneM + offset));
             if (!plcWriteCoil(stepDoneM, false, &err)) {
                 fail(QStringLiteral("复位 StepDone 失败: %1").arg(err));
                 return;
@@ -1663,6 +1805,7 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
         }
     }
 
+    showlog(QStringLiteral("PLC旋钮前推: M%1(addr=%2)=1").arg(forwardM).arg(forwardM + offset));
     if (!plcWriteCoil(forwardM, true, &err)) {
         fail(QStringLiteral("旋钮前推 M%1 失败: %2").arg(forwardM).arg(err));
         return;
@@ -1670,6 +1813,7 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     if (gapMs > 0) {
         QThread::msleep(static_cast<unsigned long>(gapMs));
     }
+    showlog(QStringLiteral("PLC旋钮按压: M%1(addr=%2)=1").arg(pressM).arg(pressM + offset));
     if (!plcWriteCoil(pressM, true, &err)) {
         fail(QStringLiteral("旋钮按压 M%1 失败: %2").arg(pressM).arg(err));
         return;
@@ -1679,6 +1823,11 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     }
 
     if (useHandshake) {
+        showlog(QStringLiteral("PLC等待位置到位: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
+                    .arg(posReadyM)
+                    .arg(posReadyM + offset)
+                    .arg(posTimeout)
+                    .arg(posPoll));
         if (!plcWaitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
             fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
             return;
@@ -1701,6 +1850,11 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
 
     bool sawKeyDone = false;
     if (waitKeyDone) {
+        showlog(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
+                    .arg(keyDoneM)
+                    .arg(keyDoneM + offset)
+                    .arg(keyDoneTimeout)
+                    .arg(keyDonePoll));
         if (!plcWaitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
             return;
@@ -1709,6 +1863,7 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     }
 
     if (releaseAfter) {
+        showlog(QStringLiteral("PLC旋钮释放按压: M%1(addr=%2)=0").arg(pressM).arg(pressM + offset));
         if (!plcWriteCoil(pressM, false, &err)) {
             fail(QStringLiteral("旋钮释放按压 M%1 失败: %2").arg(pressM).arg(err));
             return;
@@ -1716,6 +1871,7 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
         if (gapMs > 0) {
             QThread::msleep(static_cast<unsigned long>(gapMs));
         }
+        showlog(QStringLiteral("PLC旋钮收回前推: M%1(addr=%2)=0").arg(forwardM).arg(forwardM + offset));
         if (!plcWriteCoil(forwardM, false, &err)) {
             fail(QStringLiteral("旋钮收回前推 M%1 失败: %2").arg(forwardM).arg(err));
             return;
@@ -1730,6 +1886,11 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     }
 
     if (sawKeyDone && waitKeyReset) {
+        showlog(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
+                    .arg(keyDoneM)
+                    .arg(keyDoneM + offset)
+                    .arg(keyResetTimeout)
+                    .arg(keyDonePoll));
         if (!plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
             return;
