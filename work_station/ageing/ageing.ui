@@ -95,7 +95,7 @@
                 <string>是否从mes获取mac</string>
                </property>
                <property name="checked">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
               </widget>
              </item>

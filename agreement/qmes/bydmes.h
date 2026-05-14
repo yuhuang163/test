@@ -15,14 +15,18 @@ public:
     /// 产线 BYD MES：设置页「选产线文件」解析结果进内存（不写 ini），在 bydmes 中取键时优先于本机 Mes/MES，其余键仍按原逻辑读 Mes/→MES/→fallback。
     static void setRuntimeMesParamMap(const QMap<QString, QString>& params);
     static void clearRuntimeMesParamMap();
+    /// 从上位机设置.ini 的 [mes]/[Mes]/[MES] 下读取 ConfigFilePath，加载外部 MES 配置文件到内存（bydmes 构造时会自动调用一次；设置页改路径保存后会再次调用）
+    /// 返回：成功返回 true，失败返回 false 并设置 errorMessage
+    static bool loadExternalMesConfig(QString* errorMessage = nullptr);
+    /// 清除外部 MES 配置文件的内存映射
+    static void clearExternalMesConfig();
 
     void LogIn(MesPacketData pack) override;
     void ProcessInspection(MesPacketData pack) override;
     void TestPass(MesPacketData pack) override;
     void GetTestData(MesPacketData pack) override;
 
-    /// 根据过程码请求 SN：成功时 emit sendMesTestvalue（与 GetCustomData 同形 JSON 数组，NAME=SN）
-    void QuerySnByProcessCode(MesPacketData pack);
+
 
 private:
     QString baseUrl() const;
@@ -31,7 +35,7 @@ private:
     QJsonObject buildBydStartParam(const MesPacketData& pack) const;
     QJsonObject buildBydGetCustomDataParam() const;
     /// 过程码换 SN 的 param；method 默认 GetSnByProcessCode，可由 Mes/GetSnByProcessCodeMethod 覆盖
-    QJsonObject buildBydGetSnByProcessCodeParam(const QString& processCode) const;
+    QJsonObject buildBydGetSnByProcessCodeParam(const MesPacketData& pack) const;
     QJsonObject buildBydTestDataCollectParam(const MesPacketData& pack) const;
     QJsonObject buildBydCompleteParam(const MesPacketData& pack) const;
     QJsonObject buildBydNcCompleteParam(const MesPacketData& pack) const;

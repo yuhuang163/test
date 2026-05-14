@@ -76,6 +76,7 @@ private slots:
     void on_comboBox_testOrderStation_currentTextChanged(const QString& text);
     void on_comboBox_tupleEnvironment_currentIndexChanged(int index);
     void on_pushButton_clearConfiguredTestOrder_clicked();
+    void on_pushButton_mesConfigFileBrowse_clicked();
 };
 
 #endif  // QSETTING_H

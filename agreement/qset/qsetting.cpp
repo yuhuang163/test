@@ -1,10 +1,12 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
 #include <QApplication>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
@@ -13,6 +15,7 @@
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
+#include "bydmes.h"
 
 struct FreeWorkTestCatalogItem {
     int id;
@@ -806,6 +809,31 @@ void qsetting::loadConfig() {
     // 加载老化工站配置
     ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
+    ui->checkBox_plcModbusTrace->setChecked(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool());
+    ui->lineEdit_plcIpAddress->setText(
+        SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")).toString());
+    ui->lineEdit_plcPort->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/Port"), 502).toInt()));
+    ui->lineEdit_plcUnitId->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/UnitId"), 1).toInt()));
+    ui->lineEdit_plcMCoilOffset->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset"), 0).toInt()));
+    ui->lineEdit_plcMBase->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/MBase"), 200).toInt()));
+    ui->lineEdit_plcMBaseStationStep->setText(
+        QString::number(SETTINGS.value(QStringLiteral("PLC/MBaseStationStep"), 20).toInt()));
+    ui->lineEdit_plcConnectTimeoutMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt()));
+    ui->lineEdit_plcRequestTimeoutMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt()));
+    ui->lineEdit_plcCommandGapMs->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt()));
+    ui->checkBox_plcConnectVerifyRead->setChecked(
+        SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool());
+    ui->lineEdit_plcIpAddressStation2->setText(SETTINGS.value(QStringLiteral("PLC/IpAddress_Station2"), QString()).toString());
+    ui->lineEdit_plcPortStation2->setText(SETTINGS.value(QStringLiteral("PLC/Port_Station2"), QString()).toString());
+    ui->lineEdit_plcUnitIdStation2->setText(SETTINGS.value(QStringLiteral("PLC/UnitId_Station2"), QString()).toString());
+    {
+        const int mb2 = SETTINGS.value(QStringLiteral("PLC/MBase_Station2"), -1).toInt();
+        ui->lineEdit_plcMBaseStation2->setText(mb2 < 0 ? QString() : QString::number(mb2));
+    }
+    ui->lineEdit_plcMCoilOffsetStation2->setText(
+        SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset_Station2"), QString()).toString());
 
     // 加载三元组配置
     const QString defaultTupleUrl = kTupleEnvPresets.first().baseUrl;
@@ -1005,6 +1033,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_macStation->setText(SETTINGS.value("MES/xwdWpCode").toString());
     ui->lineEdit_station->setText(SETTINGS.value("MES/machineNo").toString());
     ui->lineEdit_mesUrl->setText(SETTINGS.value("MES/NET").toString());
+    ui->lineEdit_mes_config_file_path->setText(SETTINGS.value("MES/ConfigFilePath").toString());
     ui->lineEdit_processName->setText(SETTINGS.value("MES/test_station").toString());
     ui->lineEdit_modelName->setText(SETTINGS.value("MES/model").toString());
     ui->lineEdit_mac_field->setText(SETTINGS.value("MES/FIELD").toString());
@@ -1166,6 +1195,38 @@ void qsetting::saveConfig() {
     // 保存老化工站配置
     SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
+    SETTINGS.setValue(QStringLiteral("PLC/ModbusTrace"), ui->checkBox_plcModbusTrace->isChecked());
+    SETTINGS.setValue(QStringLiteral("PLC/IpAddress"), ui->lineEdit_plcIpAddress->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/Port"), ui->lineEdit_plcPort->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/UnitId"), ui->lineEdit_plcUnitId->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/MCoilAddressOffset"), ui->lineEdit_plcMCoilOffset->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/MBase"), ui->lineEdit_plcMBase->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/MBaseStationStep"), ui->lineEdit_plcMBaseStationStep->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/ConnectTimeoutMs"), ui->lineEdit_plcConnectTimeoutMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/RequestTimeoutMs"), ui->lineEdit_plcRequestTimeoutMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/CommandGapMs"), ui->lineEdit_plcCommandGapMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/ConnectVerifyRead"), ui->checkBox_plcConnectVerifyRead->isChecked());
+
+    auto savePlcOptional = [](const QString& key, const QString& raw) {
+        const QString t = raw.trimmed();
+        if (t.isEmpty()) {
+            SETTINGS.remove(key);
+        } else {
+            SETTINGS.setValue(key, t);
+        }
+    };
+    savePlcOptional(QStringLiteral("PLC/IpAddress_Station2"), ui->lineEdit_plcIpAddressStation2->text());
+    savePlcOptional(QStringLiteral("PLC/Port_Station2"), ui->lineEdit_plcPortStation2->text());
+    savePlcOptional(QStringLiteral("PLC/UnitId_Station2"), ui->lineEdit_plcUnitIdStation2->text());
+    {
+        const QString t = ui->lineEdit_plcMBaseStation2->text().trimmed();
+        if (t.isEmpty()) {
+            SETTINGS.remove(QStringLiteral("PLC/MBase_Station2"));
+        } else {
+            SETTINGS.setValue(QStringLiteral("PLC/MBase_Station2"), t.toInt());
+        }
+    }
+    savePlcOptional(QStringLiteral("PLC/MCoilAddressOffset_Station2"), ui->lineEdit_plcMCoilOffsetStation2->text());
 
     // 保存三元组配置
     SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
@@ -1351,6 +1412,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("MES/xwdWpCode", ui->lineEdit_macStation->text());
     SETTINGS.setValue("MES/machineNo", ui->lineEdit_station->text());
     SETTINGS.setValue("MES/NET", ui->lineEdit_mesUrl->text());
+    SETTINGS.setValue("MES/ConfigFilePath", ui->lineEdit_mes_config_file_path->text());
+    bydmes::loadExternalMesConfig(nullptr);
     SETTINGS.setValue("MES/test_station", ui->lineEdit_processName->text());
     SETTINGS.setValue("MES/model", ui->lineEdit_modelName->text());
     SETTINGS.setValue("MES/FIELD", ui->lineEdit_mac_field->text());
@@ -1788,4 +1851,16 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     freeWorkOptionalLayout_->invalidate();
     testOrderDirty_ = true;
     saveCurrentTestOrder();
+}
+
+void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
+    QString startDir = QFileInfo(ui->lineEdit_mes_config_file_path->text().trimmed()).absolutePath();
+    if (startDir.isEmpty() || !QFileInfo(startDir).isDir()) {
+        startDir = QCoreApplication::applicationDirPath();
+    }
+    const QString path = QFileDialog::getOpenFileName(this, "选择MES配置文件", startDir,
+                                                    "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
+    if (!path.isEmpty()) {
+        ui->lineEdit_mes_config_file_path->setText(path);
+    }
 }
