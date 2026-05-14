@@ -9,9 +9,114 @@
 #include <QTimer>
 #include <QVector>
 #include <QSet>
+#include <QStringList>
+#include <QRegularExpression>
 #include <QThread>
 #include <QtGlobal>
 #include "ui_qfreework.h"
+
+namespace {
+
+/** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
+QString sanitizeMesValuePipes(QString v) {
+    v.replace(QLatin1Char('|'), QStringLiteral("｜"));
+    return v;
+}
+
+/** value 尽量 ASCII：PASS / FAIL；通过且有数据时只带数据；失败为 FAIL 或 FAIL;数据。 */
+QString freeWorkMesValueEnglish(bool stepPass, const QString& testData) {
+    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
+    if (stepPass)
+        return hasData ? sanitizeMesValuePipes(testData) : QStringLiteral("PASS");
+    return hasData ? (QStringLiteral("FAIL;") + sanitizeMesValuePipes(testData)) : QStringLiteral("FAIL");
+}
+
+static void pushMesSeg(QVector<QPair<QString, QString>>* out, const QString& key, const QString& value) {
+    const QString k = key.trimmed();
+    if (k.isEmpty())
+        return;
+    out->append(qMakePair(k, sanitizeMesValuePipes(value)));
+}
+
+/** 解析 productKey / deviceName / deviceSecret 各占一条，避免整包塞进一个 value。 */
+static bool tryAppendAliTupleFields(QVector<QPair<QString, QString>>* out, const QString& pkKey, const QString& dnKey, const QString& skKey,
+                                    const QString& blob) {
+    static const QRegularExpression re(
+        QStringLiteral(R"(productKey\s*:\s*(\S+)\s+deviceName\s*:\s*(\S+)\s+deviceSecret\s*:\s*(\S+))"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch m = re.match(blob.trimmed());
+    if (!m.hasMatch())
+        return false;
+    pushMesSeg(out, pkKey, m.captured(1));
+    pushMesSeg(out, dnKey, m.captured(2));
+    pushMesSeg(out, skKey, m.captured(3));
+    return true;
+}
+
+static void appendOneMesStep(QVector<QPair<QString, QString>>* out, const QString& tag, bool pass, const QString& testData) {
+    pushMesSeg(out, tag, freeWorkMesValueEnglish(pass, testData));
+}
+
+/** 与 hqmes/wksmes 一致：每段一个 ASCII ':' 分隔键值，多段用 | 连接。 */
+QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segments, const QString& overallResult,
+                                 const QString& failValueLiteral) {
+    QStringList parts;
+    parts.reserve(segments.size() + 1);
+    for (const auto& p : segments) {
+        const QString k = p.first.trimmed();
+        if (k.isEmpty())
+            continue;
+        parts << k + QLatin1Char(':') + p.second;
+    }
+    if (parts.isEmpty()) {
+        const QString v = (overallResult == failValueLiteral) ? QStringLiteral("FAIL") : QStringLiteral("PASS");
+        parts << QStringLiteral("SUMMARY:") + v;
+    }
+    return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
+}
+
+}  // namespace
+
+void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData) {
+    QVector<QPair<QString, QString>>* const out = &freeWorkMesSegments_;
+    const int functionId = nf.id;
+    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
+    // 默认 MES 键与 testFunction.cpp 中 FREEWORK_TEST_LIST 本行的 mesTag 一致
+    const QString tag = nf.mesTag.isEmpty() ? QStringLiteral("STEP_%1").arg(functionId) : nf.mesTag;
+
+    switch (functionId) {
+    case 62:
+        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("CLOUD_PRODUCT_KEY"), QStringLiteral("CLOUD_DEVICE_NAME"),
+                                                        QStringLiteral("CLOUD_DEVICE_SECRET"), testData))
+            return;
+        appendOneMesStep(out, tag, pass, testData);
+        return;
+    case 66:
+        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("READ_PRODUCT_KEY"), QStringLiteral("READ_DEVICE_NAME"),
+                                                        QStringLiteral("READ_DEVICE_SECRET"), testData))
+            return;
+        appendOneMesStep(out, tag, pass, testData);
+        return;
+    case 8:
+        pushMesSeg(out, QStringLiteral("BASE_INFO_RESULT"), pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+        if (hasData)
+            pushMesSeg(out, QStringLiteral("BASE_INFO_DETAIL"), testData);
+        // refreshBaseData 将 stepRuntime_.testData 置为 "-"，版本单独来自协议回填成员
+        {
+            const QString sv = softwareVersionForReport_.trimmed();
+            if (!sv.isEmpty())
+                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION"), sv);
+            if (SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool())
+                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION_CHECK"),
+                           softwareVersionPassForReport_ ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+        }
+        return;
+    default:
+        appendOneMesStep(out, tag, pass, testData);
+        return;
+    }
+}
+
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -274,6 +379,7 @@ void QFreeWork::startTask() {
                     test.testResult = stepRuntime_.pass ? "通过" : "失败";
                     test.ask = stepRuntime_.ask;
                     testItems.append(test);
+                    appendFreeWorkMesForCompletedStep(currentFunction, stepRuntime_.pass, stepRuntime_.testData);
                     testResultTableUpdate(testItems);
                 // }
 
@@ -285,12 +391,15 @@ void QFreeWork::startTask() {
         }
 
         if (teststate == orderedTestIndexes_.count() && teststate != 0) {
+            // testItems 在 testResultTableUpdate 内会 clear；MES 分项与上表同步写入 freeWorkMesSegments_。
+            const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
+            showlog("mesItemValue======" + mesItemValue);
             if (TestResult == failValue) {
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
                     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                     "border-radius: 10px; padding: 10px; text-align: center; ");
-                pack.itemvalue = QString("|FREE_TEST:PASS|");
+                pack.itemvalue = mesItemValue;
                 pack.result = "NG";
                 pack.sn = ui->getMac->text();
                 pack.instruct_num = "079";
@@ -303,7 +412,7 @@ void QFreeWork::startTask() {
                     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
                     "border-radius: 10px; padding: 10px; text-align: center;");
                 pack.result = "PASS";
-                pack.itemvalue = QString("|FREE_TEST:FAIL|");
+                pack.itemvalue = mesItemValue;
                 pack.sn = ui->getMac->text();
                 pack.instruct_num = "079";
                 if (ui->isusemes->checkState()) {
@@ -697,6 +806,7 @@ void QFreeWork::initDate() {
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     tupleData_ = TupleApplyResult{};
+    freeWorkMesSegments_.clear();
     TestTime.start();
 }
 

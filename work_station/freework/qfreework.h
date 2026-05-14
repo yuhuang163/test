@@ -3,6 +3,7 @@
 
 #include <QWidget>
 
+#include <QPair>
 #include "Abini.h"
 #include "qtupleservice.h"
 #include "qapplication.h"
@@ -105,6 +106,8 @@ private:
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
+    /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
+    QVector<QPair<QString, QString>> freeWorkMesSegments_;
     QByteArray expectedTailSnFromUi;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
@@ -112,6 +115,8 @@ private:
         QString name;
         std::function<void()> function;
         bool needCaseDone = false;
+        /** MES 键名，在 testFunction.cpp 的 FREEWORK_TEST_LIST 与本项写在一起（ASCII）。 */
+        QString mesTag;
     };
     void createTestFunctions();
     std::vector<NamedFunction> testFunctions;
@@ -184,6 +189,8 @@ private:
     void armPlcBleKeyWaitTimeout();
     void syncPlcModbusTraceFromSettings();
     void maybeShowlogPlcSessionSummary(const QString& stepTag);
+    /** 每步结束时写入 freeWorkMesSegments_（键名取自 NamedFunction::mesTag）。 */
+    void appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData);
 
 private slots:
     void initDate();
