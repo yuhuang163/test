@@ -70,7 +70,9 @@ public:
     void getlxMEASure(int mechine);
     void processlxModbusRTUData(const QByteArray &data);
     void sethqMEASure();
+    void getbydmeaSure(QString mac);
     void getCONF(QString mac);
+    void getbydCONF(QString mac);
     void parseCmd(const QByteArray &byte);
     bool configureProgrammablePower(double voltageV, double currentA);
     bool setProgrammablePowerOutput(bool enable);
