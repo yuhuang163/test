@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>587</width>
+    <width>685</width>
     <height>693</height>
    </rect>
   </property>
@@ -95,7 +95,7 @@
                <string>是否从mes获取mac</string>
               </property>
               <property name="checked">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -259,6 +259,16 @@
                </property>
               </widget>
              </item>
+             <item>
+              <widget class="QPushButton" name="pushButton_2">
+               <property name="toolTip">
+                <string>连接电源后端（VISA 或独立串口/与传感器共用口），按 VisaPower 配置电压限流并打开输出</string>
+               </property>
+               <property name="text">
+                <string>程控电源上电</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
            <item row="4" column="0" colspan="2">
@@ -388,11 +398,52 @@
             </layout>
            </item>
            <item row="7" column="0" colspan="2">
-            <layout class="QHBoxLayout" name="horizontalLayout">
+            <layout class="QHBoxLayout" name="horizontalLayout_powerVisa">
              <item>
               <widget class="QLabel" name="label_3">
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;万用表usb串口&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>程控电源(VISA)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="suctionPowerUseVisaCheckBox">
+               <property name="text">
+                <string>使用VISA</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="suctionPowerVisaAddressEdit">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>1</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="placeholderText">
+                <string>例：ASRL10::INSTR、GPIB0::5::INSTR</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="suctionPowerVisaApplyButton">
+               <property name="toolTip">
+                <string>写入 [VisaPower] ScpiUseVisa、VisaAddress 并重新加载电源链路</string>
+               </property>
+               <property name="text">
+                <string>保存并应用</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="8" column="0" colspan="2">
+            <layout class="QHBoxLayout" name="horizontalLayout_sensorUsb">
+             <item>
+              <widget class="QLabel" name="label_sensorUsb">
+               <property name="text">
+                <string>传感器/采集 USB</string>
                </property>
               </widget>
              </item>
@@ -437,17 +488,38 @@
          <string>待拓展</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_4">
-         <item row="0" column="0">
+         <item row="2" column="0">
           <widget class="QLabel" name="label_5">
            <property name="text">
             <string>输入SN获取mac(mes||文件)：</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
+         <item row="0" column="0">
+          <widget class="QPushButton" name="snruler_formes">
+           <property name="text">
+            <string>snruler_formes</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
           <widget class="QLineEdit" name="getMac">
            <property name="placeholderText">
             <string>切换英文输入再扫码</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="start_formes">
+           <property name="text">
+            <string>start_formes</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="testdata_formes">
+           <property name="text">
+            <string>testdata_formes</string>
            </property>
           </widget>
          </item>

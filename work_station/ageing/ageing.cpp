@@ -8,7 +8,27 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
-
+void ageing::on_pushButton_clicked() {
+    // ui->macInput->setText("3C:84:27:07:A8:D2");
+    // on_macInput_returnPressed();
+    // at->sendMac(ui->macInput->text());  // 发送mac地址
+    // waitWork(8000);
+    // sendCommandWithRetry([&]() {
+    //     QVariantMap m;
+    //     m["mode"] = 1;
+    //     m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
+    //     protocolManager.set(DeviceCmd::BurningMode, m);
+    // });
+    const QString entered = ui->getMac->text().trimmed();
+    MesPacketData p = pack;
+    p.factory = QStringLiteral("byd");
+    p.mechines = getIndex();
+    p.sn = entered;
+    p.itemvalue = entered;
+    p.instruct_num = QStringLiteral("079");
+    showlog(QStringLiteral("MES：getMesTestValue → 按过程码请求 SN"));
+    emit getMesTestValue(p);
+}
 ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::ageing) {
     m_index = index;
     pack.mechines = getIndex();
@@ -102,6 +122,24 @@ void ageing::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        writesn = snFromMes.toUtf8();
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
             mesmacAddress = value;
@@ -354,7 +392,7 @@ void ageing::processInspection(QString stringsn) {
             emit sendProcessInspection(pack);
         }
     } else {
-        showlog("SN为空");
+        showlog("SN为空"+stringsn);
     }
 
     if (!ui->isusemes->checkState())  // 离线
@@ -506,7 +544,7 @@ void ageing::startTask() {
                     pack.sn = ui->getMac->text();
                     pack.itemvalue = "083";
                     if (ui->isusemes->checkState()) {
-                        // emit send_end_testPass(pack);
+                        emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -520,7 +558,7 @@ void ageing::startTask() {
                     ui->test_result->setStyleSheet(
                         "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                         "border-radius: 10px; padding: 10px; text-align: center; ");
-                    // emit send_end_testPass(pack);
+                    emit send_end_testPass(pack);
                     appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                     testResultTableUpdate(testItems);
                 }
@@ -538,7 +576,7 @@ void ageing::startTask() {
 
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                // emit send_end_test(getIndex());
+                emit send_end_test(getIndex());
                 
                 at->sendMac("00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
@@ -553,18 +591,7 @@ void ageing::startTask() {
         }
     }
 
-void ageing::on_pushButton_clicked() {
-    // ui->macInput->setText("3C:84:27:07:A8:D2");
-    // on_macInput_returnPressed();
-    at->sendMac(ui->macInput->text());  // 发送mac地址
-    waitWork(8000);
-    sendCommandWithRetry([&]() {     
-        QVariantMap m;
-        m["mode"] = 1;
-        m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
-        protocolManager.set(DeviceCmd::BurningMode, m); 
-    });
-}
+
 
 void ageing::on_getMac_returnPressed() {
     testResultTableInit();
@@ -598,25 +625,26 @@ void ageing::on_getMac_returnPressed() {
     showlog("正在查询mac地址");
     writesn = ui->getMac->text().toUtf8();
     stringsn = ui->getMac->text();
-    const QString parsedMac = parseMacFromSn(ui->getMac->text());
-    if (parsedMac.isEmpty()) {
-        ui->getMac->setDisabled(0);
-        ui->macInput->setDisabled(0);
-        showlog("SN解析MAC失败");
-        ui->getMac->setFocus();
-        return;
-    }
+    // const QString parsedMac = parseMacFromSn(ui->getMac->text());
+    // if (parsedMac.isEmpty()) {
+    //     ui->getMac->setDisabled(0);
+    //     ui->macInput->setDisabled(0);
+    //     showlog("SN解析MAC失败");
+    //     ui->getMac->setFocus();
+    //     return;
+    // }
 
-    ui->macInput->setText(parsedMac);
-    showlog("SN解析MAC成功: " + parsedMac);
-    stringsn = ui->getMac->text();
+    // ui->macInput->setText(parsedMac);
+    // showlog("SN解析MAC成功: " + parsedMac);
     appendStationResult(testItems, "主板条码", "0.0000", passValue);
     testResultTableUpdate(testItems);
     // 获取比亚迪mes的sn校验规则
-    // processGetMesTestValue();
-    // 获取比亚迪mes的站前检测
-    // processInspection(stringsn);
-    appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    processGetMesTestValue();
+    // MES站前检测，成功再开始测试
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->getMac->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
     on_macInput_returnPressed();
 
 }

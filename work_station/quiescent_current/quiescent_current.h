@@ -1,4 +1,4 @@
-﻿#ifndef QUIESCENT_CURRENT_H
+#ifndef QUIESCENT_CURRENT_H
 #define QUIESCENT_CURRENT_H
 
 #include "test_base.h"
@@ -78,6 +78,7 @@ private:
     QString logString = "";
     QString totalresult = "";
     Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
+    bool useProgrammablePower = false;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接

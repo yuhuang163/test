@@ -95,12 +95,15 @@
                 <string>是否从mes获取mac</string>
                </property>
                <property name="checked">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
               </widget>
              </item>
              <item>
               <widget class="QCheckBox" name="isusemes">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
                <property name="text">
                 <string>是否过站</string>
                </property>
@@ -108,7 +111,7 @@
                 <bool>true</bool>
                </property>
                <property name="checked">
-                <bool>false</bool>
+                <bool>true</bool>
                </property>
               </widget>
              </item>
@@ -175,7 +178,7 @@
                <item>
                 <widget class="QLineEdit" name="getMac">
                  <property name="text">
-                  <string/>
+                  <string>V32604140014</string>
                  </property>
                  <property name="placeholderText">
                   <string>切换英文输入再扫码</string>

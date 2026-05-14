@@ -60,6 +60,8 @@ typedef struct MesPacketData {
     QString product;         //产品名字
     QString lotName;         //工单号码
     QString mac;             // mac地址
+    int elapseTime = 1;      //测试耗时（默认 1，单位由 MES 接口定义）
+    int testCount = 1;       //测试次数（默认 1）
 
 } MesPacketData;
 

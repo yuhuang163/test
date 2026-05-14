@@ -1,14 +1,38 @@
-﻿#include "qjig.h"
+#include "qjig.h"
 
 #include "AbIni.h"
 #include "qcoreapplication.h"
 #include "qdatetime.h"
 #include "qdebug.h"
+#include <QStringList>
+#include <QVector>
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
 Qjig::Qjig(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {}
+
+namespace {
+quint16 calculateModbusCrc(const QByteArray& data) {
+    quint16 crc = 0xFFFF;
+    for (char b : data) {
+        crc ^= static_cast<quint8>(b);
+        for (int i = 0; i < 8; ++i) {
+            if (crc & 0x0001) {
+                crc = (crc >> 1) ^ 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    return crc;
+}
+
+quint16 readBigEndianU16(const QByteArray& data, int highIndex, int lowIndex) {
+    return (static_cast<quint8>(data.at(highIndex)) << 8) |
+           static_cast<quint8>(data.at(lowIndex));
+}
+}  // namespace
 // state表示阶段
 void Qjig::set_cylinder_state(int state, int mechine) {
     // if (getIndex() == 2)
@@ -223,6 +247,29 @@ void Qjig::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty()) {
         return;
     }
+    // DAM-3158(A) 返回帧优先解析：01 04 10 [16字节数据] CRC(2)
+    if (byte.size() >= 21 &&
+        static_cast<quint8>(byte.at(0)) == 0x01 &&
+        static_cast<quint8>(byte.at(1)) == 0x04 &&
+        static_cast<quint8>(byte.at(2)) == 0x10) {
+        const quint16 expected = readBigEndianU16(byte, byte.size() - 2, byte.size() - 1);
+        const quint16 calculated = calculateModbusCrc(byte.left(byte.size() - 2));
+        if (expected == calculated) {
+            QVector<quint16> rawChannels;
+            rawChannels.reserve(8);
+            for (int i = 0; i < 8; ++i) {
+                const int idx = 3 + i * 2;
+                rawChannels.append(readBigEndianU16(byte, idx, idx + 1));
+            }
+            QStringList channelValues;
+            channelValues.reserve(rawChannels.size());
+            for (quint16 v : rawChannels) {
+                channelValues.append(QString::number(v));
+            }
+            emit send_suction_data(channelValues.join(','));
+            return;
+        }
+    }
     qDebug() << "byte" << byte;
 
     QList<int> allValues;    // 存储所有行的数值
@@ -288,6 +335,23 @@ void Qjig::get_amplitude() {
         serialPort->write(dataToSend);
         save_Jig_uart_log(1, dataToSend);
     }
+}
+
+void Qjig::setDam3158Channel(int channel) {
+    if (channel < 0) channel = 0;
+    if (channel > 7) channel = 7;
+    dam3158Channel_ = channel;
+}
+void Qjig::setDam3158RangeCode(quint16 rangeCode) {
+    dam3158RangeCode_ = rangeCode;
+}
+void Qjig::getDam3158Measure() {
+    if (!serialPort || !serialPort->isOpen()) {
+        return;
+    }
+    const QByteArray data = QByteArray::fromHex("010401000008F030");
+    serialPort->write(data);
+    save_Jig_uart_log(1, data);
 }
 
 void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {

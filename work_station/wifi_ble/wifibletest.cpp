@@ -325,12 +325,10 @@ void wifibletest::refreshBattaryData(ProtocolBatteryData adc) {
             break;
     }
     ui->battary_state->setText(chargeStateStr);
-
     // 修改电量的显示样式
     QString batteryPercentStr =
         "电量为：<span style='color:blue'>" + QString::number(adc.percent) + "%</span>";
     ui->battary_value->setText(batteryPercentStr);
-
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
                                 QString::number(adc.voltageMv / 1000.0, 'f', 3) +
@@ -338,71 +336,77 @@ void wifibletest::refreshBattaryData(ProtocolBatteryData adc) {
     ui->battary_voltage->setText(batteryVoltageStr);
 
     voltage = adc.voltageMv / 1000.0;
+    battary = adc.percent;
+    if (adc.percent >= standbattary) {
+        is_battary_test = 1;  // 正常
+    }
+    if (adc.percent < standbattary)
+        is_battary_test = 2;  // 低电量
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     // QRegularExpressionMatch match = regex.match(chargeStateStr);
     // chargestate = match.captured(2);
-    is_battary_test = 1;
-    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "通过";
-        test.ask = "通过";
-        testItems.append(test);
+    // is_battary_test = 1;
+//     if (adc.chargeState == 2 && adc.voltageMv / 1000.0 > standbattary) {
+//         TestItem test;
+//         test.testItem = "充电测试";
+//         test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+//         test.testResult = "通过";
+//         test.ask = "通过";
+//         testItems.append(test);
 
-        testResultTableUpdate(testItems);
+//         testResultTableUpdate(testItems);
 
-        charageresult = "通过";
-        voltageresult = "通过";
-        showlog("电量和充电测试通过");
-    }
-    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "充电断开" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
+//         charageresult = "通过";
+//         voltageresult = "通过";
+//         showlog("电量和充电测试通过");
+//     }
+//     if (adc.chargeState != 2 && adc.voltageMv / 1000.0 > standbattary) {
+//         TestItem test;
+//         test.testItem = "充电测试";
+//         test.testData = "充电断开" + QString::number(adc.voltageMv / 1000.0) + "V";
+//         test.testResult = "失败";
+//         test.ask = "通过";
+//         testItems.append(test);
 
-        pack.error = "SP03016";
+//         pack.error = "SP03016";
 
-        testResultTableUpdate(testItems);
+//         testResultTableUpdate(testItems);
 
-        showlog("充电状态不通过");
-        charageresult = "失败";
-        voltageresult = "通过";
-        TestResult = failValue;
-    }
-    if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
+//         showlog("充电状态不通过");
+//         charageresult = "失败";
+//         voltageresult = "通过";
+//         TestResult = failValue;
+//     }
+//     if (adc.chargeState == 2 && adc.voltageMv / 1000.0 <= standbattary) {
+//         TestItem test;
+//         test.testItem = "充电测试";
+//         test.testData = "正在充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+//         test.testResult = "失败";
+//         test.ask = "通过";
+//         testItems.append(test);
 
-        testResultTableUpdate(testItems);
-        pack.error = "SP03013";
-        showlog("电量测试不通过");
-        voltageresult = "失败";
-        charageresult = "通过";
-        TestResult = failValue;
-    }
-    if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
-        TestItem test;
-        test.testItem = "充电测试";
-        test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
-        test.testResult = "失败";
-        test.ask = "通过";
-        testItems.append(test);
-        pack.error = "SP03013";
-        testResultTableUpdate(testItems);
+//         testResultTableUpdate(testItems);
+//         pack.error = "SP03013";
+//         showlog("电量测试不通过");
+//         voltageresult = "失败";
+//         charageresult = "通过";
+//         TestResult = failValue;
+//     }
+//     if (adc.chargeState != 2 && adc.voltageMv / 1000.0 <= standbattary) {
+//         TestItem test;
+//         test.testItem = "充电测试";
+//         test.testData = "不充电" + QString::number(adc.voltageMv / 1000.0) + "V";
+//         test.testResult = "失败";
+//         test.ask = "通过";
+//         testItems.append(test);
+//         pack.error = "SP03013";
+//         testResultTableUpdate(testItems);
 
-        showlog("电量和充电测试都不通过");
-        voltageresult = "失败";
-        charageresult = "失败";
-        TestResult = failValue;
-    }
+//         showlog("电量和充电测试都不通过");
+//         voltageresult = "失败";
+//         charageresult = "失败";
+//         TestResult = failValue;
+//     }
 }
 
 void wifibletest::refreshWifiState(int state) {
@@ -588,17 +592,17 @@ void wifibletest::startTask() {
             case STATE_WATI_CONNECT:  // 设置禁止休眠
                 if (at->getConnected()) {
                     showlog("蓝牙连接成功");
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
-                    state = getNextState(state);
-                }
-                break;
-            case STATE_DISABLE_SLEEP_1:  // 设置设备采集
-                if (canGoNext) {
                     sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
-                    showlog("已进入禁止休眠");
                     state = getNextState(state);
                 }
                 break;
+            // case STATE_DISABLE_SLEEP_1:  // 设置设备采集
+            //     if (canGoNext) {
+            //         sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
+            //         showlog("已进入禁止休眠");
+            //         state = getNextState(state);
+                
+            //     break;
 
             case STATE_FAC_MODE:  // 设置设备采集
                 if (canGoNext) {
@@ -768,70 +772,44 @@ void wifibletest::startTask() {
                 break;
 
             case STATE_WATI_CORRECT_BATTARY:  // 设置禁止休眠
-                if (is_battary_test) {
-                    showlog("已成功完成电量测试");
-                    if (pack.factory == "lx" || pack.factory == "jj") {
-                        state = STATE_WATI_CORRECT_CURRENT;
-                        qDebug() << getIndex() << "开始计时" << QDateTime::currentDateTime();
-                        waittime->setInterval(measure_wait_time);
-                        waittime->start();
-                    } else {
+                if (is_battary_test != 0) {
+                    if (is_battary_test == 1) {
+                        showlog("电量正常" + QString::number(battary) + "%");
+                        TestItem test;
+                        test.testItem = "当前电量";
+                        test.testData = QString::number(battary) + "%";
+                        test.testResult = "通过";
+                        test.ask = "通过";
+                        testItems.append(test);
+                        testResultTableUpdate(testItems);
+                        // protocolManager.get(DeviceCmd::PeriphState);
+                        // 待开发三元组烧录
                         state = STATE_SAVE_RESULT;
                     }
-                }
 
+                    if (is_battary_test == 2) {
+                        showlog("当前电量低，为" + QString::number(battary) + "%");
+                        // pack.error="SP03010";
+                        TestItem test;
+                        test.testItem = "当前电量";
+                        test.testData = QString::number(battary);
+                        test.testResult = "失败";
+                        test.ask = "通过";
+                        testItems.append(test);
+                        testResultTableUpdate(testItems);
+
+                        result = failValue;
+                        state = STATE_SAVE_RESULT;
+                    }
+                } else {
+                    showlog("正在重发获取电量信息");
+                    protocolManager.get(DeviceCmd::GetBattery);
+                }
                 break;
+            
 
             case STATE_WATI_CORRECT_CURRENT:  // 设置禁止休眠
 
-                if (isovertime && (measure_ammeter < LowCurrent || measure_ammeter > HighCurrent))  // 失败
-                {
-                    waittime->stop();
-                    showlog("充电电流测试失败：超时");
-                    showlog("电流测量值为" + QString::number(measure_ammeter));
-                    currentresult = "失败";
-                    TestItem test;
-                    pack.error = "SP03014";
-                    test.testItem = "充电电流";
-                    test.testData = QString::number(measure_ammeter);
-
-                    test.testResult = currentresult;
-                    test.ask = "通过";
-                    testItems.append(test);
-
-                    testResultTableUpdate(testItems);
-
-                    TestResult = failValue;
-                    state = STATE_SAVE_RESULT;
-
-                    break;
-                }
-                if (measure_ammeter > LowCurrent && measure_ammeter < HighCurrent)  // 成功
-                {
-                    measure_ammeter_counts++;
-                    if (measure_ammeter_counts > 5) {
-                        showlog("充电电流正常");
-                        waittime->stop();
-                        currentresult = "通过";
-                        state = STATE_SAVE_RESULT;
-                        TestItem test;
-                        test.testItem = "充电电流";
-                        test.testData = QString::number(measure_ammeter);
-                        test.testResult = currentresult;
-                        test.ask = "通过";
-                        testItems.append(test);
-
-                        testResultTableUpdate(testItems);
-                    }
-                } else {
-                    showlog("充电电流异常重新测试5次");
-                    measure_ammeter_counts = 0;
-                }
-                if (pack.factory == "lx" || pack.factory == "jj") {
-                    usb->getlxMEASure(getIndex());
-                    showlog("等待治具测量充电电流");
-                    waitWork(500);
-                }
                 break;
 
             case STATE_SAVE_RESULT:
@@ -927,11 +905,6 @@ void wifibletest::on_macInput_returnPressed() {
         on_connectButton_clicked();
     }
 
-    if (pack.factory == "lx" || pack.factory == "jj") {
-        if (!usbSerialPort->isOpen()) {
-            openUsbSerialPort();
-        }
-    }
 
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
@@ -1002,8 +975,10 @@ void wifibletest::on_getMac_returnPressed() {
     stringsn = ui->getMac->text();
     appendStationResult(testItems, "主板条码", "0.0000", passValue);
     testResultTableUpdate(testItems);
-    // processInspection(ui->getMac->text());  // 站前检测
-    appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->snInput->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
     on_macInput_returnPressed();
 }
 

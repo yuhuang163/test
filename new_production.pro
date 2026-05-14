@@ -320,6 +320,27 @@ win32 {
     LIBS += -luser32
 }
 
+win32 {
+    # NI-VISA / IVI：仅当能找到 visa.h 时才定义 HAVE_NI_VISA，否则会编译失败。
+    # 注意：路径含空格时不要用 exists($$VISA_ROOT/...) 拼接，容易判断失败却仍带旧 DEFINES。
+    NI_VISA_ROOT =
+    exists("C:/Program Files/IVI Foundation/VISA/Win64/Include/visa.h") {
+        NI_VISA_ROOT = "C:/Program Files/IVI Foundation/VISA/Win64"
+    } else:exists("C:/Program Files (x86)/IVI Foundation/VISA/Win64/Include/visa.h") {
+        NI_VISA_ROOT = "C:/Program Files (x86)/IVI Foundation/VISA/Win64"
+    } else:exists("C:/Program Files/IVI Foundation/VISA/WinNT/Include/visa.h") {
+        NI_VISA_ROOT = "C:/Program Files/IVI Foundation/VISA/WinNT"
+    }
+    !isEmpty(NI_VISA_ROOT) {
+        INCLUDEPATH += $$NI_VISA_ROOT/Include
+        LIBS += -L$$NI_VISA_ROOT/Lib_x64/msc -lvisa64
+        DEFINES += HAVE_NI_VISA
+        message("NI-VISA enabled: $$NI_VISA_ROOT")
+    } else {
+        message("NI-VISA not found — build without VISA (install NI-VISA Runtime/SDK or fix path).")
+    }
+}
+
 
 
 

@@ -1,10 +1,12 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
 #include <QApplication>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
@@ -13,6 +15,7 @@
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
+#include "bydmes.h"
 
 struct FreeWorkTestCatalogItem {
     int id;
@@ -1030,6 +1033,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_macStation->setText(SETTINGS.value("MES/xwdWpCode").toString());
     ui->lineEdit_station->setText(SETTINGS.value("MES/machineNo").toString());
     ui->lineEdit_mesUrl->setText(SETTINGS.value("MES/NET").toString());
+    ui->lineEdit_mes_config_file_path->setText(SETTINGS.value("MES/ConfigFilePath").toString());
     ui->lineEdit_processName->setText(SETTINGS.value("MES/test_station").toString());
     ui->lineEdit_modelName->setText(SETTINGS.value("MES/model").toString());
     ui->lineEdit_mac_field->setText(SETTINGS.value("MES/FIELD").toString());
@@ -1408,6 +1412,8 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("MES/xwdWpCode", ui->lineEdit_macStation->text());
     SETTINGS.setValue("MES/machineNo", ui->lineEdit_station->text());
     SETTINGS.setValue("MES/NET", ui->lineEdit_mesUrl->text());
+    SETTINGS.setValue("MES/ConfigFilePath", ui->lineEdit_mes_config_file_path->text());
+    bydmes::loadExternalMesConfig(nullptr);
     SETTINGS.setValue("MES/test_station", ui->lineEdit_processName->text());
     SETTINGS.setValue("MES/model", ui->lineEdit_modelName->text());
     SETTINGS.setValue("MES/FIELD", ui->lineEdit_mac_field->text());
@@ -1845,4 +1851,16 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     freeWorkOptionalLayout_->invalidate();
     testOrderDirty_ = true;
     saveCurrentTestOrder();
+}
+
+void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
+    QString startDir = QFileInfo(ui->lineEdit_mes_config_file_path->text().trimmed()).absolutePath();
+    if (startDir.isEmpty() || !QFileInfo(startDir).isDir()) {
+        startDir = QCoreApplication::applicationDirPath();
+    }
+    const QString path = QFileDialog::getOpenFileName(this, "选择MES配置文件", startDir,
+                                                    "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
+    if (!path.isEmpty()) {
+        ui->lineEdit_mes_config_file_path->setText(path);
+    }
 }

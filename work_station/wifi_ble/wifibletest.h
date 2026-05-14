@@ -32,6 +32,7 @@ private:
     int BleLowRssi = 0;
     double standbattary = 0;
     int is_battary_test = 0;
+    int battary = 0;  // 当前电量百分比，与 refreshBattaryData 中 adc.percent 同步
     int RssiTestTime = 0;
     QString WIFI_RSSI = "";
     QString BLE_RSSI = "";
@@ -73,7 +74,6 @@ private:
     typedef enum {
         STATE_IDLE = 0,  // 休眠状态
         STATE_WATI_CONNECT,
-        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
         STATE_FAC_MODE,
         STATE_WATI_BASE_INFO,
         STATE_WATI_WIFI_CONNECT,          // 等待连接
