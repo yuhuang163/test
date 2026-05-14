@@ -1,4 +1,4 @@
-﻿#ifndef FACTORY_ANALYZER_H
+#ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
 #include "common_class.h"
@@ -22,6 +22,9 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QStandardItemModel>
+#include <QSerialPort>
+
+class Qproduct;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {

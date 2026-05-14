@@ -1,4 +1,4 @@
-﻿#include "test_base.h"
+#include "test_base.h"
 
 #include <dbt.h>
 #include <devguid.h>
@@ -29,7 +29,7 @@ test_base::test_base(QWidget* parent) :
     qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
     usb(new Qusb(usbSerialPort)),
     jigSerialPort(new QSerialPort(this)), jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
-    product(new Qproduct(productSerialPort)) {
+    product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
