@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -13,6 +14,7 @@
 #include <QRegularExpression>
 #include <QThread>
 #include <QtGlobal>
+#include "qproduct.h"
 #include "ui_qfreework.h"
 
 namespace {
@@ -137,9 +139,9 @@ void QFreeWork::on_pushButton_clicked() {
 
     // debugUpdateTupleMacStatus();
     // applyTupleByMac();
-    runPlcModbusConnectTest();
+    // runPlcModbusConnectTest();
     // startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
-
+    startProductInstrumentResetAndWaitAck();
 
 }
 namespace {
@@ -498,6 +500,16 @@ void QFreeWork::refreshJigUartState(int state) {
     }
 }
 
+void QFreeWork::refreshProductUartState(int state) {
+    if (state) {
+        showlog(QStringLiteral("产品串口(仪器)连接成功"));
+    } else {
+        ui->productComNameCombo->setEnabled(true);
+        ui->productConnectButton->setEnabled(true);
+        showlog(QStringLiteral("产品串口(仪器)连接断开"));
+    }
+}
+
 void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                                    const QString& enableKey) {
     if (!SETTINGS.value(enableKey).toBool()) {
@@ -792,6 +804,7 @@ void QFreeWork::initDate() {
     currentKeyExpectedKey_.clear();
     closeKeyWaitPrompt();
     inovancePlcTcp_.disconnect();
+    clearProductInstrumentWatch();
     is_battary_test = 0;
     charageresult = "未测";
     voltageresult = "未测";
@@ -1240,9 +1253,230 @@ void QFreeWork::on_jigDisconnectButton_clicked() {
     ui->jigConnectButton->setEnabled(true);
 }
 
+void QFreeWork::on_productConnectButton_clicked() {
+    openProductSerialPort();
+    ui->productComNameCombo->setEnabled(false);
+    ui->productConnectButton->setEnabled(false);
+}
+
+void QFreeWork::on_productDisconnectButton_clicked() {
+    closeProductSerialPort();
+    ui->productComNameCombo->setEnabled(true);
+    ui->productConnectButton->setEnabled(true);
+}
+
+void QFreeWork::clearProductInstrumentWatch() {
+    disconnect(productInstConn_);
+    productInstConn_ = QMetaObject::Connection();
+}
+
+bool QFreeWork::ensureProductSerialForInstrumentStep(const QString& stepName) {
+    if (!product) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("Qproduct未初始化");
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：Qproduct未初始化"));
+        return false;
+    }
+    QComboBox* const prodCombo = getProductcomNameCombo();
+    if (!prodCombo || prodCombo->currentText().trimmed().isEmpty()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("未选择产品串口COM");
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：请先在「产品串口(仪器)」下拉框选择 COM 口"));
+        return false;
+    }
+    // 仪器步骤依赖产品串口：未打开时走与手动点「连接串口」同一槽，避免与界面状态不一致
+    if (!productSerialPort || !productSerialPort->isOpen()) {
+        showlog(stepName + QStringLiteral("：正在打开产品串口…"));
+        on_productConnectButton_clicked();
+        if (productSerialPort && productSerialPort->isOpen()) {
+            if (product) {
+                product->clearProductSerialRxAccum();
+            }
+            showlog(QStringLiteral("产品串口已打开：%1").arg(prodCombo->currentText()));
+        } else {
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = QStringLiteral("产品串口打开失败");
+            TestResult = failValue;
+            showlog(stepName + QStringLiteral("失败：无法打开产品串口，请检查端口占用或未插入"));
+            return false;
+        }
+    }
+    return true;
+}
+
+QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
+    switch (profile) {
+        case 1:
+            return Qproduct::buildStartReceiveCmd2440Ble1M();
+        case 2:
+            return Qproduct::buildStartReceiveCmd2480Ble1M();
+        case 3:
+            return Qproduct::buildStartReceiveCmd2402Ble2M();
+        case 4:
+            return Qproduct::buildStartReceiveCmd2440Ble2M();
+        case 5:
+            return Qproduct::buildStartReceiveCmd2480Ble2M();
+        case 0:
+        default:
+            return Qproduct::buildStartReceiveCmd2402Ble1M();
+    }
+}
+
+void QFreeWork::startProductInstrumentResetAndWaitAck() {
+    
+
+    waitWork(3000);//为了给产品进入信令测试模式留足够的时间
+
+    const QString stepName = QStringLiteral("产品串口仪器复位应答");
+    clearProductInstrumentWatch();
+    if (!ensureProductSerialForInstrumentStep(stepName)) {
+        return;
+    }
+    product->clearProductSerialRxAccum();
+    QString err;
+    if (!product->writeRaw(Qproduct::cmdReset(), &err)) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = err;
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：写串口 ") + err);
+        return;
+    }
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("等待040E0405030C00");
+
+    productInstConn_ = connect(product, &Qproduct::instrumentAckResetSeen, this, [this, stepName]() {
+
+        disconnect(productInstConn_);
+        productInstConn_ = QMetaObject::Connection();
+        stepRuntime_.done = true;
+        stepRuntime_.pass = true;
+        stepRuntime_.testData = QStringLiteral("040E0405030C00");
+        showlog(stepName + QStringLiteral("通过"));
+    });
+}
+
+void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile) {
+    clearProductInstrumentWatch();
+    if (!ensureProductSerialForInstrumentStep(stepName)) {
+        return;
+    }
+    const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
+    QString err;
+    if (!product->writeRaw(frame, &err)) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = err;
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：写串口 ") + err);
+        return;
+    }
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("Profile=%1 等待040E0405332000").arg(profile);
+
+    productInstConn_ = connect(product, &Qproduct::instrumentAckStartReceiveSeen, this, [this, stepName]() {
+        if (!isCurrentStep(stepName)) {
+            return;
+        }
+        if (stepRuntime_.done) {
+            return;
+        }
+        disconnect(productInstConn_);
+        productInstConn_ = QMetaObject::Connection();
+        stepRuntime_.done = true;
+        stepRuntime_.pass = true;
+        stepRuntime_.testData = QStringLiteral("040E0405332000");
+        showlog(stepName + QStringLiteral("通过"));
+    });
+}
+
+void QFreeWork::startProductInstrumentStopReceiveAndPer() {
+    const QString stepName = QStringLiteral("产品串口停止接收与PER");
+    clearProductInstrumentWatch();
+    if (!ensureProductSerialForInstrumentStep(stepName)) {
+        return;
+    }
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    const int waitPacketMs = SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt();
+    const int stopAckTimeout = SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt();
+    // 清累积与边沿标志，避免沿用上一轮「停止应答」边沿；随后等待窗口内仪器继续往串口吐包并由 parseCmd 累积
+    product->clearProductSerialRxAccum();
+    showlog(stepName + QStringLiteral("：等待仪器发包 %1ms 后发送停止接收").arg(waitPacketMs));
+
+    QTimer::singleShot(waitPacketMs, this, [this, stepName, stopAckTimeout]() {
+        if (!isCurrentStep(stepName)) {
+            return;
+        }
+        QString err;
+        if (!product || !product->writeRaw(Qproduct::cmdStopReceive(), &err)) {
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = err.isEmpty() ? QStringLiteral("写停止接收失败") : err;
+            TestResult = failValue;
+            showlog(stepName + QStringLiteral("失败：写停止 ") + stepRuntime_.testData);
+            return;
+        }
+        productInstConn_ = connect(product, &Qproduct::instrumentStopReceiveSeen, this,
+                                   [this, stepName](int recvPkts) {
+                                    //    if (!isCurrentStep(stepName)) {
+                                    //        return;
+                                    //    }
+                                    //    if (stepRuntime_.done) {
+                                    //        return;
+                                    //    }
+                                       disconnect(productInstConn_);
+                                       productInstConn_ = QMetaObject::Connection();
+                                       const int sendCount =
+                                           SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000)
+                                               .toInt();
+                                       const double maxPer =
+                                           SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble();
+                                       const double per = Qproduct::computePer(sendCount, recvPkts);
+                                       const bool pass = (recvPkts >= 0) && (per <= maxPer);
+                                       stepRuntime_.done = true;
+                                       stepRuntime_.pass = pass;
+                                       stepRuntime_.testData =
+                                           QStringLiteral("仪器发包数=%1 收包=%2 PER=%3 门限<=%4")
+                                               .arg(sendCount)
+                                               .arg(recvPkts)
+                                               .arg(per, 0, 'f', 4)
+                                               .arg(maxPer, 0, 'f', 4);
+                                       if (!pass) {
+                                           TestResult = failValue;
+                                       }
+                                       showlog(stepName + (pass ? QStringLiteral("通过 ") : QStringLiteral("失败 ")) +
+                                               stepRuntime_.testData);
+                                   });
+        QTimer::singleShot(stopAckTimeout, this, [this, stepName]() {
+            if (!isCurrentStep(stepName)) {
+                return;
+            }
+            if (stepRuntime_.done) {
+                return;
+            }
+            disconnect(productInstConn_);
+            productInstConn_ = QMetaObject::Connection();
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = QStringLiteral("超时未收到停止接收应答");
+            TestResult = failValue;
+            showlog(stepName + QStringLiteral("失败：等待停止应答超时"));
+        });
+    });
+}
+
 void QFreeWork::on_stopTest_clicked() {
     // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
     // waitWork(100);
+    clearProductInstrumentWatch();
     inovancePlcTcp_.disconnect();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

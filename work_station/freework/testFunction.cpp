@@ -97,6 +97,15 @@ struct FreeWorkTestCatalogItem {
     X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", "治具将自动按压电源键，请确认设备按键上报", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
     X(88, "PLC_V3_switch旋钮整步左旋", true, PLC_V3_SWITCH_LEFT, startPlcSwitchPlcAndWaitLeftRotate()) \
     X(89, "PLC_V3_switch旋钮右旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮左旋整步通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
+    X(90, "产品串口仪器复位应答", true, PROD_INST_RESET_ACK, startProductInstrumentResetAndWaitAck()) \
+    X(91, "产品串口开始接收2402_BLE1M", true, PROD_INST_START_RX_2402_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2402_BLE1M"), 0)) \
+    X(92, "产品串口开始接收2440_BLE1M", true, PROD_INST_START_RX_2440_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2440_BLE1M"), 1)) \
+    X(93, "产品串口开始接收2480_BLE1M", true, PROD_INST_START_RX_2480_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE1M"), 2)) \
+    X(94, "产品串口开始接收2402_BLE2M", true, PROD_INST_START_RX_2402_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2402_BLE2M"), 3)) \
+    X(95, "产品串口开始接收2440_BLE2M", true, PROD_INST_START_RX_2440_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2440_BLE2M"), 4)) \
+    X(96, "产品串口开始接收2480_BLE2M", true, PROD_INST_START_RX_2480_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE2M"), 5)) \
+    X(97, "产品串口停止接收与PER", true, PROD_INST_STOP_RX_PER, startProductInstrumentStopReceiveAndPer()) \
+    X(98, "进入蓝牙非信令模式", false, BT_NO_SIGNAL_ENTER, { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::BtNoSignalMode, m); stepRuntime_.testData = QStringLiteral("已下发(无回包放行)"); showlog(QStringLiteral("进入蓝牙非信令：已下发，设备无回包本步不等待协议应答")); }) \
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {

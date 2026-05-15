@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
@@ -63,7 +63,7 @@
 #define SCREEN_VER "屏幕测试工站   V1.2.4"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
 #define SINGLE_VER "信号测试工站   V1.5.5"
-#define FREE_VER "自由测试工站   V1.1.5"
+#define FREE_VER "自由测试工站   V1.1.6"
 #define IMU_VER "IMU校准工站    V1.5.5"
 #define PCBA_VER "产品板子测试   V1.5.2"
 #define PRESSURE_VER "压感校测工站   V1.3.9"

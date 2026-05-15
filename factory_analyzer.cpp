@@ -1,4 +1,4 @@
-#include "factory_analyzer.h"
+﻿#include "factory_analyzer.h"
 #include "agreement/qbrush/qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
@@ -609,6 +609,9 @@ void factory_analyzer::readProductSerialPortData() {
     productSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = productSerialPortBuf;  // 读取缓冲区数据
 
+    // qDebug() << "product data len : " << dataTemp.size();
+    if (product)
+        product->parseCmd(dataTemp);
 
     if (isBrushLogGet)
         log->save_brush_log(0, "new", dataTemp);
@@ -675,6 +678,8 @@ void factory_analyzer::openProductSerialPort() {
         disconnect(productSerialPortTimer, &QTimer::timeout, this,
                    &factory_analyzer::readProductSerialPortData);  // timeout执行真正的读取操作
         productSerialPort->close();
+        if (product)
+            product->clearProductSerialRxAccum();
     }
 
     // 设置串口名
@@ -719,6 +724,9 @@ void factory_analyzer::closeProductSerialPort() {
         productSerialPort->close();
     disconnect(productSerialPortTimer, &QTimer::timeout, this,
                &factory_analyzer::readProductSerialPortData);  // timeout执行真正的读取操作
+
+    if (product)
+        product->clearProductSerialRxAccum();
 
    emit refreshProductSerialPortState(0);
 

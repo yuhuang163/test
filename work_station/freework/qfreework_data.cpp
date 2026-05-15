@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include <algorithm>
 
@@ -38,7 +38,6 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     const bool isResourceTest = SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool();
     const bool isAgingStatusTest = SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool();
 
-    product = data.product_name;
     wifiMac.clear();
     for (int var = 0; var < data.wifi_mac.size; ++var) {
         wifiMac += QString::number(data.wifi_mac.bytes[var], 16);
