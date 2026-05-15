@@ -34,6 +34,7 @@ private:
     void updateMainStyle(QString style);
     void readSubPIDAndFilter();
     void saveSubPIDAndFilter();
+    void initSettingTooltips();
     void initFreeWorkTestOrderUi();
     void reorderFreeWorkCheckBoxes();
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);

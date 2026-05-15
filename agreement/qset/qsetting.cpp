@@ -1,4 +1,4 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -38,6 +38,27 @@ const QVector<QPair<QString, QString>> kFreeWorkOptionalCategoryTabs = {
     {QStringLiteral("dongle"), QStringLiteral("dongle功能")},
     {QStringLiteral("cloud"), QStringLiteral("云端交互")},
 };
+
+QString categoryDisplayNameForKey(const QString& categoryKey) {
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        if (tab.first == categoryKey) {
+            return tab.second;
+        }
+    }
+    return categoryKey;
+}
+
+/** 按 objectName 批量设置悬停说明（未列出的控件保持无提示） */
+void applyNamedTooltips(QWidget* root, const QVector<QPair<QString, QString>>& tips) {
+    if (!root) {
+        return;
+    }
+    for (const auto& item : tips) {
+        if (QWidget* w = root->findChild<QWidget*>(item.first)) {
+            w->setToolTip(item.second);
+        }
+    }
+}
 const QString kSelectedStationKey = "TestOrderMeta/SelectedStation";
 const QString kSelectedStationNameKey = "TestOrderMeta/SelectedStationName";
 
@@ -195,12 +216,155 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
         }
         QCoreApplication::exit(0);
     });
+    initSettingTooltips();
     initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 
 
     ui->groupBox_SubPIDSettings->hide();
+}
+
+void qsetting::initSettingTooltips() {
+    setToolTip(QStringLiteral("上位机全局参数；修改工站类型后需重启程序生效。保存后写入「上位机设置.ini」。"));
+    const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
+    const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
+    const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);
+    const int tabFlow = ui->tabWidget->indexOf(ui->tab_3);
+    if (tabFixture >= 0) {
+        ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
+    }
+    if (tabKey >= 0) {
+        ui->tabWidget->setTabToolTip(tabKey, QStringLiteral("MES、工站、电流/IMU/信号、基础信息与产品差异化等。"));
+    }
+    if (tabDetail >= 0) {
+        ui->tabWidget->setTabToolTip(tabDetail, QStringLiteral("老化、三元组、按键 KeyId、PLC、串口仪器、协议类型等工站专用项。"));
+    }
+    if (tabFlow >= 0) {
+        ui->tabWidget->setTabToolTip(tabFlow, QStringLiteral("自由工站测试流程：左侧为执行顺序，右侧按分类勾选后拖入配置区。"));
+    }
+
+    static const QVector<QPair<QString, QString>> kTips = {
+        // —— 分区 GroupBox ——
+        {QStringLiteral("groupBox_3"), QStringLiteral("MES：工厂、产品名、工站、URL 等；工厂下拉联动显示字段。")},
+        {QStringLiteral("radioButtonGroupWidget"), QStringLiteral("工站类型 SYSTEM/station；切换后重启程序。")},
+        {QStringLiteral("groupBox_2"), QStringLiteral("1 拖多：主界面分窗行/列（User/formRow、formColumn）。")},
+        {QStringLiteral("groupBox_4"), QStringLiteral("电流阈值：船运/充电/工作/静态/音频（Current/*）。")},
+        {QStringLiteral("groupBox_15"), QStringLiteral("外设状态：期望值 +「启用」；读回与期望值比对。")},
+        {QStringLiteral("groupBox_TestRequirements"), QStringLiteral("治具状态期望值（FIXTEST/*）：音乐、过压灯、按键等。")},
+        {QStringLiteral("groupBox_camera_position"), QStringLiteral("摄像头 ROI、脏污检测延时等。")},
+        {QStringLiteral("imuCalibrationWidget"), QStringLiteral("IMU 校准时间、轴限、静态收敛参数（IMU/*）。")},
+        {QStringLiteral("signalStrengthSettingWidget"), QStringLiteral("WiFi/BLE RSSI 卡控与测试次数（WIFI/*、BLE/*）。")},
+        {QStringLiteral("pressureSettingsWidget"), QStringLiteral("压感测试/校准、治具套号、阈值（PRESSURE/*）。")},
+        {QStringLiteral("mainWidget"), QStringLiteral("基础信息期望值；勾选后参与 compareVersions 比对。")},
+        {QStringLiteral("groupBox_1"), QStringLiteral("产品差异化流程开关（SYSTEM/*），按产品可 Restore 默认。")},
+        {QStringLiteral("groupBox_SubPIDSettings"), QStringLiteral("SUBPID 规则（SUBPID/*）。")},
+        {QStringLiteral("groupBox_ageingConfig"), QStringLiteral("老化 AGING/BurningMode、BurningSeconds。")},
+        {QStringLiteral("groupBox_tupleConfig"), QStringLiteral("三元组 Tuple/*：环境、URL、鉴权、SKU。")},
+        {QStringLiteral("groupBox_keyConfig"), QStringLiteral("按键 KeyId（ProductInfo/KeyId*）。")},
+        {QStringLiteral("groupBox_plcModbusDebug"), QStringLiteral("PLC Modbus（PLC/*），治具 PLC 步骤。")},
+        {QStringLiteral("groupBox_brushInstrument"), QStringLiteral("串口仪器 BrushInstrument/*：包数、PER、超时。")},
+        {QStringLiteral("groupBox_systemProtocol"), QStringLiteral("SYSTEM/ProtocolType：qpb 或 qfctp。")},
+        {QStringLiteral("config"), QStringLiteral("已选步骤，自上而下执行；可拖拽排序。")},
+        {QStringLiteral("can_use"), QStringLiteral("可选步骤，勾选后拖入左侧配置区。")},
+        {QStringLiteral("freeWorkOptionalTabs"), QStringLiteral("分类：产品 / 治具 / dongle / 云端。")},
+        // —— 常用控件 ——
+        {QStringLiteral("comboBox_factory"), QStringLiteral("MES 工厂（lx/byd/wks/无mes厂等）。")},
+        {QStringLiteral("comboBox_productName"), QStringLiteral("产品型号 MES/Product_Name；切换恢复默认差异化。")},
+        {QStringLiteral("lineEdit_station"), QStringLiteral("MES 工站。")},
+        {QStringLiteral("lineEdit_mes_config_file_path"), QStringLiteral("MES/ConfigFilePath。")},
+        {QStringLiteral("pushButton_mesConfigFileBrowse"), QStringLiteral("浏览 MES 配置文件。")},
+        {QStringLiteral("comboBox_testOrderStation"), QStringLiteral("TestOrderMeta/SelectedStation。")},
+        {QStringLiteral("pushButton_clearConfiguredTestOrder"), QStringLiteral("清空当前工站配置区步骤。")},
+        {QStringLiteral("comboBox_systemProtocolType"), QStringLiteral("设备协议 qpb / qfctp。")},
+        {QStringLiteral("comboBox_tupleEnvironment"), QStringLiteral("三元组环境预设。")},
+        {QStringLiteral("lineEdit_tupleBaseUrl"), QStringLiteral("Tuple/BaseUrl。")},
+        {QStringLiteral("rowLineEdit"), QStringLiteral("User/formRow。")},
+        {QStringLiteral("columnLineEdit"), QStringLiteral("User/formColumn。")},
+        {QStringLiteral("snLineEdit"), QStringLiteral("Regex/SNPattern。")},
+        {QStringLiteral("wifiAccountLineEdit"), QStringLiteral("WIFI/Name。")},
+        {QStringLiteral("wifiPasswordLineEdit"), QStringLiteral("WIFI/Password。")},
+        {QStringLiteral("wifiUpperLimitLineEdit"), QStringLiteral("WIFI/HighRssi。")},
+        {QStringLiteral("wifiLowerLimitLineEdit"), QStringLiteral("WIFI/LowRssi。")},
+        {QStringLiteral("wifiIPLineEdit"), QStringLiteral("WIFI/IP。")},
+        {QStringLiteral("bluetoothUpperLimitLineEdit"), QStringLiteral("BLE/HighRssi。")},
+        {QStringLiteral("bluetoothLowerLimitLineEdit"), QStringLiteral("BLE/LowRssi。")},
+        {QStringLiteral("signalTestCountLineEdit"), QStringLiteral("BLE/RssiCount。")},
+        {QStringLiteral("lineEdit_CargoCurrentUpper"), QStringLiteral("Current/HighshipCurrent。")},
+        {QStringLiteral("lineEdit_CargoCurrentLower"), QStringLiteral("Current/LowshipCurrent。")},
+        {QStringLiteral("lineEdit_ChargingCurrentUpper"), QStringLiteral("Current/HighCharCurrent。")},
+        {QStringLiteral("lineEdit_ChargingCurrentLower"), QStringLiteral("Current/LowCharCurrent。")},
+        {QStringLiteral("lineEdit_WorkingCurrentUpper"), QStringLiteral("Current/HighworkCurrent。")},
+        {QStringLiteral("lineEdit_WorkingCurrentLower"), QStringLiteral("Current/LowworkCurrent。")},
+        {QStringLiteral("lineEdit_StaticCurrentUpper"), QStringLiteral("Current/HighStaticCurrent。")},
+        {QStringLiteral("lineEdit_StaticCurrentLower"), QStringLiteral("Current/LowStaticCurrent。")},
+        {QStringLiteral("lineEdit_AudioCurrentUpper"), QStringLiteral("Current/HighAudioCurrent。")},
+        {QStringLiteral("lineEdit_AudioCurrentLower"), QStringLiteral("Current/LowAudioCurrent。")},
+        {QStringLiteral("lineEdit_imu_status"), QStringLiteral("外设 imu 状态期望值。")},
+        {QStringLiteral("checkBox_imu_status"), QStringLiteral("启用 imu 状态比对。")},
+        {QStringLiteral("lineEdit_ageingBurningMode"), QStringLiteral("AGING/BurningMode。")},
+        {QStringLiteral("lineEdit_ageingBurningSeconds"), QStringLiteral("AGING/BurningSeconds（秒）。")},
+        {QStringLiteral("lineEdit_brushInstrumentSendPacketCount"), QStringLiteral("BrushInstrument/InstrumentSendPacketCount。")},
+        {QStringLiteral("lineEdit_brushInstrumentMaxPer"), QStringLiteral("BrushInstrument/MaxPer。")},
+        {QStringLiteral("lineEdit_brushInstrumentPacketPhaseWaitMs"), QStringLiteral("BrushInstrument/PacketPhaseWaitMs。")},
+        {QStringLiteral("lineEdit_brushInstrumentStopAckTimeoutMs"), QStringLiteral("BrushInstrument/StopAckTimeoutMs。")},
+        {QStringLiteral("lineEdit_plcIpAddress"), QStringLiteral("PLC/IpAddress。")},
+        {QStringLiteral("lineEdit_plcPort"), QStringLiteral("PLC/Port。")},
+        {QStringLiteral("radioButtonDebug"), QStringLiteral("MAIN_TEST 调试上位机。")},
+        {QStringLiteral("radioButtonFreeWorkstation"), QStringLiteral("FREE_WORK 自由工站。")},
+        {QStringLiteral("radioButtonStaticCurrent"), QStringLiteral("QUIESCENT_CURRENT。")},
+        {QStringLiteral("radioButtonMotorCalibration"), QStringLiteral("MOTOR_TEST。")},
+        {QStringLiteral("radioButtonImuCalibration"), QStringLiteral("IMU_CALI。")},
+        {QStringLiteral("radioButtonScreenTest"), QStringLiteral("SCREEN_TEST。")},
+        {QStringLiteral("radioButtonCameraTest"), QStringLiteral("CAMERA_TEST。")},
+        {QStringLiteral("radioButtonSignalTest"), QStringLiteral("WIFIBLE_TEST。")},
+        {QStringLiteral("radioButtonAgingTest"), QStringLiteral("AGE_TEST。")},
+        {QStringLiteral("radioButtonPressTest"), QStringLiteral("PRESS_TEST。")},
+        {QStringLiteral("radioButtonBoardFactoryTest"), QStringLiteral("PCBA_TEST。")},
+        {QStringLiteral("radioButtonKeyTest"), QStringLiteral("KEY_TEST。")},
+        {QStringLiteral("radioButtonSuctionTest"), QStringLiteral("SUCTION_TEST。")},
+        {QStringLiteral("checkBox_NeedWriteSubpid"), QStringLiteral("SYSTEM/NeedWriteSubpid。")},
+        {QStringLiteral("checkBox_NeedWriteSkuid"), QStringLiteral("SYSTEM/NeedWriteSkuid。")},
+        {QStringLiteral("checkBox_TestWifiSignal"), QStringLiteral("SYSTEM/TestWifiSignal。")},
+        {QStringLiteral("checkBox_IMUCalibrationWakeup"), QStringLiteral("SYSTEM/IMUCalibrationWakeup。")},
+        {QStringLiteral("checkBox_SerialPortMAC"), QStringLiteral("SYSTEM/SerialPortMAC。")},
+        {QStringLiteral("checkBox_TestShippingCurrent"), QStringLiteral("SYSTEM/TestShippingCurrent。")},
+        {QStringLiteral("checkBox_ShowLocalOTAFunc"), QStringLiteral("SYSTEM/ShowLocalOTAFunc。")},
+        {QStringLiteral("checkBox_ShowUpperComputerOTAFunc"), QStringLiteral("SYSTEM/ShowUpperComputerOTAFunc。")},
+        {QStringLiteral("checkBox_SaveToothbrushLog"), QStringLiteral("SYSTEM/SaveToothbrushLog。")},
+        {QStringLiteral("checkBox_LockProductUI"), QStringLiteral("SYSTEM/LockProductUI。")},
+        {QStringLiteral("checkBox_SimplePcbaTest"), QStringLiteral("SYSTEM/SimplePcbaTest。")},
+        {QStringLiteral("checkBox_BluetoothImageTransfer"), QStringLiteral("SYSTEM/BluetoothImageTransfer。")},
+        {QStringLiteral("checkBox_DisableSerialPortRx"), QStringLiteral("SYSTEM/DisableSerialPortRx。")},
+        {QStringLiteral("checkBox_ShipModeResponse"), QStringLiteral("SYSTEM/ShipModeResponse。")},
+        {QStringLiteral("checkBox_ProductName"), QStringLiteral("ProductInfo/ProductName_checkBox。")},
+        {QStringLiteral("checkBox_SoftwareVersion"), QStringLiteral("ProductInfo/SoftwareVersion_checkBox。")},
+        {QStringLiteral("checkBox_HardwareVersion"), QStringLiteral("ProductInfo/HardwareVersion_checkBox。")},
+        {QStringLiteral("lineEdit_ProductName"), QStringLiteral("ProductInfo/Product_Name 期望值。")},
+        {QStringLiteral("lineEdit_SoftwareVersion"), QStringLiteral("ProductInfo/Software_Version。")},
+        {QStringLiteral("lineEdit_HardwareVersion"), QStringLiteral("ProductInfo/Hardware_Version。")},
+        {QStringLiteral("configScrollArea"), QStringLiteral("配置区列表，内容多时可滚动。")},
+        {QStringLiteral("optionalScroll_product"), QStringLiteral("产品功能类可选步骤。")},
+        {QStringLiteral("optionalScroll_dongle"), QStringLiteral("dongle/蓝牙连接类可选步骤。")},
+        {QStringLiteral("optionalScroll_fixture"), QStringLiteral("治具/PLC/串口仪器类可选步骤。")},
+        {QStringLiteral("optionalScroll_cloud"), QStringLiteral("三元组云端类可选步骤。")},
+    };
+    applyNamedTooltips(this, kTips);
+
+    // 外设区：行内标签与输入框同步提示
+    const QVector<QPair<QString, QString>> kPeriphRowTips = {
+        {QStringLiteral("lineEdit_flash_status"), QStringLiteral("内存/Flash 状态期望值。")},
+        {QStringLiteral("lineEdit_magnetic_status"), QStringLiteral("地磁状态期望值。")},
+        {QStringLiteral("lineEdit_pressure_status"), QStringLiteral("压感状态期望值。")},
+        {QStringLiteral("lineEdit_audio_status"), QStringLiteral("功放状态期望值。")},
+        {QStringLiteral("lineEdit_freework_press0_status"), QStringLiteral("自由工站压感0状态期望值。")},
+        {QStringLiteral("lineEdit_freework_press1_status"), QStringLiteral("自由工站压感1状态期望值。")},
+        {QStringLiteral("lineEdit_freework_battery_ic_status"), QStringLiteral("电池IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_touch_ic_status"), QStringLiteral("触摸IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_led_ic_status"), QStringLiteral("LED IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_pd_ic_status"), QStringLiteral("PD IC状态期望值。")},
+    };
+    applyNamedTooltips(this, kPeriphRowTips);
 }
 
 void qsetting::initFreeWorkTestOrderUi() {
@@ -244,6 +408,9 @@ void qsetting::initFreeWorkTestOrderUi() {
             testOrderDirty_ = true;
             saveCurrentTestOrder();
         });
+        checkBox->setToolTip(QStringLiteral("【%1】%2（id=%3）\n勾选后可拖入左侧「配置区域」，按自上而下顺序执行。")
+                                 .arg(categoryDisplayNameForKey(item.categoryKey), item.name)
+                                 .arg(item.id));
         freeWorkCheckBoxes_.append(checkBox);
         QString cat = item.categoryKey;
         if (!freeWorkOptionalLayouts_.contains(cat)) {
