@@ -2,7 +2,42 @@
 
 #include <algorithm>
 
+#include "qproduct.h"
+
 // 协议 / 治具 / dongle 回包：解析与条件判定（仍为 QFreeWork 成员，仅拆到本翻译单元）
+
+void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
+    if (productInstrumentStopWaitStepName_.isEmpty()) {
+        qDebug() << "[FreeWork][StopRxAck] 忽略：未登记等待步骤 recvPkts=" << recvPkts << "工位=" << getIndex();
+        return;
+    }
+    const QString stepName = productInstrumentStopWaitStepName_;
+    if (!isCurrentStep(stepName)) {
+        qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "currentFid=" << stepRuntime_.functionId
+                 << "recvPkts=" << recvPkts << "工位=" << getIndex();
+        return;
+    }
+    if (stepRuntime_.done) {
+        qDebug() << "[FreeWork][StopRxAck] 忽略：本步已结束 step=" << stepName << "recvPkts=" << recvPkts << "工位=" << getIndex();
+        return;
+    }
+    productInstrumentStopWaitStepName_.clear();
+    const int sendCount = SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt();
+    const double maxPer = SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble();
+    const double per = Qproduct::computePer(sendCount, recvPkts);
+    const bool pass = (recvPkts >= 0) && (per <= maxPer);
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QStringLiteral("仪器发包数=%1 收包=%2 PER=%3 门限<=%4")
+                                .arg(sendCount)
+                                .arg(recvPkts)
+                                .arg(per, 0, 'f', 4)
+                                .arg(maxPer, 0, 'f', 4);
+    if (!pass) {
+        TestResult = failValue;
+    }
+    showlog(stepName + (pass ? QStringLiteral("通过 ") : QStringLiteral("失败 ")) + stepRuntime_.testData);
+}
 
 bool QFreeWork::isCurrentStep(const QString& functionName) const {
     if (!stepRuntime_.started || stepRuntime_.functionId < 0) {

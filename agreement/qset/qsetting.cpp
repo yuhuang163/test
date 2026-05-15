@@ -809,6 +809,29 @@ void qsetting::loadConfig() {
     // 加载老化工站配置
     ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
+    if (ui->comboBox_systemProtocolType->count() == 0) {
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qpb（产测 PB）"), QStringLiteral("qpb"));
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qfctp（FCTP）"), QStringLiteral("qfctp"));
+    }
+    {
+        const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))
+                                  .toString()
+                                  .trimmed()
+                                  .toLower();
+        int idx = ui->comboBox_systemProtocolType->findData(proto);
+        if (idx < 0) {
+            idx = 0;
+        }
+        ui->comboBox_systemProtocolType->setCurrentIndex(idx);
+    }
+    ui->lineEdit_brushInstrumentSendPacketCount->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt()));
+    ui->lineEdit_brushInstrumentMaxPer->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble(), 'f', 4));
+    ui->lineEdit_brushInstrumentPacketPhaseWaitMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt()));
+    ui->lineEdit_brushInstrumentStopAckTimeoutMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt()));
     ui->checkBox_plcModbusTrace->setChecked(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool());
     ui->lineEdit_plcIpAddress->setText(
         SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")).toString());
@@ -1195,6 +1218,15 @@ void qsetting::saveConfig() {
     // 保存老化工站配置
     SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
+    SETTINGS.setValue(QStringLiteral("SYSTEM/ProtocolType"),
+                      ui->comboBox_systemProtocolType->currentData().toString().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"),
+                      ui->lineEdit_brushInstrumentSendPacketCount->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/MaxPer"), ui->lineEdit_brushInstrumentMaxPer->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"),
+                      ui->lineEdit_brushInstrumentPacketPhaseWaitMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/StopAckTimeoutMs"),
+                      ui->lineEdit_brushInstrumentStopAckTimeoutMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/ModbusTrace"), ui->checkBox_plcModbusTrace->isChecked());
     SETTINGS.setValue(QStringLiteral("PLC/IpAddress"), ui->lineEdit_plcIpAddress->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/Port"), ui->lineEdit_plcPort->text().trimmed());

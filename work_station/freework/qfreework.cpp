@@ -229,6 +229,9 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     createTestFunctions();
     refreshOrderedTestIndexes();
     testResultTableInit();
+    if (product) {
+        connect(product, &Qproduct::instrumentStopReceiveSeen, this, &QFreeWork::onProductInstrumentStopReceiveAckForPer);
+    }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
     // 隐藏第 2、3 页（待拓展 / 蓝牙绑定）；Qt 5.15+ 标签栏一并隐藏
     ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_2), false);
@@ -298,6 +301,28 @@ QFreeWork::State QFreeWork::getNextState(State currentState) {
     return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
 }
 
+const QFreeWork::NamedFunction* QFreeWork::currentOrderedNamedFunction() const {
+    if (teststate < 0 || teststate >= orderedTestIndexes_.count()) {
+        return nullptr;
+    }
+    const int functionId = orderedTestIndexes_.at(teststate);
+    const auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
+                                 [functionId](const QFreeWork::NamedFunction& item) { return item.id == functionId; });
+    return it == testFunctions.cend() ? nullptr : &*it;
+}
+
+bool QFreeWork::canRunOrderedTestStepLoop() const {
+    if (at->getConnected()) {
+        return true;
+    }
+    // 未连 dongle：仍须 tick 的例外（仪器段与 BLE 解耦，避免步间卡死）
+    if (stepRuntime_.started) {
+        return true;
+    }
+    const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
+    return nf != nullptr && nf->name.startsWith(QStringLiteral("产品串口"));
+}
+
 void QFreeWork::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
@@ -311,7 +336,7 @@ void QFreeWork::startTask() {
             showlog("MAC地址为：" + ui->macInput->text());
             teststate++;
         }
-        if (at->getConnected()) {
+        if (canRunOrderedTestStepLoop()) {
             for (; teststate < orderedTestIndexes_.count();) {
                 const int functionId = orderedTestIndexes_.at(teststate);
                 auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
@@ -1268,6 +1293,7 @@ void QFreeWork::on_productDisconnectButton_clicked() {
 void QFreeWork::clearProductInstrumentWatch() {
     disconnect(productInstConn_);
     productInstConn_ = QMetaObject::Connection();
+    productInstrumentStopWaitStepName_.clear();
 }
 
 bool QFreeWork::ensureProductSerialForInstrumentStep(const QString& stepName) {
@@ -1327,12 +1353,9 @@ QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
     }
 }
 
-void QFreeWork::startProductInstrumentResetAndWaitAck() {
-    
-
-    waitWork(3000);//为了给产品进入信令测试模式留足够的时间
-
-    const QString stepName = QStringLiteral("产品串口仪器复位应答");
+void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
+    const QString stepName =
+        stepNameIn.isEmpty() ? QStringLiteral("产品串口仪器复位应答") : stepNameIn;
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
@@ -1352,7 +1375,12 @@ void QFreeWork::startProductInstrumentResetAndWaitAck() {
     stepRuntime_.testData = QStringLiteral("等待040E0405030C00");
 
     productInstConn_ = connect(product, &Qproduct::instrumentAckResetSeen, this, [this, stepName]() {
-
+        if (!isCurrentStep(stepName)) {
+            return;
+        }
+        if (stepRuntime_.done) {
+            return;
+        }
         disconnect(productInstConn_);
         productInstConn_ = QMetaObject::Connection();
         stepRuntime_.done = true;
@@ -1397,8 +1425,9 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
     });
 }
 
-void QFreeWork::startProductInstrumentStopReceiveAndPer() {
-    const QString stepName = QStringLiteral("产品串口停止接收与PER");
+void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
+    const QString stepName =
+        stepNameIn.isEmpty() ? QStringLiteral("产品串口停止接收与PER") : stepNameIn;
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
@@ -1424,37 +1453,8 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer() {
             showlog(stepName + QStringLiteral("失败：写停止 ") + stepRuntime_.testData);
             return;
         }
-        productInstConn_ = connect(product, &Qproduct::instrumentStopReceiveSeen, this,
-                                   [this, stepName](int recvPkts) {
-                                    //    if (!isCurrentStep(stepName)) {
-                                    //        return;
-                                    //    }
-                                    //    if (stepRuntime_.done) {
-                                    //        return;
-                                    //    }
-                                       disconnect(productInstConn_);
-                                       productInstConn_ = QMetaObject::Connection();
-                                       const int sendCount =
-                                           SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000)
-                                               .toInt();
-                                       const double maxPer =
-                                           SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble();
-                                       const double per = Qproduct::computePer(sendCount, recvPkts);
-                                       const bool pass = (recvPkts >= 0) && (per <= maxPer);
-                                       stepRuntime_.done = true;
-                                       stepRuntime_.pass = pass;
-                                       stepRuntime_.testData =
-                                           QStringLiteral("仪器发包数=%1 收包=%2 PER=%3 门限<=%4")
-                                               .arg(sendCount)
-                                               .arg(recvPkts)
-                                               .arg(per, 0, 'f', 4)
-                                               .arg(maxPer, 0, 'f', 4);
-                                       if (!pass) {
-                                           TestResult = failValue;
-                                       }
-                                       showlog(stepName + (pass ? QStringLiteral("通过 ") : QStringLiteral("失败 ")) +
-                                               stepRuntime_.testData);
-                                   });
+        // 应答由构造函数中 connect 的 onProductInstrumentStopReceiveAckForPer 处理，此处仅登记当前步骤名
+        productInstrumentStopWaitStepName_ = stepName;
         QTimer::singleShot(stopAckTimeout, this, [this, stepName]() {
             if (!isCurrentStep(stepName)) {
                 return;
@@ -1462,8 +1462,7 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer() {
             if (stepRuntime_.done) {
                 return;
             }
-            disconnect(productInstConn_);
-            productInstConn_ = QMetaObject::Connection();
+            productInstrumentStopWaitStepName_.clear();
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("超时未收到停止接收应答");

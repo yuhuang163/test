@@ -38,6 +38,9 @@ test_base::test_base(QWidget* parent) :
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("当前设备协议：%1")
+                .arg(QString::fromStdString(
+                    QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
 
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
@@ -376,7 +379,9 @@ void test_base::openDongleSerialPort() {
         // 启用DTR信号
         dongleSerialPort->setDataTerminalReady(true);
 
-        // showlog("串口连接成功");
+        showlog(QStringLiteral("当前设备协议：%1")
+                    .arg(QString::fromStdString(
+                        QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
         emit send_dongle_serialPort_state(1);
 
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
@@ -634,12 +639,11 @@ void test_base::closeProductSerialPort() {
 void test_base::refreshPbData(QString data) { msgEdit()->appendPlainText(data); }
 
 void test_base::showlog(QString msg) {
+    qDebug() << getIndex() << msg;
     if (!msgEdit()) {
-        qDebug() << "Error: msgEdit() is nullptr!";
-        return;  // 避免空指针调用
+        return;
     }
     msgEdit()->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
 }
 
 int test_base::getIndex() const { return m_index; }

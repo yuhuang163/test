@@ -107,6 +107,8 @@ private:
     int plcSwitchBlePhase_ = 0;
     /** 仪器应答监听（与 Qproduct::instrument* 信号配合）。 */
     QMetaObject::Connection productInstConn_;
+    /** 非空表示正在等「停止接收」应答（PER 步）；与构造函数里长期 connect 的槽配合。 */
+    QString productInstrumentStopWaitStepName_;
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
@@ -164,12 +166,12 @@ private:
                                const QString& enableKey, int keyIndex0To6);
     /** PLC 旋钮整步后仅等左旋上报；右旋见独立测试项 startKeyButtonTest。 */
     void startPlcSwitchPlcAndWaitLeftRotate();
-    /** docs/测试.md：经产品串口发复位帧并等仪器应答（需已连接产品串口）。 */
-    void startProductInstrumentResetAndWaitAck();
+    /** 经产品串口发复位帧并等仪器应答；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用单步调试用默认名。 */
+    void startProductInstrumentResetAndWaitAck(QString stepName = QString());
     /** 发「开始接收」并等 040E0405332000；stepName 须与 FREEWORK_TEST_LIST 中该项中文名一致（供 isCurrentStep）。 */
     void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile);
-    /** 等待仪器发包后发停止接收，解析收包数并算 PER（阈值见 BrushInstrument/*）。 */
-    void startProductInstrumentStopReceiveAndPer();
+    /** 等待仪器发包后发停止接收并算 PER；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用默认名。 */
+    void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
     void closeKeyWaitPrompt();
     void runPlcModbusConnectTest();
     /** 与 Untitled-1.cs RunStepActionAsync 一致的单键整步（长连接）；测试项 needCaseDone 须为 true。 */
@@ -204,6 +206,10 @@ private:
     void clearProductInstrumentWatch();
     bool ensureProductSerialForInstrumentStep(const QString& stepName);
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
+    /** 有序队列中 teststate 对应项；越界或未登记返回 nullptr。 */
+    const QFreeWork::NamedFunction* currentOrderedNamedFunction() const;
+    /** startTask 主循环是否允许 tick：dongle 已连，或无需 dongle 亦可推进的例外（见实现内注释）。 */
+    bool canRunOrderedTestStepLoop() const;
 
 private slots:
     void initDate();
@@ -265,6 +271,9 @@ private slots:
     void on_jigDisconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
+
+    /** 产品仪器停止接收应答（收包数）；逻辑见 qfreework_data.cpp，在构造函数中与 instrumentStopReceiveSeen 连接。 */
+    void onProductInstrumentStopReceiveAckForPer(int recvPkts);
 
     void on_stopTest_clicked();
 
