@@ -1599,7 +1599,7 @@ void suction::on_snruler_formes_clicked() {
     p.sn.clear();
     p.itemvalue.clear();
     if (p.sn.trimmed().isEmpty()) {
-        p.sn = stringsn.trimmed();
+        p.sn = ui->snInput->text().trimmed();
     }
     p.instruct_num = QStringLiteral("079");
     showlog(QStringLiteral("MES：GetCustomData（bydmes::GetTestData）"));
@@ -1614,7 +1614,7 @@ void suction::on_start_formes_clicked() {
     MesPacketData p = pack;
     p.factory = QStringLiteral("byd");
     p.mechines = getIndex();
-    p.sn = stringsn.trimmed();
+    p.sn = ui->snInput->text().trimmed();
     if (p.sn.isEmpty()) {
         showlog(QStringLiteral("模拟站前：SN 为空，请在 SN 输入框填写后再试"));
         return;
@@ -1632,7 +1632,7 @@ void suction::on_testdata_formes_clicked() {
     MesPacketData p = pack;
     p.factory = QStringLiteral("byd");
     p.mechines = getIndex();
-    p.sn = stringsn.trimmed();
+    p.sn = ui->snInput->text().trimmed();
     if (p.sn.isEmpty()) {
         showlog(QStringLiteral("模拟过站：SN 为空，请在 SN 输入框填写后再试"));
         return;

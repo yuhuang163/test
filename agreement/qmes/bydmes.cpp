@@ -1,70 +1,43 @@
+// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
 #include "bydmes.h"
 
+#include <QDateTime>
+#include <QDebug>
+#include <QDir>
+#include <QEventLoop>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMap>
+#include <QJsonValue>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QJsonValue>
 #include <QNetworkReply>
-#include <QDateTime>
-#include <QDebug>
-#include <QEventLoop>
-#include <QUrl>
-#include <QUrlQuery>
-#include <QFile>
-#include <QFileInfo>
-#include <QDir>
 #include <QSettings>
 #include <QTextCodec>
+#include <QUrl>
+#include <QUrlQuery>
 
 #include "Abini.h"
 
-static QMutex g_bydMesRuntimeMutex;
-static QMap<QString, QString> g_bydMesRuntimeMap;
-
+// =============================================================================
+// 文件内全局：外部 mes_config 路径（与 load/settingsValue 共用一把锁）
+// =============================================================================
 static QMutex g_externalMesConfigMutex;
-static QMap<QString, QString> g_externalMesConfigMap;
+static QString g_externalMesResolvedIniPath;
+
+static QString bydMesPeekExternalResolvedIniPath() {
+    QMutexLocker locker(&g_externalMesConfigMutex);
+    return g_externalMesResolvedIniPath;
+}
 
 namespace {
 
-/// 上位机设置.ini：与 qsetting 一致支持 [mes]/[Mes]/[MES] 下的 ConfigFilePath/configfilepath
-QString bydMesReadExternalConfigPathFromMainIni() {
-    QString p = SETTINGS.value(QStringLiteral("mes/ConfigFilePath")).toString().trimmed();
-    if (p.isEmpty()) {
-        p = SETTINGS.value(QStringLiteral("Mes/ConfigFilePath")).toString().trimmed();
-    }
-    if (p.isEmpty()) {
-        p = SETTINGS.value(QStringLiteral("MES/ConfigFilePath")).toString().trimmed();
-    }
-    if (p.isEmpty()) {
-        p = SETTINGS.value(QStringLiteral("mes/configfilepath")).toString().trimmed();
-    }
-    if (p.isEmpty()) {
-        p = SETTINGS.value(QStringLiteral("Mes/configfilepath")).toString().trimmed();
-    }
-    if (p.isEmpty()) {
-        p = SETTINGS.value(QStringLiteral("MES/configfilepath")).toString().trimmed();
-    }
-    return p;
-}
+// =============================================================================
+// ① 调试打印用---- 消除打印乱码 （方括号/花括号、键值无引号）
+// =============================================================================
 
-QString bydMesResolveMesConfigFilePath(const QString& configFilePath) {
-    const QFileInfo selectedInfo(configFilePath);
-    const QDir dir = selectedInfo.isDir() ? QDir(selectedInfo.absoluteFilePath()) : selectedInfo.dir();
-    const QStringList candidates = {dir.filePath(QStringLiteral("mes_config.ini")),
-                                    dir.filePath(QStringLiteral("mes_config_ini"))};
-    for (const QString& candidate : candidates) {
-        if (QFileInfo::exists(candidate)) {
-            return QFileInfo(candidate).absoluteFilePath();
-        }
-    }
-    return candidates.first();
-}
-
-
-/// BYD MES2 常见约定：query 中 param 为 [KEY:value,...]，键名与字符串值均不加双引号；嵌套对象用 {...}，数组用 [...]。
 QString bydParamValueToken(const QJsonValue& v) {
     if (v.isBool()) {
         return v.toBool() ? QStringLiteral("1") : QStringLiteral("0");
@@ -113,7 +86,6 @@ QString bydRootBracketParam(const QJsonObject& param) {
     return bydMesServiceParamEnvelope(param, QLatin1Char('['), QLatin1Char(']'));
 }
 
-/// 产线 MES2 部分接口要求 param 为 {K:v,...}（与 GetSfcKeyBySfc 一致），其余仍用 [K:v,...]；TestDataCollect2MainChild 为标准 JSON 对象串。
 bool bydMesMethodUsesCurlyServiceParam(const QString& method) {
     static const QStringList kCurly = {QStringLiteral("GetCustomData"), QStringLiteral("GetSfcKeyBySfc")};
     for (const QString& m : kCurly) {
@@ -124,78 +96,131 @@ bool bydMesMethodUsesCurlyServiceParam(const QString& method) {
     return false;
 }
 
-/// GetCustomData / 部分按过程码接口：DATA 为 { name, value } 行列表（键名常见小写），按 name 取 value。
-QString bydMesNamedRowValue(const QJsonArray& arr, const QString& wantName) {
-    if (wantName.isEmpty()) {
-        return {};
+// =============================================================================
+// ③ 外部 mes_config.ini：主 ini 定位路径、解析绝对路径、编码、QSettings 读键
+// =============================================================================
+
+QString bydMesReadExternalConfigPathFromMainIni() {
+    QString p = SETTINGS.value(QStringLiteral("mes/ConfigFilePath")).toString().trimmed();
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("Mes/ConfigFilePath")).toString().trimmed();
     }
-    const QString w = wantName.trimmed();
-    for (const QJsonValue& v : arr) {
-        if (!v.isObject()) {
-            continue;
-        }
-        const QJsonObject o = v.toObject();
-        QString itemName = o.value(QStringLiteral("name")).toString();
-        if (itemName.isEmpty()) {
-            itemName = o.value(QStringLiteral("NAME")).toString();
-        }
-        if (itemName.trimmed().compare(w, Qt::CaseInsensitive) != 0) {
-            continue;
-        }
-        QString val = o.value(QStringLiteral("value")).toString();
-        if (val.isEmpty()) {
-            val = o.value(QStringLiteral("VALUE")).toString();
-        }
-        val = val.trimmed();
-        if (!val.isEmpty()) {
-            return val;
-        }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("MES/ConfigFilePath")).toString().trimmed();
     }
-    return {};
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("mes/configfilepath")).toString().trimmed();
+    }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("Mes/configfilepath")).toString().trimmed();
+    }
+    if (p.isEmpty()) {
+        p = SETTINGS.value(QStringLiteral("MES/configfilepath")).toString().trimmed();
+    }
+    return p;
 }
 
-/// 外部 mes ini：按 BOM / 合法 UTF-8 选 UTF-8，否则用系统区域编码（常见 GBK），避免中文成问号
+QString bydMesResolveMesConfigFilePath(const QString& configFilePath) {
+    const QFileInfo selectedInfo(configFilePath);
+    if (selectedInfo.isFile()) {
+        const QString abs = selectedInfo.absoluteFilePath();
+        const QString lower = abs.toLower();
+        if (lower.endsWith(QLatin1String(".ini")) || lower.contains(QLatin1String("mes_config"))) {
+            return abs;
+        }
+    }
+    const QDir dir = selectedInfo.isDir() ? QDir(selectedInfo.absoluteFilePath()) : selectedInfo.dir();
+    const QStringList candidates = {dir.filePath(QStringLiteral("mes_config.ini")),
+                                    dir.filePath(QStringLiteral("mes_config_ini"))};
+    for (const QString& candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return QFileInfo(candidate).absoluteFilePath();
+        }
+    }
+    return candidates.first();
+}
+
 QTextCodec* bydMesPickIniFileCodec(const QString& filePath) {
     QFile f(filePath);
     if (!f.open(QIODevice::ReadOnly)) {
+        QTextCodec* gbk = QTextCodec::codecForName("GBK");
+        if (gbk != nullptr) {
+            return gbk;
+        }
         QTextCodec* utf8 = QTextCodec::codecForName("UTF-8");
         return utf8 ? utf8 : QTextCodec::codecForLocale();
     }
     const QByteArray sample = f.read(65536);
     f.close();
-    QTextCodec* detected = QTextCodec::codecForUtfText(sample);
-    if (detected != nullptr) {
-        return detected;
+
+    QTextCodec* fromBom = QTextCodec::codecForUtfText(sample);
+    if (fromBom != nullptr) {
+        const QString codecName = QString::fromLatin1(fromBom->name()).toUpper();
+        if (codecName.contains(QLatin1String("UTF-8")) || codecName.contains(QLatin1String("UTF-16"))
+            || codecName.contains(QLatin1String("UTF-32"))) {
+            return fromBom;
+        }
+    }
+
+    QTextCodec* utf8Codec = QTextCodec::codecForName("UTF-8");
+    if (utf8Codec != nullptr && !sample.isEmpty()) {
+        QTextCodec::ConverterState st;
+        const QString asUtf8 = utf8Codec->toUnicode(sample.constData(), static_cast<int>(sample.size()), &st);
+        if (st.invalidChars == 0 && st.remainingChars == 0) {
+            if (asUtf8.contains(QLatin1Char('[')) && (asUtf8.contains(QLatin1Char('=')) || asUtf8.contains(QLatin1Char(']')))) {
+                return utf8Codec;
+            }
+        }
+    }
+
+    static const char* const kGbNames[] = {"GB2312", "gb2312", "GBK", "gb18030", "GB18030"};
+    for (const char* name : kGbNames) {
+        QTextCodec* c = QTextCodec::codecForName(name);
+        if (c != nullptr) {
+            return c;
+        }
     }
     QTextCodec* utf8 = QTextCodec::codecForName("UTF-8");
     return utf8 ? utf8 : QTextCodec::codecForLocale();
 }
 
+QString bydMesExternalIniValue(QSettings& s, const QString& key) {
+    const QString k = key.trimmed();
+    if (k.isEmpty()) {
+        return {};
+    }
+    // 配置文件只有Config与SYSTEM节
+    const QStringList tryPaths = {QStringLiteral("Config/") + k, k};
+    for (const QString& p : tryPaths) {
+        const QString v = s.value(p).toString().trimmed();
+        if (!v.isEmpty()) {
+            return v;
+        }
+    }
+    // SYSTEM节只有JSONURL数据
+    if (k.compare(QStringLiteral("NET"), Qt::CaseInsensitive) == 0) {
+        for (const QString& p : {QStringLiteral("SYSTEM/JSONURL")}) {
+            const QString v = s.value(p).toString().trimmed();
+            if (!v.isEmpty()) {
+                return v;
+            }
+        }
+    }
+    return {};
+}
+
+bool bydMesJsonStringFieldEmpty(const QJsonObject& o, const QString& key) {
+    return o.value(key).toString().trimmed().isEmpty();
+}
+
 }  // namespace
 
+// =============================================================================
+// ④ 构造与外部配置 API（登记 / 清除 / 读键 / 服务根 URL）
+// =============================================================================
+
 bydmes::bydmes() {
-    // QMesManager 成员构造时 QApplication 已就绪，按上位机设置.ini 的 ConfigFilePath 预载 BYD 外部 MES ini
     bydmes::loadExternalMesConfig(nullptr);
-}
-
-void bydmes::setRuntimeMesParamMap(const QMap<QString, QString>& params) {
-    QMutexLocker locker(&g_bydMesRuntimeMutex);
-    g_bydMesRuntimeMap = params;
-    // 外部产线 ini 解析结果：逐项打印，便于对照文件与 bydmes::settingsValue 实际生效值
-    qDebug() << QStringLiteral("[BYD MES 产线配置] 已载入内存映射，共 %1 条（优先于本机 Mes/MES）")
-                    .arg(g_bydMesRuntimeMap.size());
-    for (auto it = g_bydMesRuntimeMap.constBegin(); it != g_bydMesRuntimeMap.constEnd(); ++it) {
-        qDebug() << QStringLiteral("[BYD MES 产线配置]") << it.key() << QLatin1Char('=') << it.value();
-    }
-}
-
-void bydmes::clearRuntimeMesParamMap() {
-    QMutexLocker locker(&g_bydMesRuntimeMutex);
-    const int n = g_bydMesRuntimeMap.size();
-    g_bydMesRuntimeMap.clear();
-    if (n > 0) {
-        qDebug() << QStringLiteral("[BYD MES 产线配置] 已清除内存映射，原共 %1 条").arg(n);
-    }
 }
 
 bool bydmes::loadExternalMesConfig(QString* errorMessage) {
@@ -204,7 +229,7 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
     if (configFilePath.isEmpty()) {
         {
             QMutexLocker locker(&g_externalMesConfigMutex);
-            g_externalMesConfigMap.clear();
+            g_externalMesResolvedIniPath.clear();
         }
         if (errorMessage) {
             *errorMessage = QStringLiteral("请选择MES配置文件");
@@ -218,7 +243,7 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
     if (!fileInfo.exists()) {
         {
             QMutexLocker locker(&g_externalMesConfigMutex);
-            g_externalMesConfigMap.clear();
+            g_externalMesResolvedIniPath.clear();
         }
         if (errorMessage) {
             *errorMessage = QStringLiteral("MES配置文件不存在: %1").arg(mesConfigPath);
@@ -231,7 +256,7 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
     if (!fileInfo.isReadable()) {
         {
             QMutexLocker locker(&g_externalMesConfigMutex);
-            g_externalMesConfigMap.clear();
+            g_externalMesResolvedIniPath.clear();
         }
         if (errorMessage) {
             *errorMessage = QStringLiteral("MES配置文件不可读: %1").arg(mesConfigPath);
@@ -239,73 +264,55 @@ bool bydmes::loadExternalMesConfig(QString* errorMessage) {
         qWarning() << QStringLiteral("[BYD MES 外部配置] 配置文件不可读: %1").arg(mesConfigPath);
         return false;
     }
-    
-    QTextCodec* iniCodec = bydMesPickIniFileCodec(mesConfigPath);
-    QSettings externalConfig(mesConfigPath, QSettings::IniFormat);
-    externalConfig.setIniCodec(iniCodec);
-
-    QMap<QString, QString> configMap;
-    const QStringList keys = externalConfig.allKeys();
-    for (const QString& key : keys) {
-        configMap.insert(key, externalConfig.value(key).toString());
-    }
 
     {
         QMutexLocker locker(&g_externalMesConfigMutex);
-        g_externalMesConfigMap = configMap;
+        g_externalMesResolvedIniPath = mesConfigPath;
     }
 
-    qDebug() << QStringLiteral("[BYD MES 外部配置] 已按 ConfigFilePath 目录从 %1 加载 %2 条，INI 解析编码: %3")
+    QTextCodec* iniCodec = bydMesPickIniFileCodec(mesConfigPath);
+    qDebug() << QStringLiteral("[BYD MES 外部配置] 已登记外部 ini：%1，解析编码: %2；取参时按键 QSettings 读盘，不整表进内存")
                     .arg(mesConfigPath)
-                    .arg(configMap.size())
                     .arg(QString::fromLatin1(iniCodec->name()));
     return true;
 }
 
 void bydmes::clearExternalMesConfig() {
     QMutexLocker locker(&g_externalMesConfigMutex);
-    const int n = g_externalMesConfigMap.size();
-    g_externalMesConfigMap.clear();
-    if (n > 0) {
-        qDebug() << QStringLiteral("[BYD MES 外部配置] 已清除内存映射，原共 %1 条").arg(n);
+    if (!g_externalMesResolvedIniPath.isEmpty()) {
+        qDebug() << QStringLiteral("[BYD MES 外部配置] 已清除外部 ini 路径: %1").arg(g_externalMesResolvedIniPath);
     }
+    g_externalMesResolvedIniPath.clear();
 }
 
 QString bydmes::settingsValue(const QString& key, const QString& fallback) const {
-    {
-        QMutexLocker locker(&g_bydMesRuntimeMutex);
-        if (g_bydMesRuntimeMap.contains(key)) {
-            return g_bydMesRuntimeMap.value(key);
-        }
-    }
-    // 外部 mes 文件由 loadExternalMesConfig 载入；allKeys 为 Mes/xxx、MES/xxx，与主程序键名一致
+    QString iniPathCopy;
     {
         QMutexLocker locker(&g_externalMesConfigMutex);
-        if (!g_externalMesConfigMap.isEmpty()) {
-            QString value = g_externalMesConfigMap.value(QStringLiteral("Mes/") + key);
-            if (value.isEmpty()) {
-                value = g_externalMesConfigMap.value(QStringLiteral("MES/") + key);
+        if (g_externalMesResolvedIniPath.isEmpty()) {
+            if (!key.isEmpty()) {
+                qWarning() << QStringLiteral("[BYD MES 外部配置] 外部 ini 未登记，无法读取键「%1」").arg(key);
             }
-            if (value.isEmpty()) {
-                value = g_externalMesConfigMap.value(key);
-            }
-            if (!value.isEmpty()) {
-                return value;
-            }
+            return fallback;
+        }
+        iniPathCopy = g_externalMesResolvedIniPath;
+        QTextCodec* iniCodec = bydMesPickIniFileCodec(iniPathCopy);
+        QSettings s(iniPathCopy, QSettings::IniFormat);
+        s.setIniCodec(iniCodec);
+        s.sync();
+        const QString value = bydMesExternalIniValue(s, key);
+        if (!value.isEmpty()) {
+            qDebug() << "BYD MES settingsValue:" << key << "=" << value;
+            return value;
         }
     }
-    QString value = SETTINGS.value(QStringLiteral("Mes/") + key).toString();
-    if (value.isEmpty()) {
-        value = SETTINGS.value(QStringLiteral("MES/") + key, fallback).toString();
-    }
-    if (value.isEmpty()) {
-        value = fallback;
-    }
-    return value;
+    qWarning() << QStringLiteral("[BYD MES 外部配置] 外部文件未读到参数「%1」（路径：%2），将使用占位/空值")
+                        .arg(key, iniPathCopy);
+    return fallback;
 }
 
 QString bydmes::baseUrl() const {
-    QString url = settingsValue("NET", "http://192.168.11.157/Service.action").trimmed();
+    QString url = settingsValue("NET").trimmed();
     if (!url.contains("Service.action")) {
         if (url.endsWith('/')) {
             url += "Service.action";
@@ -316,191 +323,125 @@ QString bydmes::baseUrl() const {
     return url;
 }
 
-QString bydmes::buildRemark(const MesPacketData& pack) const {
-    QStringList parts;
-    parts << ("RESULT=" + pack.result);
-    if (!pack.error.isEmpty() && pack.error != "NULL") {
-        parts << ("ERROR=" + pack.error);
-    }
-    if (!pack.itemvalue.isEmpty()) {
-        parts << ("TESTDATA=" + pack.itemvalue);
-    }
-    if (!pack.model.isEmpty()) {
-        parts << ("MODEL=" + pack.model);
-    }
-    return parts.join(" ; ");
-}
+// =============================================================================
+// ⑤ bydmes参数组包
+// =============================================================================
+
 
 QJsonObject bydmes::buildBydStartParam(const MesPacketData& pack) const {
-    // 按 BYD 文档示例: Start 参数与字段名严格对应。
+    // 按 BYD 文档：Start 字段名与示例一致
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
+    param["LOGIN_ID"] = settingsValue("LoginID");
     param["SFC"] = pack.sn;
-    param["STATION_ID"] = settingsValue("StationID", "");
-    param["LINE"] = settingsValue("Line", "");
-    param["SHOPORDER"] = settingsValue("Resource", "");
-    param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
+    param["STATION_ID"] = settingsValue("StationID");
+    param["LINE"] = settingsValue("Line");
+    param["SHOPORDER"] = settingsValue("Resource");
+    param["SCHEDULING_ID"] = settingsValue("SchedulingID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
     return param;
 }
 
 QJsonObject bydmes::buildBydGetCustomDataParam() const {
-    // 按 BYD 文档示例: GetCustomData 仅使用以下字段。
+    // 按 BYD 文档：GetCustomData 仅以下字段
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
-    param["STATION_ID"] = settingsValue("StationID", "");
-    param["PRODUCT_ID"] = settingsValue("PRODUCT_ID", "");
+    param["LOGIN_ID"] = settingsValue("LoginID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
+    param["STATION_ID"] = settingsValue("StationID");
+    param["PRODUCT_ID"] = settingsValue("PRODUCT_ID");
     return param;
 }
 
 QJsonObject bydmes::buildBydGetSnByProcessCodeParam(const MesPacketData& pack) const {
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
+    param["LOGIN_ID"] = settingsValue("LoginID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
     param["SFC"] = pack.sn;
     return param;
 }
 
-QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const {
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-        return {};
+QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString& testTime) const {
+    QJsonArray list;
+    const QString rowTestTime = pack.testTime.isEmpty() ? testTime : pack.testTime;
+    qDebug() << "BYD MES itemvalue:" << pack.itemvalue;
+
+    // itemvalue：多段用 | 分隔；整串可带首尾 |（与 hqmes 一致），也可直接「项1|项2」
+    QString inner = pack.itemvalue.trimmed();
+    if (inner.length() >= 2 && inner.startsWith(QLatin1Char('|')) && inner.endsWith(QLatin1Char('|'))) {
+        inner = inner.mid(1, inner.length() - 2);
     }
-    const QJsonObject root = doc.object();
-    const QJsonValue dataV = root.value(QStringLiteral("DATA"));
-    if (dataV.isObject()) {
-        const QJsonObject o = dataV.toObject();
-        static const QStringList kSnKeys = {QStringLiteral("SN"), QStringLiteral("SFC"), QStringLiteral("SERIAL_NO"),
-                                            QStringLiteral("SERIAL"), QStringLiteral("PRODUCT_SN")};
-        for (const QString& k : kSnKeys) {
-            const QString s = o.value(k).toString().trimmed();
-            if (!s.isEmpty()) {
-                return s;
-            }
+    const QStringList keyValuePairs = inner.split(QLatin1Char('|'), Qt::SkipEmptyParts);
+    for (const QString& keyValue : keyValuePairs) {
+        const QString kv = keyValue.trimmed();
+        if (kv.isEmpty()) {
+            continue;
         }
-    }
-    if (dataV.isString()) {
-        const QString s = dataV.toString().trimmed();
-        if (!s.isEmpty()) {
-            return s;
-        }
-    }
-    if (dataV.isArray()) {
-        const QJsonArray arr = dataV.toArray();
-        // GetSfcKeyBySfc：DATA 每行有 name（如「主板」）与 station（如「主板绑定」），须与 bindingLabel 任一匹配再取 value，避免仅用 name 时永远对不上 station 文案
-        const QString bindingLabel = settingsValue(QStringLiteral("GetSfcKeyBindingItemName"), QStringLiteral("主板绑定")).trimmed();
-        if (!bindingLabel.isEmpty()) {
-            for (const QJsonValue& v : arr) {
-                if (!v.isObject()) {
-                    continue;
-                }
-                const QJsonObject o = v.toObject();
-                const auto fieldMatches = [&](const QString& fieldVal) {
-                    return !fieldVal.isEmpty() && fieldVal.compare(bindingLabel, Qt::CaseInsensitive) == 0;
-                };
-                const QString nameVal = o.value(QStringLiteral("name")).toString().trimmed();
-                const QString nameUpper = o.value(QStringLiteral("NAME")).toString().trimmed();
-                const QString stationVal = o.value(QStringLiteral("station")).toString().trimmed();
-                const QString stationUpper = o.value(QStringLiteral("STATION")).toString().trimmed();
-                if (!(fieldMatches(nameVal) || fieldMatches(nameUpper) || fieldMatches(stationVal) || fieldMatches(stationUpper))) {
-                    continue;
-                }
-                QString val = o.value(QStringLiteral("value")).toString().trimmed();
-                if (val.isEmpty()) {
-                    val = o.value(QStringLiteral("VALUE")).toString().trimmed();
-                }
-                if (!val.isEmpty()) {
-                    qDebug() << QStringLiteral("[BYD MES] DATA 行匹配「%1」提取 value=%2").arg(bindingLabel, val);
-                    return val;
-                }
-            }
-        }
-        const QString preferItem = settingsValue(QStringLiteral("GetSnByProcessCodeItemName"), QString()).trimmed();
-        if (!preferItem.isEmpty()) {
-            const QString fromPrefer = bydMesNamedRowValue(arr, preferItem);
-            if (!fromPrefer.isEmpty()) {
-                return fromPrefer;
-            }
-        }
-        for (const QString& rowName : {QStringLiteral("SN"), QStringLiteral("SFC")}) {
-            const QString fromRow = bydMesNamedRowValue(arr, rowName);
-            if (!fromRow.isEmpty()) {
-                return fromRow;
-            }
-        }
-        for (const QJsonValue& v : arr) {
-            if (!v.isObject()) {
+        QJsonObject item;
+        QString name;
+        QString value;
+        QString rowMax = pack.maxValue;
+        QString rowMin = pack.minValue;
+        QString rowStd = pack.standardValue;
+        QString rowUnit = pack.unit;
+        // 恰好 6 段「NAME:VALUE:MAX:MIN:STANDARD:UNIT」时按 BYD 文档分项填卡控；否则 NAME 仅取首段，VALUE 为首个冒号后全文（值内可含冒号）
+        const QStringList parts = kv.split(QLatin1Char(':'), QString::KeepEmptyParts);
+        if (parts.size() >= 6) {
+            name = parts.at(0).trimmed();
+            value = parts.at(1).trimmed();
+            rowMax = parts.at(2);
+            rowMin = parts.at(3);
+            rowStd = parts.at(4);
+            rowUnit = parts.at(5);
+        } else if (parts.size() == 2) {
+            name = parts.at(0).trimmed();
+            value = parts.at(1).trimmed();
+        } else {
+            const int colon = kv.indexOf(QLatin1Char(':'));
+            if (colon <= 0) {
                 continue;
             }
-            const QJsonObject o = v.toObject();
-            static const QStringList kRowKeys = {QStringLiteral("SN"), QStringLiteral("SFC"), QStringLiteral("SERIAL_NO"),
-                                                 QStringLiteral("SERIAL"), QStringLiteral("PRODUCT_SN")};
-            for (const QString& k : kRowKeys) {
-                QString s = o.value(k).toString().trimmed();
-                if (s.isEmpty() && k == QStringLiteral("SN")) {
-                    s = o.value(QStringLiteral("sn")).toString().trimmed();
-                }
-                if (s.isEmpty() && k == QStringLiteral("SFC")) {
-                    s = o.value(QStringLiteral("sfc")).toString().trimmed();
-                }
-                if (!s.isEmpty()) {
-                    return s;
-                }
-            }
+            name = kv.left(colon).trimmed();
+            value = kv.mid(colon + 1).trimmed();
         }
+        if (name.isEmpty()) {
+            continue;
+        }
+        item[QStringLiteral("NAME")] = name;
+        item[QStringLiteral("VALUE")] = value;
+        item[QStringLiteral("MAX_VALUE")] = rowMax;
+        item[QStringLiteral("MIN_VALUE")] = rowMin;
+        item[QStringLiteral("STANDARD_VALUE")] = rowStd;
+        item[QStringLiteral("UNIT")] = rowUnit;
+        item[QStringLiteral("TEST_TIME")] = rowTestTime;
+        item[QStringLiteral("TEST_USER")] = pack.Employee_ID.isEmpty() ? QStringLiteral("guest") : pack.Employee_ID;
+        item[QStringLiteral("LOCATION")] = QString();
+        item[QStringLiteral("TEST_END_TIME")] = testTime;
+        item[QStringLiteral("TEST_RESULT")] = pack.result;
+        item[QStringLiteral("ERROR_CODE")] = (pack.error == QStringLiteral("NULL")) ? QString() : pack.error;
+        item[QStringLiteral("PN")] = pack.sn;
+        item[QStringLiteral("REMARK")] = pack.remark.isEmpty() ? QString("备注信息"):pack.remark;
+        item[QStringLiteral("TEXT")] = QString("备注");
+        list.append(item);
+        qDebug() << "BYD MES TestDataList item:" << item;
     }
-    QString s = root.value(QStringLiteral("SN")).toString().trimmed();
-    if (!s.isEmpty()) {
-        return s;
-    }
-    s = root.value(QStringLiteral("SFC")).toString().trimmed();
-    return s;
-}
 
-QString bydmes::normalizeTestResult(const QString& result) const {
-    const QString upper = result.trimmed().toUpper();
-    return (upper == "NG" || upper == "FAIL" || upper == "0") ? "FAIL" : "PASS";
-}
-
-QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString& testTime) const {
-    QJsonObject item;
-    item["NAME"] = "RESULT_DATA";
-    item["VALUE"] = pack.itemvalue;
-    item["MAX_VALUE"] = "";
-    item["MIN_VALUE"] = "";
-    item["STANDARD_VALUE"] = "";
-    item["UNIT"] = "";
-    item["TEST_TIME"] = testTime;
-    item["TEST_USER"] = pack.Employee_ID.isEmpty() ? QString("guest") : pack.Employee_ID;
-    item["LOCATION"] = "";
-    item["TEST_END_TIME"] = testTime;
-    item["TEST_RESULT"] = normalizeTestResult(pack.result);
-    item["ERROR_CODE"] = (pack.error == "NULL") ? QString("") : pack.error;
-    item["PN"] = pack.sn;
-    item["REMARK"] = buildRemark(pack);
-    item["TEXT"] = "";
-
-    QJsonArray list;
-    list.append(item);
+    qDebug() << "BYD MES TestDataList:" << list;
     return list;
 }
 
 QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) const {
     const QString testTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
-    const QString testResult = normalizeTestResult(pack.result);
+    const QString testResult = pack.result;
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
-    param["PROJECT_NAME"] = settingsValue("PROJECT", "");
-    param["TEST_STATION"] = pack.test_station.isEmpty() ? settingsValue("Operation", "") : pack.test_station;
-    param["TDS_NAME"] = settingsValue("TDS_NAME", "VH_C5");
-    param["SHOPORDER_NO"] = pack.lotName.isEmpty() ? settingsValue("Resource", "") : pack.lotName;
-    param["LINE_NO"] = pack.line.isEmpty() ? settingsValue("Line", "") : pack.line;
-    param["STATION_ID"] = settingsValue("StationID", "");
-    param["FIXTURE_NO"] = pack.machineNo.isEmpty() ? settingsValue("machineNo", "") : pack.machineNo;
-    param["STARTIME"] = testTime;
+    param["LOGIN_ID"] = settingsValue("LoginID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
+    param["PROJECT_NAME"] = settingsValue("PROJECT");
+    param["TEST_STATION"] = settingsValue(QStringLiteral("Operation"));
+    param["TDS_NAME"] = "VH_C5";
+    param["SHOPORDER_NO"] = settingsValue("Resource");
+    param["LINE_NO"] = settingsValue("Line");
+    param["STATION_ID"] = settingsValue("StationID");
+    param["FIXTURE_NO"] = pack.machineNo;
+    param["STARTIME"] = pack.testTime.isEmpty() ? testTime : pack.testTime;
     param["SN"] = pack.sn;
     param["TEST_RESULT"] = testResult;
     param["ELAPSE_TIME"] = QString::number(qMax(1, pack.elapseTime));
@@ -511,27 +452,73 @@ QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) cons
 
 QJsonObject bydmes::buildBydCompleteParam(const MesPacketData& pack) const {
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
+    param["LOGIN_ID"] = settingsValue("LoginID");
     param["SFC"] = pack.sn;
-    param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
-    param["STATION_ID"] = settingsValue("StationID", "");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
-    param["REMARK"] = buildRemark(pack);
+    param["SCHEDULING_ID"] = settingsValue("SchedulingID");
+    param["STATION_ID"] = settingsValue("StationID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
+    param["REMARK"] = pack.remark.isEmpty() ? QString("备注信息"):pack.remark;
     return param;
 }
 
 QJsonObject bydmes::buildBydNcCompleteParam(const MesPacketData& pack) const {
     QJsonObject param;
-    param["LOGIN_ID"] = settingsValue("LoginID", "-1");
+    param["LOGIN_ID"] = settingsValue("LoginID");
     param["SFC"] = pack.sn;
-    param["STATION_ID"] = settingsValue("StationID", "");
+    param["STATION_ID"] = settingsValue("StationID");
     const QString ncValue = pack.error.isEmpty() ? QString("TEST_ITEM_NG") : pack.error;
     param["NC_CODE"] = ncValue;
-    param["NC_CONTEXT"] = "不良原因:" + ncValue + "; 测试结果:" + buildRemark(pack);
+    param["NC_CONTEXT"] = "不良原因:" + ncValue + "; 测试结果:" + pack.result;
     param["NC_TYPE"] = ncValue;
-    param["SCHEDULING_ID"] = settingsValue("SchedulingID", "");
-    param["CLIENT_ID"] = settingsValue("CLIENT_ID", "1");
+    param["SCHEDULING_ID"] = settingsValue("SchedulingID");
+    param["CLIENT_ID"] = settingsValue("ClientID");
     return param;
+}
+
+// =============================================================================
+// ⑥ 过程码mes获取并解析SN
+// =============================================================================
+
+QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const {
+    // DATA 为数组或单对象：仅 station==「主板绑定」时取该行 value（避免误用每行自带的 sfc 过程码）
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        return {};
+    }
+    const QJsonObject root = doc.object();
+    const QJsonValue dataV = root.value(QStringLiteral("DATA"));
+    QJsonArray rows;
+    if (dataV.isArray()) {
+        rows = dataV.toArray();
+    } else if (dataV.isObject()) {
+        rows.append(dataV.toObject());
+    } else {
+        return {};
+    }
+    static const QString kStationMainBoard = SETTINGS.value(QStringLiteral("Mes/GetSfcKeyBindingItemName"), QStringLiteral("主板绑定")).toString().trimmed();
+    for (const QJsonValue& v : rows) {
+        if (!v.isObject()) {
+            continue;
+        }
+        const QJsonObject o = v.toObject();
+        QString st = o.value(QStringLiteral("station")).toString().trimmed();
+        if (st.isEmpty()) {
+            st = o.value(QStringLiteral("STATION")).toString().trimmed();
+        }
+        if (st.isEmpty() || st.compare(kStationMainBoard, Qt::CaseInsensitive) != 0) {
+            continue;
+        }
+        QString val = o.value(QStringLiteral("value")).toString().trimmed();
+        if (val.isEmpty()) {
+            val = o.value(QStringLiteral("VALUE")).toString().trimmed();
+        }
+        if (!val.isEmpty()) {
+            qDebug() << QStringLiteral("[BYD MES] DATA 行 station=主板绑定，解析 value(SN)=%1").arg(val);
+            return val;
+        }
+    }
+    return {};
 }
 
 QString bydmes::formatGetCustomDataItemsJson(const QByteArray& responseData) const {
@@ -564,44 +551,6 @@ QString bydmes::formatGetCustomDataItemsJson(const QByteArray& responseData) con
         return {};
     }
     return QString::fromUtf8(QJsonDocument(out).toJson(QJsonDocument::Compact));
-}
-
-QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const {
-    QUrl url(baseUrl());
-    QUrlQuery query;
-    query.addQueryItem("method", method);
-    // TestDataCollect2MainChild：标准紧凑 JSON；GetCustomData / GetSfcKeyBySfc 等：{KEY:value,...}；其余接口 [KEY:value,...]
-    QString paramStr;
-    if (method == QLatin1String("TestDataCollect2MainChild")) {
-        paramStr = QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact));
-    } else if (bydMesMethodUsesCurlyServiceParam(method)) {
-        paramStr = bydMesServiceParamEnvelope(param, QLatin1Char('{'), QLatin1Char('}'));
-    } else {
-        paramStr = bydRootBracketParam(param);
-    }
-    query.addQueryItem("param", paramStr);
-    url.setQuery(query);
-
-    qDebug() << "BYD MES request:" << url.toString(QUrl::FullyDecoded);
-
-    QNetworkAccessManager manager;
-    QNetworkRequest request(url);
-    QNetworkReply* reply = manager.get(request);
-
-    QEventLoop loop;
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-
-    QByteArray responseData;
-    if (reply->error() == QNetworkReply::NoError) {
-        responseData = reply->readAll();
-        qDebug() << "BYD MES response:" << QString::fromUtf8(responseData);
-    } else if (errorMessage != nullptr) {
-        *errorMessage = reply->errorString();
-    }
-
-    reply->deleteLater();
-    return responseData;
 }
 
 bool bydmes::isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const {
@@ -649,12 +598,78 @@ bool bydmes::isSuccessResponse(const QByteArray& responseData, QString* response
     return false;
 }
 
+// =============================================================================
+// ⑦ HTTP：GET Service.action?method=&param=    bydmes系统的接口请求方法实现
+// =============================================================================
+//简单校验接口参数的读取情况    参数缺失报错（暂时是日志查看  没有弹窗提示）
+bool bydmes::emitIfMissingLoginClientOrNet(const MesPacketData& pack, const QJsonObject& param, const QString& sceneLabel) {
+    const QString net = settingsValue(QStringLiteral("NET")).trimmed();
+    if (net.isEmpty()) {
+        qWarning().noquote() << QStringLiteral("[BYD MES] %1：外部 mes_config 中 NET/JSONURL 未配置或为空").arg(sceneLabel);
+        emit operateMesError(pack.mechines,
+                             QStringLiteral("BYD MES %1：未配置 NET/JSONURL，无法请求 MES（详见日志）").arg(sceneLabel));
+        return true;
+    }
+    if (bydMesJsonStringFieldEmpty(param, QStringLiteral("LOGIN_ID"))
+        || bydMesJsonStringFieldEmpty(param, QStringLiteral("CLIENT_ID"))) {
+        qWarning().noquote() << QStringLiteral("[BYD MES] %1：LoginID 或 CLIENT_ID 在外部 mes_config 中未配置或为空").arg(sceneLabel);
+        emit operateMesError(pack.mechines,
+                             QStringLiteral("BYD MES %1：未配置 LoginID 或 CLIENT_ID（详见日志）").arg(sceneLabel));
+        return true;
+    }
+    return false;
+}
+
+QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const {
+    QUrl url(baseUrl());
+    QUrlQuery query;
+    query.addQueryItem("method", method);
+    QString paramStr;
+    if (method == QLatin1String("TestDataCollect2MainChild")) {
+        paramStr = QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact));
+    } else if (bydMesMethodUsesCurlyServiceParam(method)) {
+        paramStr = bydMesServiceParamEnvelope(param, QLatin1Char('{'), QLatin1Char('}'));
+    } else {
+        paramStr = bydRootBracketParam(param);
+    }
+    query.addQueryItem("param", paramStr);
+    url.setQuery(query);
+
+    // qDebug 默认对 QString 转义内部引号；noquote 便于核对 JSON。URL 中 %7B、%E8… 为百分号编码。
+    qDebug().noquote() << QStringLiteral("BYD MES request (param): ") + paramStr;
+    // qDebug().noquote() << QStringLiteral("BYD MES request (URL): ") + url.toString();
+    // const QUrlQuery urlQuery(url);
+    // const QString paramDecoded = urlQuery.queryItemValue(QStringLiteral("param"));
+    // qDebug().noquote() << QStringLiteral("BYD MES request (param 从 URL 解码): ") + paramDecoded;
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(url);
+    QNetworkReply* reply = manager.get(request);
+
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QByteArray responseData;
+    if (reply->error() == QNetworkReply::NoError) {
+        responseData = reply->readAll();
+        // qDebug() << "BYD MES response:" << QString::fromUtf8(responseData);
+    } else if (errorMessage != nullptr) {
+        *errorMessage = reply->errorString();
+    }
+
+    reply->deleteLater();
+    return responseData;
+}
+
+// =============================================================================
+// ⑧ Qmes 对外槽：站前 / 取过程码 SN / 过站上报
+// =============================================================================
+
 void bydmes::LogIn(MesPacketData pack) {
     if (pack.factory != "byd") {
         return;
     }
-
-
 }
 
 void bydmes::ProcessInspection(MesPacketData pack) {
@@ -674,17 +689,22 @@ void bydmes::ProcessInspection(MesPacketData pack) {
     }
 
     const QJsonObject param = buildBydStartParam(pack);
+    if (emitIfMissingLoginClientOrNet(pack, param, QStringLiteral("Start"))) {
+        return;
+    }
     QString networkError;
     const QByteArray responseData = sendRequest("Start", param, &networkError);
     if (!networkError.isEmpty()) {
-        emit operateMesError(pack.mechines, "BYD MES 站前 Start 请求失败: " + networkError);
+        emit operateMesError(pack.mechines, QStringLiteral("网络请求错误：") + networkError);
         return;
     }
 
     QString responseText;
     QString errorMessage;
     if (!isSuccessResponse(responseData, &responseText, &errorMessage)) {
-        emit operateMesError(pack.mechines, "BYD MES 站前 Start 失败: " + errorMessage);
+        // 与 hqmes/lxmes 一致：仅发 operateMesError，由 QMesManager→test_base::solveMesData 统一 showlog/停测
+        qDebug() << "BYD MES ProcessInspection(Start) failed:" << errorMessage;
+        emit operateMesError(pack.mechines, QStringLiteral("站前检查失败：") + errorMessage);
         return;
     }
 
@@ -692,16 +712,42 @@ void bydmes::ProcessInspection(MesPacketData pack) {
 }
 
 void bydmes::GetTestData(MesPacketData pack) {
-if (pack.factory != "byd") {
+    if (pack.factory != "byd") {
         return;
     }
+    QString configError;
+    if (!bydmes::loadExternalMesConfig(&configError)) {
+        emit operateMesError(pack.mechines, configError);
+        return;
+    }
+    const QString externalIniPath = bydMesPeekExternalResolvedIniPath();
+    if (!externalIniPath.isEmpty()) {
+        const QString fileName = QFileInfo(externalIniPath).fileName();
+        // 文件名不含 mes_config 时（如 autoRead.ini）：易与产线 mes_config 混淆，此处拒绝请求（仅日志 + operateMesError）
+        if (!fileName.contains(QStringLiteral("mes_config"), Qt::CaseInsensitive)) {
+            qWarning().noquote()
+                << QStringLiteral("[BYD MES] 外部文件名「%1」不含 mes_config，已拒绝过程码换 SN 请求，路径：%2")
+                       .arg(fileName, externalIniPath);
+            emit operateMesError(
+                pack.mechines,
+                QStringLiteral("BYD MES：外部文件「%1」不是 mes_config 类 ini，已拒绝 GetSfcKeyBySfc（请修正 MES 配置文件路径）")
+                    .arg(fileName));
+            return;
+        }
+    }
     if (pack.sn.trimmed().isEmpty()) {
+        qWarning().noquote()
+            << QStringLiteral("[BYD MES] 过程码/SN 为空，无法调用 GetSfcKeyBySfc。已登记外部文件：%1")
+                   .arg(externalIniPath.isEmpty() ? QStringLiteral("(未登记)") : externalIniPath);
         emit operateMesError(pack.mechines,
                              QStringLiteral("BYD MES GetSfcKeyBySfc：pack.sn 为空（请在上位机填入过程码/SN）"));
         return;
     }
-    const QString method = settingsValue(QStringLiteral("GetSnByProcessCodeMethod"), QStringLiteral("GetSfcKeyBySfc"));
+    QString method = QStringLiteral("GetSfcKeyBySfc");
     const QJsonObject param = buildBydGetSnByProcessCodeParam(pack);
+    if (emitIfMissingLoginClientOrNet(pack, param, method)) {
+        return;
+    }
     QString networkError;
     const QByteArray responseData = sendRequest(method, param, &networkError);
     if (!networkError.isEmpty()) {
@@ -714,26 +760,34 @@ if (pack.factory != "byd") {
         emit operateMesError(pack.mechines, QStringLiteral("BYD MES %1 失败: %2").arg(method, errorMessage));
         return;
     }
-    // 优先 DATA 中行名「主板绑定」（可 Mes/GetSfcKeyBindingItemName 覆盖）的 value 字段，作为整机 SN 原样下发
     const QString sn = parseSnFromGetSnByProcessCodeResponse(responseData);
     if (sn.isEmpty()) {
         emit operateMesError(
             pack.mechines,
-            QStringLiteral("BYD MES %1 成功但未解析到 SN（请检查 DATA 是否含「%2」行的 value）")
-                .arg(method, settingsValue(QStringLiteral("GetSfcKeyBindingItemName"), QStringLiteral("主板绑定"))));
+            QStringLiteral("BYD MES %1 成功但未解析到 SN（请检查 DATA 中是否存在 station=主板绑定 且 value 非空）")
+                .arg(method));
         return;
     }
+    // 解析到的 SN 通过 sendMesTestvalue 下发工站
     qDebug() << "BYD QuerySnByProcessCode 下发 value(SN)=" << sn;
     emit sendMesTestvalue(pack.mechines, sn);
 }
-
 
 void bydmes::TestPass(MesPacketData pack) {
     if (pack.factory != "byd") {
         return;
     }
 
+    QString configError;
+    if (!bydmes::loadExternalMesConfig(&configError)) {
+        emit operateMesError(pack.mechines, configError);
+        return;
+    }
+
     QJsonObject param = buildBydTestDataCollectParam(pack);
+    if (emitIfMissingLoginClientOrNet(pack, param, QStringLiteral("TestDataCollect2MainChild"))) {
+        return;
+    }
 
     QString networkError;
     QByteArray responseData = sendRequest("TestDataCollect2MainChild", param, &networkError);
@@ -749,10 +803,13 @@ void bydmes::TestPass(MesPacketData pack) {
         return;
     }
 
-    const QString normalizedResult = normalizeTestResult(pack.result);
+    const QString normalizedResult = pack.result;
     const bool isFailResult = (normalizedResult == "FAIL");
     const QString completeMethod = isFailResult ? "NcComplete" : "Complete";
     const QJsonObject completeParam = isFailResult ? buildBydNcCompleteParam(pack) : buildBydCompleteParam(pack);
+    if (emitIfMissingLoginClientOrNet(pack, completeParam, completeMethod)) {
+        return;
+    }
 
     networkError.clear();
     responseData = sendRequest(completeMethod, completeParam, &networkError);
