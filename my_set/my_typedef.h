@@ -52,6 +52,12 @@ typedef struct MesPacketData {
     QString sn;              // sn
     QString result;          //结果
     QString itemvalue;       //测试项
+    QString maxValue;        // 上限
+    QString minValue;        // 下限
+    QString standardValue;   // 标准值
+    QString unit;            // 单位
+    QString testTime;        // 开测/分项 TEST_TIME；空则 bydmes 用当前时间
+    QString remark;          // 备注
     QString model;           //机种
     int is_hq_send_mac = 0;  //区分是否发送mac
     QString test_station;    //制程名称
