@@ -3,10 +3,12 @@
 
 #include <QWidget>
 
+#include <QPair>
 #include "Abini.h"
 #include "qtupleservice.h"
 #include "qapplication.h"
 #include "test_base.h"
+#include "inovance_h5u_modbus_tcp.h"
 #include "ui_qfreework.h"
 
 class QMessageBox;
@@ -95,11 +97,17 @@ private:
     QMessageBox* keyWaitPrompt_ = nullptr;
     bool freeWorkKeyWaiting_ = false;
     bool keyWaitPromptProgrammaticClose_ = false;
-
-private:
+    /** 用于取消「PLC 后等 BLE 按键」的超时 singleShot。 */
+    quint64 plcKeyBleWaitSeq_ = 0;
+    /** PLC 整步成功且仍等协议按键时，保存 PLC 侧摘要供 checkbutton 合并写入 testData。 */
+    QString plcKeyBlePlcOkSummary_;
+    /** PLC 旋钮整步后仅校验左旋上报（右旋为独立测试项）；phase 3 与 checkbutton 约定一致。 */
+    int plcSwitchBlePhase_ = 0;
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
+    /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
+    QVector<QPair<QString, QString>> freeWorkMesSegments_;
     QByteArray expectedTailSnFromUi;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
@@ -107,6 +115,8 @@ private:
         QString name;
         std::function<void()> function;
         bool needCaseDone = false;
+        /** MES 键名，在 testFunction.cpp 的 FREEWORK_TEST_LIST 与本项写在一起（ASCII）。 */
+        QString mesTag;
     };
     void createTestFunctions();
     std::vector<NamedFunction> testFunctions;
@@ -134,6 +144,7 @@ private:
             caseTimer.invalidate();
         }
     } stepRuntime_;
+    InovanceH5uModbusTcp inovancePlcTcp_;
     bool isCurrentStep(const QString& functionName) const;
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
@@ -144,7 +155,42 @@ private:
     void debugUpdateTupleMacStatus();
     void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                             const QString& enableKey);
+    /** 先 arm 等键与弹窗，再 PLC 整步；PLC 成功后须收到协议按键且 ID 一致才 pass（needCaseDone=true）。 */
+    void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
+                               const QString& enableKey, int keyIndex0To6);
+    /** PLC 旋钮整步后仅等左旋上报；右旋见独立测试项 startKeyButtonTest。 */
+    void startPlcSwitchPlcAndWaitLeftRotate();
     void closeKeyWaitPrompt();
+    void runPlcModbusConnectTest();
+    /** 与 Untitled-1.cs RunStepActionAsync 一致的单键整步（长连接）；测试项 needCaseDone 须为 true。 */
+    void runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime = true);
+    /** 旋钮整步，与脚本 switch 步一致。finishStepRuntime 为 false 时仅完成 PLC，再由 startPlcSwitchPlcAndWaitLeftRotate 等 BLE。 */
+    void runPlcV3TouchSwitchFull(bool finishStepRuntime = true);
+
+    /** 当前自由工位序号（1 起）对应的 PLC M 基底，双工位默认 200 / 220。 */
+    int resolvedPlcMBase() const;
+    int resolvedPlcSwitchForwardM() const;
+    int resolvedPlcSwitchPressM() const;
+    int resolvedPlcConnectVerifyM() const;
+    QString resolvedPlcIpAddress() const;
+    int resolvedPlcPort() const;
+    quint8 resolvedPlcUnitId() const;
+    int resolvedPlcMCoilAddressOffset() const;
+    int resolvedPlcPositionReadyBase() const;
+    int resolvedPlcStepDoneBase() const;
+    int resolvedPlcKeyDoneM() const;
+
+    bool plcReadCoil(int absoluteM, bool* value, QString* errorMessage);
+    bool plcWriteCoil(int absoluteM, bool value, QString* errorMessage);
+    bool plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
+    bool plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
+    bool plcSendStepDone(QString* errorMessage);
+    /** PLC 成功后启动「等协议按键」超时（与 plcKeyBleWaitSeq_ 配合取消）。 */
+    void armPlcBleKeyWaitTimeout();
+    void syncPlcModbusTraceFromSettings();
+    void maybeShowlogPlcSessionSummary(const QString& stepTag);
+    /** 每步结束时写入 freeWorkMesSegments_（键名取自 NamedFunction::mesTag）。 */
+    void appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData);
 
 private slots:
     void initDate();

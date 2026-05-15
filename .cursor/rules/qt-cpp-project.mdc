@@ -33,6 +33,12 @@ alwaysApply: true
 - UI（`.ui`）改完后需在本地用 Qt Creator / `uic` 重新生成并编译验证。
 - **HTTPS（QSslSocket）**：Windows 部署需注意 OpenSSL DLL；与三元组/网络相关的改动要考虑 TLS 与 `Tuple/BaseUrl` 配置。
 
+## 问题反馈与日志排查
+
+- 用户反馈“报错 / 失败 / 异常 / 卡住 / 不通过 / 日志里有”等运行问题时，优先查看最新上位机日志：`build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/所有log/上位机log/`。
+- 若用户指定了具体日志文件，先读该文件；否则按修改时间读取该目录下最新的 1-3 个 `*.txt`，结合用户描述判断当前执行到的步骤、工位、报错栈和最近一次 `showlog/qDebug` 内容。
+- 日志排查要先复述关键日志事实，再定位相关代码；不要只凭报错文字猜测。读取日志时避免一次性展开大量历史日志，必要时再扩大范围到设备 log、dongle log 或对应工站代码。
+
 ## 语言与注释
 
 - **必须使用简体中文**回复用户（说明、总结、提交描述、聊天中的解释与步骤）。
@@ -45,7 +51,7 @@ alwaysApply: true
 
 **必遵守的判定顺序**：
 
-1. 先看变更文件路径：若**全部**只在**某一个** `work_station/<子目录>/` 下，且**未**混改 `agreement/`、`test_base.cpp`、`box_base.cpp`、`mainwindow` 等 → 提交信息 **只写一行**该子目录对应的 **`[XXX_VER]`**（例：只改 `work_station/ageing/` → **`[AGE_VER] …`**）。**不要**误用 `[DEBUG_VER]`，**不要**对全部 `XXX_VER` 逐行复制（那是「公共模块」专用规则）。
+1. 先看变更文件路径：若**全部**只在**某一个** `work_station/<子目录>/` 下，且**未**混改 `agreement/`、`test_base.cpp`、`box_base.cpp`、`mainwindow` 等 → 提交信息只写该子目录对应的一个宏标签。具体路径与宏标签不要在本规则维护，提交前以 `.copilot-commit-message-instructions.md` 和 `my_set/AbIni.h` 为准。
 2. **说明文字必须与 diff 一致**：不得写未改动模块（见 `.copilot-commit-message-instructions.md`「必须与 diff 一致」节）。
 3. **工站 + 公共模块同一次提交**：不得把公共改动只写在工站宏的说明文字里却不出现另一宏；须按 `.copilot-commit-message-instructions.md` **分别写出**对应块（如工站 + 三元组 → **`[XXX_VER]`** 与 **`[FREE_VER]`**；可两行，或**同一行**用 **`；`** 分隔；主窗口相关 → **`[DEBUG_VER]`** 等）。
 4. 公共模块、多工站、仅主窗口/文档等情形，见 **`.copilot-commit-message-instructions.md`** 全文。
@@ -58,26 +64,6 @@ alwaysApply: true
 ```
 
 - **`XXX_VER`** 与 `my_set/AbIni.h` 中 **`#define XXX_VER`** 完全一致；描述**须简体中文**（禁止整段英文提交说明），逗号分隔。
-
-**路径与标签对照**（与 `.copilot-commit-message-instructions.md` 一致）：
-
-| 路径包含 | 宏标签 |
-|----------|--------|
-| `work_station/pcba/` | `PCBA_VER` |
-| `work_station/quiescent_current/` | `QC_VER` |
-| `work_station/pressure/` | `PRESSURE_VER` |
-| `work_station/ageing/` | `AGE_VER` |
-| `work_station/wifi_ble/` | `SINGLE_VER` |
-| `work_station/freework/` | `FREE_VER` |
-| `work_station/imu/` | `IMU_VER` |
-| `work_station/key/` | `KEY_VER` |
-| `work_station/screen/` | `SCREEN_VER` |
-| `work_station/camera/` | `CAMERA_VER` |
-| `work_station/motor/` | `MOTOR_VER` |
-| `work_station/suction/` | `SUCTION_VER` |
-| `agreement/qtuple/`（三元组服务/上报） | **禁止** `AGREEMENT_VER`；未全量多行时 → **`FREE_VER`**（与 `.copilot-commit-message-instructions.md` 一致，勿用 `DEBUG_VER` 写三元组） |
-| `mainwindow` 或根目录产测主流程（且不属于上述单一工站目录） | `DEBUG_VER` |
-| `LIGHT_VER` 等其余宏 | 以 `AbIni.h` 定义为准 |
 
 **GitHub Copilot**：`github.copilot.chat.commitMessageGeneration.instructions` 指向 **`.copilot-commit-message-instructions.md`**。
 

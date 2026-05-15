@@ -1,4 +1,4 @@
-/*
+﻿/*
 Ubuntu Style Sheet for QT Applications
 Author: Jaime A. Quiroga P.
 Company: GTRONICK
@@ -8,6 +8,12 @@ Available at: https://github.com/GTRONICK/QSS/blob/master/Ubuntu.qss
 
 QMainWindow {
 	background-color:#f0f0f0;
+}
+
+/* 与历史 mainwindow.ui 内联样式一致：分组标题加粗绿色（改为全局维护） */
+QGroupBox::title {
+	font-weight: bold;
+	color: green;
 }
 QCheckBox {
 	padding:2px;
@@ -36,8 +42,8 @@ QComboBox {
 	background: #ffffff;
 }
 QComboBox:editable {
-	selection-color:rgb(81,72,65);
-	selection-background-color: #ffffff;
+	selection-color:#ffffff;
+	selection-background-color: rgb(236,116,64);
 }
 QComboBox QAbstractItemView {
 	selection-color: #ffffff;

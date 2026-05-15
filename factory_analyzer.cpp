@@ -1,4 +1,5 @@
-﻿#include "factory_analyzer.h"
+#include "factory_analyzer.h"
+#include "agreement/qbrush/qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
 #include <QCoreApplication>
@@ -27,7 +28,7 @@ void factory_analyzer::on_pushButton_14_clicked() {}
 factory_analyzer::factory_analyzer(QWidget *parent)
     : QMainWindow(parent) ,bulk(new QBulk), log(new Qlog), adb(new Qadb),shell(new Qshell),
     shellMonitor(new Qshell), productSerialPort(new QSerialPort(this)),
-    product(new Qproduct(productSerialPort)),ui(new Ui::factory_analyzer) {
+    product(new Qproduct(productSerialPort, this)),ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
     setAcceptDrops(true);
     adb->start();

@@ -71,7 +71,7 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
 
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
-    stepRuntime_.testData = "详细如上";
+    stepRuntime_.testData = "-";
     if (!pass) {
         TestResult = failValue;
         showlog(QString("基本信息校验失败：soft=%1(%2) res=%3(%4) age=%5(%6)")
@@ -183,7 +183,7 @@ void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
 
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
-    stepRuntime_.testData = "详细如上";
+    stepRuntime_.testData = "-";
     if (!pass) {
         TestResult = failValue;
         showlog(QString("外围状态校验失败：press0=%1 press1=%2 battery=%3 touch=%4 led=%5 pd=%6")
