@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1488</width>
-    <height>1055</height>
+    <width>1518</width>
+    <height>1077</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -3034,51 +3034,277 @@
             </property>
             <property name="styleSheet">
              <string notr="true">QGroupBox {
-           border-width: 2px;
-           border-style: solid;
-         border-color: rgb(255, 165, 0);
-        }
-        QGroupBox::title {
-          font-weight: bold;
-         color: blue;
-       }</string>
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgb(255, 165, 0);
+    margin-top: 1.2em;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 8px;
+    padding: 0 6px;
+    font-weight: bold;
+    color: blue;
+}</string>
             </property>
             <property name="title">
              <string>配置区域</string>
             </property>
             <layout class="QVBoxLayout" name="config_area">
              <property name="spacing">
-              <number>6</number>
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>4</number>
+             </property>
+             <property name="topMargin">
+              <number>4</number>
+             </property>
+             <property name="rightMargin">
+              <number>4</number>
              </property>
              <property name="bottomMargin">
-              <number>1</number>
+              <number>4</number>
              </property>
              <item>
-              <layout class="QVBoxLayout" name="config_areas"/>
+              <widget class="QScrollArea" name="configScrollArea">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
+               </property>
+               <widget class="QWidget" name="configScrollContents">
+                <layout class="QVBoxLayout" name="config_areas">
+                 <property name="spacing">
+                  <number>6</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>2</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>2</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
              </item>
             </layout>
            </widget>
           </item>
           <item>
            <widget class="QGroupBox" name="can_use">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="styleSheet">
-             <string notr="true">
-QGroupBox {
-           border-width: 2px;
-           border-style: solid;
-         border-color: rgb(255, 165, 0);
-        }
-        QGroupBox::title {
-          font-weight: bold;
-         color: blue;
-       }</string>
+             <string notr="true">QGroupBox {
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgb(255, 165, 0);
+    margin-top: 1.2em;
+    padding-top: 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 8px;
+    padding: 0 6px;
+    font-weight: bold;
+    color: blue;
+}</string>
             </property>
             <property name="title">
              <string>可选区域</string>
             </property>
             <layout class="QVBoxLayout" name="can_use_area">
+             <property name="spacing">
+              <number>6</number>
+             </property>
+             <property name="leftMargin">
+              <number>1</number>
+             </property>
+             <property name="topMargin">
+              <number>1</number>
+             </property>
+             <property name="rightMargin">
+              <number>1</number>
+             </property>
+             <property name="bottomMargin">
+              <number>1</number>
+             </property>
              <item>
-              <layout class="QGridLayout" name="use_areas"/>
+              <widget class="QTabWidget" name="freeWorkOptionalTabs">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="documentMode">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="tab_optional_product">
+                <attribute name="title">
+                 <string>产品功能</string>
+                </attribute>
+                <layout class="QVBoxLayout" name="verticalLayout_optional_product">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QScrollArea" name="optionalScroll_product">
+                   <property name="widgetResizable">
+                    <bool>true</bool>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <widget class="QWidget" name="optionalScrollContents_product">
+                    <layout class="QGridLayout" name="optional_areas_product"/>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="tab_optional_fixture">
+                <attribute name="title">
+                 <string>治具功能</string>
+                </attribute>
+                <layout class="QVBoxLayout" name="verticalLayout_optional_fixture">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QScrollArea" name="optionalScroll_fixture">
+                   <property name="widgetResizable">
+                    <bool>true</bool>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <widget class="QWidget" name="optionalScrollContents_fixture">
+                    <layout class="QGridLayout" name="optional_areas_fixture"/>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="tab_optional_dongle">
+                <attribute name="title">
+                 <string>dongle功能</string>
+                </attribute>
+                <layout class="QVBoxLayout" name="verticalLayout_optional_dongle">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QScrollArea" name="optionalScroll_dongle">
+                   <property name="widgetResizable">
+                    <bool>true</bool>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <widget class="QWidget" name="optionalScrollContents_dongle">
+                    <layout class="QGridLayout" name="optional_areas_dongle"/>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="tab_optional_cloud">
+                <attribute name="title">
+                 <string>云端交互</string>
+                </attribute>
+                <layout class="QVBoxLayout" name="verticalLayout_optional_cloud">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QScrollArea" name="optionalScroll_cloud">
+                   <property name="widgetResizable">
+                    <bool>true</bool>
+                   </property>
+                   <property name="horizontalScrollBarPolicy">
+                    <enum>Qt::ScrollBarAlwaysOff</enum>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
+                   </property>
+                   <widget class="QWidget" name="optionalScrollContents_cloud">
+                    <layout class="QGridLayout" name="optional_areas_cloud"/>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </widget>
              </item>
             </layout>
            </widget>

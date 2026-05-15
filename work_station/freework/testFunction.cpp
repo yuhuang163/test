@@ -4,10 +4,44 @@
 #include <QString>
 #include <QVector>
 
+// test_base 等会间接包含 Windows 头，可能定义 RETURN 宏，导致下方 return 语句编译失败
+#ifdef RETURN
+#undef RETURN
+#endif
+
 struct FreeWorkTestCatalogItem {
     int id;
     QString name;
+    /** 设置页可选区分 Tab：product / fixture / dongle / cloud */
+    QString categoryKey;
 };
+
+/** 与 qsetting 可选区 Tab 标题对应，单一分类规则出处 */
+QString freeWorkTestCategoryForItem(int id, const QString& name) {
+    if (name.startsWith(QStringLiteral("PLC_")) || name.startsWith(QStringLiteral("产品串口"))) {
+        return QStringLiteral("fixture");
+    }
+    if (id == 57 || name.contains(QStringLiteral("治具"))) {
+        return QStringLiteral("fixture");
+    }
+    if ((id >= 62 && id <= 67) || name.contains(QStringLiteral("三元组"))) {
+        return QStringLiteral("cloud");
+    }
+    if (id == 58 || id == 68 || id == 59 || id == 60 || id == 108 || name.contains(QStringLiteral("蓝牙"))
+        || name.contains(QStringLiteral("扫描连接")) || name.contains(QStringLiteral("非信令"))
+        || name.contains(QStringLiteral("dongle"), Qt::CaseInsensitive)) {
+        return QStringLiteral("dongle");
+    }
+    if (name.contains(QStringLiteral("WiFi")) || name.contains(QStringLiteral("休眠")) || name.contains(QStringLiteral("关机"))
+        || name.contains(QStringLiteral("老化")) || name.contains(QStringLiteral("工厂")) || name.contains(QStringLiteral("SN"))
+        || name.contains(QStringLiteral("电量")) || name.contains(QStringLiteral("按键")) || name.contains(QStringLiteral("吸力"))
+        || name.contains(QStringLiteral("外围")) || name.contains(QStringLiteral("充电电流")) || name.contains(QStringLiteral("产测"))
+        || name.contains(QStringLiteral("写入")) || name.contains(QStringLiteral("基本信息"))) {
+        return QStringLiteral("product");
+    }
+    Q_UNUSED(id);
+    return QStringLiteral("product");
+}
 
 #define FREEWORK_TEST_LIST(X)                                                                                              \
     X(0, "禁止休眠", false, FORBID_SLEEP, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); })) \
@@ -119,7 +153,8 @@ struct FreeWorkTestCatalogItem {
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
-#define BUILD_CATALOG_ITEM(id, name, needCaseDone, mesTag, actionExpr) {id, name},
+#define BUILD_CATALOG_ITEM(id, name, needCaseDone, mesTag, actionExpr) \
+    {id, name, freeWorkTestCategoryForItem(id, name)},
         FREEWORK_TEST_LIST(BUILD_CATALOG_ITEM)
 #undef BUILD_CATALOG_ITEM
     };

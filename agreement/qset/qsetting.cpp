@@ -12,6 +12,7 @@
 #include <QSet>
 #include <QSignalBlocker>
 #include <QString>
+#include <QTabWidget>
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
@@ -20,6 +21,7 @@
 struct FreeWorkTestCatalogItem {
     int id;
     QString name;
+    QString categoryKey;
 };
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog();
@@ -28,6 +30,14 @@ namespace {
 constexpr int kRowSpacing = 10;
 constexpr int kColumnSpacing = 10;
 constexpr int kMargin = 10;
+
+/** 可选区 Tab 顺序与标题（key 与 testFunction.cpp 中 freeWorkTestCategoryForItem 一致） */
+const QVector<QPair<QString, QString>> kFreeWorkOptionalCategoryTabs = {
+    {QStringLiteral("product"), QStringLiteral("产品功能")},
+    {QStringLiteral("fixture"), QStringLiteral("治具功能")},
+    {QStringLiteral("dongle"), QStringLiteral("dongle功能")},
+    {QStringLiteral("cloud"), QStringLiteral("云端交互")},
+};
 const QString kSelectedStationKey = "TestOrderMeta/SelectedStation";
 const QString kSelectedStationNameKey = "TestOrderMeta/SelectedStationName";
 
@@ -195,9 +205,27 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
 
 void qsetting::initFreeWorkTestOrderUi() {
     freeWorkConfigLayout_ = qobject_cast<QVBoxLayout*>(ui->config_areas);
-    freeWorkOptionalLayout_ = qobject_cast<QGridLayout*>(ui->use_areas);
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_) {
         return;
+    }
+
+    // 可选区 Tab + 各页 ScrollArea 见 qsetting.ui；此处仅绑定网格并统一间距
+    freeWorkOptionalLayouts_.clear();
+    const QHash<QString, QGridLayout*> optionalGrids = {
+        {QStringLiteral("product"), ui->optional_areas_product},
+        {QStringLiteral("fixture"), ui->optional_areas_fixture},
+        {QStringLiteral("dongle"), ui->optional_areas_dongle},
+        {QStringLiteral("cloud"), ui->optional_areas_cloud},
+    };
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        QGridLayout* grid = optionalGrids.value(tab.first);
+        if (!grid) {
+            continue;
+        }
+        grid->setVerticalSpacing(kRowSpacing);
+        grid->setHorizontalSpacing(kColumnSpacing);
+        grid->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
+        freeWorkOptionalLayouts_.insert(tab.first, grid);
     }
 
     const auto catalog = getFreeWorkTestCatalog();
@@ -205,21 +233,101 @@ void qsetting::initFreeWorkTestOrderUi() {
     freeWorkCheckBoxes_.clear();
     freeWorkCheckBoxes_.reserve(catalog.size());
 
-    for (int i = 0; i < catalog.size(); ++i) {
-        auto* checkBox = new DraggableCheckBox(catalog.at(i).name, catalog.at(i).id, this);
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
+
+    for (const auto& item : catalog) {
+        auto* checkBox = new DraggableCheckBox(item.name, item.id, this);
         connect(checkBox, &QCheckBox::stateChanged, this, [this](int) {
             testOrderDirty_ = true;
             saveCurrentTestOrder();
         });
         freeWorkCheckBoxes_.append(checkBox);
-        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+        QString cat = item.categoryKey;
+        if (!freeWorkOptionalLayouts_.contains(cat)) {
+            cat = QStringLiteral("product");
+        }
+        QGridLayout* const grid = freeWorkOptionalLayouts_.value(cat);
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
+        optionalPosByCategory[cat] = pos + 1;
     }
 
-    freeWorkOptionalLayout_->setVerticalSpacing(kRowSpacing);
-    freeWorkOptionalLayout_->setHorizontalSpacing(kColumnSpacing);
-    freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
     initTestOrderStationSelector();
     reorderFreeWorkCheckBoxes();
+}
+
+QString qsetting::categoryKeyForCheckBox(const DraggableCheckBox* checkBox) const {
+    if (!checkBox) {
+        return QStringLiteral("product");
+    }
+    const auto catalog = getFreeWorkTestCatalog();
+    for (const auto& item : catalog) {
+        if (item.id == checkBox->getIndex()) {
+            return item.categoryKey;
+        }
+    }
+    return QStringLiteral("product");
+}
+
+QGridLayout* qsetting::optionalLayoutForCategory(const QString& categoryKey) const {
+    return freeWorkOptionalLayouts_.value(categoryKey, nullptr);
+}
+
+QGridLayout* qsetting::optionalLayoutAtGlobalPos(const QPoint& globalPos, QRect* areaOut) const {
+    if (!ui->freeWorkOptionalTabs) {
+        return nullptr;
+    }
+    for (int t = 0; t < ui->freeWorkOptionalTabs->count(); ++t) {
+        QWidget* const pageHost = ui->freeWorkOptionalTabs->widget(t);
+        if (!pageHost) {
+            continue;
+        }
+        const QRect globalRect(pageHost->mapToGlobal(QPoint(0, 0)), pageHost->size());
+        if (!globalRect.contains(globalPos)) {
+            continue;
+        }
+        const QString key = kFreeWorkOptionalCategoryTabs.at(t).first;
+        if (areaOut) {
+            *areaOut = globalRect;
+        }
+        return freeWorkOptionalLayouts_.value(key, nullptr);
+    }
+    return nullptr;
+}
+
+void qsetting::removeCheckBoxFromAllOptionalLayouts(DraggableCheckBox* checkBox) {
+    if (!checkBox) {
+        return;
+    }
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout && layout->indexOf(checkBox) >= 0) {
+            layout->removeWidget(checkBox);
+        }
+    }
+    if (freeWorkConfigLayout_ && freeWorkConfigLayout_->indexOf(checkBox) >= 0) {
+        freeWorkConfigLayout_->removeWidget(checkBox);
+    }
+}
+
+int qsetting::optionalWidgetCount(const QGridLayout* layout) const {
+    if (!layout) {
+        return 0;
+    }
+    int count = 0;
+    for (int i = 0; i < layout->count(); ++i) {
+        if (layout->itemAt(i) && layout->itemAt(i)->widget()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int qsetting::optionalRowCount(const QGridLayout* layout) const {
+    const int count = optionalWidgetCount(layout);
+    return qMax(1, (count + freeWorkCols_ - 1) / freeWorkCols_);
 }
 
 void qsetting::initTupleEnvironmentCombo() {
@@ -406,20 +514,22 @@ DraggableCheckBox* qsetting::getConfiguredCheckBoxByIndex(int index) const {
 }
 
 DraggableCheckBox* qsetting::getOptionalCheckBoxByIndex(int index) const {
-    if (!freeWorkOptionalLayout_) {
-        return nullptr;
-    }
-    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
-        auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
-        if (checkBox && checkBox->getIndex() == index) {
-            return checkBox;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        for (int i = 0; i < layout->count(); ++i) {
+            auto* checkBox = qobject_cast<DraggableCheckBox*>(layout->itemAt(i)->widget());
+            if (checkBox && checkBox->getIndex() == index) {
+                return checkBox;
+            }
         }
     }
     return nullptr;
 }
 
 void qsetting::reorderFreeWorkCheckBoxes() {
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         qDebug() << "[TestOrder] reorder skipped, layout null";
         return;
     }
@@ -427,14 +537,17 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     const QString stationKey = currentTestOrderStation();
     const QVector<int> indexes = loadTestOrderIndexes(stationKey);
     qDebug() << "[TestOrder] reorder begin, station =" << stationKey << ", indexes =" << indexes;
-    qDebug() << "[TestOrder] before rebuild, config count =" << freeWorkConfigLayout_->count()
-             << ", optional count =" << freeWorkOptionalLayout_->count();
 
     while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
         delete item;
     }
-    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
-        delete item;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        while (QLayoutItem* item = layout->takeAt(0)) {
+            delete item;
+        }
     }
 
     QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
@@ -442,9 +555,7 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (checkBox) {
             blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
-            // 强制从两个区域解绑，避免切站后旧布局残留。
-            freeWorkConfigLayout_->removeWidget(checkBox);
-            freeWorkOptionalLayout_->removeWidget(checkBox);
+            removeCheckBoxFromAllOptionalLayouts(checkBox);
         }
     }
 
@@ -466,21 +577,32 @@ void qsetting::reorderFreeWorkCheckBoxes() {
             continue;
         }
         selectedIds.insert(index);
-        
+
         freeWorkConfigLayout_->addWidget(checkBox);
         checkBox->show();
-        // qDebug() << "[TestOrder] add to config:" << index;
     }
 
-    int optionalPos = 0;
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (!checkBox || selectedIds.contains(checkBox->getIndex())) {
             continue;
         }
-        
-        freeWorkOptionalLayout_->addWidget(checkBox, optionalPos / freeWorkCols_, optionalPos % freeWorkCols_);
+        QString cat = categoryKeyForCheckBox(checkBox);
+        QGridLayout* grid = freeWorkOptionalLayouts_.value(cat);
+        if (!grid) {
+            cat = QStringLiteral("product");
+            grid = freeWorkOptionalLayouts_.value(cat);
+        }
+        if (!grid) {
+            continue;
+        }
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
         checkBox->show();
-        ++optionalPos;
+        optionalPosByCategory[cat] = pos + 1;
     }
 
     for (const auto& state : blockedStates) {
@@ -490,7 +612,11 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     }
 
     freeWorkConfigLayout_->invalidate();
-    freeWorkOptionalLayout_->invalidate();
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout) {
+            layout->invalidate();
+        }
+    }
     if (ui->config) {
         ui->config->updateGeometry();
         ui->config->update();
@@ -501,8 +627,12 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     }
     updateGeometry();
     update();
+    int optionalTotal = 0;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        optionalTotal += optionalWidgetCount(layout);
+    }
     qDebug() << "[TestOrder] after rebuild, config count =" << freeWorkConfigLayout_->count()
-             << ", optional count =" << freeWorkOptionalLayout_->count() << ", selected ids =" << selectedIds.values();
+             << ", optional count =" << optionalTotal << ", selected ids =" << selectedIds.values();
 
     savedTestOrderSnapshot_ = indexes;
     testOrderDirty_ = false;
@@ -542,49 +672,46 @@ void qsetting::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col
     layout->addWidget(widget, row, col);
 }
 
-void qsetting::moveToOptionalByPosition(DraggableCheckBox* checkBox, int row, int col) {
-    if (!freeWorkOptionalLayout_ || !checkBox) {
+void qsetting::moveToOptionalByPosition(DraggableCheckBox* checkBox, QGridLayout* optionalLayout, int row, int col) {
+    if (!optionalLayout || !checkBox) {
         return;
     }
 
     const int targetIndex = qMax(0, row * freeWorkCols_ + col);
     QVector<DraggableCheckBox*> optionalWidgets;
-    optionalWidgets.reserve(freeWorkOptionalLayout_->count() + 1);
+    optionalWidgets.reserve(optionalLayout->count() + 1);
 
-    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
-        auto* widget = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
+    for (int i = 0; i < optionalLayout->count(); ++i) {
+        auto* widget = qobject_cast<DraggableCheckBox*>(optionalLayout->itemAt(i)->widget());
         if (widget && widget != checkBox) {
             optionalWidgets.append(widget);
         }
     }
 
-    int insertIndex = qBound(0, targetIndex, optionalWidgets.size());
+    const int insertIndex = qBound(0, targetIndex, optionalWidgets.size());
     optionalWidgets.insert(insertIndex, checkBox);
 
-    if (freeWorkConfigLayout_ && freeWorkConfigLayout_->indexOf(checkBox) != -1) {
-        freeWorkConfigLayout_->removeWidget(checkBox);
-    }
-    if (freeWorkOptionalLayout_->indexOf(checkBox) != -1) {
-        freeWorkOptionalLayout_->removeWidget(checkBox);
-    }
+    removeCheckBoxFromAllOptionalLayouts(checkBox);
 
     for (DraggableCheckBox* widget : optionalWidgets) {
-        freeWorkOptionalLayout_->removeWidget(widget);
+        optionalLayout->removeWidget(widget);
     }
     for (int i = 0; i < optionalWidgets.size(); ++i) {
-        freeWorkOptionalLayout_->addWidget(optionalWidgets.at(i), i / freeWorkCols_, i % freeWorkCols_);
+        optionalLayout->addWidget(optionalWidgets.at(i), i / freeWorkCols_, i % freeWorkCols_);
     }
 }
 
-void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const {
-    if (!freeWorkOptionalLayout_) {
+void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col,
+                                     const QGridLayout* optionalLayout) const {
+    if (!optionalLayout) {
         row = 0;
         col = 0;
         return;
     }
-    const int singleHeight = qMax(1, (area.height() - 2 * kMargin + kRowSpacing) / qMax(1, freeWorkRows_));
+    const int rows = optionalRowCount(optionalLayout);
+    const int singleHeight = qMax(1, (area.height() - 2 * kMargin + kRowSpacing) / rows);
     const int singleWidth = qMax(1, (area.width() - 2 * kMargin + kColumnSpacing) / qMax(1, freeWorkCols_));
-    row = qBound(0, (globalPos.y() - area.y() - kMargin) / singleHeight, qMax(0, freeWorkRows_ - 1));
+    row = qBound(0, (globalPos.y() - area.y() - kMargin) / singleHeight, qMax(0, rows - 1));
     col = qBound(0, (globalPos.x() - area.x() - kMargin) / singleWidth, qMax(0, freeWorkCols_ - 1));
 }
 
@@ -630,27 +757,29 @@ void qsetting::dropEvent(QDropEvent* event) {
     if (!sourceCheckBox) {
         sourceCheckBox = getOptionalCheckBoxByIndex(sourceIndex);
     }
-    if (!sourceCheckBox || !freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!sourceCheckBox || !freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         return;
     }
 
     const QPoint mouseGlobalPos = mapToGlobal(event->pos());
     const QRect configGlobalArea(ui->config->mapToGlobal(QPoint(0, 0)), ui->config->size());
-    const QRect optionalGlobalArea(ui->can_use->mapToGlobal(QPoint(0, 0)), ui->can_use->size());
+    QRect optionalGlobalArea;
+    QGridLayout* targetOptionalLayout = optionalLayoutAtGlobalPos(mouseGlobalPos, &optionalGlobalArea);
 
     if (configGlobalArea.contains(mouseGlobalPos)) {
-        moveToLayout(freeWorkOptionalLayout_, freeWorkConfigLayout_, sourceCheckBox);
+        removeCheckBoxFromAllOptionalLayouts(sourceCheckBox);
+        freeWorkConfigLayout_->addWidget(sourceCheckBox);
         const int destIndex = getIndexAt(mouseGlobalPos);
         if (destIndex >= 0 && destIndex != freeWorkConfigLayout_->indexOf(sourceCheckBox)) {
             freeWorkConfigLayout_->removeWidget(sourceCheckBox);
             freeWorkConfigLayout_->insertWidget(destIndex, sourceCheckBox);
         }
         event->acceptProposedAction();
-    } else if (optionalGlobalArea.contains(mouseGlobalPos)) {
+    } else if (targetOptionalLayout && !optionalGlobalArea.isNull()) {
         int row = 0;
         int col = 0;
-        calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col);
-        moveToOptionalByPosition(sourceCheckBox, row, col);
+        calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col, targetOptionalLayout);
+        moveToOptionalByPosition(sourceCheckBox, targetOptionalLayout, row, col);
         event->acceptProposedAction();
     }
 
@@ -661,12 +790,19 @@ void qsetting::dropEvent(QDropEvent* event) {
 
 void qsetting::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
-    if (dragPos_.isNull() || !ui->can_use) {
+    if (dragPos_.isNull() || !ui->freeWorkOptionalTabs) {
         return;
     }
 
-    const QRect optionalArea = ui->can_use->geometry();
-    const int singleHeight = qMax(1, (optionalArea.height() - (2 * kMargin) + kRowSpacing) / qMax(1, freeWorkRows_));
+    const QPoint globalDrag = mapToGlobal(dragPos_);
+    QRect optionalArea;
+    QGridLayout* layout = optionalLayoutAtGlobalPos(globalDrag, &optionalArea);
+    if (!layout || optionalArea.isNull()) {
+        return;
+    }
+
+    const int rows = optionalRowCount(layout);
+    const int singleHeight = qMax(1, (optionalArea.height() - (2 * kMargin) + kRowSpacing) / rows);
     const int singleWidth = qMax(1, (optionalArea.width() - (2 * kMargin) + kColumnSpacing) / qMax(1, freeWorkCols_));
 
     QPainter painter(this);
@@ -1839,7 +1975,7 @@ void qsetting::on_comboBox_testOrderStation_currentTextChanged(const QString& te
 }
 
 void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         return;
     }
     const auto result = QMessageBox::question(this, "确认清空", "确定要清空当前工站的已配置测试流程吗？",
@@ -1851,8 +1987,13 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
         delete item;
     }
-    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
-        delete item;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        while (QLayoutItem* item = layout->takeAt(0)) {
+            delete item;
+        }
     }
 
     QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
@@ -1860,17 +2001,30 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (checkBox) {
             blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
-
         }
     }
 
-    for (int i = 0; i < freeWorkCheckBoxes_.size(); ++i) {
-        DraggableCheckBox* checkBox = freeWorkCheckBoxes_.at(i);
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
+    for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (!checkBox) {
             continue;
         }
-        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+        QString cat = categoryKeyForCheckBox(checkBox);
+        QGridLayout* grid = freeWorkOptionalLayouts_.value(cat);
+        if (!grid) {
+            cat = QStringLiteral("product");
+            grid = freeWorkOptionalLayouts_.value(cat);
+        }
+        if (!grid) {
+            continue;
+        }
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
         checkBox->show();
+        optionalPosByCategory[cat] = pos + 1;
     }
 
     for (const auto& state : blockedStates) {
@@ -1880,7 +2034,11 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     }
 
     freeWorkConfigLayout_->invalidate();
-    freeWorkOptionalLayout_->invalidate();
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout) {
+            layout->invalidate();
+        }
+    }
     testOrderDirty_ = true;
     saveCurrentTestOrder();
 }

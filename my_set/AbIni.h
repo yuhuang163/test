@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
@@ -53,7 +53,7 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "产品产测工具   V1.5.9"
+#define DEBUG_VER "产品产测工具   V1.6.0"
 #define CAMERA_VER "摄像测试工站   V1.3.8"
 #define AGE_VER "老化测试工站   V1.3.7"
 #define MOTOR_VER "电机校准工站   V1.3.4"
@@ -157,6 +157,7 @@
 // [DEBUG_VER] 添加音频文件的批量处理，以及音频文件发送，wifi测试在主页面配置
 // [DEBUG_VER] 设置第二页增加产品串口仪器 BrushInstrument 测包/PER 与超时项
 // [DEBUG_VER] 设置第二页增加 SYSTEM/ProtocolType（qpb、qfctp）下拉
+// [DEBUG_VER] 测试流程可选区按产品/治具/连接/三元组 Tab 分类展示
 // [CAMERA_VER]  删除冗余代码
 // [AGE_VER] 可以勾选是否写入skuid功能
 // [PCBA_VER] 伟克森mes添加对版本的管控

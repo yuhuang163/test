@@ -1,6 +1,7 @@
-﻿#ifndef QSETTING_H
+#ifndef QSETTING_H
 #define QSETTING_H
 
+#include <QHash>
 #include <QWidget>
 #include <QGridLayout>
 #include <QLayout>
@@ -37,11 +38,18 @@ private:
     void reorderFreeWorkCheckBoxes();
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
-    void moveToOptionalByPosition(DraggableCheckBox* checkBox, int row, int col);
-    void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const;
+    void moveToOptionalByPosition(DraggableCheckBox* checkBox, QGridLayout* optionalLayout, int row, int col);
+    void calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col,
+                               const QGridLayout* optionalLayout) const;
     int getIndexAt(const QPoint& globalPos) const;
     DraggableCheckBox* getConfiguredCheckBoxByIndex(int index) const;
     DraggableCheckBox* getOptionalCheckBoxByIndex(int index) const;
+    QString categoryKeyForCheckBox(const DraggableCheckBox* checkBox) const;
+    QGridLayout* optionalLayoutForCategory(const QString& categoryKey) const;
+    QGridLayout* optionalLayoutAtGlobalPos(const QPoint& globalPos, QRect* areaOut) const;
+    void removeCheckBoxFromAllOptionalLayouts(DraggableCheckBox* checkBox);
+    int optionalWidgetCount(const QGridLayout* layout) const;
+    int optionalRowCount(const QGridLayout* layout) const;
     void initTestOrderStationSelector();
     void initTupleEnvironmentCombo();
     void applyStationUiState(const QString& stationKey);
@@ -50,7 +58,7 @@ private:
     void saveTestOrderIndexes(const QString& station, const QVector<int>& indexes) const;
     void saveCurrentTestOrder();
     QVBoxLayout* freeWorkConfigLayout_ = nullptr;
-    QGridLayout* freeWorkOptionalLayout_ = nullptr;
+    QHash<QString, QGridLayout*> freeWorkOptionalLayouts_;
     QVector<DraggableCheckBox*> freeWorkCheckBoxes_;
     int freeWorkCols_ = 3;
     int freeWorkRows_ = 0;
