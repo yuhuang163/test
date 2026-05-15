@@ -482,6 +482,8 @@ void ageing::startTask() {
                         TestItem test;
                         test.testItem = "当前电量";
                         test.testData = QString::number(battary) + "%";
+                        // 管道段须为「NAME:VALUE」单冒号，避免「BATTARY:|80%」被拆成三段导致 BYD TEST_DATA_LIST 解析异常
+        
                         test.testResult = "通过";
                         test.ask = "通过";
                         testItems.append(test);
@@ -539,10 +541,12 @@ void ageing::startTask() {
                 if (result == passValue) {
                     QString mesresult = "PASS";
                     pack.result = mesresult;
-                    pack.itemvalue = QString("|AGE_TEST:PASS|");
+                    pack.itemvalue = QStringLiteral("|write_sn:%1").arg(stringsn)
+                        + QStringLiteral("|BATTARY:%1:::100:%").arg(battary)
+                        + QStringLiteral("|AGE_TEST:PASS");
                     pack.mechines = getIndex();
                     pack.sn = ui->getMac->text();
-                    pack.itemvalue = "083";
+                    pack.instruct_num = "083";
                     if (ui->isusemes->checkState()) {
                         emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
@@ -645,7 +649,7 @@ void ageing::on_getMac_returnPressed() {
         processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-    on_macInput_returnPressed();
+    // on_macInput_returnPressed();
 
 }
 
