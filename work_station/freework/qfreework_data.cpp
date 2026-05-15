@@ -126,7 +126,9 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
     const bool pass = (adc.percent >= standbattary);
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
-    stepRuntime_.testData = QString("电量:%1%").arg(adc.percent);
+    // MES 与 RSSI 等一致：testData 仅 ASCII 数值，避免 itemvalue 出现「FAIL;电量:0%」
+    stepRuntime_.testData = QString::number(adc.percent);
+    stepRuntime_.ask = QStringLiteral("[%1,100]").arg(static_cast<int>(standbattary));
     if (!pass) {
         TestResult = failValue;
         showlog(QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary));

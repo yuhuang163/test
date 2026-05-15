@@ -63,7 +63,7 @@
 #define SCREEN_VER "屏幕测试工站   V1.2.4"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
 #define SINGLE_VER "信号测试工站   V1.5.5"
-#define FREE_VER "自由测试工站   V1.1.11"
+#define FREE_VER "自由测试工站   V1.1.12"
 #define IMU_VER "IMU校准工站    V1.5.5"
 #define PCBA_VER "产品板子测试   V1.5.2"
 #define PRESSURE_VER "压感校测工站   V1.3.9"
@@ -179,6 +179,7 @@
 // [FREE_VER] 停止接收应答改长期信号槽，处理放 qfreework_data.cpp
 // [FREE_VER] dongle 断开时仍推进已开始步骤的收尾，避免卡在产品串口异步步
 // [FREE_VER] dongle 未连时队列当前步为产品串口仪器亦跑状态机，避免步间卡死
+// [FREE_VER] MES 电量项拆 BATTERY_INFO 与 BATTERY_PERCENT，testData 仅数字
 //
 
 #endif  // ABINI_H

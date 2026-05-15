@@ -113,6 +113,14 @@ void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool 
                            softwareVersionPassForReport_ ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
         }
         return;
+    case 9: {
+        // 获取电量信息：结果 PASS/FAIL 与百分比分两段，value 全 ASCII
+        pushMesSeg(out, tag, pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+        if (hasData) {
+            pushMesSeg(out, QStringLiteral("BATTERY_PERCENT"), testData);
+        }
+        return;
+    }
     default:
         appendOneMesStep(out, tag, pass, testData);
         return;
