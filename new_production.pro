@@ -54,6 +54,7 @@ INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/adb
 INCLUDEPATH += agreement/qtuple
 INCLUDEPATH += agreement/qplc
+INCLUDEPATH += agreement/qvisa
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
 INCLUDEPATH += my_set
@@ -124,6 +125,7 @@ SOURCES += \
     agreement/qset/qsetting.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
+    agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
     djitestfunction.cpp \
     factory_analyzer.cpp \
@@ -209,6 +211,7 @@ HEADERS += \
     agreement/qset/qsetting.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
+    agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \
     factory_analyzer.h \
     lib/form/testmodel.h \

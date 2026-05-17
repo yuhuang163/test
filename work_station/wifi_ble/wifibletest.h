@@ -2,7 +2,12 @@
 #ifndef WIFIBLETEST_H
 #define WIFIBLETEST_H
 
+#include <QList>
+#include <QSerialPort>
+
 #include "Abini.h"
+#include "qvisa.h"
+#include "qtupleservice.h"
 #include "test_base.h"
 #include "ui_wifibletest.h"
 
@@ -70,6 +75,19 @@ private:
     QString sku = "55040701";
     QString TestResult = "";
     QString product = "";
+    bool blePerRxDone = false;
+    bool blePerRxPass = true;
+    QString blePerRxMesValue = QStringLiteral("未测");
+    Qvisa blePerCmwVisa;
+    QSerialPort* blePerUart = nullptr;
+
+    struct BlePerScenario {
+        QString label;
+        int frequencyMHz = 0;
+        int channelIndex = 0;
+        int phyCode = 1;
+        QString phyName = QStringLiteral("1M");
+    };
 
     typedef enum {
         STATE_IDLE = 0,  // 休眠状态
@@ -80,6 +98,12 @@ private:
         STATE_WATI_GET_CORRECT_WIFIRSSI,  // 等待正确的wifi信号强度
         STATE_WATI_GET_CORRECT_BLERSSI,   // 等待正确的蓝牙信号强度
         STATE_WATI_CORRECT_BATTARY,       // 等待正确的蓝牙信号强度
+        STATE_TUPLE_APPLY,
+        STATE_TUPLE_WRITE_PRODUCT_KEY,
+        STATE_TUPLE_WRITE_DEVICE_NAME,
+        STATE_TUPLE_WRITE_DEVICE_SECRET,
+        STATE_TUPLE_READ_COMPARE,
+        STATE_TUPLE_REPORT_WRITE,
         STATE_WATI_CORRECT_CURRENT,
         STATE_SAVE_RESULT  // 保存结果在本地
     } State;
@@ -87,6 +111,42 @@ private:
     State getNextState(State currentState);
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
     QString snbanding;
+    TupleApplyResult tupleData_;
+    bool tupleStepStarted_ = false;
+    bool tupleReadDone_ = false;
+    bool tupleReadPass_ = false;
+    QString tupleReadData_;
+    QString tupleReadAsk_;
+    QString tupleMesItemvalue_;
+    QList<BlePerScenario> parseBlePerScenarioList() const;
+    int frequencyToBlePerChannel(int freqMHz) const;
+    QByteArray buildBlePerRxStartCommand(int channelIndex, int phyCode) const;
+    QByteArray hexStringToBytes(const QString& hex) const;
+    QString bytesToCompactHex(const QByteArray& data) const;
+    bool containsHexFragment(const QByteArray& response, const QString& fragment) const;
+    bool openBlePerUart(QString* errorMessage);
+    void closeBlePerUart();
+    QByteArray sendBlePerUartCommandHex(const QString& hex, const QString& stageName, QString* errorMessage);
+    int parseBlePerRxCount(const QByteArray& response, bool* ok) const;
+    bool prepareBlePerCmw(QString* errorMessage);
+    bool initializeBlePerCmwGprf(QString* errorMessage);
+    bool parseBlePerCmwArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent) const;
+    bool waitBlePerCmwArbComplete(const BlePerScenario& scenario, QString* errorMessage);
+    bool runBlePerCmwScenario(const BlePerScenario& scenario, QString* errorMessage);
+    bool runBlePerScenarioAttempt(const BlePerScenario& scenario, double* perOut, int* rxCountOut, QString* errorMessage);
+    bool runBlePerRxTest();
+    bool isWifiBleTupleEnabled() const;
+    void resetTupleBurnRuntime();
+    bool applyTupleByMacForWifiBle();
+    bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
+    void startTupleWriteProductKey();
+    void startTupleWriteDeviceName();
+    void startTupleWriteDeviceSecret();
+    void startTupleReadCompare();
+    bool reportTupleWriteRecordForWifiBle();
+    void appendTupleMesSegment(const QString& key, const QString& value);
+    void appendTupleTestResult(const QString& item, const QString& data, const QString& result, const QString& ask = QStringLiteral("通过"));
+    void finishTupleFailure(const QString& item, const QString& data, const QString& ask = QStringLiteral("通过"));
 
 private slots:
     int findNfcDevicePort(QString name);
@@ -112,6 +172,7 @@ private slots:
 
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
+    void refreshTupleData(ProtocolTupleData data) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshBleState(int state) override;
 

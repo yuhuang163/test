@@ -98,6 +98,7 @@ struct FreeWorkTestCatalogItem {
     X(88, "PLC_V3_switch旋钮整步左旋", true, PLC_V3_SWITCH_LEFT, startPlcSwitchPlcAndWaitLeftRotate()) \
     X(89, "PLC_V3_switch旋钮右旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮左旋整步通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
 
+    
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
 #define BUILD_CATALOG_ITEM(id, name, needCaseDone, mesTag, actionExpr) {id, name},

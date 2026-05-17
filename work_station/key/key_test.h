@@ -8,6 +8,7 @@
 #endif
 
 #include "Abini.h"
+#include "inovance_h5u_modbus_tcp.h"
 #include "testmodel.h"
 
 namespace Ui {
@@ -84,6 +85,9 @@ private:
     bool keyWaitPromptProgrammaticClose = false;
     bool factoryModeLogged = false;
     QMessageBox* keyWaitPrompt = nullptr;
+    bool plcKeyActionStarted = false;
+    quint64 plcKeyWaitSeq = 0;
+    InovanceH5uModbusTcp inovancePlcTcp_;
     int snCompareOk = 0;
     double measure_ammeter = 0;
     void pcba_test_data_update(const QString& item, const QString& data, const QString& result);
@@ -145,6 +149,29 @@ private:
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void startFlowWithMac(const QString& mac);
     void closeKeyWaitPromptProgrammatically();
+    bool usePlcClickerForKeyTest() const;
+    void startPlcClickerAndWaitKey(const QString& testName, int keyIndex0To6);
+    void startPlcSwitchAndWaitKey(const QString& testName);
+    void armPlcKeyBleWaitTimeout(const QString& testName);
+    void failCurrentPlcKeyStep(const QString& testName, const QString& reason);
+    bool runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary);
+    bool runPlcV3TouchSwitchFull(QString* summary);
+    int resolvedPlcMBase() const;
+    int resolvedPlcSwitchForwardM() const;
+    int resolvedPlcSwitchPressM() const;
+    int resolvedPlcConnectVerifyM() const;
+    QString resolvedPlcIpAddress() const;
+    int resolvedPlcPort() const;
+    quint8 resolvedPlcUnitId() const;
+    int resolvedPlcMCoilAddressOffset() const;
+    int resolvedPlcPositionReadyBase() const;
+    int resolvedPlcStepDoneBase() const;
+    int resolvedPlcKeyDoneM() const;
+    bool plcReadCoil(int absoluteM, bool* value, QString* errorMessage);
+    bool plcWriteCoil(int absoluteM, bool value, QString* errorMessage);
+    bool plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
+    bool plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
+    bool plcSendStepDone(QString* errorMessage);
 
 signals:
     void send_go_next_focus();

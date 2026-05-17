@@ -1,5 +1,9 @@
 ﻿#include "wifibletest.h"
 
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <QRegExp>
+#include <QSerialPort>
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_wifibletest.h"
@@ -107,7 +111,189 @@ wifibletest::wifibletest(int index, QWidget* parent) : test_base(parent), ui(new
     // qDebug() << "比较结果" << compareVersions("101=102", "102");
 }
 
-wifibletest::~wifibletest() { delete ui; }
+wifibletest::~wifibletest() {
+    closeBlePerUart();
+    delete ui;
+}
+
+bool wifibletest::isWifiBleTupleEnabled() const {
+    return SETTINGS.value(QStringLiteral("Tuple/WifiBleEnable"), true).toBool();
+}
+
+void wifibletest::resetTupleBurnRuntime() {
+    tupleData_ = TupleApplyResult{};
+    tupleStepStarted_ = false;
+    tupleReadDone_ = false;
+    tupleReadPass_ = false;
+    tupleReadData_.clear();
+    tupleReadAsk_.clear();
+    tupleMesItemvalue_.clear();
+}
+
+void wifibletest::appendTupleMesSegment(const QString& key, const QString& value) {
+    const QString k = key.trimmed();
+    if (k.isEmpty()) {
+        return;
+    }
+    QString v = value;
+    v.replace(QLatin1Char('|'), QStringLiteral("｜"));
+    tupleMesItemvalue_ += QStringLiteral("|%1:%2").arg(k, v);
+}
+
+void wifibletest::appendTupleTestResult(const QString& item, const QString& data, const QString& result, const QString& ask) {
+    TestItem test;
+    test.testItem = item;
+    test.testData = data;
+    test.testResult = result;
+    test.ask = ask;
+    testItems.append(test);
+    testResultTableUpdate(testItems);
+}
+
+void wifibletest::finishTupleFailure(const QString& item, const QString& data, const QString& ask) {
+    TestResult = failValue;
+    appendTupleMesSegment(item, QStringLiteral("FAIL;%1").arg(data));
+    appendTupleTestResult(item, data, failValue, ask);
+    state = STATE_SAVE_RESULT;
+    tupleStepStarted_ = false;
+}
+
+bool wifibletest::applyTupleByMacForWifiBle() {
+    tupleData_ = TupleApplyResult{};
+    const QString userName = SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString();
+    const QString password = SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString();
+    const QString sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString();
+    const QString position = SETTINGS.value(QStringLiteral("Tuple/Position"), QStringLiteral("L")).toString();
+    QString tupleMac = ui->macInput->text();
+    tupleMac.remove(QStringLiteral(":"));
+    tupleMac.remove(QStringLiteral("-"));
+    tupleMac.remove(QStringLiteral(" "));
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    if (tupleMac.isEmpty() || tupleMac == QStringLiteral("没有MAC地址")) {
+        showlog(QStringLiteral("三元组获取失败：MAC为空"));
+        return false;
+    }
+    if (userName.isEmpty() || password.isEmpty()) {
+        showlog(QStringLiteral("三元组获取失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置"));
+        return false;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(userName, password, &error)) {
+        showlog(QStringLiteral("三元组登录失败：") + error);
+        return false;
+    }
+
+    tupleData_ = service.applyTupleByMac(tupleMac, sku, position);
+    if (!tupleData_.success) {
+        showlog(QStringLiteral("三元组获取失败：") + tupleData_.error);
+        return false;
+    }
+    showlog(QStringLiteral("三元组获取成功：productKey=%1 deviceName=%2 deviceSecret=%3")
+                .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret));
+    return true;
+}
+
+bool wifibletest::failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason) {
+    if (!tupleData_.success) {
+        finishTupleFailure(stepName, QStringLiteral("云端三元组未获取成功"));
+        showlog(stepName + QStringLiteral("失败：云端三元组未获取成功"));
+        return true;
+    }
+    if (!fieldOk) {
+        finishTupleFailure(stepName, emptyReason);
+        showlog(stepName + QStringLiteral("失败：") + emptyReason);
+        return true;
+    }
+    return false;
+}
+
+void wifibletest::startTupleWriteProductKey() {
+    if (failTupleWriteIfNoValidField(QStringLiteral("写入productKey"), !tupleData_.productKey.isEmpty(), QStringLiteral("productKey为空"))) {
+        return;
+    }
+    sendCommandWithRetry([&]() {
+        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, tupleData_.productKey.toUtf8()}));
+    });
+}
+
+void wifibletest::startTupleWriteDeviceName() {
+    if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceName"), !tupleData_.deviceName.isEmpty(), QStringLiteral("deviceName为空"))) {
+        return;
+    }
+    sendCommandWithRetry([&]() {
+        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, tupleData_.deviceName.toUtf8()}));
+    });
+}
+
+void wifibletest::startTupleWriteDeviceSecret() {
+    if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceSecret"), !tupleData_.deviceSecret.isEmpty(), QStringLiteral("deviceSecret为空"))) {
+        return;
+    }
+    sendCommandWithRetry([&]() {
+        QVariantMap map;
+        map[QStringLiteral("value")] = tupleData_.deviceSecret.toUtf8();
+        protocolManager.set(DeviceCmd::WriteKey, map);
+    });
+}
+
+void wifibletest::startTupleReadCompare() {
+    tupleReadDone_ = false;
+    tupleReadPass_ = false;
+    tupleReadData_.clear();
+    tupleReadAsk_ = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
+                        .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::TupleRead); });
+}
+
+bool wifibletest::reportTupleWriteRecordForWifiBle() {
+    const QString productSn = tupleData_.sn.trimmed();
+    if (!tupleData_.success) {
+        showlog(QStringLiteral("三元组写入记录上报失败：未获取到有效三元组"));
+        return false;
+    }
+
+    QTupleService service;
+    QString error;
+    if (!service.login(SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString(),
+                       SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString(), &error)) {
+        showlog(QStringLiteral("三元组写入记录上报登录失败：") + error);
+        return false;
+    }
+    const bool btRssiPass = intblerssi > BleLowRssi && intblerssi < BleHighRssi;
+    const bool bleRssiPass = intblerssi > BleLowRssi && intblerssi < BleHighRssi;
+    if (!service.reportWriteRecord(tupleData_, productSn, TestResult == failValue ? QStringLiteral("NG") : QStringLiteral("OK"),
+                                   BLE_RSSI, btRssiPass, BLE_RSSI, bleRssiPass,
+                                   SETTINGS.value(QStringLiteral("ProductInfo/Software_Version")).toString(), true, &error)) {
+        showlog(QStringLiteral("三元组写入记录上报失败：") + error);
+        return false;
+    }
+    showlog(QStringLiteral("三元组写入记录上报成功"));
+    return true;
+}
+
+void wifibletest::refreshTupleData(ProtocolTupleData data) {
+    if (state != STATE_TUPLE_READ_COMPARE) {
+        return;
+    }
+    tupleReadDone_ = true;
+    const bool productKeyPass = data.productId == tupleData_.productKey;
+    const bool deviceNamePass = data.deviceId == tupleData_.deviceName;
+    const bool deviceSecretPass = data.key == tupleData_.deviceSecret;
+    tupleReadPass_ = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
+    tupleReadData_ = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    tupleReadAsk_ = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
+                        .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+
+    if (!tupleReadPass_) {
+        showlog(QStringLiteral("设备三元组比较失败，设备 productKey=%1 deviceName=%2，云端 productKey=%3 deviceName=%4")
+                    .arg(data.productId, data.deviceId, tupleData_.productKey, tupleData_.deviceName));
+    } else {
+        showlog(QStringLiteral("设备三元组比较通过"));
+    }
+}
 
 void wifibletest::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
@@ -581,6 +767,10 @@ void wifibletest::initDate() {
     charageresult = "未测";
     voltageresult = "未测";
     currentresult = "未测";
+    blePerRxDone = false;
+    blePerRxPass = true;
+    blePerRxMesValue = QStringLiteral("未测");
+    resetTupleBurnRuntime();
     pb->reset_all_pb();
     at->resetConnected();
     TestResult = passValue;
@@ -594,7 +784,549 @@ void wifibletest::initDate() {
 }
 // 获取下一个状态的函数
 wifibletest::State wifibletest::getNextState(State currentState) {
-    return static_cast<State>((static_cast<int>(currentState) + 1) % 12);
+    return static_cast<State>((static_cast<int>(currentState) + 1) % (STATE_SAVE_RESULT + 1));
+}
+
+QList<wifibletest::BlePerScenario> wifibletest::parseBlePerScenarioList() const {
+    QList<BlePerScenario> list;
+    const QString raw = SETTINGS.value(QStringLiteral("BlePer/ScenarioList"),
+                                       QStringLiteral("2402:1M,2440:1M,2480:1M")).toString();
+    const QStringList parts = raw.split(QRegExp("[,;\\r\\n]"), Qt::SkipEmptyParts);
+    for (const QString& part : parts) {
+        const QString token = part.trimmed();
+        if (token.isEmpty()) {
+            continue;
+        }
+        const QStringList fields = token.split(QLatin1Char(':'), Qt::SkipEmptyParts);
+        if (fields.isEmpty()) {
+            continue;
+        }
+        QString freqToken = fields.at(0).trimmed().toUpper();
+        const QString phyToken = (fields.size() > 1 ? fields.at(1).trimmed().toUpper() : QStringLiteral("1M"));
+        int freqMHz = 0;
+        if (freqToken == QStringLiteral("LOW")) {
+            freqMHz = 2402;
+        } else if (freqToken == QStringLiteral("MID")) {
+            freqMHz = 2440;
+        } else if (freqToken == QStringLiteral("HIGH")) {
+            freqMHz = 2480;
+        } else {
+            bool ok = false;
+            freqMHz = freqToken.toInt(&ok);
+            if (!ok) {
+                continue;
+            }
+        }
+        BlePerScenario s;
+        s.frequencyMHz = freqMHz;
+        s.channelIndex = frequencyToBlePerChannel(freqMHz);
+        if (s.channelIndex < 0) {
+            continue;
+        }
+        s.phyCode = (phyToken == QStringLiteral("2M")) ? 0x02 : 0x01;
+        s.phyName = (s.phyCode == 0x02) ? QStringLiteral("2M") : QStringLiteral("1M");
+        s.label = QStringLiteral("%1_%2").arg(freqMHz).arg(s.phyName);
+        list.append(s);
+    }
+    return list;
+}
+
+int wifibletest::frequencyToBlePerChannel(int freqMHz) const {
+    if (freqMHz == 2402) {
+        return 0;
+    }
+    if (freqMHz == 2440) {
+        return 19;
+    }
+    if (freqMHz == 2480) {
+        return 39;
+    }
+    if (freqMHz >= 2402 && freqMHz <= 2480) {
+        return freqMHz - 2402;
+    }
+    return -1;
+}
+
+QByteArray wifibletest::buildBlePerRxStartCommand(int channelIndex, int phyCode) const {
+    QByteArray cmd;
+    cmd.append(char(0x01));
+    cmd.append(char(0x33));
+    cmd.append(char(0x20));
+    cmd.append(char(0x03));
+    cmd.append(char(channelIndex & 0xFF));
+    cmd.append(char(phyCode & 0xFF));
+    cmd.append(char(0x00));
+    return cmd;
+}
+
+QByteArray wifibletest::hexStringToBytes(const QString& hex) const {
+    QString clean;
+    for (const QChar& c : hex) {
+        if ((c >= QLatin1Char('0') && c <= QLatin1Char('9')) ||
+            (c >= QLatin1Char('a') && c <= QLatin1Char('f')) ||
+            (c >= QLatin1Char('A') && c <= QLatin1Char('F'))) {
+            clean.append(c);
+        }
+    }
+    if (clean.isEmpty() || (clean.size() % 2) != 0) {
+        return {};
+    }
+    return QByteArray::fromHex(clean.toLatin1());
+}
+
+QString wifibletest::bytesToCompactHex(const QByteArray& data) const {
+    return QString::fromLatin1(data.toHex().toUpper());
+}
+
+bool wifibletest::containsHexFragment(const QByteArray& response, const QString& fragment) const {
+    return bytesToCompactHex(response).contains(fragment.trimmed().remove(QLatin1Char(' ')).toUpper());
+}
+
+bool wifibletest::openBlePerUart(QString* errorMessage) {
+    if (blePerUart && blePerUart->isOpen()) {
+        return true;
+    }
+    if (blePerUart == nullptr) {
+        blePerUart = new QSerialPort(this);
+    }
+    const QString portName = SETTINGS.value(QStringLiteral("BlePer/UartPort"),
+                                            ui->productComNameCombo ? ui->productComNameCombo->currentText() : QString()).toString().trimmed();
+    if (portName.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("BlePer/UartPort 未配置，且产品串口下拉框为空");
+        }
+        return false;
+    }
+    if (blePerUart->isOpen()) {
+        blePerUart->close();
+    }
+    blePerUart->setPortName(portName);
+    blePerUart->setBaudRate(SETTINGS.value(QStringLiteral("BlePer/UartBaudRate"), productBaudRate).toInt());
+    blePerUart->setDataBits(QSerialPort::Data8);
+    blePerUart->setParity(QSerialPort::NoParity);
+    blePerUart->setStopBits(QSerialPort::OneStop);
+    blePerUart->setFlowControl(QSerialPort::NoFlowControl);
+    blePerUart->setReadBufferSize(4096);
+    if (!blePerUart->open(QIODevice::ReadWrite)) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("BLE PER HCI串口打开失败: %1").arg(blePerUart->errorString());
+        }
+        return false;
+    }
+    blePerUart->clear(QSerialPort::AllDirections);
+    showlog(QStringLiteral("BLE PER HCI串口已打开: %1").arg(portName));
+    return true;
+}
+
+void wifibletest::closeBlePerUart() {
+    if (blePerUart) {
+        if (blePerUart->isOpen()) {
+            blePerUart->close();
+        }
+        delete blePerUart;
+        blePerUart = nullptr;
+    }
+}
+
+QByteArray wifibletest::sendBlePerUartCommandHex(const QString& hex, const QString& stageName, QString* errorMessage) {
+    if (!blePerUart || !blePerUart->isOpen()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("BLE PER HCI串口未打开");
+        }
+        return {};
+    }
+    const QByteArray cmd = hexStringToBytes(hex);
+    if (cmd.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("非法HCI HEX: %1").arg(hex);
+        }
+        return {};
+    }
+    blePerUart->clear(QSerialPort::AllDirections);
+    showlog(QStringLiteral("BLE_PER_UART_TX %1: %2").arg(stageName, bytesToCompactHex(cmd)));
+    if (blePerUart->write(cmd) != cmd.size() || !blePerUart->waitForBytesWritten(200)) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 写入失败: %2").arg(stageName, blePerUart->errorString());
+        }
+        return {};
+    }
+
+    QByteArray resp;
+    const int timeoutMs = SETTINGS.value(QStringLiteral("BlePer/UartReadTimeoutMs"), 1000).toInt();
+    const int quietMs = SETTINGS.value(QStringLiteral("BlePer/UartQuietMs"), 30).toInt();
+    QElapsedTimer totalTimer;
+    QElapsedTimer quietTimer;
+    totalTimer.start();
+    quietTimer.invalidate();
+    while (totalTimer.elapsed() < timeoutMs) {
+        QCoreApplication::processEvents();
+        if (blePerUart->waitForReadyRead(20)) {
+            const QByteArray chunk = blePerUart->readAll();
+            if (!chunk.isEmpty()) {
+                resp.append(chunk);
+                quietTimer.restart();
+            }
+        } else if (!resp.isEmpty() && quietTimer.isValid() && quietTimer.elapsed() >= quietMs) {
+            break;
+        }
+    }
+    showlog(QStringLiteral("BLE_PER_UART_RX %1: %2").arg(stageName, bytesToCompactHex(resp)));
+    return resp;
+}
+
+int wifibletest::parseBlePerRxCount(const QByteArray& response, bool* ok) const {
+    if (ok) {
+        *ok = false;
+    }
+    if (response.size() < 2) {
+        return -1;
+    }
+    const int low = static_cast<quint8>(response.at(response.size() - 2));
+    const int high = static_cast<quint8>(response.at(response.size() - 1));
+    if (ok) {
+        *ok = true;
+    }
+    return low | (high << 8);
+}
+
+bool wifibletest::prepareBlePerCmw(QString* errorMessage) {
+    Qvisa::ProtocolConfig cfg;
+    cfg.useVisa = true;
+    cfg.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();
+    cfg.timeoutMs = SETTINGS.value(QStringLiteral("BlePer/CmwTimeoutMs"), 5000).toInt();
+    if (cfg.visaAddress.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("BlePer/CmwVisaAddress 未配置");
+        }
+        return false;
+    }
+    blePerCmwVisa.setProtocolConfig(cfg);
+    if (!blePerCmwVisa.ensureConnected()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("CMW100 VISA连接失败: %1").arg(cfg.visaAddress);
+        }
+        return false;
+    }
+    QString idn;
+    if (blePerCmwVisa.queryCommand(QStringLiteral("*IDN?"), &idn)) {
+        showlog(QStringLiteral("CMW100: %1").arg(idn));
+    }
+    return true;
+}
+
+bool wifibletest::initializeBlePerCmwGprf(QString* errorMessage) {
+    blePerCmwVisa.writeCommand(QStringLiteral("*CLS"));
+    if (!SETTINGS.value(QStringLiteral("BlePer/CmwEnableFixedInit"), false).toBool()) {
+        return true;
+    }
+    const int cycles = SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                                      SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    const QString repetition = SETTINGS.value(QStringLiteral("BlePer/CmwArbRepetition"), QStringLiteral("SINGle")).toString();
+    const double level = SETTINGS.value(QStringLiteral("BlePer/CmwTxPowerDbm"), -50.0).toDouble();
+    blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:BBMode ARB"));
+    blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:CYCLes %1").arg(qMax(1, cycles)));
+    blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:REPetition %1").arg(repetition));
+    blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:RFSettings:LEVel %1").arg(level, 0, 'f', 1));
+    QString opc;
+    blePerCmwVisa.queryCommand(QStringLiteral("SOURce:GPRF:GEN:STATe ON;*OPC?"), &opc);
+    blePerCmwVisa.writeCommand(QStringLiteral("TRIGger:GPRF:GEN:ARB:RETRigger ON"));
+    blePerCmwVisa.writeCommand(QStringLiteral("TRIGger:GPRF:GEN:ARB:AUTostart ON"));
+    const QString waveform = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
+    if (!waveform.isEmpty()) {
+        blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE \"%1\"").arg(waveform));
+    }
+    QString err;
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwCheckErrorAfterInit"), false).toBool() &&
+        blePerCmwVisa.queryCommand(QStringLiteral("SYSTem:ERRor?"), &err) && !err.startsWith(QLatin1Char('0'))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("CMW100 GPRF初始化错误: %1").arg(err);
+        }
+        return false;
+    }
+    return true;
+}
+
+bool wifibletest::parseBlePerCmwArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent) const {
+    const QString clean = response.trimmed().remove(QLatin1Char('"'));
+    const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    if (parts.size() < 3) {
+        return false;
+    }
+    bool timeOk = false;
+    bool cyclesOk = false;
+    bool samplesOk = false;
+    const double parsedTime = parts.at(0).trimmed().toDouble(&timeOk);
+    const int parsedCycles = parts.at(1).trimmed().toInt(&cyclesOk);
+    const int parsedSamples = parts.at(2).trimmed().toInt(&samplesOk);
+    if (!timeOk || !cyclesOk || !samplesOk) {
+        return false;
+    }
+    if (countTime) {
+        *countTime = parsedTime;
+    }
+    if (cycles) {
+        *cycles = parsedCycles;
+    }
+    if (samplesCurrent) {
+        *samplesCurrent = parsedSamples;
+    }
+    return true;
+}
+
+bool wifibletest::waitBlePerCmwArbComplete(const BlePerScenario& scenario, QString* errorMessage) {
+    const int cyclesSetting = SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                                             SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    const int targetCycles = SETTINGS.value(QStringLiteral("BlePer/CmwArbCompleteCycles"),
+                                            qMax(0, cyclesSetting - 1)).toInt();
+    const int pollIntervalMs = qMax(50, SETTINGS.value(QStringLiteral("BlePer/CmwArbPollIntervalMs"), 200).toInt());
+    const int timeoutMs = qMax(500, SETTINGS.value(QStringLiteral("BlePer/CmwArbTimeoutMs"), 10000).toInt());
+    QElapsedTimer timer;
+    timer.start();
+    QString lastResponse;
+    int lastCycles = 0;
+    while (timer.elapsed() < timeoutMs) {
+        QString response;
+        if (!blePerCmwVisa.queryCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:SCOunt?"), &response)) {
+            if (errorMessage) {
+                *errorMessage = QStringLiteral("%1 CMW100发包进度查询失败").arg(scenario.label);
+            }
+            return false;
+        }
+        lastResponse = response;
+        double countTime = 0.0;
+        int cycles = 0;
+        int samplesCurrent = 0;
+        if (parseBlePerCmwArbScount(response, &countTime, &cycles, &samplesCurrent)) {
+            lastCycles = cycles;
+            showlog(QStringLiteral("CMW100发包进度 %1: time=%2s, cycles=%3, samples=%4")
+                        .arg(scenario.label)
+                        .arg(countTime, 0, 'f', 3)
+                        .arg(cycles)
+                        .arg(samplesCurrent));
+            if (targetCycles <= 0 || cycles >= targetCycles) {
+                return true;
+            }
+        } else {
+            showlog(QStringLiteral("CMW100发包进度 %1: 无法解析SCOunt返回 %2").arg(scenario.label, response));
+        }
+        waitWork(pollIntervalMs);
+    }
+    if (errorMessage) {
+        *errorMessage = QStringLiteral("%1 CMW100 ARB发包超时，最后返回:%2，cycles=%3")
+                            .arg(scenario.label, lastResponse)
+                            .arg(lastCycles);
+    }
+    return false;
+}
+
+bool wifibletest::runBlePerCmwScenario(const BlePerScenario& scenario, QString* errorMessage) {
+    const int cycles = SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                                      SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    blePerCmwVisa.writeCommand(QStringLiteral("*CLS"));
+    blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:RFSettings:FREQuency %1MHz").arg(scenario.frequencyMHz));
+    if (!SETTINGS.value(QStringLiteral("BlePer/CmwUseGuiRfConfig"), true).toBool()) {
+        const QString repetition = SETTINGS.value(QStringLiteral("BlePer/CmwArbRepetition"), QStringLiteral("SINGle")).toString();
+        blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:REPetition %1").arg(repetition));
+        blePerCmwVisa.writeCommand(QStringLiteral("SOURce:GPRF:GEN:ARB:CYCLes %1").arg(qMax(1, cycles)));
+    }
+    if (!blePerCmwVisa.writeCommand(QStringLiteral("TRIGger:GPRF:GEN:ARB:MANual:EXECute"))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 CMW100触发发包失败").arg(scenario.label);
+        }
+        return false;
+    }
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwWaitArbScount"), false).toBool()) {
+        if (!waitBlePerCmwArbComplete(scenario, errorMessage)) {
+            return false;
+        }
+    } else {
+        waitWork(SETTINGS.value(QStringLiteral("BlePer/CmwTriggerWaitMs"), 1000).toInt());
+    }
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwCheckErrorAfterScenario"), false).toBool()) {
+        QString err;
+        if (blePerCmwVisa.queryCommand(QStringLiteral("SYSTem:ERRor?"), &err) && !err.startsWith(QLatin1Char('0'))) {
+            if (errorMessage) {
+                *errorMessage = QStringLiteral("%1 CMW100错误: %2").arg(scenario.label, err);
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+bool wifibletest::runBlePerScenarioAttempt(const BlePerScenario& scenario, double* perOut, int* rxCountOut, QString* errorMessage) {
+    const bool verify = SETTINGS.value(QStringLiteral("BlePer/VerifyHciResponse"), true).toBool();
+    QString err;
+    const QByteArray resetResp = sendBlePerUartCommandHex(
+        SETTINGS.value(QStringLiteral("BlePer/HciResetHex"), QStringLiteral("01030C00")).toString(),
+        QStringLiteral("HCI Reset"), &err);
+    if (!err.isEmpty() || (verify && !containsHexFragment(resetResp, QStringLiteral("030C00")))) {
+        if (errorMessage) {
+            *errorMessage = err.isEmpty() ? QStringLiteral("%1 Reset应答异常: %2").arg(scenario.label, bytesToCompactHex(resetResp)) : err;
+        }
+        return false;
+    }
+
+    const QByteArray startCmd = buildBlePerRxStartCommand(scenario.channelIndex, scenario.phyCode);
+    const QByteArray startResp = sendBlePerUartCommandHex(bytesToCompactHex(startCmd), QStringLiteral("Start RX ") + scenario.label, &err);
+    bool rxStarted = err.isEmpty() && (!verify || containsHexFragment(startResp, QStringLiteral("332000")));
+    if (!rxStarted) {
+        if (errorMessage) {
+            *errorMessage = err.isEmpty() ? QStringLiteral("%1 Start RX应答异常: %2").arg(scenario.label, bytesToCompactHex(startResp)) : err;
+        }
+        return false;
+    }
+
+    if (!runBlePerCmwScenario(scenario, errorMessage)) {
+        sendBlePerUartCommandHex(SETTINGS.value(QStringLiteral("BlePer/HciTestEndHex"), QStringLiteral("011F2000")).toString(),
+                                 QStringLiteral("Test End ") + scenario.label, nullptr);
+        return false;
+    }
+
+    const QByteArray endResp = sendBlePerUartCommandHex(
+        SETTINGS.value(QStringLiteral("BlePer/HciTestEndHex"), QStringLiteral("011F2000")).toString(),
+        QStringLiteral("Test End ") + scenario.label, &err);
+    if (!err.isEmpty() || (verify && !containsHexFragment(endResp, QStringLiteral("1F2000")))) {
+        if (errorMessage) {
+            *errorMessage = err.isEmpty() ? QStringLiteral("%1 Test End应答异常: %2").arg(scenario.label, bytesToCompactHex(endResp)) : err;
+        }
+        return false;
+    }
+    bool ok = false;
+    const int rxCount = parseBlePerRxCount(endResp, &ok);
+    const int txCount = SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt();
+    if (!ok || txCount <= 0) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 RxCount解析失败或TxCount无效").arg(scenario.label);
+        }
+        return false;
+    }
+    const double per = (static_cast<double>(txCount - rxCount) / txCount) * 100.0;
+    if (perOut) {
+        *perOut = per;
+    }
+    if (rxCountOut) {
+        *rxCountOut = rxCount;
+    }
+    return true;
+}
+
+// BLE PER RX 总入口：仪表发包 + DUT HCI 收包，按频点算丢包率 PER
+// 调用时机：startTask 里蓝牙 RSSI 连续通过后；需 ini 中 BlePer/EnableRxTest=true
+bool wifibletest::runBlePerRxTest() {
+    // 未启用则跳过，不影响后续 WiFi/电量等步骤
+    if (!SETTINGS.value(QStringLiteral("BlePer/EnableRxTest"), false).toBool()) {
+        return true;
+    }
+    // 同一次测试只跑一遍 PER，避免状态机重复进入时重复测
+    if (blePerRxDone) {
+        return blePerRxPass;
+    }
+    blePerRxDone = true;
+    blePerRxPass = true;
+    blePerRxMesValue = QStringLiteral("PASS");  // MES 上报项 BLE_PER_RX 的汇总值
+
+    // --- 准备：非信令模式（产品切到可用 HCI 测 RX 的状态）---
+    const QString shellCmd = SETTINGS.value(QStringLiteral("BlePer/NonSignalingShellCommand"),
+                                            QStringLiteral("bt-nonsig-on")).toString().trimmed();
+    if (SETTINGS.value(QStringLiteral("BlePer/SendNonSignalingShellCommand"), true).toBool() && !shellCmd.isEmpty()) {
+        showlog(QStringLiteral("BLE PER进入非信令: %1").arg(shellCmd));
+        at->sendCmd(shellCmd + QStringLiteral("\r\n"));  // 经 dongle 蓝牙 Shell 下发
+        waitWork(SETTINGS.value(QStringLiteral("BlePer/AfterNonSignalingDelayMs"), 500).toInt());
+    }
+    // 部分工装需先关 dongle 口，再用独立 HCI 串口，避免两路同时占端口
+    if (SETTINGS.value(QStringLiteral("BlePer/CloseShellBeforeHci"), false).toBool()) {
+        closeDongleSerialPort();
+        waitWork(SETTINGS.value(QStringLiteral("BlePer/ShellToHciDelayMs"), 300).toInt());
+    }
+
+    // --- 初始化：HCI 串口 + CMW100 VISA（GPRF ARB 发包源）---
+    QString errorMessage;
+    if (!openBlePerUart(&errorMessage) || !prepareBlePerCmw(&errorMessage) || !initializeBlePerCmwGprf(&errorMessage)) {
+        showlog(QStringLiteral("BLE PER初始化失败: ") + errorMessage);
+        blePerRxPass = false;
+        blePerRxMesValue = QStringLiteral("FAIL");
+        closeBlePerUart();
+        return false;
+    }
+
+    // 可选：打开 HCI 串口后先发一串初始化 HEX（现场定制）
+    const QString initHex = SETTINGS.value(QStringLiteral("BlePer/UartInitCommandsHex")).toString();
+    if (!initHex.trimmed().isEmpty()) {
+        const QStringList cmds = initHex.split(QRegExp("[,;\\r\\n]"), Qt::SkipEmptyParts);
+        for (const QString& cmd : cmds) {
+            sendBlePerUartCommandHex(cmd.trimmed(), QStringLiteral("HCI Init"), nullptr);
+        }
+    }
+
+    // --- 多频点循环：默认 2402/2440/2480 MHz，每项见 BlePer/ScenarioList ---
+    const QList<BlePerScenario> scenarios = parseBlePerScenarioList();
+    if (scenarios.isEmpty()) {
+        showlog(QStringLiteral("BLE PER场景为空，请检查 BlePer/ScenarioList"));
+        blePerRxPass = false;
+        blePerRxMesValue = QStringLiteral("FAIL");
+        closeBlePerUart();
+        return false;
+    }
+    const int maxAttempts = SETTINGS.value(QStringLiteral("BlePer/MaxAttempts"),
+                                           SETTINGS.value(QStringLiteral("BlePer/RetestCount"), 1).toInt()).toInt();
+    const double maxPer = SETTINGS.value(QStringLiteral("BlePer/MaxPercent"), 30.8).toDouble();  // PER 上限 %
+    const int txCount = SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt();           // 仪表期望发包数（算 PER 分母）
+
+    for (const BlePerScenario& s : scenarios) {
+        bool scenarioPass = false;
+        double lastPer = 100.0;
+        int lastRxCount = -1;
+        QString lastError;
+        // 单频点可复测：Reset→StartRX→CMW发包→TestEnd→算 PER
+        for (int attempt = 1; attempt <= qMax(1, maxAttempts); ++attempt) {
+            showlog(QStringLiteral("BLE PER %1 Attempt %2/%3").arg(s.label).arg(attempt).arg(qMax(1, maxAttempts)));
+            double per = 100.0;
+            int rxCount = -1;
+            QString err;
+            if (runBlePerScenarioAttempt(s, &per, &rxCount, &err)) {
+                lastPer = per;
+                lastRxCount = rxCount;
+                // PER = (TxCount - RxCount) / TxCount * 100，越小越好
+                scenarioPass = (per <= maxPer);
+                if (scenarioPass) {
+                    break;  // 本频点已通过，不再复测
+                }
+                lastError = QStringLiteral("PER超限 %1% > %2%").arg(per, 0, 'f', 3).arg(maxPer, 0, 'f', 3);
+            } else {
+                lastError = err;  // HCI/CMW 通讯或应答校验失败
+            }
+            if (attempt < qMax(1, maxAttempts)) {
+                waitWork(SETTINGS.value(QStringLiteral("BlePer/RetestDelayMs"), 300).toInt());
+            }
+        }
+        // 写入界面测试结果表（每个频点一行）
+        TestItem test;
+        test.testItem = QStringLiteral("BLE PER RX ") + s.label;
+        test.testData = QStringLiteral("Rx=%1/Tx=%2, PER=%3%").arg(lastRxCount).arg(txCount).arg(lastPer, 0, 'f', 3);
+        test.testResult = scenarioPass ? passValue : failValue;
+        test.ask = QStringLiteral("<=%1%").arg(maxPer, 0, 'f', 3);
+        testItems.append(test);
+        testResultTableUpdate(testItems);
+        showlog(QStringLiteral("BLE PER %1 %2，%3").arg(s.label, scenarioPass ? passValue : failValue, test.testData));
+        if (!scenarioPass) {
+            showlog(QStringLiteral("BLE PER失败原因: ") + lastError);
+            blePerRxPass = false;           // 任一频点失败则整项 PER 失败
+            blePerRxMesValue = QStringLiteral("FAIL");
+        }
+        // 注意：某频点失败后仍继续测后续频点（与脚本 ContinueOnFail 默认行为接近）
+    }
+
+    // 收尾：可选 HCI 退出命令，关闭串口（CMW 连接由 Qvisa 析构/下次配置时处理）
+    const QString exitHex = SETTINGS.value(QStringLiteral("BlePer/UartExitCommandsHex")).toString();
+    if (!exitHex.trimmed().isEmpty()) {
+        const QStringList cmds = exitHex.split(QRegExp("[,;\\r\\n]"), Qt::SkipEmptyParts);
+        for (const QString& cmd : cmds) {
+            sendBlePerUartCommandHex(cmd.trimmed(), QStringLiteral("HCI Exit"), nullptr);
+        }
+    }
+    closeBlePerUart();
+    return blePerRxPass;  // false 时 startTask 会将 TestResult 置失败、pack.error=BLE_PER_RX_NG
 }
 
 void wifibletest::startTask() {
@@ -665,6 +1397,10 @@ void wifibletest::startTask() {
 
                             rssitestcount = 0;
                             at->sendBLELOG(0);  // 日志关
+                            if (!runBlePerRxTest()) {
+                                TestResult = failValue;
+                                pack.error = QStringLiteral("BLE_PER_RX_NG");
+                            }
                             if (SETTINGS.value("SYSTEM/TestWifiSignal").toBool()) {
                                 on_connectwifi_clicked();
                                 state = STATE_WATI_WIFI_CONNECT;
@@ -804,8 +1540,14 @@ void wifibletest::startTask() {
                         testItems.append(test);
                         testResultTableUpdate(testItems);
                         // protocolManager.get(DeviceCmd::PeriphState);
-                        // 待开发三元组烧录
-                        state = STATE_SAVE_RESULT;
+                        if (isWifiBleTupleEnabled()) {
+                            resetTupleBurnRuntime();
+                            showlog(QStringLiteral("电量校验通过，开始申请三元组并烧录校验"));
+                            state = STATE_TUPLE_APPLY;
+                        } else {
+                            showlog(QStringLiteral("三元组烧录未启用，跳过"));
+                            state = STATE_SAVE_RESULT;
+                        }
                     }
 
                     if (is_battary_test == 2) {
@@ -827,7 +1569,117 @@ void wifibletest::startTask() {
                     protocolManager.get(DeviceCmd::GetBattery);
                 }
                 break;
-            
+
+            case STATE_TUPLE_APPLY:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    const bool ok = applyTupleByMacForWifiBle();
+                    appendTupleMesSegment(QStringLiteral("CLOUD_PRODUCT_KEY"), ok ? tupleData_.productKey : QStringLiteral("FAIL"));
+                    appendTupleMesSegment(QStringLiteral("CLOUD_DEVICE_NAME"), ok ? tupleData_.deviceName : QStringLiteral("FAIL"));
+                    appendTupleMesSegment(QStringLiteral("CLOUD_DEVICE_SECRET"), ok ? tupleData_.deviceSecret : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("获取云端三元组"),
+                                          ok ? QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
+                                                   .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
+                                             : tupleData_.error,
+                                          ok ? passValue : failValue);
+                    if (!ok) {
+                        TestResult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    } else {
+                        state = STATE_TUPLE_WRITE_PRODUCT_KEY;
+                    }
+                    tupleStepStarted_ = false;
+                }
+                break;
+
+            case STATE_TUPLE_WRITE_PRODUCT_KEY:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    startTupleWriteProductKey();
+                } else if (canGoNext) {
+                    const bool ok = !sendRetryOver;
+                    appendTupleMesSegment(QStringLiteral("WRITE_PRODUCT_KEY"), ok ? tupleData_.productKey : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("写入productKey"), ok ? tupleData_.productKey : QStringLiteral("超时"), ok ? passValue : failValue);
+                    if (!ok) {
+                        TestResult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    } else {
+                        state = STATE_TUPLE_WRITE_DEVICE_NAME;
+                    }
+                    tupleStepStarted_ = false;
+                }
+                break;
+
+            case STATE_TUPLE_WRITE_DEVICE_NAME:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    startTupleWriteDeviceName();
+                } else if (canGoNext) {
+                    const bool ok = !sendRetryOver;
+                    appendTupleMesSegment(QStringLiteral("WRITE_DEVICE_NAME"), ok ? tupleData_.deviceName : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("写入deviceName"), ok ? tupleData_.deviceName : QStringLiteral("超时"), ok ? passValue : failValue);
+                    if (!ok) {
+                        TestResult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    } else {
+                        state = STATE_TUPLE_WRITE_DEVICE_SECRET;
+                    }
+                    tupleStepStarted_ = false;
+                }
+                break;
+
+            case STATE_TUPLE_WRITE_DEVICE_SECRET:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    startTupleWriteDeviceSecret();
+                } else if (canGoNext) {
+                    const bool ok = !sendRetryOver;
+                    appendTupleMesSegment(QStringLiteral("WRITE_DEVICE_SECRET"), ok ? tupleData_.deviceSecret : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("写入deviceSecret"), ok ? tupleData_.deviceSecret : QStringLiteral("超时"), ok ? passValue : failValue);
+                    if (!ok) {
+                        TestResult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    } else {
+                        state = STATE_TUPLE_READ_COMPARE;
+                    }
+                    tupleStepStarted_ = false;
+                }
+                break;
+
+            case STATE_TUPLE_READ_COMPARE:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    startTupleReadCompare();
+                } else if (tupleReadDone_) {
+                    appendTupleMesSegment(QStringLiteral("READ_PRODUCT_KEY"), tupleReadPass_ ? tupleData_.productKey : QStringLiteral("FAIL"));
+                    appendTupleMesSegment(QStringLiteral("READ_DEVICE_NAME"), tupleReadPass_ ? tupleData_.deviceName : QStringLiteral("FAIL"));
+                    appendTupleMesSegment(QStringLiteral("READ_DEVICE_SECRET"), tupleReadPass_ ? tupleData_.deviceSecret : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("读取设备三元组并比较"), tupleReadData_, tupleReadPass_ ? passValue : failValue, tupleReadAsk_);
+                    if (!tupleReadPass_) {
+                        TestResult = failValue;
+                        state = STATE_SAVE_RESULT;
+                    } else {
+                        state = STATE_TUPLE_REPORT_WRITE;
+                    }
+                    tupleStepStarted_ = false;
+                } else if (sendRetryOver) {
+                    finishTupleFailure(QStringLiteral("读取设备三元组并比较"), QStringLiteral("读取超时"), tupleReadAsk_);
+                }
+                break;
+
+            case STATE_TUPLE_REPORT_WRITE:
+                if (!tupleStepStarted_) {
+                    tupleStepStarted_ = true;
+                    const bool ok = reportTupleWriteRecordForWifiBle();
+                    appendTupleMesSegment(QStringLiteral("TUPLE_WRITE_REPORT"), ok ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+                    appendTupleTestResult(QStringLiteral("上报三元组写入记录"), ok ? QStringLiteral("成功") : QStringLiteral("失败"), ok ? passValue : failValue);
+                    if (!ok) {
+                        TestResult = failValue;
+                    }
+                    state = STATE_SAVE_RESULT;
+                    tupleStepStarted_ = false;
+                }
+                break;
 
             case STATE_WATI_CORRECT_CURRENT:  // 设置禁止休眠
 
@@ -844,7 +1696,9 @@ void wifibletest::startTask() {
                     pack.itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
                                      QString("|WIFI_TEST:%1").arg(intwifirssi) +
                                      QString("|BLE_TEST:%1").arg(intblerssi) +
-                                     QString("|CHAR_TEST:%1|").arg(chargestate) + QString("VOL_TEST:%1|").arg(voltage);
+                                     QString("|BLE_PER_RX:%1").arg(blePerRxMesValue) +
+                                     QString("|CHAR_TEST:%1").arg(chargestate) + QString("VOL_TEST:%1").arg(voltage) +
+                                     tupleMesItemvalue_;
                     pack.result = "NG";
 
                     pack.sn = ui->getMac->text();
@@ -862,7 +1716,9 @@ void wifibletest::startTask() {
                     pack.itemvalue = QString("|CHARGE_CURRENT:%1").arg(measure_ammeter) +
                                      QString("|WIFI_TEST:%1").arg(intwifirssi) +
                                      QString("|BLE_TEST:%1").arg(intblerssi) +
-                                     QString("|CHAR_TEST:%1|").arg(chargestate) + QString("VOL_TEST:%1|").arg(voltage);
+                                     QString("|BLE_PER_RX:%1").arg(blePerRxMesValue) +
+                                     QString("|CHAR_TEST:%1|").arg(chargestate) + QString("VOL_TEST:%1|").arg(voltage) +
+                                     tupleMesItemvalue_;
                     pack.sn = ui->getMac->text();
 
                     pack.instruct_num = "079";

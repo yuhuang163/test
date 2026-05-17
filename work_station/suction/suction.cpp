@@ -212,33 +212,32 @@ void suction::applySuctionProtocolConfig() {
     powerBackendInitialized = false;
     powerProtocolConfig_ = cfg;
     powerProtocolConfig_.protocol = Qusb::ProtocolType::Scpi;
-    const Qusb::ProtocolConfig& wfp = Qusb::programmablePowerDefaultsWfp60h();
-    // 程控电源 SCPI/VISA 仅读 [VisaPower]（全工站共用），不回退 [Suction]/ProgrammablePower
+    // 程控电源 SCPI/VISA 仅读 [VisaPower]；缺省仅回退到本工站当前 cfg，不再依赖固定设备默认命令。
     powerProtocolConfig_.scpiUseVisa =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), wfp.scpiUseVisa).toBool();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), cfg.scpiUseVisa).toBool();
     powerProtocolConfig_.scpiVisaAddress =
-        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), wfp.scpiVisaAddress).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), cfg.scpiVisaAddress).toString();
     powerProtocolConfig_.scpiCurrentType =
         SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentType"), cfg.scpiCurrentType).toString();
     powerProtocolConfig_.scpiCurrentMode =
         SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentMode"), cfg.scpiCurrentMode).toString();
     powerProtocolConfig_.scpiRange = SETTINGS.value(QStringLiteral("VisaPower/ScpiRange"), cfg.scpiRange).toString();
     powerProtocolConfig_.scpiPowerVoltageV =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), wfp.scpiPowerVoltageV).toDouble();
+        SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), cfg.scpiPowerVoltageV).toDouble();
     powerProtocolConfig_.scpiPowerCurrentA =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), wfp.scpiPowerCurrentA).toDouble();
+        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), cfg.scpiPowerCurrentA).toDouble();
     powerProtocolConfig_.scpiSetVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), wfp.scpiSetVoltageCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), cfg.scpiSetVoltageCmd).toString();
     powerProtocolConfig_.scpiSetCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), wfp.scpiSetCurrentCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), cfg.scpiSetCurrentCmd).toString();
     powerProtocolConfig_.scpiOutputOnCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), wfp.scpiOutputOnCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), cfg.scpiOutputOnCmd).toString();
     powerProtocolConfig_.scpiOutputOffCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), wfp.scpiOutputOffCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), cfg.scpiOutputOffCmd).toString();
     powerProtocolConfig_.scpiReadVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), wfp.scpiReadVoltageCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), cfg.scpiReadVoltageCmd).toString();
     powerProtocolConfig_.scpiReadCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), wfp.scpiReadCurrentCmd).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), cfg.scpiReadCurrentCmd).toString();
     showlog("电源链路配置: useVisa=" + QString::number(powerProtocolConfig_.scpiUseVisa ? 1 : 0) +
             ", visa=" + powerProtocolConfig_.scpiVisaAddress);
 
