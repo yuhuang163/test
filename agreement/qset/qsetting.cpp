@@ -1,4 +1,4 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -12,6 +12,7 @@
 #include <QSet>
 #include <QSignalBlocker>
 #include <QString>
+#include <QTabWidget>
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
@@ -20,6 +21,7 @@
 struct FreeWorkTestCatalogItem {
     int id;
     QString name;
+    QString categoryKey;
 };
 
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog();
@@ -28,6 +30,35 @@ namespace {
 constexpr int kRowSpacing = 10;
 constexpr int kColumnSpacing = 10;
 constexpr int kMargin = 10;
+
+/** 可选区 Tab 顺序与标题（key 与 testFunction.cpp 中 freeWorkTestCategoryForItem 一致） */
+const QVector<QPair<QString, QString>> kFreeWorkOptionalCategoryTabs = {
+    {QStringLiteral("product"), QStringLiteral("产品功能")},
+    {QStringLiteral("fixture"), QStringLiteral("治具功能")},
+    {QStringLiteral("dongle"), QStringLiteral("dongle功能")},
+    {QStringLiteral("cloud"), QStringLiteral("云端交互")},
+};
+
+QString categoryDisplayNameForKey(const QString& categoryKey) {
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        if (tab.first == categoryKey) {
+            return tab.second;
+        }
+    }
+    return categoryKey;
+}
+
+/** 按 objectName 批量设置悬停说明（未列出的控件保持无提示） */
+void applyNamedTooltips(QWidget* root, const QVector<QPair<QString, QString>>& tips) {
+    if (!root) {
+        return;
+    }
+    for (const auto& item : tips) {
+        if (QWidget* w = root->findChild<QWidget*>(item.first)) {
+            w->setToolTip(item.second);
+        }
+    }
+}
 const QString kSelectedStationKey = "TestOrderMeta/SelectedStation";
 const QString kSelectedStationNameKey = "TestOrderMeta/SelectedStationName";
 
@@ -185,6 +216,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
         }
         QCoreApplication::exit(0);
     });
+    initSettingTooltips();
     initFreeWorkTestOrderUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
@@ -193,11 +225,171 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->groupBox_SubPIDSettings->hide();
 }
 
+void qsetting::initSettingTooltips() {
+    setToolTip(QStringLiteral("上位机全局参数；修改工站类型后需重启程序生效。保存后写入「上位机设置.ini」。"));
+    const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
+    const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
+    const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);
+    const int tabFlow = ui->tabWidget->indexOf(ui->tab_3);
+    if (tabFixture >= 0) {
+        ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
+    }
+    if (tabKey >= 0) {
+        ui->tabWidget->setTabToolTip(tabKey, QStringLiteral("MES、工站、电流/IMU/信号、基础信息与产品差异化等。"));
+    }
+    if (tabDetail >= 0) {
+        ui->tabWidget->setTabToolTip(tabDetail, QStringLiteral("老化、三元组、按键 KeyId、PLC、串口仪器、协议类型等工站专用项。"));
+    }
+    if (tabFlow >= 0) {
+        ui->tabWidget->setTabToolTip(tabFlow, QStringLiteral("自由工站测试流程：左侧为执行顺序，右侧按分类勾选后拖入配置区。"));
+    }
+
+    static const QVector<QPair<QString, QString>> kTips = {
+        // —— 分区 GroupBox ——
+        {QStringLiteral("groupBox_3"), QStringLiteral("MES：工厂、产品名、工站、URL 等；工厂下拉联动显示字段。")},
+        {QStringLiteral("radioButtonGroupWidget"), QStringLiteral("工站类型 SYSTEM/station；切换后重启程序。")},
+        {QStringLiteral("groupBox_2"), QStringLiteral("1 拖多：主界面分窗行/列（User/formRow、formColumn）。")},
+        {QStringLiteral("groupBox_4"), QStringLiteral("电流阈值：船运/充电/工作/静态/音频（Current/*）。")},
+        {QStringLiteral("groupBox_15"), QStringLiteral("外设状态：期望值 +「启用」；读回与期望值比对。")},
+        {QStringLiteral("groupBox_TestRequirements"), QStringLiteral("治具状态期望值（FIXTEST/*）：音乐、过压灯、按键等。")},
+        {QStringLiteral("groupBox_camera_position"), QStringLiteral("摄像头 ROI、脏污检测延时等。")},
+        {QStringLiteral("imuCalibrationWidget"), QStringLiteral("IMU 校准时间、轴限、静态收敛参数（IMU/*）。")},
+        {QStringLiteral("signalStrengthSettingWidget"), QStringLiteral("WiFi/BLE RSSI 卡控与测试次数（WIFI/*、BLE/*）。")},
+        {QStringLiteral("pressureSettingsWidget"), QStringLiteral("压感测试/校准、治具套号、阈值（PRESSURE/*）。")},
+        {QStringLiteral("mainWidget"), QStringLiteral("基础信息期望值；勾选后参与 compareVersions 比对。")},
+        {QStringLiteral("groupBox_1"), QStringLiteral("产品差异化流程开关（SYSTEM/*），按产品可 Restore 默认。")},
+        {QStringLiteral("groupBox_SubPIDSettings"), QStringLiteral("SUBPID 规则（SUBPID/*）。")},
+        {QStringLiteral("groupBox_ageingConfig"), QStringLiteral("老化 AGING/BurningMode、BurningSeconds。")},
+        {QStringLiteral("groupBox_tupleConfig"), QStringLiteral("三元组 Tuple/*：环境、URL、鉴权、SKU。")},
+        {QStringLiteral("groupBox_keyConfig"), QStringLiteral("按键 KeyId（ProductInfo/KeyId*）。")},
+        {QStringLiteral("groupBox_plcModbusDebug"), QStringLiteral("PLC Modbus（PLC/*），治具 PLC 步骤。")},
+        {QStringLiteral("groupBox_brushInstrument"), QStringLiteral("串口仪器 BrushInstrument/*：包数、PER、超时。")},
+        {QStringLiteral("groupBox_systemProtocol"), QStringLiteral("SYSTEM/ProtocolType：qpb 或 qfctp。")},
+        {QStringLiteral("config"), QStringLiteral("已选步骤，自上而下执行；可拖拽排序。")},
+        {QStringLiteral("can_use"), QStringLiteral("可选步骤，勾选后拖入左侧配置区。")},
+        {QStringLiteral("freeWorkOptionalTabs"), QStringLiteral("分类：产品 / 治具 / dongle / 云端。")},
+        // —— 常用控件 ——
+        {QStringLiteral("comboBox_factory"), QStringLiteral("MES 工厂（lx/byd/wks/无mes厂等）。")},
+        {QStringLiteral("comboBox_productName"), QStringLiteral("产品型号 MES/Product_Name；切换恢复默认差异化。")},
+        {QStringLiteral("lineEdit_station"), QStringLiteral("MES 工站。")},
+        {QStringLiteral("lineEdit_mes_config_file_path"), QStringLiteral("MES/ConfigFilePath。")},
+        {QStringLiteral("pushButton_mesConfigFileBrowse"), QStringLiteral("浏览 MES 配置文件。")},
+        {QStringLiteral("comboBox_testOrderStation"), QStringLiteral("TestOrderMeta/SelectedStation。")},
+        {QStringLiteral("pushButton_clearConfiguredTestOrder"), QStringLiteral("清空当前工站配置区步骤。")},
+        {QStringLiteral("comboBox_systemProtocolType"), QStringLiteral("设备协议 qpb / qfctp。")},
+        {QStringLiteral("comboBox_tupleEnvironment"), QStringLiteral("三元组环境预设。")},
+        {QStringLiteral("lineEdit_tupleBaseUrl"), QStringLiteral("Tuple/BaseUrl。")},
+        {QStringLiteral("rowLineEdit"), QStringLiteral("User/formRow。")},
+        {QStringLiteral("columnLineEdit"), QStringLiteral("User/formColumn。")},
+        {QStringLiteral("snLineEdit"), QStringLiteral("Regex/SNPattern。")},
+        {QStringLiteral("wifiAccountLineEdit"), QStringLiteral("WIFI/Name。")},
+        {QStringLiteral("wifiPasswordLineEdit"), QStringLiteral("WIFI/Password。")},
+        {QStringLiteral("wifiUpperLimitLineEdit"), QStringLiteral("WIFI/HighRssi。")},
+        {QStringLiteral("wifiLowerLimitLineEdit"), QStringLiteral("WIFI/LowRssi。")},
+        {QStringLiteral("wifiIPLineEdit"), QStringLiteral("WIFI/IP。")},
+        {QStringLiteral("bluetoothUpperLimitLineEdit"), QStringLiteral("BLE/HighRssi。")},
+        {QStringLiteral("bluetoothLowerLimitLineEdit"), QStringLiteral("BLE/LowRssi。")},
+        {QStringLiteral("signalTestCountLineEdit"), QStringLiteral("BLE/RssiCount。")},
+        {QStringLiteral("lineEdit_CargoCurrentUpper"), QStringLiteral("Current/HighshipCurrent。")},
+        {QStringLiteral("lineEdit_CargoCurrentLower"), QStringLiteral("Current/LowshipCurrent。")},
+        {QStringLiteral("lineEdit_ChargingCurrentUpper"), QStringLiteral("Current/HighCharCurrent。")},
+        {QStringLiteral("lineEdit_ChargingCurrentLower"), QStringLiteral("Current/LowCharCurrent。")},
+        {QStringLiteral("lineEdit_WorkingCurrentUpper"), QStringLiteral("Current/HighworkCurrent。")},
+        {QStringLiteral("lineEdit_WorkingCurrentLower"), QStringLiteral("Current/LowworkCurrent。")},
+        {QStringLiteral("lineEdit_StaticCurrentUpper"), QStringLiteral("Current/HighStaticCurrent。")},
+        {QStringLiteral("lineEdit_StaticCurrentLower"), QStringLiteral("Current/LowStaticCurrent。")},
+        {QStringLiteral("lineEdit_AudioCurrentUpper"), QStringLiteral("Current/HighAudioCurrent。")},
+        {QStringLiteral("lineEdit_AudioCurrentLower"), QStringLiteral("Current/LowAudioCurrent。")},
+        {QStringLiteral("lineEdit_imu_status"), QStringLiteral("外设 imu 状态期望值。")},
+        {QStringLiteral("checkBox_imu_status"), QStringLiteral("启用 imu 状态比对。")},
+        {QStringLiteral("lineEdit_ageingBurningMode"), QStringLiteral("AGING/BurningMode。")},
+        {QStringLiteral("lineEdit_ageingBurningSeconds"), QStringLiteral("AGING/BurningSeconds（秒）。")},
+        {QStringLiteral("lineEdit_brushInstrumentSendPacketCount"), QStringLiteral("BrushInstrument/InstrumentSendPacketCount。")},
+        {QStringLiteral("lineEdit_brushInstrumentMaxPer"), QStringLiteral("BrushInstrument/MaxPer。")},
+        {QStringLiteral("lineEdit_brushInstrumentPacketPhaseWaitMs"), QStringLiteral("BrushInstrument/PacketPhaseWaitMs。")},
+        {QStringLiteral("lineEdit_brushInstrumentStopAckTimeoutMs"), QStringLiteral("BrushInstrument/StopAckTimeoutMs。")},
+        {QStringLiteral("lineEdit_plcIpAddress"), QStringLiteral("PLC/IpAddress。")},
+        {QStringLiteral("lineEdit_plcPort"), QStringLiteral("PLC/Port。")},
+        {QStringLiteral("radioButtonDebug"), QStringLiteral("MAIN_TEST 调试上位机。")},
+        {QStringLiteral("radioButtonFreeWorkstation"), QStringLiteral("FREE_WORK 自由工站。")},
+        {QStringLiteral("radioButtonStaticCurrent"), QStringLiteral("QUIESCENT_CURRENT。")},
+        {QStringLiteral("radioButtonMotorCalibration"), QStringLiteral("MOTOR_TEST。")},
+        {QStringLiteral("radioButtonImuCalibration"), QStringLiteral("IMU_CALI。")},
+        {QStringLiteral("radioButtonScreenTest"), QStringLiteral("SCREEN_TEST。")},
+        {QStringLiteral("radioButtonCameraTest"), QStringLiteral("CAMERA_TEST。")},
+        {QStringLiteral("radioButtonSignalTest"), QStringLiteral("WIFIBLE_TEST。")},
+        {QStringLiteral("radioButtonAgingTest"), QStringLiteral("AGE_TEST。")},
+        {QStringLiteral("radioButtonPressTest"), QStringLiteral("PRESS_TEST。")},
+        {QStringLiteral("radioButtonBoardFactoryTest"), QStringLiteral("PCBA_TEST。")},
+        {QStringLiteral("radioButtonKeyTest"), QStringLiteral("KEY_TEST。")},
+        {QStringLiteral("radioButtonSuctionTest"), QStringLiteral("SUCTION_TEST。")},
+        {QStringLiteral("checkBox_NeedWriteSubpid"), QStringLiteral("SYSTEM/NeedWriteSubpid。")},
+        {QStringLiteral("checkBox_NeedWriteSkuid"), QStringLiteral("SYSTEM/NeedWriteSkuid。")},
+        {QStringLiteral("checkBox_TestWifiSignal"), QStringLiteral("SYSTEM/TestWifiSignal。")},
+        {QStringLiteral("checkBox_IMUCalibrationWakeup"), QStringLiteral("SYSTEM/IMUCalibrationWakeup。")},
+        {QStringLiteral("checkBox_SerialPortMAC"), QStringLiteral("SYSTEM/SerialPortMAC。")},
+        {QStringLiteral("checkBox_TestShippingCurrent"), QStringLiteral("SYSTEM/TestShippingCurrent。")},
+        {QStringLiteral("checkBox_ShowLocalOTAFunc"), QStringLiteral("SYSTEM/ShowLocalOTAFunc。")},
+        {QStringLiteral("checkBox_ShowUpperComputerOTAFunc"), QStringLiteral("SYSTEM/ShowUpperComputerOTAFunc。")},
+        {QStringLiteral("checkBox_SaveToothbrushLog"), QStringLiteral("SYSTEM/SaveToothbrushLog。")},
+        {QStringLiteral("checkBox_LockProductUI"), QStringLiteral("SYSTEM/LockProductUI。")},
+        {QStringLiteral("checkBox_SimplePcbaTest"), QStringLiteral("SYSTEM/SimplePcbaTest。")},
+        {QStringLiteral("checkBox_BluetoothImageTransfer"), QStringLiteral("SYSTEM/BluetoothImageTransfer。")},
+        {QStringLiteral("checkBox_DisableSerialPortRx"), QStringLiteral("SYSTEM/DisableSerialPortRx。")},
+        {QStringLiteral("checkBox_ShipModeResponse"), QStringLiteral("SYSTEM/ShipModeResponse。")},
+        {QStringLiteral("checkBox_ProductName"), QStringLiteral("ProductInfo/ProductName_checkBox。")},
+        {QStringLiteral("checkBox_SoftwareVersion"), QStringLiteral("ProductInfo/SoftwareVersion_checkBox。")},
+        {QStringLiteral("checkBox_HardwareVersion"), QStringLiteral("ProductInfo/HardwareVersion_checkBox。")},
+        {QStringLiteral("lineEdit_ProductName"), QStringLiteral("ProductInfo/Product_Name 期望值。")},
+        {QStringLiteral("lineEdit_SoftwareVersion"), QStringLiteral("ProductInfo/Software_Version。")},
+        {QStringLiteral("lineEdit_HardwareVersion"), QStringLiteral("ProductInfo/Hardware_Version。")},
+        {QStringLiteral("configScrollArea"), QStringLiteral("配置区列表，内容多时可滚动。")},
+        {QStringLiteral("optionalScroll_product"), QStringLiteral("产品功能类可选步骤。")},
+        {QStringLiteral("optionalScroll_dongle"), QStringLiteral("dongle/蓝牙连接类可选步骤。")},
+        {QStringLiteral("optionalScroll_fixture"), QStringLiteral("治具/PLC/串口仪器类可选步骤。")},
+        {QStringLiteral("optionalScroll_cloud"), QStringLiteral("三元组云端类可选步骤。")},
+    };
+    applyNamedTooltips(this, kTips);
+
+    // 外设区：行内标签与输入框同步提示
+    const QVector<QPair<QString, QString>> kPeriphRowTips = {
+        {QStringLiteral("lineEdit_flash_status"), QStringLiteral("内存/Flash 状态期望值。")},
+        {QStringLiteral("lineEdit_magnetic_status"), QStringLiteral("地磁状态期望值。")},
+        {QStringLiteral("lineEdit_pressure_status"), QStringLiteral("压感状态期望值。")},
+        {QStringLiteral("lineEdit_audio_status"), QStringLiteral("功放状态期望值。")},
+        {QStringLiteral("lineEdit_freework_press0_status"), QStringLiteral("自由工站压感0状态期望值。")},
+        {QStringLiteral("lineEdit_freework_press1_status"), QStringLiteral("自由工站压感1状态期望值。")},
+        {QStringLiteral("lineEdit_freework_battery_ic_status"), QStringLiteral("电池IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_touch_ic_status"), QStringLiteral("触摸IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_led_ic_status"), QStringLiteral("LED IC状态期望值。")},
+        {QStringLiteral("lineEdit_freework_pd_ic_status"), QStringLiteral("PD IC状态期望值。")},
+    };
+    applyNamedTooltips(this, kPeriphRowTips);
+}
+
 void qsetting::initFreeWorkTestOrderUi() {
     freeWorkConfigLayout_ = qobject_cast<QVBoxLayout*>(ui->config_areas);
-    freeWorkOptionalLayout_ = qobject_cast<QGridLayout*>(ui->use_areas);
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_) {
         return;
+    }
+
+    // 可选区 Tab + 各页 ScrollArea 见 qsetting.ui；此处仅绑定网格并统一间距
+    freeWorkOptionalLayouts_.clear();
+    const QHash<QString, QGridLayout*> optionalGrids = {
+        {QStringLiteral("product"), ui->optional_areas_product},
+        {QStringLiteral("fixture"), ui->optional_areas_fixture},
+        {QStringLiteral("dongle"), ui->optional_areas_dongle},
+        {QStringLiteral("cloud"), ui->optional_areas_cloud},
+    };
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        QGridLayout* grid = optionalGrids.value(tab.first);
+        if (!grid) {
+            continue;
+        }
+        grid->setVerticalSpacing(kRowSpacing);
+        grid->setHorizontalSpacing(kColumnSpacing);
+        grid->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
+        freeWorkOptionalLayouts_.insert(tab.first, grid);
     }
 
     const auto catalog = getFreeWorkTestCatalog();
@@ -205,21 +397,104 @@ void qsetting::initFreeWorkTestOrderUi() {
     freeWorkCheckBoxes_.clear();
     freeWorkCheckBoxes_.reserve(catalog.size());
 
-    for (int i = 0; i < catalog.size(); ++i) {
-        auto* checkBox = new DraggableCheckBox(catalog.at(i).name, catalog.at(i).id, this);
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
+
+    for (const auto& item : catalog) {
+        auto* checkBox = new DraggableCheckBox(item.name, item.id, this);
         connect(checkBox, &QCheckBox::stateChanged, this, [this](int) {
             testOrderDirty_ = true;
             saveCurrentTestOrder();
         });
+        checkBox->setToolTip(QStringLiteral("【%1】%2（id=%3）\n勾选后可拖入左侧「配置区域」，按自上而下顺序执行。")
+                                 .arg(categoryDisplayNameForKey(item.categoryKey), item.name)
+                                 .arg(item.id));
         freeWorkCheckBoxes_.append(checkBox);
-        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+        QString cat = item.categoryKey;
+        if (!freeWorkOptionalLayouts_.contains(cat)) {
+            cat = QStringLiteral("product");
+        }
+        QGridLayout* const grid = freeWorkOptionalLayouts_.value(cat);
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
+        optionalPosByCategory[cat] = pos + 1;
     }
 
-    freeWorkOptionalLayout_->setVerticalSpacing(kRowSpacing);
-    freeWorkOptionalLayout_->setHorizontalSpacing(kColumnSpacing);
-    freeWorkOptionalLayout_->setContentsMargins(kMargin, kMargin, kMargin, kMargin);
     initTestOrderStationSelector();
     reorderFreeWorkCheckBoxes();
+}
+
+QString qsetting::categoryKeyForCheckBox(const DraggableCheckBox* checkBox) const {
+    if (!checkBox) {
+        return QStringLiteral("product");
+    }
+    const auto catalog = getFreeWorkTestCatalog();
+    for (const auto& item : catalog) {
+        if (item.id == checkBox->getIndex()) {
+            return item.categoryKey;
+        }
+    }
+    return QStringLiteral("product");
+}
+
+QGridLayout* qsetting::optionalLayoutForCategory(const QString& categoryKey) const {
+    return freeWorkOptionalLayouts_.value(categoryKey, nullptr);
+}
+
+QGridLayout* qsetting::optionalLayoutAtGlobalPos(const QPoint& globalPos, QRect* areaOut) const {
+    if (!ui->freeWorkOptionalTabs) {
+        return nullptr;
+    }
+    for (int t = 0; t < ui->freeWorkOptionalTabs->count(); ++t) {
+        QWidget* const pageHost = ui->freeWorkOptionalTabs->widget(t);
+        if (!pageHost) {
+            continue;
+        }
+        const QRect globalRect(pageHost->mapToGlobal(QPoint(0, 0)), pageHost->size());
+        if (!globalRect.contains(globalPos)) {
+            continue;
+        }
+        const QString key = kFreeWorkOptionalCategoryTabs.at(t).first;
+        if (areaOut) {
+            *areaOut = globalRect;
+        }
+        return freeWorkOptionalLayouts_.value(key, nullptr);
+    }
+    return nullptr;
+}
+
+void qsetting::removeCheckBoxFromAllOptionalLayouts(DraggableCheckBox* checkBox) {
+    if (!checkBox) {
+        return;
+    }
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout && layout->indexOf(checkBox) >= 0) {
+            layout->removeWidget(checkBox);
+        }
+    }
+    if (freeWorkConfigLayout_ && freeWorkConfigLayout_->indexOf(checkBox) >= 0) {
+        freeWorkConfigLayout_->removeWidget(checkBox);
+    }
+}
+
+int qsetting::optionalWidgetCount(const QGridLayout* layout) const {
+    if (!layout) {
+        return 0;
+    }
+    int count = 0;
+    for (int i = 0; i < layout->count(); ++i) {
+        if (layout->itemAt(i) && layout->itemAt(i)->widget()) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int qsetting::optionalRowCount(const QGridLayout* layout) const {
+    const int count = optionalWidgetCount(layout);
+    return qMax(1, (count + freeWorkCols_ - 1) / freeWorkCols_);
 }
 
 void qsetting::initTupleEnvironmentCombo() {
@@ -406,20 +681,22 @@ DraggableCheckBox* qsetting::getConfiguredCheckBoxByIndex(int index) const {
 }
 
 DraggableCheckBox* qsetting::getOptionalCheckBoxByIndex(int index) const {
-    if (!freeWorkOptionalLayout_) {
-        return nullptr;
-    }
-    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
-        auto* checkBox = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
-        if (checkBox && checkBox->getIndex() == index) {
-            return checkBox;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        for (int i = 0; i < layout->count(); ++i) {
+            auto* checkBox = qobject_cast<DraggableCheckBox*>(layout->itemAt(i)->widget());
+            if (checkBox && checkBox->getIndex() == index) {
+                return checkBox;
+            }
         }
     }
     return nullptr;
 }
 
 void qsetting::reorderFreeWorkCheckBoxes() {
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         qDebug() << "[TestOrder] reorder skipped, layout null";
         return;
     }
@@ -427,14 +704,17 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     const QString stationKey = currentTestOrderStation();
     const QVector<int> indexes = loadTestOrderIndexes(stationKey);
     qDebug() << "[TestOrder] reorder begin, station =" << stationKey << ", indexes =" << indexes;
-    qDebug() << "[TestOrder] before rebuild, config count =" << freeWorkConfigLayout_->count()
-             << ", optional count =" << freeWorkOptionalLayout_->count();
 
     while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
         delete item;
     }
-    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
-        delete item;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        while (QLayoutItem* item = layout->takeAt(0)) {
+            delete item;
+        }
     }
 
     QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
@@ -442,9 +722,7 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (checkBox) {
             blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
-            // 强制从两个区域解绑，避免切站后旧布局残留。
-            freeWorkConfigLayout_->removeWidget(checkBox);
-            freeWorkOptionalLayout_->removeWidget(checkBox);
+            removeCheckBoxFromAllOptionalLayouts(checkBox);
         }
     }
 
@@ -466,21 +744,32 @@ void qsetting::reorderFreeWorkCheckBoxes() {
             continue;
         }
         selectedIds.insert(index);
-        
+
         freeWorkConfigLayout_->addWidget(checkBox);
         checkBox->show();
-        // qDebug() << "[TestOrder] add to config:" << index;
     }
 
-    int optionalPos = 0;
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (!checkBox || selectedIds.contains(checkBox->getIndex())) {
             continue;
         }
-        
-        freeWorkOptionalLayout_->addWidget(checkBox, optionalPos / freeWorkCols_, optionalPos % freeWorkCols_);
+        QString cat = categoryKeyForCheckBox(checkBox);
+        QGridLayout* grid = freeWorkOptionalLayouts_.value(cat);
+        if (!grid) {
+            cat = QStringLiteral("product");
+            grid = freeWorkOptionalLayouts_.value(cat);
+        }
+        if (!grid) {
+            continue;
+        }
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
         checkBox->show();
-        ++optionalPos;
+        optionalPosByCategory[cat] = pos + 1;
     }
 
     for (const auto& state : blockedStates) {
@@ -490,7 +779,11 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     }
 
     freeWorkConfigLayout_->invalidate();
-    freeWorkOptionalLayout_->invalidate();
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout) {
+            layout->invalidate();
+        }
+    }
     if (ui->config) {
         ui->config->updateGeometry();
         ui->config->update();
@@ -501,8 +794,12 @@ void qsetting::reorderFreeWorkCheckBoxes() {
     }
     updateGeometry();
     update();
+    int optionalTotal = 0;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        optionalTotal += optionalWidgetCount(layout);
+    }
     qDebug() << "[TestOrder] after rebuild, config count =" << freeWorkConfigLayout_->count()
-             << ", optional count =" << freeWorkOptionalLayout_->count() << ", selected ids =" << selectedIds.values();
+             << ", optional count =" << optionalTotal << ", selected ids =" << selectedIds.values();
 
     savedTestOrderSnapshot_ = indexes;
     testOrderDirty_ = false;
@@ -542,49 +839,46 @@ void qsetting::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col
     layout->addWidget(widget, row, col);
 }
 
-void qsetting::moveToOptionalByPosition(DraggableCheckBox* checkBox, int row, int col) {
-    if (!freeWorkOptionalLayout_ || !checkBox) {
+void qsetting::moveToOptionalByPosition(DraggableCheckBox* checkBox, QGridLayout* optionalLayout, int row, int col) {
+    if (!optionalLayout || !checkBox) {
         return;
     }
 
     const int targetIndex = qMax(0, row * freeWorkCols_ + col);
     QVector<DraggableCheckBox*> optionalWidgets;
-    optionalWidgets.reserve(freeWorkOptionalLayout_->count() + 1);
+    optionalWidgets.reserve(optionalLayout->count() + 1);
 
-    for (int i = 0; i < freeWorkOptionalLayout_->count(); ++i) {
-        auto* widget = qobject_cast<DraggableCheckBox*>(freeWorkOptionalLayout_->itemAt(i)->widget());
+    for (int i = 0; i < optionalLayout->count(); ++i) {
+        auto* widget = qobject_cast<DraggableCheckBox*>(optionalLayout->itemAt(i)->widget());
         if (widget && widget != checkBox) {
             optionalWidgets.append(widget);
         }
     }
 
-    int insertIndex = qBound(0, targetIndex, optionalWidgets.size());
+    const int insertIndex = qBound(0, targetIndex, optionalWidgets.size());
     optionalWidgets.insert(insertIndex, checkBox);
 
-    if (freeWorkConfigLayout_ && freeWorkConfigLayout_->indexOf(checkBox) != -1) {
-        freeWorkConfigLayout_->removeWidget(checkBox);
-    }
-    if (freeWorkOptionalLayout_->indexOf(checkBox) != -1) {
-        freeWorkOptionalLayout_->removeWidget(checkBox);
-    }
+    removeCheckBoxFromAllOptionalLayouts(checkBox);
 
     for (DraggableCheckBox* widget : optionalWidgets) {
-        freeWorkOptionalLayout_->removeWidget(widget);
+        optionalLayout->removeWidget(widget);
     }
     for (int i = 0; i < optionalWidgets.size(); ++i) {
-        freeWorkOptionalLayout_->addWidget(optionalWidgets.at(i), i / freeWorkCols_, i % freeWorkCols_);
+        optionalLayout->addWidget(optionalWidgets.at(i), i / freeWorkCols_, i % freeWorkCols_);
     }
 }
 
-void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col) const {
-    if (!freeWorkOptionalLayout_) {
+void qsetting::calculateGridPosition(const QPoint& globalPos, const QRect& area, int& row, int& col,
+                                     const QGridLayout* optionalLayout) const {
+    if (!optionalLayout) {
         row = 0;
         col = 0;
         return;
     }
-    const int singleHeight = qMax(1, (area.height() - 2 * kMargin + kRowSpacing) / qMax(1, freeWorkRows_));
+    const int rows = optionalRowCount(optionalLayout);
+    const int singleHeight = qMax(1, (area.height() - 2 * kMargin + kRowSpacing) / rows);
     const int singleWidth = qMax(1, (area.width() - 2 * kMargin + kColumnSpacing) / qMax(1, freeWorkCols_));
-    row = qBound(0, (globalPos.y() - area.y() - kMargin) / singleHeight, qMax(0, freeWorkRows_ - 1));
+    row = qBound(0, (globalPos.y() - area.y() - kMargin) / singleHeight, qMax(0, rows - 1));
     col = qBound(0, (globalPos.x() - area.x() - kMargin) / singleWidth, qMax(0, freeWorkCols_ - 1));
 }
 
@@ -630,27 +924,29 @@ void qsetting::dropEvent(QDropEvent* event) {
     if (!sourceCheckBox) {
         sourceCheckBox = getOptionalCheckBoxByIndex(sourceIndex);
     }
-    if (!sourceCheckBox || !freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!sourceCheckBox || !freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         return;
     }
 
     const QPoint mouseGlobalPos = mapToGlobal(event->pos());
     const QRect configGlobalArea(ui->config->mapToGlobal(QPoint(0, 0)), ui->config->size());
-    const QRect optionalGlobalArea(ui->can_use->mapToGlobal(QPoint(0, 0)), ui->can_use->size());
+    QRect optionalGlobalArea;
+    QGridLayout* targetOptionalLayout = optionalLayoutAtGlobalPos(mouseGlobalPos, &optionalGlobalArea);
 
     if (configGlobalArea.contains(mouseGlobalPos)) {
-        moveToLayout(freeWorkOptionalLayout_, freeWorkConfigLayout_, sourceCheckBox);
+        removeCheckBoxFromAllOptionalLayouts(sourceCheckBox);
+        freeWorkConfigLayout_->addWidget(sourceCheckBox);
         const int destIndex = getIndexAt(mouseGlobalPos);
         if (destIndex >= 0 && destIndex != freeWorkConfigLayout_->indexOf(sourceCheckBox)) {
             freeWorkConfigLayout_->removeWidget(sourceCheckBox);
             freeWorkConfigLayout_->insertWidget(destIndex, sourceCheckBox);
         }
         event->acceptProposedAction();
-    } else if (optionalGlobalArea.contains(mouseGlobalPos)) {
+    } else if (targetOptionalLayout && !optionalGlobalArea.isNull()) {
         int row = 0;
         int col = 0;
-        calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col);
-        moveToOptionalByPosition(sourceCheckBox, row, col);
+        calculateGridPosition(mouseGlobalPos, optionalGlobalArea, row, col, targetOptionalLayout);
+        moveToOptionalByPosition(sourceCheckBox, targetOptionalLayout, row, col);
         event->acceptProposedAction();
     }
 
@@ -661,12 +957,19 @@ void qsetting::dropEvent(QDropEvent* event) {
 
 void qsetting::paintEvent(QPaintEvent* event) {
     QWidget::paintEvent(event);
-    if (dragPos_.isNull() || !ui->can_use) {
+    if (dragPos_.isNull() || !ui->freeWorkOptionalTabs) {
         return;
     }
 
-    const QRect optionalArea = ui->can_use->geometry();
-    const int singleHeight = qMax(1, (optionalArea.height() - (2 * kMargin) + kRowSpacing) / qMax(1, freeWorkRows_));
+    const QPoint globalDrag = mapToGlobal(dragPos_);
+    QRect optionalArea;
+    QGridLayout* layout = optionalLayoutAtGlobalPos(globalDrag, &optionalArea);
+    if (!layout || optionalArea.isNull()) {
+        return;
+    }
+
+    const int rows = optionalRowCount(layout);
+    const int singleHeight = qMax(1, (optionalArea.height() - (2 * kMargin) + kRowSpacing) / rows);
     const int singleWidth = qMax(1, (optionalArea.width() - (2 * kMargin) + kColumnSpacing) / qMax(1, freeWorkCols_));
 
     QPainter painter(this);
@@ -809,6 +1112,29 @@ void qsetting::loadConfig() {
     // 加载老化工站配置
     ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
     ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
+    if (ui->comboBox_systemProtocolType->count() == 0) {
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qpb（产测 PB）"), QStringLiteral("qpb"));
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qfctp（FCTP）"), QStringLiteral("qfctp"));
+    }
+    {
+        const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))
+                                  .toString()
+                                  .trimmed()
+                                  .toLower();
+        int idx = ui->comboBox_systemProtocolType->findData(proto);
+        if (idx < 0) {
+            idx = 0;
+        }
+        ui->comboBox_systemProtocolType->setCurrentIndex(idx);
+    }
+    ui->lineEdit_brushInstrumentSendPacketCount->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt()));
+    ui->lineEdit_brushInstrumentMaxPer->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble(), 'f', 4));
+    ui->lineEdit_brushInstrumentPacketPhaseWaitMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt()));
+    ui->lineEdit_brushInstrumentStopAckTimeoutMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt()));
     ui->checkBox_plcModbusTrace->setChecked(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool());
     ui->lineEdit_plcIpAddress->setText(
         SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")).toString());
@@ -1195,6 +1521,15 @@ void qsetting::saveConfig() {
     // 保存老化工站配置
     SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
     SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
+    SETTINGS.setValue(QStringLiteral("SYSTEM/ProtocolType"),
+                      ui->comboBox_systemProtocolType->currentData().toString().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"),
+                      ui->lineEdit_brushInstrumentSendPacketCount->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/MaxPer"), ui->lineEdit_brushInstrumentMaxPer->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"),
+                      ui->lineEdit_brushInstrumentPacketPhaseWaitMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("BrushInstrument/StopAckTimeoutMs"),
+                      ui->lineEdit_brushInstrumentStopAckTimeoutMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/ModbusTrace"), ui->checkBox_plcModbusTrace->isChecked());
     SETTINGS.setValue(QStringLiteral("PLC/IpAddress"), ui->lineEdit_plcIpAddress->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/Port"), ui->lineEdit_plcPort->text().trimmed());
@@ -1807,7 +2142,7 @@ void qsetting::on_comboBox_testOrderStation_currentTextChanged(const QString& te
 }
 
 void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
-    if (!freeWorkConfigLayout_ || !freeWorkOptionalLayout_) {
+    if (!freeWorkConfigLayout_ || freeWorkOptionalLayouts_.isEmpty()) {
         return;
     }
     const auto result = QMessageBox::question(this, "确认清空", "确定要清空当前工站的已配置测试流程吗？",
@@ -1819,8 +2154,13 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     while (QLayoutItem* item = freeWorkConfigLayout_->takeAt(0)) {
         delete item;
     }
-    while (QLayoutItem* item = freeWorkOptionalLayout_->takeAt(0)) {
-        delete item;
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (!layout) {
+            continue;
+        }
+        while (QLayoutItem* item = layout->takeAt(0)) {
+            delete item;
+        }
     }
 
     QVector<QPair<DraggableCheckBox*, bool>> blockedStates;
@@ -1828,17 +2168,30 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (checkBox) {
             blockedStates.append(qMakePair(checkBox, checkBox->blockSignals(true)));
-
         }
     }
 
-    for (int i = 0; i < freeWorkCheckBoxes_.size(); ++i) {
-        DraggableCheckBox* checkBox = freeWorkCheckBoxes_.at(i);
+    QHash<QString, int> optionalPosByCategory;
+    for (const auto& tab : kFreeWorkOptionalCategoryTabs) {
+        optionalPosByCategory.insert(tab.first, 0);
+    }
+    for (DraggableCheckBox* checkBox : freeWorkCheckBoxes_) {
         if (!checkBox) {
             continue;
         }
-        freeWorkOptionalLayout_->addWidget(checkBox, i / freeWorkCols_, i % freeWorkCols_);
+        QString cat = categoryKeyForCheckBox(checkBox);
+        QGridLayout* grid = freeWorkOptionalLayouts_.value(cat);
+        if (!grid) {
+            cat = QStringLiteral("product");
+            grid = freeWorkOptionalLayouts_.value(cat);
+        }
+        if (!grid) {
+            continue;
+        }
+        const int pos = optionalPosByCategory.value(cat);
+        grid->addWidget(checkBox, pos / freeWorkCols_, pos % freeWorkCols_);
         checkBox->show();
+        optionalPosByCategory[cat] = pos + 1;
     }
 
     for (const auto& state : blockedStates) {
@@ -1848,7 +2201,11 @@ void qsetting::on_pushButton_clearConfiguredTestOrder_clicked() {
     }
 
     freeWorkConfigLayout_->invalidate();
-    freeWorkOptionalLayout_->invalidate();
+    for (QGridLayout* layout : freeWorkOptionalLayouts_) {
+        if (layout) {
+            layout->invalidate();
+        }
+    }
     testOrderDirty_ = true;
     saveCurrentTestOrder();
 }

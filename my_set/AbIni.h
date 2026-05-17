@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
@@ -53,7 +53,7 @@
 
 #define WAITTIME 0  // 指令的300延时防止粘包
 
-#define DEBUG_VER "产品产测工具   V1.5.7"
+#define DEBUG_VER "产品产测工具   V1.6.0"
 #define CAMERA_VER "摄像测试工站   V1.3.8"
 #define AGE_VER "老化测试工站   V1.3.7"
 #define MOTOR_VER "电机校准工站   V1.3.4"
@@ -63,7 +63,7 @@
 #define SCREEN_VER "屏幕测试工站   V1.2.4"
 #define LIGHT_VER "灯光测试工站   V1.2.2"
 #define SINGLE_VER "信号测试工站   V1.5.5"
-#define FREE_VER "自由测试工站   V1.1.5"
+#define FREE_VER "自由测试工站   V1.1.12"
 #define IMU_VER "IMU校准工站    V1.5.5"
 #define PCBA_VER "产品板子测试   V1.5.2"
 #define PRESSURE_VER "压感校测工站   V1.3.9"
@@ -155,6 +155,9 @@
 
 // 修复静态电流配置失败的问题
 // [DEBUG_VER] 添加音频文件的批量处理，以及音频文件发送，wifi测试在主页面配置
+// [DEBUG_VER] 设置第二页增加产品串口仪器 BrushInstrument 测包/PER 与超时项
+// [DEBUG_VER] 设置第二页增加 SYSTEM/ProtocolType（qpb、qfctp）下拉
+// [DEBUG_VER] 测试流程可选区按产品/治具/连接/三元组 Tab 分类展示
 // [CAMERA_VER]  删除冗余代码
 // [AGE_VER] 可以勾选是否写入skuid功能
 // [PCBA_VER] 伟克森mes添加对版本的管控
@@ -172,6 +175,12 @@
 
 // [LIGHT_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
 // [FREE_VER] 添加电脑的名字存日志，增加锁定mes的功能，本地打印时间
+// [FREE_VER] 仪器流程六连复位步骤，测试项 id 顺延
+// [FREE_VER] 仪器流程六连停止接收与PER，非信令项 id 顺延
+// [FREE_VER] 停止接收应答改长期信号槽，处理放 qfreework_data.cpp
+// [FREE_VER] dongle 断开时仍推进已开始步骤的收尾，避免卡在产品串口异步步
+// [FREE_VER] dongle 未连时队列当前步为产品串口仪器亦跑状态机，避免步间卡死
+// [FREE_VER] MES 电量项拆 BATTERY_INFO 与 BATTERY_PERCENT，testData 仅数字
 //
 
 #endif  // ABINI_H

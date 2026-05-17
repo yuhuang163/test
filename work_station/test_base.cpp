@@ -1,4 +1,4 @@
-#include "test_base.h"
+﻿#include "test_base.h"
 
 #include <dbt.h>
 #include <devguid.h>
@@ -38,6 +38,9 @@ test_base::test_base(QWidget* parent) :
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("当前设备协议：%1")
+                .arg(QString::fromStdString(
+                    QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
 
     signalAndslot();
     scanSerialPortsTimer->start(1000);  // 每秒刷新一次
@@ -376,7 +379,9 @@ void test_base::openDongleSerialPort() {
         // 启用DTR信号
         dongleSerialPort->setDataTerminalReady(true);
 
-        // showlog("串口连接成功");
+        showlog(QStringLiteral("当前设备协议：%1")
+                    .arg(QString::fromStdString(
+                        QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
         emit send_dongle_serialPort_state(1);
 
         connect(dongleSerialPortTimer, &QTimer::timeout, this,
@@ -554,15 +559,14 @@ void test_base::readProductSerialPortData() {
     productSerialPortTimer->stop();              // 关闭定时器
     QByteArray dataTemp = productSerialPortBuf;  // 读取缓冲区数据
 
-    // qDebug() << getIndex()<< "data len : " << dataTemp.size();
+    qDebug() << getIndex() << "product data len : " << dataTemp.size();
+    if (product)
+        product->parseCmd(dataTemp);
     if (isBrushLogGet)
         log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
     logEdit()->appendPlainText("收到设备日志");
-    // getmacadress(dataTemp);
-    //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // msgEdit()->appendPlainText(QString::fromUtf8(dataTemp));
-
     productSerialPortBuf.clear();  // 清除缓冲区
 }
 void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error) {
@@ -580,6 +584,8 @@ void test_base::openProductSerialPort() {
         disconnect(productSerialPortTimer, &QTimer::timeout, this,
                    &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
         productSerialPort->close();
+        if (product)
+            product->clearProductSerialRxAccum();  // 换口/重开前丢弃旧累积，避免应答串口
     }
 
     // 设置串口名
@@ -624,18 +630,20 @@ void test_base::closeProductSerialPort() {
     disconnect(productSerialPortTimer, &QTimer::timeout, this,
                &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
 
+    if (product)
+        product->clearProductSerialRxAccum();
+
     emit refreshProductSerialPortState(0);
 }
 
 void test_base::refreshPbData(QString data) { msgEdit()->appendPlainText(data); }
 
 void test_base::showlog(QString msg) {
+    qDebug() << getIndex() << msg;
     if (!msgEdit()) {
-        qDebug() << "Error: msgEdit() is nullptr!";
-        return;  // 避免空指针调用
+        return;
     }
     msgEdit()->appendPlainText(msg);
-    qDebug() << getIndex() << msg;
 }
 
 int test_base::getIndex() const { return m_index; }

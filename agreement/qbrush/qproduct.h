@@ -9,7 +9,9 @@ class QSerialPort;
 
 /**
  * 产品串口侧仪器协议（帧格式见 docs/测试.md）：复位 / 开始接收 / 停止接收及收包数解析。
- * 仅负责组帧、写串口与解析；读缓冲仍由上层（如 test_base 的 productSerialPortBuf）汇总后传入解析接口。
+ * 组帧、写串口、解析；接收二进制由 test_base::readProductSerialPortData 等调用 parseCmd（与治具 jig->parseCmd 同形）写入累积缓冲，
+ * 再用 productSerialRxAccum() 配合 responseContainsPrefix / parseStopReceivePacketCountLe 等做判定；
+ * 或在工站 connect 下方信号，由 parseCmd 在累积缓冲内自动识别「首次出现的」应答边沿（每轮流程前 clear 一次即可）。
  */
 class Qproduct : public QObject {
     Q_OBJECT
@@ -25,6 +27,11 @@ public:
     /** 向产品串口写入一帧原始字节（需已 open）。 */
     bool writeRaw(const QByteArray& frame, QString* errorOut = nullptr);
     bool writeHex(const QString& hexNoSpaces, QString* errorOut = nullptr);
+
+    /** 与 jig->parseCmd 一致：由 readProductSerialPortData 在每批聚合数据上调用，追加缓冲并扫描 docs/测试.md 固定应答，必要时发 instrument* 信号。 */
+    void parseCmd(const QByteArray& data);
+    const QByteArray& productSerialRxAccum() const { return productSerialRxAccum_; }
+    void clearProductSerialRxAccum();
 
     // ---- docs/测试.md 固定帧 ----
     static QByteArray cmdReset() { return QByteArray::fromHex("01030C00"); }
@@ -42,32 +49,28 @@ public:
     static QByteArray buildStartReceiveCmd2440Ble2M() { return QByteArray::fromHex("01332003130200"); }
     static QByteArray buildStartReceiveCmd2480Ble2M() { return QByteArray::fromHex("01332003270200"); }
 
-    static bool responseContainsPrefix(const QByteArray& rx, const QByteArray& prefix) {
-        return rx.indexOf(prefix) >= 0;
-    }
+    static bool responseContainsPrefix(const QByteArray& rx, const QByteArray& prefix);
     /** 从停止接收应答中解析小端 16 位收包数；未找到前缀返回 -1。 */
-    static int parseStopReceivePacketCountLe(const QByteArray& rx) {
-        const QByteArray pre = prefixStopReceive();
-        const int idx = rx.indexOf(pre);
-        if (idx < 0)
-            return -1;
-        const int valPos = idx + pre.size();
-        if (rx.size() < valPos + 2)
-            return -1;
-        const auto b0 = static_cast<quint8>(rx.at(valPos));
-        const auto b1 = static_cast<quint8>(rx.at(valPos + 1));
-        return static_cast<int>(b0 | (b1 << 8));
-    }
+    static int parseStopReceivePacketCountLe(const QByteArray& rx);
     /** PER = (仪器发包数 - 实际收包数) / 仪器发包数 */
-    static double computePer(int instrumentSendCount, int receivedCount) {
-        if (instrumentSendCount <= 0)
-            return 0.0;
-        return static_cast<double>(instrumentSendCount - receivedCount) /
-               static_cast<double>(instrumentSendCount);
-    }
+    static double computePer(int instrumentSendCount, int receivedCount);
+
+signals:
+    /** 累积数据中首次出现复位应答（040E0405030C00）时发一次，下次需先 clearProductSerialRxAccum */
+    void instrumentAckResetSeen();
+    /** 首次出现「开始接收」应答（040E0405332000） */
+    void instrumentAckStartReceiveSeen();
+    /** 首次形成完整「停止接收」应答（含 2 字节小端收包数） */
+    void instrumentStopReceiveSeen(int receivedPacketCountLe);
 
 private:
+    void scanRxForInstrumentEvents();
+
     QSerialPort* port_ = nullptr;
+    QByteArray productSerialRxAccum_;
+    bool emittedAckReset_ = false;
+    bool emittedAckStart_ = false;
+    bool emittedStopReceive_ = false;
 };
 
 #endif  // QPRODUCT_H
