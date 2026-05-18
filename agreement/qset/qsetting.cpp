@@ -1,4 +1,4 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -308,6 +308,8 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("lineEdit_brushInstrumentMaxPer"), QStringLiteral("BrushInstrument/MaxPer。")},
         {QStringLiteral("lineEdit_brushInstrumentPacketPhaseWaitMs"), QStringLiteral("BrushInstrument/PacketPhaseWaitMs。")},
         {QStringLiteral("lineEdit_brushInstrumentStopAckTimeoutMs"), QStringLiteral("BrushInstrument/StopAckTimeoutMs。")},
+        {QStringLiteral("lineEdit_plcSwitchDoneResetM"), QStringLiteral("PLC/SwitchTestDoneResetM：旋钮流程结束复位线圈 M（默认211，可由 SwitchTestDoneResetM_StationN 覆盖）。")},
+        {QStringLiteral("lineEdit_plcSwitchDoneResetPulseMs"), QStringLiteral("PLC/SwitchTestDoneResetPulseMs：复位脉冲毫秒；>0 时置1后经此时长再置0，0 表示仅置1由 PLC 清零。")},
         {QStringLiteral("lineEdit_plcIpAddress"), QStringLiteral("PLC/IpAddress。")},
         {QStringLiteral("lineEdit_plcPort"), QStringLiteral("PLC/Port。")},
         {QStringLiteral("radioButtonDebug"), QStringLiteral("MAIN_TEST 调试上位机。")},
@@ -1149,6 +1151,10 @@ void qsetting::loadConfig() {
     ui->lineEdit_plcRequestTimeoutMs->setText(
         QString::number(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt()));
     ui->lineEdit_plcCommandGapMs->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt()));
+    ui->lineEdit_plcSwitchDoneResetM->setText(
+        QString::number(SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM"), 211).toInt()));
+    ui->lineEdit_plcSwitchDoneResetPulseMs->setText(
+        QString::number(SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"), 0).toInt()));
     ui->checkBox_plcConnectVerifyRead->setChecked(
         SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool());
     ui->lineEdit_plcIpAddressStation2->setText(SETTINGS.value(QStringLiteral("PLC/IpAddress_Station2"), QString()).toString());
@@ -1540,6 +1546,9 @@ void qsetting::saveConfig() {
     SETTINGS.setValue(QStringLiteral("PLC/ConnectTimeoutMs"), ui->lineEdit_plcConnectTimeoutMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/RequestTimeoutMs"), ui->lineEdit_plcRequestTimeoutMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/CommandGapMs"), ui->lineEdit_plcCommandGapMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/SwitchTestDoneResetM"), ui->lineEdit_plcSwitchDoneResetM->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"),
+                      ui->lineEdit_plcSwitchDoneResetPulseMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/ConnectVerifyRead"), ui->checkBox_plcConnectVerifyRead->isChecked());
 
     auto savePlcOptional = [](const QString& key, const QString& raw) {

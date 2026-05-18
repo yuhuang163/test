@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -103,7 +103,7 @@ private:
     quint64 plcKeyBleWaitSeq_ = 0;
     /** PLC 整步成功且仍等协议按键时，保存 PLC 侧摘要供 checkbutton 合并写入 testData。 */
     QString plcKeyBlePlcOkSummary_;
-    /** PLC 旋钮整步后仅校验左旋上报（右旋为独立测试项）；phase 3 与 checkbutton 约定一致。 */
+    /** PLC 旋钮整步后上报校验：3=左旋编码器，4=右旋编码器；与 checkbutton 约定一致。 */
     int plcSwitchBlePhase_ = 0;
     /** 仪器应答监听（与 Qproduct::instrument* 信号配合）。 */
     QMetaObject::Connection productInstConn_;
@@ -164,8 +164,10 @@ private:
     /** 先 arm 等键与弹窗，再 PLC 整步；PLC 成功后须收到协议按键且 ID 一致才 pass（needCaseDone=true）。 */
     void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                                const QString& enableKey, int keyIndex0To6);
-    /** PLC 旋钮整步后仅等左旋上报；右旋见独立测试项 startKeyButtonTest。 */
+    /** PLC 旋钮整步后仅等左旋上报（phase 3）；治具若实际为右转请用 startPlcSwitchPlcAndWaitRightRotate。 */
     void startPlcSwitchPlcAndWaitLeftRotate();
+    /** PLC 旋钮整步后等右旋编码器上报（phase 4）；期望 ID 与勾选见 ProductInfo/KeyIdRightRotate*。 */
+    void startPlcSwitchPlcAndWaitRightRotate();
     /** 经产品串口发复位帧并等仪器应答；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用单步调试用默认名。 */
     void startProductInstrumentResetAndWaitAck(QString stepName = QString());
     /** 发「开始接收」并等 040E0405332000；stepName 须与 FREEWORK_TEST_LIST 中该项中文名一致（供 isCurrentStep）。 */
@@ -174,9 +176,11 @@ private:
     void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
     void closeKeyWaitPrompt();
     void runPlcModbusConnectTest();
+    /** 旋钮测试流程结束后对 PLC 线圈发复位（默认 M211，PLC/SwitchTestDoneResetM*）。同步一步、无 needCaseDone。 */
+    void runPlcSwitchTestDoneResetM();
     /** 与 Untitled-1.cs RunStepActionAsync 一致的单键整步（长连接）；测试项 needCaseDone 须为 true。 */
     void runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime = true);
-    /** 旋钮整步，与脚本 switch 步一致。finishStepRuntime 为 false 时仅完成 PLC，再由 startPlcSwitchPlcAndWaitLeftRotate 等 BLE。 */
+    /** 旋钮整步，与脚本 switch 步一致。finishStepRuntime 为 false 时仅完成 PLC，再由左旋/右旋等上报步骤接 BLE。 */
     void runPlcV3TouchSwitchFull(bool finishStepRuntime = true);
 
     /** 当前自由工位序号（1 起）对应的 PLC M 基底，双工位默认 200 / 220。 */
@@ -191,6 +195,8 @@ private:
     int resolvedPlcPositionReadyBase() const;
     int resolvedPlcStepDoneBase() const;
     int resolvedPlcKeyDoneM() const;
+    /** 旋钮测试完成复位线圈 M 号（可按工位 PLC/SwitchTestDoneResetM_StationN 覆盖）。 */
+    int resolvedPlcSwitchTestDoneResetM() const;
 
     bool plcReadCoil(int absoluteM, bool* value, QString* errorMessage);
     bool plcWriteCoil(int absoluteM, bool value, QString* errorMessage);
@@ -276,6 +282,8 @@ private slots:
     void onProductInstrumentStopReceiveAckForPer(int recvPkts);
 
     void on_stopTest_clicked();
+
+    void on_start_wifible_test_clicked();
 
 signals:
     void send_go_next_focus();
