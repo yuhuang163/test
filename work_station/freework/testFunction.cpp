@@ -83,7 +83,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     /* X(39, "设置亮白模式", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DeviceMode, 4); })) */      \
     /* X(40, "设置使用控制状态", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushControl, 1); })) */ \
     X(41, "设置工厂模式", false, FAC_MODE_SET, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); }))            \
-    X(42, "写入SN码", false, SN_WRITE_TAIL, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromUi})); })) \
+    X(42, "写入SN码", false, SN_WRITE_TAIL, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromMes})); })) \
     /* X(43, "设置摄像头图片状态", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraPictureState, 1); })) */ \
     /* X(44, "设置本地OTA", false, TAG, local_ota_data x[2] = {params}; sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); })) */ \
     /* X(45, "启动OTA应用", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFileStatusReq{params})); })) */ \

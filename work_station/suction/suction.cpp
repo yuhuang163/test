@@ -29,30 +29,6 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     }
     return Qusb::ProtocolType::Auto;
 }
-
-QVariant suctionProfileValue(const QString& factory, const QString& key, const QVariant& fallback) {
-    const QString fac = factory.trimmed().toLower();
-    if (fac.isEmpty()) {
-        return SETTINGS.value(QStringLiteral("Suction/") + key, fallback);
-    }
-    return SETTINGS.value(QStringLiteral("Suction_") + fac + "/" + key,
-                          SETTINGS.value(QStringLiteral("Suction/") + key, fallback));
-}
-
-bool sameSerialPortName(const QString& openPortName, const QString& comboPortName)
-{
-    const QString a = openPortName.trimmed();
-    const QString b = comboPortName.trimmed();
-    if (a.isEmpty() || b.isEmpty()) {
-        return false;
-    }
-    if (a.compare(b, Qt::CaseInsensitive) == 0) {
-        return true;
-    }
-    const QString normA = a.startsWith(QStringLiteral("\\\\.\\"), Qt::CaseInsensitive) ? a : (QStringLiteral("\\\\.\\") + a);
-    const QString normB = b.startsWith(QStringLiteral("\\\\.\\"), Qt::CaseInsensitive) ? b : (QStringLiteral("\\\\.\\") + b);
-    return normA.compare(normB, Qt::CaseInsensitive) == 0;
-}
 }
 suction::suction(int index, QWidget* parent) :
     test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -104,9 +80,9 @@ suction::suction(int index, QWidget* parent) :
     showlog("LowSuction=" + QString::number(LowSuction));
     showlog("suction_wait_time=" + QString::number(suction_wait_time));
     applySuctionProtocolConfig();
-    // 程控电源 VISA 与 ini [VisaPower] 同步到界面（改后点「保存并应用」写回）
-    ui->suctionPowerUseVisaCheckBox->setChecked(powerProtocolConfig_.scpiUseVisa);
-    ui->suctionPowerVisaAddressEdit->setText(powerProtocolConfig_.scpiVisaAddress);
+    // 程控电源：基类只提供 Qvisa 对象，具体配置在本工站维护。
+    ui->suctionPowerUseVisaCheckBox->setChecked(programmablePowerVisaConfig_.useVisa);
+    ui->suctionPowerVisaAddressEdit->setText(programmablePowerVisaConfig_.visaAddress);
 
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
@@ -130,56 +106,26 @@ suction::suction(int index, QWidget* parent) :
     //     productBaudRate = 1000000;
     // }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
-    powerSerialPort = new QSerialPort(this);
-    powerUsb = new Qusb(powerSerialPort);
     connect(jig, SIGNAL(send_suction_data(QString)), this, SLOT(refreshAmmeterData(QString)));
-    // 程控电源读 V/I：与 refreshAmmeterData 同模式，由 Qusb 专用信号进入本工站 refresh*
-    connect(usb, &Qusb::programmablePowerVoltageRead, this, &suction::refreshProgrammablePowerVoltage);
-    connect(usb, &Qusb::programmablePowerCurrentRead, this, &suction::refreshProgrammablePowerCurrent);
-    connect(powerUsb, &Qusb::programmablePowerVoltageRead, this, &suction::refreshProgrammablePowerVoltage);
-    connect(powerUsb, &Qusb::programmablePowerCurrentRead, this, &suction::refreshProgrammablePowerCurrent);
-    // 独立电源串口：与 test_base 传感器 USB 相同，定时合并 readyRead 再 parseCmd
-    connect(powerSerialPort, &QSerialPort::readyRead, this, &suction::onPowerSerialPortReadyRead);
-    connect(powerSerialPortTimer, &QTimer::timeout, this, &suction::readPowerSerialPortData);
+    connect(visa, &Qvisa::programmablePowerVoltageRead, this, &suction::refreshProgrammablePowerVoltage);
+    connect(visa, &Qvisa::programmablePowerCurrentRead, this, &suction::refreshProgrammablePowerCurrent);
 }
 
 void suction::applySuctionProtocolConfig() {
     Qusb::ProtocolConfig cfg;
+    // usb：传感器/电流表等；程控电源单独走 loadSuctionProgrammablePowerConfig()，不在此重复配置。
     cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString());
     cfg.luxshareMachineId = SETTINGS.value("Suction/LxMachineId", SETTINGS.value("Current/LxMachineId", getIndex())).toInt();
-    cfg.scpiUseVisa = SETTINGS.value("Suction/ScpiUseVisa", false).toBool();
-    cfg.scpiVisaAddress = SETTINGS.value("Suction/VisaAddress", "GPIB0::7::INSTR").toString();
     cfg.scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
     cfg.scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
     cfg.scpiRange = SETTINGS.value("Suction/ScpiRange", SETTINGS.value("Current/ScpiRange", "500e-3")).toString();
-    cfg.scpiPowerVoltageV = SETTINGS.value("Suction/PowerVoltageV", 12.0).toDouble();
-    cfg.scpiPowerCurrentA = SETTINGS.value("Suction/PowerCurrentLimitA", 2.5).toDouble();
-    cfg.scpiSetVoltageCmd = SETTINGS.value("Suction/ScpiSetVoltageCmd",
-                                            SETTINGS.value("VisaPower/ScpiSetVoltageCmd", QStringLiteral("VOLT %1")))
-                                .toString();
-    cfg.scpiSetCurrentCmd = SETTINGS.value("Suction/ScpiSetCurrentCmd",
-                                           SETTINGS.value("VisaPower/ScpiSetCurrentCmd", QStringLiteral("CURR %1")))
-                                .toString();
-    cfg.scpiOutputOnCmd = SETTINGS.value("Suction/ScpiOutputOnCmd",
-                                           SETTINGS.value("VisaPower/ScpiOutputOnCmd", QStringLiteral("OUTP ON")))
-                              .toString();
-    cfg.scpiOutputOffCmd = SETTINGS.value("Suction/ScpiOutputOffCmd",
-                                            SETTINGS.value("VisaPower/ScpiOutputOffCmd", QStringLiteral("OUTP OFF")))
-                               .toString();
-    cfg.scpiReadVoltageCmd = SETTINGS.value("Suction/ScpiReadVoltageCmd",
-                                            SETTINGS.value("VisaPower/ScpiReadVoltageCmd", QStringLiteral("MEASure:VOLTage:DC?")))
-                                 .toString();
-    cfg.scpiReadCurrentCmd = SETTINGS.value("Suction/ScpiReadCurrentCmd",
-                                            SETTINGS.value("VisaPower/ScpiReadCurrentCmd",
-                                                           QStringLiteral("MEASure:CURRent:DC? 500e-3")))
-                                 .toString();
     damRangeCode = SETTINGS.value("Suction/DamRangeCode", 0x000C).toInt();
     damRawMax = SETTINGS.value("Suction/DamRawMax", 65535.0).toDouble();
     damCurrentFullScale_mA = SETTINGS.value("Suction/DamCurrentFullScale_mA", 10.0).toDouble();
     damPressureAtMinCurrent_kPa = SETTINGS.value("Suction/DamPressureAt0mA_kPa", -100.0).toDouble();
     damPressureAtMaxCurrent_kPa = SETTINGS.value("Suction/DamPressureAtFullCurrent_kPa", 0.0).toDouble();
-    damLeftChannel = suctionProfileValue(pack.factory, QStringLiteral("DamLeftChannel"), 1).toInt();
-    damRightChannel = suctionProfileValue(pack.factory, QStringLiteral("DamRightChannel"), 2).toInt();
+    damLeftChannel = SETTINGS.value("Suction/DamLeftChannel", 1).toInt();
+    damRightChannel = SETTINGS.value("Suction/DamRightChannel", 2).toInt();
     suctionSampleDurationMs = SETTINGS.value("Suction/SampleDurationMs", 15000).toInt();
     suctionSampleIntervalMs = SETTINGS.value("Suction/SampleIntervalMs", 100).toInt();
     suctionPeakTargetKpa = SETTINGS.value("Suction/PeakTargetKpa", 36.0).toDouble();
@@ -206,40 +152,12 @@ void suction::applySuctionProtocolConfig() {
     suctionProtocolType = cfg.protocol;
     usb->setProtocolConfig(cfg);
     suctionUsbProtocolConfig_ = cfg;
-    powerSharesUsbSerial_ = false;
     jig->setDam3158Channel(damLeftChannel - 1);
     jig->setDam3158RangeCode(static_cast<quint16>(damRangeCode));
-    powerBackendInitialized = false;
-    powerProtocolConfig_ = cfg;
-    powerProtocolConfig_.protocol = Qusb::ProtocolType::Scpi;
-    // 程控电源 SCPI/VISA 仅读 [VisaPower]；缺省仅回退到本工站当前 cfg，不再依赖固定设备默认命令。
-    powerProtocolConfig_.scpiUseVisa =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), cfg.scpiUseVisa).toBool();
-    powerProtocolConfig_.scpiVisaAddress =
-        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), cfg.scpiVisaAddress).toString();
-    powerProtocolConfig_.scpiCurrentType =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentType"), cfg.scpiCurrentType).toString();
-    powerProtocolConfig_.scpiCurrentMode =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentMode"), cfg.scpiCurrentMode).toString();
-    powerProtocolConfig_.scpiRange = SETTINGS.value(QStringLiteral("VisaPower/ScpiRange"), cfg.scpiRange).toString();
-    powerProtocolConfig_.scpiPowerVoltageV =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), cfg.scpiPowerVoltageV).toDouble();
-    powerProtocolConfig_.scpiPowerCurrentA =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), cfg.scpiPowerCurrentA).toDouble();
-    powerProtocolConfig_.scpiSetVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), cfg.scpiSetVoltageCmd).toString();
-    powerProtocolConfig_.scpiSetCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), cfg.scpiSetCurrentCmd).toString();
-    powerProtocolConfig_.scpiOutputOnCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), cfg.scpiOutputOnCmd).toString();
-    powerProtocolConfig_.scpiOutputOffCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), cfg.scpiOutputOffCmd).toString();
-    powerProtocolConfig_.scpiReadVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), cfg.scpiReadVoltageCmd).toString();
-    powerProtocolConfig_.scpiReadCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), cfg.scpiReadCurrentCmd).toString();
-    showlog("电源链路配置: useVisa=" + QString::number(powerProtocolConfig_.scpiUseVisa ? 1 : 0) +
-            ", visa=" + powerProtocolConfig_.scpiVisaAddress);
+    loadSuctionProgrammablePowerConfig();
+    showlog(QStringLiteral("程控电源配置: useVisa=%1, address=%2")
+                .arg(programmablePowerVisaConfig_.useVisa ? 1 : 0)
+                .arg(programmablePowerVisaConfig_.visaAddress));
 
     showlog("吸力测试协议=" + SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(suctionProtocolType)));
@@ -259,94 +177,69 @@ void suction::applySuctionProtocolConfig() {
             ", diffMax=" + QString::number(suctionPeakDiffMaxKpa, 'f', 2));
 }
 
-bool suction::ensurePowerBackendReady() {
-    if (powerBackendInitialized) {
-        if (powerSharesUsbSerial_ && !usbSerialPort->isOpen()) {
-            powerBackendInitialized = false;
-        } else {
-            return true;
-        }
-    }
-    if (!powerUsb || !powerSerialPort) {
-        return false;
-    }
-    powerUsb->setProtocolConfig(powerProtocolConfig_);
-    if (powerProtocolConfig_.scpiUseVisa) {
-        powerSharesUsbSerial_ = false;
-        powerBackendInitialized = true;
-        return true;
-    }
-
-    // 程控电源走串口时与界面「传感器/采集 USB」所选 COM 一致（未勾选 VISA 时）
-    const QString portName = getUsbcomNameCombo() ? getUsbcomNameCombo()->currentText().trimmed() : QString();
-    if (portName.isEmpty()) {
-        showlog("电源串口未配置：请勾选「程控电源(VISA)」使用 VISA，或在「传感器/采集 USB」选 COM 并连接（与电源同口时可共用）");
-        return false;
-    }
-
-    if (usbSerialPort->isOpen() && sameSerialPortName(usbSerialPort->portName(), portName)) {
-        powerSharesUsbSerial_ = true;
-        if (powerSerialPort->isOpen()) {
-            powerSerialPort->close();
-        }
-        powerBackendInitialized = true;
-        showlog(QStringLiteral("电源与传感器 USB 共用串口: %1").arg(usbSerialPort->portName()));
-        return true;
-    }
-
-    powerSharesUsbSerial_ = false;
-    if (powerSerialPort->isOpen()) {
-        powerSerialPort->close();
-    }
-    powerSerialPort->setPortName(portName);
-    powerSerialPort->setBaudRate(usbBaudRate);
-    powerSerialPort->setDataBits(QSerialPort::Data8);
-    powerSerialPort->setParity(QSerialPort::NoParity);
-    powerSerialPort->setStopBits(QSerialPort::OneStop);
-    powerSerialPort->setFlowControl(QSerialPort::NoFlowControl);
-    if (!powerSerialPort->open(QIODevice::ReadWrite)) {
-        showlog("打开电源串口失败: " + portName);
-        return false;
-    }
-    showlog("电源串口已连接: " + portName);
-    powerBackendInitialized = true;
-    return true;
-}
-
-bool suction::dispatchPowerAction(Qusb::PowerAction action) {
-    if (!suctionExternalPowerEnabled) {
-        return true;
-    }
-    if (!ensurePowerBackendReady()) {
-        return false;
-    }
-    if (powerSharesUsbSerial_) {
-        const Qusb::ProtocolConfig saved = usb->protocolConfig();
-        usb->setProtocolConfig(powerProtocolConfig_);
-        const bool ok = usb->sendPowerInstruction(action);
-        usb->setProtocolConfig(saved);
-        return ok;
-    }
-    return powerUsb->sendPowerInstruction(action);
+void suction::loadSuctionProgrammablePowerConfig() {
+    // 程控电源 VISA/SCPI（VisaPower/，缺项回退 Suction/）
+    programmablePowerVisaConfig_.useVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"),
+                                                          SETTINGS.value(QStringLiteral("Suction/ScpiUseVisa"), false))
+                                               .toBool();
+    programmablePowerVisaConfig_.visaAddress =
+        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"),
+                       SETTINGS.value(QStringLiteral("Suction/VisaAddress"), QStringLiteral("GPIB0::7::INSTR")))
+            .toString();
+    programmablePowerVisaConfig_.timeoutMs = SETTINGS.value(QStringLiteral("VisaPower/TimeoutMs"), 3000).toInt();
+    programmablePowerVisaConfig_.powerVoltageV =
+        SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), SETTINGS.value(QStringLiteral("Suction/PowerVoltageV"), 12.0))
+            .toDouble();
+    programmablePowerVisaConfig_.powerCurrentA =
+        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"),
+                       SETTINGS.value(QStringLiteral("Suction/PowerCurrentLimitA"), 3.0))
+            .toDouble();
+    programmablePowerVisaConfig_.setVoltageCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiSetVoltageCmd"), QStringLiteral("VOLT %1")))
+            .toString();
+    programmablePowerVisaConfig_.setCurrentCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiSetCurrentCmd"), QStringLiteral("CURR %1")))
+            .toString();
+    programmablePowerVisaConfig_.outputOnCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiOutputOnCmd"), QStringLiteral("OUTP ON")))
+            .toString();
+    programmablePowerVisaConfig_.outputOffCmd =
+        SETTINGS.value(QStringLiteral("Suction/ScpiOutputOffCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiOutputOffCmd"), QStringLiteral("OUTP OFF")))
+            .toString();
+    programmablePowerVisaConfig_.readVoltageCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiReadVoltageCmd"), QStringLiteral("MEASure:VOLTage:DC?")))
+            .toString();
+    programmablePowerVisaConfig_.readCurrentCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"),
+                       SETTINGS.value(QStringLiteral("Suction/ScpiReadCurrentCmd"), QStringLiteral("MEASure:CURRent:DC? 500e-3")))
+            .toString();
+    setVisaProtocolConfig(programmablePowerVisaConfig_);
 }
 
 void suction::setExternalProgrammablePowerOutput(bool enable) {
-    if (!suctionExternalPowerEnabled) {
-        return;
+    runVisa([enable](Qvisa* device) { return device->setProgrammablePowerOutput(enable); }, suctionExternalPowerEnabled);
+}
+
+void suction::refreshProgrammablePowerVoltage(double valueVolts, bool ok) {
+    programmablePowerMeasuredVoltageV_ = valueVolts;
+    programmablePowerVoltageReadOk_ = ok;
+    qDebug() << getIndex() << "程控电源电压回读(V):" << valueVolts << "ok=" << ok;
+    if (!ok) {
+        showlog(QStringLiteral("程控电源电压回读失败或无法解析"));
     }
-    if (suctionProtocolType == Qusb::ProtocolType::Scpi) {
-        usb->setProgrammablePowerOutput(enable);
-        return;
-    }
-    if (powerSharesUsbSerial_) {
-        const Qusb::ProtocolConfig saved = usb->protocolConfig();
-        usb->setProtocolConfig(powerProtocolConfig_);
-        usb->setProgrammablePowerOutput(enable);
-        usb->setProtocolConfig(saved);
-        return;
-    }
-    if (powerUsb) {
-        powerUsb->setProgrammablePowerOutput(enable);
+}
+
+void suction::refreshProgrammablePowerCurrent(double valueAmps, bool ok) {
+    programmablePowerMeasuredCurrentA_ = valueAmps;
+    programmablePowerCurrentReadOk_ = ok;
+    qDebug() << getIndex() << "程控电源电流回读(A):" << valueAmps << "ok=" << ok;
+    if (!ok) {
+        showlog(QStringLiteral("程控电源电流回读失败或无法解析"));
     }
 }
 
@@ -670,48 +563,6 @@ void suction::refreshPeriphData(ProtocolPeriphStateData data) {
     }
 }
 
-void suction::onPowerSerialPortReadyRead()
-{
-    if (!powerSerialPortTimer || !powerSerialPort) {
-        return;
-    }
-    powerSerialPortTimer->start(10);
-    powerSerialPortBuf.append(powerSerialPort->readAll());
-}
-
-void suction::readPowerSerialPortData()
-{
-    if (!powerSerialPortTimer) {
-        return;
-    }
-    powerSerialPortTimer->stop();
-    const QByteArray dataTemp = powerSerialPortBuf;
-    powerSerialPortBuf.clear();
-    if (powerUsb && !dataTemp.isEmpty()) {
-        powerUsb->parseCmd(dataTemp);
-    }
-}
-
-void suction::refreshProgrammablePowerVoltage(double valueVolts, bool ok)
-{
-    programmablePowerMeasuredVoltageV_ = valueVolts;
-    programmablePowerVoltageReadOk_ = ok;
-    qDebug() << getIndex() << "程控电源电压回读(V):" << valueVolts << "ok=" << ok;
-    if (!ok) {
-        showlog(QStringLiteral("程控电源电压回读失败或无法解析"));
-    }
-}
-
-void suction::refreshProgrammablePowerCurrent(double valueAmps, bool ok)
-{
-    programmablePowerMeasuredCurrentA_ = valueAmps;
-    programmablePowerCurrentReadOk_ = ok;
-    qDebug() << getIndex() << "程控电源电流回读(A):" << valueAmps << "ok=" << ok;
-    if (!ok) {
-        showlog(QStringLiteral("程控电源电流回读失败或无法解析"));
-    }
-}
-
 void suction::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到吸力数据" << data;
     double normalValue = 0;
@@ -768,15 +619,6 @@ void suction::refreshAmmeterData(QString data) {
 suction::~suction() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
-    if (powerSerialPortTimer) {
-        powerSerialPortTimer->stop();
-    }
-    if (powerSerialPort) {
-        disconnect(powerSerialPort, nullptr, this, nullptr);
-    }
-    if (powerSerialPortTimer) {
-        disconnect(powerSerialPortTimer, nullptr, this, nullptr);
-    }
     if (dongleSerialPort->isOpen()) {
         disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
         dongleSerialPort->close();
@@ -792,10 +634,7 @@ suction::~suction() {
         jigSerialPort->close();
         qDebug() << getIndex() << "已关闭jig串口";
     }
-    if (powerSerialPort && powerSerialPort->isOpen()) {
-        powerSerialPort->close();
-        qDebug() << getIndex() << "已关闭电源串口";
-    }
+    resetVisaBackend();
 
     delete ui;
 }
@@ -829,20 +668,6 @@ void suction::refreshSn(ProtocolSnData data) {
     }
 }
 
-void suction::getTestValue(const int mechines, const QString value) {
-    if (mechines != getIndex()) {
-        return;
-    }
-    bool isProcessCodePayload = false;
-    const QString snFromMes =0; //test_base::snFromBydProcessCodeMesPayload(value, &isProcessCodePayload);
-    if (!isProcessCodePayload || snFromMes.isEmpty()) {
-        return;
-    }
-    showlog(QStringLiteral("MES：过程码已换 SN"));
-    // 真 SN 以 MES 返回值为准，传入后续解析，不再从界面读取
-    continueSnInputAfterSnValidated(snFromMes);
-}
-
 void suction::on_snInput_returnPressed() {
     clearDisplay();
     macAddress = "没有mac地址";
@@ -853,71 +678,143 @@ void suction::on_snInput_returnPressed() {
     firstconnectbrush = 1;
 
     const QString entered = ui->snInput->text().trimmed();
-    if (entered.isEmpty()) {
-        showlog(QStringLiteral("过程码为空"));
-        return;
-    }
-
-    const QString fac = pack.factory.trimmed();
-    const bool bydLine = (fac.compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0);
-    const QRegularExpression snRegex(snPattern);
-    const bool looksLikeCompanySn = snRegex.match(entered).hasMatch();
-
-    // BYD + 启用 MES：输入不像公司 SN 时视为过程码，经 getMesTestValue → bydmes::GetTestData 分支走 QuerySnByProcessCode
-    if (bydLine && ui->isusemes->checkState() && !looksLikeCompanySn) {
-        MesPacketData p = pack;
-        p.factory = QStringLiteral("byd");
-        p.mechines = getIndex();
-        p.sn = entered;
-        p.itemvalue = entered;
-        p.instruct_num = QStringLiteral("079");
-        showlog(QStringLiteral("MES：getMesTestValue → 按过程码请求 SN"));
-        emit getMesTestValue(p);
-        return;
-    }
-
-    continueSnInputAfterSnValidated(entered);
-}
-
-void suction::continueSnInputAfterSnValidated(const QString& snTextRaw) {
-    const QString snText = snTextRaw.trimmed();
-    if (snText.isEmpty()) {
-        showlog(QStringLiteral("SN为空"));
-        return;
-    }
-    // 界面与后续 pack.sn 等保持一致；判定与解析均以入参 snText 为准
-    // ui->snInput->setText(snText);
+    // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
-    if (!snRegex.match(snText).hasMatch()) {
+    // 使用正则表达式匹配
+    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+        ui->snInput->setDisabled(0);
+        ui->macInput->setDisabled(0);
         showlog("序列号错误");
-        showlog("实际长度为" + QString::number(snText.length()));
+        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
         showlog("要求格式为" + snPattern);
         ui->snInput->clear();
+        ui->snInput->setFocus();
         return;
     }
 
-    const QString parsedMac = parseMacFromSn(snText);
-    if (parsedMac.isEmpty()) {
-        showlog("从SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
-
-    stringsn = snText;
-    sn = snText.toUtf8();
-    ui->snInput->setDisabled(1);
-
+    showlog("正在查询mac地址");
+    emit send_startTest(getIndex());
+    appendStationResult(testItems, "主板条码", "0.0000", passValue);
+    testResultTableUpdate(testItems);
+    // 获取比亚迪mes的sn校验规则
+    processGetMesTestValue();
+    // BYD + 启用 MES：输入不像公司 SN 时视为过程码，经 getMesTestValue → bydmes::GetTestData 分支走 QuerySnByProcessCode
+    // MES站前检测，成功再开始测试
     if (ui->isusemes->checkState()) {
-        processInspection(snText);
+        processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-    startFlowWithMac(parsedMac);
-    emit send_startTest(getIndex());
 }
+
+void suction::processGetMesTestValue() {
+    if (ui->isformmes->checkState()) {
+        pack.sn = ui->getMac->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+        emit getMesTestValue(pack);
+    }
+}
+void suction::getTestValue(const int mechines, const QString value) {
+    // showlog(value);
+    QString mesmacAddress;
+    if (pack.factory == "hq") {
+        // 定义正则表达式，匹配MAC地址的模式
+        static const QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+
+        // 在数据中查找匹配的内容
+        QRegularExpressionMatch match = regex.match(value);
+
+        // 检查是否有匹配项
+        if (match.hasMatch()) {
+            // 提取MAC地址
+            mesmacAddress = match.captured(1);
+            qDebug() << getIndex() << "MAC地址:" << mesmacAddress;
+            if (mechines == getIndex()) {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        } else {
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
+        }
+    }
+    // showlog(value);
+    else if (pack.factory == "lx") {
+        mesmacAddress = value;
+
+        // 在2、4、6、8、10的位置插入冒号
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+
+        // 将小写字母转换成大写字母
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex()) {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
+    } else {
+        if (mechines == getIndex()) {
+            mesmacAddress = value;
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    }
+
+
+}
+
 void suction::on_macInput_returnPressed() {
-    // 吸力工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
-    showlog("当前吸力工站不支持手动输入MAC，请扫描SN后回车启动测试");
-}
+        ui->test_result->setText("WAIT");
+        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                       "padding: 10px; text-align: center; ");
+    
+        if (!dongleSerialPort->isOpen()) {
+            on_connectButton_clicked();
+        }
+        
+    
+        // 检查是否是mac格式
+        static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+        // 使用正则表达式匹配
+        if (!macRegex.match(ui->macInput->text()).hasMatch()) {
+            QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+            return;
+        } else {
+            macAddress = ui->macInput->text();
+            ui->macLabel->setText("蓝牙mac: " + macAddress);
+    
+            ui->test_result->setText("WAIT");
+            ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                           "10px; padding: 10px; text-align: center; ");
+    
+            qDebug() << getIndex() << macAddress;
+            // 主状态机流程
+            isTestContinue = true;
+            emit send_go_next_focus();
+            state = STATE_IDLE;
+        }
+    }
 
 void suction::clearDisplay() {
     ui->msgEdit->clear();
@@ -1013,13 +910,13 @@ void suction::on_usbdisconnectButton_clicked() {
 void suction::on_suctionPowerVisaApplyButton_clicked() {
     SETTINGS.setValue(QStringLiteral("VisaPower/ScpiUseVisa"), ui->suctionPowerUseVisaCheckBox->isChecked());
     SETTINGS.setValue(QStringLiteral("VisaPower/VisaAddress"), ui->suctionPowerVisaAddressEdit->text().trimmed());
-    powerBackendInitialized = false;
+    resetVisaBackend();
     applySuctionProtocolConfig();
-    ui->suctionPowerUseVisaCheckBox->setChecked(powerProtocolConfig_.scpiUseVisa);
-    ui->suctionPowerVisaAddressEdit->setText(powerProtocolConfig_.scpiVisaAddress);
+    ui->suctionPowerUseVisaCheckBox->setChecked(programmablePowerVisaConfig_.useVisa);
+    ui->suctionPowerVisaAddressEdit->setText(programmablePowerVisaConfig_.visaAddress);
     showlog(QStringLiteral("已保存程控电源 VISA 配置（VisaPower），useVisa=%1，地址=%2")
-                 .arg(powerProtocolConfig_.scpiUseVisa ? 1 : 0)
-                 .arg(powerProtocolConfig_.scpiVisaAddress));
+                 .arg(programmablePowerVisaConfig_.useVisa ? 1 : 0)
+                 .arg(programmablePowerVisaConfig_.visaAddress));
 }
 
 void suction::on_productConnectButton_clicked() {
@@ -1097,17 +994,16 @@ void suction::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE:  // 复位一切
-
-                // 同工站双设备：传感器走 usb(Byd)，电源走独立 power 后端（VISA 或独立串口）
-                if (suctionExternalPowerEnabled) {
-                    const bool powerCfgOk = dispatchPowerAction(Qusb::PowerAction::ConfigurePowerSupply);
-                    if (!powerCfgOk) {
-                        pack.itemvalue = "power_config=NG";
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                        break;
-                    }
+            case STATE_IDLE: {  // 复位一切
+                // 同工站双设备：传感器走 usb(Byd)，电源走基类通用 VISA 对象。
+                const bool powerCfgOk =
+                    runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); },
+                            suctionExternalPowerEnabled);
+                if (!powerCfgOk) {
+                    pack.itemvalue = "power_config=NG";
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                    break;
                 }
                 protocolManager.resetAllPb();
                 periph_state = 0;
@@ -1126,6 +1022,7 @@ void suction::startTask() {
                 state = STATE_SET_TEST_MODE;
 
                 break;
+            }
 
             case STATE_SET_TEST_MODE:
                 if (at->getConnected()) {
@@ -1306,6 +1203,7 @@ void suction::startTask() {
                     leftTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
                     leftTest.testResult = leftPass ? passValue : failValue;
                     testItems.append(leftTest);
+                    reportBydSfcKey("左侧吸力峰值", leftPeak, 1);
 
                     TestItem rightTest;
                     rightTest.testItem = "右侧吸力所有峰值(kPa)";
@@ -1315,6 +1213,7 @@ void suction::startTask() {
                     rightTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
                     rightTest.testResult = rightPass ? passValue : failValue;
                     testItems.append(rightTest);
+                    reportBydSfcKey("右侧吸力峰值", rightPeak, 1);
 
                     TestItem diffTest;
                     diffTest.testItem = "两侧吸力峰值逐对差(kPa)";
@@ -1323,6 +1222,7 @@ void suction::startTask() {
                     diffTest.testResult = diffPass ? passValue : failValue;
                     testItems.append(diffTest);
                     testResultTableUpdate(testItems);
+                    reportBydSfcKey("两侧吸力峰值逐对差", sideDiff, 1);
 
                     totalresult = (leftPass && rightPass && diffPass) ? passValue : failValue;
                     if (totalresult == passValue) {
@@ -1417,35 +1317,20 @@ void suction::on_pushButton_clicked() {
     // bandingMacSn(macAddress, stringsn);
     //     save_brush_log("dataTemp");
 
-    // 开发：已配置 VisaPower 且后端就绪时，对程控电源做一次电压/电流读（VISA 为同步，会进 refreshProgrammablePower*）
+    // 开发：已配置 VisaPower 时，对程控电源做一次电压/电流读（VISA 为同步，会进 refreshProgrammablePower*）
     applySuctionProtocolConfig();
-    if (powerProtocolConfig_.scpiUseVisa && !powerProtocolConfig_.scpiVisaAddress.trimmed().isEmpty()) {
-        if (!ensurePowerBackendReady()) {
-            showlog(QStringLiteral("VISA 程控电源试读跳过：后端未就绪"));
-        } else {
-            bool vOk = false;
-            bool iOk = false;
-            if (powerSharesUsbSerial_) {
-                const Qusb::ProtocolConfig saved = usb->protocolConfig();
-                usb->setProtocolConfig(powerProtocolConfig_);
-                vOk = usb->readProgrammablePowerVoltage();
-                iOk = usb->readProgrammablePowerCurrent();
-                usb->setProtocolConfig(saved);
-            } else if (powerUsb) {
-                powerUsb->setProtocolConfig(powerProtocolConfig_);
-                vOk = powerUsb->readProgrammablePowerVoltage();
-                iOk = powerUsb->readProgrammablePowerCurrent();
-            }
-            showlog(QStringLiteral("VISA 程控电源试读：电压=%1 电流=%2")
-                        .arg(vOk ? QStringLiteral("OK") : QStringLiteral("NG"))
-                        .arg(iOk ? QStringLiteral("OK") : QStringLiteral("NG")));
-            if (vOk && iOk) {
-                showlog(QStringLiteral("  解析结果：电压=%1 V (ok=%3)，电流=%2 A (ok=%4)")
-                            .arg(programmablePowerMeasuredVoltageV_, 0, 'f', 4)
-                            .arg(programmablePowerMeasuredCurrentA_, 0, 'f', 6)
-                            .arg(programmablePowerVoltageReadOk_ ? 1 : 0)
-                            .arg(programmablePowerCurrentReadOk_ ? 1 : 0));
-            }
+    if (programmablePowerVisaConfig_.useVisa && !programmablePowerVisaConfig_.visaAddress.trimmed().isEmpty()) {
+        const bool vOk = runVisa([](Qvisa* device) { return device->readProgrammablePowerVoltage(); });
+        const bool iOk = runVisa([](Qvisa* device) { return device->readProgrammablePowerCurrent(); });
+        showlog(QStringLiteral("VISA 程控电源试读：电压=%1 电流=%2")
+                    .arg(vOk ? QStringLiteral("OK") : QStringLiteral("NG"))
+                    .arg(iOk ? QStringLiteral("OK") : QStringLiteral("NG")));
+        if (vOk && iOk) {
+            showlog(QStringLiteral("  解析结果：电压=%1 V (ok=%3)，电流=%2 A (ok=%4)")
+                        .arg(programmablePowerMeasuredVoltageV_, 0, 'f', 4)
+                        .arg(programmablePowerMeasuredCurrentA_, 0, 'f', 6)
+                        .arg(programmablePowerVoltageReadOk_ ? 1 : 0)
+                        .arg(programmablePowerCurrentReadOk_ ? 1 : 0));
         }
     }
 }
@@ -1522,6 +1407,9 @@ void suction::on_pushButton_4_clicked() {
     }
 }
 
+
+
+
 void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
@@ -1581,6 +1469,35 @@ void suction::on_stopTest_clicked() {
     ui->snInput->setDisabled(0);
     ui->macInput->setDisabled(1);
     ui->getMac->setDisabled(0);
+}
+
+void suction::reportBydSfcKey(const QString& dataName,
+                              const QVariant& dataValue,
+                              int qty) {
+    if (!ui->isusemes->isChecked()) {
+        showlog(QStringLiteral("请先勾选「MES」后再上报关键数据"));
+        return;
+    }
+    QString valueText;
+    if (dataValue.canConvert<double>() && dataValue.type() != QVariant::String) {
+        valueText = QString::number(dataValue.toDouble(), 'f', 2);
+    } else {
+        valueText = dataValue.toString().trimmed();
+    }
+    MesPacketData p = pack;
+    p.factory = QStringLiteral("byd");
+    p.mechines = getIndex();
+    p.sn = pack.sn.trimmed();
+    p.instruct_num = dataName.trimmed();
+    p.itemvalue = valueText;
+    p.testCount = qty;
+
+    if (p.sn.isEmpty() || p.itemvalue.isEmpty()) {
+        showlog(QStringLiteral("关键数据上报失败：SFC 或 DATA_VALUE 为空"));
+        return;
+    }
+    showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
+    emit sendAddSfcKey(p);
 }
 
 
@@ -1646,50 +1563,33 @@ void suction::on_testdata_formes_clicked() {
 
 void suction::on_pushButton_2_clicked()
 {
-    // 手动：就绪 power 后端（powerUsb / VISA / 与传感器 USB 共用），再按 powerProtocolConfig_ 上电（同工站 STATE_IDLE 电源段 + 电压限流）
+    // 手动：使用基类通用 VISA 对象上电（同工站 STATE_IDLE 电源段 + 电压限流）
     if (!suctionExternalPowerEnabled) {
         showlog(QStringLiteral("未启用外接程控电源：请在 ini 中开启 Suction/ExternalPowerEnabled"));
         return;
     }
     applySuctionProtocolConfig();
 
-    if (!ensurePowerBackendReady()) {
-        showlog(QStringLiteral("程控电源后端未就绪：请配置 VISA（程控电源行）或连接传感器 USB/独立电源串口"));
-        return;
-    }
-    if (!dispatchPowerAction(Qusb::PowerAction::ConfigurePowerSupply)) {
+    if (!runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); })) {
         showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
         return;
     }
 
-    const double v = powerProtocolConfig_.scpiPowerVoltageV;
-    const double a = powerProtocolConfig_.scpiPowerCurrentA;
-    bool cfgOk = false;
-    if (powerSharesUsbSerial_) {
-        const Qusb::ProtocolConfig saved = usb->protocolConfig();
-        usb->setProtocolConfig(powerProtocolConfig_);
-        cfgOk = usb->configureProgrammablePower(v, a);
-        usb->setProtocolConfig(saved);
-    } else {
-        cfgOk = powerUsb->configureProgrammablePower(v, a);
-    }
+    const double v = programmablePowerVisaConfig_.powerVoltageV;
+    const double a = programmablePowerVisaConfig_.powerCurrentA;
+    const bool cfgOk = runVisa([v, a](Qvisa* device) { return device->configureProgrammablePower(v, a); });
     if (!cfgOk) {
         showlog(QStringLiteral("程控电源电压/限流下发失败（检查 SCPI 与连接）"));
         return;
     }
 
     setExternalProgrammablePowerOutput(true);
-    QString linkDesc;
-    if (powerProtocolConfig_.scpiUseVisa) {
-        linkDesc = QStringLiteral("VISA:%1").arg(powerProtocolConfig_.scpiVisaAddress);
-    } else if (powerSharesUsbSerial_) {
-        linkDesc = QStringLiteral("与传感器共用:%1").arg(usbSerialPort->isOpen() ? usbSerialPort->portName() : QString());
-    } else {
-        linkDesc = QStringLiteral("独立串口:%1").arg(powerSerialPort && powerSerialPort->isOpen() ? powerSerialPort->portName() : QString());
-    }
+    waitWork(20000);
+    setExternalProgrammablePowerOutput(false);
+
     showlog(QStringLiteral("程控电源已按配置上电：电压=%1V，限流=%2A，链路=%3")
                  .arg(v, 0, 'f', 2)
                  .arg(a, 0, 'f', 3)
-                 .arg(linkDesc));
+                 .arg(QStringLiteral("VISA:%1").arg(programmablePowerVisaConfig_.visaAddress)));
 }
 

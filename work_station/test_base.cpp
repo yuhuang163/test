@@ -27,8 +27,8 @@
 test_base::test_base(QWidget* parent) :
     QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
     qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
-    usb(new Qusb(usbSerialPort)),
-    jigSerialPort(new QSerialPort(this)), jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
+    usb(new Qusb(usbSerialPort)), visa(new Qvisa(this)), jigSerialPort(new QSerialPort(this)),
+    jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -130,6 +130,30 @@ void test_base::signalAndslot() {
         productSerialPortTimer->start(10);                          // 设置100毫秒的延时
         productSerialPortBuf.append(productSerialPort->readAll());  // 将读到的数据放入缓冲区
     });
+}
+
+void test_base::setVisaProtocolConfig(const Qvisa::ProtocolConfig& config) {
+    visaProtocolConfig_ = config;
+    if (visa) {
+        visa->setProtocolConfig(visaProtocolConfig_);
+    }
+}
+
+bool test_base::runVisa(const std::function<bool(Qvisa*)>& action, bool enabled) {
+    if (!enabled) {
+        return true;
+    }
+    if (!action || !visa) {
+        return false;
+    }
+    visa->setProtocolConfig(visaProtocolConfig_);
+    return action(visa);
+}
+
+void test_base::resetVisaBackend() {
+    if (visa) {
+        visa->closeConnection();
+    }
 }
 
 void test_base::scanSerialPorts() {
@@ -858,12 +882,7 @@ void test_base::solveMesSucess(const int mechines) {
         return;
     }
     if (mechines == getIndex()) {
-        TestItem test;
-        test.testItem = "mes操作";
-        test.testData = QString::number(mechines);
-        test.testResult = "通过";
-        test.ask = "通过";
-        testItems.append(test);
+        appendStationResult(testItems, QStringLiteral("MES启动"), QStringLiteral("OK"), passValue);
         testResultTableUpdate(testItems);
 
         showlog("mes操作成功");

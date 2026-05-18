@@ -114,7 +114,7 @@ private:
     QVector<int> orderedTestIndexes_;
     /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
     QVector<QPair<QString, QString>> freeWorkMesSegments_;
-    QByteArray expectedTailSnFromUi;
+    QByteArray expectedTailSnFromMes;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
         int id = -1;

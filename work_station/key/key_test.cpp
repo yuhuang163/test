@@ -1155,39 +1155,141 @@ void key_test::on_snInput_returnPressed() {
     firstconnectbrush = 1;
     // 与按键测试工站保持一致：仅使用公司SN规则校验（字母数字且长度>12）
 
-    QRegularExpression snRegex(snPattern);
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
-        showlog("要求格式为" + snPattern);
-        ui->snInput->clear();
-        return;
-    }
-
+     // 检查是否是序列号格式
+     QRegularExpression snRegex(snPattern);
+     // 使用正则表达式匹配
+     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+         ui->snInput->setDisabled(0);
+         ui->macInput->setDisabled(0);
+         showlog("序列号错误");
+         showlog("实际长度为" + QString::number(ui->snInput->text().length()));
+         showlog("要求格式为" + snPattern);
+         ui->snInput->clear();
+         ui->snInput->setFocus();
+         return;
+     }
+    showlog("正在查询mac地址");
     emit send_startTest(getIndex());
-    stringsn = ui->snInput->text();
-    sn = ui->snInput->text().toUtf8();
-    ui->snInput->setDisabled(1);
-
-    // 新流程：SN校验后先解析MAC
-
-    const QString parsedMac = parseMacFromSn(ui->snInput->text());
-    if (parsedMac.isEmpty()) {
-        showlog("从SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
+    appendStationResult(testItems, "主板条码", "0.0000", passValue);
+    testResultTableUpdate(testItems);
+    // 获取比亚迪mes的sn校验规则
+    processGetMesTestValue();
     // MES站前检测，成功再开始测试
     if (ui->isusemes->checkState()) {
         processInspection(ui->snInput->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-    // processInspection(ui->snInput->text());
-    startFlowWithMac(parsedMac);
 }
+
+void key_test::processGetMesTestValue() {
+    if (ui->isformmes->checkState()) {
+        pack.sn = ui->snInput->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+        emit getMesTestValue(pack);
+    }
+}
+
+void key_test::getTestValue(const int mechines, const QString value) {
+    // showlog(value);
+    QString mesmacAddress;
+    if (pack.factory == "hq") {
+        // 定义正则表达式，匹配MAC地址的模式
+        static const QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+
+        // 在数据中查找匹配的内容
+        QRegularExpressionMatch match = regex.match(value);
+
+        // 检查是否有匹配项
+        if (match.hasMatch()) {
+            // 提取MAC地址
+            mesmacAddress = match.captured(1);
+            qDebug() << getIndex() << "MAC地址:" << mesmacAddress;
+            if (mechines == getIndex()) {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        } else {
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
+        }
+    }
+    // showlog(value);
+    else if (pack.factory == "lx") {
+        mesmacAddress = value;
+
+        // 在2、4、6、8、10的位置插入冒号
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+
+        // 将小写字母转换成大写字母
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex()) {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
+    } else {
+        if (mechines == getIndex()) {
+            mesmacAddress = value;
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    }
+
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
+}
+
 void key_test::on_macInput_returnPressed() {
-    // 按键测试工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
-    showlog("当前工站不支持手动输入MAC，请扫描SN后回车启动测试");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                   "padding: 10px; text-align: center; ");
+
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+    
+
+    // 检查是否是mac格式
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(ui->macInput->text()).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    } else {
+        macAddress = ui->macInput->text();
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
+        ui->test_result->setText("WAIT");
+        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                       "10px; padding: 10px; text-align: center; ");
+
+        qDebug() << getIndex() << macAddress;
+        // 主状态机流程
+        isTestContinue = true;
+        emit send_go_next_focus();
+        state = STATE_IDLE;
+    }
 }
 
 void key_test::clearDisplay() {

@@ -247,6 +247,10 @@ void ageing::on_macInput_returnPressed() {
         macAddress = ui->macInput->text();
         ui->macLabel->setText("蓝牙mac: " + macAddress);
 
+        ui->test_result->setText("WAIT");
+        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                       "10px; padding: 10px; text-align: center; ");
+
         qDebug() << getIndex() << macAddress;
         // 主状态机流程
         isTestContinue = true;
@@ -715,6 +719,7 @@ void ageing::show_product(QString name) {
     ui->graphicsView->setSceneRect(scaledPixmap.rect());
     ui->graphicsView->fitInView(scaledPixmap.rect(), Qt::KeepAspectRatio);  // 确保视图中的图像按比例适应
 }
+
 void ageing::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();

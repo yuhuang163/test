@@ -191,6 +191,8 @@ private slots:
     void on_jigDisconnectButton_clicked();
     // void processReceivedData(const QByteArray &data);
     void on_snInput_returnPressed();
+    void processGetMesTestValue();
+    void getTestValue(const int mechines, const QString value) override;
     void on_pushButton_clicked();
     void on_macInput_returnPressed();
     void on_pushButton_3_clicked();
