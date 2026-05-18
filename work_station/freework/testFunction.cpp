@@ -1,4 +1,4 @@
-﻿
+
 #include "qfreework.h"
 
 #include <QString>
@@ -129,8 +129,8 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(85, "PLC_V3_start_pause触摸整步", true, PLC_V3_KEY_START_PAUSE, startPlcKeyButtonTest("PLC+V3开始暂停键", "治具将自动按压开始/暂停键，请确认设备按键上报", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox", 4)) \
     X(86, "PLC_V3_left触摸整步", true, PLC_V3_KEY_LEFT, startPlcKeyButtonTest("PLC+V3左键", "治具将自动按压左键，请确认设备按键上报", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox", 5)) \
     X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", "治具将自动按压电源键，请确认设备按键上报", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
-    X(88, "PLC_V3_switch旋钮整步左旋", true, PLC_V3_SWITCH_LEFT, startPlcSwitchPlcAndWaitLeftRotate()) \
-    X(89, "PLC_V3_switch旋钮右旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮左旋整步通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) \
+    X(88, "PLC_V3_switch旋钮整步右旋", true, PLC_V3_SWITCH_RIGHT_WHOLE, startPlcSwitchPlcAndWaitRightRotate()) \
+    /*X(89, "PLC_V3_switch旋钮右旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮整步右旋通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) */ \
     X(90, "产品串口仪器复位应答1", true, PROD_INST_RESET_ACK_1, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答1"))) \
     X(91, "产品串口仪器复位应答2", true, PROD_INST_RESET_ACK_2, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答2"))) \
     X(92, "产品串口仪器复位应答3", true, PROD_INST_RESET_ACK_3, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答3"))) \
@@ -150,6 +150,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(106, "产品串口停止接收与PER5", true, PROD_INST_STOP_RX_PER_5, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER5"))) \
     X(107, "产品串口停止接收与PER6", true, PROD_INST_STOP_RX_PER_6, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER6"))) \
     X(108, "进入蓝牙非信令模式", false, BT_NO_SIGNAL_ENTER, { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::BtNoSignalMode, m); stepRuntime_.testData = QStringLiteral("已下发(无回包放行)");     waitWork(3000); }) \
+    X(109, "PLC_V3_switch测试完成M复位", false, PLC_V3_SWITCH_DONE_RESET_M, runPlcSwitchTestDoneResetM()) \
 
     
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
