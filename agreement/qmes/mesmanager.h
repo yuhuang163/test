@@ -21,6 +21,7 @@ public slots:
     void GetTestDataAll(MesPacketData pack);
     void ProcessInspectionAll(MesPacketData pack);
     void TestPassAll(MesPacketData pack);
+    void AddSfcKeyAll(MesPacketData pack);
     void handleMesState(int state);                                  // 信号声明
     void handleMesSucess(const int mechines);                        // 信号声明
     void handleMesError(const int mechines, QString resultMsg);      // 信号声明

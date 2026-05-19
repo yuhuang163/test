@@ -11,6 +11,7 @@ public:
     virtual void ProcessInspection(MesPacketData pack) = 0;
     virtual void TestPass(MesPacketData pack) = 0;
     virtual void GetTestData(MesPacketData pack) = 0;
+    virtual void AddSfcKey(MesPacketData pack) { (void)pack; };
 signals:
     void sendMesState(int state);                                   // 信号声明
     void operateMesSucess(const int mechines);                      // 信号声明

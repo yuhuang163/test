@@ -164,6 +164,7 @@ void box_base::signalAndslot() {
         connect(testList[i], SIGNAL(sendProcessInspection(MesPacketData)), MesManager,
                 SLOT(ProcessInspectionAll(MesPacketData)));
         connect(testList[i], SIGNAL(getMesTestValue(MesPacketData)), MesManager, SLOT(GetTestDataAll(MesPacketData)));
+        connect(testList[i], SIGNAL(sendAddSfcKey(MesPacketData)), MesManager, SLOT(AddSfcKeyAll(MesPacketData)));
 
         connect(testList[i], SIGNAL(send_startTest(int)), this, SLOT(reset_vector(int)));
 

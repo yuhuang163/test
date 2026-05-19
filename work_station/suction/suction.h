@@ -36,6 +36,8 @@ public:
     void refreshMusicState(ProtocolMusicStateData data) override;
     // void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;
+    void refreshProgrammablePowerVoltage(double valueVolts, bool ok);
+    void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
@@ -53,9 +55,8 @@ public:
 
 private:
     void applySuctionProtocolConfig();
-    bool ensurePowerBackendReady();
-    bool dispatchPowerAction(Qusb::PowerAction action);
-    /// 外接程控电源输出开关（Byd 时可能与传感器 USB 共用串口，需临时切换协议）
+    void loadSuctionProgrammablePowerConfig();
+    /// 外接程控电源输出开关（VISA）
     void setExternalProgrammablePowerOutput(bool enable);
     QByteArray sn;
     double HighSuction;
@@ -103,20 +104,12 @@ private:
     double suctionPeakDiffMaxKpa = 2.6;
     bool suctionExternalPowerEnabled = false;
     int suctionPowerOnWaitMs = 5000;
-    QSerialPort* powerSerialPort = nullptr;
-    Qusb* powerUsb = nullptr;
-    Qusb::ProtocolConfig powerProtocolConfig_;
-    Qusb::ProtocolConfig suctionUsbProtocolConfig_;
-    bool powerBackendInitialized = false;
-    /// 电源 SCPI 与传感器共用「传感器 USB」同一 QSerialPort（避免双开同一 COM）
-    bool powerSharesUsbSerial_ = false;
-    /// 程控电源 SCPI 读数回包（由 refreshProgrammablePower* 写入，供流程卡控）
+    Qvisa::ProtocolConfig programmablePowerVisaConfig_;
     double programmablePowerMeasuredVoltageV_ = 0.0;
     double programmablePowerMeasuredCurrentA_ = 0.0;
     bool programmablePowerVoltageReadOk_ = false;
     bool programmablePowerCurrentReadOk_ = false;
-    QTimer* powerSerialPortTimer = new QTimer(this);
-    QByteArray powerSerialPortBuf;
+    Qusb::ProtocolConfig suctionUsbProtocolConfig_;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接
@@ -159,6 +152,9 @@ private:
     void startFlowWithMac(const QString& mac);
     /// SN 校验通过后走 MES 站前与 BLE 等；snText 为唯一来源（手输/扫码或 MES 返回的真 SN），不从输入框再读
     void continueSnInputAfterSnValidated(const QString& snText);
+    void reportBydSfcKey(const QString& dataName,
+                         const QVariant& dataValue,
+                         int qty = 1);
 
 signals:
     void send_go_next_focus();
@@ -185,6 +181,7 @@ private slots:
     void on_pushButton_3_clicked();
     void on_pushButton_4_clicked();
     void on_stopTest_clicked();
+    void processGetMesTestValue();
     void getTestValue(const int mechines, const QString value) override;
     /// 开发用：触发 BYD MES GetCustomData（bydmes::GetTestData）
     void on_snruler_formes_clicked();
@@ -192,10 +189,6 @@ private slots:
     void on_start_formes_clicked();
     /// 开发用：模拟 PASS 过站上报（send_end_testPass → BYD TestDataCollect + Complete）
     void on_testdata_formes_clicked();
-    void onPowerSerialPortReadyRead();
-    void readPowerSerialPortData();
-    void refreshProgrammablePowerVoltage(double valueVolts, bool ok);
-    void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
 };
 
 #endif  // SUCTION_H

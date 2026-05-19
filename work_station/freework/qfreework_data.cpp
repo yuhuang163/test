@@ -149,7 +149,7 @@ void QFreeWork::refreshWifiState(int state) {
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedTailSnFromUiText = ui->getMac->text().trimmed();
+    const QString expectedTailSnFromMesText = expectedTailSnFromMes.trimmed();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
@@ -160,14 +160,14 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     }
     QVector<TestItem> snItems;
     snItems.reserve(1);
-    bool snPass = !expectedTailSnFromUiText.isEmpty();
-    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedTailSnFromUiText, true);
+    bool snPass = !expectedTailSnFromMesText.isEmpty();
+    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedTailSnFromMesText, true);
     stepRuntime_.done = true;
     stepRuntime_.pass = snPass;
     stepRuntime_.testData = deviceTailSnFromDevice;
     if (!snPass) {
         TestResult = failValue;
-        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromUiText);
+        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromMesText);
     } else {
         showlog("整机SN校验通过");
     }

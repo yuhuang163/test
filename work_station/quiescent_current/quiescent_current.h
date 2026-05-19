@@ -58,6 +58,7 @@ private:
     QString M_USERNO;
     QString stringsn;
     QString pumpsoft_version;
+    QString tail_sn_string;
 
     QLabel* bleStatusLabel;
     QLabel* uartStatusLabel;
@@ -130,6 +131,8 @@ signals:
     void send_go_next_test(int data);
 
 private slots:
+    void getTestValue(const int mechines, const QString value) override;
+    void processGetMesTestValue();
 
     void processInspection(QString stringsn);
     void on_productConnectButton_clicked();

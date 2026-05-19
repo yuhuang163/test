@@ -1,6 +1,8 @@
 ﻿#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
+#include <functional>
+
 // #include <qat.h>      // 与esp32的at指令
 // #include <qpb.h>      // 与设备的pb协议
 // #include <qusb.h>     // 与治具的测量协议
@@ -12,6 +14,8 @@
 
 #include "Abini.h"
 #include "agreement/qProtocol/qprotocolmanager.h"
+#include "qusb.h"
+#include "qvisa.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -119,6 +123,7 @@ public:
 
     QSerialPort* usbSerialPort;  // 通用硬件层
     Qusb* usb;                   // 通用协议层
+    Qvisa* visa;                 // 通用 VISA 设备
 
     QSerialPort* jigSerialPort;  // 治具硬件层
     Qjig* jig;                   // 治具协议层
@@ -223,6 +228,11 @@ public slots:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void setVisaProtocolConfig(const Qvisa::ProtocolConfig& config);
+    bool runVisa(const std::function<bool(Qvisa*)>& action, bool enabled = true);
+    void resetVisaBackend();
+    Qvisa::ProtocolConfig visaProtocolConfig_;
+
 private slots:
     void getDongleVer(QString);
     void refreshMesState(int state);
@@ -238,6 +248,7 @@ signals:
     void sendProcessInspection(MesPacketData);
     void send_end_testPass(MesPacketData);
     void getMesTestValue(MesPacketData);
+    void sendAddSfcKey(MesPacketData);
     void send_kill_test(int data);
     void send_end_test(int data);
 };

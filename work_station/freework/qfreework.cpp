@@ -1095,25 +1095,15 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    expectedTailSnFromUi = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
+    processGetMesTestValue();     // mes获取
     // getMac(ui->getMac->text());             // 文件获取
-    processInspection(ui->getMac->text());  // 站前检测
-    // processGetMesTestValue();               // mes获取
-
-    const QString parsedMac = parseMacFromSn(ui->getMac->text());
-    if (parsedMac.isEmpty()) {
-        ui->getMac->setDisabled(0);
-        ui->macInput->setDisabled(0);
-        showlog("SN解析MAC失败");
-        ui->getMac->setFocus();
-        return;
+    if (ui->isusemes->checkState()) {
+        processInspection(ui->getMac->text());
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
 
-    ui->macInput->setText(parsedMac);
-    showlog("SN解析MAC成功: " + parsedMac);
-
-on_macInput_returnPressed();
+// on_macInput_returnPressed();
 }
 
 void QFreeWork::processInspection(QString inputSnText) {
@@ -1382,6 +1372,23 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+        // 自由工站无 writesn/stringsn：写入 SN 用 expectedTailSnFromMes testFunction「写入SN码」）；读回比对用 deviceTailSnFromDevice + ui->getMac
+        expectedTailSnFromMes = snFromMes.toUtf8();
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
             mesmacAddress = value;

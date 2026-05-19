@@ -7,9 +7,7 @@
 #include <functional>
 #include <map>
 
-#ifdef HAVE_NI_VISA
-#include <visa.h>
-#endif
+#include "qvisa.h"
 
 class Qusb : public QSerialPort
 {
@@ -80,9 +78,6 @@ public:
     bool readProgrammablePowerCurrent();
     bool initializeProgrammablePower();
 
-    /// WFP60H 双通道电池模拟器（通讯说明 6.3）通道 1：程控电压/限流/开关/读数推荐 SCPI；各工站 ini 可覆盖
-    static const ProtocolConfig& programmablePowerDefaultsWfp60h();
-
 signals:
     void send_ammeter_data(QString data);   // 信号声明
     /// 程控电源 SCPI 读电压完成：VISA 为同步回包；串口为解析到一行后的异步回包。valueVolts 单位 V，ok 为数值解析是否成功
@@ -108,6 +103,7 @@ private:
     bool programmablePowerVisaConfigured() const;
     /// 程控电源 SCPI 是否走 VISA：protocol 为 Scpi 或 Byd（Byd 时 DAM 仍 Modbus，电源指令走 VISA）
     bool isVisaScpiEnabled() const;
+    Qvisa::ProtocolConfig visaConfigFromProtocolConfig() const;
     bool ensureVisaConnected();
     void closeVisaConnection();
     bool visaWrite(const QString &cmd);
@@ -125,10 +121,7 @@ private:
     QByteArray data = 0;
     ProtocolConfig protocolConfig_;
     ProgrammablePowerReadPending pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
-#ifdef HAVE_NI_VISA
-    ViSession visaRm_ = VI_NULL;
-    ViSession visaInst_ = VI_NULL;
-#endif
+    Qvisa visa_;
 
 private slots:
     void processCmd(QString cmd, QString parameter);
