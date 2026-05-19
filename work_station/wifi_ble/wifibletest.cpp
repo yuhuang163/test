@@ -1,4 +1,4 @@
-﻿#include "wifibletest.h"
+#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -2847,4 +2847,35 @@ void wifibletest::on_get_battery_clicked() {
 
 
 
+
+
+void wifibletest::on_usbconnectButton_clicked()
+{
+    loadWifiBleCmw100Config();
+    if (cmw100VisaConfig_.visaAddress.trimmed().isEmpty()) {
+        showlog(QStringLiteral("CMW100 VISA地址未配置：请配置 BlePer/CmwVisaAddress"));
+        return;
+    }
+
+    QString cmd = SETTINGS.value(QStringLiteral("BlePer/CmwDebugQueryCmd"), QStringLiteral("SOURCe:GPRF:GEN:STAT OFF;*OPC?")).toString().trimmed();
+    if (cmd.isEmpty()) {
+        cmd = QStringLiteral("*IDN?");
+    }
+
+    QString response;
+    const bool ok = runCmwVisa([this, &cmd, &response](Qvisa* device) {
+        if (!device->ensureConnected()) {
+            showlog(QStringLiteral("CMW100 VISA连接失败: %1").arg(cmw100VisaConfig_.visaAddress));
+            return false;
+        }
+        return device->queryCommand(cmd, &response);
+    });
+    if (!ok) {
+        showlog(QStringLiteral("CMW100 指令交互失败: %1").arg(cmd));
+        return;
+    }
+
+    showlog(QStringLiteral("CMW100 VISA已连接: %1").arg(cmw100VisaConfig_.visaAddress));
+    showlog(QStringLiteral("CMW100 指令 %1 返回: %2").arg(cmd, response));
+}
 

@@ -168,7 +168,7 @@
      <item>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -277,6 +277,26 @@
               </widget>
              </item>
              <item>
+              <widget class="QPushButton" name="jigDisconnectButton">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="text">
+                <string>断开串口</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="jigConnectButton">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="text">
+                <string>连接串口</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QComboBox" name="jigComNameCombo">
                <property name="enabled">
                 <bool>true</bool>
@@ -303,6 +323,20 @@
               <widget class="QLabel" name="label_7">
                <property name="text">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;产品串口&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="productDisconnectButton">
+               <property name="text">
+                <string>断开串口</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="productConnectButton">
+               <property name="text">
+                <string>连接串口</string>
                </property>
               </widget>
              </item>
@@ -403,24 +437,17 @@
          <string>待拓展</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_4">
-         <item row="1" column="1">
+         <item row="0" column="1">
           <widget class="QLineEdit" name="getMac">
            <property name="placeholderText">
             <string>切换英文输入再扫码</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="0" column="0">
           <widget class="QLabel" name="label_5">
            <property name="text">
             <string>输入SN获取mac(mes||文件)：</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QPushButton" name="visa_test">
-           <property name="text">
-            <string>visa测试上电</string>
            </property>
           </widget>
          </item>

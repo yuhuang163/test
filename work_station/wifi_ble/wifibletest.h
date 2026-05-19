@@ -1,4 +1,4 @@
-﻿
+
 #ifndef WIFIBLETEST_H
 #define WIFIBLETEST_H
 
@@ -236,6 +236,7 @@ private slots:
     void on_pushButton_2_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
+    void on_usbconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
     void on_stopTest_clicked();
