@@ -82,18 +82,18 @@ QString bydMesServiceParamEnvelope(const QJsonObject& param, QChar open, QChar c
     return QString(open) + pairs.join(QLatin1Char(',')) + QString(close);
 }
 
-QString bydRootBracketParam(const QJsonObject& param) {
-    return bydMesServiceParamEnvelope(param, QLatin1Char('['), QLatin1Char(']'));
+// BYD Service.action 简单参数：花括号 {KEY:value,...}（Start/Complete/GetSfcKeyBySfc 等）
+QString bydMesCurlyServiceParam(const QJsonObject& param) {
+    return bydMesServiceParamEnvelope(param, QLatin1Char('{'), QLatin1Char('}'));
 }
 
-bool bydMesMethodUsesCurlyServiceParam(const QString& method) {
-    static const QStringList kCurly = {QStringLiteral("GetCustomData"), QStringLiteral("GetSfcKeyBySfc")};
-    for (const QString& m : kCurly) {
-        if (method.compare(m, Qt::CaseInsensitive) == 0) {
-            return true;
-        }
+QString bydMesBuildServiceParam(const QString& method, const QJsonObject& param) {
+    if (method.compare(QLatin1String("TestDataCollect2MainChild"), Qt::CaseInsensitive) == 0
+        || method.compare(QLatin1String("AddSfcKey"), Qt::CaseInsensitive) == 0) {
+        return QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact));
     }
-    return false;
+    // 勿用方括号 []：现场 MES 对 Start/Complete 等会异常或回显 param，响应无法按 JSON 解析
+    return bydMesCurlyServiceParam(param);
 }
 
 // =============================================================================
@@ -475,6 +475,19 @@ QJsonObject bydmes::buildBydNcCompleteParam(const MesPacketData& pack) const {
     return param;
 }
 
+QJsonObject bydmes::buildBydAddSfcKeyParam(const MesPacketData& pack) const {
+    QJsonObject param;
+    param[QStringLiteral("LOGIN_ID")] = settingsValue(QStringLiteral("LoginID"));
+    param[QStringLiteral("CLIENT_ID")] = settingsValue(QStringLiteral("ClientID"));
+    param[QStringLiteral("SFC")] = pack.sn;
+    param[QStringLiteral("DATA_NAME")] = pack.instruct_num;
+    param[QStringLiteral("DATA_VALUE")] = pack.itemvalue.trimmed();
+    param[QStringLiteral("STATION_NAME")] = settingsValue(QStringLiteral("Operation"));
+    param[QStringLiteral("SHOPORDER")] = settingsValue("Resource");
+    param[QStringLiteral("QTY")] = pack.testCount;
+    return param;
+}
+
 // =============================================================================
 // ⑥ 过程码mes获取并解析SN
 // =============================================================================
@@ -624,20 +637,13 @@ QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, 
     QUrl url(baseUrl());
     QUrlQuery query;
     query.addQueryItem("method", method);
-    QString paramStr;
-    if (method == QLatin1String("TestDataCollect2MainChild")) {
-        paramStr = QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact));
-    } else if (bydMesMethodUsesCurlyServiceParam(method)) {
-        paramStr = bydMesServiceParamEnvelope(param, QLatin1Char('{'), QLatin1Char('}'));
-    } else {
-        paramStr = bydRootBracketParam(param);
-    }
+    const QString paramStr = bydMesBuildServiceParam(method, param);
     query.addQueryItem("param", paramStr);
     url.setQuery(query);
 
     // qDebug 默认对 QString 转义内部引号；noquote 便于核对 JSON。URL 中 %7B、%E8… 为百分号编码。
     qDebug().noquote() << QStringLiteral("BYD MES request (param): ") + paramStr;
-    // qDebug().noquote() << QStringLiteral("BYD MES request (URL): ") + url.toString();
+    qDebug().noquote() << QStringLiteral("BYD MES request (URL): ") + url.toString();
     // const QUrlQuery urlQuery(url);
     // const QString paramDecoded = urlQuery.queryItemValue(QStringLiteral("param"));
     // qDebug().noquote() << QStringLiteral("BYD MES request (param 从 URL 解码): ") + paramDecoded;
@@ -653,7 +659,7 @@ QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, 
     QByteArray responseData;
     if (reply->error() == QNetworkReply::NoError) {
         responseData = reply->readAll();
-        // qDebug() << "BYD MES response:" << QString::fromUtf8(responseData);
+        qDebug() << "BYD MES response:" << QString::fromUtf8(responseData);
     } else if (errorMessage != nullptr) {
         *errorMessage = reply->errorString();
     }
@@ -771,6 +777,54 @@ void bydmes::GetTestData(MesPacketData pack) {
     // 解析到的 SN 通过 sendMesTestvalue 下发工站
     qDebug() << "BYD QuerySnByProcessCode 下发 value(SN)=" << sn;
     emit sendMesTestvalue(pack.mechines, sn);
+}
+
+void bydmes::AddSfcKey(MesPacketData pack) {
+    if (pack.factory != "byd") {
+        return;
+    }
+
+    QString configError;
+    if (!bydmes::loadExternalMesConfig(&configError)) {
+        emit operateMesError(pack.mechines, configError);
+        return;
+    }
+
+    if (pack.sn.trimmed().isEmpty()) {
+        emit operateMesError(pack.mechines, QStringLiteral("BYD MES AddSfcKey：SFC 为空"));
+        return;
+    }
+    if (pack.itemvalue.trimmed().isEmpty()) {
+        emit operateMesError(pack.mechines, QStringLiteral("BYD MES AddSfcKey：DATA_VALUE 为空"));
+        return;
+    }
+
+    const QJsonObject param = buildBydAddSfcKeyParam(pack);
+    if (emitIfMissingLoginClientOrNet(pack, param, QStringLiteral("AddSfcKey"))) {
+        return;
+    }
+    if (bydMesJsonStringFieldEmpty(param, QStringLiteral("DATA_NAME"))
+        || bydMesJsonStringFieldEmpty(param, QStringLiteral("STATION_NAME"))
+        || bydMesJsonStringFieldEmpty(param, QStringLiteral("SHOPORDER"))) {
+        emit operateMesError(pack.mechines,
+                             QStringLiteral("BYD MES AddSfcKey：DATA_NAME/STATION_NAME/SHOPORDER 参数缺失"));
+        return;
+    }
+
+    QString networkError;
+    const QByteArray responseData = sendRequest(QStringLiteral("AddSfcKey"), param, &networkError);
+    if (!networkError.isEmpty()) {
+        emit operateMesError(pack.mechines, QStringLiteral("BYD MES AddSfcKey 请求失败: ") + networkError);
+        return;
+    }
+
+    QString responseText;
+    QString errorMessage;
+    if (isSuccessResponse(responseData, &responseText, &errorMessage)) {
+        emit operateMesSucess(pack.mechines);
+    } else {
+        emit operateMesError(pack.mechines, QStringLiteral("BYD MES AddSfcKey 失败: ") + errorMessage);
+    }
 }
 
 void bydmes::TestPass(MesPacketData pack) {

@@ -1,7 +1,5 @@
 #include "qusb.h"
 
-#include "Abini.h"
-
 #include <QDebug>
 #include <QMessageBox>
 #include <QSerialPort>
@@ -84,30 +82,6 @@ void qusbWarnVisaNotConnectedOnce()
     #pragma execution_character_set(push, "utf-8")
 #endif
 
-const Qusb::ProtocolConfig& Qusb::programmablePowerDefaultsWfp60h()
-{
-    static Qusb::ProtocolConfig k;
-    static bool stringsInited = false;
-    if (!stringsInited) {
-        stringsInited = true;
-        k.protocol = ProtocolType::Scpi;
-        // 与《WFP60H双通道电池通讯说明》6.3.2 / 6.3.1 长名一致；短名可按实机微调
-        k.scpiSetVoltageCmd = QStringLiteral("SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1");
-        k.scpiSetCurrentCmd = QStringLiteral("SOURce1:CURRent:LIMit:VALue %1");
-        k.scpiOutputOnCmd = QStringLiteral("OUTPut1:STATe ON");
-        k.scpiOutputOffCmd = QStringLiteral("OUTPut1:STATe OFF");
-        // 通讯说明 6.3.4.6：MEASure1:<function>? 明确测电压或电流（勿用裸 READ1?）
-        k.scpiReadVoltageCmd = QStringLiteral("MEASure1:VOLTage:DC?");
-        k.scpiReadCurrentCmd = QStringLiteral("MEASure1:CURRent:DC?");
-        k.scpiPowerVoltageV = 12.0;
-        k.scpiPowerCurrentA = 2.5;
-    }
-    // VISA 开关与地址仅读 [VisaPower]（全工程程控电源共用，不再读 ProgrammablePower）
-    k.scpiUseVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool();
-    k.scpiVisaAddress = SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString();
-    return k;
-}
-
 Qusb::Qusb(QSerialPort *parent) :
 QSerialPort(parent), serialPort(parent)
 {
@@ -119,6 +93,8 @@ QSerialPort(parent), serialPort(parent)
 
 
     registerCommand();
+    connect(&visa_, &Qvisa::programmablePowerVoltageRead, this, &Qusb::programmablePowerVoltageRead);
+    connect(&visa_, &Qvisa::programmablePowerCurrentRead, this, &Qusb::programmablePowerCurrentRead);
 }
 
 Qusb::~Qusb()
@@ -538,112 +514,52 @@ bool Qusb::isVisaScpiEnabled() const
     return p == ProtocolType::Scpi || p == ProtocolType::Byd;
 }
 
+Qvisa::ProtocolConfig Qusb::visaConfigFromProtocolConfig() const
+{
+    Qvisa::ProtocolConfig cfg;
+    cfg.useVisa = protocolConfig_.scpiUseVisa;
+    cfg.visaAddress = protocolConfig_.scpiVisaAddress;
+    cfg.powerVoltageV = protocolConfig_.scpiPowerVoltageV;
+    cfg.powerCurrentA = protocolConfig_.scpiPowerCurrentA;
+    cfg.setVoltageCmd = protocolConfig_.scpiSetVoltageCmd;
+    cfg.setCurrentCmd = protocolConfig_.scpiSetCurrentCmd;
+    cfg.outputOnCmd = protocolConfig_.scpiOutputOnCmd;
+    cfg.outputOffCmd = protocolConfig_.scpiOutputOffCmd;
+    cfg.readVoltageCmd = protocolConfig_.scpiReadVoltageCmd;
+    cfg.readCurrentCmd = protocolConfig_.scpiReadCurrentCmd;
+    return cfg;
+}
+
 bool Qusb::ensureVisaConnected()
 {
     if (!isVisaScpiEnabled()) {
         return false;
     }
-#ifdef HAVE_NI_VISA
-    if (visaInst_ != VI_NULL)
-    {
-        return true;
-    }
-    if (visaRm_ == VI_NULL)
-    {
-        const ViStatus rmStatus = viOpenDefaultRM(&visaRm_);
-        if (rmStatus < VI_SUCCESS)
-        {
-            qDebug() << "VISA打开资源管理器失败，status=" << rmStatus;
-            visaRm_ = VI_NULL;
-            return false;
-        }
-    }
-
-    QByteArray addr = protocolConfig_.scpiVisaAddress.trimmed().toLocal8Bit();
-    const ViStatus openStatus = viOpen(visaRm_, (ViRsrc)addr.constData(), VI_NULL, VI_NULL, &visaInst_);
-    if (openStatus < VI_SUCCESS)
-    {
-        qDebug() << "VISA打开设备失败，address=" << protocolConfig_.scpiVisaAddress << "status=" << openStatus;
-        visaInst_ = VI_NULL;
-        return false;
-    }
-    viSetAttribute(visaInst_, VI_ATTR_TMO_VALUE, 3000);
-    qDebug() << "VISA设备已连接:" << protocolConfig_.scpiVisaAddress;
-    return true;
-#else
-    qDebug() << "当前构建未启用NI-VISA（HAVE_NI_VISA），无法使用VISA地址通讯";
-    return false;
-#endif
+    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
+    return visa_.ensureConnected();
 }
 
 void Qusb::closeVisaConnection()
 {
-#ifdef HAVE_NI_VISA
-    if (visaInst_ != VI_NULL)
-    {
-        viClose(visaInst_);
-        visaInst_ = VI_NULL;
-    }
-    if (visaRm_ != VI_NULL)
-    {
-        viClose(visaRm_);
-        visaRm_ = VI_NULL;
-    }
-#endif
+    visa_.closeConnection();
 }
 
 bool Qusb::visaWrite(const QString &cmd)
 {
-    if (!ensureVisaConnected())
-    {
+    if (!isVisaScpiEnabled()) {
         return false;
     }
-#ifdef HAVE_NI_VISA
-    QByteArray payload = cmd.toLocal8Bit();
-    if (!payload.endsWith('\n'))
-    {
-        payload.append('\n');
-    }
-    ViUInt32 writeCount = 0;
-    const ViStatus status = viWrite(visaInst_, reinterpret_cast<ViBuf>(payload.data()),
-                                    static_cast<ViUInt32>(payload.size()), &writeCount);
-    if (status < VI_SUCCESS)
-    {
-        qDebug() << "VISA写入失败:" << cmd << "status=" << status;
-        return false;
-    }
-    return true;
-#else
-    Q_UNUSED(cmd);
-    return false;
-#endif
+    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
+    return visa_.writeCommand(cmd);
 }
 
 bool Qusb::visaQuery(const QString &cmd, QString *response)
 {
-#ifdef HAVE_NI_VISA
-    if (!visaWrite(cmd))
-    {
+    if (!isVisaScpiEnabled()) {
         return false;
     }
-    char buffer[1024] = {0};
-    ViUInt32 readCount = 0;
-    const ViStatus status = viRead(visaInst_, reinterpret_cast<ViBuf>(buffer), sizeof(buffer) - 1, &readCount);
-    if (status < VI_SUCCESS)
-    {
-        qDebug() << "VISA读取失败:" << cmd << "status=" << status;
-        return false;
-    }
-    if (response)
-    {
-        *response = QString::fromLocal8Bit(buffer, static_cast<int>(readCount)).trimmed();
-    }
-    return true;
-#else
-    Q_UNUSED(cmd);
-    Q_UNUSED(response);
-    return false;
-#endif
+    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
+    return visa_.queryCommand(cmd, response);
 }
 void Qusb::sendCONF(QString current, QString dc, QString range)
 {

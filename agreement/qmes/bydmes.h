@@ -23,6 +23,8 @@ public:
     void ProcessInspection(MesPacketData pack) override;
     void TestPass(MesPacketData pack) override;
     void GetTestData(MesPacketData pack) override;
+    /// BYD AddSfcKey：关键数据上报。pack.sn=SFC，pack.instruct_num=DATA_NAME，pack.itemvalue=DATA_VALUE。
+    void AddSfcKey(MesPacketData pack) override;
 
 
 
@@ -36,6 +38,7 @@ private:
     QJsonObject buildBydTestDataCollectParam(const MesPacketData& pack) const;
     QJsonObject buildBydCompleteParam(const MesPacketData& pack) const;
     QJsonObject buildBydNcCompleteParam(const MesPacketData& pack) const;
+    QJsonObject buildBydAddSfcKeyParam(const MesPacketData& pack) const;
     /// 「按过程码返回值中解析 SN」。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
     /// 获取编码校验规则（暂时没用到，比亚迪特有接口）

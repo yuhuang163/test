@@ -83,7 +83,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     /* X(39, "设置亮白模式", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::DeviceMode, 4); })) */      \
     /* X(40, "设置使用控制状态", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::BrushControl, 1); })) */ \
     X(41, "设置工厂模式", false, FAC_MODE_SET, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); }))            \
-    X(42, "写入SN码", false, SN_WRITE_TAIL, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromUi})); })) \
+    X(42, "写入SN码", false, SN_WRITE_TAIL, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, expectedTailSnFromMes})); })) \
     /* X(43, "设置摄像头图片状态", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::CameraPictureState, 1); })) */ \
     /* X(44, "设置本地OTA", false, TAG, local_ota_data x[2] = {params}; sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); })) */ \
     /* X(45, "启动OTA应用", false, TAG, sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFileStatusReq{params})); })) */ \
@@ -152,6 +152,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(108, "进入蓝牙非信令模式", false, BT_NO_SIGNAL_ENTER, { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::BtNoSignalMode, m); stepRuntime_.testData = QStringLiteral("已下发(无回包放行)");     waitWork(3000); }) \
     X(109, "PLC_V3_switch测试完成M复位", false, PLC_V3_SWITCH_DONE_RESET_M, runPlcSwitchTestDoneResetM()) \
 
+    
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
 #define BUILD_CATALOG_ITEM(id, name, needCaseDone, mesTag, actionExpr) \

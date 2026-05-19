@@ -217,9 +217,11 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
             // (!isImuTest || compareVersions(imuId, QString::number(data.imu_id))) &&
             // (!isBleTest || compareVersions(bleVersion, data.ble_version)) &&
             // (!isCameraTest || compareVersions(camera_id, data.camera_version))) {
+            pack.itemvalue += QStringLiteral("|softwareVersion:%1:::%2:").arg(pumpsoft_version).arg(softwareVersion);
             base_state = 1;
         } else {
             base_state = 2;
+            pack.itemvalue += QStringLiteral("|softwareVersion:%1:::%2:").arg(pumpsoft_version).arg(softwareVersion);
         }
 
         TestItem test;
@@ -398,6 +400,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.audio_state);
             test.ask = audioState;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|audio_state:%1:::%2:").arg(data.audio_state).arg(audioState);
         }
 
         if (SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool()) {
@@ -405,6 +408,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.flash_state);
             test.ask = flashStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|flash_state:%1:::%2:").arg(data.flash_state).arg(flashStatus);
         }
 
         if (SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool()) {
@@ -412,6 +416,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.imu_state);
             test.ask = imuStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|imu_state:%1:::%2:").arg(data.imu_state).arg(imuStatus);
         }
 
         if (SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool()) {
@@ -422,6 +427,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.magnet_state);
             test.ask = magneticStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|magnet_state:%1:::%2:").arg(data.magnet_state).arg(magneticStatus);
         }
 
         if (SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool()) {
@@ -429,6 +435,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.press_state);
             test.ask = pressureStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|press_state:%1:::%2:").arg(data.press_state).arg(pressureStatus);
         }
 
         if (SETTINGS.value("PeripheralStatus/BatteryIcStatus_checkBox").toBool()) {
@@ -436,6 +443,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.battery_ic_state);
             test.ask = batteryIcStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|battery_ic_state:%1:::%2:").arg(data.battery_ic_state).arg(batteryIcStatus);
         }
 
         if (SETTINGS.value("PeripheralStatus/TouchIcStatus_checkBox").toBool()) {
@@ -443,6 +451,7 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
             test.testData = QString::number(data.touch_ic_state);
             test.ask = touchIcStatus;
             testItems.append(test);
+            pack.itemvalue += QStringLiteral("|touch_ic_state:%1:::%2:").arg(data.touch_ic_state).arg(touchIcStatus);
         }
 
         updateTestData(testItems);
@@ -473,6 +482,76 @@ void quiescent_current::refreshAmmeterData(QString data) {
     }
 }
 
+void quiescent_current::getTestValue(const int mechines, const QString value) {
+    // showlog(value);
+    QString mesmacAddress;
+    if (pack.factory == "hq") {
+        // 定义正则表达式，匹配MAC地址的模式
+        static const QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+
+        // 在数据中查找匹配的内容
+        QRegularExpressionMatch match = regex.match(value);
+
+        // 检查是否有匹配项
+        if (match.hasMatch()) {
+            // 提取MAC地址
+            mesmacAddress = match.captured(1);
+            qDebug() << getIndex() << "MAC地址:" << mesmacAddress;
+            if (mechines == getIndex()) {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        } else {
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
+        }
+    }
+    // showlog(value);
+    else if (pack.factory == "lx") {
+        mesmacAddress = value;
+
+        // 在2、4、6、8、10的位置插入冒号
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+
+        // 将小写字母转换成大写字母
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex()) {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        sn = snFromMes.toUtf8();
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
+    } else {
+        if (mechines == getIndex()) {
+            mesmacAddress = value;
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    }
+
+    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
+}
+
 quiescent_current::~quiescent_current() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
@@ -497,7 +576,7 @@ quiescent_current::~quiescent_current() {
 
 void quiescent_current::refreshSn(ProtocolSnData data) {
 
-    QString tail_sn_string = data.value;
+    tail_sn_string = data.value;
     ui->product_sn->setText("整机sn:" + tail_sn_string);
     showlog("读取的sn为" + tail_sn_string);
     showlog("写入的sn为" + stringsn);
@@ -509,7 +588,6 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
         test.ask = "通过";
         testItems.append(test);
         testResultTableUpdate(testItems);
-
         snCompareOk = 1;
 
     } else {
@@ -526,6 +604,7 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
 
 void quiescent_current::on_snInput_returnPressed() {
     clearDisplay();
+    pack.itemvalue.clear();
     macAddress = "没有mac地址";
     logString = "";
     usblogwaittime->setInterval(5000);
@@ -535,34 +614,68 @@ void quiescent_current::on_snInput_returnPressed() {
     QRegularExpression snRegex(snPattern);
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
         showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
+        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
         showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         return;
     }
 
     emit send_startTest(getIndex());
-    stringsn = ui->snInput->text();
-    sn = ui->snInput->text().toUtf8();
+    // stringsn = ui->snInput->text();
+    // sn = ui->snInput->text().toUtf8();
     ui->snInput->setDisabled(1);
 
     // 新流程：SN校验后先解析MAC
-
-    const QString parsedMac = parseMacFromSn(ui->snInput->text());
-    if (parsedMac.isEmpty()) {
-        showlog("从SN解析MAC失败（预留规则待补）");
-        on_stopTest_clicked();
-        return;
-    }
+    appendStationResult(testItems, "主板条码", "0.0000", passValue);
+    testResultTableUpdate(testItems);
+    // BYD：过程码换 SN（GetSfcKeyBySfc）——勾选「表单MES」或「启用MES」且工厂为 byd 时均下发
+    processGetMesTestValue();
+    // if (parsedMac.isEmpty()) {
+    //     showlog("从SN解析MAC失败（预留规则待补）");
+    //     on_stopTest_clicked();
+    //     return;
+    // }
     if (ui->isusemes->checkState()) {
         processInspection(ui->snInput->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-    startFlowWithMac(parsedMac);
+    // startFlowWithMac(parsedMac);
 }
 void quiescent_current::on_macInput_returnPressed() {
-    // 静态电流工站改为按SN启动，MAC由SN自动解析，不允许手动输入。
-    showlog("当前工站不支持手动输入MAC，请扫描SN后回车启动测试");
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                   "padding: 10px; text-align: center; ");
+
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+    waitWork(WAITTIME);
+    // 检查是否是mac格式
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(ui->macInput->text()).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    } else {
+        macAddress = ui->macInput->text();
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
+        qDebug() << getIndex() << macAddress;
+        // 主状态机流程
+        isTestContinue = true;
+        emit send_go_next_focus();
+        state = STATE_IDLE;
+    }
+}
+
+void quiescent_current::processGetMesTestValue() {
+    if (ui->isformmes->checkState()) {
+        pack.sn = ui->snInput->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+        emit getMesTestValue(pack);
+    }
 }
 
 void quiescent_current::clearDisplay() {
@@ -789,13 +902,16 @@ void quiescent_current::startTask() {
                         showlog("sn已比对成功");
                         appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
                         testResultTableUpdate(testItems);
+                        pack.itemvalue += QStringLiteral("|SN_BANDING:%1:::%2:").arg(tail_sn_string).arg(stringsn);
                         sendCommandWithRetry([&]() { 
                             protocolManager.get(DeviceCmd::BaseInfo);
                         });
+                        
                     } else if (snCompareOk == 2) {
                         showlog("sn已比对失败"); 
                         // pack.error="SP03011";
                         result = failValue;
+                        pack.itemvalue += QStringLiteral("|SN_BANDING:%1:::%2:").arg(tail_sn_string).arg(stringsn);
                         state = STATE_SAVE_RESULT;
                     } else {
                     waitWork(500);
@@ -820,7 +936,6 @@ void quiescent_current::startTask() {
                     waitWork(WAITTIME);
                     showlog("固件版本验证失败");
                     protocolManager.get(DeviceCmd::PeriphState);
-                    pack.itemvalue = "base_state=NG";
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -842,10 +957,10 @@ void quiescent_current::startTask() {
                     // ble_waittime->start();
                     totalresult = passValue;
                     state = STATE_SAVE_RESULT;
+
                 } else if (periph_state == 2)  // 设备信息异常
                 {
                     showlog("外设状态异常");
-                    pack.itemvalue = "periph_state=NG";
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
                 }
@@ -895,9 +1010,9 @@ void quiescent_current::startTask() {
                     pack.result = "PASS";
                     pack.sn = ui->snInput->text();
                     pack.instruct_num = "076";
-                    pack.itemvalue = pack.sn + "," + macAddress + ",STATIC_CURRENT_RESULT*" + pack.result +
-                                     QString("@STATIC_CURRENT*0");
+                    pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:PASS");
                     if (ui->isusemes->checkState()) {
+                        pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
                         emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
@@ -908,14 +1023,12 @@ void quiescent_current::startTask() {
                         "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
                         "border-radius: 10px; padding: 10px; text-align: center;");
                 } else if ((totalresult == failValue)) {
-                    pack.result = "NG";
+                    pack.result = "FAIL";
                     pack.sn = ui->snInput->text();
                     pack.instruct_num = "076";
-                    if (pack.itemvalue.isEmpty()) {
-                        pack.itemvalue = pack.sn + "," + macAddress + ",STATIC_CURRENT_RESULT*" + pack.result +
-                                         QString("@STATIC_CURRENT*0");
-                    }
+                    pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:FAIL");
                     if (ui->isusemes->checkState()) {
+                        pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
                         emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                         testResultTableUpdate(testItems);
