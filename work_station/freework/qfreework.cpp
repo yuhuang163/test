@@ -696,6 +696,14 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
         return;
     }
 
+    if (stepRuntime_.done) {
+        ++plcKeyBleWaitSeq_;
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        closeKeyWaitPrompt();
+        return;
+    }
+
     armPlcBleKeyWaitTimeout();
 }
 
@@ -730,73 +738,6 @@ void QFreeWork::armPlcBleKeyWaitTimeout() {
     showlog(currentKeyTestName_ + QStringLiteral("：等待协议上报（超时 %1ms）").arg(bleWaitMs));
 }
 
-void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
-    const QString rightEn = QStringLiteral("ProductInfo/KeyIdRightRotate_checkBox");
-    if (!SETTINGS.value(rightEn).toBool()) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("右旋按键配置未启用");
-        stepRuntime_.ask = QStringLiteral("请检查配置");
-        TestResult = failValue;
-        showlog(QStringLiteral("PLC+V3旋钮右旋失败：右旋配置未启用"));
-        return;
-    }
-
-    // phase 4：PLC 旋钮整步后对编码器「右旋」dir=2 校验（qfctp ENCODER_STATUS_REPORT）。
-    plcSwitchBlePhase_ = 4;
-    currentKeyTestName_ = QStringLiteral("PLC+V3旋钮右旋");
-    currentKeyExpectedKey_ = QStringLiteral("ProductInfo/KeyIdRightRotate");
-    freeWorkKeyWaiting_ = true;
-    stepRuntime_.done = false;
-    stepRuntime_.pass = true;
-    stepRuntime_.testData = QStringLiteral("PLC旋钮整步与等待右旋上报");
-    stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-    plcKeyBlePlcOkSummary_.clear();
-
-    closeKeyWaitPrompt();
-    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, QStringLiteral("PLC旋钮右旋"),
-                                     QStringLiteral("治具将自动完成旋钮动作（实际为右转），请确认设备上报右旋"),
-                                     QMessageBox::NoButton, this);
-    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
-    {
-        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
-        hiddenCloseButton->hide();
-    }
-    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    keyWaitPromptProgrammaticClose_ = false;
-    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
-        keyWaitPrompt_ = nullptr;
-        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
-            ++plcKeyBleWaitSeq_;
-            freeWorkKeyWaiting_ = false;
-            plcSwitchBlePhase_ = 0;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = "用户关闭按键弹窗";
-            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-            plcKeyBlePlcOkSummary_.clear();
-            TestResult = failValue;
-            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
-        }
-        keyWaitPromptProgrammaticClose_ = false;
-    });
-    keyWaitPrompt_->show();
-    showlog(QStringLiteral("PLC+V3旋钮右旋：已等待协议，将执行PLC旋钮整步"));
-
-    runPlcV3TouchSwitchFull(false);
-
-    if (!stepRuntime_.pass) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        plcKeyBlePlcOkSummary_.clear();
-        return;
-    }
-
-    armPlcBleKeyWaitTimeout();
-    showlog(currentKeyTestName_ + QStringLiteral("：PLC旋钮整步完成，等待右旋上报"));
-}
 void QFreeWork::startPlcSwitchPlcAndWaitLeftRotate() {
     const QString leftEn = QStringLiteral("ProductInfo/KeyIdLeftRotate_checkBox");
     if (!SETTINGS.value(leftEn).toBool()) {
@@ -858,6 +799,14 @@ void QFreeWork::startPlcSwitchPlcAndWaitLeftRotate() {
         plcSwitchBlePhase_ = 0;
         closeKeyWaitPrompt();
         plcKeyBlePlcOkSummary_.clear();
+        return;
+    }
+
+    if (stepRuntime_.done) {
+        ++plcKeyBleWaitSeq_;
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        closeKeyWaitPrompt();
         return;
     }
 
@@ -2030,11 +1979,20 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const auto passOk = [this, finishStepRuntime](const QString& msg) {
         inovancePlcTcp_.disconnect();
         stepRuntime_.pass = true;
-        stepRuntime_.testData = msg;
         if (finishStepRuntime) {
+            stepRuntime_.testData = msg;
             stepRuntime_.done = true;
             plcKeyBlePlcOkSummary_.clear();
+        } else if (stepRuntime_.done) {
+            // 阻塞跑 PLC 时事件循环已收到协议并置 done，勿再清掉
+            if (!msg.isEmpty()) {
+                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
+                                            ? msg
+                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
+            }
+            plcKeyBlePlcOkSummary_.clear();
         } else {
+            stepRuntime_.testData = msg;
             stepRuntime_.done = false;
             plcKeyBlePlcOkSummary_ = msg;
         }
@@ -2234,11 +2192,19 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     const auto passOk = [this, finishStepRuntime](const QString& msg) {
         inovancePlcTcp_.disconnect();
         stepRuntime_.pass = true;
-        stepRuntime_.testData = msg;
         if (finishStepRuntime) {
+            stepRuntime_.testData = msg;
             stepRuntime_.done = true;
             plcKeyBlePlcOkSummary_.clear();
+        } else if (stepRuntime_.done) {
+            if (!msg.isEmpty()) {
+                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
+                                            ? msg
+                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
+            }
+            plcKeyBlePlcOkSummary_.clear();
         } else {
+            stepRuntime_.testData = msg;
             stepRuntime_.done = false;
             plcKeyBlePlcOkSummary_ = msg;
         }
@@ -2434,4 +2400,79 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
                .arg(posReadyM)
                .arg(stepDoneM)
                .arg(keyDoneM));
+}
+void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
+    const QString rightEn = QStringLiteral("ProductInfo/KeyIdRightRotate_checkBox");
+    if (!SETTINGS.value(rightEn).toBool()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("右旋按键配置未启用");
+        stepRuntime_.ask = QStringLiteral("请检查配置");
+        TestResult = failValue;
+        showlog(QStringLiteral("PLC+V3旋钮右旋失败：右旋配置未启用"));
+        return;
+    }
+
+    // phase 4：PLC 旋钮整步后对编码器「右旋」dir=2 校验（qfctp ENCODER_STATUS_REPORT）。
+    plcSwitchBlePhase_ = 4;
+    currentKeyTestName_ = QStringLiteral("PLC+V3旋钮右旋");
+    currentKeyExpectedKey_ = QStringLiteral("ProductInfo/KeyIdRightRotate");
+    freeWorkKeyWaiting_ = true;
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("PLC旋钮整步与等待右旋上报");
+    stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
+    plcKeyBlePlcOkSummary_.clear();
+
+    closeKeyWaitPrompt();
+    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, QStringLiteral("PLC旋钮右旋"),
+                                     QStringLiteral("治具将自动完成旋钮动作（实际为右转），请确认设备上报右旋"),
+                                     QMessageBox::NoButton, this);
+    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
+    {
+        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
+        hiddenCloseButton->hide();
+    }
+    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
+    keyWaitPromptProgrammaticClose_ = false;
+    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
+        keyWaitPrompt_ = nullptr;
+        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
+            ++plcKeyBleWaitSeq_;
+            freeWorkKeyWaiting_ = false;
+            plcSwitchBlePhase_ = 0;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = "用户关闭按键弹窗";
+            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
+            plcKeyBlePlcOkSummary_.clear();
+            TestResult = failValue;
+            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
+        }
+        keyWaitPromptProgrammaticClose_ = false;
+    });
+    keyWaitPrompt_->show();
+    showlog(QStringLiteral("PLC+V3旋钮右旋：已开始等待协议，将执行PLC旋钮整步"));
+
+    runPlcV3TouchSwitchFull(false);
+
+    if (!stepRuntime_.pass) {
+        ++plcKeyBleWaitSeq_;
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        closeKeyWaitPrompt();
+        plcKeyBlePlcOkSummary_.clear();
+        return;
+    }
+
+    if (stepRuntime_.done) {
+        ++plcKeyBleWaitSeq_;
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        closeKeyWaitPrompt();
+        return;
+    }
+
+    armPlcBleKeyWaitTimeout();
+    showlog(currentKeyTestName_ + QStringLiteral("：PLC旋钮整步完成，等待右旋上报"));
 }

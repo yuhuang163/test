@@ -130,7 +130,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(86, "PLC_V3_left触摸整步", true, PLC_V3_KEY_LEFT, startPlcKeyButtonTest("PLC+V3左键", "治具将自动按压左键，请确认设备按键上报", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox", 5)) \
     X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", "治具将自动按压电源键，请确认设备按键上报", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
     X(88, "PLC_V3_switch旋钮整步右旋", true, PLC_V3_SWITCH_RIGHT_WHOLE, startPlcSwitchPlcAndWaitRightRotate()) \
-    /*X(89, "PLC_V3_switch旋钮右旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮整步右旋通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) */ \
+   /* X(89, "PLC_V3_switch旋钮旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮整步右旋通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) */ \
     X(90, "产品串口仪器复位应答1", true, PROD_INST_RESET_ACK_1, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答1"))) \
     X(91, "产品串口仪器复位应答2", true, PROD_INST_RESET_ACK_2, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答2"))) \
     X(92, "产品串口仪器复位应答3", true, PROD_INST_RESET_ACK_3, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答3"))) \
