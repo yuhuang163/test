@@ -1,6 +1,7 @@
 ﻿#include "qfreework.h"
 
 #include <algorithm>
+#include <functional>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QComboBox>
@@ -16,6 +17,9 @@
 #include <QtGlobal>
 #include "qproduct.h"
 #include "ui_qfreework.h"
+
+/** 本轮测试内是否已对 CMW 做过 GPRF 波形侧初始化（与 BlePer/CmwEnableFixedInit 一致）。 */
+static bool gInstrumentCmwGprfPrimed = false;
 
 namespace {
 
@@ -78,6 +82,48 @@ QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segment
 }
 
 }  // namespace
+
+static int brushProfileToBleCmwMHz(int profile) {
+    switch (profile) {
+        case 1:
+        case 4:
+            return 2440;
+        case 2:
+        case 5:
+            return 2480;
+        case 0:
+        case 3:
+        default:
+            return 2402;
+    }
+}
+
+static bool parseBlePerCmwArbScountFree(const QString& response, double* countTime, int* cycles, int* samplesCurrent) {
+    const QString clean = response.trimmed().remove(QLatin1Char('"'));
+    const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    if (parts.size() < 3) {
+        return false;
+    }
+    bool timeOk = false;
+    bool cyclesOk = false;
+    bool samplesOk = false;
+    const double parsedTime = parts.at(0).trimmed().toDouble(&timeOk);
+    const int parsedCycles = parts.at(1).trimmed().toInt(&cyclesOk);
+    const int parsedSamples = parts.at(2).trimmed().toInt(&samplesOk);
+    if (!timeOk || !cyclesOk || !samplesOk) {
+        return false;
+    }
+    if (countTime) {
+        *countTime = parsedTime;
+    }
+    if (cycles) {
+        *cycles = parsedCycles;
+    }
+    if (samplesCurrent) {
+        *samplesCurrent = parsedSamples;
+    }
+    return true;
+}
 
 void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData) {
     QVector<QPair<QString, QString>>* const out = &freeWorkMesSegments_;
@@ -374,7 +420,9 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
         return true;
     }
     const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
-    return nf != nullptr && nf->name.startsWith(QStringLiteral("产品串口"));
+    return nf != nullptr
+           && (nf->name.startsWith(QStringLiteral("产品串口"))
+               || nf->name.startsWith(QStringLiteral("并联CMW")));
 }
 
 void QFreeWork::startTask() {
@@ -920,6 +968,8 @@ void QFreeWork::initDate() {
     currentKeyTestName_.clear();
     currentKeyExpectedKey_.clear();
     closeKeyWaitPrompt();
+    lastBrushInstrumentProfile_ = -1;
+    gInstrumentCmwGprfPrimed = false;
     inovancePlcTcp_.disconnect();
     clearProductInstrumentWatch();
     is_battary_test = 0;
@@ -1540,6 +1590,7 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
         return;
     }
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
+    lastBrushInstrumentProfile_ = profile;
     QString err;
     if (!product->writeRaw(frame, &err)) {
         stepRuntime_.done = true;
@@ -1580,6 +1631,15 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
     stepRuntime_.pass = true;
     const int waitPacketMs = SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt();
     const int stopAckTimeout = SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt();
+    QString cmwErr;
+    if (!freeWorkInstrumentBleBrushCmwBurstIfEnabled(stepName, lastBrushInstrumentProfile_, &cmwErr)) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = cmwErr;
+        TestResult = failValue;
+        showlog(stepName + QStringLiteral("失败：CMW GPRF——") + cmwErr);
+        return;
+    }
     // 清累积与边沿标志，避免沿用上一轮「停止应答」边沿；随后等待窗口内仪器继续往串口吐包并由 parseCmd 累积
     product->clearProductSerialRxAccum();
     showlog(stepName + QStringLiteral("：等待仪器发包 %1ms 后发送停止接收").arg(waitPacketMs));
@@ -1614,6 +1674,275 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
             showlog(stepName + QStringLiteral("失败：等待停止应答超时"));
         });
     });
+}
+
+void QFreeWork::loadWifiBleCmw100Config() {
+    cmw100VisaConfig_.useVisa = true;
+    cmw100VisaConfig_.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();
+    cmw100VisaConfig_.timeoutMs = SETTINGS.value(QStringLiteral("BlePer/CmwTimeoutMs"), 5000).toInt();
+    setVisaProtocolConfig(cmw100VisaConfig_);
+}
+
+bool QFreeWork::runCmwVisa(const std::function<bool(Qvisa*)>& action) {
+    loadWifiBleCmw100Config();
+    setVisaProtocolConfig(cmw100VisaConfig_);
+    return runVisa(action);
+}
+
+bool QFreeWork::freeWorkCmwVisaWrite(const QString& cmd) {
+    return runCmwVisa([&cmd](Qvisa* device) { return device->writeCommand(cmd); });
+}
+
+bool QFreeWork::freeWorkCmwVisaQuery(const QString& cmd, QString* response) {
+    return runCmwVisa([&cmd, response](Qvisa* device) { return device->queryCommand(cmd, response); });
+}
+
+bool QFreeWork::freeWorkPrimeInstrumentCmwGprf(QString* errorMessage) {
+    if (!SETTINGS.value(QStringLiteral("BlePer/CmwEnableFixedInit"), true).toBool()) {
+        gInstrumentCmwGprfPrimed = true;
+        return true;
+    }
+    if (gInstrumentCmwGprfPrimed) {
+        return true;
+    }
+    freeWorkCmwVisaWrite(QStringLiteral("*CLS"));
+    const int cycles =
+        SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    const QString repetition =
+        SETTINGS.value(QStringLiteral("BlePer/CmwArbRepetition"), QStringLiteral("SINGle")).toString();
+    const double level = SETTINGS.value(QStringLiteral("BlePer/CmwTxPowerDbm"), -50.0).toDouble();
+    QString opc;
+    freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe OFF;*OPC?"), &opc);
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:LIST OFF"));
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:BBMode ARB"));
+    const QString waveform = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
+    if (!waveform.isEmpty()) {
+        freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE \"%1\"").arg(waveform));
+        QString ignored;
+        freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE?"), &ignored);
+    }
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:REPetition %1").arg(repetition));
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:CYCLes %1").arg(qMax(1, cycles)));
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:RFSettings:LEVel %1").arg(level, 0, 'f', 1));
+    freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe ON;*OPC?"), &opc);
+    QString err;
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwCheckErrorAfterInit"), false).toBool() &&
+        freeWorkCmwVisaQuery(QStringLiteral("SYSTem:ERRor?"), &err) && !err.startsWith(QLatin1Char('0'))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("CMW100 GPRF初始化错误: %1").arg(err);
+        }
+        return false;
+    }
+    gInstrumentCmwGprfPrimed = true;
+    return true;
+}
+
+bool QFreeWork::freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage) {
+    const int cyclesSetting = SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                                              SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    const int targetCycles =
+        SETTINGS.value(QStringLiteral("BlePer/CmwArbCompleteCycles"), qMax(0, cyclesSetting - 1)).toInt();
+    const int pollIntervalMs =
+        qMax(50, SETTINGS.value(QStringLiteral("BlePer/CmwArbPollIntervalMs"), 200).toInt());
+    const int timeoutMs = qMax(500, SETTINGS.value(QStringLiteral("BlePer/CmwArbTimeoutMs"), 10000).toInt());
+    QElapsedTimer timer;
+    timer.start();
+    QString lastResponse;
+    int lastCycles = 0;
+    while (timer.elapsed() < timeoutMs) {
+        QString response;
+        if (!freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:ARB:SCOunt?"), &response)) {
+            if (errorMessage) {
+                *errorMessage = QStringLiteral("%1 CMW100发包进度查询失败").arg(scenarioLabel);
+            }
+            return false;
+        }
+        lastResponse = response;
+        double countTime = 0.0;
+        int cycles = 0;
+        int samplesCurrent = 0;
+        if (parseBlePerCmwArbScountFree(response, &countTime, &cycles, &samplesCurrent)) {
+            lastCycles = cycles;
+            showlog(QStringLiteral("CMW100发包进度 %1: time=%2s, cycles=%3, samples=%4")
+                        .arg(scenarioLabel)
+                        .arg(countTime, 0, 'f', 3)
+                        .arg(cycles)
+                        .arg(samplesCurrent));
+            if (targetCycles <= 0 || cycles >= targetCycles) {
+                return true;
+            }
+        } else {
+            showlog(QStringLiteral("CMW100发包进度 %1: 无法解析SCOunt返回 %2").arg(scenarioLabel, response));
+        }
+        waitWork(pollIntervalMs);
+    }
+    if (errorMessage) {
+        *errorMessage = QStringLiteral("%1 CMW100 ARB发包超时，最后返回:%2，cycles=%3")
+                            .arg(scenarioLabel, lastResponse)
+                            .arg(lastCycles);
+    }
+    return false;
+}
+
+bool QFreeWork::freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage) {
+    const int cycles =
+        SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
+                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+    const auto stopCmwGen = [this]() {
+        if (!SETTINGS.value(QStringLiteral("BlePer/CmwStopAfterScenario"), true).toBool()) {
+            return;
+        }
+        QString opc;
+        freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe OFF;*OPC?"), &opc);
+        QString state;
+        if (freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe?"), &state)) {
+            showlog(QStringLiteral("CMW100 GPRF状态: %1").arg(state));
+        }
+    };
+    freeWorkCmwVisaWrite(QStringLiteral("*CLS"));
+    freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:RFSettings:FREQuency %1MHz").arg(freqMhz));
+    if (!SETTINGS.value(QStringLiteral("BlePer/CmwUseGuiRfConfig"), true).toBool()) {
+        const QString repetition =
+            SETTINGS.value(QStringLiteral("BlePer/CmwArbRepetition"), QStringLiteral("SINGle")).toString();
+        freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:REPetition %1").arg(repetition));
+        freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:CYCLes %1").arg(qMax(1, cycles)));
+    }
+    QString opc;
+    freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe ON;*OPC?"), &opc);
+    if (!freeWorkCmwVisaWrite(QStringLiteral("TRIGger:GPRF:GEN:ARB:MANual:EXECute"))) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 CMW100触发发包失败").arg(scenarioLabel);
+        }
+        stopCmwGen();
+        return false;
+    }
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwWaitArbScount"), false).toBool()) {
+        if (!freeWorkWaitBleCmwArbComplete(scenarioLabel, errorMessage)) {
+            stopCmwGen();
+            return false;
+        }
+    } else {
+        waitWork(SETTINGS.value(QStringLiteral("BlePer/CmwTriggerWaitMs"), 1000).toInt());
+    }
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwCheckErrorAfterScenario"), false).toBool()) {
+        QString err;
+        if (freeWorkCmwVisaQuery(QStringLiteral("SYSTem:ERRor?"), &err) && !err.startsWith(QLatin1Char('0'))) {
+            if (errorMessage) {
+                *errorMessage = QStringLiteral("%1 CMW100错误: %2").arg(scenarioLabel, err);
+            }
+            stopCmwGen();
+            return false;
+        }
+    }
+    stopCmwGen();
+    return true;
+}
+
+bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile,
+                                                           QString* errorMessage) {
+    // 并联 CMW Profile0～5 各占一步时，可在完成六步后关此项，避免 PER1～PER6 每步再打一发 GPRF。
+    if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwOnStopPer"), true).toBool()) {
+        return true;
+    }
+    if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool()) {
+        return true;
+    }
+    loadWifiBleCmw100Config();
+    if (cmw100VisaConfig_.visaAddress.isEmpty()) {
+        showlog(QStringLiteral("%1：已启用并联射频但未配置 BlePer/CmwVisaAddress，跳过 CMW").arg(scenarioLabel));
+        return true;
+    }
+    if (brushProfile < 0 || brushProfile > 5) {
+        showlog(QStringLiteral("%1：无有效 brush profile（请先完成对应「开始接收」），跳过 CMW").arg(scenarioLabel));
+        return true;
+    }
+    QString idn;
+    if (!runCmwVisa([this, &idn](Qvisa* device) {
+            if (!device->ensureConnected()) {
+                return false;
+            }
+            device->queryCommand(QStringLiteral("*IDN?"), &idn);
+            return true;
+        })) {
+        if (errorMessage) {
+            *errorMessage =
+                QStringLiteral("CMW VISA连接失败（%1）").arg(cmw100VisaConfig_.visaAddress);
+        }
+        return false;
+    }
+    if (!idn.trimmed().isEmpty()) {
+        showlog(QStringLiteral("并联CMW: %1").arg(idn.trimmed()));
+    }
+    if (!freeWorkPrimeInstrumentCmwGprf(errorMessage)) {
+        return false;
+    }
+    const int mhz = brushProfileToBleCmwMHz(brushProfile);
+    const QString label =
+        QStringLiteral("%1 Profile%2@%3MHz").arg(scenarioLabel).arg(brushProfile).arg(mhz);
+    return freeWorkRunSingleCmwBurstAtMhz(mhz, label, errorMessage);
+}
+
+bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile) {
+    auto setDetail = [detail](const QString& s) {
+        if (detail) {
+            *detail = s;
+        }
+    };
+    // if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool()) {
+    //     const QString msg = QStringLiteral("跳过：未勾选并联 CMW100（BleBrushCmwConcurrent）");
+    //     showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(msg));
+    //     setDetail(msg);
+    //     return true;
+    // }
+    if (brushProfile < 0 || brushProfile > 5) {
+        const QString msg = QStringLiteral("Profile无效：%1").arg(brushProfile);
+        setDetail(msg);
+        showlog(QStringLiteral("并联CMW失败：%1").arg(msg));
+        return false;
+    }
+    loadWifiBleCmw100Config();
+    if (cmw100VisaConfig_.visaAddress.isEmpty()) {
+        const QString msg = QStringLiteral("跳过：未配置 BlePer/CmwVisaAddress");
+        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(msg));
+        setDetail(msg);
+        return true;
+    }
+    QString idn;
+    if (!runCmwVisa([this, &idn](Qvisa* device) {
+            if (!device->ensureConnected()) {
+                return false;
+            }
+            device->queryCommand(QStringLiteral("*IDN?"), &idn);
+            return true;
+        })) {
+        const QString err = QStringLiteral("CMW VISA连接失败（%1）").arg(cmw100VisaConfig_.visaAddress);
+        setDetail(err);
+        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(err));
+        return false;
+    }
+    if (!idn.trimmed().isEmpty()) {
+        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(idn.trimmed()));
+    }
+    // 波形/ARB/GPRF 固定侧仅第一次执行完整序列；后续五步只切频开枪（见 gInstrumentCmwGprfPrimed）
+    QString primeErr;
+    if (!freeWorkPrimeInstrumentCmwGprf(&primeErr)) {
+        setDetail(primeErr);
+        showlog(QStringLiteral("并联CMW Profile%1 GPRF初始化失败：%2").arg(brushProfile).arg(primeErr));
+        return false;
+    }
+    const int mhz = brushProfileToBleCmwMHz(brushProfile);
+    const QString label = QStringLiteral("并联CMW播放 Profile%1@%2MHz").arg(brushProfile).arg(mhz);
+    QString burstErr;
+    if (!freeWorkRunSingleCmwBurstAtMhz(mhz, label, &burstErr)) {
+        setDetail(burstErr);
+        showlog(QStringLiteral("并联CMW Profile%1 失败：%2").arg(brushProfile).arg(burstErr));
+        return false;
+    }
+    const QString okLine = QStringLiteral("OK Profile%1 %2MHz").arg(brushProfile).arg(mhz);
+    setDetail(okLine);
+    showlog(okLine);
+    return true;
 }
 
 void QFreeWork::on_stopTest_clicked() {

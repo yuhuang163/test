@@ -1,4 +1,4 @@
-
+﻿
 #include "qfreework.h"
 
 #include <QString>
@@ -18,7 +18,8 @@ struct FreeWorkTestCatalogItem {
 
 /** 与 qsetting 可选区 Tab 标题对应，单一分类规则出处 */
 QString freeWorkTestCategoryForItem(int id, const QString& name) {
-    if (name.startsWith(QStringLiteral("PLC_")) || name.startsWith(QStringLiteral("产品串口"))) {
+    if (name.startsWith(QStringLiteral("PLC_")) || name.startsWith(QStringLiteral("产品串口"))
+        || name.startsWith(QStringLiteral("并联CMW"))) {
         return QStringLiteral("fixture");
     }
     if (id == 57 || name.contains(QStringLiteral("治具"))) {
@@ -143,6 +144,12 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(99, "产品串口开始接收2402_BLE2M", true, PROD_INST_START_RX_2402_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2402_BLE2M"), 3)) \
     X(100, "产品串口开始接收2440_BLE2M", true, PROD_INST_START_RX_2440_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2440_BLE2M"), 4)) \
     X(101, "产品串口开始接收2480_BLE2M", true, PROD_INST_START_RX_2480_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE2M"), 5)) \
+    X(111, "并联CMW播放Profile0", false, FREE_INSTR_CMW_GPRF_P0, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 0); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(112, "并联CMW播放Profile1", false, FREE_INSTR_CMW_GPRF_P1, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 1); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(113, "并联CMW播放Profile2", false, FREE_INSTR_CMW_GPRF_P2, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 2); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(114, "并联CMW播放Profile3", false, FREE_INSTR_CMW_GPRF_P3, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 3); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(115, "并联CMW播放Profile4", false, FREE_INSTR_CMW_GPRF_P4, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 4); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(116, "并联CMW播放Profile5", false, FREE_INSTR_CMW_GPRF_P5, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 5); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
     X(102, "产品串口停止接收与PER1", true, PROD_INST_STOP_RX_PER_1, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER1"))) \
     X(103, "产品串口停止接收与PER2", true, PROD_INST_STOP_RX_PER_2, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER2"))) \
     X(104, "产品串口停止接收与PER3", true, PROD_INST_STOP_RX_PER_3, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER3"))) \
@@ -152,7 +159,6 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(108, "进入蓝牙非信令模式", false, BT_NO_SIGNAL_ENTER, { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::BtNoSignalMode, m); stepRuntime_.testData = QStringLiteral("已下发(无回包放行)");     waitWork(3000); }) \
     X(109, "PLC_V3_switch测试完成M复位", false, PLC_V3_SWITCH_DONE_RESET_M, runPlcSwitchTestDoneResetM()) \
 
-    
 QVector<FreeWorkTestCatalogItem> getFreeWorkTestCatalog() {
     return {
 #define BUILD_CATALOG_ITEM(id, name, needCaseDone, mesTag, actionExpr) \

@@ -1,4 +1,4 @@
-#ifndef QFREEWORK_H
+﻿#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -109,6 +109,25 @@ private:
     QMetaObject::Connection productInstConn_;
     /** 非空表示正在等「停止接收」应答（PER 步）；与构造函数里长期 connect 的槽配合。 */
     QString productInstrumentStopWaitStepName_;
+    /** 最近一次「产品串口开始接收」用到的 profile（0～5），供 PER 步与 CMW 切频对齐。 */
+    int lastBrushInstrumentProfile_ = -1;
+    /** CMW100 VISA 配置，与 Wifi_ble 侧 BlePer/Cmw* 同源。 */
+    Qvisa::ProtocolConfig cmw100VisaConfig_;
+    void loadWifiBleCmw100Config();
+    bool runCmwVisa(const std::function<bool(Qvisa*)>& action);
+    bool freeWorkCmwVisaWrite(const QString& cmd);
+    bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
+    /** 与 docs/测试.md 串口测包并联：在等待 PacketPhaseWaitMs 窗口前按 profile 打一枪 GPRF（可关）。 */
+    bool freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile,
+                                                     QString* errorMessage);
+    /** 首次按 BlePer/Cmw* 写 ARB（与 wifibletest::initializeBlePerCmwGprf 一致）。 */
+    bool freeWorkPrimeInstrumentCmwGprf(QString* errorMessage);
+    /** 轮询 SOURce:GPRF:GEN:ARB:SCOunt? 至目标 cycles。 */
+    bool freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage);
+    /** 单次切频、ON、TRIG、可选等 SCOunt、OFF。 */
+    bool freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage);
+    /** 并联 CMW：对单个 brush profile（0～5）打一发 GPRF；GPRF ARB 侧仅首次会做完整初始化（gInstrumentCmwGprfPrimed）。 */
+    bool runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile);
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
