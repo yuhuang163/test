@@ -167,3 +167,11 @@
 2) SOURce:GPRF:GEN:STATe OFF;*OPC?        // 关发生器；应答 1
 3) SOURce:GPRF:GEN:STATe?                  // 校验应答 OFF
 
+================================================================================
+四、上位机实现（BlePer/Cmw*，源码：work_station/freework/qfreework.cpp / wifi_ble/wifibletest.cpp）
+--------------------------------------------------------------------------------
+• 每条频点突发：BlePer/CmwBurstStatOffFirst（默认 true）先发 SOURce:GPRF:GEN:STATe OFF;*OPC?；随后单步内顺序为 TRIGger:GPRF:GEN:ARB:MANual:EXECute → SOURce:GPRF:GEN:STATe ON;*OPC?，与本文件「一」第 10/11 步一致。
+• 默认 BlePer/CmwBurstPollArbScount=true：周期性查询 SOURce:GPRF:GEN:ARB:SCOunt?（BlePer/CmwArbPollIntervalMs，默认 100ms）；达到 BlePer/CmwArbCompleteCycles/BlePer/CmwArbCycles 约定后再用毫秒补足（Wi‑Fi_BLE 侧为 BlePer/CmwTriggerWaitMs；并联 PER 为 BrushInstrument/PacketPhaseWaitMs 覆盖值）。
+• BlePer/CmwWaitArbScount=true：仍为仅 SCOunt? 等到完成且不补毫秒（遗留语义）。
+• BlePer/CmwVerboseArbPollLog=true：逐次打印 SCOunt 读值；默认为假时仅在完成时打一屏汇总。
+• BlePer/CmwQueryCurrentArbFile（默认 true）：GPRF 初始化后再读 SOURce:GPRF:GEN:ARB:FILE?（下发 FILE 后与「未配置本机路径」时亦可读仪驻留波形）；每条突发切频后 TRIG 前再读一次并在上位机日志打出「仪侧当前波形」。设为 false 可取消突发前的额外 FILE?（初始化阶段仍会尽力读回校验）。

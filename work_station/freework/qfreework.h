@@ -117,15 +117,18 @@ private:
     bool runCmwVisa(const std::function<bool(Qvisa*)>& action);
     bool freeWorkCmwVisaWrite(const QString& cmd);
     bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
-    /** 与 docs/测试.md 串口测包并联：在等待 PacketPhaseWaitMs 窗口前按 profile 打一枪 GPRF（可关）。 */
-    bool freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile,
-                                                     QString* errorMessage);
+    /** 并联 GPRF：`alignedPostTrigHoldMs>=0` 时 TRIG 后固定等待使用该值（与 BrushInstrument/PacketPhaseWaitMs 同源）；若为真且 **`outAlignedWaitDoneByCmw` 输出 true**，表示已在仪器路径内阻塞等满，PER 勿再延时 waitPacketMs。仅当 **未** 开 `BlePer/CmwWaitArbScount` 时才能把「对齐等满」记在 CMW 内。 */
+    /** `ranCmwBurst`：非空时在入口清零；仅在成功执行完 **`freeWorkRunSingleCmwBurstAtMhz`** 后置真（配置跳过或未打突发时保持假）。 */
+    bool freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile, QString* errorMessage,
+                                                     int alignedPostTrigHoldMs = -1, bool* outAlignedWaitDoneByCmw = nullptr,
+                                                     bool* ranCmwBurst = nullptr);
     /** 首次按 BlePer/Cmw* 写 ARB（与 wifibletest::initializeBlePerCmwGprf 一致）。 */
     bool freeWorkPrimeInstrumentCmwGprf(QString* errorMessage);
-    /** 轮询 SOURce:GPRF:GEN:ARB:SCOunt? 至目标 cycles。 */
-    bool freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage);
-    /** 单次切频、ON、TRIG、可选等 SCOunt、OFF。 */
-    bool freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage);
+    /** 轮询 SOURce:GPRF:GEN:ARB:SCOunt? 至目标 cycles；`outElapsedMs` 若非空写入从进入轮询到成功返回的总耗时(ms)。 */
+    bool freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage, int* outElapsedMs = nullptr);
+    /** 单次切频、`TRIGger:...MANual:EXECute`→`STAT ON`（对标 docs/cmw100rx）、可选 SCOunt 轮询、`OFF`。`postTrigHoldMsOverride>=0` 时用于积包毫秒补足。 */
+    bool freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage,
+                                        int postTrigHoldMsOverride = -1);
     /** 并联 CMW：对单个 brush profile（0～5）打一发 GPRF；GPRF ARB 侧仅首次会做完整初始化（gInstrumentCmwGprfPrimed）。 */
     bool runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile);
     void refreshOrderedTestIndexes();
