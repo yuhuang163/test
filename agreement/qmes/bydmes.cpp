@@ -1,4 +1,4 @@
-// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
+﻿// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
 #include "bydmes.h"
 
 #include <QDateTime>
@@ -493,7 +493,8 @@ QJsonObject bydmes::buildBydAddSfcKeyParam(const MesPacketData& pack) const {
 // =============================================================================
 
 QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const {
-    // DATA 为数组或单对象：仅 station==「主板绑定」时取该行 value（避免误用每行自带的 sfc 过程码）
+    // DATA 为数组或单对象：优先按 name（默认「主板」）取该行 value 作为整机 SN；
+    // 与 station 文案无关（例如 station 为「主板电池绑定」时仍可命中）。
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
@@ -509,25 +510,50 @@ QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& response
     } else {
         return {};
     }
-    static const QString kStationMainBoard = SETTINGS.value(QStringLiteral("Mes/GetSfcKeyBindingItemName"), QStringLiteral("主板绑定")).toString().trimmed();
+
+    auto jsonFieldTrimmed = [](const QJsonObject& o, const QString& lowerKey, const QString& upperKey) -> QString {
+        QString x = o.value(lowerKey).toString().trimmed();
+        if (x.isEmpty()) {
+            x = o.value(upperKey).toString().trimmed();
+        }
+        return x;
+    };
+
+    static const QString kSnItemName =
+        SETTINGS.value(QStringLiteral("Mes/GetSfcKeySnItemName"), QStringLiteral("主板")).toString().trimmed();
+    if (!kSnItemName.isEmpty()) {
+        for (const QJsonValue& v : rows) {
+            if (!v.isObject()) {
+                continue;
+            }
+            const QJsonObject o = v.toObject();
+            const QString nm = jsonFieldTrimmed(o, QStringLiteral("name"), QStringLiteral("NAME"));
+            if (nm.compare(kSnItemName, Qt::CaseInsensitive) != 0) {
+                continue;
+            }
+            QString val = jsonFieldTrimmed(o, QStringLiteral("value"), QStringLiteral("VALUE"));
+            if (!val.isEmpty()) {
+                qDebug() << QStringLiteral("[BYD MES] DATA 行 name=%1，解析 value(SN)=%2").arg(nm, val);
+                return val;
+            }
+        }
+    }
+
+    // 兼容旧返回：仅 station==「主板绑定」等配置名时取 value（避免误用每行自带的 sfc 过程码）
+    static const QString kStationMainBoard =
+        SETTINGS.value(QStringLiteral("Mes/GetSfcKeyBindingItemName"), QStringLiteral("主板绑定")).toString().trimmed();
     for (const QJsonValue& v : rows) {
         if (!v.isObject()) {
             continue;
         }
         const QJsonObject o = v.toObject();
-        QString st = o.value(QStringLiteral("station")).toString().trimmed();
-        if (st.isEmpty()) {
-            st = o.value(QStringLiteral("STATION")).toString().trimmed();
-        }
+        QString st = jsonFieldTrimmed(o, QStringLiteral("station"), QStringLiteral("STATION"));
         if (st.isEmpty() || st.compare(kStationMainBoard, Qt::CaseInsensitive) != 0) {
             continue;
         }
-        QString val = o.value(QStringLiteral("value")).toString().trimmed();
-        if (val.isEmpty()) {
-            val = o.value(QStringLiteral("VALUE")).toString().trimmed();
-        }
+        QString val = jsonFieldTrimmed(o, QStringLiteral("value"), QStringLiteral("VALUE"));
         if (!val.isEmpty()) {
-            qDebug() << QStringLiteral("[BYD MES] DATA 行 station=主板绑定，解析 value(SN)=%1").arg(val);
+            qDebug() << QStringLiteral("[BYD MES] DATA 行 station=%1，解析 value(SN)=%2").arg(st, val);
             return val;
         }
     }

@@ -41,7 +41,7 @@
                <string>是否从mes获取mac</string>
               </property>
               <property name="checked">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -54,7 +54,7 @@
                <bool>true</bool>
               </property>
               <property name="checked">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -137,7 +137,7 @@
                  <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string>M9P0DAC5100004B31AMB59S00296</string>
+                 <string/>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>

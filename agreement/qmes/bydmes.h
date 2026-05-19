@@ -1,4 +1,4 @@
-#ifndef BYDMES_H
+﻿#ifndef BYDMES_H
 #define BYDMES_H
 
 #include <QJsonObject>
@@ -39,7 +39,7 @@ private:
     QJsonObject buildBydCompleteParam(const MesPacketData& pack) const;
     QJsonObject buildBydNcCompleteParam(const MesPacketData& pack) const;
     QJsonObject buildBydAddSfcKeyParam(const MesPacketData& pack) const;
-    /// 「按过程码返回值中解析 SN」。
+    /// 「按过程码返回值中解析 SN」：DATA 数组优先匹配 name=Mes/GetSfcKeySnItemName（默认「主板」）项的 value；否则兼容 station=Mes/GetSfcKeyBindingItemName。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
     /// 获取编码校验规则（暂时没用到，比亚迪特有接口）
     QString formatGetCustomDataItemsJson(const QByteArray& responseData) const;

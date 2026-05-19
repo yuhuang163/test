@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include <algorithm>
 #include <QMessageBox>
@@ -990,8 +990,8 @@ void QFreeWork::runPlcSwitchTestDoneResetM() {
     inovancePlcTcp_.disconnect();
     stepRuntime_.pass = true;
     stepRuntime_.testData =
-        pulseMs > 0 ? QStringLiteral("M%1 测试完成复位脉冲(%2ms)").arg(resetM).arg(pulseMs)
-                    : QStringLiteral("M%1 测试完成复位置1(未配脉冲)").arg(resetM);
+        pulseMs > 0 ? QStringLiteral("M%1 复位脉冲%2ms").arg(resetM).arg(pulseMs)
+                    : QStringLiteral("M%1 复位常1").arg(resetM);
     showlog(QStringLiteral("PLC旋钮测试完成复位通过"));
 }
 
@@ -1851,12 +1851,9 @@ void QFreeWork::runPlcModbusConnectTest() {
                         .arg(verifyM + offset)
                         .arg(err));
         } else {
-            stepRuntime_.testData = QStringLiteral("已连 %1:%2，已读M%3(addr=%4)=%5")
+            stepRuntime_.testData = QStringLiteral("已连 %1:%2")
                                         .arg(host)
-                                        .arg(port)
-                                        .arg(verifyM)
-                                        .arg(verifyM + offset)
-                                        .arg(bits.value(0) ? 1 : 0);
+                                        .arg(port);
             showlog(QStringLiteral("PLC_Modbus连接验证读通过: M%1(addr=%2)=%3")
                         .arg(verifyM)
                         .arg(verifyM + offset)
@@ -2178,7 +2175,7 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
         }
     }
 
-    passOk(QStringLiteral("键%1 整步 M%2 Pos%3 Step%4 KeyDone%5")
+    passOk(QStringLiteral("键%1 M%2 P%3 S%4 K%5")
                .arg(keyIndex0To6)
                .arg(keyM)
                .arg(posReadyM)
@@ -2401,12 +2398,12 @@ void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
         }
     }
 
-    passOk(QStringLiteral("旋钮整步 M%1+M%2 Pos%3 Step%4 KeyDone%5")
-               .arg(forwardM)
-               .arg(pressM)
-               .arg(posReadyM)
-               .arg(stepDoneM)
-               .arg(keyDoneM));
+    // passOk(QStringLiteral("旋钮整步 M%1+M%2 Pos%3 Step%4 KeyDone%5")
+    //            .arg(forwardM)
+    //            .arg(pressM)
+    //            .arg(posReadyM)
+    //            .arg(stepDoneM)
+    //            .arg(keyDoneM));
 }
 void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
     const QString rightEn = QStringLiteral("ProductInfo/KeyIdRightRotate_checkBox");

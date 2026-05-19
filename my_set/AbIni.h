@@ -1,4 +1,4 @@
-
+﻿
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件
@@ -68,7 +68,10 @@
 #define PCBA_VER "产品板子测试   V1.5.2"
 #define PRESSURE_VER "压感校测工站   V1.3.9"
 
-
+// V3Pro2604290383   这个是过程条码
+// V3P0R1913G00260328000011
+// V3P0DFA110001D5D1FMB63P00007
+// AIR1123456C29BA91BMB5A700501  这个是pcba的sn
 
 // [PCBA_VER] 增加治具错误码，打印船运电流，只有q系列才会进纯享一开机的时候,立讯增加错误码，mac——sn保存路径设置，y20po改成y20ps，做y30p的适配
 // [QC_VER] 增加y20ps，y30，y30s，按键开机时长，mes多上传软件版本，轴压感卡控,立讯增加错误码，mac——sn保存路径设置，y20po改成y20ps，做y30p的适配
