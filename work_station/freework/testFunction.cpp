@@ -123,13 +123,13 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(78, "进入吸力测试模式", false, SUCTION_MODE_ENTER, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
     X(79, "退出吸力测试模式", false, SUCTION_MODE_EXIT, sendCommandWithRetry([&]() { QVariantMap m; m["enter"] = 0; protocolManager.set(DeviceCmd::SuctionMode, m); })) \
     X(80, "PLC_Modbus连接", false, PLC_MODBUS_CONN, runPlcModbusConnectTest()) \
-    X(81, "PLC_V3_mode触摸整步", true, PLC_V3_KEY_MODE, startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0)) \
-    X(82, "PLC_V3_program触摸整步", true, PLC_V3_KEY_PROGRAM, startPlcKeyButtonTest("PLC+V3程序键", "治具将自动按压程序键，请确认设备按键上报", "ProductInfo/KeyIdProgram", "ProductInfo/KeyIdProgram_checkBox", 1)) \
-    X(83, "PLC_V3_speed触摸整步", true, PLC_V3_KEY_SPEED, startPlcKeyButtonTest("PLC+V3速度键", "治具将自动按压速度键，请确认设备按键上报", "ProductInfo/KeyIdSpeed", "ProductInfo/KeyIdSpeed_checkBox", 2)) \
-    X(84, "PLC_V3_right触摸整步", true, PLC_V3_KEY_RIGHT, startPlcKeyButtonTest("PLC+V3右键", "治具将自动按压右键，请确认设备按键上报", "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox", 3)) \
-    X(85, "PLC_V3_start_pause触摸整步", true, PLC_V3_KEY_START_PAUSE, startPlcKeyButtonTest("PLC+V3开始暂停键", "治具将自动按压开始/暂停键，请确认设备按键上报", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox", 4)) \
-    X(86, "PLC_V3_left触摸整步", true, PLC_V3_KEY_LEFT, startPlcKeyButtonTest("PLC+V3左键", "治具将自动按压左键，请确认设备按键上报", "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox", 5)) \
-    X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", "治具将自动按压电源键，请确认设备按键上报", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
+    X(81, "PLC_V3_mode触摸整步", true, PLC_V3_KEY_MODE, startPlcKeyButtonTest("PLC+V3模式键", QString(), "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0, true)) \
+    X(82, "PLC_V3_program触摸整步", true, PLC_V3_KEY_PROGRAM, startPlcKeyButtonTest("PLC+V3程序键", QString(), "ProductInfo/KeyIdProgram", "ProductInfo/KeyIdProgram_checkBox", 1, true)) \
+    X(83, "PLC_V3_speed触摸整步", true, PLC_V3_KEY_SPEED, startPlcKeyButtonTest("PLC+V3速度键", QString(), "ProductInfo/KeyIdSpeed", "ProductInfo/KeyIdSpeed_checkBox", 2, true)) \
+    X(84, "PLC_V3_right触摸整步", true, PLC_V3_KEY_RIGHT, startPlcKeyButtonTest("PLC+V3右键", QString(), "ProductInfo/KeyIdRight", "ProductInfo/KeyIdRight_checkBox", 3, true)) \
+    X(85, "PLC_V3_start_pause触摸整步", true, PLC_V3_KEY_START_PAUSE, startPlcKeyButtonTest("PLC+V3开始暂停键", QString(), "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox", 4, true)) \
+    X(86, "PLC_V3_left触摸整步", true, PLC_V3_KEY_LEFT, startPlcKeyButtonTest("PLC+V3左键", QString(), "ProductInfo/KeyIdLeft", "ProductInfo/KeyIdLeft_checkBox", 5, true)) \
+    X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", QString(), "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
     X(88, "PLC_V3_switch旋钮整步右旋", true, PLC_V3_SWITCH_RIGHT_WHOLE, startPlcSwitchPlcAndWaitRightRotate()) \
    /* X(89, "PLC_V3_switch旋钮旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮整步右旋通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) */ \
     X(90, "产品串口仪器复位应答1", true, PROD_INST_RESET_ACK_1, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答1"))) \

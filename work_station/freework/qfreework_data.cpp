@@ -278,6 +278,17 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     }
 }
 
+void QFreeWork::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+    // 治具下压期间同步轮询：由 pollKeyCapDuringPress 等待本槽结束
+    if (plcKeyCapSyncReadPending_) {
+        plcKeyCapSyncReadPending_ = false;
+        plcKeyCapSyncReadOk_ = true;
+        plcKeyCapSyncReadValue_ = data.value;
+        plcKeyCapSyncReadAuxId_ = data.auxId;
+        return;
+    }
+}
+
 void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
     if (!isCurrentStep("读取充电电流")) {
         return;

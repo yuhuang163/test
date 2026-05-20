@@ -29,6 +29,7 @@ private:
         uint16_t    serviceId = 0;
         uint16_t    tlvType = 0;
         QString     actionName;
+        QByteArray  requestValue;  // 请求 TLV Value（如按键电容的 KK）
     };
 
     enum PhyParseState {
@@ -121,6 +122,8 @@ private:
     uint8_t       m_fctpSeq = 0;
     QHash<uint8_t, PendingRequest> m_pendingRequests;
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
+    /** handleResponseByType 内当前应答对应的请求上下文（供按键电容等需关联请求参数的处理）。 */
+    PendingRequest m_currentResponseRequest;
 
 signals:
     void send_tuple_parsed(ProtocolTupleData data);

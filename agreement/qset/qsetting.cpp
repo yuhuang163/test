@@ -1311,6 +1311,12 @@ void qsetting::loadConfig() {
     ui->lineEdit_KeyIdLeftRotate->setText(SETTINGS.value("ProductInfo/KeyIdLeftRotate", "10").toString());
     ui->checkBox_KeyIdRightRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox", true).toBool());
     ui->lineEdit_KeyIdRightRotate->setText(SETTINGS.value("ProductInfo/KeyIdRightRotate", "11").toString());
+    ui->lineEdit_KeyCapLow->setText(SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toString());
+    ui->lineEdit_KeyCapHigh->setText(SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toString());
+    ui->lineEdit_KeyCapReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadTimeoutMs"), 5000).toString());
+    ui->lineEdit_KeyCapReadCount->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toString());
+    ui->lineEdit_KeyCapReadIntervalMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toString());
+    ui->lineEdit_KeyCapSingleReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toString());
 
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
@@ -1705,6 +1711,12 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/KeyIdLeftRotate", ui->lineEdit_KeyIdLeftRotate->text());
     SETTINGS.setValue("ProductInfo/KeyIdRightRotate_checkBox", ui->checkBox_KeyIdRightRotate->isChecked());
     SETTINGS.setValue("ProductInfo/KeyIdRightRotate", ui->lineEdit_KeyIdRightRotate->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/Low"), ui->lineEdit_KeyCapLow->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/High"), ui->lineEdit_KeyCapHigh->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadTimeoutMs"), ui->lineEdit_KeyCapReadTimeoutMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadCount"), ui->lineEdit_KeyCapReadCount->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadIntervalMs"), ui->lineEdit_KeyCapReadIntervalMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/SingleReadTimeoutMs"), ui->lineEdit_KeyCapSingleReadTimeoutMs->text());
 
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());

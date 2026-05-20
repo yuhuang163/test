@@ -50,6 +50,8 @@ private:
     QString wifiresult = "";
     double HighCurrent = 0;
     double LowCurrent = 0;
+    quint32 lowKeyCap_ = 0;
+    quint32 highKeyCap_ = 0;
     int measure_wait_time = 15000;
     double measure_ammeter = 0;
     QString wifiMac = "";
@@ -105,6 +107,17 @@ private:
     QString plcKeyBlePlcOkSummary_;
     /** PLC 旋钮整步后上报校验：3=左旋编码器，4=右旋编码器；与 checkbutton 约定一致。 */
     int plcSwitchBlePhase_ = 0;
+    /** PLC 触摸键（0～5）：在治具下压稳定后、抬起前同步多次读电容（非 BLE 上报）。 */
+    bool plcKeyCapPollMode_ = false;
+    int currentKeyCapRequestKk_ = -1;
+    int currentKeyConfiguredId_ = 0;
+    bool plcKeyCapSyncReadPending_ = false;
+    bool plcKeyCapSyncReadOk_ = false;
+    quint32 plcKeyCapSyncReadValue_ = 0;
+    int plcKeyCapSyncReadAuxId_ = -1;
+    QString plcKeyCapPassSummary_;
+    /** 治具仍下压时多次读电容，取最大值卡控；在 runPlcV3TouchKeyFull 内调用。 */
+    bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     /** 仪器应答监听（与 Qproduct::instrument* 信号配合）。 */
     QMetaObject::Connection productInstConn_;
     /** 非空表示正在等「停止接收」应答（PER 步）；与构造函数里长期 connect 的槽配合。 */
@@ -191,7 +204,7 @@ private:
                             const QString& enableKey);
     /** 先 arm 等键与弹窗，再 PLC 整步；PLC 成功后须收到协议按键且 ID 一致才 pass（needCaseDone=true）。 */
     void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
-                               const QString& enableKey, int keyIndex0To6);
+                               const QString& enableKey, int keyIndex0To6, bool useCapacitanceRead = false);
     /** PLC 旋钮整步后仅等左旋上报（phase 3）；治具若实际为右转请用 startPlcSwitchPlcAndWaitRightRotate。 */
     void startPlcSwitchPlcAndWaitLeftRotate();
     /** PLC 旋钮整步后等右旋编码器上报（phase 4）；期望 ID 与勾选见 ProductInfo/KeyIdRightRotate*。 */
@@ -208,6 +221,7 @@ private:
     void runPlcSwitchTestDoneResetM();
     /** 与 Untitled-1.cs RunStepActionAsync 一致的单键整步（长连接）；测试项 needCaseDone 须为 true。 */
     void runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime = true);
+    void resetPlcKeyCapSyncReadState();
     /** 旋钮整步，与脚本 switch 步一致。finishStepRuntime 为 false 时仅完成 PLC，再由左旋/右旋等上报步骤接 BLE。 */
     void runPlcV3TouchSwitchFull(bool finishStepRuntime = true);
 
@@ -233,6 +247,8 @@ private:
     bool plcSendStepDone(QString* errorMessage);
     /** PLC 成功后启动「等协议按键」超时（与 plcKeyBleWaitSeq_ 配合取消）。 */
     void armPlcBleKeyWaitTimeout();
+    /** PLC 整步后同步阻塞等待协议按键/旋钮上报（waitWork 轮询，超时见 KeyTest/TimeoutMs）。 */
+    void waitPlcBleKeyReportBlocking();
     void syncPlcModbusTraceFromSettings();
     void maybeShowlogPlcSessionSummary(const QString& stepTag);
     /** 每步结束时写入 freeWorkMesSegments_（键名取自 NamedFunction::mesTag）。 */
@@ -269,6 +285,7 @@ private slots:
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
+    void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
     void checkbutton(ProtocolButtonStateData data) override;
     void refreshBleState(int state) override;

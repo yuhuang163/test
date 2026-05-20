@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include <algorithm>
 #include <functional>
@@ -313,6 +313,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
     HighCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
     LowCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
+    lowKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toUInt();
+    highKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toUInt();
 
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
@@ -705,7 +707,7 @@ void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promp
 }
 
 void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
-                                      const QString& enableKey, int keyIndex0To6) {
+                                      const QString& enableKey, int keyIndex0To6, bool useCapacitanceRead) {
     if (!SETTINGS.value(enableKey).toBool()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -718,62 +720,108 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
 
     currentKeyTestName_ = testName;
     currentKeyExpectedKey_ = expectedKey;
-    freeWorkKeyWaiting_ = true;
-    stepRuntime_.done = false;
-    stepRuntime_.pass = true;
-    stepRuntime_.testData = "PLC整步与等待按键上报";
-    stepRuntime_.ask = SETTINGS.value(expectedKey).toString();
     plcKeyBlePlcOkSummary_.clear();
     plcSwitchBlePhase_ = 0;
+    plcKeyCapPollMode_ = false;
+    currentKeyCapRequestKk_ = -1;
+    currentKeyConfiguredId_ = 0;
+    resetPlcKeyCapSyncReadState();
+
+    const bool capMode = useCapacitanceRead && keyIndex0To6 >= 0 && keyIndex0To6 <= 5;
+    freeWorkKeyWaiting_ = !capMode;
+    stepRuntime_.done = false;
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = capMode ? QStringLiteral("PLC整步与读取按键电容") : QStringLiteral("PLC整步与等待按键上报");
+    stepRuntime_.ask = SETTINGS.value(expectedKey).toString();
 
     closeKeyWaitPrompt();
-    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, "PLC按键测试", promptText, QMessageBox::NoButton, this);
-    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
-    {
-        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
-        hiddenCloseButton->hide();
+    if (!promptText.isEmpty()) {
+        showlog(testName + QStringLiteral("：") + promptText);
     }
-    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    keyWaitPromptProgrammaticClose_ = false;
-    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
-        keyWaitPrompt_ = nullptr;
-        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
+    if (capMode) {
+        const QString keyIdText = SETTINGS.value(expectedKey).toString().trimmed();
+        bool keyIdOk = false;
+        const int configuredKeyId = keyIdText.toInt(&keyIdOk);
+        if (!keyIdOk || configuredKeyId <= 0) {
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = QStringLiteral("按键ID配置无效:") + keyIdText;
+            TestResult = failValue;
+            showlog(testName + QStringLiteral("失败：按键ID配置无效 ") + keyIdText);
+            return;
+        }
+        currentKeyConfiguredId_ = configuredKeyId;
+        currentKeyCapRequestKk_ = configuredKeyId - 1;
+        lowKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toUInt();
+        highKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toUInt();
+        const QString capAsk = QStringLiteral("[%1,%2]").arg(lowKeyCap_).arg(highKeyCap_);
+        stepRuntime_.ask = QStringLiteral("KK=%1;ID=%2;电容%3")
+                               .arg(currentKeyCapRequestKk_)
+                               .arg(configuredKeyId)
+                               .arg(capAsk);
+        plcKeyCapPollMode_ = true;
+        showlog(testName + QStringLiteral("：治具下压期间读取电容 KK=%1（配置ID=%2 减1），卡控%3，读%4次")
+                    .arg(currentKeyCapRequestKk_)
+                    .arg(configuredKeyId)
+                    .arg(capAsk)
+                    .arg(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt()));
+    } else {
+        showlog(testName + QStringLiteral("：已等待协议按键，将执行PLC整步"));
+    }
+
+    runPlcV3TouchKeyFull(keyIndex0To6, capMode);
+
+    plcKeyCapPollMode_ = false;
+    resetPlcKeyCapSyncReadState();
+
+    if (!capMode) {
+        if (!stepRuntime_.pass) {
             ++plcKeyBleWaitSeq_;
             freeWorkKeyWaiting_ = false;
             plcSwitchBlePhase_ = 0;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = "用户关闭按键弹窗";
-            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
+            closeKeyWaitPrompt();
             plcKeyBlePlcOkSummary_.clear();
-            TestResult = failValue;
-            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
+            return;
         }
-        keyWaitPromptProgrammaticClose_ = false;
-    });
-    keyWaitPrompt_->show();
-    showlog(testName + QStringLiteral("：已等待协议按键，将执行PLC整步"));
-
-    runPlcV3TouchKeyFull(keyIndex0To6, false);
-
-    if (!stepRuntime_.pass) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        plcKeyBlePlcOkSummary_.clear();
-        return;
+        if (stepRuntime_.done) {
+            ++plcKeyBleWaitSeq_;
+            freeWorkKeyWaiting_ = false;
+            plcSwitchBlePhase_ = 0;
+            return;
+        }
+        waitPlcBleKeyReportBlocking();
     }
+}
 
+void QFreeWork::waitPlcBleKeyReportBlocking() {
+    const int bleWaitMs = SETTINGS.value(QStringLiteral("KeyTest/TimeoutMs"), 5000).toInt();
+    const int pollMs = qMax(20, SETTINGS.value(QStringLiteral("KeyTest/PollIntervalMs"), 50).toInt());
+    showlog(currentKeyTestName_ + QStringLiteral("：阻塞等待协议上报（waitWork，超时 %1ms）").arg(bleWaitMs));
+    QElapsedTimer timer;
+    timer.start();
+    while (!stepRuntime_.done && timer.elapsed() < bleWaitMs) {
+        waitWork(pollMs);
+    }
     if (stepRuntime_.done) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
         return;
     }
-
-    armPlcBleKeyWaitTimeout();
+    ++plcKeyBleWaitSeq_;
+    freeWorkKeyWaiting_ = false;
+    const int ph = plcSwitchBlePhase_;
+    plcSwitchBlePhase_ = 0;
+    stepRuntime_.done = true;
+    stepRuntime_.pass = false;
+    const QString plcPart = plcKeyBlePlcOkSummary_;
+    plcKeyBlePlcOkSummary_.clear();
+    QString tail = QStringLiteral("等待设备按键上报超时");
+    if (ph == 3) {
+        tail = QStringLiteral("等待左旋上报超时");
+    } else if (ph == 4) {
+        tail = QStringLiteral("等待右旋上报超时");
+    }
+    stepRuntime_.testData = plcPart.isEmpty() ? tail : plcPart + QStringLiteral("；") + tail;
+    TestResult = failValue;
+    showlog(currentKeyTestName_ + QStringLiteral("失败：%1").arg(tail));
 }
 
 void QFreeWork::armPlcBleKeyWaitTimeout() {
@@ -986,6 +1034,11 @@ void QFreeWork::initDate() {
     ++plcKeyBleWaitSeq_;
     plcKeyBlePlcOkSummary_.clear();
     plcSwitchBlePhase_ = 0;
+    plcKeyCapPollMode_ = false;
+    plcKeyCapPassSummary_.clear();
+    currentKeyCapRequestKk_ = -1;
+    currentKeyConfiguredId_ = 0;
+    resetPlcKeyCapSyncReadState();
     currentKeyTestName_.clear();
     currentKeyExpectedKey_.clear();
     closeKeyWaitPrompt();
@@ -2653,6 +2706,17 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
         QThread::msleep(static_cast<unsigned long>(actionSettle));
     }
 
+    // 与 V3 脚本一致：下压稳定后、StepDone/抬起前读电容（治具仍按压中），读完再继续握手与抬起
+    if (plcKeyCapPollMode_) {
+        QString capSummary;
+        QString capErr;
+        if (!pollKeyCapDuringPress(&capErr, &capSummary)) {
+            fail(capErr.isEmpty() ? QStringLiteral("按下期间读取按键电容失败") : capErr);
+            return;
+        }
+        plcKeyCapPassSummary_ = capSummary;
+    }
+
     if (useHandshake) {
         if (!plcSendStepDone(&err)) {
             fail(QStringLiteral("发送 StepDone 失败: %1").arg(err));
@@ -2701,12 +2765,133 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
         }
     }
 
+    if (plcKeyCapPollMode_ && !plcKeyCapPassSummary_.isEmpty()) {
+        passOk(QStringLiteral("键%1 M%2 P%3 S%4 K%5 电容:%6")
+                   .arg(keyIndex0To6)
+                   .arg(keyM)
+                   .arg(posReadyM)
+                   .arg(stepDoneM)
+                   .arg(keyDoneM)
+                   .arg(plcKeyCapPassSummary_));
+        plcKeyCapPassSummary_.clear();
+        return;
+    }
+
     passOk(QStringLiteral("键%1 M%2 P%3 S%4 K%5")
                .arg(keyIndex0To6)
                .arg(keyM)
                .arg(posReadyM)
                .arg(stepDoneM)
                .arg(keyDoneM));
+}
+
+void QFreeWork::resetPlcKeyCapSyncReadState() {
+    plcKeyCapSyncReadPending_ = false;
+    plcKeyCapSyncReadOk_ = false;
+    plcKeyCapSyncReadValue_ = 0;
+    plcKeyCapSyncReadAuxId_ = -1;
+}
+
+bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
+    const int kk = currentKeyCapRequestKk_;
+    const int configuredKeyId = currentKeyConfiguredId_;
+    const int readCount = qMax(1, SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt());
+    const int intervalMs = qMax(0, SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toInt());
+    const int singleTimeoutMs = qMax(500, SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toInt());
+
+    quint32 bestCap = 0;
+    QStringList sampleTexts;
+
+    for (int i = 0; i < readCount; ++i) {
+        resetPlcKeyCapSyncReadState();
+        plcKeyCapSyncReadPending_ = true;
+        QVariantMap m;
+        m[QStringLiteral("key")] = kk;
+        protocolManager.get(DeviceCmd::KeySignalRead, m);
+
+        QElapsedTimer timer;
+        timer.start();
+        while (plcKeyCapSyncReadPending_ && timer.elapsed() < singleTimeoutMs) {
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
+            QThread::msleep(20);
+        }
+
+        if (plcKeyCapSyncReadPending_) {
+            if (errOut) {
+                *errOut = QStringLiteral("第%1/%2次读电容超时(%3ms)")
+                              .arg(i + 1)
+                              .arg(readCount)
+                              .arg(singleTimeoutMs);
+            }
+            return false;
+        }
+        if (!plcKeyCapSyncReadOk_) {
+            if (errOut) {
+                *errOut = QStringLiteral("第%1/%2次读电容应答无效").arg(i + 1).arg(readCount);
+            }
+            return false;
+        }
+        if (plcKeyCapSyncReadAuxId_ != kk) {
+            if (errOut) {
+                *errOut = QStringLiteral("按键编号不一致：请求KK=%1 应答KK=%2")
+                              .arg(kk)
+                              .arg(plcKeyCapSyncReadAuxId_);
+            }
+            return false;
+        }
+
+        bestCap = qMax(bestCap, plcKeyCapSyncReadValue_);
+        sampleTexts.append(QString::number(plcKeyCapSyncReadValue_));
+        showlog(currentKeyTestName_ + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4")
+                    .arg(i + 1)
+                    .arg(readCount)
+                    .arg(kk)
+                    .arg(plcKeyCapSyncReadValue_));
+
+        if (i + 1 < readCount && intervalMs > 0) {
+            QThread::msleep(static_cast<unsigned long>(intervalMs));
+        }
+    }
+
+    const QString expectedKeyId = QString::number(configuredKeyId);
+    const bool idOk = compareVersions(expectedKeyId, QString::number(kk + 1));
+    const bool capOk = (bestCap >= lowKeyCap_) && (bestCap <= highKeyCap_);
+    const QString capAsk = QStringLiteral("[%1,%2]").arg(lowKeyCap_).arg(highKeyCap_);
+
+    stepRuntime_.ask = capAsk;
+    const QString summary = QStringLiteral("KK:%1 采样[%2] 最大:%3 ID:%4 期望ID:%5")
+                                .arg(kk)
+                                .arg(sampleTexts.join(QLatin1Char(',')))
+                                .arg(bestCap)
+                                .arg(kk + 1)
+                                .arg(expectedKeyId);
+    if (outSummary) {
+        *outSummary = summary;
+    }
+    stepRuntime_.testData = summary;
+
+    if (!idOk) {
+        if (errOut) {
+            *errOut = QStringLiteral("按键ID与配置不符，KK=%1 期望ID=%2").arg(kk).arg(expectedKeyId);
+        }
+        TestResult = failValue;
+        showlog(currentKeyTestName_ + QStringLiteral("失败：") + *errOut);
+        return false;
+    }
+    if (!capOk) {
+        if (errOut) {
+            *errOut = QStringLiteral("电容卡控失败，最大=%1 允许%2").arg(bestCap).arg(capAsk);
+        }
+        TestResult = failValue;
+        showlog(currentKeyTestName_ + QStringLiteral("卡控失败，采样[%1] 最大=%2 允许%3")
+                    .arg(sampleTexts.join(QLatin1Char(',')))
+                    .arg(bestCap)
+                    .arg(capAsk));
+        return false;
+    }
+
+    showlog(currentKeyTestName_ + QStringLiteral("卡控通过，KK=%1 最大电容=%2").arg(kk).arg(bestCap));
+    return true;
 }
 
 void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
@@ -2955,34 +3140,7 @@ void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
     plcKeyBlePlcOkSummary_.clear();
 
     closeKeyWaitPrompt();
-    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, QStringLiteral("PLC旋钮右旋"),
-                                     QStringLiteral("治具将自动完成旋钮动作（实际为右转），请确认设备上报右旋"),
-                                     QMessageBox::NoButton, this);
-    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
-    {
-        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
-        hiddenCloseButton->hide();
-    }
-    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    keyWaitPromptProgrammaticClose_ = false;
-    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
-        keyWaitPrompt_ = nullptr;
-        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
-            ++plcKeyBleWaitSeq_;
-            freeWorkKeyWaiting_ = false;
-            plcSwitchBlePhase_ = 0;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = "用户关闭按键弹窗";
-            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-            plcKeyBlePlcOkSummary_.clear();
-            TestResult = failValue;
-            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
-        }
-        keyWaitPromptProgrammaticClose_ = false;
-    });
-    keyWaitPrompt_->show();
-    showlog(QStringLiteral("PLC+V3旋钮右旋：已开始等待协议，将执行PLC旋钮整步"));
+    showlog(QStringLiteral("PLC+V3旋钮右旋：治具将自动完成旋钮动作，等待设备上报右旋"));
 
     runPlcV3TouchSwitchFull(false);
 
@@ -2999,10 +3157,8 @@ void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
         ++plcKeyBleWaitSeq_;
         freeWorkKeyWaiting_ = false;
         plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
         return;
     }
 
-    armPlcBleKeyWaitTimeout();
-    showlog(currentKeyTestName_ + QStringLiteral("：PLC旋钮整步完成，等待右旋上报"));
+    waitPlcBleKeyReportBlocking();
 }

@@ -2940,7 +2940,7 @@
          <x>10</x>
          <y>100</y>
          <width>247</width>
-         <height>272</height>
+         <height>392</height>
         </rect>
        </property>
        <property name="title">
@@ -3036,6 +3036,66 @@
         </item>
         <item row="0" column="1">
          <widget class="QLineEdit" name="lineEdit_KeyIdPower"/>
+        </item>
+        <item row="9" column="0">
+         <widget class="QLabel" name="label_KeyCapLow">
+          <property name="text">
+           <string>电容下限</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapLow"/>
+        </item>
+        <item row="10" column="0">
+         <widget class="QLabel" name="label_KeyCapHigh">
+          <property name="text">
+           <string>电容上限</string>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapHigh"/>
+        </item>
+        <item row="11" column="0">
+         <widget class="QLabel" name="label_KeyCapReadTimeoutMs">
+          <property name="text">
+           <string>电容读取超时ms</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapReadTimeoutMs"/>
+        </item>
+        <item row="12" column="0">
+         <widget class="QLabel" name="label_KeyCapReadCount">
+          <property name="text">
+           <string>按压期间读次数</string>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapReadCount"/>
+        </item>
+        <item row="13" column="0">
+         <widget class="QLabel" name="label_KeyCapReadIntervalMs">
+          <property name="text">
+           <string>读电容间隔ms</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapReadIntervalMs"/>
+        </item>
+        <item row="14" column="0">
+         <widget class="QLabel" name="label_KeyCapSingleReadTimeoutMs">
+          <property name="text">
+           <string>单次读超时ms</string>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="1">
+         <widget class="QLineEdit" name="lineEdit_KeyCapSingleReadTimeoutMs"/>
         </item>
        </layout>
       </widget>

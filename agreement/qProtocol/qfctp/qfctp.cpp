@@ -295,6 +295,7 @@ void Qfctp::registerResponseHandlers()
 
 void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen)
 {
+    m_currentResponseRequest = req;
     const auto it = m_responseHandlers.constFind(qfctpMakeResponseKey(req.serviceId, req.tlvType));
     if (it != m_responseHandlers.constEnd()) {
         (this->*(it.value()))(mainValue, mainLen);
@@ -507,14 +508,22 @@ void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
 {
     if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        int keyId = -1;
+        if (!m_currentResponseRequest.requestValue.isEmpty()) {
+            keyId = static_cast<int>(static_cast<uint8_t>(m_currentResponseRequest.requestValue.at(0)));
+        }
+        const QString keyText = keyId >= 0 ? QString::number(keyId) : QStringLiteral("?");
         if (mainLen >= 4) {
             const uint32_t cap = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
                                | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
-            qInfo() << "FCTP 按键电容读取 capacitance_u32=" << cap << "raw=" << rawHex;
-            emit send_pb_date(QString("FCTP 按键电容读取 value=%1 raw=%2").arg(cap).arg(rawHex));
-            emit send_key_signal_read({cap});
+            qInfo() << "FCTP 按键电容读取 key=" << keyText << "capacitance_u32=" << cap << "raw=" << rawHex;
+            emit send_pb_date(QStringLiteral("FCTP 按键电容读取 key=%1 value=%2 raw=%3").arg(keyText).arg(cap).arg(rawHex));
+            ProtocolUInt32ValueData out;
+            out.value = cap;
+            out.auxId = keyId;
+            emit send_key_signal_read(out);
         } else {
-            qWarning() << "FCTP 按键电容读取 长度异常 len=" << mainLen << "raw=" << rawHex;
+            qWarning() << "FCTP 按键电容读取 key=" << keyText << "长度异常 len=" << mainLen << "raw=" << rawHex;
         }
     }
 }
@@ -889,6 +898,7 @@ bool Qfctp::sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray &
     req.serviceId = serviceId;
     req.tlvType = tlvType;
     req.actionName = QString::fromUtf8(actionName);
+    req.requestValue = value;
     m_pendingRequests.insert(seq, req);
     return true;
 }
@@ -1108,7 +1118,8 @@ bool Qfctp::getCaseRssiRead(const QVariantMap &map)
 bool Qfctp::getCaseKeySignalRead(const QVariantMap &map)
 {
     const uint8_t keyId = static_cast<uint8_t>(map.value("key").toUInt() & 0xFF);
-    return sendTestsServiceTlv(kTlvKeySignalRead, QByteArray(1, static_cast<char>(keyId)), "读取按键电容值");
+    const QString action = QStringLiteral("读取按键电容值 key=%1").arg(keyId);
+    return sendRequest(kTestsService, kTlvKeySignalRead, QByteArray(1, static_cast<char>(keyId)), action.toUtf8().constData());
 }
 
 bool Qfctp::getCaseLightCalibRead(const QVariantMap &map)
