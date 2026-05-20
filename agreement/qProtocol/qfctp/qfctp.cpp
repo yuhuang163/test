@@ -1,4 +1,5 @@
 ﻿#include "qfctp.h"
+#include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>
 #include <QString>
@@ -17,6 +18,20 @@
 static uint16_t qfctpReadLe16(const uint8_t *p)
 {
     return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
+}
+
+/// 按键电容 4 字节 → uint32；与现场约定一致：大端=0123，小端=2301（高低16位字交换）
+static quint32 qfctpParseKeyCapU32(const uint8_t *p)
+{
+    const QString endian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
+    if (endian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0) {
+        // 小端 2301：原始 12 34 56 78 -> 56 78 12 34
+        return (static_cast<quint32>(p[2]) << 24) | (static_cast<quint32>(p[3]) << 16) | (static_cast<quint32>(p[0]) << 8)
+               | static_cast<quint32>(p[1]);
+    }
+    // 大端 0123：p[0] 为最高字节
+    return (static_cast<quint32>(p[0]) << 24) | (static_cast<quint32>(p[1]) << 16) | (static_cast<quint32>(p[2]) << 8)
+           | static_cast<quint32>(p[3]);
 }
 
 
@@ -514,10 +529,18 @@ void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
         }
         const QString keyText = keyId >= 0 ? QString::number(keyId) : QStringLiteral("?");
         if (mainLen >= 4) {
-            const uint32_t cap = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
-                               | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
-            qInfo() << "FCTP 按键电容读取 key=" << keyText << "capacitance_u32=" << cap << "raw=" << rawHex;
-            emit send_pb_date(QStringLiteral("FCTP 按键电容读取 key=%1 value=%2 raw=%3").arg(keyText).arg(cap).arg(rawHex));
+            const quint32 cap = qfctpParseKeyCapU32(mainValue);
+            const bool cap2301 = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big"))
+                                     .toString()
+                                     .compare(QStringLiteral("little"), Qt::CaseInsensitive)
+                                 == 0;
+            const QString endianTag = cap2301 ? QStringLiteral("2301") : QStringLiteral("0123");
+            qInfo() << "FCTP 按键电容读取 key=" << keyText << "endian=" << endianTag << "capacitance_u32=" << cap
+                    << "raw=" << rawHex;
+            emit send_pb_date(QStringLiteral("FCTP 按键电容读取 key=%1 %2 value=%3 raw=%4")
+                                  .arg(keyText, endianTag)
+                                  .arg(cap)
+                                  .arg(rawHex));
             ProtocolUInt32ValueData out;
             out.value = cap;
             out.auxId = keyId;

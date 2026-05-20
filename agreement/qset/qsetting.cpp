@@ -1317,6 +1317,11 @@ void qsetting::loadConfig() {
     ui->lineEdit_KeyCapReadCount->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toString());
     ui->lineEdit_KeyCapReadIntervalMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toString());
     ui->lineEdit_KeyCapSingleReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toString());
+    {
+        const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
+        ui->comboBox_KeyCapValueEndian->setCurrentIndex(
+            capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
+    }
 
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
@@ -1717,6 +1722,9 @@ void qsetting::saveConfig() {
     SETTINGS.setValue(QStringLiteral("KeyCap/ReadCount"), ui->lineEdit_KeyCapReadCount->text());
     SETTINGS.setValue(QStringLiteral("KeyCap/ReadIntervalMs"), ui->lineEdit_KeyCapReadIntervalMs->text());
     SETTINGS.setValue(QStringLiteral("KeyCap/SingleReadTimeoutMs"), ui->lineEdit_KeyCapSingleReadTimeoutMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
+                      ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
+                                                                           : QStringLiteral("big"));
 
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());

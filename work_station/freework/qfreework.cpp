@@ -2552,38 +2552,12 @@ bool QFreeWork::plcSendStepDone(QString* errorMessage) {
 void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     syncPlcModbusTraceFromSettings();
     maybeShowlogPlcSessionSummary(QStringLiteral("V3键%1").arg(keyIndex0To6));
-    const auto fail = [this](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = msg;
-        stepRuntime_.done = true;
-        showlog(msg);
-    };
-    const auto passOk = [this, finishStepRuntime](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = true;
-        if (finishStepRuntime) {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = true;
-            plcKeyBlePlcOkSummary_.clear();
-        } else if (stepRuntime_.done) {
-            // 阻塞跑 PLC 时事件循环已收到协议并置 done，勿再清掉
-            if (!msg.isEmpty()) {
-                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
-                                            ? msg
-                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
-            }
-            plcKeyBlePlcOkSummary_.clear();
-        } else {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = false;
-            plcKeyBlePlcOkSummary_ = msg;
-        }
-        showlog(msg);
-    };
 
     if (keyIndex0To6 < 0 || keyIndex0To6 > 6) {
-        fail(QStringLiteral("V3 Touch keyIndex 非法: %1").arg(keyIndex0To6));
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("V3 Touch keyIndex 非法: %1").arg(keyIndex0To6);
+        stepRuntime_.done = true;
+        showlog(stepRuntime_.testData);
         return;
     }
 
@@ -2598,7 +2572,10 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
                 .arg(port)
                 .arg(resolvedPlcUnitId()));
     if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-        fail(QStringLiteral("PLC 连接失败: %1").arg(err));
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("PLC 连接失败: %1").arg(err);
+        stepRuntime_.done = true;
+        showlog(stepRuntime_.testData);
         return;
     }
 
@@ -2630,7 +2607,53 @@ void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const int keyM = mBase + keyIndex0To6;
     const int posReadyM = resolvedPlcPositionReadyBase() + keyIndex0To6;
     const int stepDoneM = resolvedPlcStepDoneBase();
+    const int failResetM = resolvedPlcSwitchTestDoneResetM();
     const int keyDoneM = resolvedPlcKeyDoneM();
+    const auto fail = [this, stepDoneM, failResetM, gapMs, offset](const QString& msg) {
+        // 现场要求：按键失败时先补发 StepDone(M260) 再发复位 M211，避免 PLC 状态机卡在等待态
+        if (inovancePlcTcp_.isConnected()) {
+            QString plcErr;
+            showlog(QStringLiteral("按键测试失败补发：StepDone M%1(addr=%2)=1").arg(stepDoneM).arg(stepDoneM + offset));
+            if (!plcWriteCoil(stepDoneM, true, &plcErr)) {
+                showlog(QStringLiteral("按键失败补发 StepDone 失败: %1").arg(plcErr));
+            } else if (gapMs > 0) {
+                QThread::msleep(static_cast<unsigned long>(gapMs));
+            }
+
+            showlog(QStringLiteral("按键测试失败补发：复位 M%1(addr=%2)=1").arg(failResetM).arg(failResetM + offset));
+            if (!plcWriteCoil(failResetM, true, &plcErr)) {
+                showlog(QStringLiteral("按键失败补发复位M失败: %1").arg(plcErr));
+            }
+        }
+
+        inovancePlcTcp_.disconnect();
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = msg;
+        stepRuntime_.done = true;
+        showlog(msg);
+    };
+    const auto passOk = [this, finishStepRuntime](const QString& msg) {
+        inovancePlcTcp_.disconnect();
+        stepRuntime_.pass = true;
+        if (finishStepRuntime) {
+            stepRuntime_.testData = msg;
+            stepRuntime_.done = true;
+            plcKeyBlePlcOkSummary_.clear();
+        } else if (stepRuntime_.done) {
+            // 阻塞跑 PLC 时事件循环已收到协议并置 done，勿再清掉
+            if (!msg.isEmpty()) {
+                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
+                                            ? msg
+                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
+            }
+            plcKeyBlePlcOkSummary_.clear();
+        } else {
+            stepRuntime_.testData = msg;
+            stepRuntime_.done = false;
+            plcKeyBlePlcOkSummary_ = msg;
+        }
+        showlog(msg);
+    };
     showlog(QStringLiteral("PLC按键整步开始: 键Index=%1 KeyM=M%2(addr=%3) PosReady=M%4(addr=%5) "
                            "StepDone=M%6(addr=%7) KeyDone=M%8(addr=%9) 握手=%10 等KeyDone=%11 完成后释放=%12")
                 .arg(keyIndex0To6)
