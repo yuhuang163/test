@@ -40,6 +40,7 @@ private:
     SettingsManager(const SettingsManager&) = delete;
     SettingsManager& operator=(const SettingsManager&) = delete;
 };
+
 typedef struct MesPacketData {
     QString factory;         //工厂
     QString userNo;          //登陆的用户名
@@ -68,6 +69,7 @@ typedef struct MesPacketData {
     QString mac;             // mac地址
     int elapseTime = 1;      //测试耗时（默认 1，单位由 MES 接口定义）
     int testCount = 1;       //测试次数（默认 1）
+    int iskeydata = 0;  // GetTestData 入口分流：0=常规取数，1=BYD AddSfcKey
 
 } MesPacketData;
 

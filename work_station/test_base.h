@@ -248,7 +248,6 @@ signals:
     void sendProcessInspection(MesPacketData);
     void send_end_testPass(MesPacketData);
     void getMesTestValue(MesPacketData);
-    void sendAddSfcKey(MesPacketData);
     void send_kill_test(int data);
     void send_end_test(int data);
 };

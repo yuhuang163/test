@@ -38,7 +38,7 @@ public:
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
-    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; };          // usb口（治具）
+    QComboBox* getUsbcomNameCombo() override { return nullptr; };                      // 万用表改为 VISA 地址配置
     QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; };          // 治具口（治具）
     QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; };  // 设备口（治具）
     QTableWidget* testResultTable() override { return ui->testResultTable; };          // 测试结果表格输入口
@@ -52,6 +52,9 @@ public:
 
 private:
     void applyCurrentProtocolConfig();
+    void loadCurrentAmmeterVisaConfig(Qusb::ProtocolConfig* cfg);
+    void loadCurrentProgrammablePowerConfig();
+    void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
     QByteArray sn;
     double HighCurrent;
     double LowCurrent;
@@ -80,6 +83,9 @@ private:
     QString totalresult = "";
     Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
     bool useProgrammablePower = false;
+    Qvisa::ProtocolConfig programmablePowerVisaConfig_;
+    double programmablePowerMeasuredCurrentA_ = 0.0;
+    bool programmablePowerCurrentReadOk_ = false;
     typedef enum {
         STATE_IDLE,               // 休眠状态
         STATE_WATI_CONNECT,       // 等待 BLE 连接
@@ -135,14 +141,10 @@ private slots:
     void processGetMesTestValue();
 
     void processInspection(QString stringsn);
-    void on_productConnectButton_clicked();
-    void on_productDisconnectButton_clicked();
     void on_usbconnectButton_clicked();
     void on_usbdisconnectButton_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
-    void on_jigConnectButton_clicked();
-    void on_jigDisconnectButton_clicked();
     // void processReceivedData(const QByteArray &data);
     void on_snInput_returnPressed();
     void on_pushButton_clicked();
@@ -150,6 +152,8 @@ private slots:
     void on_pushButton_3_clicked();
     void on_pushButton_4_clicked();
     void on_stopTest_clicked();
+    void on_visa_test_clicked();
+    void on_currentAmmeterVisaApplyButton_clicked();
 };
 
 #endif  // QUIESCENT_CURRENT_H

@@ -319,13 +319,14 @@ void wifibletest::reportBydSfcKey(const QString& dataName, const QVariant& dataV
     p.instruct_num = dataName.trimmed();
     p.itemvalue = valueText;
     p.testCount = qMax(1, qty);
+    p.iskeydata = 1;
 
     if (p.sn.isEmpty() || p.itemvalue.isEmpty()) {
         showlog(QStringLiteral("关键数据上报失败：SFC 或 DATA_VALUE 为空"));
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit sendAddSfcKey(p);
+    emit getMesTestValue(p);
 }
 
 void wifibletest::refreshTupleData(ProtocolTupleData data) {
@@ -2866,4 +2867,35 @@ void wifibletest::on_get_battery_clicked() {
 
 
 
+
+
+void wifibletest::on_usbconnectButton_clicked()
+{
+    loadWifiBleCmw100Config();
+    if (cmw100VisaConfig_.visaAddress.trimmed().isEmpty()) {
+        showlog(QStringLiteral("CMW100 VISA地址未配置：请配置 BlePer/CmwVisaAddress"));
+        return;
+    }
+
+    QString cmd = SETTINGS.value(QStringLiteral("BlePer/CmwDebugQueryCmd"), QStringLiteral("SOURCe:GPRF:GEN:STAT OFF;*OPC?")).toString().trimmed();
+    if (cmd.isEmpty()) {
+        cmd = QStringLiteral("*IDN?");
+    }
+
+    QString response;
+    const bool ok = runCmwVisa([this, &cmd, &response](Qvisa* device) {
+        if (!device->ensureConnected()) {
+            showlog(QStringLiteral("CMW100 VISA连接失败: %1").arg(cmw100VisaConfig_.visaAddress));
+            return false;
+        }
+        return device->queryCommand(cmd, &response);
+    });
+    if (!ok) {
+        showlog(QStringLiteral("CMW100 指令交互失败: %1").arg(cmd));
+        return;
+    }
+
+    showlog(QStringLiteral("CMW100 VISA已连接: %1").arg(cmw100VisaConfig_.visaAddress));
+    showlog(QStringLiteral("CMW100 指令 %1 返回: %2").arg(cmd, response));
+}
 

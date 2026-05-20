@@ -72,9 +72,3 @@ void QMesManager::TestPassAll(MesPacketData pack) {
         mes->TestPass(pack);
     }
 }
-
-void QMesManager::AddSfcKeyAll(MesPacketData pack) {
-    for (auto mes : MesSystems) {
-        mes->AddSfcKey(pack);
-    }
-}

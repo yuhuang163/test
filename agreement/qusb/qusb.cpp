@@ -614,7 +614,7 @@ void Qusb::getMEASure(QString mac)
 {
     Q_UNUSED(mac);
     QString s = "MEASure:CURRent:DC? 500e-3";
-    sendCmd(s);
+        sendCmd(s);
 }
 void Qusb::gethqMEASure()
 {

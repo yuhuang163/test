@@ -178,8 +178,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"U7",  "U7P",  "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P",
-                               "Y30", "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
+    QStringList productList = {"V3", "V3Pro"};
     ui->comboBox_productName->addItems(productList);
 
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};

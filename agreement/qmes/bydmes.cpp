@@ -747,6 +747,10 @@ void bydmes::GetTestData(MesPacketData pack) {
     if (pack.factory != "byd") {
         return;
     }
+    if (pack.iskeydata == 1) {
+        AddSfcKey(pack);
+        return;
+    }
     QString configError;
     if (!bydmes::loadExternalMesConfig(&configError)) {
         emit operateMesError(pack.mechines, configError);
