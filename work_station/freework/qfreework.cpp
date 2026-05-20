@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include <algorithm>
 #include <functional>
@@ -26,6 +26,22 @@ namespace {
 /** Ini：BlePer/CmwVisaTrace，默认 true；打印 [CMW-VISA] >> / << 收发（仅自由工站 CMW 封装路径）。 */
 bool freeWorkShouldLogCmwVisaIo() {
     return SETTINGS.value(QStringLiteral("BlePer/CmwVisaTrace"), true).toBool();
+}
+
+/** BlePer/CmwWaveformFile → 写 FILE 的整行 SCPI；配置已是 '@WAVEFORM\xxx.wv' 时原样下发，不剥单引号。 */
+QString cmwGprfArbFileWriteCommand(const QString& rawPath) {
+    const QString p = rawPath.trimmed();
+    if (p.startsWith(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE"), Qt::CaseInsensitive)) {
+        return p;
+    }
+    if (p.size() >= 2 && p.front() == QLatin1Char('\'') && p.back() == QLatin1Char('\'')) {
+        return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE %1").arg(p);
+    }
+    QString inner = p;
+    if (inner.size() >= 2 && inner.front() == QLatin1Char('"') && inner.back() == QLatin1Char('"')) {
+        inner = inner.mid(1, inner.size() - 2).trimmed();
+    }
+    return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE '%1'").arg(inner);
 }
 
 /** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
@@ -974,6 +990,7 @@ void QFreeWork::initDate() {
     currentKeyExpectedKey_.clear();
     closeKeyWaitPrompt();
     lastBrushInstrumentProfile_ = -1;
+    cmwGprfBurstDoneSinceStartRx_ = false;
     gInstrumentCmwGprfPrimed = false;
     inovancePlcTcp_.disconnect();
     clearProductInstrumentWatch();
@@ -1596,6 +1613,7 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
     }
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
     lastBrushInstrumentProfile_ = profile;
+    cmwGprfBurstDoneSinceStartRx_ = false;
     QString err;
     if (!product->writeRaw(frame, &err)) {
         stepRuntime_.done = true;
@@ -1755,10 +1773,10 @@ bool QFreeWork::freeWorkPrimeInstrumentCmwGprf(QString* errorMessage) {
     freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:STATe OFF;*OPC?"), &opc);
     freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:LIST OFF"));
     freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:BBMode ARB"));
-    const QString waveform = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile"),"@WAVEFORM\WLAN_11ac_VHT_BW20_MCS0_LEN4096.wv").toString().trimmed();
+    const QString waveform = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
     if (!waveform.isEmpty()) {
         showlog(QStringLiteral("CMW GPRF 加载 ARB 波形文件：%1").arg(waveform));
-        freeWorkCmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE \"%1\"").arg(waveform));
+        freeWorkCmwVisaWrite(cmwGprfArbFileWriteCommand(waveform));
         QString arbReadBack;
         if (freeWorkCmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE?"), &arbReadBack)) {
             showlog(QStringLiteral("CMW GPRF SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形路径：%1").arg(arbReadBack.trimmed()));
@@ -1999,6 +2017,17 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
         showlog(QStringLiteral("%1：无有效 brush profile（请先完成对应「开始接收」），跳过 CMW").arg(scenarioLabel));
         return true;
     }
+    // 流程含「并联CMW播放Profile*」时，PER 步不再打第二发（与 docs/测试.md、BleBrushCmwOnStopPer 说明一致）。
+    if (cmwGprfBurstDoneSinceStartRx_) {
+        showlog(QStringLiteral(
+                     "%1：本收包周期内「并联CMW播放Profile*」已发过射频，PER 内跳过重复 GPRF（仅发停止接收；无并联播放步时可开 "
+                     "FreeInstrument/BleBrushCmwOnStopPer）")
+                    .arg(scenarioLabel));
+        if (ranCmwBurst) {
+            *ranCmwBurst = true;
+        }
+        return true;
+    }
     QString idn;
     if (!runCmwVisa([this, &idn](Qvisa* device) {
             if (!device->ensureConnected()) {
@@ -2109,6 +2138,7 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
     const QString okLine = QStringLiteral("OK Profile%1 %2MHz").arg(brushProfile).arg(mhz);
     setDetail(okLine);
     showlog(okLine);
+    cmwGprfBurstDoneSinceStartRx_ = true;
     return true;
 }
 

@@ -1,0 +1,445 @@
+﻿HighCurrent=1500
+LowCurrent=400
+measure_wait_time=1000
+machineNo=SP06_IMU_test01
+standbattary=100
+model=SP06
+action=SP06_IMU_TEST
+line=888
+action=MotorTest
+当前产品为:U7P
+当前设备协议：qfctp
+dongle串口连接成功
+开始测试
+当前dongle的版本为：1.0.3
+MAC地址为：df:a1:10:00:1d:5d
+dongle串口连接断开
+已经关闭串口
+当前设备协议：qfctp
+dongle串口连接成功
+开始测试
+当前dongle的版本为：1.0.3
+MAC地址为：df:a1:10:00:1d:5d
+已发送禁止休眠
+开始测试内容：设置工厂模式
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：设置工厂模式，重试次数=0，测试时长=99ms
+开始测试内容：获取基本信息
+FCTP 固件版本 raw=00 02 0A
+基本信息校验通过
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：获取基本信息，重试次数=0，测试时长=71ms
+开始测试内容：获取BLE RSSI
+FCTP RSSI读取 rssi=-32 dBm raw=E0 FF FF FF
+BLE RSSI卡控通过，当前=-32
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：获取BLE RSSI，重试次数=0，测试时长=69ms
+开始测试内容：获取云端三元组
+三元组获取成功：productKey=0DY2Jp deviceName=gmiruvd2lv8fwc35 deviceSecret=unbay5ad3s56uahb
+测试内容完成：获取云端三元组，重试次数=0，测试时长=470ms
+开始测试内容：写入productKey
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：写入productKey，重试次数=0，测试时长=94ms
+开始测试内容：写入deviceName
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：写入deviceName，重试次数=0，测试时长=95ms
+开始测试内容：写入deviceSecret
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：写入deviceSecret，重试次数=0，测试时长=92ms
+开始测试内容：读取设备三元组并比较
+设备三元组比较通过
+sendCommandWithRetry完成，收到设备响应
+测试内容完成：读取设备三元组并比较，重试次数=0，测试时长=69ms
+开始测试内容：上报三元组写入记录
+三元组写入记录上报成功
+测试内容完成：上报三元组写入记录，重试次数=0，测试时长=398ms
+开始测试内容：进入蓝牙非信令模式
+测试内容完成：进入蓝牙非信令模式，重试次数=0，测试时长=3002ms
+开始测试内容：产品串口仪器复位应答1
+产品串口仪器复位应答1：正在打开产品串口…
+产品串口(仪器)连接成功
+产品串口已打开：COM11
+产品串口仪器复位应答1通过
+测试内容完成：产品串口仪器复位应答1，重试次数=0，测试时长=27ms
+开始测试内容：产品串口开始接收2480_BLE1M
+产品串口开始接收2480_BLE1M通过
+测试内容完成：产品串口开始接收2480_BLE1M，重试次数=0，测试时长=17ms
+开始测试内容：并联CMW播放Profile0
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW Profile0：CMW ARB 波形文件 '@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:LIST OFF
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:BBMode ARB
+[CMW-VISA] << (write ok=yes)
+CMW GPRF 加载 ARB 波形文件：'@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE '@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+CMW GPRF SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形路径："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:REPetition SINGle
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:CYCLes 1000
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:LEVel -50.0
+[CMW-VISA] << (write ok=yes)
+[并联CMW播放 Profile0@2402MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2402MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[并联CMW播放 Profile0@2402MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 并联CMW播放 Profile0@2402MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 并联CMW播放 Profile0@2402MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 并联CMW播放 Profile0@2402MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时717ms
+
+
+
+
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+OK Profile0 2402MHz
+测试内容完成：并联CMW播放Profile0，重试次数=0，测试时长=1382ms
+开始测试内容：产品串口停止接收与PER1
+产品串口停止接收与PER1：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW: Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+[产品串口停止接收与PER1 Profile2@2480MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2480MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[产品串口停止接收与PER1 Profile2@2480MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 产品串口停止接收与PER1 Profile2@2480MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 产品串口停止接收与PER1 Profile2@2480MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 产品串口停止接收与PER1 Profile2@2480MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时717ms
+产品串口停止接收与PER1 Profile2@2480MHz：ARB:SCOunt? 已达设定周期后再补足积包 1283ms（总≥配置的积包毫秒 2000）
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+产品串口停止接收与PER1：写停止接收前延时 0 ms（BrushInstrument/PacketPhaseWaitMs=2000；已实际打并联 CMW 突发则不再追加积包延时）
+产品串口停止接收与PER1失败 仪器发包数=1000 收包=811 PER=0.1890 门限<=0.0500
+测试内容完成：产品串口停止接收与PER1，重试次数=0，测试时长=2063ms
+开始测试内容：产品串口仪器复位应答2
+产品串口仪器复位应答2通过
+测试内容完成：产品串口仪器复位应答2，重试次数=0，测试时长=17ms
+
+
+
+
+开始测试内容：产品串口开始接收2440_BLE1M
+产品串口开始接收2440_BLE1M通过
+测试内容完成：产品串口开始接收2440_BLE1M，重试次数=0，测试时长=15ms
+开始测试内容：并联CMW播放Profile1
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW Profile1：CMW ARB 波形文件 '@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[并联CMW播放 Profile1@2440MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2440MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[并联CMW播放 Profile1@2440MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 并联CMW播放 Profile1@2440MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 并联CMW播放 Profile1@2440MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 并联CMW播放 Profile1@2440MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时716ms
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+OK Profile1 2440MHz
+测试内容完成：并联CMW播放Profile1，重试次数=0，测试时长=1032ms
+开始测试内容：产品串口停止接收与PER2
+产品串口停止接收与PER2：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW: Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+[产品串口停止接收与PER2 Profile1@2440MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2440MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[产品串口停止接收与PER2 Profile1@2440MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 产品串口停止接收与PER2 Profile1@2440MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 产品串口停止接收与PER2 Profile1@2440MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 产品串口停止接收与PER2 Profile1@2440MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时719ms
+产品串口停止接收与PER2 Profile1@2440MHz：ARB:SCOunt? 已达设定周期后再补足积包 1281ms（总≥配置的积包毫秒 2000）
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+产品串口停止接收与PER2：写停止接收前延时 0 ms（BrushInstrument/PacketPhaseWaitMs=2000；已实际打并联 CMW 突发则不再追加积包延时）
+产品串口停止接收与PER2通过 仪器发包数=1000 收包=1589 PER=-0.5890 门限<=0.0500
+测试内容完成：产品串口停止接收与PER2，重试次数=0，测试时长=2068ms
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+开始测试内容：产品串口仪器复位应答3
+产品串口仪器复位应答3通过
+测试内容完成：产品串口仪器复位应答3，重试次数=0，测试时长=17ms
+开始测试内容：产品串口开始接收2402_BLE1M
+产品串口开始接收2402_BLE1M通过
+测试内容完成：产品串口开始接收2402_BLE1M，重试次数=0，测试时长=15ms
+开始测试内容：并联CMW播放Profile2
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW Profile2：CMW ARB 波形文件 '@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[并联CMW播放 Profile2@2480MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2480MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[并联CMW播放 Profile2@2480MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 并联CMW播放 Profile2@2480MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 并联CMW播放 Profile2@2480MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 并联CMW播放 Profile2@2480MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时714ms
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+OK Profile2 2480MHz
+测试内容完成：并联CMW播放Profile2，重试次数=0，测试时长=1045ms
+开始测试内容：产品串口停止接收与PER3
+产品串口停止接收与PER3：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> *IDN?
+[CMW-VISA] << Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+并联CMW: Rohde&Schwarz,CMW,1201.0002k06/141819,3.8.18.8
+[产品串口停止接收与PER3 Profile0@2402MHz] CMW 单次 GPRF ARB：BlePer/CmwWaveformFile='@WAVEFORM\BT_LE_TestPacket_P9_1M.wv'
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> *CLS
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:RFSettings:FREQuency 2402MHz
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:FILE?
+[CMW-VISA] << "@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[产品串口停止接收与PER3 Profile0@2402MHz] SOURce:GPRF:GEN:ARB:FILE? 仪侧当前波形："@WAVEFORM\BT_LE_TestPacket_P9_1M.wv"
+[CMW-VISA] >> TRIGger:GPRF:GEN:ARB:MANual:EXECute
+[CMW-VISA] << (write ok=yes)
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe ON;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+CMW100发包进度 产品串口停止接收与PER3 Profile0@2402MHz: time=0.000s, cycles=0, samples=0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 0.000000E+000,0,0
+[CMW-VISA] >> SOURce:GPRF:GEN:ARB:SCOunt?
+[CMW-VISA] << 6.250000E-001,999,6250
+CMW100发包进度 产品串口停止接收与PER3 Profile0@2402MHz: time=0.625s, cycles=999, samples=6250
+CMW100发包进度 产品串口停止接收与PER3 Profile0@2402MHz：ARB 完成 time=0.625s cycles=999 samples=6250 耗时718ms
+产品串口停止接收与PER3 Profile0@2402MHz：ARB:SCOunt? 已达设定周期后再补足积包 1282ms（总≥配置的积包毫秒 2000）
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe OFF;*OPC?
+[CMW-VISA] << 1
+[CMW-VISA] >> SOURce:GPRF:GEN:STATe?
+[CMW-VISA] << OFF
+CMW100 GPRF状态: OFF
+产品串口停止接收与PER3：写停止接收前延时 0 ms（BrushInstrument/PacketPhaseWaitMs=2000；已实际打并联 CMW 突发则不再追加积包延时）
+产品串口停止接收与PER3失败 仪器发包数=1000 收包=795 PER=0.2050 门限<=0.0500
+测试内容完成：产品串口停止接收与PER3，重试次数=0，测试时长=2065ms
+mesItemValue======|FAC_MODE_SET:PASS|BASE_INFO_RESULT:PASS|SOFTWARE_VERSION:0.2.10|SOFTWARE_VERSION_CHECK:PASS|BLE_RSSI:-32|CLOUD_PRODUCT_KEY:0DY2Jp|CLOUD_DEVICE_NAME:gmiruvd2lv8fwc35|CLOUD_DEVICE_SECRET:unbay5ad3s56uahb|WRITE_PRODUCT_KEY:0DY2Jp|WRITE_DEVICE_NAME:gmiruvd2lv8fwc35|WRITE_DEVICE_SECRET:unbay5ad3s56uahb|READ_PRODUCT_KEY:0DY2Jp|READ_DEVICE_NAME:gmiruvd2lv8fwc35|READ_DEVICE_SECRET:unbay5ad3s56uahb|TUPLE_WRITE_REPORT:V3P0BBBB123DFA110001D5D0L65D3N10012|BT_NO_SIGNAL_ENTER:已下发(无回包放行)|PROD_INST_RESET_ACK_1:040E0405030C00|PROD_INST_START_RX_2480_1M:040E0405332000|FREE_INSTR_CMW_GPRF_P0:OK Profile0 2402MHz|PROD_INST_STOP_RX_PER_1:FAIL;仪器发包数=1000 收包=811 PER=0.1890 门限<=0.0500|PROD_INST_RESET_ACK_2:040E0405030C00|PROD_INST_START_RX_2440_1M:040E0405332000|FREE_INSTR_CMW_GPRF_P1:OK Profile1 2440MHz|PROD_INST_STOP_RX_PER_2:仪器发包数=1000 收包=1589 PER=-0.5890 门限<=0.0500|PROD_INST_RESET_ACK_3:040E0405030C00|PROD_INST_START_RX_2402_1M:040E0405332000|FREE_INSTR_CMW_GPRF_P2:OK Profile2 2480MHz|PROD_INST_STOP_RX_PER_3:FAIL;仪器发包数=1000 收包=795 PER=0.2050 门限<=0.0500|
+MES:报错信息:MES配置文件不存在: D:/MES2/FCT测试/cfg/mes_config.ini
+停止运行
+dongle串口连接断开
+已经关闭串口
+dongle串口连接断开
+已经关闭串口

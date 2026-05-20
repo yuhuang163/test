@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -111,6 +111,8 @@ private:
     QString productInstrumentStopWaitStepName_;
     /** 最近一次「产品串口开始接收」用到的 profile（0～5），供 PER 步与 CMW 切频对齐。 */
     int lastBrushInstrumentProfile_ = -1;
+    /** 自上次「开始接收」后是否已在「并联CMW播放Profile*」步成功打过 GPRF；PER 步据此避免重复播放。 */
+    bool cmwGprfBurstDoneSinceStartRx_ = false;
     /** CMW100 VISA 配置，与 Wifi_ble 侧 BlePer/Cmw* 同源。 */
     Qvisa::ProtocolConfig cmw100VisaConfig_;
     void loadWifiBleCmw100Config();
