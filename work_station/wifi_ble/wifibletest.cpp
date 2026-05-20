@@ -1,4 +1,4 @@
-#include "wifibletest.h"
+﻿#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -300,13 +300,14 @@ void wifibletest::reportBydSfcKey(const QString& dataName, const QVariant& dataV
     p.instruct_num = dataName.trimmed();
     p.itemvalue = valueText;
     p.testCount = qMax(1, qty);
+    p.iskeydata = 1;
 
     if (p.sn.isEmpty() || p.itemvalue.isEmpty()) {
         showlog(QStringLiteral("关键数据上报失败：SFC 或 DATA_VALUE 为空"));
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit sendAddSfcKey(p);
+    emit getMesTestValue(p);
 }
 
 void wifibletest::refreshTupleData(ProtocolTupleData data) {

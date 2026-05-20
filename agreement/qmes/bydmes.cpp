@@ -509,15 +509,15 @@ QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& response
     } else {
         return {};
     }
-    static const QString kStationMainBoard = SETTINGS.value(QStringLiteral("Mes/GetSfcKeyBindingItemName"), QStringLiteral("主板绑定")).toString().trimmed();
+    static const QString kStationMainBoard = SETTINGS.value(QStringLiteral("Mes/GetSfcKeyBindingItemName"), QStringLiteral("主板")).toString().trimmed();
     for (const QJsonValue& v : rows) {
         if (!v.isObject()) {
             continue;
         }
         const QJsonObject o = v.toObject();
-        QString st = o.value(QStringLiteral("station")).toString().trimmed();
+        QString st = o.value(QStringLiteral("name")).toString().trimmed();
         if (st.isEmpty()) {
-            st = o.value(QStringLiteral("STATION")).toString().trimmed();
+            st = o.value(QStringLiteral("NAME")).toString().trimmed();
         }
         if (st.isEmpty() || st.compare(kStationMainBoard, Qt::CaseInsensitive) != 0) {
             continue;
@@ -527,7 +527,7 @@ QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& response
             val = o.value(QStringLiteral("VALUE")).toString().trimmed();
         }
         if (!val.isEmpty()) {
-            qDebug() << QStringLiteral("[BYD MES] DATA 行 station=主板绑定，解析 value(SN)=%1").arg(val);
+            qDebug() << QStringLiteral("[BYD MES] DATA 行 name=主板，解析 value(SN)=%1").arg(val);
             return val;
         }
     }
@@ -719,6 +719,10 @@ void bydmes::ProcessInspection(MesPacketData pack) {
 
 void bydmes::GetTestData(MesPacketData pack) {
     if (pack.factory != "byd") {
+        return;
+    }
+    if (pack.iskeydata == 1) {
+        AddSfcKey(pack);
         return;
     }
     QString configError;

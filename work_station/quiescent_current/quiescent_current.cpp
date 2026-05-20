@@ -612,7 +612,7 @@ void quiescent_current::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
+    // bandingMacSn(mesmacAddress, ui->snInput->text());//获取测试数据不要绑定测试
 }
 
 quiescent_current::~quiescent_current() {
@@ -888,6 +888,10 @@ void quiescent_current::startTask() {
                     showlog(QString("程控电源初始化=%1, 输出打开=%2")
                                 .arg(initOk ? "OK" : "NG")
                                 .arg(outOk ? "OK" : "NG"));
+                    if (outOk) {
+                        QMessageBox::information(this, QStringLiteral("操作提示"),
+                                                 QStringLiteral("请按产品电源键开机"));
+                    }
                 }
 
                 protocolManager.resetAllPb();

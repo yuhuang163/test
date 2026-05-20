@@ -701,14 +701,14 @@ void suction::on_snInput_returnPressed() {
     // BYD + 启用 MES：输入不像公司 SN 时视为过程码，经 getMesTestValue → bydmes::GetTestData 分支走 QuerySnByProcessCode
     // MES站前检测，成功再开始测试
     if (ui->isusemes->checkState()) {
-        processInspection(ui->getMac->text());
+        processInspection(ui->snInput->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
 }
 
 void suction::processGetMesTestValue() {
     if (ui->isformmes->checkState()) {
-        pack.sn = ui->getMac->text();
+        pack.sn = ui->snInput->text();
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
@@ -1491,13 +1491,14 @@ void suction::reportBydSfcKey(const QString& dataName,
     p.instruct_num = dataName.trimmed();
     p.itemvalue = valueText;
     p.testCount = qty;
+    p.iskeydata = 1;
 
     if (p.sn.isEmpty() || p.itemvalue.isEmpty()) {
         showlog(QStringLiteral("关键数据上报失败：SFC 或 DATA_VALUE 为空"));
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit sendAddSfcKey(p);
+    emit getMesTestValue(p);
 }
 
 
