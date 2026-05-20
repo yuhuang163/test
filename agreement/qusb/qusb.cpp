@@ -613,21 +613,8 @@ void Qusb::getbydmeaSure(QString mac)
 void Qusb::getMEASure(QString mac)
 {
     Q_UNUSED(mac);
-    QString s = protocolConfig_.scpiReadCurrentCmd.trimmed();
-    if (s.isEmpty()) {
-        s = "MEASure:CURRent:DC? 500e-3";
-    }
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA测量返回:" << resp;
-            emit send_ammeter_data(resp);
-        }
-        return;
-    }
-    sendCmd(s);
+    QString s = "MEASure:CURRent:DC? 500e-3";
+        sendCmd(s);
 }
 void Qusb::gethqMEASure()
 {
