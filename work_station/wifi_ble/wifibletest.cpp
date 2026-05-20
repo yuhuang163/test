@@ -1,4 +1,4 @@
-﻿#include "wifibletest.h"
+#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -14,6 +14,25 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+
+QString cmwGprfArbFileWriteCommand(const QString& rawPath) {
+    const QString p = rawPath.trimmed();
+    if (p.startsWith(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE"), Qt::CaseInsensitive)) {
+        return p;
+    }
+    if (p.size() >= 2 && p.front() == QLatin1Char('\'') && p.back() == QLatin1Char('\'')) {
+        return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE %1").arg(p);
+    }
+    QString inner = p;
+    if (inner.size() >= 2 && inner.front() == QLatin1Char('"') && inner.back() == QLatin1Char('"')) {
+        inner = inner.mid(1, inner.size() - 2).trimmed();
+    }
+    return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE '%1'").arg(inner);
+}
+
+}  // namespace
 
 void wifibletest::on_pushButton_clicked() {
     // ui->macInput->setText("f4:12:fa:c5:51:c6");
@@ -1086,7 +1105,7 @@ bool wifibletest::initializeBlePerCmwGprf(QString* errorMessage) {
     cmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:BBMode ARB"));
     const QString waveform = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
     if (!waveform.isEmpty()) {
-        cmwVisaWrite(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE \"%1\"").arg(waveform));
+        cmwVisaWrite(cmwGprfArbFileWriteCommand(waveform));
         QString ignored;
         cmwVisaQuery(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE?"), &ignored);
     }

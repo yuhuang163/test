@@ -1,4 +1,4 @@
-#ifndef BYDMES_H
+﻿#ifndef BYDMES_H
 #define BYDMES_H
 
 #include <QJsonObject>

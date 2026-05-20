@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>qsetting</class>
  <widget class="QWidget" name="qsetting">
@@ -3045,7 +3045,7 @@
          <x>290</x>
          <y>160</y>
          <width>304</width>
-         <height>137</height>
+         <height>207</height>
         </rect>
        </property>
        <property name="title">
@@ -3105,6 +3105,29 @@
          <widget class="QLineEdit" name="lineEdit_brushInstrumentStopAckTimeoutMs">
           <property name="text">
            <string>5000</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0" colspan="2">
+         <widget class="QCheckBox" name="checkBox_freeInstrumentBleBrushCmwConcurrent">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;勾选后「停止接收与PER」步在等待 BrushInstrument/PacketPhaseWaitMs 前先经 VISA 打 CMW GPRF ARB（与 BlePer/Cmw* 同源）；需 BlePer/CmwVisaAddress。调试：BlePer/CmwVisaTrace 打印每条 SCPI/读回。顺序对标 docs/cmw100rx.txt：突发内 TRIG→STAT ON，默认 BlePer/CmwBurstPollArbScount=true 轮询 SOURce:GPRF:GEN:ARB:SCOunt? 再补足毫秒；BlePer/CmwWaitArbScount=true 仍为仅轮询不补足的旧语义；BlePer/CmwBurstPollArbScount=false 退回纯定时。INI：FreeInstrument/BleBrushCmwConcurrent。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>并联 CMW100 射频刷包（GPRF）</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0" colspan="2">
+         <widget class="QCheckBox" name="checkBox_freeInstrumentBleBrushCmwOnStopPer">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;勾选：每个「停止接收与PER」步在等待发包窗口前再打一发GPRF（与 profile 对齐）。取消勾选：适合已在前序执行「并联CMW播放Profile0～5」，避免 PER1～PER6 重复触发。INI：FreeInstrument/BleBrushCmwOnStopPer，默认勾选。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>停止接收/PER步内再打一发GPRF（按频点）</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
