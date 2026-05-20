@@ -1,4 +1,4 @@
-#ifndef QFREEWORK_H
+﻿#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -179,6 +179,10 @@ private:
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
     void applyTupleByMac();
+    /** BYD AddSfcKey：单条关键物料（DATA_NAME/DATA_VALUE/QTY）。 */
+    void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
+    /** 蓝牙测试：三元组成功后上报 SN / 三元组 / mac 共 5 条关键物料。 */
+    void reportBydBluetoothMesKeyMaterials();
     /** 三元组未就绪或字段为空时置失败并返回 true（调用方应跳过 sendCommandWithRetry）。 */
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();

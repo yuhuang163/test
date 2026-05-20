@@ -468,7 +468,7 @@ QJsonObject bydmes::buildBydNcCompleteParam(const MesPacketData& pack) const {
     param["STATION_ID"] = settingsValue("StationID");
     const QString ncValue = pack.error.isEmpty() ? QString("TEST_ITEM_NG") : pack.error;
     param["NC_CODE"] = ncValue;
-    param["NC_CONTEXT"] = "不良原因:" + ncValue + "; 测试结果:" + pack.result;
+    param["NC_CONTEXT"] = QStringLiteral("\"不良原因=%1; 测试结果=%2\"").arg(ncValue, pack.result);
     param["NC_TYPE"] = ncValue;
     param["SCHEDULING_ID"] = settingsValue("SchedulingID");
     param["CLIENT_ID"] = settingsValue("ClientID");
@@ -888,7 +888,7 @@ void bydmes::TestPass(MesPacketData pack) {
     }
 
     const QString normalizedResult = pack.result;
-    const bool isFailResult = (normalizedResult == "FAIL");
+    const bool isFailResult = (normalizedResult == "FAIL"||normalizedResult == "NG");
     const QString completeMethod = isFailResult ? "NcComplete" : "Complete";
     const QJsonObject completeParam = isFailResult ? buildBydNcCompleteParam(pack) : buildBydCompleteParam(pack);
     if (emitIfMissingLoginClientOrNet(pack, completeParam, completeMethod)) {

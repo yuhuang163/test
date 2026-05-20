@@ -883,7 +883,7 @@ void test_base::solveMesSucess(const int mechines) {
         return;
     }
     if (mechines == getIndex()) {
-        appendStationResult(testItems, QStringLiteral("MES启动"), QStringLiteral("OK"), passValue);
+        // appendStationResult(testItems, QStringLiteral("MES启动"), QStringLiteral("OK"), passValue);
         testResultTableUpdate(testItems);
 
         showlog("mes操作成功");
