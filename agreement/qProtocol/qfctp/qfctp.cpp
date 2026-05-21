@@ -510,6 +510,7 @@ void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
         if (mainLen >= 4) {
             const uint32_t cap = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8)
                                | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
+                               
             qInfo() << "FCTP 按键电容读取 capacitance_u32=" << cap << "raw=" << rawHex;
             emit send_pb_date(QString("FCTP 按键电容读取 value=%1 raw=%2").arg(cap).arg(rawHex));
             emit send_key_signal_read({cap});

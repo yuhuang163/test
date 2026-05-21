@@ -468,7 +468,7 @@ QJsonObject bydmes::buildBydNcCompleteParam(const MesPacketData& pack) const {
     param["STATION_ID"] = settingsValue("StationID");
     const QString ncValue = pack.error.isEmpty() ? QString("TEST_ITEM_NG") : pack.error;
     param["NC_CODE"] = ncValue;
-    param["NC_CONTEXT"] = "不良原因:" + ncValue + "; 测试结果:" + pack.result;
+    param["NC_CONTEXT"] = QStringLiteral("不良原因:%1; 测试结果:%2").arg(ncValue, pack.result);
     param["NC_TYPE"] = ncValue;
     param["SCHEDULING_ID"] = settingsValue("SchedulingID");
     param["CLIENT_ID"] = settingsValue("ClientID");

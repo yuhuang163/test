@@ -1808,7 +1808,7 @@ void wifibletest::startTask() {
                     protocolManager.get(DeviceCmd::GetBattery);
                 }
                 break;
-
+            
             case STATE_TUPLE_APPLY:
                 if (!tupleStepStarted_) {
                     tupleStepStarted_ = true;

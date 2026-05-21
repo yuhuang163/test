@@ -254,18 +254,23 @@ void Qusb::processScpiData(const QByteArray &byte)
     {
         if (c == '\r' || c == '\n')
         {
-            // 遇到\r或\n时停止追加字符
-            break;
+            const QString line = cmd.trimmed();
+            cmd.clear();
+            if (!line.isEmpty()) {
+                processCmd(line, parameter);
+            }
+            continue;
         }
-        dataQueue.push_back((uint8_t)c);
-    }
-    while (dataQueue.isEmpty() == false)
-    {
-        char c = dataQueue.dequeue();
         cmd += c;
+        if (c == ';')
+        {
+            const QString line = cmd.trimmed();
+            cmd.clear();
+            if (!line.isEmpty()) {
+                processCmd(line, parameter);
+            }
+        }
     }
-    processCmd(cmd, parameter);
-    cmd.clear();
 }
 
 void Qusb::setProtocolConfig(const ProtocolConfig &config)

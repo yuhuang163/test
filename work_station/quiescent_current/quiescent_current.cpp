@@ -185,9 +185,25 @@ void quiescent_current::loadCurrentProgrammablePowerConfig() {
                        QStringLiteral("MEASure:CURRent:DC? 500e-3"))
             .toString();
     setVisaProtocolConfig(programmablePowerVisaConfig_);
-    const double v = programmablePowerVisaConfig_.powerVoltageV;
-    const double a = programmablePowerVisaConfig_.powerCurrentA;
-    const bool cfgOk = runVisa([v, a](Qvisa* device) { return device->configureProgrammablePower(v, a); });
+}
+
+bool quiescent_current::setProgrammablePowerOutput(bool enable) {
+    if (!useProgrammablePower) {
+        showlog(QStringLiteral("程控电源未启用，跳过输出%1")
+                    .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
+        return true;
+    }
+    bool ok = runVisa([enable](Qvisa* device) { return device->setProgrammablePowerOutput(enable); }, useProgrammablePower);
+    if (!ok) {
+        showlog(QStringLiteral("程控电源输出%1失败，重连VISA后重试")
+                    .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
+        resetVisaBackend();
+        ok = runVisa([enable](Qvisa* device) { return device->setProgrammablePowerOutput(enable); }, useProgrammablePower);
+    }
+    showlog(QStringLiteral("程控电源输出%1=%2")
+                .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭"))
+                .arg(ok ? QStringLiteral("OK") : QStringLiteral("NG")));
+    return ok;
 }
 
 void quiescent_current::refreshProgrammablePowerCurrent(double valueAmps, bool ok) {
@@ -881,13 +897,29 @@ void quiescent_current::startTask() {
         switch (state) {
             case STATE_IDLE: {  // 复位一切
                 if (useProgrammablePower) {
-                    const bool initOk =
-                        runVisa([](Qvisa* device) { return device->initializeProgrammablePower(); }, useProgrammablePower);
-                    const bool outOk =
-                        runVisa([](Qvisa* device) { return device->setProgrammablePowerOutput(true); }, useProgrammablePower);
-                    showlog(QString("程控电源初始化=%1, 输出打开=%2")
-                                .arg(initOk ? "OK" : "NG")
+                    applyCurrentProtocolConfig();
+                    if (!programmablePowerVisaConfig_.useVisa || programmablePowerVisaConfig_.visaAddress.trimmed().isEmpty()) {
+                        showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
+                        pack.itemvalue = "power_visa_config=NG";
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                        break;
+                    }
+                    showlog(QStringLiteral("开始配置程控电源：address=%1")
+                                .arg(programmablePowerVisaConfig_.visaAddress));
+                    const bool powerCfgOk =
+                        runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); },
+                                useProgrammablePower);
+                    const bool outOk = setProgrammablePowerOutput(true);
+                    showlog(QString("程控电源配置=%1, 输出打开=%2")
+                                .arg(powerCfgOk ? "OK" : "NG")
                                 .arg(outOk ? "OK" : "NG"));
+                    if (!powerCfgOk || !outOk) {
+                        pack.itemvalue = "power_on=NG";
+                        totalresult = failValue;
+                        state = STATE_SAVE_RESULT;
+                        break;
+                    }
                     if (outOk) {
                         QMessageBox::information(this, QStringLiteral("操作提示"),
                                                  QStringLiteral("请按产品电源键开机"));
@@ -1042,11 +1074,7 @@ void quiescent_current::startTask() {
 
             case STATE_SAVE_RESULT:
                 stringsn = "";
-                if (useProgrammablePower) {
-                    const bool outOffOk =
-                        runVisa([](Qvisa* device) { return device->setProgrammablePowerOutput(false); }, useProgrammablePower);
-                    showlog(QString("程控电源输出关闭=%1").arg(outOffOk ? "OK" : "NG"));
-                }
+                setProgrammablePowerOutput(false);
                 if (totalresult == passValue) {
                     pack.result = "PASS";
                     pack.sn = ui->snInput->text();
@@ -1242,11 +1270,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
 
 void quiescent_current::on_stopTest_clicked() {
     showlog("触发停止测试");
-    if (useProgrammablePower) {
-        const bool outOffOk =
-            runVisa([](Qvisa* device) { return device->setProgrammablePowerOutput(false); }, useProgrammablePower);
-        showlog(QString("程控电源输出关闭=%1").arg(outOffOk ? "OK" : "NG"));
-    }
+    setProgrammablePowerOutput(false);
     usblogwaittime->stop();
     ui->macInput->clear();
     ui->snInput->clear();
@@ -1273,21 +1297,19 @@ void quiescent_current::on_visa_test_clicked()
         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
         return;
     }
-    const bool initOk =
-    runVisa([](Qvisa* device) { return device->initializeProgrammablePower(); }, useProgrammablePower);
     if (!runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); })) {
         showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
         return;
     }
 
 
-    const bool outOnOk = runVisa([](Qvisa* device) { return device->setProgrammablePowerOutput(true); });
+    const bool outOnOk = setProgrammablePowerOutput(true);
     if (!outOnOk) {
         showlog(QStringLiteral("程控电源输出打开失败"));
         return;
     }
     waitWork(SETTINGS.value(QStringLiteral("Current/PowerOnWaitMs"), 20000).toInt());
-    const bool outOffOk = runVisa([](Qvisa* device) { return device->setProgrammablePowerOutput(false); });
+    const bool outOffOk = setProgrammablePowerOutput(false);
 
     showlog(QStringLiteral("程控电源已按配置上电：电压=%1V，限流=%2A，链路=%3")
                     .arg(programmablePowerVisaConfig_.powerVoltageV, 0, 'f', 2)

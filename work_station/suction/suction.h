@@ -25,6 +25,7 @@ public:
     ImuDataT orgData;
     void startTask() override;
     void processReceivedData(const QByteArray& data) override;
+    void readUsbSerialPortData(void);
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
     void refreshJigUartState(int state) override;
@@ -57,7 +58,7 @@ private:
     void applySuctionProtocolConfig();
     void loadSuctionProgrammablePowerConfig();
     /// 外接程控电源输出开关（VISA）
-    void setExternalProgrammablePowerOutput(bool enable);
+    bool setExternalProgrammablePowerOutput(bool enable);
     QByteArray sn;
     double HighSuction;
     double LowSuction;
@@ -93,12 +94,14 @@ private:
     QVector<double> damRawChannels_;
     double damLeftKpa_ = 0.0;
     double damRightKpa_ = 0.0;
+    bool suctionUsePicoSensor = true;
+    QString picoRxBuffer_;
 
     // 双通道测试参数
     int damLeftChannel = 1;
     int damRightChannel = 2;
-    int suctionSampleDurationMs = 15000;
-    int suctionSampleIntervalMs = 100;
+    int suctionSampleDurationMs = 10000;
+    int suctionSampleIntervalMs = 20;
     double suctionPeakTargetKpa = 36.0;
     double suctionPeakToleranceKpa = 2.6;
     double suctionPeakDiffMaxKpa = 2.6;
@@ -155,6 +158,9 @@ private:
     void reportBydSfcKey(const QString& dataName,
                          const QVariant& dataValue,
                          int qty = 1);
+    bool sendPicoAtCommand(const QString& cmd);
+    void sendPicoSysModeStart();
+    void sendPicoSysModeStop();
 
 signals:
     void send_go_next_focus();

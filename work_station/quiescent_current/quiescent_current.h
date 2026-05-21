@@ -54,6 +54,7 @@ private:
     void applyCurrentProtocolConfig();
     void loadCurrentAmmeterVisaConfig(Qusb::ProtocolConfig* cfg);
     void loadCurrentProgrammablePowerConfig();
+    bool setProgrammablePowerOutput(bool enable);
     void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
     QByteArray sn;
     double HighCurrent;
