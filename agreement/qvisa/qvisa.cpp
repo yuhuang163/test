@@ -90,6 +90,7 @@ bool Qvisa::writeCommand(const QString& cmd)
     if (!payload.endsWith('\n')) {
         payload.append('\n');
     }
+    qDebug().noquote() << "VISA TX:" << QString::fromLatin1(payload.toHex(' ').toUpper());
     ViUInt32 writeCount = 0;
     const ViStatus status = viWrite(visaInst_, reinterpret_cast<ViBuf>(payload.data()),
                                     static_cast<ViUInt32>(payload.size()), &writeCount);
@@ -117,8 +118,10 @@ bool Qvisa::queryCommand(const QString& cmd, QString* response)
         qDebug() << "VISA读取失败:" << cmd << "status=" << status;
         return false;
     }
+    const QByteArray data(buffer, static_cast<int>(readCount));
+    qDebug().noquote() << "VISA RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     if (response) {
-        *response = QString::fromLocal8Bit(buffer, static_cast<int>(readCount)).trimmed();
+        *response = QString::fromLocal8Bit(data).trimmed();
     }
     return true;
 #else

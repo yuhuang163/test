@@ -1,4 +1,4 @@
-﻿// Qadb.cpp
+// Qadb.cpp
 #include "Qadb.h"
 #include <QDebug>
 #if _MSC_VER >= 1600
@@ -40,7 +40,9 @@ bool Qadb::start() {
 
 void Qadb::stop() {
     if(adbShell && adbShell->state() != QProcess::NotRunning) {
-        adbShell->write("exit\n");
+        const QByteArray exitCommand = "exit\n";
+        qDebug().noquote() << "ADB TX:" << QString::fromLatin1(exitCommand.toHex(' ').toUpper());
+        adbShell->write(exitCommand);
         adbShell->waitForFinished(1000);
     }
     commandQueue.clear();
@@ -77,12 +79,15 @@ void Qadb::processNextCommand() {
     CmdItem &item = commandQueue.head();
     QString fullCmd = item.command + " ; echo " + item.endMark;
      // qDebug() << "[Qshell] exec:" << fullCmd;
-    adbShell->write((fullCmd + "\n").toUtf8());
+    const QByteArray data = (fullCmd + "\n").toUtf8();
+    qDebug().noquote() << "ADB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
+    adbShell->write(data);
 }
 
 void Qadb::onReadyRead() {
     QByteArray output = adbShell->readAllStandardOutput();
     if(output.isEmpty()) return;
+    qDebug().noquote() << "ADB RX:" << QString::fromLatin1(output.toHex(' ').toUpper());
 
     cmdBuffer += QString(output);
 
@@ -153,6 +158,9 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
 
     connect(keyProcess, &QProcess::readyReadStandardOutput, this, [this]() {
         QByteArray data = keyProcess->readAllStandardOutput();
+        if (!data.isEmpty()) {
+            qDebug().noquote() << "ADB RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
+        }
 
         // 解析按键数据 (16/24字节结构根据 event size)
         // 这里简单演示，只判断 Power/ Shutter key
@@ -190,6 +198,7 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
                 keyProcess = nullptr;
             });
 
+    qDebug().noquote() << "ADB TX:" << QString::fromLatin1(cmd.toUtf8().toHex(' ').toUpper());
     keyProcess->start(cmd);
 }
 

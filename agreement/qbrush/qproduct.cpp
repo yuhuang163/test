@@ -1,4 +1,4 @@
-﻿#include "qproduct.h"
+#include "qproduct.h"
 
 #include <QDebug>
 #include <QSerialPort>
@@ -34,6 +34,7 @@ bool Qproduct::writeRaw(const QByteArray& frame, QString* errorOut) {
         return false;
     }
     const qint64 n = port_->write(frame);
+    qDebug().noquote() << "PRODUCT TX:" << QString::fromLatin1(frame.toHex(' ').toUpper());
     if (n != frame.size()) {
         if (errorOut)
             *errorOut = QStringLiteral("write incomplete");
@@ -85,6 +86,7 @@ double Qproduct::computePer(int instrumentSendCount, int receivedCount) {
 
 void Qproduct::parseCmd(const QByteArray& data) {
     if (!data.isEmpty()) {
+        qDebug().noquote() << "PRODUCT RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
         // 仪器侧原始收包：打 hex 便于与 docs/测试.md 对照
         qDebug() << "[Qproduct] parseCmd len=" << data.size() << "hex=" << bytesToHex(data);
         productSerialRxAccum_.append(data);

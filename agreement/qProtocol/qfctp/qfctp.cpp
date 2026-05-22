@@ -1,4 +1,4 @@
-﻿#include "qfctp.h"
+#include "qfctp.h"
 #include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>
@@ -261,7 +261,7 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
     }
 
     const QByteArray actionUtf8 = req.actionName.toUtf8();
-    qDebug() << "FCTP RX:" << actionUtf8.constData()
+    qDebug() << "FCTP RX DETAIL:" << actionUtf8.constData()
              << "seq=" << static_cast<int>(seq)
              << "service=" << serviceId
              << "tlv_type=" << mainType
@@ -838,6 +838,7 @@ bool Qfctp::sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket) 
         *outPhyPacket = phyPacket;
     }
     const qint64 n = serialPort->write(phyPacket);
+    qDebug().noquote() << "FCTP TX:" << QString::fromLatin1(phyPacket.toHex(' ').toUpper());
     if (n != phyPacket.size()) {
         qWarning() << "FCTP 产测模式发送不完整" << n << "/" << phyPacket.size();
         return false;
@@ -894,7 +895,7 @@ bool Qfctp::sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray valu
 
 
 
-    qDebug() << "FCTP TX:" << actionName
+    qDebug() << "FCTP TX DETAIL:" << actionName
              << "seq=" << static_cast<int>(seq)
              << "service=" << serviceId
              << "tlv_type=" << tlvType
@@ -1191,6 +1192,7 @@ void Qfctp::parseCmd(const QByteArray& byte) {
     if (!tryUnwrapPhyPacket(byte, innerPackets)) {
         return;
     }
+    qDebug().noquote() << "FCTP RX:" << QString::fromLatin1(byte.toHex(' ').toUpper());
     // qDebug() << "FCTP 收到外层包"
     //          << "outer=" << byte.toHex(' ')
     //          << "inner_count=" << innerPackets.size();
