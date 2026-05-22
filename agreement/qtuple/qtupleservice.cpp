@@ -17,6 +17,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QSysInfo>
+#include <QtGlobal>
 
 #include "my_set/my_typedef.h"
 
@@ -387,22 +388,27 @@ QString QTupleService::normalizedBaseUrl() const {
 }
 
 bool QTupleService::requestGet(const QString& path, const QString& query, QByteArray* response, QString* error, int* httpStatus) {
-    QNetworkAccessManager manager;
     QUrl url(normalizedBaseUrl() + path);
     if (!query.isEmpty()) {
         url.setQuery(query);
     }
-    if (SETTINGS.value("Tuple/UseCurl", true).toBool()) {
+    // false=默认走 Qt HTTP；true=仅 curl（与旧版 Ini 行为一致）
+    if (SETTINGS.value(QStringLiteral("Tuple/UseCurl"), false).toBool()) {
         const bool curlOk = requestGetByCurl(url, authHeader_, response, error, httpStatus);
-        qDebug().noquote() << (curlOk ? "[Tuple] GET curl ok httpStatus=" : "[Tuple] GET curl failed httpStatus=")
+        qDebug().noquote() << (curlOk ? "[Tuple] GET curl(ok, UseCurl=true) httpStatus=" : "[Tuple] GET curl(fail, UseCurl=true) httpStatus=")
                            << (httpStatus ? *httpStatus : 0)
                            << "responseBody=" << (response ? QString::fromUtf8(*response) : QString())
                            << "error=" << (error ? *error : QString());
         return curlOk;
     }
+
+    QNetworkAccessManager manager;
     QNetworkRequest request(url);
     setCommonHeaders(request);
-    qDebug().noquote() << "[Tuple] GET api:" << url.toString(QUrl::FullyEncoded);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    request.setTransferTimeout(30000);
+#endif
+    qDebug().noquote() << "[Tuple] GET qt:" << url.toString(QUrl::FullyEncoded);
 
     QNetworkReply* reply = manager.get(request);
     QList<QSslError> sslErrors;
@@ -415,103 +421,144 @@ bool QTupleService::requestGet(const QString& path, const QString& query, QByteA
     loop.exec();
 
     const QByteArray body = reply->readAll();
-    const bool ok = reply->error() == QNetworkReply::NoError;
+    const bool qtOk = reply->error() == QNetworkReply::NoError;
+    const int qtHttp = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (httpStatus) {
-        *httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        *httpStatus = qtHttp;
     }
-    if (!ok) {
+
+    if (!qtOk) {
         QStringList sslErrorTexts;
         for (const QSslError& sslError : sslErrors) {
             sslErrorTexts.append(sslError.errorString());
         }
-        qDebug().noquote() << "[Tuple] GET failed detail:"
+        qDebug().noquote() << "[Tuple] GET qt failed:"
                            << "qtError=" << static_cast<int>(reply->error())
                            << "errorString=" << reply->errorString()
-                           << "httpStatus=" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
-                           << "sslErrors=" << sslErrorTexts.join("; ");
-        if (reply->error() == QNetworkReply::UnknownNetworkError &&
-            reply->errorString().contains(QStringLiteral("Permission denied"), Qt::CaseInsensitive)) {
-            QByteArray curlBody;
-            QString curlError;
-            int curlStatus = 0;
-            if (requestGetByCurl(url, authHeader_, &curlBody, &curlError, &curlStatus)) {
-                if (httpStatus) {
-                    *httpStatus = curlStatus;
-                }
-                if (response) {
-                    *response = curlBody;
-                }
-                qDebug().noquote() << "[Tuple] GET curl fallback ok httpStatus=" << curlStatus
-                                   << "responseBody=" << QString::fromUtf8(curlBody);
-                reply->deleteLater();
-                return true;
+                           << "httpStatus=" << qtHttp
+                           << "sslErrors=" << sslErrorTexts.join(QStringLiteral("; "))
+                           << "bodySnippet=" << QString::fromUtf8(body.left(512));
+
+        QByteArray curlBody;
+        QString curlErr;
+        int curlStatus = 0;
+        qDebug().noquote() << "[Tuple] GET curl fallback url=" << url.toString(QUrl::FullyEncoded);
+        if (requestGetByCurl(url, authHeader_, &curlBody, &curlErr, &curlStatus)) {
+            if (httpStatus) {
+                *httpStatus = curlStatus;
             }
-            qDebug().noquote() << "[Tuple] GET curl fallback failed httpStatus=" << curlStatus
-                               << "error=" << curlError
+            if (response) {
+                *response = curlBody;
+            }
+            reply->deleteLater();
+            qDebug().noquote() << "[Tuple] GET curl fallback ok httpStatus=" << curlStatus
                                << "responseBody=" << QString::fromUtf8(curlBody);
+            return true;
         }
+        qDebug().noquote() << "[Tuple] GET curl fallback failed httpStatus=" << curlStatus << "error=" << curlErr
+                           << "responseBody=" << QString::fromUtf8(curlBody);
+        if (response) {
+            *response = body;
+        }
+        if (error) {
+            *error =
+                reply->errorString()
+                + QStringLiteral(" ")
+                + QString::fromUtf8(body).trimmed()
+                + QStringLiteral(" | curl备选失败: ")
+                + curlErr;
+        }
+        reply->deleteLater();
+        return false;
     }
+
     if (response) {
         *response = body;
     }
-    if (!ok && error) {
-        *error = reply->errorString() + " " + QString::fromUtf8(body);
-    }
     reply->deleteLater();
-    return ok;
+    return true;
 }
 
 bool QTupleService::requestPost(const QString& path, const QByteArray& body, QByteArray* response, QString* error) {
-    QNetworkAccessManager manager;
     const QUrl url(normalizedBaseUrl() + path);
-    if (SETTINGS.value("Tuple/UseCurl", true).toBool()) {
+
+    if (SETTINGS.value(QStringLiteral("Tuple/UseCurl"), false).toBool()) {
         int curlStatus = 0;
         const bool curlOk = requestPostByCurl(url, authHeader_, body, response, error, &curlStatus);
-        qDebug().noquote() << (curlOk ? "[Tuple] POST curl ok httpStatus=" : "[Tuple] POST curl failed httpStatus=")
+        qDebug().noquote() << (curlOk ? "[Tuple] POST curl(ok, UseCurl=true) httpStatus=" : "[Tuple] POST curl(fail, UseCurl=true) httpStatus=")
                            << curlStatus
                            << "responseBody=" << (response ? QString::fromUtf8(*response) : QString())
                            << "error=" << (error ? *error : QString());
         return curlOk;
     }
+
+    QNetworkAccessManager manager;
     QNetworkRequest request(url);
     setCommonHeaders(request);
-    qDebug().noquote() << "[Tuple] POST api:" << url.toString(QUrl::FullyEncoded)
-                       << "body:" << QString::fromUtf8(body);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    request.setTransferTimeout(30000);
+#endif
+    qDebug().noquote() << "[Tuple] POST qt:" << url.toString(QUrl::FullyEncoded) << "body:" << QString::fromUtf8(body);
 
     QNetworkReply* reply = manager.post(request, body);
+    QList<QSslError> sslErrors;
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors),
+                     [&](const QList<QSslError>& errors) {
+                         sslErrors = errors;
+                     });
     loop.exec();
 
     const QByteArray responseBody = reply->readAll();
-    const bool ok = reply->error() == QNetworkReply::NoError;
-    if (!ok &&
-        reply->error() == QNetworkReply::UnknownNetworkError &&
-        reply->errorString().contains(QStringLiteral("Permission denied"), Qt::CaseInsensitive)) {
+    const bool qtOk = reply->error() == QNetworkReply::NoError;
+    if (!qtOk) {
+        QStringList sslErrorTexts;
+        for (const QSslError& sslError : sslErrors) {
+            sslErrorTexts.append(sslError.errorString());
+        }
+        qDebug().noquote() << "[Tuple] POST qt failed:"
+                           << "qtError=" << static_cast<int>(reply->error())
+                           << "errorString=" << reply->errorString()
+                           << "httpStatus=" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
+                           << "sslErrors=" << sslErrorTexts.join(QStringLiteral("; "))
+                           << "bodySnippet=" << QString::fromUtf8(responseBody.left(512));
+
         QByteArray curlBody;
-        QString curlError;
+        QString curlErr;
         int curlStatus = 0;
-        if (requestPostByCurl(url, authHeader_, body, &curlBody, &curlError, &curlStatus)) {
+        qDebug().noquote() << "[Tuple] POST curl fallback url=" << url.toString(QUrl::FullyEncoded);
+        if (requestPostByCurl(url, authHeader_, body, &curlBody, &curlErr, &curlStatus)) {
             if (response) {
                 *response = curlBody;
             }
+            reply->deleteLater();
             qDebug().noquote() << "[Tuple] POST curl fallback ok httpStatus=" << curlStatus
                                << "responseBody=" << QString::fromUtf8(curlBody);
-            reply->deleteLater();
             return true;
         }
-        qDebug().noquote() << "[Tuple] POST curl fallback failed httpStatus=" << curlStatus
-                           << "error=" << curlError
+        qDebug().noquote() << "[Tuple] POST curl fallback failed httpStatus=" << curlStatus << "error=" << curlErr
                            << "responseBody=" << QString::fromUtf8(curlBody);
+        if (response) {
+            *response = responseBody;
+        }
+        if (error) {
+            *error =
+                reply->errorString()
+                + QStringLiteral(" ")
+                + QString::fromUtf8(responseBody).trimmed()
+                + QStringLiteral(" | curl备选失败: ")
+                + curlErr;
+        }
+        reply->deleteLater();
+        return false;
     }
+
     if (response) {
         *response = responseBody;
     }
-    if (!ok && error) {
-        *error = reply->errorString() + " " + QString::fromUtf8(responseBody);
-    }
     reply->deleteLater();
-    return ok;
+    return true;
 }
 
 void QTupleService::setCommonHeaders(QNetworkRequest& request) const {

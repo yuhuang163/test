@@ -1,4 +1,4 @@
-﻿#include "qat.h"
+#include "qat.h"
 
 #include <QDebug>
 
@@ -8,6 +8,24 @@
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+bool isPrintableAtLine(const QString& line) {
+    if (!line.startsWith(QStringLiteral("AT"))) {
+        return false;
+    }
+    for (const QChar& ch : line) {
+        const ushort u = ch.unicode();
+        if (u == '\r' || u == '\n' || u == '\t') {
+            continue;
+        }
+        if (u < 0x20 || u > 0x7E) {
+            return false;
+        }
+    }
+    return true;
+}
+}  // namespace
 
 Qat::Qat(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {
     if (!serialPort) {
@@ -55,8 +73,12 @@ void Qat::parseCmd(const QByteArray& byte) {
                     cangonext = 1;
                 } else if (cangonext && c == '\n') {
                     cangonext = 0;
-                    // qDebug() << "发射13"<<cmd;
-                    emit command(cmd, parameter);
+                    const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
+                    if (isPrintableAtLine(atLine)) {
+                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                        // qDebug() << "发射13"<<cmd;
+                        emit command(cmd, parameter);
+                    }
                     // qDebug() << "发射1"<<cmd;
                     cmd.clear();
                     parameter.clear();
@@ -78,7 +100,11 @@ void Qat::parseCmd(const QByteArray& byte) {
                     cangonext = 1;
                 } else if (cangonext && c == '\n') {
                     cangonext = 0;
-                    emit command(cmd, parameter);
+                    const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
+                    if (isPrintableAtLine(atLine)) {
+                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                        emit command(cmd, parameter);
+                    }
                     cmd.clear();
                     parameter.clear();
                     state = STATE_IDLE;
@@ -101,8 +127,9 @@ void Qat::sendCmd(QString cmd) {
         qDebug() << "发送AT指令时候，未打开dongle串口，取消发送";
         return;
     }
-    qDebug() << "发送at指令为" << cmd;
-    serialPort->write(cmd.toLocal8Bit());
+    const QByteArray data = cmd.toLocal8Bit();
+    qDebug().noquote() << "AT TX:" << cmd.trimmed();
+    serialPort->write(data);
 }
 void Qat::waitWork(int ms) {
     QTime t;

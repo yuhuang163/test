@@ -1,4 +1,4 @@
-﻿#include "inovance_h5u_modbus_tcp.h"
+#include "inovance_h5u_modbus_tcp.h"
 
 #include <QtEndian>
 #include <QDebug>
@@ -242,6 +242,7 @@ bool InovanceH5uModbusTcp::transact(const QByteArray& pdu, QByteArray* responseP
                  << "pduHex=" << pduHexPreview(pdu);
     }
     socket_.write(adu);
+    qDebug().noquote() << "PLC TX:" << QString::fromLatin1(adu.toHex(' ').toUpper());
     if (!socket_.waitForBytesWritten(requestTimeoutMs)) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("Modbus 发送超时: %1 %2")
@@ -295,6 +296,7 @@ bool InovanceH5uModbusTcp::transact(const QByteArray& pdu, QByteArray* responseP
     }
 
     const QByteArray frame = buffer.left(total);
+    qDebug().noquote() << "PLC RX:" << QString::fromLatin1(frame.toHex(' ').toUpper());
     if (traceEnabled_) {
         qDebug() << "[H5U-Modbus] RX rawBytes=" << frame.size() << "hex=" << pduHexPreview(frame, 64);
     }

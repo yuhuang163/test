@@ -1,4 +1,4 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qevent.h"
 #include <algorithm>
@@ -262,7 +262,9 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("groupBox_tupleConfig"), QStringLiteral("三元组 Tuple/*：环境、URL、鉴权、SKU。")},
         {QStringLiteral("groupBox_keyConfig"), QStringLiteral("按键 KeyId（ProductInfo/KeyId*）。")},
         {QStringLiteral("groupBox_plcModbusDebug"), QStringLiteral("PLC Modbus（PLC/*），治具 PLC 步骤。")},
-        {QStringLiteral("groupBox_brushInstrument"), QStringLiteral("串口仪器 BrushInstrument/*：包数、PER、超时。")},
+        {QStringLiteral("groupBox_brushInstrument"),
+         QStringLiteral(
+             "BrushInstrument/* 与并联 CMW：BleBrushCmwConcurrent、BleBrushCmwOnStopPer、BlePer/Cmw*（含 CmwQueryCurrentArbFile 查询 SOURce:GPRF:GEN:ARB:FILE?；另见 CmwBurstPollArbScount…、CmwVisaTrace、CmwWaitArbScount）。")},
         {QStringLiteral("groupBox_systemProtocol"), QStringLiteral("SYSTEM/ProtocolType：qpb 或 qfctp。")},
         {QStringLiteral("config"), QStringLiteral("已选步骤，自上而下执行；可拖拽排序。")},
         {QStringLiteral("can_use"), QStringLiteral("可选步骤，勾选后拖入左侧配置区。")},
@@ -307,7 +309,14 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("lineEdit_brushInstrumentMaxPer"), QStringLiteral("BrushInstrument/MaxPer。")},
         {QStringLiteral("lineEdit_brushInstrumentPacketPhaseWaitMs"), QStringLiteral("BrushInstrument/PacketPhaseWaitMs。")},
         {QStringLiteral("lineEdit_brushInstrumentStopAckTimeoutMs"), QStringLiteral("BrushInstrument/StopAckTimeoutMs。")},
-        {QStringLiteral("lineEdit_plcSwitchDoneResetM"), QStringLiteral("PLC/SwitchTestDoneResetM：旋钮流程结束复位线圈 M（默认211，可由 SwitchTestDoneResetM_StationN 覆盖）。")},
+        {QStringLiteral("checkBox_freeInstrumentBleBrushCmwConcurrent"),
+         QStringLiteral(
+             "FreeInstrument/BleBrushCmwConcurrent：启用 CMW GPRF；“停止接收/PER…”项见另一勾选（BleBrushCmwOnStopPer）。需 BlePer/CmwVisaAddress；可选 BlePer/CmwVisaTrace；BlePer/CmwQueryCurrentArbFile（默认 true，查询 SOURce:GPRF:GEN:ARB:FILE? 打日志）；BlePer/CmwBurstPollArbScount、BlePer/CmwWaitArbScount；详见 docs/cmw100rx第四节。")},
+        {QStringLiteral("checkBox_freeInstrumentBleBrushCmwOnStopPer"),
+         QStringLiteral(
+             "FreeInstrument/BleBrushCmwOnStopPer（默认勾选）：勾选时 PER 步内按上个「开始接收」profile 再打一发；“并联CMW播放Profile0～5”六个前序步后若不想重复触发可取消勾选。")},
+        {QStringLiteral("lineEdit_plcSwitchDoneResetM"),
+         QStringLiteral("PLC/SwitchTestDoneResetM：旋钮测试完成复位线圈 M 默认值（211）；双工位时工位2可单独设 ini 键 SwitchTestDoneResetM_Station2（如231），工位N 用 SwitchTestDoneResetM_StationN，有则优先于本项。")},
         {QStringLiteral("lineEdit_plcSwitchDoneResetPulseMs"), QStringLiteral("PLC/SwitchTestDoneResetPulseMs：复位脉冲毫秒；>0 时置1后经此时长再置0，0 表示仅置1由 PLC 清零。")},
         {QStringLiteral("lineEdit_plcIpAddress"), QStringLiteral("PLC/IpAddress。")},
         {QStringLiteral("lineEdit_plcPort"), QStringLiteral("PLC/Port。")},
@@ -1136,6 +1145,10 @@ void qsetting::loadConfig() {
         QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt()));
     ui->lineEdit_brushInstrumentStopAckTimeoutMs->setText(
         QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt()));
+    ui->checkBox_freeInstrumentBleBrushCmwConcurrent->setChecked(
+        SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool());
+    ui->checkBox_freeInstrumentBleBrushCmwOnStopPer->setChecked(
+        SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwOnStopPer"), true).toBool());
     ui->checkBox_plcModbusTrace->setChecked(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool());
     ui->lineEdit_plcIpAddress->setText(
         SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")).toString());
@@ -1298,6 +1311,17 @@ void qsetting::loadConfig() {
     ui->lineEdit_KeyIdLeftRotate->setText(SETTINGS.value("ProductInfo/KeyIdLeftRotate", "10").toString());
     ui->checkBox_KeyIdRightRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox", true).toBool());
     ui->lineEdit_KeyIdRightRotate->setText(SETTINGS.value("ProductInfo/KeyIdRightRotate", "11").toString());
+    ui->lineEdit_KeyCapLow->setText(SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toString());
+    ui->lineEdit_KeyCapHigh->setText(SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toString());
+    ui->lineEdit_KeyCapReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadTimeoutMs"), 5000).toString());
+    ui->lineEdit_KeyCapReadCount->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toString());
+    ui->lineEdit_KeyCapReadIntervalMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toString());
+    ui->lineEdit_KeyCapSingleReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toString());
+    {
+        const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
+        ui->comboBox_KeyCapValueEndian->setCurrentIndex(
+            capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
+    }
 
     // 船运电流
     ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
@@ -1535,6 +1559,10 @@ void qsetting::saveConfig() {
                       ui->lineEdit_brushInstrumentPacketPhaseWaitMs->text().trimmed());
     SETTINGS.setValue(QStringLiteral("BrushInstrument/StopAckTimeoutMs"),
                       ui->lineEdit_brushInstrumentStopAckTimeoutMs->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"),
+                      ui->checkBox_freeInstrumentBleBrushCmwConcurrent->isChecked());
+    SETTINGS.setValue(QStringLiteral("FreeInstrument/BleBrushCmwOnStopPer"),
+                      ui->checkBox_freeInstrumentBleBrushCmwOnStopPer->isChecked());
     SETTINGS.setValue(QStringLiteral("PLC/ModbusTrace"), ui->checkBox_plcModbusTrace->isChecked());
     SETTINGS.setValue(QStringLiteral("PLC/IpAddress"), ui->lineEdit_plcIpAddress->text().trimmed());
     SETTINGS.setValue(QStringLiteral("PLC/Port"), ui->lineEdit_plcPort->text().trimmed());
@@ -1688,6 +1716,15 @@ void qsetting::saveConfig() {
     SETTINGS.setValue("ProductInfo/KeyIdLeftRotate", ui->lineEdit_KeyIdLeftRotate->text());
     SETTINGS.setValue("ProductInfo/KeyIdRightRotate_checkBox", ui->checkBox_KeyIdRightRotate->isChecked());
     SETTINGS.setValue("ProductInfo/KeyIdRightRotate", ui->lineEdit_KeyIdRightRotate->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/Low"), ui->lineEdit_KeyCapLow->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/High"), ui->lineEdit_KeyCapHigh->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadTimeoutMs"), ui->lineEdit_KeyCapReadTimeoutMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadCount"), ui->lineEdit_KeyCapReadCount->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ReadIntervalMs"), ui->lineEdit_KeyCapReadIntervalMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/SingleReadTimeoutMs"), ui->lineEdit_KeyCapSingleReadTimeoutMs->text());
+    SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
+                      ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
+                                                                           : QStringLiteral("big"));
 
     // 船运电流
     SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());

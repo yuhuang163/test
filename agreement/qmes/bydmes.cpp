@@ -1,4 +1,4 @@
-// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
+﻿// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
 #include "bydmes.h"
 
 #include <QDateTime>
@@ -374,7 +374,8 @@ QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) cons
 // =============================================================================
 
 QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const {
-    // DATA 为数组或单对象：仅 station==「主板绑定」时取该行 value（避免误用每行自带的 sfc 过程码）
+    // DATA 为数组或单对象：优先按 name（默认「主板」）取该行 value 作为整机 SN；
+    // 与 station 文案无关（例如 station 为「主板电池绑定」时仍可命中）。
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {

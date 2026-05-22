@@ -238,6 +238,7 @@ void Qjig::sendjigData(jigState fixstate) {
         }
 
         if (!dataToSend.isEmpty()) {
+            qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
             serialPort->write(dataToSend);
             save_Jig_uart_log(1, dataToSend);
         }
@@ -247,6 +248,7 @@ void Qjig::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty()) {
         return;
     }
+    qDebug().noquote() << "JIG RX:" << QString::fromLatin1(byte.toHex(' ').toUpper());
     // DAM-3158(A) 返回帧优先解析：01 04 10 [16字节数据] CRC(2)
     if (byte.size() >= 21 &&
         static_cast<quint8>(byte.at(0)) == 0x01 &&
@@ -332,6 +334,7 @@ void Qjig::parseCmd(const QByteArray& byte) {
 void Qjig::get_amplitude() {
     QByteArray dataToSend = QByteArray("Test1\r\n");
     if (!dataToSend.isEmpty()) {
+        qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
         serialPort->write(dataToSend);
         save_Jig_uart_log(1, dataToSend);
     }
@@ -350,6 +353,7 @@ void Qjig::getDam3158Measure() {
         return;
     }
     const QByteArray data = QByteArray::fromHex("010401000008F030");
+    qDebug().noquote() << "JIG TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     serialPort->write(data);
     save_Jig_uart_log(1, data);
 }

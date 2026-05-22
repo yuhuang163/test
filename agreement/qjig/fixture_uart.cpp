@@ -1,4 +1,4 @@
-﻿#include "fixture_uart.h"
+#include "fixture_uart.h"
 
 #include "qdebug.h"
 #include "qserialportinfo.h"
@@ -124,6 +124,7 @@ void Fixture_uart::readFixtureSerialPortData() {
     QByteArray dataTemp = fixtureSerialPortBuf;  // 读取缓冲区数据
     fixtureSerialPortBuf.clear();                // 清除缓冲区
 
+    qDebug().noquote() << "FIXTURE RX:" << QString::fromLatin1(dataTemp.toHex(' ').toUpper());
     qDebug() << "hyj接收到治具数据" << dataTemp;
     int write_len = 0;
     int len = dataTemp.size();
@@ -446,6 +447,7 @@ void Fixture_uart::sendimuData(imuFixtureState fixstate) {
     }
 
     if (!dataToSend.isEmpty()) {
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
         fixtureSerialPort->write(dataToSend);
         save_Fixture_uart_log(1, dataToSend);
         start_fix_action(1);
@@ -473,6 +475,7 @@ void Fixture_uart::set_camera_action(camreaFixtureState fixstate) {
     }
 
     if (!dataToSend.isEmpty()) {
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
         fixtureSerialPort->write(dataToSend);
         save_Fixture_uart_log(1, dataToSend);
         start_fix_action(1);
@@ -485,23 +488,28 @@ void Fixture_uart::sendFixtureData(FixtureState fixstate) {
         return;
     }
 
+    QByteArray dataToSend;
     switch (fixstate) {
         case STATE_CYLINDER_OPEN:
-            fixtureSerialPort->write(QByteArray::fromHex("5501050001"));  // 气缸1动作
+            dataToSend = QByteArray::fromHex("5501050001");  // 气缸1动作
             break;
         case STATE_RELAY1_OPEN:
-            fixtureSerialPort->write(QByteArray::fromHex("5501010001"));  // 继电器1吸合
+            dataToSend = QByteArray::fromHex("5501010001");  // 继电器1吸合
             break;
         case STATE_RELAY1_RESET:
-            fixtureSerialPort->write(QByteArray::fromHex("5501010000"));  // 继电器1复位
+            dataToSend = QByteArray::fromHex("5501010000");  // 继电器1复位
             break;
         case STATE_CYLINDER_RESET:
-            fixtureSerialPort->write(QByteArray::fromHex("5501050000"));  // 气缸1复位
+            dataToSend = QByteArray::fromHex("5501050000");  // 气缸1复位
             break;
         case STATE_RELAY4_OPEN:
-            fixtureSerialPort->write(QByteArray::fromHex("5501040001"));  // 继电器4吸合
+            dataToSend = QByteArray::fromHex("5501040001");  // 继电器4吸合
             break;
-        case STATE_RELAY4_RESET: fixtureSerialPort->write(QByteArray::fromHex("5501040000"));  // 继电器4复位
+        case STATE_RELAY4_RESET: dataToSend = QByteArray::fromHex("5501040000"); break;  // 继电器4复位
+    }
+    if (!dataToSend.isEmpty()) {
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
+        fixtureSerialPort->write(dataToSend);
     }
 }
 
@@ -509,9 +517,11 @@ void Fixture_uart::send_start_command(int i) {
     const char* commands[] = {"AA01", "AA02", "AA03", "AA04", "AA05", "AA06", "AA07", "AA08", "AA09", "AA0A", "A1"};
 
     if (i > 0 && i <= 10) {
-        fixtureSerialPort->write(QByteArray::fromHex(commands[i - 1]));
+        const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
+        fixtureSerialPort->write(dataToSend);
         qDebug() << "已发送开始命令" << commands[i - 1];
-        save_Fixture_uart_log(1, QByteArray::fromHex(commands[i - 1]));
+        save_Fixture_uart_log(1, dataToSend);
     } else {
         qDebug() << "Invalid command index";
     }
@@ -520,8 +530,10 @@ void Fixture_uart::send_start_sleep_command(int i) {
     const char* commands[] = {"CC01", "CC02", "CC03", "CC04", "CC05", "CC06", "CC07", "CC08", "CC09", "CC0A", "A1"};
 
     if (i > 0 && i <= 10) {
-        fixtureSerialPort->write(QByteArray::fromHex(commands[i - 1]));
-        save_Fixture_uart_log(1, QByteArray::fromHex(commands[i - 1]));
+        const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
+        fixtureSerialPort->write(dataToSend);
+        save_Fixture_uart_log(1, dataToSend);
 
         qDebug() << "已发送开始休眠命令" << commands[i - 1];
     } else {
@@ -532,8 +544,10 @@ void Fixture_uart::send_start_white_modle_command(int i) {
     const char* commands[] = {"EE01", "EE02", "EE03", "EE04", "EE05", "EE06", "EE07", "EE08", "EE09", "EE0A", "A1"};
 
     if (i > 0 && i <= 10) {
-        fixtureSerialPort->write(QByteArray::fromHex(commands[i - 1]));
-        save_Fixture_uart_log(1, QByteArray::fromHex(commands[i - 1]));
+        const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
+        fixtureSerialPort->write(dataToSend);
+        save_Fixture_uart_log(1, dataToSend);
 
         qDebug() << "已发送已经进入亮白模式命令" << commands[i - 1];
     } else {
@@ -704,9 +718,11 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
 
     if (command_id >= COMMAND_ID_INVALID && command_id < COMMAND_ID_MAX && numb >= 0 && numb < 6) {
         qDebug() << "command_id:" << command_id << "numb" << numb;
-        fixtureSerialPort->write(press_commands[command_id][numb]);
-        qDebug() << "已发送命令" << press_commands[command_id][numb];
-        save_Fixture_uart_log(1, press_commands[command_id][numb]);
+        const QByteArray dataToSend = press_commands[command_id][numb];
+        qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
+        fixtureSerialPort->write(dataToSend);
+        qDebug() << "已发送命令" << dataToSend;
+        save_Fixture_uart_log(1, dataToSend);
     } else {
         qDebug() << "Invalid command index";
     }

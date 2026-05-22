@@ -247,6 +247,7 @@ typedef struct {
 
 typedef struct {
     uint32_t value = 0;
+    int auxId = -1;  // 可选上下文（如按键电容读取的按键编号 KK），无则 -1
 } ProtocolUInt32ValueData;
 
 typedef struct {

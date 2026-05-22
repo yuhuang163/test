@@ -1,4 +1,4 @@
-﻿// Qshell.cpp
+// Qshell.cpp
 #include "Qshell.h"
 #include <QDateTime>
 #include <QDebug>
@@ -54,11 +54,12 @@ bool Qshell::start()
     }
 
     // ===== 初始化环境（只做一次）=====
-    shell->write(
+    const QByteArray initCommand =
         "$ProgressPreference='SilentlyContinue'\n"
         "$ErrorActionPreference='Continue'\n"
-        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new()\n"
-        );
+        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new()\n";
+    qDebug().noquote() << "SHELL TX:" << QString::fromLatin1(initCommand.toHex(' ').toUpper());
+    shell->write(initCommand);
 
     qDebug() << "Persistent PowerShell started";
     return true;
@@ -68,7 +69,9 @@ bool Qshell::start()
 void Qshell::stop()
 {
     if (shell && shell->state() != QProcess::NotRunning) {
-        shell->write("exit\n");
+        const QByteArray exitCommand = "exit\n";
+        qDebug().noquote() << "SHELL TX:" << QString::fromLatin1(exitCommand.toHex(' ').toUpper());
+        shell->write(exitCommand);
         shell->waitForFinished(1000);
     }
 
@@ -115,7 +118,9 @@ void Qshell::processNextCommand()
 
     // qDebug() << "[Qshell] exec:" << fullCmd;
 
-    shell->write((fullCmd + "\n").toUtf8());
+    const QByteArray data = (fullCmd + "\n").toUtf8();
+    qDebug().noquote() << "SHELL TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
+    shell->write(data);
 }
 
 void Qshell::onReadyRead()
@@ -123,6 +128,7 @@ void Qshell::onReadyRead()
     QByteArray output = shell->readAllStandardOutput();
     if (output.isEmpty())
         return;
+    qDebug().noquote() << "SHELL RX:" << QString::fromLatin1(output.toHex(' ').toUpper());
 
     cmdBuffer += QString::fromUtf8(output);
 

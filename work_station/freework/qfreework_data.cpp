@@ -278,6 +278,17 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     }
 }
 
+void QFreeWork::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+    // 治具下压期间同步轮询：由 pollKeyCapDuringPress 等待本槽结束
+    if (plcKeyCapSyncReadPending_) {
+        plcKeyCapSyncReadPending_ = false;
+        plcKeyCapSyncReadOk_ = true;
+        plcKeyCapSyncReadValue_ = data.value;
+        plcKeyCapSyncReadAuxId_ = data.auxId;
+        return;
+    }
+}
+
 void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
     if (!isCurrentStep("读取充电电流")) {
         return;
@@ -316,6 +327,65 @@ bool QFreeWork::failTupleWriteIfNoValidField(const QString& stepName, bool field
         return true;
     }
     return false;
+}
+
+void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty) {
+    if (!ui->isusemes->isChecked()) {
+        showlog(QStringLiteral("请先勾选「MES」后再上报关键数据"));
+        return;
+    }
+    QString valueText;
+    if (dataValue.canConvert<double>() && dataValue.type() != QVariant::String) {
+        valueText = QString::number(dataValue.toDouble(), 'f', 2);
+    } else {
+        valueText = dataValue.toString().trimmed();
+    }
+
+    MesPacketData p = pack;
+    p.factory = QStringLiteral("byd");
+    p.mechines = getIndex();
+    p.sn = pack.sn.trimmed();
+    if (p.sn.isEmpty()) {
+        p.sn = ui->getMac->text().trimmed();
+    }
+    p.instruct_num = dataName.trimmed();
+    p.itemvalue = valueText;
+    p.testCount = qty;
+    p.iskeydata = 1;
+
+    if (p.sn.isEmpty() || p.itemvalue.isEmpty()) {
+        showlog(QStringLiteral("关键数据上报失败：SFC 或 DATA_VALUE 为空（%1）").arg(p.instruct_num));
+        return;
+    }
+    showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
+    emit getMesTestValue(p);
+}
+
+void QFreeWork::reportBydBluetoothMesKeyMaterials() {
+    if (!ui->isusemes->isChecked()) {
+        return;
+    }
+    if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) != 0) {
+        return;
+    }
+    if (!tupleData_.success) {
+        return;
+    }
+
+    QString macVal = tupleData_.mac.trimmed();
+    if (macVal.isEmpty()) {
+        macVal = macAddress;
+        macVal.remove(QLatin1Char(':'));
+        macVal.remove(QLatin1Char('-'));
+        macVal = macVal.trimmed().toUpper();
+    }
+
+    const QString snVal = tupleData_.sn.trimmed().isEmpty() ? ui->getMac->text().trimmed() : tupleData_.sn.trimmed();
+    reportBydSfcKey(QStringLiteral("SN"), snVal, 1);
+    reportBydSfcKey(QStringLiteral("deviceName"), tupleData_.deviceName, 1);
+    reportBydSfcKey(QStringLiteral("deviceSecret"), tupleData_.deviceSecret, 1);
+    reportBydSfcKey(QStringLiteral("mac"), macVal, 1);
+    reportBydSfcKey(QStringLiteral("productKey"), tupleData_.productKey, -1);
 }
 
 void QFreeWork::applyTupleByMac() {
@@ -368,7 +438,10 @@ void QFreeWork::applyTupleByMac() {
         showlog("三元组获取失败：" + tupleData_.error);
         return;
     }
-    showlog("三元组获取成功：productKey=" + tupleData_.productKey + " deviceName=" + tupleData_.deviceName + " deviceSecret=" + tupleData_.deviceSecret);
+    showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
+                .arg(tupleData_.sn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
+    // 蓝牙测试关键物料：与 MES「蓝牙测试」工站 SFC 生命周期表一致，各发一条 AddSfcKey（QTY=1）
+    reportBydBluetoothMesKeyMaterials();
 }
 
 void QFreeWork::debugUpdateTupleMacStatus() {

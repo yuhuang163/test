@@ -117,6 +117,10 @@ void Qusb::CONFigureFUNCtion(QString p)
 
 void Qusb::parseCmd(const QByteArray &byte)
 {
+    if (!byte.isEmpty())
+    {
+        qDebug().noquote() << "USB RX:" << QString::fromLatin1(byte.toHex(' ').toUpper());
+    }
     switch (resolveProtocolForInput(byte))
     {
     case ProtocolType::Scpi:
@@ -506,7 +510,9 @@ void Qusb::sendCmd(QString cmd)
 
     cmd += "\r\n";
 
-    serialPort->write(cmd.toLocal8Bit());
+    const QByteArray data = cmd.toLocal8Bit();
+    qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
+    serialPort->write(data);
 }
 
 bool Qusb::isVisaScpiEnabled() const
@@ -618,27 +624,15 @@ void Qusb::getbydmeaSure(QString mac)
 void Qusb::getMEASure(QString mac)
 {
     Q_UNUSED(mac);
-    QString s = protocolConfig_.scpiReadCurrentCmd.trimmed();
-    if (s.isEmpty()) {
-        s = "MEASure:CURRent:DC? 500e-3";
-    }
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA测量返回:" << resp;
-            emit send_ammeter_data(resp);
-        }
-        return;
-    }
-    sendCmd(s);
+    QString s = "MEASure:CURRent:DC? 500e-3";
+        sendCmd(s);
 }
 void Qusb::gethqMEASure()
 {
     QString s = "01030000000305CB";   // 测量数值
 
     QByteArray data = QByteArray::fromHex(s.toLatin1());
+    qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     serialPort->write(data);
 }
 void Qusb::getlxMEASure(int mechine)
@@ -653,12 +647,14 @@ void Qusb::getlxMEASure(int mechine)
     }
 
     QByteArray data = QByteArray::fromHex(machineCmdList.at(mechine).toLatin1());
+    qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     serialPort->write(data);
 }
 void Qusb::sethqMEASure()
 {
     QString s = "010600030006F9C8";   // 设置波特率115200
     QByteArray data = QByteArray::fromHex(s.toLatin1());
+    qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     serialPort->write(data);
 }
 quint16 calculateCRC(const QByteArray &data)

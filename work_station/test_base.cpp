@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include <QDateTime>
+#include <QDebug>
 #include <QSet>
 #include <QString>
 
@@ -93,6 +94,7 @@ void test_base::signalAndslot() {
     connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(qfctp, SIGNAL(send_rssi_read(ProtocolRssiData)), this, SLOT(refreshRssiRead(ProtocolRssiData)));
     connect(qfctp, SIGNAL(send_charge_current_read(ProtocolUInt32ValueData)), this, SLOT(refreshChargeCurrentRead(ProtocolUInt32ValueData)));
+    connect(qfctp, SIGNAL(send_key_signal_read(ProtocolUInt32ValueData)), this, SLOT(refreshKeySignalRead(ProtocolUInt32ValueData)));
     connect(qfctp, SIGNAL(send_tuple_parsed(ProtocolTupleData)), this, SLOT(refreshTupleData(ProtocolTupleData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
@@ -882,7 +884,7 @@ void test_base::solveMesSucess(const int mechines) {
         return;
     }
     if (mechines == getIndex()) {
-        appendStationResult(testItems, QStringLiteral("MES启动"), QStringLiteral("OK"), passValue);
+        // appendStationResult(testItems, QStringLiteral("MES启动"), QStringLiteral("OK"), passValue);
         testResultTableUpdate(testItems);
 
         showlog("mes操作成功");
@@ -1113,21 +1115,25 @@ QString test_base::parseMacFromSn(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression("\\s+"));
     if (sn.length() < 16) {
-        return QString();
+        qDebug() << "[parseMacFromSn] 长度太短 trimLen=" << sn.length();
+        return QString("长度太短");
     }
     QString macRaw = sn.mid(4, 12).toUpper();
     if (!QRegularExpression("^[0-9A-F]{12}$").match(macRaw).hasMatch()) {
-        return QString();
+        qDebug() << "[parseMacFromSn] 不符合规则 macRaw=" << macRaw;
+        return QString("不符合规则");
     }
-    return QString("%1:%2:%3:%4:%5:%6")
-        .arg(macRaw.mid(0, 2))
-        .arg(macRaw.mid(2, 2))
-        .arg(macRaw.mid(4, 2))
-        .arg(macRaw.mid(6, 2))
-        .arg(macRaw.mid(8, 2))
-        .arg(macRaw.mid(10, 2));
+    const QString mac = QString("%1:%2:%3:%4:%5:%6")
+                            .arg(macRaw.mid(0, 2))
+                            .arg(macRaw.mid(2, 2))
+                            .arg(macRaw.mid(4, 2))
+                            .arg(macRaw.mid(6, 2))
+                            .arg(macRaw.mid(8, 2))
+                            .arg(macRaw.mid(10, 2));
+    qDebug() << "[parseMacFromSn] ok" << mac;
+    return mac;
 }
-    
+
 void test_base::appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result) {
     TestItem test;
     test.testItem = item;

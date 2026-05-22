@@ -1,4 +1,4 @@
-﻿#ifndef INOVANCE_H5U_MODBUS_TCP_H
+#ifndef INOVANCE_H5U_MODBUS_TCP_H
 #define INOVANCE_H5U_MODBUS_TCP_H
 
 #include <QString>
@@ -28,8 +28,8 @@ public:
                      QVector<bool>* out, QString* errorMessage);
 
     /** 为 true 时 qDebug 输出 ADU/PDU 摘要（由 PLC/ModbusTrace 或环境变量 PLC_MODBUS_TRACE=1 打开）。 */
-    void setTraceEnabled(bool on) { traceEnabled_ = on; }
-    bool traceEnabled() const { return traceEnabled_; }
+    // void setTraceEnabled(bool on) { traceEnabled_ = on; }
+    // bool traceEnabled() const { return traceEnabled_; }
 
 private:
     bool transact(const QByteArray& pdu, QByteArray* responsePdu, QString* errorMessage, int requestTimeoutMs,
@@ -42,7 +42,7 @@ private:
 
     QTcpSocket socket_;
     quint16 transactionId_ = 0;
-    bool traceEnabled_ = false;
+    bool traceEnabled_ = 0;
 };
 
 #endif

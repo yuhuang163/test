@@ -1,4 +1,4 @@
-#include "key_test.h"
+﻿#include "key_test.h"
 
 #include "ui_key_test.h"
 #include <QCoreApplication>
@@ -534,8 +534,8 @@ bool key_test::plcSendStepDone(QString* errorMessage) {
 }
 
 bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
-    inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
-                                    || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
+    // inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
+    //                                 || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
     if (keyIndex0To6 < 0 || keyIndex0To6 > 6) {
         if (summary) {
             *summary = QStringLiteral("V3 Touch keyIndex 非法: %1").arg(keyIndex0To6);
@@ -657,8 +657,8 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
 }
 
 bool key_test::runPlcV3TouchSwitchFull(QString* summary) {
-    inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
-                                    || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
+    // inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
+    //                                 || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
     const QString host = resolvedPlcIpAddress();
     const int port = resolvedPlcPort();
     const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();

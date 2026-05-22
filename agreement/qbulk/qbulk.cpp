@@ -1,4 +1,4 @@
-﻿#include "qbulk.h"
+#include "qbulk.h"
 #include <QDebug>
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -245,6 +245,7 @@ bool QBulk::bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout) {
     // ✅ 正常收到数据
     if (transferred > 0) {
         data = QByteArray(reinterpret_cast<char *>(buffer), transferred);
+        qDebug().noquote() << "BULK RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
         return true;
     }
 
@@ -360,7 +361,7 @@ bool QBulk::bulkWrite(const QByteArray &data, unsigned int timeout) {
     }
     hexdata.chop(1); // 去掉最后一个空格
 
-    // qDebug() << "USB TX:" << hexdata;
+    qDebug().noquote() << "BULK TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     emit send_bulk_data("USB TX:"+hexdata);
 
     int transferred =
