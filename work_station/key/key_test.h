@@ -87,6 +87,10 @@ private:
     QMessageBox* keyWaitPrompt = nullptr;
     bool plcKeyActionStarted = false;
     quint64 plcKeyWaitSeq = 0;
+    QString keyErrorDetail;
+    int lastKeyButtonId = -1;
+    qint64 lastKeyButtonMs = 0;
+    QElapsedTimer keyButtonDebounceTimer;
     InovanceH5uModbusTcp inovancePlcTcp_;
     int snCompareOk = 0;
     double measure_ammeter = 0;
@@ -154,6 +158,11 @@ private:
     void startPlcSwitchAndWaitKey(const QString& testName);
     void armPlcKeyBleWaitTimeout(const QString& testName);
     void failCurrentPlcKeyStep(const QString& testName, const QString& reason);
+    QString currentKeyStepName() const;
+    QString currentExpectedKeyId() const;
+    void setCurrentKeyResult(int result);
+    QString currentKeyFailureDetail() const;
+    void recordCurrentKeyButtonResult(int keyButtonId);
     bool runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary);
     bool runPlcV3TouchSwitchFull(QString* summary);
     int resolvedPlcMBase() const;

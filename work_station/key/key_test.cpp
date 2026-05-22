@@ -178,6 +178,107 @@ void key_test::failCurrentPlcKeyStep(const QString& testName, const QString& rea
     state = STATE_SAVE_RESULT;
 }
 
+QString key_test::currentKeyStepName() const {
+    switch (state) {
+        case STATE_WAIT_GET_KEY_POWER_STATE: return QStringLiteral("电源键测试");
+        case STATE_WAIT_GET_KEY_MODE_STATE: return QStringLiteral("Mode键测试");
+        case STATE_WAIT_GET_KEY_PROGRAM_STATE: return QStringLiteral("Program键测试");
+        case STATE_WAIT_GET_KEY_SPEED_STATE: return QStringLiteral("Speed键测试");
+        case STATE_WAIT_GET_KEY_STARTPAUSE_STATE: return QStringLiteral("Start/Pause键测试");
+        case STATE_WAIT_GET_KEY_LEFT_STATE: return QStringLiteral("左键测试");
+        case STATE_WAIT_GET_KEY_RIGHT_STATE: return QStringLiteral("右键测试");
+        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE: return QStringLiteral("左旋键测试");
+        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE: return QStringLiteral("右旋键测试");
+        default: return QString();
+    }
+}
+
+QString key_test::currentExpectedKeyId() const {
+    switch (state) {
+        case STATE_WAIT_GET_KEY_POWER_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdPower_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdPower").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_MODE_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdMode_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdMode").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_PROGRAM_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdProgram_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdProgram").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_SPEED_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdSpeed").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_STARTPAUSE_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdStartPause").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_LEFT_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdLeft_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdLeft").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_RIGHT_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdRight_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdRight").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdLeftRotate").toString()
+                       : QString();
+        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE:
+            return SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox").toBool()
+                       ? SETTINGS.value("ProductInfo/KeyIdRightRotate").toString()
+                       : QString();
+        default: return QString();
+    }
+}
+
+void key_test::setCurrentKeyResult(int result) {
+    switch (state) {
+        case STATE_WAIT_GET_KEY_POWER_STATE: KeyPowerState = result; break;
+        case STATE_WAIT_GET_KEY_MODE_STATE: KeyModeState = result; break;
+        case STATE_WAIT_GET_KEY_PROGRAM_STATE: KeyProgramState = result; break;
+        case STATE_WAIT_GET_KEY_SPEED_STATE: KeySpeedState = result; break;
+        case STATE_WAIT_GET_KEY_STARTPAUSE_STATE: KeyStartPauseState = result; break;
+        case STATE_WAIT_GET_KEY_LEFT_STATE: KeyLeftState = result; break;
+        case STATE_WAIT_GET_KEY_RIGHT_STATE: KeyRightState = result; break;
+        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE: KeyLeftRotateState = result; break;
+        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE: KeyRightRotateState = result; break;
+        default: break;
+    }
+}
+
+QString key_test::currentKeyFailureDetail() const {
+    return keyErrorDetail.isEmpty() ? QStringLiteral("按键错误") : keyErrorDetail;
+}
+
+void key_test::recordCurrentKeyButtonResult(int keyButtonId) {
+    const QString stepName = currentKeyStepName();
+    const QString expectedKeyId = currentExpectedKeyId();
+    if (stepName.isEmpty() || expectedKeyId.trimmed().isEmpty()) {
+        showlog(QStringLiteral("收到按键ID=%1，但当前步骤未配置期望按键，已忽略").arg(keyButtonId));
+        return;
+    }
+
+    refresh_key_times = 0;
+    ++plcKeyWaitSeq;
+    plcKeyActionStarted = false;
+
+    const QString actualKeyId = QString::number(keyButtonId);
+    if (compareVersions(expectedKeyId, actualKeyId)) {
+        keyErrorDetail.clear();
+        setCurrentKeyResult(1);
+        showlog(QStringLiteral("%1收到期望按键ID=%2").arg(stepName, actualKeyId));
+        return;
+    }
+
+    keyErrorDetail = QStringLiteral("实际按键ID:%1，期望按键ID:%2").arg(actualKeyId, expectedKeyId);
+    setCurrentKeyResult(2);
+    showlog(QStringLiteral("%1错按：%2").arg(stepName, keyErrorDetail));
+}
+
 void key_test::armPlcKeyBleWaitTimeout(const QString& testName) {
     const int bleWaitMs = SETTINGS.value(QStringLiteral("KeyTest/TimeoutMs"), 5000).toInt();
     const quint64 armSeq = ++plcKeyWaitSeq;
@@ -199,6 +300,7 @@ void key_test::startPlcClickerAndWaitKey(const QString& testName, int keyIndex0T
         return;
     }
     plcKeyActionStarted = true;
+    keyErrorDetail.clear();
     refresh_key_times = 1;
     QString summary;
     showlog(testName + QStringLiteral("：启动外设点击器"));
@@ -219,6 +321,7 @@ void key_test::startPlcSwitchAndWaitKey(const QString& testName) {
         return;
     }
     plcKeyActionStarted = true;
+    keyErrorDetail.clear();
     refresh_key_times = 1;
     QString summary;
     showlog(testName + QStringLiteral("：启动外设旋钮点击器"));
@@ -688,95 +791,20 @@ void key_test::refreshMusicState(ProtocolMusicStateData data) {
 
 void key_test::checkbutton(ProtocolButtonStateData x) {
     if (refresh_key_times) {
-        refresh_key_times = 0;
-        ++plcKeyWaitSeq;
-        plcKeyActionStarted = false;
+        if (!keyButtonDebounceTimer.isValid()) {
+            keyButtonDebounceTimer.start();
+        }
+        const qint64 nowMs = keyButtonDebounceTimer.elapsed();
+        constexpr int debounceMs = 300;
+        if (x.keyButtonId == lastKeyButtonId && nowMs - lastKeyButtonMs < debounceMs) {
+            showlog(QStringLiteral("忽略重复按键上报 keyId=%1").arg(x.keyButtonId));
+            return;
+        }
+        lastKeyButtonId = x.keyButtonId;
+        lastKeyButtonMs = nowMs;
+
         showlog("获取到按键上报");
-        TestItem test;
-        bool isKeyIdPowerTest = SETTINGS.value("ProductInfo/KeyIdPower_checkBox").toBool();
-        bool isKeyIdStartPauseTest = SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox").toBool();
-        bool isKeyIdModeTest = SETTINGS.value("ProductInfo/KeyIdMode_checkBox").toBool();
-        bool isKeyIdSpeedTest = SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox").toBool();
-        bool isKeyIdProgramTest = SETTINGS.value("ProductInfo/KeyIdProgram_checkBox").toBool();
-        bool isKeyIdLeftTest = SETTINGS.value("ProductInfo/KeyIdLeft_checkBox").toBool();
-        bool isKeyIdRightTest = SETTINGS.value("ProductInfo/KeyIdRight_checkBox").toBool();
-        bool isKeyIdLeftRotateTest = SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox").toBool();
-        bool isKeyIdRightRotateTest = SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox").toBool();
-
-        QString keyIdPower = SETTINGS.value("ProductInfo/KeyIdPower").toString();
-        QString keyIdStartPause = SETTINGS.value("ProductInfo/KeyIdStartPause").toString();
-        QString keyIdMode = SETTINGS.value("ProductInfo/KeyIdMode").toString();
-        QString keyIdSpeed = SETTINGS.value("ProductInfo/KeyIdSpeed").toString();
-        QString keyIdProgram = SETTINGS.value("ProductInfo/KeyIdProgram").toString();
-        QString keyIdLeft = SETTINGS.value("ProductInfo/KeyIdLeft").toString();
-        QString keyIdRight = SETTINGS.value("ProductInfo/KeyIdRight").toString();
-        QString keyIdLeftRotate = SETTINGS.value("ProductInfo/KeyIdLeftRotate").toString();
-        QString keyIdRightRotate = SETTINGS.value("ProductInfo/KeyIdRightRotate").toString();
-
-
-        if (isKeyIdPowerTest && state == STATE_WAIT_GET_KEY_POWER_STATE) {
-            if (compareVersions(keyIdPower, QString::number(x.keyButtonId))) {
-                KeyPowerState = 1;
-            } else {
-                KeyPowerState = 2;
-            }
-        }
-        if (isKeyIdStartPauseTest && state == STATE_WAIT_GET_KEY_STARTPAUSE_STATE) {
-            if (compareVersions(keyIdStartPause, QString::number(x.keyButtonId))) {
-                KeyStartPauseState = 1;
-            } else {
-                KeyStartPauseState = 2;
-            }
-        }
-        if (isKeyIdModeTest && state == STATE_WAIT_GET_KEY_MODE_STATE) {
-            if (compareVersions(keyIdMode, QString::number(x.keyButtonId))) {
-                KeyModeState = 1;
-            } else {
-                KeyModeState = 2;
-            }   
-        }
-        if (isKeyIdSpeedTest && state == STATE_WAIT_GET_KEY_SPEED_STATE) {
-            if (compareVersions(keyIdSpeed, QString::number(x.keyButtonId))) {
-                KeySpeedState = 1;
-            } else {
-                KeySpeedState = 2;
-            }
-        }
-        if (isKeyIdProgramTest && state == STATE_WAIT_GET_KEY_PROGRAM_STATE) {
-            if (compareVersions(keyIdProgram, QString::number(x.keyButtonId))) {
-                KeyProgramState = 1;
-            } else {
-                KeyProgramState = 2;
-            }
-        }
-        if (isKeyIdLeftTest && state == STATE_WAIT_GET_KEY_LEFT_STATE) {
-            if (compareVersions(keyIdLeft, QString::number(x.keyButtonId))) {
-                KeyLeftState = 1;
-            } else {
-                KeyLeftState = 2;
-            }
-        }
-        if (isKeyIdRightTest && state == STATE_WAIT_GET_KEY_RIGHT_STATE) {
-            if (compareVersions(keyIdRight, QString::number(x.keyButtonId))) {
-                KeyRightState = 1;
-            } else {
-                KeyRightState = 2;
-            }
-        }
-        if (isKeyIdLeftRotateTest && state == STATE_WAIT_GET_KEY_LEFTROTATE_STATE) {
-            if (compareVersions(keyIdLeftRotate, QString::number(x.keyButtonId))) {
-                KeyLeftRotateState = 1;
-            } else {
-                KeyLeftRotateState = 2;
-            }
-        }
-        if (isKeyIdRightRotateTest && state == STATE_WAIT_GET_KEY_RIGHTROTATE_STATE) {
-            if (compareVersions(keyIdRightRotate, QString::number(x.keyButtonId))) {
-                KeyRightRotateState = 1;
-            } else {
-                KeyRightRotateState = 2;
-            }
-        }
+        recordCurrentKeyButtonResult(x.keyButtonId);
         updateTestData(testItems);
     }
 }
@@ -1474,6 +1502,10 @@ void key_test::startTask() {
                 KeyRightState = 0;
                 KeyLeftRotateState = 0;
                 KeyRightRotateState = 0;
+                keyErrorDetail.clear();
+                lastKeyButtonId = -1;
+                lastKeyButtonMs = 0;
+                keyButtonDebounceTimer.invalidate();
                 closeKeyWaitPromptProgrammatically();
                 keyWaitPromptShown = false;
                 plcKeyActionStarted = false;
@@ -1521,7 +1553,7 @@ void key_test::startTask() {
                             showlog("电源按钮测试通过");
                             state = STATE_WAIT_GET_KEY_MODE_STATE;
                         } else {
-                            appendStationResult(testItems, "电源键测试", "0.0000", failValue);
+                            appendStationResult(testItems, "电源键测试", currentKeyFailureDetail(), failValue);
                             testResultTableUpdate(testItems);
                             keyWaitPromptShown = false;
                             totalresult = failValue;
@@ -1544,7 +1576,7 @@ void key_test::startTask() {
                         showlog("Mode键测试通过");
                         state = STATE_WAIT_GET_KEY_PROGRAM_STATE;
                     } else {
-                        appendStationResult(testItems, "Mode键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "Mode键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1566,7 +1598,7 @@ void key_test::startTask() {
                         showlog("Program键测试通过");
                         state = STATE_WAIT_GET_KEY_SPEED_STATE;
                     } else {
-                        appendStationResult(testItems, "Program键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "Program键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1590,7 +1622,7 @@ void key_test::startTask() {
                         showlog("Speed键测试通过");
                         state = STATE_WAIT_GET_KEY_STARTPAUSE_STATE;
                     } else {
-                        appendStationResult(testItems, "Speed键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "Speed键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1613,7 +1645,7 @@ void key_test::startTask() {
                         showlog("Start/Pause键测试通过");
                         state = STATE_WAIT_GET_KEY_LEFT_STATE;
                     } else {
-                        appendStationResult(testItems, "开始/暂停键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "开始/暂停键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1636,7 +1668,7 @@ void key_test::startTask() {
                         showlog("左键测试通过");
                         state = STATE_WAIT_GET_KEY_RIGHT_STATE;
                     } else {
-                        appendStationResult(testItems, "左键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "左键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1658,7 +1690,7 @@ void key_test::startTask() {
                         showlog("右键测试通过");
                         state = STATE_WAIT_GET_KEY_LEFTROTATE_STATE;
                     } else {
-                        appendStationResult(testItems, "右键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "右键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1680,7 +1712,7 @@ void key_test::startTask() {
                         showlog("左旋键测试通过");
                         state = STATE_WAIT_GET_KEY_RIGHTROTATE_STATE;
                     } else {
-                        appendStationResult(testItems, "左旋键测试", "0.0000", failValue);
+                        appendStationResult(testItems, "左旋键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;
@@ -1704,7 +1736,7 @@ void key_test::startTask() {
                         totalresult = passValue;
                         state = STATE_SAVE_RESULT;
                     } else {
-                        appendStationResult(testItems, "右旋测试", "0.0000", failValue);
+                        appendStationResult(testItems, "右旋测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         totalresult = failValue;

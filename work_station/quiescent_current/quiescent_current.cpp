@@ -251,6 +251,40 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
+void quiescent_current::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
+    if (state != STATE_SLEEP_CURRENT_TEST) {
+        return;
+    }
+
+    const double currentMa = static_cast<double>(data.value);
+    const double lowCharCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
+    const double highCharCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
+    const bool pass = currentMa >= lowCharCurrent && currentMa <= highCharCurrent;
+    const QString resultText = pass ? passValue : failValue;
+
+    showlog(QString("充电电流%1，当前=%2ma，范围=%3~%4ma")
+                .arg(pass ? QStringLiteral("通过") : QStringLiteral("失败"))
+                .arg(currentMa, 0, 'f', 0)
+                .arg(lowCharCurrent)
+                .arg(highCharCurrent));
+
+    TestItem test;
+    test.testItem = "充电电流(ma)";
+    test.testData = QString::number(currentMa, 'f', 0);
+    test.testResult = resultText;
+    test.ask = QString("%1~%2").arg(lowCharCurrent).arg(highCharCurrent);
+    testItems.append(test);
+    testResultTableUpdate(testItems);
+
+    pack.itemvalue += QStringLiteral("|CHARGE_CURRENT:%1:%2:%3::ma:%4")
+                          .arg(currentMa, 0, 'f', 0)
+                          .arg(highCharCurrent)
+                          .arg(lowCharCurrent)
+                          .arg(pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+
+    totalresult = pass ? passValue : failValue;
+    state = STATE_SAVE_RESULT;
+}
 
 void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
     if (refresh_base_times) {
@@ -1030,13 +1064,15 @@ void quiescent_current::startTask() {
                 if (periph_state == 1)  // 设备信息正常
                 {
                     showlog("外设状态正常");
-                    // showlog("正在发送取消静止休眠");
-                    // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
-                    // qDebug() << getIndex() << "禁止休眠开始计时" << QDateTime::currentDateTime();
-                    // ble_waittime->setInterval(disconnect_wait_time);
-                    // ble_waittime->start();
-                    totalresult = passValue;
-                    state = STATE_SAVE_RESULT;
+                    const QString mesProductName = SETTINGS.value("MES/Product_Name").toString().trimmed();
+                    if (mesProductName.compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) {
+                        showlog(QStringLiteral("V3Pro产品，读取充电电流"));
+                        sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); });
+                        state = STATE_SLEEP_CURRENT_TEST;
+                    } else {
+                        totalresult = passValue;
+                        state = STATE_SAVE_RESULT;
+                    }
 
                 } else if (periph_state == 2)  // 设备信息异常
                 {
@@ -1051,32 +1087,17 @@ void quiescent_current::startTask() {
                 }
                 break;
 
-            // case STATE_SLEEP_CURRENT_TEST: {  // 工作电流 / 可选充电电流
-            //     const bool enableWorkCurrent = stepEnabled("work_current");
-            //     const bool enableChargeCurrent = stepEnabled("charge_current");
-            //     workPass = true;
-            //     chargePass = true;
-
-            //     if (enableWorkCurrent) {
-            //         workCurrentStats = collectCurrentStats("工作电流", 8, 400);
-            //         workPass = evaluateCurrentStats("工作电流", workCurrentStats, LowCurrent, HighCurrent);
-
-            //         TestItem workTest;
-            //         workTest.testItem = "工作电流(ma)";
-            //         workTest.testData = QString("min:%1 max:%2 avg:%3 fluct:%4")
-            //                                 .arg(workCurrentStats.minValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.maxValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.avgValue, 0, 'f', 4)
-            //                                 .arg(workCurrentStats.fluctuation, 0, 'f', 4);
-            //         workTest.testResult = workPass ? passValue : failValue;
-            //         workTest.ask = QString("%1~%2").arg(LowCurrent).arg(HighCurrent);
-            //         testItems.append(workTest);
-            //         testResultTableUpdate(testItems);
-            //     }
-            //     totalresult = (workPass && chargePass) ? passValue : failValue;
-            //     state = STATE_SAVE_RESULT;
-            //     break;
-            // }
+            case STATE_SLEEP_CURRENT_TEST:
+                if (sendRetryOver) {
+                    sendRetryOver = false;
+                    showlog(QStringLiteral("读取充电电流超时"));
+                    appendStationResult(testItems, "充电电流(ma)", "读取超时", failValue);
+                    testResultTableUpdate(testItems);
+                    pack.itemvalue += QStringLiteral("|CHARGE_CURRENT:TIMEOUT::::ma:FAIL");
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
+                break;
 
 
 

@@ -32,6 +32,7 @@ public:
     void refreshBleState(int state) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
+    void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
     // void refreshfwVersion(QString data) override;
     void refreshAmmeterData(QString data) override;

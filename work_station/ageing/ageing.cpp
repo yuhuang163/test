@@ -186,11 +186,13 @@ void ageing::refreshBattaryData(ProtocolBatteryData adc) {
     // chargestate = match.captured(2);
     if (battary >= standbattary) {
         is_battary_test = 1;  // 正常
-        pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%").arg(battary).arg(standbattary);
+        pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%:PASS").arg(battary).arg(standbattary);
     }
     if (battary < standbattary)
         is_battary_test = 2;  // 低电量
-        pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%").arg(battary).arg(standbattary);
+        pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%:FAIL").arg(battary).arg(standbattary);
+        pack.error=("当前电量过低");
+        pack.remark=("当前电量过低，为" + QString::number(battary) + "%");
 }
 
 void ageing::refreshBleState(int state) {
@@ -350,7 +352,7 @@ void ageing::refreshSn(ProtocolSnData data) {
             test.ask = "通过";
             testItems.append(test);
             testResultTableUpdate(testItems);
-            pack.itemvalue += QStringLiteral("|write_sn:%1:::%2:").arg(brushstringsn).arg(stringsn);
+            pack.itemvalue += QStringLiteral("|write_sn:PASS");
             snCompareOk = 1;
 
         } else {
@@ -361,7 +363,9 @@ void ageing::refreshSn(ProtocolSnData data) {
             test.ask = "通过";
             testItems.append(test);
             testResultTableUpdate(testItems);
-            pack.itemvalue += QStringLiteral("|write_sn:%1:::%2:").arg(brushstringsn).arg(stringsn);
+            pack.itemvalue += QStringLiteral("|write_sn:FAIL").arg(brushstringsn);
+            pack.error="SN比对失败";
+            pack.remark=("SN比对失败，读取的sn为" + brushstringsn + "，写入的sn为" + stringsn);
             snCompareOk = 2;
         }
     }
@@ -509,7 +513,7 @@ void ageing::startTask() {
 
                     if (is_battary_test == 2) {
                         showlog("当前电量低，为" + QString::number(battary) + "%");
-                        // pack.error="SP03010";
+                        pack.error=("当前电量低，为" + QString::number(battary) + "%");
                         TestItem test;
                         test.testItem = "当前电量";
                         test.testData = QString::number(battary);
@@ -556,7 +560,6 @@ void ageing::startTask() {
                 if (result == passValue) {
                     QString mesresult = "PASS";
                     pack.result = mesresult;
-                    pack.itemvalue += QStringLiteral("|AGE_TEST:PASS");
                     pack.mechines = getIndex();
                     pack.sn = ui->getMac->text();
                     pack.instruct_num = "083";
@@ -573,11 +576,10 @@ void ageing::startTask() {
                         "border-radius: 10px; padding: 10px; text-align: center;");
                 } else if ((result == failValue)) {
                     pack.result = "FAIL";
-                    pack.itemvalue += QStringLiteral("|AGE_TEST:FAIL");
                     pack.mechines = getIndex();
                     pack.sn = ui->getMac->text();
                     pack.instruct_num = "083";
-                    pack.error = "SP03011";
+                    
                     if (ui->isusemes->checkState()) {
                         emit send_end_testPass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
