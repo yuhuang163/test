@@ -1,6 +1,8 @@
 #include "quiescent_current.h"
 
 #include "ui_quiescent_current.h"
+#include <QMessageBox>
+#include <QTimer>
 #include <QVector>
 
 #if _MSC_VER >= 1600
@@ -124,7 +126,7 @@ void quiescent_current::applyCurrentProtocolConfig() {
             " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
     showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange +
-            ", 万用表VISA=" + QString(cfg.scpiUseVisa ? "ON" : "OFF") +
+            ", VISA配置=" + QString(cfg.scpiUseVisa ? "ON" : "OFF") +
             ", 地址=" + cfg.scpiVisaAddress);
     showlog("程控电源开关=" + QString(useProgrammablePower ? "ON" : "OFF") +
             ", VISA=" + programmablePowerVisaConfig_.visaAddress +
@@ -137,9 +139,9 @@ void quiescent_current::loadCurrentAmmeterVisaConfig(Qusb::ProtocolConfig* cfg) 
         return;
     }
 
-    cfg->scpiUseVisa = SETTINGS.value(QStringLiteral("Current/ScpiUseVisa"), true).toBool();
+    cfg->scpiUseVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool();
     cfg->scpiVisaAddress =
-        SETTINGS.value(QStringLiteral("Current/VisaAddress"), QStringLiteral("ASRL10::INSTR")).toString().trimmed();
+        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("ASRL10::INSTR")).toString().trimmed();
     cfg->scpiReadCurrentCmd =
         SETTINGS.value(QStringLiteral("Current/ScpiReadCurrentCmd"), QStringLiteral("MEASure:CURRent:DC? 500e-3"))
             .toString();
@@ -835,7 +837,7 @@ void quiescent_current::on_disconnectButton_clicked() {
 }
 void quiescent_current::on_usbconnectButton_clicked() {
     applyCurrentProtocolConfig();
-    showlog(QStringLiteral("万用表已切换为 VISA 配置，地址=%1")
+    showlog(QStringLiteral("VISA 已切换为 VisaPower 配置，地址=%1")
                 .arg(ui->currentAmmeterVisaAddressEdit->text().trimmed()));
 }
 
@@ -921,8 +923,14 @@ void quiescent_current::startTask() {
                         break;
                     }
                     if (outOk) {
-                        QMessageBox::information(this, QStringLiteral("操作提示"),
-                                                 QStringLiteral("请按产品电源键开机"));
+                        auto* prompt = new QMessageBox(QMessageBox::Information,
+                                                       QStringLiteral("操作提示"),
+                                                       QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
+                                                       QMessageBox::NoButton,
+                                                       this);
+                        prompt->setAttribute(Qt::WA_DeleteOnClose);
+                        prompt->show();
+                        QTimer::singleShot(5000, prompt, &QMessageBox::accept);
                     }
                 }
 
@@ -1320,11 +1328,11 @@ void quiescent_current::on_visa_test_clicked()
 
 void quiescent_current::on_currentAmmeterVisaApplyButton_clicked()
 {
-    SETTINGS.setValue(QStringLiteral("Current/ScpiUseVisa"), ui->currentAmmeterUseVisaCheckBox->isChecked());
-    SETTINGS.setValue(QStringLiteral("Current/VisaAddress"), ui->currentAmmeterVisaAddressEdit->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("VisaPower/ScpiUseVisa"), ui->currentAmmeterUseVisaCheckBox->isChecked());
+    SETTINGS.setValue(QStringLiteral("VisaPower/VisaAddress"), ui->currentAmmeterVisaAddressEdit->text().trimmed());
     closeUsbSerialPort();
     applyCurrentProtocolConfig();
-    showlog(QStringLiteral("已保存万用表 VISA 配置（Current），useVisa=%1，地址=%2")
+    showlog(QStringLiteral("已保存 VISA 配置（VisaPower），useVisa=%1，地址=%2")
                 .arg(ui->currentAmmeterUseVisaCheckBox->isChecked() ? 1 : 0)
                 .arg(ui->currentAmmeterVisaAddressEdit->text().trimmed()));
 }

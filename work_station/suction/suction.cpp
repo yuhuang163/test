@@ -3,6 +3,7 @@
 #include "qusb.h"
 #include "ui_suction.h"
 #include <algorithm>
+#include <QMessageBox>
 #include <QRegularExpression>
 #include <QSerialPort>
 #include <QStringList>
@@ -142,7 +143,8 @@ void suction::applySuctionProtocolConfig() {
     suctionPeakTargetKpa = SETTINGS.value("Suction/PeakTargetKpa", -36.0).toDouble();
     suctionPeakToleranceKpa = SETTINGS.value("Suction/PeakToleranceKpa", 2.6).toDouble();
     suctionPeakDiffMaxKpa = SETTINGS.value("Suction/PeakDiffMaxKpa", 2.6).toDouble();
-    suctionExternalPowerEnabled = SETTINGS.value("Suction/ExternalPowerEnabled", false).toBool();
+    // 吸力工站外接程控电源统一由 VisaPower/ScpiUseVisa 控制，避免与 Suction/ExternalPowerEnabled 双开关冲突。
+    suctionExternalPowerEnabled = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
     suctionPowerOnWaitMs = SETTINGS.value("Suction/PowerOnWaitMs", 5000).toInt();
     suctionUsePicoSensor = SETTINGS.value(QStringLiteral("Suction/UsePicoSensor"), true).toBool();
     if (suctionUsePicoSensor) {
@@ -1189,6 +1191,16 @@ void suction::startTask() {
                     state = STATE_SAVE_RESULT;
                     break;
                 }
+                if (suctionExternalPowerEnabled && powerOutOk) {
+                    auto* prompt = new QMessageBox(QMessageBox::Information,
+                                                   QStringLiteral("操作提示"),
+                                                   QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
+                                                   QMessageBox::NoButton,
+                                                   this);
+                    prompt->setAttribute(Qt::WA_DeleteOnClose);
+                    prompt->show();
+                    QTimer::singleShot(5000, prompt, &QMessageBox::accept);
+                }
                 protocolManager.resetAllPb();
                 periph_state = 0;
                 base_state = 0;
@@ -1435,8 +1447,6 @@ void suction::startTask() {
                 stringsn = "";
                 setExternalProgrammablePowerOutput(false);
                 if (totalresult == passValue) {
-                    protocolManager.set(DeviceCmd::FactoryReset);
-                    showlog("已发送恢复出厂设置");
                     pack.result = "PASS";
                     pack.sn = stringsn;
                     pack.instruct_num = "076";
@@ -1761,7 +1771,7 @@ void suction::on_pushButton_2_clicked()
 {
     // 手动：使用基类通用 VISA 对象上电（同工站 STATE_IDLE 电源段 + 电压限流）
     if (!suctionExternalPowerEnabled) {
-        showlog(QStringLiteral("未启用外接程控电源：请在 ini 中开启 Suction/ExternalPowerEnabled"));
+        showlog(QStringLiteral("未启用外接程控电源：请在 ini 中开启 VisaPower/ScpiUseVisa"));
         return;
     }
     applySuctionProtocolConfig();
