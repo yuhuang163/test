@@ -5,6 +5,7 @@
 
 #include "qpb/qpb.h"
 #include "qfctp/qfctp.h"
+#include "qaiot/qaiot.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -59,6 +60,9 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
     if (lower == "qfctp") {
         return ProtocolType::Qfctp;
     }
+    if (lower == "qaiot") {
+        return ProtocolType::Qaiot;
+    }
     return ProtocolType::Unknown;
 }
 
@@ -66,6 +70,7 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
     switch (type) {
         case ProtocolType::Qpb: return "qpb";
         case ProtocolType::Qfctp: return "qfctp";
+        case ProtocolType::Qaiot: return "qaiot";
         default: return "unknown";
     }
 }
@@ -77,6 +82,11 @@ void QProtocolManager::bindQpb(Qpb* pb) {
 
 void QProtocolManager::bindQfctp(Qfctp* fctp) {
     qfctp_ = fctp;
+    syncActivePointer();
+}
+
+void QProtocolManager::bindQaiot(Qaiot* aiot) {
+    qaiot_ = aiot;
     syncActivePointer();
 }
 
@@ -223,6 +233,13 @@ Qfctp* QProtocolManager::currentQfctp() const {
     return nullptr;
 }
 
+Qaiot* QProtocolManager::currentQaiot() const {
+    if (currentType_ == ProtocolType::Qaiot) {
+        return qaiot_;
+    }
+    return nullptr;
+}
+
 bool QProtocolManager::isQpbProtocolActive() const {
     return currentType_ == ProtocolType::Qpb;
 }
@@ -231,9 +248,14 @@ bool QProtocolManager::isQfctpProtocolActive() const {
     return currentType_ == ProtocolType::Qfctp;
 }
 
+bool QProtocolManager::isQaiotProtocolActive() const {
+    return currentType_ == ProtocolType::Qaiot;
+}
+
 void QProtocolManager::syncActivePointer() {
     syncManagerSignals(qpb_, this, false);
     syncManagerSignals(qfctp_, this, false);
+    syncManagerSignals(qaiot_, this, false);
 
     switch (currentType_) {
         case ProtocolType::Qpb:
@@ -242,6 +264,10 @@ void QProtocolManager::syncActivePointer() {
             break;
         case ProtocolType::Qfctp:
             active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
+            syncManagerSignals(active_, this, true);
+            break;
+        case ProtocolType::Qaiot:
+            active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
             syncManagerSignals(active_, this, true);
             break;
         default:

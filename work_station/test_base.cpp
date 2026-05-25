@@ -16,6 +16,7 @@
 #include "qcoreapplication.h"
 #include "qprocess.h"
 #include "agreement/qProtocol/qfctp/qfctp.h"
+#include "agreement/qProtocol/qaiot/qaiot.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -27,12 +28,13 @@
 
 test_base::test_base(QWidget* parent) :
     QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
+    qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
     usb(new Qusb(usbSerialPort)), visa(new Qvisa(this)), jigSerialPort(new QSerialPort(this)),
     jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
+    protocolManager.bindQaiot(qaiot);
     const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
     if (selectedType == QProtocolManager::ProtocolType::Unknown) {

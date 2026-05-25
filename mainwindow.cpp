@@ -86,12 +86,13 @@ void MainWindow::on_pushButton_3_clicked() {
 
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
+    qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
+    protocolManager.bindQaiot(qaiot);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
@@ -104,8 +105,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
     // 当前激活协议由 protocolManager 统一维护。
-    if (selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) {
-        QMessageBox::information(this, "协议提示", "qfctp 未就绪，已自动回退到 qpb。");
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot)) {
+        QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     } else {
         protocolManager.setCurrentProtocolType(selectedType);
@@ -162,7 +164,7 @@ MainWindow::MainWindow(QWidget* parent) :
         }
     });
 
-    QStringList productList = {"V3",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
+    QStringList productList = {"M8P","V3",   "AIR 2",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
                                "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));

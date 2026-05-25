@@ -1,4 +1,4 @@
-#include "qfctp.h"
+﻿#include "qfctp.h"
 #include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>
@@ -286,26 +286,33 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
 
 void Qfctp::registerResponseHandlers()
 {
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSnRead), &Qfctp::handleRspSnRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTupleRead), &Qfctp::handleRspTupleRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvAgingStatus), &Qfctp::handleRspAgingStatus);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvDeviceException), &Qfctp::handleRspDeviceException);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTrimGet), &Qfctp::handleRspTrimGet);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvFactoryDoneRead), &Qfctp::handleRspFactoryDoneRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvRssiRead), &Qfctp::handleRspRssiRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSensorState), &Qfctp::handleRspSensorState);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvBatteryRead), &Qfctp::handleRspBatteryRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvKeySignalRead), &Qfctp::handleRspKeySignalRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibRead), &Qfctp::handleRspLightCalibRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLcdBacklight), &Qfctp::handleRspLcdBacklight);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightReportCtrl), &Qfctp::handleRspLightReportCtrl);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibWrite), &Qfctp::handleRspLightCalibWrite);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvChargeCurrentRead), &Qfctp::handleRspChargeCurrentRead);
+    // 查发送到回包：先看发送处的 service/tlv，再在这里按同一组 key 找 handler。
+    // sendRequest(...) 会同步打印 FCTP EXPECT，现场日志也能直接看到预期回包函数。
+    registerResponseHandler(kTestsService, kTlvSnRead, QStringLiteral("handleRspSnRead"), &Qfctp::handleRspSnRead);
+    registerResponseHandler(kTestsService, kTlvTupleRead, QStringLiteral("handleRspTupleRead"), &Qfctp::handleRspTupleRead);
+    registerResponseHandler(kTestsService, kTlvAgingStatus, QStringLiteral("handleRspAgingStatus"), &Qfctp::handleRspAgingStatus);
+    registerResponseHandler(kTestsService, kTlvDeviceException, QStringLiteral("handleRspDeviceException"), &Qfctp::handleRspDeviceException);
+    registerResponseHandler(kTestsService, kTlvTrimGet, QStringLiteral("handleRspTrimGet"), &Qfctp::handleRspTrimGet);
+    registerResponseHandler(kTestsService, kTlvFactoryDoneRead, QStringLiteral("handleRspFactoryDoneRead"), &Qfctp::handleRspFactoryDoneRead);
+    registerResponseHandler(kTestsService, kTlvRssiRead, QStringLiteral("handleRspRssiRead"), &Qfctp::handleRspRssiRead);
+    registerResponseHandler(kTestsService, kTlvSensorState, QStringLiteral("handleRspSensorState"), &Qfctp::handleRspSensorState);
+    registerResponseHandler(kTestsService, kTlvBatteryRead, QStringLiteral("handleRspBatteryRead"), &Qfctp::handleRspBatteryRead);
+    registerResponseHandler(kTestsService, kTlvKeySignalRead, QStringLiteral("handleRspKeySignalRead"), &Qfctp::handleRspKeySignalRead);
+    registerResponseHandler(kTestsService, kTlvLightCalibRead, QStringLiteral("handleRspLightCalibRead"), &Qfctp::handleRspLightCalibRead);
+    registerResponseHandler(kTestsService, kTlvLcdBacklight, QStringLiteral("handleRspLcdBacklight"), &Qfctp::handleRspLcdBacklight);
+    registerResponseHandler(kTestsService, kTlvLightReportCtrl, QStringLiteral("handleRspLightReportCtrl"), &Qfctp::handleRspLightReportCtrl);
+    registerResponseHandler(kTestsService, kTlvLightCalibWrite, QStringLiteral("handleRspLightCalibWrite"), &Qfctp::handleRspLightCalibWrite);
+    registerResponseHandler(kTestsService, kTlvChargeCurrentRead, QStringLiteral("handleRspChargeCurrentRead"), &Qfctp::handleRspChargeCurrentRead);
 
-    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvFwVersionRead), &Qfctp::handleRspFwVersionRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvMacRead), &Qfctp::handleRspMacRead);
+    registerResponseHandler(kSystemConfigService, kTlvFwVersionRead, QStringLiteral("handleRspFwVersionRead"), &Qfctp::handleRspFwVersionRead);
+    registerResponseHandler(kSystemConfigService, kTlvMacRead, QStringLiteral("handleRspMacRead"), &Qfctp::handleRspMacRead);
+}
 
-
+void Qfctp::registerResponseHandler(uint16_t serviceId, uint16_t tlvType, const QString &responseName, ResponseHandler handler)
+{
+    const uint32_t key = qfctpMakeResponseKey(serviceId, tlvType);
+    m_responseHandlers.insert(key, handler);
+    m_responseNames.insert(key, responseName);
 }
 
 void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen)
@@ -320,6 +327,11 @@ void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainV
 bool Qfctp::isDataResponse(uint16_t serviceId, uint16_t tlvType) const
 {
     return m_responseHandlers.contains(qfctpMakeResponseKey(serviceId, tlvType));
+}
+
+QString Qfctp::responseNameFor(uint16_t serviceId, uint16_t tlvType) const
+{
+    return m_responseNames.value(qfctpMakeResponseKey(serviceId, tlvType));
 }
 
 void Qfctp::handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen)
@@ -924,6 +936,13 @@ bool Qfctp::sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray &
     req.actionName = QString::fromUtf8(actionName);
     req.requestValue = value;
     m_pendingRequests.insert(seq, req);
+    const QString responseName = responseNameFor(serviceId, tlvType);
+    if (!responseName.isEmpty()) {
+        qDebug() << "FCTP EXPECT:" << req.actionName
+                 << "service=" << serviceId
+                 << "tlv_type=" << tlvType
+                 << "handler=" << responseName;
+    }
     return true;
 }
 
