@@ -2,6 +2,9 @@
 #include "config.h"
 #include "esp_gatt_common_api.h"
 
+#include <map>
+#include <string>
+
 uint16_t conn_id = -1;
 static BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
@@ -46,9 +49,30 @@ static BLEUUID mainNotifyUUID("a6ed0302-d344-460a-8075-b9e8ec90d71b");
 static BLERemoteCharacteristic *mainNotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *mainWriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUID("524f4f54-9000-0080-0010-000000020001"); // fac
-static BLEUUID NotifyUUID("524f4f54-9000-0080-0010-000000020002");  // 收产测指令
-static BLEUUID WriteUUID("524f4f54-9000-0080-0010-000000020003");   // 写产测指令
+struct FactoryBleProfile
+{
+    const char *name;
+    BLEUUID serviceUUID;
+    BLEUUID notifyUUID;
+    BLEUUID writeUUID;
+};
+
+static FactoryBleProfile factoryProfiles[] = {
+    {"V3",
+     BLEUUID("524f4f54-9000-0080-0010-000000020001"),
+     BLEUUID("524f4f54-9000-0080-0010-000000020002"),
+     BLEUUID("524f4f54-9000-0080-0010-000000020003")},
+    {"TONGYONG",
+     BLEUUID("9F6C1A20-3C4D-4E5F-A601-7B8C9D0E1122"),
+     BLEUUID("9F6C1A22-3C4D-4E5F-A601-7B8C9D0E1122"),
+     BLEUUID("9F6C1A21-3C4D-4E5F-A601-7B8C9D0E1122")},
+    {"usmile",
+     BLEUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b"),
+     BLEUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b"),
+     BLEUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b")},
+};
+
+static FactoryBleProfile *activeFactoryProfile = nullptr;
 
 static BLEUUID CameraUUID("a6ed0204-d344-460a-8075-b9e8ec90d71b");  // 摄像头传图
 static BLEUUID LogUUID("a6ed0205-d344-460a-8075-b9e8ec90d71b");     // 传输日志
@@ -70,6 +94,43 @@ static BLEUUID WriteUUIDNormal("2ACA");
 static BLEUUID NotifyUUIDNormal("2ACA");
 static BLERemoteCharacteristic *normolNotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *normolWriteCharacteristic = nullptr;
+
+static BLERemoteService *findFactoryRemoteService()
+{
+    activeFactoryProfile = nullptr;
+
+    std::map<std::string, BLERemoteService *> *services = pClient->getServices();
+    if (!pClient->isConnected())
+    {
+        Serial.println("服务发现中连接已断开(facRemoteService)");
+        return nullptr;
+    }
+
+    if (services == nullptr)
+    {
+        return nullptr;
+    }
+
+    for (auto &servicePair : *services)
+    {
+        Serial.print("发现BLE服务：");
+        Serial.println(servicePair.first.c_str());
+
+        for (size_t i = 0; i < sizeof(factoryProfiles) / sizeof(factoryProfiles[0]); i++)
+        {
+            FactoryBleProfile *profile = &factoryProfiles[i];
+            if (servicePair.first == profile->serviceUUID.toString().c_str())
+            {
+                activeFactoryProfile = profile;
+                Serial.print("匹配factory服务：");
+                Serial.println(profile->name);
+                return servicePair.second;
+            }
+        }
+    }
+
+    return nullptr;
+}
 
 typedef enum
 {
@@ -826,10 +887,9 @@ bool connectTobleServer()
         if (pClient != nullptr)
         {
             // 连接在服务发现过程中可能被对端断开，逐个检查避免阻塞卡住 loop。
-            facRemoteService = pClient->getService(serviceUUID);
+            facRemoteService = findFactoryRemoteService();
             if (!pClient->isConnected())
             {
-                Serial.println("服务发现中连接已断开(facRemoteService)");
                 return false;
             }
 
@@ -864,8 +924,8 @@ bool connectTobleServer()
         {
             Serial.println("找到facRemoteService服务");
             CAMERAUUIDCharacteristic = facRemoteService->getCharacteristic(CameraUUID);
-            NotifyCharacteristic = facRemoteService->getCharacteristic(NotifyUUID);
-            WriteCharacteristic = facRemoteService->getCharacteristic(WriteUUID);
+            NotifyCharacteristic = facRemoteService->getCharacteristic(activeFactoryProfile->notifyUUID);
+            WriteCharacteristic = facRemoteService->getCharacteristic(activeFactoryProfile->writeUUID);
             LOGUUIDCharacteristic = facRemoteService->getCharacteristic(LogUUID);
         }
         else
@@ -959,7 +1019,14 @@ bool ServerStateCheck()
     else
     {
         Serial.print("找不到消息提醒UUID：");
-        Serial.println(NotifyUUID.toString().c_str());
+        if (activeFactoryProfile != nullptr)
+        {
+            Serial.println(activeFactoryProfile->notifyUUID.toString().c_str());
+        }
+        else
+        {
+            Serial.println("未匹配factory服务");
+        }
     }
 
     if (CAMERAUUIDCharacteristic != nullptr)

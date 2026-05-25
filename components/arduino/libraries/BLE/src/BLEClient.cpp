@@ -418,7 +418,7 @@ BLERemoteService *BLEClient::getService(const char *uuid) {
  * @throws BLEUuidNotFound
  */
 BLERemoteService *BLEClient::getService(BLEUUID uuid) {
-  Serial.printf(">> getService: uuid: %s\r\n", uuid.toString().c_str());
+  // Serial.printf(">> getService: uuid: %s\r\n", uuid.toString().c_str());
 
   log_v(">> getService: uuid: %s", uuid.toString().c_str());
   // Design
@@ -433,12 +433,12 @@ BLERemoteService *BLEClient::getService(BLEUUID uuid) {
   std::string uuidStr = uuid.toString().c_str();
   for (auto &myPair : m_servicesMap) {
     if (myPair.first == uuidStr) {
-      Serial.printf("<< getService: found the service with uuid: %s\r\n", uuid.toString().c_str());
+      // Serial.printf("<< getService: found the service with uuid: %s\r\n", uuid.toString().c_str());
       log_v("<< getService: found the service with uuid: %s", uuid.toString().c_str());
       return myPair.second;
     }
   }  // End of each of the services.
-  Serial.printf("<< getService: not found\r\n");
+  // Serial.printf("<< getService: not found\r\n");
   log_v("<< getService: not found");
   return nullptr;
 }  // getService
