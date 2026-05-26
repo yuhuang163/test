@@ -1,5 +1,7 @@
 ﻿#include "test_base.h"
 
+#include "my_set/my_typedef.h"
+
 #include <dbt.h>
 #include <devguid.h>
 #include <hidclass.h>
@@ -683,26 +685,7 @@ void test_base::waitWork(int ms) {
 }
 
 void test_base::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 
 void test_base::solveGetBrushResponse(int data) {

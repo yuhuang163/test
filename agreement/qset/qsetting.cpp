@@ -1402,26 +1402,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_mes_login_password->setText(SETTINGS.value("MES/M_PASSWORD").toString());
 }
 void qsetting::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 qsetting::~qsetting() {
     qDebug() << "已经删除页面";

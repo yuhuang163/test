@@ -1,4 +1,5 @@
 ﻿#include "factory_analyzer.h"
+#include "my_set/my_typedef.h"
 #include "agreement/qbrush/qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
@@ -35,7 +36,7 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     shell->start();
     shellMonitor->start();
 
-    updateMainStyle(":/stytle/qss/Ubuntu.qss");
+    updateMainStyle("Ubuntu.qss");
 
 
     QWidget *page11 = ui->tabWidget->widget(10);
@@ -580,30 +581,7 @@ void factory_analyzer::json_buildTree(const QJsonObject &obj, QStandardItem *par
 
 
 void factory_analyzer::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-
-
-    QFile qss(style);
-
-
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 void factory_analyzer::readProductSerialPortData() {
     productSerialPortTimer->stop();              // 关闭定时器
