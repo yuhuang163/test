@@ -1,5 +1,5 @@
 ﻿#include "factory_analyzer.h"
-#include "agreement/qbrush/qproduct.h"
+#include "agreement/qmomcozy/qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
 #include <QCoreApplication>

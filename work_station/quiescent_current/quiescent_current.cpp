@@ -97,8 +97,8 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
 
 void quiescent_current::applyCurrentProtocolConfig() {
     Qusb::ProtocolConfig cfg;
-    cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Current/ProtocolType", "auto").toString());
-    cfg.luxshareMachineId = SETTINGS.value("Current/LxMachineId", getIndex()).toInt();
+    cfg.protocol = protocolTypeFromSetting("auto");
+    cfg.luxshareMachineId = getIndex();
     cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
     cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
     cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();

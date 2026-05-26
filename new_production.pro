@@ -51,6 +51,7 @@ INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/qjig
 INCLUDEPATH += agreement/qbrush
+INCLUDEPATH += agreement/qmomcozy
 INCLUDEPATH += agreement/adb
 INCLUDEPATH += agreement/qtuple
 INCLUDEPATH += agreement/qplc
@@ -101,7 +102,7 @@ SOURCES += \
     agreement/qProtocol/qprotocolmanager.cpp \
     agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
-    agreement/qbrush/qproduct.cpp \
+    agreement/qmomcozy/qproduct.cpp \
     agreement/qbulk/crc_md5.cpp \
     agreement/qbulk/qbulk.cpp \
     agreement/qjig/fixture_uart.cpp \
@@ -187,7 +188,7 @@ HEADERS += \
     agreement/qProtocol/qprotocolmanager.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \
-    agreement/qbrush/qproduct.h \
+    agreement/qmomcozy/qproduct.h \
     agreement/qbulk/qbulk.h \
     agreement/qjig/fixture_uart.h \
     agreement/qjig/qjig.h \
@@ -324,23 +325,20 @@ win32 {
 }
 
 win32 {
-    # NI-VISA / IVI：仅当能找到 visa.h 时才定义 HAVE_NI_VISA，否则会编译失败。
-    # 注意：路径含空格时不要用 exists($$VISA_ROOT/...) 拼接，容易判断失败却仍带旧 DEFINES。
-    NI_VISA_ROOT =
-    exists("C:/Program Files/IVI Foundation/VISA/Win64/Include/visa.h") {
-        NI_VISA_ROOT = "C:/Program Files/IVI Foundation/VISA/Win64"
-    } else:exists("C:/Program Files (x86)/IVI Foundation/VISA/Win64/Include/visa.h") {
-        NI_VISA_ROOT = "C:/Program Files (x86)/IVI Foundation/VISA/Win64"
-    } else:exists("C:/Program Files/IVI Foundation/VISA/WinNT/Include/visa.h") {
-        NI_VISA_ROOT = "C:/Program Files/IVI Foundation/VISA/WinNT"
-    }
-    !isEmpty(NI_VISA_ROOT) {
-        INCLUDEPATH += $$NI_VISA_ROOT/Include
-        LIBS += -L$$NI_VISA_ROOT/Lib_x64/msc -lvisa64
+    # NI-VISA / IVI：只使用项目根目录的依赖文件，换电脑时无需依赖本机安装路径。
+    exists($$PWD/visa.h):exists($$PWD/visatype.h):exists($$PWD/visa64.lib):exists($$PWD/visa64.dll):exists($$PWD/visaConfMgr.dll):exists($$PWD/visaUtilities.dll) {
+        INCLUDEPATH += $$PWD
+        LIBS += -L$$PWD -lvisa64
         DEFINES += HAVE_NI_VISA
-        message("NI-VISA enabled: $$NI_VISA_ROOT")
+        VISA_DLLS = visa64.dll visaConfMgr.dll visaUtilities.dll
+        for(VISA_DLL, VISA_DLLS) {
+            VISA_DLL_SRC = $$shell_path($$PWD/$$VISA_DLL)
+            VISA_DLL_DST = $$shell_path($$OUT_PWD/$$DESTDIR/$$VISA_DLL)
+            QMAKE_POST_LINK += $$quote(cmd /c copy /Y "$$VISA_DLL_SRC" "$$VISA_DLL_DST" $$escape_expand(\n\t))
+        }
+        message("NI-VISA enabled from project root.")
     } else {
-        message("NI-VISA not found — build without VISA (install NI-VISA Runtime/SDK or fix path).")
+        message("NI-VISA root files incomplete — build without VISA. Required: visa.h, visatype.h, visa64.lib, visa64.dll, visaConfMgr.dll, visaUtilities.dll")
     }
 }
 

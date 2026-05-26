@@ -5,6 +5,7 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMessageBox>
+#include <QStringList>
 #include <QThread>
 #include <QVector>
 #include <QtGlobal>
@@ -106,8 +107,8 @@ key_test::key_test(int index, QWidget* parent) :
 
 void key_test::applyKeyProtocolConfig() {
     Qusb::ProtocolConfig cfg;
-    cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Current/ProtocolType", "auto").toString());
-    cfg.luxshareMachineId = SETTINGS.value("Current/LxMachineId", getIndex()).toInt();
+    cfg.protocol = protocolTypeFromSetting("auto");
+    cfg.luxshareMachineId = getIndex();
     cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
     cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
     cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
@@ -187,8 +188,6 @@ QString key_test::currentKeyStepName() const {
         case STATE_WAIT_GET_KEY_STARTPAUSE_STATE: return QStringLiteral("Start/Pause键测试");
         case STATE_WAIT_GET_KEY_LEFT_STATE: return QStringLiteral("左键测试");
         case STATE_WAIT_GET_KEY_RIGHT_STATE: return QStringLiteral("右键测试");
-        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE: return QStringLiteral("左旋键测试");
-        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE: return QStringLiteral("右旋键测试");
         default: return QString();
     }
 }
@@ -223,14 +222,6 @@ QString key_test::currentExpectedKeyId() const {
             return SETTINGS.value("ProductInfo/KeyIdRight_checkBox").toBool()
                        ? SETTINGS.value("ProductInfo/KeyIdRight").toString()
                        : QString();
-        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE:
-            return SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox").toBool()
-                       ? SETTINGS.value("ProductInfo/KeyIdLeftRotate").toString()
-                       : QString();
-        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE:
-            return SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox").toBool()
-                       ? SETTINGS.value("ProductInfo/KeyIdRightRotate").toString()
-                       : QString();
         default: return QString();
     }
 }
@@ -244,8 +235,6 @@ void key_test::setCurrentKeyResult(int result) {
         case STATE_WAIT_GET_KEY_STARTPAUSE_STATE: KeyStartPauseState = result; break;
         case STATE_WAIT_GET_KEY_LEFT_STATE: KeyLeftState = result; break;
         case STATE_WAIT_GET_KEY_RIGHT_STATE: KeyRightState = result; break;
-        case STATE_WAIT_GET_KEY_LEFTROTATE_STATE: KeyLeftRotateState = result; break;
-        case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE: KeyRightRotateState = result; break;
         default: break;
     }
 }
@@ -279,16 +268,110 @@ void key_test::recordCurrentKeyButtonResult(int keyButtonId) {
     showlog(QStringLiteral("%1错按：%2").arg(stepName, keyErrorDetail));
 }
 
-void key_test::armPlcKeyBleWaitTimeout(const QString& testName) {
-    const int bleWaitMs = SETTINGS.value(QStringLiteral("KeyTest/TimeoutMs"), 5000).toInt();
-    const quint64 armSeq = ++plcKeyWaitSeq;
-    QTimer::singleShot(bleWaitMs, this, [this, armSeq, testName]() {
-        if (armSeq != plcKeyWaitSeq || !isTestContinue || refresh_key_times == 0) {
-            return;
+void key_test::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+    // PLC 下压期间同步读取 KeyCap，pollKeyCapDuringPress 会等待这个槽写回结果。
+    if (plcKeyCapSyncReadPending_) {
+        plcKeyCapSyncReadPending_ = false;
+        plcKeyCapSyncReadOk_ = true;
+        plcKeyCapSyncReadValue_ = data.value;
+        plcKeyCapSyncReadAuxId_ = data.auxId;
+    }
+}
+
+void key_test::resetPlcKeyCapSyncReadState() {
+    plcKeyCapSyncReadPending_ = false;
+    plcKeyCapSyncReadOk_ = false;
+    plcKeyCapSyncReadValue_ = 0;
+    plcKeyCapSyncReadAuxId_ = -1;
+}
+
+bool key_test::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
+    const int kk = currentKeyCapRequestKk_;
+    const int configuredKeyId = currentKeyConfiguredId_;
+    const int readCount = qMax(1, SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt());
+    const int intervalMs = qMax(0, SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toInt());
+    const int singleTimeoutMs = qMax(500, SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toInt());
+
+    quint32 bestCap = 0;
+    QStringList sampleTexts;
+    for (int i = 0; i < readCount; ++i) {
+        resetPlcKeyCapSyncReadState();
+        plcKeyCapSyncReadPending_ = true;
+
+        QVariantMap m;
+        m[QStringLiteral("key")] = kk;
+        protocolManager.get(DeviceCmd::KeySignalRead, m);
+
+        QElapsedTimer timer;
+        timer.start();
+        while (plcKeyCapSyncReadPending_ && timer.elapsed() < singleTimeoutMs) {
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
+            QThread::msleep(20);
         }
-        failCurrentPlcKeyStep(testName, QStringLiteral("等待设备按键上报超时"));
-    });
-    showlog(testName + QStringLiteral("：等待设备按键上报（超时 %1ms）").arg(bleWaitMs));
+
+        if (plcKeyCapSyncReadPending_) {
+            if (errOut) {
+                *errOut = QStringLiteral("第%1/%2次读电容超时(%3ms)").arg(i + 1).arg(readCount).arg(singleTimeoutMs);
+            }
+            return false;
+        }
+        if (!plcKeyCapSyncReadOk_) {
+            if (errOut) {
+                *errOut = QStringLiteral("第%1/%2次读电容应答无效").arg(i + 1).arg(readCount);
+            }
+            return false;
+        }
+        if (plcKeyCapSyncReadAuxId_ != kk) {
+            if (errOut) {
+                *errOut = QStringLiteral("按键编号不一致：请求KK=%1 应答KK=%2")
+                              .arg(kk)
+                              .arg(plcKeyCapSyncReadAuxId_);
+            }
+            return false;
+        }
+
+        bestCap = qMax(bestCap, plcKeyCapSyncReadValue_);
+        sampleTexts.append(QString::number(plcKeyCapSyncReadValue_));
+        showlog(currentKeyStepName() + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4")
+                    .arg(i + 1)
+                    .arg(readCount)
+                    .arg(kk)
+                    .arg(plcKeyCapSyncReadValue_));
+
+        if (i + 1 < readCount && intervalMs > 0) {
+            QThread::msleep(static_cast<unsigned long>(intervalMs));
+        }
+    }
+
+    const QString expectedKeyId = QString::number(configuredKeyId);
+    const bool idOk = compareVersions(expectedKeyId, QString::number(kk + 1));
+    const bool capOk = (bestCap >= lowKeyCap_) && (bestCap <= highKeyCap_);
+    const QString capAsk = QStringLiteral("[%1,%2]").arg(lowKeyCap_).arg(highKeyCap_);
+    const QString summary = QStringLiteral("KK:%1 采样[%2] 最大:%3 ID:%4 期望ID:%5")
+                                .arg(kk)
+                                .arg(sampleTexts.join(QLatin1Char(',')))
+                                .arg(bestCap)
+                                .arg(kk + 1)
+                                .arg(expectedKeyId);
+    if (outSummary) {
+        *outSummary = summary;
+    }
+
+    if (!idOk) {
+        if (errOut) {
+            *errOut = QStringLiteral("按键ID与配置不符，KK=%1 期望ID=%2").arg(kk).arg(expectedKeyId);
+        }
+        return false;
+    }
+    if (!capOk) {
+        if (errOut) {
+            *errOut = QStringLiteral("电容卡控失败，最大=%1 允许%2").arg(bestCap).arg(capAsk);
+        }
+        return false;
+    }
+
+    showlog(currentKeyStepName() + QStringLiteral("卡控通过，KK=%1 最大电容=%2").arg(kk).arg(bestCap));
+    return true;
 }
 
 void key_test::startPlcClickerAndWaitKey(const QString& testName, int keyIndex0To6) {
@@ -301,36 +384,41 @@ void key_test::startPlcClickerAndWaitKey(const QString& testName, int keyIndex0T
     }
     plcKeyActionStarted = true;
     keyErrorDetail.clear();
-    refresh_key_times = 1;
+    keyPassDetail.clear();
+
+    const QString expectedKeyId = currentExpectedKeyId().trimmed();
+    bool keyIdOk = false;
+    const int configuredKeyId = expectedKeyId.toInt(&keyIdOk);
+    if (!keyIdOk || configuredKeyId <= 0) {
+        plcKeyActionStarted = false;
+        keyErrorDetail = QStringLiteral("按键ID配置无效:%1").arg(expectedKeyId);
+        setCurrentKeyResult(2);
+        return;
+    }
+    currentKeyConfiguredId_ = configuredKeyId;
+    currentKeyCapRequestKk_ = configuredKeyId - 1;
+    lowKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toUInt();
+    highKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toUInt();
+    resetPlcKeyCapSyncReadState();
+    plcKeyCapPassSummary_.clear();
+
     QString summary;
-    showlog(testName + QStringLiteral("：启动外设点击器"));
+    showlog(testName + QStringLiteral("：启动外设点击器并读取电容 KK=%1（配置ID=%2 减1），卡控[%3,%4]")
+                           .arg(currentKeyCapRequestKk_)
+                           .arg(configuredKeyId)
+                           .arg(lowKeyCap_)
+                           .arg(highKeyCap_));
     if (!runPlcV3TouchKeyFull(keyIndex0To6, &summary)) {
-        failCurrentPlcKeyStep(testName, summary);
+        plcKeyActionStarted = false;
+        keyErrorDetail = summary;
+        setCurrentKeyResult(2);
         return;
     }
     showlog(testName + QStringLiteral("：外设点击器完成，%1").arg(summary));
-    armPlcKeyBleWaitTimeout(testName);
-}
-
-void key_test::startPlcSwitchAndWaitKey(const QString& testName) {
-    if (!usePlcClickerForKeyTest()) {
-        failCurrentPlcKeyStep(testName, QStringLiteral("KeyTest/UsePlcClicker 未启用"));
-        return;
-    }
-    if (plcKeyActionStarted) {
-        return;
-    }
-    plcKeyActionStarted = true;
+    plcKeyActionStarted = false;
     keyErrorDetail.clear();
-    refresh_key_times = 1;
-    QString summary;
-    showlog(testName + QStringLiteral("：启动外设旋钮点击器"));
-    if (!runPlcV3TouchSwitchFull(&summary)) {
-        failCurrentPlcKeyStep(testName, summary);
-        return;
-    }
-    showlog(testName + QStringLiteral("：外设旋钮点击器完成，%1").arg(summary));
-    armPlcKeyBleWaitTimeout(testName);
+    keyPassDetail = summary;
+    setCurrentKeyResult(1);
 }
 
 int key_test::resolvedPlcMBase() const {
@@ -344,32 +432,6 @@ int key_test::resolvedPlcMBase() const {
     return st <= 1 ? base1 : base1 + step * (st - 1);
 }
 
-int key_test::resolvedPlcSwitchForwardM() const {
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/SwitchForwardM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    const int global = SETTINGS.value(QStringLiteral("PLC/SwitchForwardM"), -1).toInt();
-    if (global >= 0) {
-        return global;
-    }
-    return resolvedPlcMBase() + SETTINGS.value(QStringLiteral("PLC/SwitchForwardOffset"), 12).toInt();
-}
-
-int key_test::resolvedPlcSwitchPressM() const {
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/SwitchPressM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    const int global = SETTINGS.value(QStringLiteral("PLC/SwitchPressM"), -1).toInt();
-    if (global >= 0) {
-        return global;
-    }
-    return resolvedPlcMBase() + SETTINGS.value(QStringLiteral("PLC/SwitchPressOffset"), 7).toInt();
-}
-
 int key_test::resolvedPlcConnectVerifyM() const {
     const int st = qMax(1, getIndex());
     const int perStation = SETTINGS.value(QStringLiteral("PLC/ConnectVerifyM_Station%1").arg(st), -1).toInt();
@@ -377,7 +439,7 @@ int key_test::resolvedPlcConnectVerifyM() const {
         return perStation;
     }
     return SETTINGS.value(QStringLiteral("PLC/ConnectVerifyM"), resolvedPlcMBase()).toInt();
-}
+}          
 
 QString key_test::resolvedPlcIpAddress() const {
     const int st = qMax(1, getIndex());
@@ -585,6 +647,14 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 .arg(plcBoolText(useHandshake)).arg(plcBoolText(waitKeyDone)));
 
     const auto fail = [&](const QString& msg) {
+        if (inovancePlcTcp_.isConnected()) {
+            QString releaseErr;
+            if (!plcWriteCoil(keyM, false, &releaseErr)) {
+                showlog(QStringLiteral("按键测试失败后释放 M%1 失败: %2").arg(keyM).arg(releaseErr));
+            } else if (gapMs > 0) {
+                QThread::msleep(static_cast<unsigned long>(gapMs));
+            }
+        }
         inovancePlcTcp_.disconnect();
         if (summary) {
             *summary = msg;
@@ -625,6 +695,15 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
     if (actionSettle > 0) {
         QThread::msleep(static_cast<unsigned long>(actionSettle));
     }
+
+    QString capSummary;
+    QString capErr;
+    // 与自由工站一致：PLC 下压稳定后、StepDone/抬起前读取 KeyCap，确保治具仍保持按压状态。
+    if (!pollKeyCapDuringPress(&capErr, &capSummary)) {
+        return fail(capErr.isEmpty() ? QStringLiteral("按下期间读取按键电容失败") : capErr);
+    }
+    plcKeyCapPassSummary_ = capSummary;
+
     if (useHandshake && !plcSendStepDone(&err)) {
         return fail(QStringLiteral("发送 StepDone 失败: %1").arg(err));
     }
@@ -651,108 +730,15 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
     }
     inovancePlcTcp_.disconnect();
     if (summary) {
-        *summary = QStringLiteral("键%1 整步 M%2 Pos%3 Step%4 KeyDone%5").arg(keyIndex0To6).arg(keyM).arg(posReadyM).arg(stepDoneM).arg(keyDoneM);
+        *summary = QStringLiteral("键%1 整步 M%2 Pos%3 Step%4 KeyDone%5 电容:%6")
+                       .arg(keyIndex0To6)
+                       .arg(keyM)
+                       .arg(posReadyM)
+                       .arg(stepDoneM)
+                       .arg(keyDoneM)
+                       .arg(plcKeyCapPassSummary_);
     }
-    return true;
-}
-
-bool key_test::runPlcV3TouchSwitchFull(QString* summary) {
-    // inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
-    //                                 || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
-    const QString host = resolvedPlcIpAddress();
-    const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    QString err;
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-        if (summary) {
-            *summary = QStringLiteral("PLC 连接失败: %1").arg(err);
-        }
-        return false;
-    }
-
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const bool useHandshake = SETTINGS.value(QStringLiteral("PLC/UseStepHandshake"), true).toBool();
-    const bool waitKeyDone = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneAfterStepDone"), true).toBool();
-    const bool releaseAfter = SETTINGS.value(QStringLiteral("PLC/ReleasePositionAfterKeyDone"), true).toBool();
-    const int posSettle = SETTINGS.value(QStringLiteral("PLC/PositionSettleMs"), 500).toInt();
-    const int actionSettle = SETTINGS.value(QStringLiteral("PLC/KeyActionSettleMs"),
-                                             SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt()).toInt();
-    const int releaseSettle = SETTINGS.value(QStringLiteral("PLC/KeyReleaseSettleMs"),
-                                               SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt()).toInt();
-    const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
-                                          SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt()).toInt();
-    const int posPoll = SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
-                                       SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt()).toInt();
-    const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
-    const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
-    const int forwardM = resolvedPlcSwitchForwardM();
-    const int pressM = resolvedPlcSwitchPressM();
-    const int posReadyM = resolvedPlcPositionReadyBase() + 7;
-    const int stepDoneM = resolvedPlcStepDoneBase();
-    const int keyDoneM = resolvedPlcKeyDoneM();
-
-    const auto fail = [&](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        if (summary) {
-            *summary = msg;
-        }
-        return false;
-    };
-
-    if (useHandshake) {
-        bool sd = false;
-        if (!plcReadCoil(stepDoneM, &sd, &err)) {
-            return fail(QStringLiteral("读 StepDone 失败: %1").arg(err));
-        }
-        if (sd && !plcWriteCoil(stepDoneM, false, &err)) {
-            return fail(QStringLiteral("复位 StepDone 失败: %1").arg(err));
-        }
-    }
-    if (!plcWriteCoil(forwardM, true, &err)) {
-        return fail(QStringLiteral("旋钮前推 M%1 失败: %2").arg(forwardM).arg(err));
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (!plcWriteCoil(pressM, true, &err)) {
-        return fail(QStringLiteral("旋钮按压 M%1 失败: %2").arg(pressM).arg(err));
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (useHandshake && !plcWaitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
-        return fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
-    }
-    if (posSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(posSettle));
-    }
-    if (actionSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(actionSettle));
-    }
-    if (useHandshake && !plcSendStepDone(&err)) {
-        return fail(QStringLiteral("发送 StepDone 失败: %1").arg(err));
-    }
-    if (waitKeyDone && !plcWaitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
-        return fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
-    }
-    if (releaseAfter) {
-        if (!plcWriteCoil(pressM, false, &err)) {
-            return fail(QStringLiteral("旋钮释放按压 M%1 失败: %2").arg(pressM).arg(err));
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-        if (!plcWriteCoil(forwardM, false, &err)) {
-            return fail(QStringLiteral("旋钮收回前推 M%1 失败: %2").arg(forwardM).arg(err));
-        }
-    }
-    if (releaseSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(releaseSettle));
-    }
-    inovancePlcTcp_.disconnect();
-    if (summary) {
-        *summary = QStringLiteral("旋钮整步 M%1+M%2 Pos%3 Step%4 KeyDone%5").arg(forwardM).arg(pressM).arg(posReadyM).arg(stepDoneM).arg(keyDoneM);
-    }
+    plcKeyCapPassSummary_.clear();
     return true;
 }
 
@@ -1500,9 +1486,8 @@ void key_test::startTask() {
                 KeyProgramState = 0;
                 KeyLeftState = 0;
                 KeyRightState = 0;
-                KeyLeftRotateState = 0;
-                KeyRightRotateState = 0;
                 keyErrorDetail.clear();
+                keyPassDetail.clear();
                 lastKeyButtonId = -1;
                 lastKeyButtonMs = 0;
                 keyButtonDebounceTimer.invalidate();
@@ -1547,7 +1532,9 @@ void key_test::startTask() {
                     if (KeyPowerState != 0) {
                         closeKeyWaitPromptProgrammatically();
                         if (KeyPowerState == 1) {
-                            appendStationResult(testItems, "电源键测试", "0.0000", passValue);
+                            appendStationResult(testItems, "电源键测试",
+                                                keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                                passValue);
                             testResultTableUpdate(testItems);
                             keyWaitPromptShown = false;
                             showlog("电源按钮测试通过");
@@ -1570,7 +1557,9 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyModeState == 1) {
                         showlog("Mode键短按");
-                        appendStationResult(testItems, "Mode键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "Mode键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("Mode键测试通过");
@@ -1592,7 +1581,9 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyProgramState == 1) {
                         showlog("Program键短按");
-                        appendStationResult(testItems, "Program键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "Program键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("Program键测试通过");
@@ -1616,7 +1607,9 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeySpeedState == 1) {
                         showlog("Speed键短按");
-                        appendStationResult(testItems, "Speed键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "Speed键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("Speed键测试通过");
@@ -1639,7 +1632,9 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyStartPauseState == 1) {
                         showlog("Start/Pause开始/暂停键短按");
-                        appendStationResult(testItems, "Start/Pause键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "Start/Pause键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("Start/Pause键测试通过");
@@ -1662,7 +1657,9 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyLeftState == 1) {
                         showlog("左键短按");
-                        appendStationResult(testItems, "左键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "左键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("左键测试通过");
@@ -1684,11 +1681,14 @@ void key_test::startTask() {
                     closeKeyWaitPromptProgrammatically();
                     if (KeyRightState == 1) {
                         showlog("右键短按");
-                        appendStationResult(testItems, "右键测试", "0.0000", passValue);
+                        appendStationResult(testItems, "右键测试",
+                                            keyPassDetail.isEmpty() ? QStringLiteral("0.0000") : keyPassDetail,
+                                            passValue);
                         testResultTableUpdate(testItems);
                         keyWaitPromptShown = false;
                         showlog("右键测试通过");
-                        state = STATE_WAIT_GET_KEY_LEFTROTATE_STATE;
+                        totalresult = passValue;
+                        state = STATE_SAVE_RESULT;
                     } else {
                         appendStationResult(testItems, "右键测试", currentKeyFailureDetail(), failValue);
                         testResultTableUpdate(testItems);
@@ -1700,53 +1700,6 @@ void key_test::startTask() {
                     startPlcClickerAndWaitKey(QStringLiteral("右键测试"), 3);
                 }
                 break;
-            // 等待获取左旋键状态
-            case STATE_WAIT_GET_KEY_LEFTROTATE_STATE:
-                if (KeyLeftRotateState != 0) {
-                    closeKeyWaitPromptProgrammatically();
-                    if (KeyLeftRotateState == 1) {
-                        showlog("左旋键");
-                        appendStationResult(testItems, "左旋键测试", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        showlog("左旋键测试通过");
-                        state = STATE_WAIT_GET_KEY_RIGHTROTATE_STATE;
-                    } else {
-                        appendStationResult(testItems, "左旋键测试", currentKeyFailureDetail(), failValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    startPlcSwitchAndWaitKey(QStringLiteral("左旋键测试"));
-                }
-                break;
-
-            // 等待获取右旋键状态
-            case STATE_WAIT_GET_KEY_RIGHTROTATE_STATE:
-                if (KeyRightRotateState != 0) {
-                    closeKeyWaitPromptProgrammatically();
-                    if (KeyRightRotateState == 1) {
-                        showlog("右旋");
-                        appendStationResult(testItems, "右旋测试", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        showlog("右旋测试通过");
-                        totalresult = passValue;
-                        state = STATE_SAVE_RESULT;
-                    } else {
-                        appendStationResult(testItems, "右旋测试", currentKeyFailureDetail(), failValue);
-                        testResultTableUpdate(testItems);
-                        keyWaitPromptShown = false;
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    startPlcSwitchAndWaitKey(QStringLiteral("右旋键测试"));
-                }
-                break;
-
             case STATE_SAVE_RESULT: {
                 const QString endedSn = ui->snInput->text();
                 stringsn = "";

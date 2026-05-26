@@ -126,8 +126,8 @@ suction::suction(int index, QWidget* parent) :
 void suction::applySuctionProtocolConfig() {
     Qusb::ProtocolConfig cfg;
     // usb：传感器/电流表等；程控电源单独走 loadSuctionProgrammablePowerConfig()，不在此重复配置。
-    cfg.protocol = protocolTypeFromSetting(SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString());
-    cfg.luxshareMachineId = SETTINGS.value("Suction/LxMachineId", SETTINGS.value("Current/LxMachineId", getIndex())).toInt();
+    cfg.protocol = protocolTypeFromSetting("auto");
+    cfg.luxshareMachineId = getIndex();
     cfg.scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
     cfg.scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
     cfg.scpiRange = SETTINGS.value("Suction/ScpiRange", SETTINGS.value("Current/ScpiRange", "500e-3")).toString();
