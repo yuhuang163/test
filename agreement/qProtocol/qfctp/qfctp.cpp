@@ -1094,7 +1094,9 @@ bool Qfctp::setCaseMacWrite(const QVariantMap &map)
 
 bool Qfctp::setCaseNightLightSet(const QVariantMap &map)
 {
-    const uint8_t v = static_cast<uint8_t>(map.value("value").toUInt() & 0xFF);
+    const uint value = map.value("value").toUInt();
+    // 夜灯亮度按 0~100 直接发送单字节数值：0 -> 0x00，100 -> 0x64。
+    const uint8_t v = static_cast<uint8_t>(value > 100u ? 100u : value);
     return sendRequest(kSystemConfigService, kTlvNightLightSet, QByteArray(1, static_cast<char>(v)), "夜灯亮度设置");
 }
 

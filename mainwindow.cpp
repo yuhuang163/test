@@ -171,6 +171,12 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
         ui->rssi_range_value->setText(QString("%1 dBm").arg(value));
     });
+    ui->yedengslider->setMinimum(0);
+    ui->yedengslider->setMaximum(100);
+    ui->yedengslider_value->setText(QString("%1/100").arg(ui->yedengslider->value()));
+    connect(ui->yedengslider, &QSlider::valueChanged, this, [=](int value) {
+        ui->yedengslider_value->setText(QString("%1/100").arg(value));
+    });
     connect(ui->connectProductButton, &QPushButton::clicked, this, &MainWindow::on_macInput_returnPressed);
 
     initBasicInfo();
@@ -4017,13 +4023,14 @@ void MainWindow::on_set_device_mac_clicked()
 
 void MainWindow::on_night_brightness_clicked()
 {
-    ui->yedengslider->setMinimum(0);
-    ui->yedengslider->setMaximum(10);
     const int brightness = ui->yedengslider->value();
     QVariantMap m;
     m["value"] = brightness;
     protocolManager.set(DeviceCmd::NightLightSet, m);
-    showlog(QString("已发送夜灯亮度设置: %1/10").arg(brightness));
+    const QString brightnessHex = QString("%1").arg(brightness, 2, 16, QLatin1Char('0')).toUpper();
+    showlog(QString("已发送夜灯亮度设置: %1/100，hex=0x%2")
+                .arg(brightness)
+                .arg(brightnessHex));
 }
 
 void MainWindow::on_reset_factory_clicked()

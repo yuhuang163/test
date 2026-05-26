@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1357</width>
+    <width>1393</width>
     <height>1016</height>
    </rect>
   </property>
@@ -1870,8 +1870,18 @@
                    </item>
                    <item row="4" column="1">
                     <widget class="QSlider" name="yedengslider">
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
                      <property name="orientation">
                       <enum>Qt::Horizontal</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="4" column="2">
+                    <widget class="QLabel" name="yedengslider_value">
+                     <property name="text">
+                      <string>0/100</string>
                      </property>
                     </widget>
                    </item>
@@ -2406,16 +2416,16 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="light_repo_stop">
+                      <widget class="QPushButton" name="light_repo_start">
                        <property name="text">
-                        <string>关闭光感上报</string>
+                        <string>开启光感上报</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="light_repo_start">
+                      <widget class="QPushButton" name="light_repo_stop">
                        <property name="text">
-                        <string>开启光感上报</string>
+                        <string>关闭光感上报</string>
                        </property>
                       </widget>
                      </item>
@@ -5449,7 +5459,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1357</width>
+     <width>1393</width>
      <height>21</height>
     </rect>
    </property>
