@@ -325,20 +325,27 @@ win32 {
 }
 
 win32 {
-    # NI-VISA / IVI：只使用项目根目录的依赖文件，换电脑时无需依赖本机安装路径。
-    exists($$PWD/visa.h):exists($$PWD/visatype.h):exists($$PWD/visa64.lib):exists($$PWD/visa64.dll):exists($$PWD/visaConfMgr.dll):exists($$PWD/visaUtilities.dll) {
-        INCLUDEPATH += $$PWD
-        LIBS += -L$$PWD -lvisa64
+    # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
+    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头（AbIni.h → qusb.h → qvisa.h）。
+    VISA_DIR = $$PWD/lib/visa
+    exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
+        INCLUDEPATH += $$VISA_DIR
+        LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
         DEFINES += HAVE_NI_VISA
-        VISA_DLLS = visa64.dll visaConfMgr.dll visaUtilities.dll
-        for(VISA_DLL, VISA_DLLS) {
-            VISA_DLL_SRC = $$shell_path($$PWD/$$VISA_DLL)
-            VISA_DLL_DST = $$shell_path($$OUT_PWD/$$DESTDIR/$$VISA_DLL)
-            QMAKE_POST_LINK += $$quote(cmd /c copy /Y "$$VISA_DLL_SRC" "$$VISA_DLL_DST" $$escape_expand(\n\t))
+        VISA_DLLS = visa64.dll visaConfMgr.dll
+        exists($$VISA_DIR/visaUtilities.dll) {
+            VISA_DLLS += visaUtilities.dll
         }
-        message("NI-VISA enabled from project root.")
+        # 勿用 escape_expand(\\n\\t)：nmake 链接规则 @<< 后换行会破坏 Makefile
+        VISA_POST_CMD =
+        for(VISA_DLL, VISA_DLLS) {
+            !isEmpty(VISA_POST_CMD): VISA_POST_CMD += " && "
+            VISA_POST_CMD += copy /Y \"$$shell_path($$VISA_DIR/$$VISA_DLL)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/$$VISA_DLL)\"
+        }
+        QMAKE_POST_LINK += $$quote(cmd /c $$VISA_POST_CMD)
+        message("NI-VISA enabled from lib/visa.")
     } else {
-        message("NI-VISA root files incomplete — build without VISA. Required: visa.h, visatype.h, visa64.lib, visa64.dll, visaConfMgr.dll, visaUtilities.dll")
+        message("NI-VISA lib/visa incomplete — build without VISA. Required: visa.h, visatype.h, visa64.lib, visa64.dll, visaConfMgr.dll (optional: visaUtilities.dll)")
     }
 }
 
