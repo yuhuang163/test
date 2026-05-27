@@ -1,4 +1,5 @@
 ﻿#include "mainwindow.h"
+#include "my_set/my_typedef.h"
 #include "ui_mainwindow.h"
 // #include "xlsxdocument.h"
 #if _MSC_VER >= 1600
@@ -1402,27 +1403,7 @@ void MainWindow::updateWifi(ProtocolWifiStateData wifi) {
     showlog(wifi.wifiPassword);
 }
 void MainWindow::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    // QFile qss("../tooth_brush_debug_tools/qss/" + style);
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {

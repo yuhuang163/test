@@ -1,5 +1,7 @@
 ﻿#include "test_base.h"
 
+#include "my_set/my_typedef.h"
+
 #include <dbt.h>
 #include <devguid.h>
 #include <hidclass.h>
@@ -16,6 +18,7 @@
 #include "qcoreapplication.h"
 #include "qprocess.h"
 #include "agreement/qProtocol/qfctp/qfctp.h"
+#include "agreement/qProtocol/qaiot/qaiot.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -27,12 +30,13 @@
 
 test_base::test_base(QWidget* parent) :
     QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
+    qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
     usb(new Qusb(usbSerialPort)), visa(new Qvisa(this)), jigSerialPort(new QSerialPort(this)),
     jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
     product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
+    protocolManager.bindQaiot(qaiot);
     const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
     if (selectedType == QProtocolManager::ProtocolType::Unknown) {
@@ -681,26 +685,7 @@ void test_base::waitWork(int ms) {
 }
 
 void test_base::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 
 void test_base::solveGetBrushResponse(int data) {

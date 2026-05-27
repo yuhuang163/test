@@ -45,6 +45,7 @@ INCLUDEPATH += agreement/qProtocol
 INCLUDEPATH += agreement/qProtocol/qpb
 INCLUDEPATH += agreement/qProtocol/qfctp
 INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
+INCLUDEPATH += agreement/qProtocol/qaiot
 INCLUDEPATH += agreement/qset
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
@@ -97,6 +98,7 @@ SOURCES += \
     advance/imagewindow/myopenglwidget.cpp \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.cpp \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.cpp \
+    agreement/qProtocol/qaiot/qaiot.cpp \
     agreement/qProtocol/qfctp/qfctp.cpp \
     agreement/qProtocol/qprotocol.cpp \
     agreement/qProtocol/qprotocolmanager.cpp \
@@ -182,6 +184,7 @@ HEADERS += \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_defs.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
+    agreement/qProtocol/qaiot/qaiot.h \
     agreement/qProtocol/qfctp/qfctp.h \
     agreement/qProtocol/qprotocol.h \
     agreement/qProtocol/qprotocol_types.h \

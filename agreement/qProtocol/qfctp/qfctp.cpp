@@ -1,4 +1,4 @@
-#include "qfctp.h"
+﻿#include "qfctp.h"
 #include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>
@@ -91,6 +91,8 @@ static constexpr uint8_t kPhyChannelMain = 3;
 static constexpr uint16_t kTestsService = COMM_PROTOCOL_TESTS_SERVICE;
 static constexpr uint16_t kSystemConfigService = COMM_PROTOCOL_SYSTEM_CONFIG_SERVICE;
 static constexpr uint16_t kAlgoService = COMM_PROTOCOL_ALGO_SERVICE;
+static constexpr uint16_t kAlgoTlvSampleDataNum = 0x0004;
+static constexpr uint16_t kAlgoTlvSampleLightSensorData = 0x0006;
 static uint32_t qfctpMakeResponseKey(uint16_t serviceId, uint16_t tlvType)
 {
     return (static_cast<uint32_t>(serviceId) << 16) | static_cast<uint32_t>(tlvType);
@@ -286,26 +288,33 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
 
 void Qfctp::registerResponseHandlers()
 {
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSnRead), &Qfctp::handleRspSnRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTupleRead), &Qfctp::handleRspTupleRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvAgingStatus), &Qfctp::handleRspAgingStatus);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvDeviceException), &Qfctp::handleRspDeviceException);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvTrimGet), &Qfctp::handleRspTrimGet);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvFactoryDoneRead), &Qfctp::handleRspFactoryDoneRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvRssiRead), &Qfctp::handleRspRssiRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvSensorState), &Qfctp::handleRspSensorState);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvBatteryRead), &Qfctp::handleRspBatteryRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvKeySignalRead), &Qfctp::handleRspKeySignalRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibRead), &Qfctp::handleRspLightCalibRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLcdBacklight), &Qfctp::handleRspLcdBacklight);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightReportCtrl), &Qfctp::handleRspLightReportCtrl);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvLightCalibWrite), &Qfctp::handleRspLightCalibWrite);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kTestsService, kTlvChargeCurrentRead), &Qfctp::handleRspChargeCurrentRead);
+    // 查发送到回包：先看发送处的 service/tlv，再在这里按同一组 key 找 handler。
+    // sendRequest(...) 会同步打印 FCTP EXPECT，现场日志也能直接看到预期回包函数。
+    registerResponseHandler(kTestsService, kTlvSnRead, QStringLiteral("handleRspSnRead"), &Qfctp::handleRspSnRead);
+    registerResponseHandler(kTestsService, kTlvTupleRead, QStringLiteral("handleRspTupleRead"), &Qfctp::handleRspTupleRead);
+    registerResponseHandler(kTestsService, kTlvAgingStatus, QStringLiteral("handleRspAgingStatus"), &Qfctp::handleRspAgingStatus);
+    registerResponseHandler(kTestsService, kTlvDeviceException, QStringLiteral("handleRspDeviceException"), &Qfctp::handleRspDeviceException);
+    registerResponseHandler(kTestsService, kTlvTrimGet, QStringLiteral("handleRspTrimGet"), &Qfctp::handleRspTrimGet);
+    registerResponseHandler(kTestsService, kTlvFactoryDoneRead, QStringLiteral("handleRspFactoryDoneRead"), &Qfctp::handleRspFactoryDoneRead);
+    registerResponseHandler(kTestsService, kTlvRssiRead, QStringLiteral("handleRspRssiRead"), &Qfctp::handleRspRssiRead);
+    registerResponseHandler(kTestsService, kTlvSensorState, QStringLiteral("handleRspSensorState"), &Qfctp::handleRspSensorState);
+    registerResponseHandler(kTestsService, kTlvBatteryRead, QStringLiteral("handleRspBatteryRead"), &Qfctp::handleRspBatteryRead);
+    registerResponseHandler(kTestsService, kTlvKeySignalRead, QStringLiteral("handleRspKeySignalRead"), &Qfctp::handleRspKeySignalRead);
+    registerResponseHandler(kTestsService, kTlvLightCalibRead, QStringLiteral("handleRspLightCalibRead"), &Qfctp::handleRspLightCalibRead);
+    registerResponseHandler(kTestsService, kTlvLcdBacklight, QStringLiteral("handleRspLcdBacklight"), &Qfctp::handleRspLcdBacklight);
+    registerResponseHandler(kTestsService, kTlvLightReportCtrl, QStringLiteral("handleRspLightReportCtrl"), &Qfctp::handleRspLightReportCtrl);
+    registerResponseHandler(kTestsService, kTlvLightCalibWrite, QStringLiteral("handleRspLightCalibWrite"), &Qfctp::handleRspLightCalibWrite);
+    registerResponseHandler(kTestsService, kTlvChargeCurrentRead, QStringLiteral("handleRspChargeCurrentRead"), &Qfctp::handleRspChargeCurrentRead);
 
-    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvFwVersionRead), &Qfctp::handleRspFwVersionRead);
-    m_responseHandlers.insert(qfctpMakeResponseKey(kSystemConfigService, kTlvMacRead), &Qfctp::handleRspMacRead);
+    registerResponseHandler(kSystemConfigService, kTlvFwVersionRead, QStringLiteral("handleRspFwVersionRead"), &Qfctp::handleRspFwVersionRead);
+    registerResponseHandler(kSystemConfigService, kTlvMacRead, QStringLiteral("handleRspMacRead"), &Qfctp::handleRspMacRead);
+}
 
-
+void Qfctp::registerResponseHandler(uint16_t serviceId, uint16_t tlvType, const QString &responseName, ResponseHandler handler)
+{
+    const uint32_t key = qfctpMakeResponseKey(serviceId, tlvType);
+    m_responseHandlers.insert(key, handler);
+    m_responseNames.insert(key, responseName);
 }
 
 void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen)
@@ -320,6 +329,11 @@ void Qfctp::handleResponseByType(const PendingRequest &req, const uint8_t *mainV
 bool Qfctp::isDataResponse(uint16_t serviceId, uint16_t tlvType) const
 {
     return m_responseHandlers.contains(qfctpMakeResponseKey(serviceId, tlvType));
+}
+
+QString Qfctp::responseNameFor(uint16_t serviceId, uint16_t tlvType) const
+{
+    return m_responseNames.value(qfctpMakeResponseKey(serviceId, tlvType));
 }
 
 void Qfctp::handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen)
@@ -637,6 +651,7 @@ void Qfctp::handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLe
 void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen)
 {
     uint16_t off = 0;
+    int algoLightSampleCount = -1;
     while (tlvs != nullptr && off + COMM_PROTOCOL_TLV_HEADER_SIZE <= serviceLen) {
         const uint8_t *p = tlvs + off;
         const uint16_t type = qfctpReadLe16(p);
@@ -680,28 +695,38 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
             buttonData.powerButtonState = static_cast<int>(encoderId);
             buttonData.keyButtonId = static_cast<int>(encoderId);
             emit send_button_state(buttonData);
-        } else if (serviceId == kAlgoService && type == 0x0006 && len > 0) {
+        } else if (serviceId == kAlgoService && type == kAlgoTlvSampleDataNum && len == 2) {
+            algoLightSampleCount = static_cast<int>(qfctpReadLe16(value));
+            const QByteArray raw(reinterpret_cast<const char *>(value), static_cast<int>(len));
+            const QString rawHex = raw.toHex(' ').toUpper();
+            qInfo() << "FCTP 光感采样个数" << "count=" << algoLightSampleCount << "raw=" << rawHex;
+            emit send_pb_date(QString("FCTP 光感采样个数 count=%1 raw=%2").arg(algoLightSampleCount).arg(rawHex));
+        } else if (serviceId == kAlgoService && type == kAlgoTlvSampleLightSensorData && len > 0) {
             // 协议 8.2.31：光感数据上报（NOTIFY，Algo Service TLV 0x0006）
             const QByteArray raw(reinterpret_cast<const char *>(value), static_cast<int>(len));
             const QString rawHex = raw.toHex(' ').toUpper();
-            if (len >= 4) {
-                const uint32_t v0 = static_cast<uint32_t>(value[0])
-                                  | (static_cast<uint32_t>(value[1]) << 8)
-                                  | (static_cast<uint32_t>(value[2]) << 16)
-                                  | (static_cast<uint32_t>(value[3]) << 24);
-                if (len >= 8) {
-                    const uint32_t v1 = static_cast<uint32_t>(value[4])
-                                      | (static_cast<uint32_t>(value[5]) << 8)
-                                      | (static_cast<uint32_t>(value[6]) << 16)
-                                      | (static_cast<uint32_t>(value[7]) << 24);
-                    qInfo() << "FCTP 光感上报" << "field0_u32=" << v0 << "field1_u32=" << v1 << "raw=" << rawHex;
-                    emit send_pb_date(QString("FCTP 光感上报 field0=%1 field1=%2 raw=%3").arg(v0).arg(v1).arg(rawHex));
-                    emit send_photosensitive_info({static_cast<int>(v0)});
-                } else {
-                    qInfo() << "FCTP 光感上报" << "value_u32=" << v0 << "raw=" << rawHex;
-                    emit send_pb_date(QString("FCTP 光感上报 value=%1 raw=%2").arg(v0).arg(rawHex));
-                    emit send_photosensitive_info({static_cast<int>(v0)});
+            const int sampleSize = static_cast<int>(len / 2);
+            QStringList samples;
+            samples.reserve(sampleSize);
+            for (int i = 0; i < sampleSize; ++i) {
+                samples << QString::number(qfctpReadLe16(value + i * 2));
+            }
+
+            if (sampleSize > 0) {
+                const int firstSample = qfctpReadLe16(value);
+                const QString countText = (algoLightSampleCount >= 0) ? QString::number(algoLightSampleCount) : QStringLiteral("N/A");
+                if ((len % 2) != 0) {
+                    qWarning() << "FCTP 光感上报长度非偶数" << "len=" << len << "raw=" << rawHex;
                 }
+                qInfo() << "FCTP 光感上报"
+                        << "count=" << countText
+                        << "values=" << samples.join(QStringLiteral(","))
+                        << "raw=" << rawHex;
+                emit send_pb_date(QString("FCTP 光感上报 count=%1 values=%2 raw=%3")
+                                      .arg(countText)
+                                      .arg(samples.join(QStringLiteral(",")))
+                                      .arg(rawHex));
+                emit send_photosensitive_info({firstSample});
             } else {
                 qInfo() << "FCTP 光感上报(短包) raw=" << rawHex;
                 emit send_pb_date(QString("FCTP 光感上报 raw=%1").arg(rawHex));
@@ -924,6 +949,13 @@ bool Qfctp::sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray &
     req.actionName = QString::fromUtf8(actionName);
     req.requestValue = value;
     m_pendingRequests.insert(seq, req);
+    const QString responseName = responseNameFor(serviceId, tlvType);
+    if (!responseName.isEmpty()) {
+        qDebug() << "FCTP EXPECT:" << req.actionName
+                 << "service=" << serviceId
+                 << "tlv_type=" << tlvType
+                 << "handler=" << responseName;
+    }
     return true;
 }
 
@@ -1062,7 +1094,9 @@ bool Qfctp::setCaseMacWrite(const QVariantMap &map)
 
 bool Qfctp::setCaseNightLightSet(const QVariantMap &map)
 {
-    const uint8_t v = static_cast<uint8_t>(map.value("value").toUInt() & 0xFF);
+    const uint value = map.value("value").toUInt();
+    // 夜灯亮度按 0~100 直接发送单字节数值：0 -> 0x00，100 -> 0x64。
+    const uint8_t v = static_cast<uint8_t>(value > 100u ? 100u : value);
     return sendRequest(kSystemConfigService, kTlvNightLightSet, QByteArray(1, static_cast<char>(v)), "夜灯亮度设置");
 }
 
