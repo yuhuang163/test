@@ -10,6 +10,7 @@
 
 class Qpb;
 class Qfctp;
+class Qaiot;
 
 class QProtocolManager : public QObject {
     Q_OBJECT
@@ -20,6 +21,7 @@ public:
         Unknown = 0,
         Qpb,
         Qfctp,
+        Qaiot,
     };
 
     ProtocolType currentProtocolType() const;
@@ -30,10 +32,12 @@ public:
 
     void bindQpb(Qpb* pb);
     void bindQfctp(Qfctp* fctp);
+    void bindQaiot(Qaiot* aiot);
 
     qProtocol* currentProtocol() const;
     Qpb* currentQpb() const;
     Qfctp* currentQfctp() const;
+    Qaiot* currentQaiot() const;
     bool hasActiveProtocol() const;
 
     // 统一转发入口：上层只依赖管理器，不直接依赖具体协议实现。
@@ -56,6 +60,7 @@ public:
 
     bool isQpbProtocolActive() const;
     bool isQfctpProtocolActive() const;
+    bool isQaiotProtocolActive() const;
 
 signals:
     void send_pb_date(QString data);
@@ -73,6 +78,7 @@ private:
     ProtocolType currentType_ = ProtocolType::Qpb;
     Qpb* qpb_ = nullptr;
     Qfctp* qfctp_ = nullptr;
+    Qaiot* qaiot_ = nullptr;
     qProtocol* active_ = nullptr;
 };
 

@@ -265,7 +265,7 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("groupBox_brushInstrument"),
          QStringLiteral(
              "BrushInstrument/* 与并联 CMW：BleBrushCmwConcurrent、BleBrushCmwOnStopPer、BlePer/Cmw*（含 CmwQueryCurrentArbFile 查询 SOURce:GPRF:GEN:ARB:FILE?；另见 CmwBurstPollArbScount…、CmwVisaTrace、CmwWaitArbScount）。")},
-        {QStringLiteral("groupBox_systemProtocol"), QStringLiteral("SYSTEM/ProtocolType：qpb 或 qfctp。")},
+        {QStringLiteral("groupBox_systemProtocol"), QStringLiteral("SYSTEM/ProtocolType：qpb、qfctp 或 qaiot。")},
         {QStringLiteral("config"), QStringLiteral("已选步骤，自上而下执行；可拖拽排序。")},
         {QStringLiteral("can_use"), QStringLiteral("可选步骤，勾选后拖入左侧配置区。")},
         {QStringLiteral("freeWorkOptionalTabs"), QStringLiteral("分类：产品 / 治具 / dongle / 云端。")},
@@ -277,7 +277,7 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("pushButton_mesConfigFileBrowse"), QStringLiteral("浏览 MES 配置文件。")},
         {QStringLiteral("comboBox_testOrderStation"), QStringLiteral("TestOrderMeta/SelectedStation。")},
         {QStringLiteral("pushButton_clearConfiguredTestOrder"), QStringLiteral("清空当前工站配置区步骤。")},
-        {QStringLiteral("comboBox_systemProtocolType"), QStringLiteral("设备协议 qpb / qfctp。")},
+        {QStringLiteral("comboBox_systemProtocolType"), QStringLiteral("设备协议 qpb / qfctp / qaiot。")},
         {QStringLiteral("comboBox_tupleEnvironment"), QStringLiteral("三元组环境预设。")},
         {QStringLiteral("lineEdit_tupleBaseUrl"), QStringLiteral("Tuple/BaseUrl。")},
         {QStringLiteral("rowLineEdit"), QStringLiteral("User/formRow。")},
@@ -1125,6 +1125,7 @@ void qsetting::loadConfig() {
     if (ui->comboBox_systemProtocolType->count() == 0) {
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qpb（产测 PB）"), QStringLiteral("qpb"));
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qfctp（FCTP）"), QStringLiteral("qfctp"));
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qaiot（AIOT TLV）"), QStringLiteral("qaiot"));
     }
     {
         const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))
@@ -1401,26 +1402,7 @@ void qsetting::loadConfig() {
     ui->lineEdit_mes_login_password->setText(SETTINGS.value("MES/M_PASSWORD").toString());
 }
 void qsetting::updateMainStyle(QString style) {
-    // QSS文件初始化界面样式
-    QString stylesheet;
-    QFile qss(style);
-    if (qss.open(QFile::ReadOnly)) {
-        qDebug() << "qss load";
-        QTextStream filetext(&qss);
-        stylesheet = filetext.readAll();
-        this->setStyleSheet(stylesheet);
-        qss.close();
-    } else {
-        qDebug() << "qss not load";
-        qss.setFileName("/qss/" + style);
-        if (qss.open(QFile::ReadOnly)) {
-            qDebug() << "qss load";
-            QTextStream filetext(&qss);
-            stylesheet = filetext.readAll();
-            this->setStyleSheet(stylesheet);
-            qss.close();
-        }
-    }
+    applyWidgetStyleSheet(this, style);
 }
 qsetting::~qsetting() {
     qDebug() << "已经删除页面";

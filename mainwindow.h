@@ -46,6 +46,7 @@
 #include <QPixmap>
 #include <QWheelEvent>
 #include "qfctp.h"
+#include "qaiot.h"
 
 
 
@@ -183,6 +184,7 @@ private:
     QFuture<void> future;
     QProtocolManager protocolManager;
     Qfctp* qfctp = nullptr;
+    Qaiot* qaiot = nullptr;
     Qpb* pb= nullptr;
     Qat* at= nullptr;
     TestFunctionExecutor executor;
@@ -292,6 +294,10 @@ private slots:
     void writePeripheralDataToCSVFile();
     void writeDataToCSVFile();
     void clearDisplay();
+    bool connectBleForOta(const QString& mac);
+    void startRootBleOta();
+    void startUsmileBleOtaLegacy();
+    void startUsmileBleOtaTransferLegacy();
     void SendRadomDataPushButton();
     void solveNosiyData(QByteArray dataTemp);
     void waitWork(int ms);

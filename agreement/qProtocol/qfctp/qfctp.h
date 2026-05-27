@@ -45,8 +45,10 @@ private:
     void        handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen);
     void        handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode);
     void        registerResponseHandlers();
+    void        registerResponseHandler(uint16_t serviceId, uint16_t tlvType, const QString &responseName, ResponseHandler handler);
     void        handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen);
     bool        isDataResponse(uint16_t serviceId, uint16_t tlvType) const;
+    QString     responseNameFor(uint16_t serviceId, uint16_t tlvType) const;
 
 
     void        handleRspSnRead(const uint8_t *mainValue, uint16_t mainLen);
@@ -122,6 +124,7 @@ private:
     uint8_t       m_fctpSeq = 0;
     QHash<uint8_t, PendingRequest> m_pendingRequests;
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
+    QHash<uint32_t, QString> m_responseNames;
     /** handleResponseByType 内当前应答对应的请求上下文（供按键电容等需关联请求参数的处理）。 */
     PendingRequest m_currentResponseRequest;
 

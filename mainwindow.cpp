@@ -86,12 +86,13 @@ void MainWindow::on_pushButton_3_clicked() {
 
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
+    qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
+    protocolManager.bindQaiot(qaiot);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
@@ -104,8 +105,9 @@ MainWindow::MainWindow(QWidget* parent) :
 
     // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
     // 当前激活协议由 protocolManager 统一维护。
-    if (selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) {
-        QMessageBox::information(this, "协议提示", "qfctp 未就绪，已自动回退到 qpb。");
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot)) {
+        QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     } else {
         protocolManager.setCurrentProtocolType(selectedType);
@@ -162,12 +164,18 @@ MainWindow::MainWindow(QWidget* parent) :
         }
     });
 
-    QStringList productList = {"V3",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
+    QStringList productList = {"M8P","V3",   "AIR 2",   "Hi",   "Y30P", "F20",   "Q20", "Q20P",  "Y20",   "Y20P", "Y30",
                                "Y30S", "Y21",  "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
         ui->rssi_range_value->setText(QString("%1 dBm").arg(value));
+    });
+    ui->yedengslider->setMinimum(0);
+    ui->yedengslider->setMaximum(100);
+    ui->yedengslider_value->setText(QString("%1/100").arg(ui->yedengslider->value()));
+    connect(ui->yedengslider, &QSlider::valueChanged, this, [=](int value) {
+        ui->yedengslider_value->setText(QString("%1/100").arg(value));
     });
     connect(ui->connectProductButton, &QPushButton::clicked, this, &MainWindow::on_macInput_returnPressed);
 
@@ -3189,8 +3197,6 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
-    // on_macInput_returnPressed();
-    // ui->testMsg->clear();
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
@@ -3201,53 +3207,103 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
-    } else {
-        waitWork(500);
-        at->sendOTADATA(0);
-        protocolManager.resetAllPb();
-        macAddress = ui->bleotamacInput->text();
-        macLabel->setText("蓝牙mac: " + macAddress);
-
-        at->resetConnected();
-        at->sendotaMac(ui->bleotamacInput->text());
-
-        QTime bleOtaTimeConnectOut;
-        bleOtaTimeConnectOut.start();
-        ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
-        ui->bleOtaMsg->appendPlainText("开始连接蓝牙");
-        stopBleOta = 0;  //取消停止ota
-        while (at->getConnected() == false) {
-            waitWork(100);
-            if (bleOtaTimeConnectOut.elapsed() > 1000 * 30) {  //安装需要2分钟
-                bleOtaTimeConnectOut.start();
-                showlog("蓝牙连接超时,重试连接蓝牙");
-                ui->log->clear();
-                on_disconnectButton_clicked();
-                if (!dongleSerialPort->isOpen()) {
-                    on_connectButton_clicked();
-                }
-                waitWork(500);
-                if (at->getConnected())
-                    break;
-                at->sendotaMac(ui->bleotamacInput->text());
-            }
-            if (stopBleOta) {
-                showlog("停止测试");
-
-                return;  // 停止测试
-            }
-        }
-        protocolManager.setNeedAes(false);
-        protocolManager.setPbMode(1);  //为了区分收到的解包工厂接口
-        on_getBasicInfoButton_clicked();
-        waitWork(500);
-        on_getperipheralButton_clicked();
-        waitWork(500);
-        protocolManager.setPbMode(0);  //为了区分收到的解包是app接口
-        waitWork(3000);
-        on_startBleOta_clicked();
     }
+
+    waitWork(500);
+    at->sendOTADATA(0);
+    protocolManager.resetAllPb();
+    macAddress = ui->bleotamacInput->text();
+    macLabel->setText("蓝牙mac: " + macAddress);
+
+    if (!connectBleForOta(macAddress)) {
+        return;
+    }
+
+    // startUsmileBleOtaLegacy();  // 旧 usmile OTA 暂时丢一边，路特流程不再调用。
+    startRootBleOta();
+}
+
+bool MainWindow::connectBleForOta(const QString& mac) {
+    at->resetConnected();
+    at->sendotaMac(mac);
+
+    QTime bleOtaTimeConnectOut;
+    bleOtaTimeConnectOut.start();
+    ui->bleOtaMsg->appendPlainText(" ");
+    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+    ui->bleOtaMsg->appendPlainText("开始连接蓝牙");
+    stopBleOta = 0;  // 取消停止ota
+    while (at->getConnected() == false) {
+        waitWork(100);
+        if (bleOtaTimeConnectOut.elapsed() > 1000 * 30) {
+            bleOtaTimeConnectOut.start();
+            showlog("蓝牙连接超时,重试连接蓝牙");
+            ui->log->clear();
+            on_disconnectButton_clicked();
+            if (!dongleSerialPort->isOpen()) {
+                on_connectButton_clicked();
+            }
+            waitWork(500);
+            if (at->getConnected())
+                break;
+            at->sendotaMac(mac);
+        }
+        if (stopBleOta) {
+            showlog("停止测试");
+            return false;  // 停止测试
+        }
+    }
+
+    return true;
+}
+
+void MainWindow::startRootBleOta() {
+    showlog("进入路特蓝牙OTA流程，协议接口待补充");
+    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                   "进入路特蓝牙OTA流程，协议接口待补充");
+}
+
+// 旧 usmile 蓝牙 OTA 流程，当前路特流程不调用，保留用于回退和对照。
+void MainWindow::startUsmileBleOtaLegacy() {
+    on_stopBleOta_clicked();
+    on_disconnectButton_clicked();
+
+    if (!ui->is_bleota_press->checkState()) {
+        clearDisplay();
+    }
+    ui->bleotaresult->setText("WAIT");
+    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
+    }
+
+    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    }
+
+    waitWork(500);
+    at->sendOTADATA(0);
+    protocolManager.resetAllPb();
+    macAddress = ui->bleotamacInput->text();
+    macLabel->setText("蓝牙mac: " + macAddress);
+
+    if (!connectBleForOta(macAddress)) {
+        return;
+    }
+
+    protocolManager.setNeedAes(false);
+    protocolManager.setPbMode(1);  //为了区分收到的解包工厂接口
+    on_getBasicInfoButton_clicked();
+    waitWork(500);
+    on_getperipheralButton_clicked();
+    waitWork(500);
+    protocolManager.setPbMode(0);  //为了区分收到的解包是app接口
+    waitWork(3000);
+    startUsmileBleOtaTransferLegacy();
 }
 
 void MainWindow::on_stopBleOta_clicked() {
@@ -3275,6 +3331,11 @@ QString calculateMD5(const QByteArray& fileData) {
     return md5Hex;
 }
 void MainWindow::on_startBleOta_clicked() {
+    startRootBleOta();
+}
+
+// 旧 usmile OTA 发送流程，当前路特流程不调用，保留用于回退和对照。
+void MainWindow::startUsmileBleOtaTransferLegacy() {
     // 设置定时器间隔
     bool ok;
     int interval = ui->OtaTimeInterval->text().toInt(&ok);
@@ -3962,13 +4023,14 @@ void MainWindow::on_set_device_mac_clicked()
 
 void MainWindow::on_night_brightness_clicked()
 {
-    ui->yedengslider->setMinimum(0);
-    ui->yedengslider->setMaximum(10);
     const int brightness = ui->yedengslider->value();
     QVariantMap m;
     m["value"] = brightness;
     protocolManager.set(DeviceCmd::NightLightSet, m);
-    showlog(QString("已发送夜灯亮度设置: %1/10").arg(brightness));
+    const QString brightnessHex = QString("%1").arg(brightness, 2, 16, QLatin1Char('0')).toUpper();
+    showlog(QString("已发送夜灯亮度设置: %1/100，hex=0x%2")
+                .arg(brightness)
+                .arg(brightnessHex));
 }
 
 void MainWindow::on_reset_factory_clicked()

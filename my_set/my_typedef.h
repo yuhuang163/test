@@ -1,9 +1,14 @@
 ﻿#ifndef MY_TYPEDEF_H
 #define MY_TYPEDEF_H
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QHostInfo>
+#include <QTextStream>
+#include <QWidget>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -72,5 +77,41 @@ typedef struct MesPacketData {
     int iskeydata = 0;  // GetTestData 入口分流：0=常规取数，1=BYD AddSfcKey
 
 } MesPacketData;
+
+/** 统一 QSS 路径：仓库 stytle/qss，运行时优先 qrc，其次 exe 旁 stytle/qss。 */
+inline QString resolveAppQssPath(const QString& styleFileName) {
+    if (styleFileName.startsWith(QLatin1Char(':')))
+        return styleFileName;
+    const QString fileName =
+        styleFileName.isEmpty() ? QStringLiteral("Ubuntu.qss") : QFileInfo(styleFileName).fileName();
+    return QStringLiteral(":/stytle/qss/") + fileName;
+}
+
+/** 加载并应用界面 QSS；默认 Ubuntu.qss 对应 stytle/qss/Ubuntu.qss。 */
+inline bool applyWidgetStyleSheet(QWidget* widget, const QString& style = QStringLiteral("Ubuntu.qss")) {
+    if (!widget)
+        return false;
+
+    const QString fileName = style.isEmpty() ? QStringLiteral("Ubuntu.qss") : QFileInfo(style).fileName();
+    const QStringList candidates = {
+        resolveAppQssPath(style),
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("stytle/qss/") + fileName),
+        QStringLiteral("stytle/qss/") + fileName,
+    };
+
+    for (const QString& path : candidates) {
+        QFile qss(path);
+        if (!qss.open(QFile::ReadOnly))
+            continue;
+        QTextStream filetext(&qss);
+        widget->setStyleSheet(filetext.readAll());
+        qss.close();
+        qDebug() << "qss load" << path;
+        return true;
+    }
+
+    qDebug() << "qss not load" << candidates;
+    return false;
+}
 
 #endif  // MY_TYPEDEF_H

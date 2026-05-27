@@ -37,6 +37,7 @@ typedef enum {
     STATE_MAX,
 } STATE_INDEPENDENT_E;
 class Qfctp;
+class Qaiot;
 class test_base : public QWidget {
     Q_OBJECT
 public:
@@ -118,6 +119,7 @@ public:
     QSerialPort* dongleSerialPort;  // dongle硬件层
     Qpb* pb;                        // dongle协议层
     Qfctp* qfctp;                   // fctp协议层
+    Qaiot* qaiot;                   // aiot协议层
     QProtocolManager protocolManager;
     Qat* at;                        // dongle协议层
 
