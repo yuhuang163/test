@@ -2131,6 +2131,11 @@ void qsetting::RestoreFacDefaultSetting() {
 void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
     qDebug() << "选择的产品" << arg1;
     RestoreProductDefaultSetting();
+    if (arg1 == QStringLiteral("V3")) {
+        ui->snLineEdit->setText(QStringLiteral("^[0-9a-zA-Z]{12}$"));
+    } else if (arg1 == QStringLiteral("V3Pro")) {
+        ui->snLineEdit->setText(QStringLiteral("^[0-9a-zA-Z]{15}$"));
+    }
 }
 
 void qsetting::on_comboBox_factory_textActivated(const QString& arg1) {

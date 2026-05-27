@@ -2,7 +2,6 @@
 #define QUSB_H
 #include <QMessageBox>
 #include <QObject>
-#include <QQueue>
 #include <QSerialPort>
 #include <functional>
 #include <map>
@@ -113,7 +112,6 @@ private:
     QString cmd, parameter;
     QSerialPort *serialPort;
     int sssss=255;
-    QQueue<char> dataQueue;
     typedef std::function<void(QString)> callback;
     std::map<QString, callback> commandList;
     void registerCommand();

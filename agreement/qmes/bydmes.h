@@ -1,6 +1,7 @@
 ﻿#ifndef BYDMES_H
 #define BYDMES_H
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
 
@@ -29,20 +30,11 @@ public:
 private:
     QString baseUrl() const;
     QString settingsValue(const QString& key, const QString& fallback = QString()) const;
-    QJsonObject buildBydStartParam(const MesPacketData& pack) const;
-    QJsonObject buildBydGetCustomDataParam() const;
-    QJsonObject buildBydGetSnByProcessCodeParam(const MesPacketData& pack) const;
+    bool ensureExternalMesConfig(const MesPacketData& pack);
     QJsonArray buildBydTestDataList(const MesPacketData& pack, const QString& testTime) const;
     QJsonObject buildBydTestDataCollectParam(const MesPacketData& pack) const;
-    QJsonObject buildBydCompleteParam(const MesPacketData& pack) const;
-    QJsonObject buildBydNcCompleteParam(const MesPacketData& pack) const;
-    QJsonObject buildBydAddSfcKeyParam(const MesPacketData& pack) const;
-    /// BYD AddSfcKey：关键数据上报。pack.sn=SFC，pack.instruct_num=DATA_NAME，pack.itemvalue=DATA_VALUE。
-    void AddSfcKey(MesPacketData pack);
     /// 「按过程码返回值中解析 SN」。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
-    /// 获取编码校验规则（暂时没用到，比亚迪特有接口）
-    QString formatGetCustomDataItemsJson(const QByteArray& responseData) const;
     bool isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const;
     QByteArray sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const;
     /// NET 与 LoginID/CLIENT_ID 缺失时 qWarning + operateMesError，返回 true 表示应中止请求（非 const：需 emit 信号）

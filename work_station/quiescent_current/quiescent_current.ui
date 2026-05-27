@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>quiescent_current</class>
  <widget class="QWidget" name="quiescent_current">
@@ -364,7 +364,7 @@
              <item>
               <widget class="QLabel" name="label_3">
                <property name="text">
-                <string>万用表(VISA)</string>
+                <string>VISA(VisaPower)</string>
                </property>
               </widget>
              </item>
@@ -385,7 +385,7 @@
              <item>
               <widget class="QPushButton" name="currentAmmeterVisaApplyButton">
                <property name="toolTip">
-                <string>写入 [Current] ScpiUseVisa、VisaAddress 并重新加载万用表链路</string>
+                <string>写入 [VisaPower] ScpiUseVisa、VisaAddress 并重新加载 VISA 链路</string>
                </property>
                <property name="text">
                 <string>保存并应用</string>

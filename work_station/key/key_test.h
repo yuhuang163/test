@@ -38,6 +38,7 @@ public:
     void refreshMusicState(ProtocolMusicStateData data) override;
     void refreshAmmeterData(QString data) override;
     void checkbutton(ProtocolButtonStateData data) override;
+    void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
     QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
     QCheckBox* getIsUseMes() override { return ui->isusemes; };
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
@@ -77,8 +78,6 @@ private:
     int KeyProgramState = 0;
     int KeyLeftState = 0;
     int KeyRightState = 0;
-    int KeyLeftRotateState = 0;
-    int KeyRightRotateState = 0;
     /// 与 keyWaitPrompt 生命周期同步；onKeyWaitPromptDestroyed 内必置 false，避免续测时不弹窗
     bool keyWaitPromptShown = false;
     /// 为 true 时 close 弹窗视为流程内关闭，不记失败
@@ -87,6 +86,20 @@ private:
     QMessageBox* keyWaitPrompt = nullptr;
     bool plcKeyActionStarted = false;
     quint64 plcKeyWaitSeq = 0;
+    QString keyErrorDetail;
+    int lastKeyButtonId = -1;
+    qint64 lastKeyButtonMs = 0;
+    QElapsedTimer keyButtonDebounceTimer;
+    quint32 lowKeyCap_ = 0;
+    quint32 highKeyCap_ = 0;
+    int currentKeyCapRequestKk_ = -1;
+    int currentKeyConfiguredId_ = 0;
+    bool plcKeyCapSyncReadPending_ = false;
+    bool plcKeyCapSyncReadOk_ = false;
+    quint32 plcKeyCapSyncReadValue_ = 0;
+    int plcKeyCapSyncReadAuxId_ = -1;
+    QString plcKeyCapPassSummary_;
+    QString keyPassDetail;
     InovanceH5uModbusTcp inovancePlcTcp_;
     int snCompareOk = 0;
     double measure_ammeter = 0;
@@ -116,8 +129,6 @@ private:
         STATE_WAIT_GET_KEY_PROGRAM_STATE,
         STATE_WAIT_GET_KEY_LEFT_STATE,
         STATE_WAIT_GET_KEY_RIGHT_STATE,
-        STATE_WAIT_GET_KEY_LEFTROTATE_STATE,
-        STATE_WAIT_GET_KEY_RIGHTROTATE_STATE,
         STATE_WATI_GET_PERIPHERAL_STATE  // 外设信息获取
 
     } State;
@@ -151,14 +162,16 @@ private:
     void closeKeyWaitPromptProgrammatically();
     bool usePlcClickerForKeyTest() const;
     void startPlcClickerAndWaitKey(const QString& testName, int keyIndex0To6);
-    void startPlcSwitchAndWaitKey(const QString& testName);
-    void armPlcKeyBleWaitTimeout(const QString& testName);
     void failCurrentPlcKeyStep(const QString& testName, const QString& reason);
+    QString currentKeyStepName() const;
+    QString currentExpectedKeyId() const;
+    void setCurrentKeyResult(int result);
+    QString currentKeyFailureDetail() const;
+    void recordCurrentKeyButtonResult(int keyButtonId);
+    void resetPlcKeyCapSyncReadState();
+    bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     bool runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary);
-    bool runPlcV3TouchSwitchFull(QString* summary);
     int resolvedPlcMBase() const;
-    int resolvedPlcSwitchForwardM() const;
-    int resolvedPlcSwitchPressM() const;
     int resolvedPlcConnectVerifyM() const;
     QString resolvedPlcIpAddress() const;
     int resolvedPlcPort() const;
