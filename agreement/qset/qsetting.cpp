@@ -225,7 +225,10 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
 }
 
 void qsetting::initSettingTooltips() {
-    setToolTip(QStringLiteral("上位机全局参数；修改工站类型后需重启程序生效。保存后写入「上位机设置.ini」。"));
+    setToolTip(QStringLiteral(
+        "上位机全局参数；修改工站类型后需重启程序生效。\n"
+        "仅串口、窗口大小、当前工站选择 →「上位机设置.local.ini」（不入库）；\n"
+        "其余参数 →「上位机设置.ini」。"));
     const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
     const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);

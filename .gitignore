@@ -13,3 +13,5 @@ new_production.pro.*
 .qtcreator/
 
 路特上位机运行环境/所有log
+
+**/上位机设置.local.ini

@@ -2493,6 +2493,10 @@ void MainWindow::recoverCustom() {
     QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
     ui->comNameCombo->setCurrentText(comName);
 
+    const QString getMacDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString();
+    if (!getMacDefault.isEmpty())
+        ui->getMac->setText(getMacDefault);
+
     ui->otaFilePath->setText(SETTINGS.value("Window/otaFilePath").toString());
 
     ui->otaFilePath_source->setText(SETTINGS.value("Window/otaFilePath_source").toString());

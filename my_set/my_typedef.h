@@ -16,7 +16,9 @@
 #include <QNetworkInterface>
 #include <QObject>
 #include <QSerialPort>
+#include <QSettings>
 #include <QSysInfo>
+#include <QTextCodec>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
@@ -24,27 +26,195 @@
 #include "qeventloop.h"
 #include "qlibrary.h"
 
+/** 团队默认配置（入库） */
 #define SETTING_NAME "上位机设置.ini"
+/** 本机常改配置（gitignore，见 .gitignore） */
+#define SETTING_LOCAL_NAME "上位机设置.local.ini"
 
-#define SETTINGS SettingsManager::instance()
+inline QString settingsIniPath(const char* fileName) {
+    const QString path = QDir(QCoreApplication::applicationDirPath()).filePath(QString::fromUtf8(fileName));
+    return QFile::exists(path) ? path : QString::fromUtf8(fileName);
+}
+
+/**
+ * 仅下列项使用 上位机设置.local.ini，其余一律 上位机设置.ini：
+ * 1. 串口与扫码框默认内容（[mechine]、键名含 comName；getMacDefault 仅手动写入 local.ini）
+ * 2. 窗口大小（Window/SettingSize、Window/Size）
+ * 3. 当前工站（SYSTEM/station、TestOrderMeta/SelectedStation*）
+ */
+inline bool settingsUseLocalFile(const QString& fullKey) {
+    if (fullKey.isEmpty())
+        return false;
+
+    const QString head = fullKey.section(QLatin1Char('/'), 0, 0);
+    if (head.compare(QStringLiteral("mechine"), Qt::CaseInsensitive) == 0)
+        return true;
+
+    static const QStringList kLocalKeys = {
+        QStringLiteral("Window/SettingSize"),
+        QStringLiteral("Window/Size"),
+        QStringLiteral("SYSTEM/station"),
+        QStringLiteral("TestOrderMeta/SelectedStation"),
+        QStringLiteral("TestOrderMeta/SelectedStationName"),
+    };
+    for (const QString& k : kLocalKeys) {
+        if (fullKey.compare(k, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+
+    if (fullKey.contains(QStringLiteral("comName"), Qt::CaseInsensitive))
+        return true;
+
+    return false;
+}
+
+inline bool settingsUseLocalGroup(const QString& groupPath) {
+    return !groupPath.isEmpty() && settingsUseLocalFile(groupPath + QStringLiteral("/_"));
+}
+
+/**
+ * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini（与原单文件语义一致）。
+ */
 class SettingsManager {
 public:
-    //获取单例实例的方法
-    static QSettings& instance() {
-        static QSettings settings(SETTING_NAME, QSettings::IniFormat);
-        settings.setIniCodec(QTextCodec::codecForName("UTF-8"));
-        return settings;
+    static SettingsManager& instance() {
+        static SettingsManager self;
+        return self;
+    }
+
+    QVariant value(const QString& key) const { return value(key, QVariant()); }
+
+    QVariant value(const QString& key, const QVariant& defaultValue) const {
+        const QString full = fullKey(key);
+        if (!settingsUseLocalFile(full)) {
+            QSettings& ini = baseIni();
+            enter(ini);
+            const QVariant v = ini.value(key, defaultValue);
+            leave(ini);
+            return v;
+        }
+        QSettings& loc = localIni();
+        enter(loc);
+        if (loc.contains(key)) {
+            const QVariant v = loc.value(key);
+            leave(loc);
+            return v;
+        }
+        leave(loc);
+        QSettings& ini = baseIni();
+        enter(ini);
+        const QVariant v = ini.value(key, defaultValue);
+        leave(ini);
+        return v;
+    }
+
+    void setValue(const QString& key, const QVariant& val) {
+        QSettings& store = settingsUseLocalFile(fullKey(key)) ? localIni() : baseIni();
+        enter(store);
+        store.setValue(key, val);
+        leave(store);
+    }
+
+    void sync() {
+        baseIni().sync();
+        localIni().sync();
+    }
+
+    void beginGroup(const QString& prefix) { groups_.append(prefix); }
+
+    void endGroup() {
+        if (!groups_.isEmpty())
+            groups_.removeLast();
+    }
+
+    QStringList childGroups() const {
+        QSettings& ini = baseIni();
+        enter(ini);
+        QStringList out = ini.childGroups();
+        leave(ini);
+
+        const QString here = groups_.join(QLatin1Char('/'));
+        if (here.isEmpty() || settingsUseLocalGroup(here)) {
+            QSettings& loc = localIni();
+            enter(loc);
+            for (const QString& g : loc.childGroups()) {
+                if (!out.contains(g))
+                    out.append(g);
+            }
+            leave(loc);
+        }
+        return out;
+    }
+
+    QStringList childKeys() const {
+        const QString here = groups_.join(QLatin1Char('/'));
+        QSettings& ini = baseIni();
+        enter(ini);
+        QStringList out = ini.childKeys();
+        leave(ini);
+
+        if (settingsUseLocalGroup(here)) {
+            QSettings& loc = localIni();
+            enter(loc);
+            for (const QString& k : loc.childKeys()) {
+                if (!out.contains(k))
+                    out.append(k);
+            }
+            leave(loc);
+        }
+        return out;
+    }
+
+    void remove(const QString& key) {
+        const bool toLocal = key.isEmpty() ? settingsUseLocalGroup(groups_.join(QLatin1Char('/')))
+                                           : settingsUseLocalFile(fullKey(key));
+        QSettings& store = toLocal ? localIni() : baseIni();
+        enter(store);
+        store.remove(key);
+        leave(store);
     }
 
 private:
-    // 私有化构造函数
     SettingsManager() = default;
-    ~SettingsManager() = default;
 
-    // 删除拷贝构造函数和赋值操作符
+    mutable QStringList groups_;
+
+    QString fullKey(const QString& key) const {
+        if (key.contains(QLatin1Char('/')))
+            return key;
+        QStringList parts = groups_;
+        if (!key.isEmpty())
+            parts.append(key);
+        return parts.join(QLatin1Char('/'));
+    }
+
+    void enter(QSettings& s) const {
+        for (const QString& g : groups_)
+            s.beginGroup(g);
+    }
+
+    void leave(QSettings& s) const {
+        for (int i = 0, n = groups_.size(); i < n; ++i)
+            s.endGroup();
+    }
+
+    static QSettings& baseIni() {
+        static QSettings s(settingsIniPath(SETTING_NAME), QSettings::IniFormat);
+        s.setIniCodec(QTextCodec::codecForName("UTF-8"));
+        return s;
+    }
+
+    static QSettings& localIni() {
+        static QSettings s(settingsIniPath(SETTING_LOCAL_NAME), QSettings::IniFormat);
+        s.setIniCodec(QTextCodec::codecForName("UTF-8"));
+        return s;
+    }
+
     SettingsManager(const SettingsManager&) = delete;
     SettingsManager& operator=(const SettingsManager&) = delete;
 };
+
+#define SETTINGS SettingsManager::instance()
 
 typedef struct MesPacketData {
     QString factory;         //工厂

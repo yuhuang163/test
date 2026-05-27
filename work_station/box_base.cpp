@@ -339,6 +339,12 @@ void box_base::recoverCustom() {
         if (testList[i]->getMotorCaliParam() != nullptr) {
             testList[i]->getMotorCaliParam()->setText(MotorCaliParam);
         }
+
+        if (testList[i]->getMacLineEdit() != nullptr) {
+            const QString snDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString();
+            if (!snDefault.isEmpty())
+                testList[i]->getMacLineEdit()->setText(snDefault);
+        }
         // qDebug() << "恢复的串口号" << comName << usbComName << jigComomName << ProductComName;
     }
 }
