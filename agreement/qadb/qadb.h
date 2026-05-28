@@ -33,8 +33,6 @@ public:
     void stopKeyMonitorAdbShell();
 
 private slots:
-
-
     void onReadyRead();
     void onFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void checkTimeout();

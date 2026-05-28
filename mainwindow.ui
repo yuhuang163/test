@@ -485,7 +485,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -4119,7 +4119,7 @@
                     <item>
                      <widget class="QLineEdit" name="bleotamacInput">
                       <property name="text">
-                       <string>b4:3a:45:c7:5f:4e</string>
+                       <string>df:a1:10:00:0f:5f</string>
                       </property>
                      </widget>
                     </item>

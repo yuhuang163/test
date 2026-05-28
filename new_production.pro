@@ -102,6 +102,7 @@ SOURCES += \
     agreement/qProtocol/qfctp/qfctp.cpp \
     agreement/qProtocol/qprotocol.cpp \
     agreement/qProtocol/qprotocolmanager.cpp \
+    agreement/qProtocol/root_ble_ota.cpp \
     agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
     agreement/qmomcozy/qproduct.cpp \
@@ -189,6 +190,7 @@ HEADERS += \
     agreement/qProtocol/qprotocol.h \
     agreement/qProtocol/qprotocol_types.h \
     agreement/qProtocol/qprotocolmanager.h \
+    agreement/qProtocol/root_ble_ota.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \
     agreement/qmomcozy/qproduct.h \

@@ -41,6 +41,7 @@ inline QString settingsIniPath(const char* fileName) {
  * 1. 串口与扫码框默认内容（[mechine]、键名含 comName；getMacDefault 仅手动写入 local.ini）
  * 2. 窗口大小（Window/SettingSize、Window/Size）
  * 3. 当前工站（SYSTEM/station、TestOrderMeta/SelectedStation*）
+ * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
  */
 inline bool settingsUseLocalFile(const QString& fullKey) {
     if (fullKey.isEmpty())
@@ -63,6 +64,9 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
     }
 
     if (fullKey.contains(QStringLiteral("comName"), Qt::CaseInsensitive))
+        return true;
+
+    if (fullKey.startsWith(QStringLiteral("WIFI/Name"), Qt::CaseInsensitive))
         return true;
 
     return false;
