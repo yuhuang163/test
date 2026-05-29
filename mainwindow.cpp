@@ -3291,6 +3291,11 @@ void MainWindow::startRootBleOta() {
     if (!intervalOk || intervalMs < 0)
         intervalMs = 5;
 
+    bool blockBusyWaitOk = false;
+    int blockBusyWaitMs = ui->OtaBlockBusyWaitMs->text().toInt(&blockBusyWaitOk);
+    if (!blockBusyWaitOk || blockBusyWaitMs < 0)
+        blockBusyWaitMs = RootBleOtaClient::kDefaultBlockBusyWaitMs;
+
     const uint32_t imageCrc32 = RootBleOtaClient::calculateImageCrc32(imageData);
     const int totalBlocks =
         (imageData.size() + RootBleOtaClient::kDefaultSuggestBlockSize - 1) / RootBleOtaClient::kDefaultSuggestBlockSize;
@@ -3304,6 +3309,8 @@ void MainWindow::startRootBleOta() {
                                    QStringLiteral(" 路特 TLV OTA 开始 ") + filePath);
     ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
                                    QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
+    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                   QStringLiteral(" 块忙等待时间：%1 ms").arg(blockBusyWaitMs));
 
     at->sendOTADATA(1);
     waitWork(500);
@@ -3331,7 +3338,7 @@ void MainWindow::startRootBleOta() {
     QString errorText;
     const uint32_t version = 0x00010001u;
     const bool ok = rootBleOtaClient_.runTransfer(
-        imageData, imageId, version, intervalMs, [this]() { return stopBleOta != 0; }, &errorText,
+        imageData, imageId, version, intervalMs, blockBusyWaitMs, [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
             ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
             if (progressToSourceBar)

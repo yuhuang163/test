@@ -22,6 +22,7 @@ public:
     static constexpr int kBlockCompleteTimeoutMs = 500;           // 等待单块完成 ACK/NACK 的超时时间。
     static constexpr int kResponseTimeoutMs = 30000;              // 协商、开始、结束等控制命令响应超时。
     static constexpr int kMaxRetry = 3;                           // 单块失败后的最大整块重发次数。
+    static constexpr int kDefaultBlockBusyWaitMs = 500;           // 设备忙 NACK 后默认退避等待（ms）。
 
     enum TlvType : uint8_t {
         NegotiateBsReq = 0x01,
@@ -49,9 +50,10 @@ public:
 
     using ProgressFunc = std::function<void(int percent)>;
 
-    /** 执行完整 OTA；intervalMs 为片段发送间隔 */
+    /** 执行完整 OTA；intervalMs 为片段发送间隔，blockBusyWaitMs 为设备忙退避等待 */
     bool runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                     CancelPredicate cancelled, QString* errorOut, ProgressFunc onProgress = nullptr);
+                     int blockBusyWaitMs, CancelPredicate cancelled, QString* errorOut,
+                     ProgressFunc onProgress = nullptr);
 
     static uint32_t calculateImageCrc32(const QByteArray& imageData);
     static QByteArray buildFrame(uint8_t& seq, uint8_t frameType, const QByteArray& payload);

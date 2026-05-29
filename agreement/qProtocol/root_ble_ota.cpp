@@ -91,14 +91,6 @@ int progressFromBytes(int sentBytes, int totalBytes) {
     return qMin(100, static_cast<int>(static_cast<qint64>(sentBytes) * 100 / totalBytes));
 }
 
-int busyBackoffMs(int retryIndex) {
-    if (retryIndex <= 0)
-        return 200;
-    if (retryIndex == 1)
-        return 500;
-    return 1000;
-}
-
 }  // namespace
 
 void RootBleOtaClient::reset() {
@@ -462,7 +454,8 @@ bool RootBleOtaClient::endOtaSession(uint32_t imageId, CancelPredicate cancelled
 }
 
 bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                                   CancelPredicate cancelled, QString* errorOut, ProgressFunc onProgress) {
+                                   int blockBusyWaitMs, CancelPredicate cancelled, QString* errorOut,
+                                   ProgressFunc onProgress) {
     if (imageData.isEmpty()) {
         if (errorOut)
             *errorOut = QStringLiteral("镜像数据为空");
@@ -500,9 +493,9 @@ bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId
             } else if (result == BlockSendResult::Failed) {
                 return false;
             } else if (result == BlockSendResult::RetryBlockAfterBackoff) {
-                const int waitMs = busyBackoffMs(retry);
+                const int waitMs = qMax(0, blockBusyWaitMs);
                 if (logFunc_)
-                    logFunc_(QStringLiteral("设备忙退避等待 %1 ms 后，从块 %2 第一个 fragment 重发").arg(waitMs).arg(block));
+                    logFunc_(QStringLiteral("设备忙，块忙等待 %1 ms 后从块 %2 第一个 fragment 重发").arg(waitMs).arg(block));
                 QElapsedTimer backoffTimer;
                 backoffTimer.start();
                 while (backoffTimer.elapsed() < waitMs) {

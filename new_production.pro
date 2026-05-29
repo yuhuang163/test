@@ -294,11 +294,6 @@ FORMS += \
     work_station/pressure/pressuresensorform.ui \
     work_station/pressure/PressCalibBox.ui \
 
-TRANSLATIONS += \
-    new_production_zh_CN.ts
-CONFIG += lrelease
-CONFIG += embed_translations
-
 #CONFIG += incremental
 
 # 添加config配置

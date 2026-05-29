@@ -22,14 +22,18 @@ new_product_test/
 ├── mainlogic.cpp                         ← 主流程调度与业务联动
 ├── 上位机设置.ini                         ← 运行时配置（协议/阈值/开关）
 ├── new_production.qrc                    ← 资源索引（图片/QSS等）
-├── factory_analyzer.h/.cpp/.ui           ← 分析与诊断页面
-├── djitestfunction.cpp                   ← 测试辅助函数
+│
+├── tools/                                ← 独立工具/分析模块（与主工站解耦）
+│   └── factory_analyzer/                 ← DJI/高通产测分析与 ADB/Bulk 调试
+│       ├── factory_analyzer.h/.cpp/.ui
+│       └── djitestfunction.cpp           ← 按名称执行 Bulk 测试项
 │
 ├── docs/                                 ← 文档说明与改造记录
 │   ├── 代码开发流程.md                    ← 开发流程规范
 │   ├── 上位机版本发布.md                  ← 版本发布流程
 │   ├── 协议适配.md                        ← 协议适配说明
-│   └── 协议适配改造方案.md                 ← 协议改造设计文档
+│   ├── 协议适配改造方案.md                 ← 协议改造设计文档
+│   └── 基于 TLV 的 BLE OTA 图片资源升级协议.md  ← 路特 BLE OTA 协议说明
 │
 ├── my_set/                               ← 工程公共定义与聚合头
 │   ├── AbIni.h                           ← 公共头聚合/版本宏/全局依赖
@@ -43,6 +47,8 @@ new_product_test/
 │   │   ├── qprotocol.h/.cpp              ← 协议接口基类
 │   │   ├── qprotocolmanager.h/.cpp       ← 协议选择/切换/统一调用
 │   │   ├── qprotocol_types.h             ← 协议类型定义
+│   │   ├── root_ble_ota.h/.cpp           ← 路特 TLV BLE OTA 客户端
+│   │   ├── qaiot/                        ← AIOT 协议实现
 │   │   ├── qpb/                          ← PB协议实现与生成文件
 │   │   │   ├── qpb.h/.cpp                ← PB协议主实现
 │   │   │   ├── ble_protocol/*.pb.h       ← BLE协议生成头
@@ -61,7 +67,7 @@ new_product_test/
 │   ├── qjig/                             ← 治具串口协议（气缸/继电器）
 │   │   ├── qjig.h/.cpp                   ← 治具串口调试工具（不带ui，每一路都单独控制）
 │   │   └── fixture_uart.h/.cpp/.ui       ← 治具串口调试工具（带ui，一个治具）
-│   ├── qbrush/
+│   ├── qmomcozy/
 │   │   └── qproduct.h/.cpp               ← 产品串口通信封装
 │   ├── qbulk/
 │   │   ├── qbulk.h/.cpp                  ← 大包/批量传输处理
@@ -72,6 +78,9 @@ new_product_test/
 │   │   └── qadb.h/.cpp                   ← ADB交互封装
 │   ├── qset/
 │   │   └── qsetting.h/.cpp/.ui           ← 设置界面与配置读写
+│   ├── qtuple/                           ← 三元组/云端相关
+│   ├── qplc/                             ← PLC（汇川 Modbus TCP 等）
+│   ├── qvisa/                            ← NI-VISA 仪器（可选编译）
 │   └── qmes/                             ← 多工厂MES适配
 │       ├── qmes.h/.cpp                   ← MES基类
 │       ├── mesmanager.h/.cpp             ← MES路由与管理
@@ -82,7 +91,9 @@ new_product_test/
 ├── work_station/                         ← 各工站业务模块
 │   ├── test_base.h/.cpp                  ← 工站公共基类（串口/通用流程）
 │   ├── box_base.h/.cpp                   ← 工站容器基类
-│   ├── common_class.h/.cpp               ← 公共业务逻辑
+│   ├── common_class.h/.cpp               ← MainWindow 用 TestFunctionExecutor（PB 按名执行测试项）
+│   ├── key/                              ← 按键工站
+│   ├── suction/                          ← 吸力工站
 │   │
 │   ├── quiescent_current/                ← 静态电流工站
 │   │   ├── quiescent_current.h/.cpp/.ui  ← 主流程与界面
@@ -134,8 +145,30 @@ new_product_test/
     └── .../bin/上位机设置.ini              ← 编译输出配置拷贝
 ```
 
+## 分层与职责（协作边界）
+
+| 层级 | 目录 | 职责 | 典型改动人 |
+|------|------|------|------------|
+| 平台/启动 | `main.cpp`、`qlog/`、`my_set/` | 启动、崩溃/日志、全局宏与类型 | 平台 |
+| 界面入口 | `mainwindow.*`、`mainlogic.cpp` | UI、工站切换、流程联动 | 业务 + 平台 |
+| 协议层 | `agreement/` | 设备协议、MES、配置、OTA/ADB/Bulk | 协议 |
+| 工站业务 | `work_station/` | 测试步骤、卡控、结果判定 | 业务 |
+| 独立工具 | `tools/factory_analyzer/` | DJI 分析页，不依赖 `common_class.h` | 工具/协议 |
+
+依赖建议（自上而下，避免反向 include）：
+
+```text
+UI / 工站  →  QProtocolManager / 平台服务  →  具体协议实现
+```
+
+- `tools/factory_analyzer` 使用自有 `FactoryNamedFunction`（定义在 `factory_analyzer.h`），勿 include `common_class.h`，避免与 `MainWindow` 侧 `NamedFunction` 在 `main.cpp` 中重定义。
+- `MainWindow` 通过 `TestFunctionExecutor`（`common_class`）按名称执行 PB 测试命令；`factory_analyzer` 自行维护 Bulk 脚本测试表。
+
 ## 维护约定
 
 - 业务改动优先在 `work_station/`、`agreement/`、`mainlogic.cpp`、`agreement/qset/`。
+- `tools/factory_analyzer/` 改动保持模块内聚，勿再 include `common_class.h`。
 - 不建议手改 `build/` 与 `agreement/qProtocol/qpb/Python39/`。
-- 新增协议优先扩展 `agreement/qusb` 或 `agreement/qProtocol`，并通过 `test_base` 接入统一入口。
+- 新增协议优先扩展 `agreement/qProtocol`（经 `QProtocolManager` 统一入口）或 `agreement/qusb` / `qat` 等适配层；工站通过 `test_base` 接入。
+- 配置键统一走 `SETTINGS`（`上位机设置.ini`），新增项同步 `qsetting` 加载/保存与 UI。
+- Git 提交说明见 `.copilot-commit-message-instructions.md`；本地钩子见上文「克隆后首次设置」。

@@ -4231,6 +4231,20 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QLabel" name="label_ota_block_busy_wait">
+                    <property name="text">
+                     <string>块忙等待时间（ms）</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="OtaBlockBusyWaitMs">
+                    <property name="text">
+                     <string>500</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QCheckBox" name="is_clear_mac">
                     <property name="text">
                      <string>是否升级完成清空mac</string>
