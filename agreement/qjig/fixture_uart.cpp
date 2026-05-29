@@ -1,5 +1,6 @@
 #include "fixture_uart.h"
 
+#include "qchannel.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_fixture_uart.h"
@@ -448,7 +449,7 @@ void Fixture_uart::sendimuData(imuFixtureState fixstate) {
 
     if (!dataToSend.isEmpty()) {
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         save_Fixture_uart_log(1, dataToSend);
         start_fix_action(1);
     }
@@ -476,7 +477,7 @@ void Fixture_uart::set_camera_action(camreaFixtureState fixstate) {
 
     if (!dataToSend.isEmpty()) {
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         save_Fixture_uart_log(1, dataToSend);
         start_fix_action(1);
     }
@@ -509,7 +510,7 @@ void Fixture_uart::sendFixtureData(FixtureState fixstate) {
     }
     if (!dataToSend.isEmpty()) {
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
     }
 }
 
@@ -519,7 +520,7 @@ void Fixture_uart::send_start_command(int i) {
     if (i > 0 && i <= 10) {
         const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         qDebug() << "已发送开始命令" << commands[i - 1];
         save_Fixture_uart_log(1, dataToSend);
     } else {
@@ -532,7 +533,7 @@ void Fixture_uart::send_start_sleep_command(int i) {
     if (i > 0 && i <= 10) {
         const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         save_Fixture_uart_log(1, dataToSend);
 
         qDebug() << "已发送开始休眠命令" << commands[i - 1];
@@ -546,7 +547,7 @@ void Fixture_uart::send_start_white_modle_command(int i) {
     if (i > 0 && i <= 10) {
         const QByteArray dataToSend = QByteArray::fromHex(commands[i - 1]);
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         save_Fixture_uart_log(1, dataToSend);
 
         qDebug() << "已发送已经进入亮白模式命令" << commands[i - 1];
@@ -720,7 +721,7 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
         qDebug() << "command_id:" << command_id << "numb" << numb;
         const QByteArray dataToSend = press_commands[command_id][numb];
         qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        fixtureSerialPort->write(dataToSend);
+        QSerialChannel::write(fixtureSerialPort, dataToSend);
         qDebug() << "已发送命令" << dataToSend;
         save_Fixture_uart_log(1, dataToSend);
     } else {

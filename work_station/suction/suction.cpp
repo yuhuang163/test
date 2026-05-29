@@ -27,9 +27,6 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     if (value == "lx" || value == "lxmodbus") {
         return Qusb::ProtocolType::LxModbus;
     }
-    if (value == "byd" || value == "byddam3158") {
-        return Qusb::ProtocolType::Byd;
-    }
     return Qusb::ProtocolType::Auto;
 }
 }
@@ -118,7 +115,6 @@ suction::suction(int index, QWidget* parent) :
     //     productBaudRate = 1000000;
     // }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
-    connect(jig, SIGNAL(send_suction_data(QString)), this, SLOT(refreshAmmeterData(QString)));
     connect(visa, &Qvisa::programmablePowerVoltageRead, this, &suction::refreshProgrammablePowerVoltage);
     connect(visa, &Qvisa::programmablePowerCurrentRead, this, &suction::refreshProgrammablePowerCurrent);
 }
@@ -131,13 +127,6 @@ void suction::applySuctionProtocolConfig() {
     cfg.scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
     cfg.scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
     cfg.scpiRange = SETTINGS.value("Suction/ScpiRange", SETTINGS.value("Current/ScpiRange", "500e-3")).toString();
-    damRangeCode = SETTINGS.value("Suction/DamRangeCode", 0x000C).toInt();
-    damRawMax = SETTINGS.value("Suction/DamRawMax", 65535.0).toDouble();
-    damCurrentFullScale_mA = SETTINGS.value("Suction/DamCurrentFullScale_mA", 10.0).toDouble();
-    damPressureAtMinCurrent_kPa = SETTINGS.value("Suction/DamPressureAt0mA_kPa", -100.0).toDouble();
-    damPressureAtMaxCurrent_kPa = SETTINGS.value("Suction/DamPressureAtFullCurrent_kPa", 0.0).toDouble();
-    damLeftChannel = SETTINGS.value("Suction/DamLeftChannel", 1).toInt();
-    damRightChannel = SETTINGS.value("Suction/DamRightChannel", 2).toInt();
     suctionSampleDurationMs = SETTINGS.value("Suction/SampleDurationMs", 10000).toInt();
     suctionSampleIntervalMs = SETTINGS.value("Suction/SampleIntervalMs", 20).toInt();
     suctionPeakTargetKpa = SETTINGS.value("Suction/PeakTargetKpa", -36.0).toDouble();
@@ -159,9 +148,6 @@ void suction::applySuctionProtocolConfig() {
 
         } else if (factory == "lx" || factory == "jj") {
             cfg.protocol = Qusb::ProtocolType::LxModbus;
-        } else if (factory == "byd") {
-            // BYD 产线：吸力经 DAM-3158(A) 采集卡读传感器（Modbus）；与本口程控电源 SCPI 互斥，见 ini 说明
-            cfg.protocol = Qusb::ProtocolType::Byd;
         } else {
             cfg.protocol = Qusb::ProtocolType::Scpi;
         }
@@ -170,8 +156,6 @@ void suction::applySuctionProtocolConfig() {
     suctionProtocolType = cfg.protocol;
     usb->setProtocolConfig(cfg);
     suctionUsbProtocolConfig_ = cfg;
-    jig->setDam3158Channel(damLeftChannel - 1);
-    jig->setDam3158RangeCode(static_cast<quint16>(damRangeCode));
     loadSuctionProgrammablePowerConfig();
     showlog(QStringLiteral("程控电源配置: useVisa=%1, address=%2")
                 .arg(programmablePowerVisaConfig_.useVisa ? 1 : 0)
@@ -183,13 +167,6 @@ void suction::applySuctionProtocolConfig() {
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange +
             ", pico=" + QString(suctionUsePicoSensor ? "ON" : "OFF") +
             ", picoBaud=" + QString::number(usbBaudRate) +
-            ", damRangeCode=0x" + QString::number(damRangeCode, 16).toUpper() +
-            ", damRawMax=" + QString::number(damRawMax, 'f', 1) +
-            ", damCurrentFullScale_mA=" + QString::number(damCurrentFullScale_mA, 'f', 3) +
-            ", damPressureAtMinCurrent_kPa=" + QString::number(damPressureAtMinCurrent_kPa, 'f', 3) +
-            ", damPressureAtMaxCurrent_kPa=" + QString::number(damPressureAtMaxCurrent_kPa, 'f', 3) +
-            ", leftCh=" + QString::number(damLeftChannel) +
-            ", rightCh=" + QString::number(damRightChannel) +
             ", sampleMs=" + QString::number(suctionSampleDurationMs) +
             ", intervalMs=" + QString::number(suctionSampleIntervalMs) +
             ", peakTarget=" + QString::number(suctionPeakTargetKpa, 'f', 2) +
@@ -664,49 +641,16 @@ void suction::refreshAmmeterData(QString data) {
             damRightKpa_ = rightValue;
             normalValue = damLeftKpa_;
         }
-    } else if (suctionProtocolType == Qusb::ProtocolType::Byd) {
-        const QStringList rawList = data.split(',', Qt::SkipEmptyParts);
-        if (rawList.size() >= 8) {
-            const double denom = (damRawMax > 0.0) ? damRawMax : 65535.0;
-            const double scaleDenom =
-                (damCurrentFullScale_mA > 0.0) ? damCurrentFullScale_mA : 10.0;
-            const int leftIdx = qBound(0, damLeftChannel - 1, 7);
-            const int rightIdx = qBound(0, damRightChannel - 1, 7);
-            damRawChannels_.resize(8);
-            conversionOk = true;
-            for (int i = 0; i < 8; ++i) {
-                bool rawOk = false;
-                const double raw = rawList.at(i).toDouble(&rawOk);
-                if (!rawOk) {
-                    conversionOk = false;
-                    break;
-                }
-                damRawChannels_[i] = raw;
-            }
-            if (conversionOk) {
-                auto rawToKpa = [&](double rawValue) -> double {
-                    const double current_mA = (rawValue / denom) * damCurrentFullScale_mA;
-                    return damPressureAtMinCurrent_kPa +
-                           (current_mA / scaleDenom) *
-                               (damPressureAtMaxCurrent_kPa - damPressureAtMinCurrent_kPa);
-                };
-                damLeftKpa_ = rawToKpa(damRawChannels_.at(leftIdx));
-                damRightKpa_ = rawToKpa(damRawChannels_.at(rightIdx));
-                normalValue = damLeftKpa_;
-            }
-        }
-    }
-    else
+    } else {
         normalValue = data.toDouble(&conversionOk) * 1000;
+    }
 
     if (conversionOk) {
-        // 转换成功
-        if (suctionUsePicoSensor)
+        if (suctionUsePicoSensor) {
             qDebug() << getIndex() << "Pico吸力：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
-        else if (suctionProtocolType == Qusb::ProtocolType::Byd)
-            qDebug() << getIndex() << "转换后的数值：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
-        else
+        } else {
             qDebug() << getIndex() << "转换后的数值：" << normalValue << "ma";
+        }
         measure_ammeter = normalValue;
     } else {
         // 转换失败
@@ -1177,7 +1121,7 @@ void suction::startTask() {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE: {  // 复位一切
-                // 同工站双设备：传感器走 usb(Byd)，电源走基类通用 VISA 对象。
+                // 同工站双设备：传感器走 Pico/SCPI，电源走基类通用 VISA 对象。
                 const bool powerCfgOk =
                     runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); },
                             suctionExternalPowerEnabled);
@@ -1296,13 +1240,6 @@ void suction::startTask() {
                         } else {
                             showlog(QStringLiteral("Pico已发送SYSMODE=1，100ms内暂未收到数据"));
                         }
-                    } else if (suctionProtocolType == Qusb::ProtocolType::Byd) {
-                        showlog(QStringLiteral("双通道吸力(DAM-3158)：左=第%1路AI，右=第%2路AI（1~8，与接线一致）")
-                                    .arg(damLeftChannel)
-                                    .arg(damRightChannel));
-                        if (damLeftChannel == damRightChannel) {
-                            showlog(QStringLiteral("警告：左右吸力配置为同一路通道，请检查 DamLeftChannel / DamRightChannel"));
-                        }
                     } else {
                         showlog(QStringLiteral("双通道吸力：本协议下按「先左后右」两次读数，左/右数据来自设备返回顺序"));
                     }
@@ -1325,8 +1262,6 @@ void suction::startTask() {
                                 usbSerialPortBuf.append(usbSerialPort->readAll());
                                 readUsbSerialPortData();
                             }
-                        } else if (suctionProtocolType == Qusb::ProtocolType::Byd) {
-                            jig->getDam3158Measure();
                         } else {
                             usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
                         }
@@ -1334,13 +1269,10 @@ void suction::startTask() {
                         if (readDelayMs > 0) {
                             waitWork(readDelayMs);
                         }
-                        const double leftKpa =
-                            (suctionUsePicoSensor || suctionProtocolType == Qusb::ProtocolType::Byd) ? damLeftKpa_ : measure_ammeter;
+                        const double leftKpa = suctionUsePicoSensor ? damLeftKpa_ : measure_ammeter;
                         leftSamples.append(leftKpa);
 
-                        
-                        const double rightKpa =
-                            (suctionUsePicoSensor || suctionProtocolType == Qusb::ProtocolType::Byd) ? damRightKpa_ : measure_ammeter;
+                        const double rightKpa = suctionUsePicoSensor ? damRightKpa_ : measure_ammeter;
                         rightSamples.append(rightKpa);
 
                         showlog(QString("[吸力原始点%1] 左: %2Kpa | 右: %3Kpa")

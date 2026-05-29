@@ -38,18 +38,10 @@ public:
     void waitWork(int ms);
     void set_relay_state(int state);
     void get_amplitude();
-    void getDam3158Measure();
-    void setDam3158Channel(int channel);
-    void setDam3158RangeCode(quint16 rangeCode);
     void save_Jig_uart_log(int txrx, QByteArray data);
     void parseCmd(const QByteArray& byte);
 signals:
     void send_amplitude_data(QString);
-    void send_suction_data(QString);
-
-private:
-    int dam3158Channel_ = 0;
-    quint16 dam3158RangeCode_ = 0;
 };
 
 #endif  // QJIG_H

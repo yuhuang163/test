@@ -3,6 +3,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QVector>
 
 namespace QModbusPdu {
 
@@ -26,6 +27,9 @@ QString formatExceptionMessage(const QByteArray& pdu);
 
 // RTU 基础校验：最小长度/字节数/CRC
 bool validateRtuFrame(const QByteArray& frame, quint8* outByteCount = nullptr);
+
+// 读线圈响应 PDU（仅功能码+字节数+数据，不含 TCP/RTU 头尾）
+bool parseReadCoilsPdu(const QByteArray& pdu, int quantity, QVector<bool>* out, QString* errorMessage = nullptr);
 
 }  // namespace QModbusPdu
 

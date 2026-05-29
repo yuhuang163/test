@@ -85,21 +85,11 @@ private:
     QString logString = "";
     QString totalresult = "";
     Qusb::ProtocolType suctionProtocolType = Qusb::ProtocolType::Scpi;
-    // DAM-3158 采集与换算参数（通道为 1-based）
-    int damRangeCode = 0x000C;
-    double damRawMax = 65535.0;
-    double damCurrentFullScale_mA = 10.0;
-    double damPressureAtMinCurrent_kPa = -100.0;
-    double damPressureAtMaxCurrent_kPa = 0.0;
-    QVector<double> damRawChannels_;
+    // Pico 双通道吸力缓存（kPa）
     double damLeftKpa_ = 0.0;
     double damRightKpa_ = 0.0;
     bool suctionUsePicoSensor = true;
     QString picoRxBuffer_;
-
-    // 双通道测试参数
-    int damLeftChannel = 1;
-    int damRightChannel = 2;
     int suctionSampleDurationMs = 10000;
     int suctionSampleIntervalMs = 20;
     double suctionPeakTargetKpa = 36.0;

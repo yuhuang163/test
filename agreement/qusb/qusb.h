@@ -17,8 +17,7 @@ public:
         Auto,
         Scpi,
         HqModbus,
-        LxModbus,
-        Byd
+        LxModbus
     };
 
     enum class PowerAction
@@ -67,9 +66,7 @@ public:
     void getlxMEASure(int mechine);
     void processlxModbusRTUData(const QByteArray &data);
     void sethqMEASure();
-    void getbydmeaSure(QString mac);
     void getCONF(QString mac);
-    void getbydCONF(QString mac);
     void parseCmd(const QByteArray &byte);
     bool configureProgrammablePower(double voltageV, double currentA);
     bool setProgrammablePowerOutput(bool enable);
@@ -97,10 +94,8 @@ private:
     bool handleScpiAction(PowerAction action);
     bool handleHqAction(PowerAction action);
     bool handleLxAction(PowerAction action);
-    bool handlebydAction(PowerAction action);
-    /// 已配置程控电源 VISA 地址（与当前协议是否为 Scpi 无关，供 Byd 口上电源 SCPI）
     bool programmablePowerVisaConfigured() const;
-    /// 程控电源 SCPI 是否走 VISA：protocol 为 Scpi 或 Byd（Byd 时 DAM 仍 Modbus，电源指令走 VISA）
+    /// 程控电源 SCPI 是否走 VISA（与 protocol 是否为 Scpi 无关，由 scpiUseVisa 决定）
     bool isVisaScpiEnabled() const;
     Qvisa::ProtocolConfig visaConfigFromProtocolConfig() const;
     bool ensureVisaConnected();

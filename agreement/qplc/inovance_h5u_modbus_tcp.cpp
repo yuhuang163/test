@@ -441,44 +441,15 @@ bool InovanceH5uModbusTcp::readMCoils(int mStartNumber, int quantity, int mCoilA
         }
         return false;
     }
-    if (!QModbusPdu::functionCodeMatches(resp, QModbusPdu::kFcReadCoils)) {
+    QString parseError;
+    if (!QModbusPdu::parseReadCoilsPdu(resp, quantity, out, &parseError)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("读线圈响应功能码错误: %1 Expect=0x%2 Actual=0x%3 RespHex=%4")
+            *errorMessage = QStringLiteral("读线圈解析失败: %1 %2 RespHex=%3")
                                 .arg(ctx)
-                                .arg(QModbusPdu::kFcReadCoils, 2, 16, QChar('0'))
-                                .arg(quint8(resp[0]), 2, 16, QChar('0'))
+                                .arg(parseError)
                                 .arg(pduHexPreview(resp));
         }
         return false;
-    }
-    const int byteCount = quint8(resp[1]);
-    const int expectByteCount = (quantity + 7) / 8;
-    if (byteCount < expectByteCount) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("读线圈字节数不足: %1 ByteCount=%2 ExpectByteCount=%3 RespHex=%4")
-                                .arg(ctx)
-                                .arg(byteCount)
-                                .arg(expectByteCount)
-                                .arg(pduHexPreview(resp));
-        }
-        return false;
-    }
-    if (resp.size() < 2 + byteCount) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("读线圈数据长度不足: %1 RespBytes=%2 NeedBytes=%3 ByteCount=%4 RespHex=%5")
-                                .arg(ctx)
-                                .arg(resp.size())
-                                .arg(2 + byteCount)
-                                .arg(byteCount)
-                                .arg(pduHexPreview(resp));
-        }
-        return false;
-    }
-    for (int i = 0; i < quantity; ++i) {
-        const int byteIndex = i / 8;
-        const int bitIndex = i % 8;
-        const bool bit = (quint8(resp[2 + byteIndex]) & (1 << bitIndex)) != 0;
-        out->append(bit);
     }
     if (traceEnabled_) {
         QString bits;

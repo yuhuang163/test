@@ -62,7 +62,7 @@ qint64 write(QSerialPort* port, const QByteArray& data);
 **已接入写路径：**
 
 - 协议层：`Qpb::writeSerial()`、`Qfctp::sendPacket()`、`Qaiot` 发送
-- 仪器/治具：`qusb`、`qat`、`qjig`
+- 仪器/治具：`qusb`、`qat`、`qjig`、`fixture_uart`
 - Dongle AT：`qat::sendCmd`
 
 新增串口发送时：**不要**再直接 `serialPort->write`，统一走 `QSerialChannel::write`。
@@ -94,7 +94,8 @@ qint64 write(QSerialPort* port, const QByteArray& data);
   - RTU CRC（`crc16ModbusRtuBigEndian`）
   - 响应校验（`isExceptionResponse` / `functionCodeMatches` / `validateRtuFrame`）
   - 异常码文字（`exceptionCodeText` / `formatExceptionMessage`）
-- `qplc` 与 `qusb` 已接入上述公共能力，减少重复实现。
+  - 读线圈 PDU 解析（`parseReadCoilsPdu`）
+- `qplc`、`qusb`、`qjig` 已接入上述公共能力；`fixture_uart` 写口已统一。
 
 ### 3.5 进程通道公共层（阶段 3 首刀已落地）
 

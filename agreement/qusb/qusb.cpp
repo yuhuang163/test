@@ -128,9 +128,6 @@ void Qusb::parseCmd(const QByteArray &byte)
     case ProtocolType::LxModbus:
         processlxModbusRTUData(byte);
         break;
-    case ProtocolType::Byd:
-        processModbusRTUData(byte);
-        break;
     case ProtocolType::Auto:
         processScpiData(byte);
         break;
@@ -315,8 +312,6 @@ bool Qusb::sendPowerInstruction(PowerAction action)
         return handleHqAction(action);
     case ProtocolType::LxModbus:
         return handleLxAction(action);
-    case ProtocolType::Byd:
-        return handlebydAction(action);
     case ProtocolType::Auto:
         return handleScpiAction(action);
     }
@@ -420,39 +415,6 @@ bool Qusb::handleLxAction(PowerAction action)
     return false;
 }
 
-bool Qusb::handlebydAction(PowerAction action)
-{
-    switch (action)
-    {
-    case PowerAction::ReadMeasurement:
-        getbydmeaSure(QString());
-        return true;
-    case PowerAction::ConfigurePowerSupply:
-        // BYD 电源配置：统一入口调度到 SCPI 指令链（WFP60H 等）
-        sendCONF(protocolConfig_.scpiCurrentType, protocolConfig_.scpiCurrentMode, protocolConfig_.scpiRange);
-        sendCmd(protocolConfig_.scpiSetVoltageCmd.arg(QString::number(protocolConfig_.scpiPowerVoltageV, 'f', 3)));
-        sendCmd(protocolConfig_.scpiSetCurrentCmd.arg(QString::number(protocolConfig_.scpiPowerCurrentA, 'f', 3)));
-        sendCmd(protocolConfig_.scpiOutputOnCmd);
-        return true;
-    case PowerAction::ReadConfiguration:
-        // BYD 电源读配置
-        getbydCONF(QString());
-        return true;
-    case PowerAction::InitializeDevice:
-        // BYD 电源初始化
-        sendCmd("*RST");
-        return true;
-    case PowerAction::ReadProgrammablePowerVoltage:
-        return readProgrammablePowerVoltage();
-    case PowerAction::ReadProgrammablePowerCurrent:
-        return readProgrammablePowerCurrent();
-    case PowerAction::ReadsuctionData:
-        qDebug() << "BYD 协议未实现 ReadsuctionData";
-        return false;
-    }
-    return false;
-}
-
 void Qusb::emitProgrammablePowerReadIfPending(const QString& scpiLine)
 {
     if (pendingProgPowerRead_ == ProgrammablePowerReadPending::None) {
@@ -513,12 +475,10 @@ void Qusb::sendCmd(QString cmd)
 
 bool Qusb::isVisaScpiEnabled() const
 {
-    // Scpi：整口 SCPI；Byd：DAM 等为 Modbus，程控电源仍用同一套 VisaPower SCPI 走 VISA
     if (!programmablePowerVisaConfigured()) {
         return false;
     }
-    const ProtocolType p = resolveProtocolForOutput();
-    return p == ProtocolType::Scpi || p == ProtocolType::Byd;
+    return resolveProtocolForOutput() == ProtocolType::Scpi;
 }
 
 Qvisa::ProtocolConfig Qusb::visaConfigFromProtocolConfig() const
@@ -584,37 +544,6 @@ void Qusb::getCONF(QString mac)
     // s = "CONFigure:RANGe?";
     // sendCmd(s);
     s = "CONFigure:FUNCtion?";
-    sendCmd(s);
-}
-void Qusb::getbydCONF(QString mac)
-{
-    Q_UNUSED(mac);
-    const QString s = "CONFigure:FUNCtion?";
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA配置查询返回:" << resp;
-        }
-        return;
-    }
-    sendCmd(s);
-}
-void Qusb::getbydmeaSure(QString mac)
-{
-    Q_UNUSED(mac);
-    QString s = protocolConfig_.scpiReadCurrentCmd;
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA测量返回:" << resp;
-            emit send_ammeter_data(resp);
-        }
-        return;
-    }
     sendCmd(s);
 }
 void Qusb::getMEASure(QString mac)

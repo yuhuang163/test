@@ -95,6 +95,55 @@ QString formatExceptionMessage(const QByteArray& pdu) {
         .arg(exceptionCodeText(ex));
 }
 
+bool parseReadCoilsPdu(const QByteArray& pdu, int quantity, QVector<bool>* out, QString* errorMessage) {
+    if (!out || quantity <= 0) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("读线圈参数非法");
+        }
+        return false;
+    }
+    out->clear();
+    if (pdu.size() < 2) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("读线圈响应过短");
+        }
+        return false;
+    }
+    if (isExceptionResponse(pdu)) {
+        if (errorMessage) {
+            *errorMessage = formatExceptionMessage(pdu);
+        }
+        return false;
+    }
+    if (!functionCodeMatches(pdu, kFcReadCoils)) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("读线圈功能码错误");
+        }
+        return false;
+    }
+    const int byteCount = quint8(pdu[1]);
+    const int expectByteCount = (quantity + 7) / 8;
+    if (byteCount < expectByteCount) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("读线圈字节数不足");
+        }
+        return false;
+    }
+    if (pdu.size() < 2 + byteCount) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("读线圈数据长度不足");
+        }
+        return false;
+    }
+    for (int i = 0; i < quantity; ++i) {
+        const int byteIndex = i / 8;
+        const int bitIndex = i % 8;
+        const bool bit = (quint8(pdu[2 + byteIndex]) & (1 << bitIndex)) != 0;
+        out->append(bit);
+    }
+    return true;
+}
+
 bool validateRtuFrame(const QByteArray& frame, quint8* outByteCount) {
     constexpr int kModbusMinFrameLen = 5;
     if (frame.size() < kModbusMinFrameLen) {
