@@ -490,6 +490,17 @@ void MainWindow::readDongleSerialPortData() {
     QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
     dongleSerialPortBuf.clear();                // 清除缓冲区
 
+    if (rootBleOtaActive_) {
+        rootBleOtaClient_.onRx(dataTemp);
+        // const QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        // ui->bleOtaMsg->appendPlainText(QString("[%1] RX %2 bytes: %3")
+        //                                    .arg(timestamp)
+        //                                    .arg(dataTemp.size())
+        //                                    .arg(QString(dataTemp.toHex(' ').left(120))));
+        // saveDongleUartLog(QString("[%1] OTA_RX %2").arg(timestamp, QString(dataTemp.toHex(' '))));
+        return;
+    }
+
     int write_len = 0;
     int len = dataTemp.size();
     write_len = dongleRingBuf->usmile_ring_buffer_write(&p_dongleRingBuffer,

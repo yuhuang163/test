@@ -60,6 +60,7 @@ INCLUDEPATH += agreement/qplc
 INCLUDEPATH += agreement/qvisa
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
+INCLUDEPATH += tools/factory_analyzer
 INCLUDEPATH += my_set
 INCLUDEPATH += lib/form
 INCLUDEPATH += lib/imu
@@ -107,6 +108,7 @@ SOURCES += \
     agreement/qProtocol/qfctp/qfctp.cpp \
     agreement/qProtocol/qprotocol.cpp \
     agreement/qProtocol/qprotocolmanager.cpp \
+    agreement/qProtocol/root_ble_ota.cpp \
     agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
     agreement/qmomcozy/qproduct.cpp \
@@ -135,8 +137,8 @@ SOURCES += \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
-    djitestfunction.cpp \
-    factory_analyzer.cpp \
+    tools/factory_analyzer/djitestfunction.cpp \
+    tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
     lib/imu/imu_calibrate.cpp \
     lib/imu/sensor_hub.cpp \
@@ -198,6 +200,7 @@ HEADERS += \
     agreement/qProtocol/qprotocol.h \
     agreement/qProtocol/qprotocol_types.h \
     agreement/qProtocol/qprotocolmanager.h \
+    agreement/qProtocol/root_ble_ota.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \
     agreement/qmomcozy/qproduct.h \
@@ -226,7 +229,7 @@ HEADERS += \
     agreement/qtuple/qtupleservice.h \
     agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \
-    factory_analyzer.h \
+    tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
     lib/imu/sensor_hub.h \
@@ -273,7 +276,7 @@ HEADERS += \
 FORMS += \
     agreement/qjig/fixture_uart.ui \
     agreement/qset/qsetting.ui \
-    factory_analyzer.ui \
+    tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \
     work_station/ageing/ageingbox.ui \
@@ -299,11 +302,6 @@ FORMS += \
     work_station/wifi_ble/wifibox.ui \
     work_station/pressure/pressuresensorform.ui \
     work_station/pressure/PressCalibBox.ui \
-
-TRANSLATIONS += \
-    new_production_zh_CN.ts
-CONFIG += lrelease
-CONFIG += embed_translations
 
 #CONFIG += incremental
 

@@ -3258,9 +3258,122 @@ bool MainWindow::connectBleForOta(const QString& mac) {
 }
 
 void MainWindow::startRootBleOta() {
-    showlog("进入路特蓝牙OTA流程，协议接口待补充");
+    const QString resourcePath = ui->otaFilePath_source->text().trimmed();
+    const QString fwPath = ui->otaFilePath->text().trimmed();
+    QString filePath = resourcePath;
+    uint32_t imageId = RootBleOtaClient::kImageIdUiResource;
+    bool progressToSourceBar = true;
+    if (filePath.isEmpty()) {
+        filePath = fwPath;
+        imageId = 0x00000001u;
+        progressToSourceBar = false;
+    }
+    if (filePath.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请选择资源或固件 OTA 文件"));
+        showlog(QStringLiteral("路特 BLE OTA：未选择文件"));
+        return;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, QStringLiteral("错误"), QStringLiteral("无法打开 OTA 文件：%1").arg(filePath));
+        return;
+    }
+    const QByteArray imageData = file.readAll();
+    file.close();
+    if (imageData.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("OTA 文件为空"));
+        return;
+    }
+
+    bool intervalOk = false;
+    int intervalMs = ui->OtaTimeInterval->text().toInt(&intervalOk);
+    if (!intervalOk || intervalMs < 0)
+        intervalMs = 5;
+
+    bool blockBusyWaitOk = false;
+    int blockBusyWaitMs = ui->OtaBlockBusyWaitMs->text().toInt(&blockBusyWaitOk);
+    if (!blockBusyWaitOk || blockBusyWaitMs < 0)
+        blockBusyWaitMs = RootBleOtaClient::kDefaultBlockBusyWaitMs;
+
+    const uint32_t imageCrc32 = RootBleOtaClient::calculateImageCrc32(imageData);
+    const int totalBlocks =
+        (imageData.size() + RootBleOtaClient::kDefaultSuggestBlockSize - 1) / RootBleOtaClient::kDefaultSuggestBlockSize;
+
+    showlog(QStringLiteral("路特 BLE OTA 开始：%1，大小 %2，CRC32=0x%3，预估块数≥%4")
+                .arg(filePath)
+                .arg(imageData.size())
+                .arg(imageCrc32, 8, 16, QChar('0'))
+                .arg(totalBlocks));
     ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
-                                   "进入路特蓝牙OTA流程，协议接口待补充");
+                                   QStringLiteral(" 路特 TLV OTA 开始 ") + filePath);
+    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                   QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
+    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                   QStringLiteral(" 块忙等待时间：%1 ms").arg(blockBusyWaitMs));
+
+    at->sendOTADATA(1);
+    waitWork(500);
+
+    rootBleOtaClient_.setSendFunc([this](const QByteArray& frame) {
+        const uint8_t seq = frame.size() > 2 ? static_cast<uint8_t>(frame[2]) : 0;
+        const int tlvType = frame.size() > 8 ? static_cast<uint8_t>(frame[8]) : -1;
+        ui->bleOtaMsg->appendPlainText(
+            QDateTime::currentDateTime().toString(Qt::ISODate) +
+            QStringLiteral(" BLE OTA 发送数据包 type=0x%1 seq=%2 len=%3 data=%4")
+                .arg(tlvType, 2, 16, QChar('0'))
+                .arg(seq)
+                .arg(frame.size())
+                .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(frame);
+    });
+    rootBleOtaClient_.setLogFunc([this](const QString& msg) {
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) + " " + msg);
+    });
+    rootBleOtaActive_ = true;
+    rootBleOtaClient_.reset();
+    bleOtaTestTime.start();
+
+    QString errorText;
+    const uint32_t version = 0x00010001u;
+    const bool ok = rootBleOtaClient_.runTransfer(
+        imageData, imageId, version, intervalMs, blockBusyWaitMs, [this]() { return stopBleOta != 0; }, &errorText,
+        [this, progressToSourceBar](int percent) {
+            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            if (progressToSourceBar)
+                emit sendBelSourceOtaSpeed(percent);
+            else
+                emit sendBelOtaSpeed(percent);
+        });
+
+    rootBleOtaActive_ = false;
+    at->sendOTADATA(0);
+    waitWork(200);
+
+    if (stopBleOta) {
+        showlog(QStringLiteral("路特 BLE OTA 已停止"));
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                       QStringLiteral(" OTA 已停止"));
+        return;
+    }
+
+    if (ok) {
+        ui->bleotaresult->setText(QStringLiteral("PASS"));
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
+                                       "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        showlog(QStringLiteral("路特 BLE OTA 成功，耗时 %1 s").arg(bleOtaTestTime.elapsed() / 1000));
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                       QStringLiteral(" OTA 成功"));
+    } else {
+        ui->bleotaresult->setText(QStringLiteral("FAIL"));
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
+        const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
+        showlog(QStringLiteral("路特 BLE OTA 失败：") + msg);
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+                                       QStringLiteral(" OTA 失败：") + msg);
+    }
 }
 
 // 旧 usmile 蓝牙 OTA 流程，当前路特流程不调用，保留用于回退和对照。
@@ -3308,6 +3421,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
 
 void MainWindow::on_stopBleOta_clicked() {
     stopBleOta = 1;
+    rootBleOtaActive_ = false;
     bleotatimer->stop();
     disconnect(bleotatimer, &QTimer::timeout, this, nullptr);  // 断开所有与timeout信号相关的连接
     currentChunk = 0;

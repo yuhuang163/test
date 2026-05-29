@@ -47,6 +47,7 @@
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
+#include "root_ble_ota.h"
 
 
 
@@ -142,6 +143,8 @@ public:
 private:
     int totalBleSendData = 0;
     int stopBleOta = 0;
+    bool rootBleOtaActive_ = false;
+    RootBleOtaClient rootBleOtaClient_;
     void saveDongleUartLog(QString data);
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
