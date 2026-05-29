@@ -17,6 +17,8 @@ constexpr uint16_t kFrameSof = 0x5CC5u;
 constexpr uint8_t kFrameTypeReq = 0x00;
 constexpr uint8_t kFrameTypeResp = 0x01;
 constexpr uint8_t kFrameTypeNotify = 0x02;
+constexpr uint16_t kNackBusyBlock = 0xFFFFu;
+constexpr uint8_t kNackReasonBusy = 0x01;
 constexpr uint8_t kNackReasonReassembleFailed = 0x02;
 
 static const uint32_t kCrc32Table[256] = {
@@ -87,6 +89,14 @@ int progressFromBytes(int sentBytes, int totalBytes) {
     if (totalBytes <= 0)
         return 0;
     return qMin(100, static_cast<int>(static_cast<qint64>(sentBytes) * 100 / totalBytes));
+}
+
+int busyBackoffMs(int retryIndex) {
+    if (retryIndex <= 0)
+        return 200;
+    if (retryIndex == 1)
+        return 500;
+    return 1000;
 }
 
 }  // namespace
@@ -336,9 +346,47 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
     if (blockLen <= 0)
         return BlockSendResult::Success;
 
+    auto handleNack = [&](const QByteArray& nack) {
+        if (nack.size() < 3) {
+            if (errorOut)
+                *errorOut = QStringLiteral("设备 NACK 长度非法");
+            return BlockSendResult::Failed;
+        }
+
+        const quint16 nackBlock = readLe16(nack, 0);
+        const quint8 reason = static_cast<quint8>(nack[2]);
+        if (nackBlock == static_cast<quint16>(kNackBusyBlock) && reason == static_cast<quint8>(kNackReasonBusy)) {
+            if (logFunc_)
+                logFunc_(QStringLiteral("收到 NACK(blk=0xFFFF, reason=0x01)，设备超时，停止当前块发送并准备退避重发"));
+            return BlockSendResult::RetryBlockAfterBackoff;
+        }
+        if (nackBlock == blockNumber && reason == kNackReasonReassembleFailed) {
+            if (logFunc_)
+                logFunc_(QStringLiteral("收到 NACK(blk=%1, reason=0x02)，重新组装失败，准备重发整块").arg(blockNumber));
+            return BlockSendResult::RetryBlock;
+        }
+
+        if (errorOut)
+            *errorOut = QStringLiteral("设备 NACK 块 %1，原因 0x%2")
+                            .arg(static_cast<int>(nackBlock))
+                            .arg(reason, 2, 16, QLatin1Char('0'));
+        return BlockSendResult::Failed;
+    };
+
+    auto checkPendingNack = [&]() {
+        QByteArray nack;
+        if (!tryTakeResponse(Nack, &nack))
+            return BlockSendResult::Success;
+        return handleNack(nack);
+    };
+
     for (int fragOff = 0; fragOff < blockLen; fragOff += kDefaultFragmentSize) {
         if (cancelled && cancelled())
             return BlockSendResult::Failed;
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
+        const BlockSendResult pendingNackResult = checkPendingNack();
+        if (pendingNackResult != BlockSendResult::Success)
+            return pendingNackResult;
         const int fragLen = qMin(kDefaultFragmentSize, blockLen - fragOff);
         QByteArray tlvValue;
         appendLe16(&tlvValue, static_cast<quint16>(blockNumber));
@@ -352,6 +400,9 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
         if (onProgress)
             onProgress(progressFromBytes(qMin(totalSize, blockOffset + fragOff + fragLen), totalSize));
         QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+        const BlockSendResult nackResult = checkPendingNack();
+        if (nackResult != BlockSendResult::Success)
+            return nackResult;
         QThread::msleep(intervalMs);
     }
 
@@ -360,6 +411,9 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
 
     if (cancelled && cancelled())
         return BlockSendResult::Failed;
+    const BlockSendResult pendingNackResult = checkPendingNack();
+    if (pendingNackResult != BlockSendResult::Success)
+        return pendingNackResult;
     if (!sendTlvRequest(BlockComplete, complete)) {
         if (errorOut)
             *errorOut = QStringLiteral("发送 BLOCK_COMPLETE 失败");
@@ -377,20 +431,8 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
     if (cancelled && cancelled())
         return BlockSendResult::Failed;
 
-    if (ackOrNack.size() >= 3) {
-        const int nackBlock = static_cast<int>(readLe16(ackOrNack, 0));
-        const uint8_t reason = static_cast<uint8_t>(ackOrNack[2]);
-        if (nackBlock == blockNumber && reason == kNackReasonReassembleFailed) {
-            if (logFunc_)
-                logFunc_(QStringLiteral("收到 NACK(blk=%1, reason=0x02)，准备重发整块").arg(blockNumber));
-            return BlockSendResult::RetryBlock;
-        }
-        if (errorOut)
-            *errorOut = QStringLiteral("设备 NACK 块 %1，原因 0x%2")
-                            .arg(nackBlock)
-                            .arg(reason, 2, 16, QLatin1Char('0'));
-        return BlockSendResult::Failed;
-    }
+    if (ackOrNack.size() >= 3)
+        return handleNack(ackOrNack);
 
     if (errorOut)
         *errorOut = QStringLiteral("等待 BLOCK_COMPLETE_ACK 超时，块 %1").arg(blockNumber);
@@ -457,6 +499,18 @@ bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId
                 blockDone = true;
             } else if (result == BlockSendResult::Failed) {
                 return false;
+            } else if (result == BlockSendResult::RetryBlockAfterBackoff) {
+                const int waitMs = busyBackoffMs(retry);
+                if (logFunc_)
+                    logFunc_(QStringLiteral("设备忙退避等待 %1 ms 后，从块 %2 第一个 fragment 重发").arg(waitMs).arg(block));
+                QElapsedTimer backoffTimer;
+                backoffTimer.start();
+                while (backoffTimer.elapsed() < waitMs) {
+                    if (cancelled && cancelled())
+                        return false;
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
+                    QThread::msleep(10);
+                }
             }
         }
         if (!blockDone) {

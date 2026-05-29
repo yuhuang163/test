@@ -221,7 +221,7 @@ factory_analyzer::factory_analyzer(QWidget *parent)
     canUserRow = (testFunctions.size() + colCount - 1) / colCount;
 
     for (int i = 0; i < testFunctions.size(); ++i) {
-        // 创建复选框，使用 NamedFunction 结构体中的名称
+        // 创建复选框，使用 FactoryNamedFunction 结构体中的名称
         DraggableCheckBox *checkBox =
             new DraggableCheckBox(testFunctions[i].name, i, this);
         checkBoxes.append(checkBox); // 添加到复选框列表

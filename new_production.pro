@@ -59,6 +59,7 @@ INCLUDEPATH += agreement/qplc
 INCLUDEPATH += agreement/qvisa
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
+INCLUDEPATH += tools/factory_analyzer
 INCLUDEPATH += my_set
 INCLUDEPATH += lib/form
 INCLUDEPATH += lib/imu
@@ -131,8 +132,8 @@ SOURCES += \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
-    djitestfunction.cpp \
-    factory_analyzer.cpp \
+    tools/factory_analyzer/djitestfunction.cpp \
+    tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
     lib/imu/imu_calibrate.cpp \
     lib/imu/sensor_hub.cpp \
@@ -219,7 +220,7 @@ HEADERS += \
     agreement/qtuple/qtupleservice.h \
     agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \
-    factory_analyzer.h \
+    tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
     lib/imu/sensor_hub.h \
@@ -266,7 +267,7 @@ HEADERS += \
 FORMS += \
     agreement/qjig/fixture_uart.ui \
     agreement/qset/qsetting.ui \
-    factory_analyzer.ui \
+    tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \
     work_station/ageing/ageingbox.ui \

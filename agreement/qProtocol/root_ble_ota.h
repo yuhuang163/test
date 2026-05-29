@@ -14,14 +14,14 @@ public:
     using SendFunc = std::function<void(const QByteArray&)>;
     using LogFunc = std::function<void(const QString&)>;
 
-    static constexpr uint8_t kServerId = 0x06;
-    static constexpr uint8_t kServerIdLen = 0x01;
-    static constexpr uint32_t kImageIdUiResource = 0x00000006u;
-    static constexpr int kDefaultFragmentSize = 200;
-    static constexpr int kDefaultSuggestBlockSize = 4096;
-    static constexpr int kBlockCompleteTimeoutMs = 500;
-    static constexpr int kResponseTimeoutMs = 8000;
-    static constexpr int kMaxRetry = 3;
+    static constexpr uint8_t kServerId = 0x06;                    // OTA 业务 Server ID，写入 Payload 首字节。
+    static constexpr uint8_t kServerIdLen = 0x01;                 // Server ID 固定 1 字节。
+    static constexpr uint32_t kImageIdUiResource = 0x00000006u;   // 图片资源升级目标 ID。
+    static constexpr int kDefaultFragmentSize = 200;              // BLOCK_DATA 单帧默认分片长度。
+    static constexpr int kDefaultSuggestBlockSize = 4096;         // 协商块大小时给设备的建议值。
+    static constexpr int kBlockCompleteTimeoutMs = 500;           // 等待单块完成 ACK/NACK 的超时时间。
+    static constexpr int kResponseTimeoutMs = 30000;              // 协商、开始、结束等控制命令响应超时。
+    static constexpr int kMaxRetry = 3;                           // 单块失败后的最大整块重发次数。
 
     enum TlvType : uint8_t {
         NegotiateBsReq = 0x01,
@@ -61,6 +61,7 @@ private:
     enum class BlockSendResult {
         Success,
         RetryBlock,
+        RetryBlockAfterBackoff,
         Failed,
     };
 

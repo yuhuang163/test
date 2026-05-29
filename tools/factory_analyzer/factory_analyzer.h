@@ -1,7 +1,6 @@
 #ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
-#include "common_class.h"
 #include "qadb.h"
 #include "qbulk/qbulk.h"
 #include "qcustomplot.h"
@@ -23,6 +22,15 @@
 #include <QFile>
 #include <QStandardItemModel>
 #include <QSerialPort>
+#include <QString>
+#include <functional>
+#include <vector>
+
+// factory_analyzer 专用命名，避免与 common_class.h 中同名结构体在 main.cpp 等翻译单元里重定义
+struct FactoryNamedFunction {
+    QString name;
+    std::function<void()> function;
+};
 
 class Qproduct;
 
@@ -390,7 +398,7 @@ public:
     void executeFunctionByName(const QString functionName);
             void testResultTableUpdate(QVector<TestItem>& testItems);
     QTableWidget* testResultTable()  { return ui->testResultTable; };  // 测试结果表格输入口
-    std::vector<NamedFunction> testFunctions;
+    std::vector<FactoryNamedFunction> testFunctions;
         void createTestFunctions();
         int sendCommandWithRetry(std::function<void()> commandFunc);
         size_t canUserRow;
