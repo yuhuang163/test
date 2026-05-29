@@ -182,7 +182,7 @@ bool TestStepEngine::executeStep(const TestStepDescriptor& step) {
             qWarning() << "[TestStepEngine] AT 对象未设置";
             return false;
         }
-        const QString atCmd = step.params.value("command").toString();
+        const QString atCmd = step.deviceCmd;
         const QString atParam = step.params.value("param").toString();
         if (atCmd == "sendDcon") {
             if (retrySender_) {
@@ -207,7 +207,7 @@ bool TestStepEngine::executeStep(const TestStepDescriptor& step) {
             qWarning() << "[TestStepEngine] USB 对象未设置";
             return false;
         }
-        const QString usbCmd = step.params.value("command").toString();
+        const QString usbCmd = step.deviceCmd;
         if (usbCmd == "ReadMeasurement") {
             if (retrySender_) {
                 retrySender_([this]() { usb_->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); }, step.retryTimeoutMs);

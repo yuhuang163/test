@@ -74,8 +74,15 @@ private:
     // 配置管理
     QString configFilePath() const;
 
+    // MES相关
+    void processGetMesTestValue();
+    void processInspection(QString inputSnText);
+
     // 协议回调判定（与 QFreeWork 类似的异步回调）
     bool isCurrentStep(const QString& stepName) const;
+
+public slots:
+    void getTestValue(const int mechines, const QString value) override;
 
 private slots:
     // UI 控件

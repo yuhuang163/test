@@ -71,6 +71,19 @@ void QCustomWork::initUI() {
 
     // 初始化下拉框数据
     ui->editActionType->addItems({"ProtocolSet", "ProtocolGet", "AtCommand", "UsbCommand", "CustomFunction"});
+    connect(ui->editActionType, &QComboBox::currentTextChanged, this, [this](const QString& text) {
+        ui->editDeviceCmd->clear();
+        if (text == "ProtocolSet" || text == "ProtocolGet") {
+            ui->editDeviceCmd->addItems(TestStepEngine::allDeviceCmdNames());
+        } else if (text == "AtCommand") {
+            ui->editDeviceCmd->addItems({"sendDcon", "sendMac"});
+        } else if (text == "UsbCommand") {
+            ui->editDeviceCmd->addItems({"ReadMeasurement"});
+        } else if (text == "CustomFunction") {
+            ui->editDeviceCmd->addItems({"logTest"});
+        }
+    });
+    // 初次加载列表
     ui->editDeviceCmd->addItems(TestStepEngine::allDeviceCmdNames());
     
     // 初始化参数表头
@@ -373,6 +386,86 @@ void QCustomWork::on_macInput_returnPressed() {
     }
     macAddress = mac;
     showlog("MAC地址已确认: " + mac);
+    pack.sn = ui->getMac->text().trimmed();
+    
+    // 如果还没启动测试，则启动测试（比如从 MES 拿回 MAC 后，或者直接扫 MAC）
+    if (testState_ < 0) {
+        startTask();
+    }
+}
+
+void QCustomWork::processGetMesTestValue() {
+    if (ui->isformmes->checkState()) {
+        pack.sn = ui->getMac->text();
+        pack.is_hq_send_mac = 1;
+        pack.mechines = getIndex();
+        pack.instruct_num = "079";
+        emit getMesTestValue(pack);
+    }
+}
+
+void QCustomWork::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
+        if (ui->isusemes->checkState()) {
+            showlog("正在进行站前检测");
+            pack.sn = inputSnText;
+            pack.mechines = getIndex();
+            pack.is_hq_send_mac = 0;
+            pack.instruct_num = "079";
+            emit sendProcessInspection(pack);
+        }
+    } else {
+        showlog("SN比对错误");
+    }
+    if (!ui->isusemes->checkState()) {
+        ui->mes_state->setText("MES");
+        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid #FFFF00; border-radius: 10px; padding: 10px; text-align: center; ");
+    }
+}
+
+void QCustomWork::getTestValue(const int mechines, const QString value) {
+    QString mesmacAddress;
+    if (pack.factory == "hq") {
+        QRegularExpression regex("\"BTMAC\":\\s*\"([0-9A-Fa-f:]+)\"");
+        QRegularExpressionMatch match = regex.match(value);
+        if (match.hasMatch()) {
+            mesmacAddress = match.captured(1);
+            if (mechines == getIndex()) {
+                ui->macInput->setText(mesmacAddress);
+                on_macInput_returnPressed();
+            }
+        } else {
+            showlog("mes未找到匹配的MAC地址");
+            showlog(value);
+        }
+    } else if (pack.factory == "lx") {
+        mesmacAddress = value;
+        mesmacAddress.insert(2, ":");
+        mesmacAddress.insert(5, ":");
+        mesmacAddress.insert(8, ":");
+        mesmacAddress.insert(11, ":");
+        mesmacAddress.insert(14, ":");
+        mesmacAddress = mesmacAddress.toUpper();
+        if (mechines == getIndex()) {
+            ui->macInput->setText(mesmacAddress);
+            on_macInput_returnPressed();
+        }
+    } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
+        if (mechines != getIndex()) return;
+        mesmacAddress = parseMacFromSn(value.trimmed());
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            return;
+        }
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
+    } else {
+        if (mechines == getIndex()) {
+            ui->macInput->setText(value);
+            on_macInput_returnPressed();
+        }
+    }
 }
 
 void QCustomWork::on_getMac_returnPressed() {
@@ -387,9 +480,24 @@ void QCustomWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    showlog("SN校验通过，准备开始测试: " + sn);
-    pack.sn = sn;
-    startTask();
+    
+    showlog("校验通过: " + sn);
+    
+    if (ui->isformmes->checkState()) {
+        showlog("正在向 MES 查 MAC...");
+        processGetMesTestValue();
+    }
+    
+    if (ui->isusemes->checkState()) {
+        processInspection(sn);
+        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+    }
+    
+    // 如果没有勾选从 MES 获取，则直接启动测试
+    if (!ui->isformmes->checkState()) {
+        pack.sn = sn;
+        startTask();
+    }
 }
 
 // 一些基础回调空实现（如有需要可实现）
