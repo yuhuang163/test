@@ -234,6 +234,10 @@ private:
     int otaTesttimes = 1;
     int wifiotaFaiTimes = 0;
     int wifiotaSuctimes = 0;
+    int bleOtaPressSucTimes_ = 0;
+    int bleOtaPressFailTimes_ = 0;
+    int bleOtaPressRound_ = 0;
+    bool bleOtaPressContinuing_ = false;
     QTime totalwifiOtaTime;
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;
@@ -299,6 +303,7 @@ private slots:
     void clearDisplay();
     bool connectBleForOta(const QString& mac);
     void startRootBleOta();
+    void tryScheduleBleOtaPressTest(bool lastOk);
     void startUsmileBleOtaLegacy();
     void startUsmileBleOtaTransferLegacy();
     void SendRadomDataPushButton();

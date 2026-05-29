@@ -3879,7 +3879,7 @@
                   <item>
                    <widget class="QCheckBox" name="is_start_ota">
                     <property name="text">
-                     <string>是否开启文件获取mac地址就OTA功能</string>
+                     <string>扫SN查表后自动WiFi OTA</string>
                     </property>
                     <property name="checked">
                      <bool>false</bool>
@@ -4092,7 +4092,7 @@
                   <item>
                    <widget class="QLabel" name="label_84">
                     <property name="text">
-                     <string>手柄接收进度</string>
+                     <string>整体接收进度</string>
                     </property>
                    </widget>
                   </item>
@@ -4145,14 +4145,17 @@
                   <item>
                    <widget class="QCheckBox" name="is_start_bleota">
                     <property name="text">
-                     <string>开启文件OTA功能</string>
+                     <string>扫SN查表后自动蓝牙OTA</string>
                     </property>
                    </widget>
                   </item>
                   <item>
                    <widget class="QCheckBox" name="is_bleota_press">
+                    <property name="toolTip">
+                     <string>勾选后每轮路特 BLE OTA 结束自动开始下一轮；间隔见「压测」页「测试间隔(s)」；点「停止ota」结束</string>
+                    </property>
                     <property name="text">
-                     <string>OTA压测</string>
+                     <string>蓝牙OTA压测</string>
                     </property>
                    </widget>
                   </item>

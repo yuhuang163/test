@@ -35,6 +35,9 @@ new_product_test/
 │   ├── 协议适配改造方案.md                 ← 协议改造设计文档
 │   └── 基于 TLV 的 BLE OTA 图片资源升级协议.md  ← 路特 BLE OTA 协议说明
 │
+├── common/                               ← 公共工具类 CommonUtils（字节/时间/文件/字符串）
+│   └── common_utils.h/.cpp
+│
 ├── my_set/                               ← 工程公共定义与聚合头
 │   ├── AbIni.h                           ← 公共头聚合/版本宏/全局依赖
 │   └── my_typedef.h                      ← 全局类型定义

@@ -1,4 +1,6 @@
 ﻿#include "qlog.h"
+
+#include "common_utils.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -7,19 +9,11 @@ Qlog::Qlog() {}
 void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,
                        const QVector<TestItem>& testItems) {
     // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
-    QString folderPath = "D:/测试结果";
+    const QString folderPath = QStringLiteral("D:/测试结果");
+    CommonUtils::ensureDirectory(folderPath);
 
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + QString("_%1报告.csv").arg(ver);
-    QString filePath = QDir(folderPath).filePath(fileName);
+    const QString fileName = CommonUtils::formatDateIso() + QStringLiteral("_%1报告.csv").arg(ver);
+    const QString filePath = CommonUtils::joinPath(folderPath, fileName);
 
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
@@ -29,7 +23,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
         QStringList headers = {"sn", "上位机版本", "mac地址", "时间戳", "测试项", "测试数据", "测试结果", "测试要求"};
 
         // 获取当前时间戳
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        const QString timestamp = CommonUtils::dateTimeStamp();
 
         if (file.size() == 0) {
             stream << headers.join(",") << "\n";
@@ -51,22 +45,14 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
 }
 
 void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
-    QString folderName = "所有log/设备log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/设备log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
 
-    // 生成文件路径
-    QString fileNamemacAddress = macAddress;
-    QString fileName = QString::number(m_index) + ".log";
-    // QString fileName = fileNamemacAddress.remove(":") + ".log";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName = QString::number(m_index) + QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile logFile(filePath);
 
@@ -76,7 +62,7 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
         // qDebug() << "写入成功设备日志";
         // 写入数据
         QTextStream out(&logFile);
-        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        const QString detailedTimestamp = CommonUtils::formatTimestampMs();
         out << detailedTimestamp << "\n" << data << "\n";
 
         //   out << data << '\n';

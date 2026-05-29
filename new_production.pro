@@ -85,6 +85,7 @@ INCLUDEPATH += work_station/key
 INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
+INCLUDEPATH += common
 
 
 # INCLUDEPATH += advance/xlsx
@@ -94,6 +95,7 @@ INCLUDEPATH += qlog
 
 
 SOURCES += \
+    common/common_utils.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
@@ -179,6 +181,7 @@ SOURCES += \
     work_station/pressure/ndt_sensor_cali.cpp \
 
 HEADERS += \
+    common/common_utils.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \

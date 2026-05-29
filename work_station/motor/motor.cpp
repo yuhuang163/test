@@ -1,6 +1,8 @@
 ﻿
 #include "motor.h"
 
+#include "common_utils.h"
+
 #include <QSerialPort>
 
 #include "qat.h"
@@ -54,25 +56,10 @@ motor::motor(int index, QWidget* parent) : test_base(parent), ui(new Ui::motor) 
 void motor::refreshMotorCaliMsg(QString msg) {
     showlog(msg);
 
-    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
-    QString folderPath = "D:/测试结果";
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 构建年、月、日的文件夹结构
-    QString yearFolder = QString::number(currentDate.year());
-    QString monthFolder = currentDate.toString("MM");
-    QString dayFolder = currentDate.toString("dd");
-
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + "_电机测试log.csv";
-    QString filePath = QDir(folderPath).filePath(fileName);
+    const QString folderPath = QStringLiteral("D:/测试结果");
+    CommonUtils::ensureDirectory(folderPath);
+    const QString filePath =
+        CommonUtils::joinPath(folderPath, CommonUtils::formatDateIso() + QStringLiteral("_电机测试log.csv"));
 
     QFile file(filePath);
 
@@ -81,7 +68,7 @@ void motor::refreshMotorCaliMsg(QString msg) {
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
             // 获取当前时间戳
-            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+            const QString timestamp = CommonUtils::dateTimeStamp();
             // 写入表头
             QStringList headers;
             headers << "sn"
@@ -101,7 +88,7 @@ void motor::refreshMotorCaliMsg(QString msg) {
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         QTextStream stream(&file);
         // 获取当前时间戳
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        const QString timestamp = CommonUtils::dateTimeStamp();
         // 写入数据
         QStringList rowData;
         rowData << stringsn << MOTOR_VER << macAddress << timestamp << msg;

@@ -19,6 +19,7 @@
 #include "qprocess.h"
 #include "agreement/qProtocol/qfctp/qfctp.h"
 #include "agreement/qProtocol/qaiot/qaiot.h"
+#include "common_utils.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -266,29 +267,19 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
     qDebug() << "设备个数" << currentItems.size();
 }
 QString test_base::toHex(const QByteArray& data) {
-    QString hexStr;
-    for (auto byte : data) {
-        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(byte)));
-    }
-    return hexStr.trimmed();  // 去掉最后的空格
+    return CommonUtils::toHexUpperSpaced(data);
 }
 void test_base::saveDongleUartLog(QString data) {
-    QString folderName = "所有log/dongle的log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/dongle的log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
-    // 获取当前时间并格式化为字符串
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
-    // 生成文件路径
-    QString fileName = "dongle日志_" + QString::number(m_index) + "_" + timestamp + ".log";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName =
+        QStringLiteral("dongle日志_") + QString::number(m_index) + QLatin1Char('_') + CommonUtils::dateStampYmd() +
+        QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile logFile(filePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
@@ -344,14 +335,14 @@ void test_base::readDongleSerialPortData() {
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     // 获取当前时间
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    const QString timestamp = CommonUtils::formatTimestampMs();
     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
 
     if (dataTemp.contains("内容为:")) {
         int pos = dataTemp.indexOf("内容为:");
         QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
         QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QString hexContent = toHex(subsequentContent);
+        const QString hexContent = CommonUtils::toHexUpperSpaced(subsequentContent);
         logEdit()->appendPlainText(beforeContent + hexContent);
     } else {
         logEdit()->appendPlainText(logEntry);
@@ -727,7 +718,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // 启动定时器
     commandRetryTimer = new QTimer(this);
     connect(commandRetryTimer, &QTimer::timeout, this, [=]() {
-        QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+        const QString currentTime = CommonUtils::formatTimestampMs();
         qDebug() << "retryCount=" << commandRetryCount
                  << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
                         .arg(currentTime)
@@ -843,23 +834,8 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
 }
 void test_base::updateTestData(QVector<TestItem>& testItems) {
     for (auto& item : testItems) {
-        QStringList expectedValueList = item.ask.split('=');
-        bool found = false;
-
-        // 遍历 expectedValueList 列表中的每个元素，检查是否与 item.testData 相等
-        for (const auto& expectedValue : expectedValueList) {
-            if (expectedValue == item.testData) {
-                found = true;
-                break;  // 一旦找到匹配的值，就跳出循环
-            }
-        }
-
-        // 根据 found 标志设置 testResult
-        if (found) {
-            item.testResult = passValue;
-        } else {
-            item.testResult = failValue;
-        }
+        item.testResult =
+            CommonUtils::compareVersions(item.ask, item.testData) ? passValue : failValue;
     }
     testResultTableUpdate(testItems);
 }
@@ -1029,17 +1005,7 @@ void test_base::refreshMesState(int state) {
 }
 
 bool test_base::compareVersions(const QString& versionList, const QString& versionToCompare) {
-    // 按照等号分割第一个版本文本
-    QStringList versionParts = versionList.split("=");
-
-    // 遍历所有的版本，检查是否与要比较的版本相等
-    for (const QString& version : versionParts) {
-        if (version.trimmed() == versionToCompare.trimmed()) {
-            return true;  // 如果有匹配的版本，返回true
-        }
-    }
-
-    return false;  // 如果没有匹配的版本，返回false
+    return CommonUtils::compareVersions(versionList, versionToCompare);
 }
 QString test_base::getValueBySN(const QString& sn) {
     QString truncatedSN;

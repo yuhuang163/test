@@ -1,6 +1,7 @@
-#include "qjig.h"
+﻿#include "qjig.h"
 
 #include "AbIni.h"
+#include "common_utils.h"
 #include "qcoreapplication.h"
 #include "qdatetime.h"
 #include "qdebug.h"
@@ -359,22 +360,14 @@ void Qjig::getDam3158Measure() {
 }
 
 void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
-    QString folderName = "所有log/治具log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/治具log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
-    // 获取当前时间并格式化为字符串
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
-    // 生成文件路径
-    QString fileName = "Jig治具日志" + timestamp + ".log";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName = QStringLiteral("Jig治具日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile logFile(filePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
@@ -382,11 +375,8 @@ void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
         // 写入数据
         QTextStream out(&logFile);
         out.setCodec("UTF-8");  // 设置编码格式为UTF-8
-        // 获取当前时间的详细时间戳
-        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-        // 将数据转换为16进制格式
-        QString hexData = data.toHex(' ').toUpper();
+        const QString detailedTimestamp = CommonUtils::formatTimestampMs();
+        const QString hexData = CommonUtils::toHexUpperSpaced(data);
 
         if (txrx)  // 发送的
         {

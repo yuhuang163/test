@@ -1,4 +1,5 @@
 ﻿#include "mainwindow.h"
+#include "common_utils.h"
 #include "my_set/my_typedef.h"
 #include "ui_mainwindow.h"
 // #include "xlsxdocument.h"
@@ -345,22 +346,14 @@ void MainWindow::readPendingDatagrams() {
     }
 }
 void MainWindow::saveblackbox(QString data) {
-    QString folderName = "所有log/设备黑盒的log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/设备黑盒的log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
-    // 获取当前时间并格式化为字符串
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
-    // 生成文件路径
-    QString fileName = "黑盒日志" + timestamp + ".log";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName = QStringLiteral("黑盒日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile logFile(filePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
@@ -442,37 +435,15 @@ void MainWindow::solve_frame(void) {
     }
 }
 // int cameradatasize = 0;
-QString toHex(const QString& text) {
-    QString hexStr;
-    for (auto c : text.toUtf8()) {
-        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(c)));
-    }
-    return hexStr.trimmed();  // 去掉最后的空格
-}
-QString toHex(const QByteArray& data) {
-    QString hexStr;
-    for (auto byte : data) {
-        hexStr.append(QString::asprintf("%02X ", static_cast<unsigned char>(byte)));
-    }
-    return hexStr.trimmed();  // 去掉最后的空格
-}
 void MainWindow::saveDongleUartLog(QString data) {
-    QString folderName = "所有log/dongle的log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/dongle的log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
-    // 获取当前时间并格式化为字符串
-    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd");
 
-    // 生成文件路径
-    QString fileName = "dongle日志" + timestamp + ".log";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName = QStringLiteral("dongle日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile logFile(filePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
@@ -521,13 +492,13 @@ void MainWindow::readDongleSerialPortData() {
     getmacadress(dataTemp);  // 搜索设备用
 
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
+    const QString timestamp = CommonUtils::formatTimestampMs();
     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
     if (dataTemp.contains("内容为:")) {
         int pos = dataTemp.indexOf("内容为:");
         QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
         QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QString hexContent = toHex(subsequentContent);
+        const QString hexContent = CommonUtils::toHexUpperSpaced(subsequentContent);
         ui->log->appendPlainText(beforeContent + hexContent);
     } else {
         ui->log->appendPlainText(logEntry);
@@ -599,25 +570,10 @@ void MainWindow::refreshImuCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << "收到数据: " << getIndex();
 
-    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
-    QString folderPath = "D:/测试结果";
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 构建年、月、日的文件夹结构
-    QString yearFolder = QString::number(currentDate.year());
-    QString monthFolder = currentDate.toString("MM");
-    QString dayFolder = currentDate.toString("dd");
-
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + "_六轴测试log.csv";
-    QString filePath = QDir(folderPath).filePath(fileName);
+    const QString folderPath = QStringLiteral("D:/测试结果");
+    CommonUtils::ensureDirectory(folderPath);
+    const QString filePath =
+        CommonUtils::joinPath(folderPath, CommonUtils::formatDateIso() + QStringLiteral("_六轴测试log.csv"));
 
     QFile file(filePath);
 
@@ -626,7 +582,7 @@ void MainWindow::refreshImuCaliMsg(QString msg) {
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
             // 获取当前时间戳
-            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+            const QString timestamp = CommonUtils::dateTimeStamp();
             // 写入表头
             QStringList headers;
             headers << "sn"
@@ -645,8 +601,7 @@ void MainWindow::refreshImuCaliMsg(QString msg) {
     // 文件已存在，以追加模式打开文件并写入数据
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         QTextStream stream(&file);
-        // 获取当前时间戳
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        const QString timestamp = CommonUtils::dateTimeStamp();
 
         // 写入数据
         QStringList rowData;
@@ -663,25 +618,10 @@ void MainWindow::refreshMotorCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << "收到数据: " << getIndex();
 
-    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
-    QString folderPath = "D:/测试结果";
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 构建年、月、日的文件夹结构
-    QString yearFolder = QString::number(currentDate.year());
-    QString monthFolder = currentDate.toString("MM");
-    QString dayFolder = currentDate.toString("dd");
-
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + "_电机测试log.csv";
-    QString filePath = QDir(folderPath).filePath(fileName);
+    const QString folderPath = QStringLiteral("D:/测试结果");
+    CommonUtils::ensureDirectory(folderPath);
+    const QString filePath =
+        CommonUtils::joinPath(folderPath, CommonUtils::formatDateIso() + QStringLiteral("_电机测试log.csv"));
 
     QFile file(filePath);
 
@@ -689,8 +629,7 @@ void MainWindow::refreshMotorCaliMsg(QString msg) {
         // 文件不存在，打开文件并写入表头
         if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream stream(&file);
-            // 获取当前时间戳
-            QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+            const QString timestamp = CommonUtils::dateTimeStamp();
             // 写入表头
             QStringList headers;
             headers << "sn"
@@ -709,8 +648,7 @@ void MainWindow::refreshMotorCaliMsg(QString msg) {
     // 文件已存在，以追加模式打开文件并写入数据
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         QTextStream stream(&file);
-        // 获取当前时间戳
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        const QString timestamp = CommonUtils::dateTimeStamp();
 
         // 写入数据
         QStringList rowData;
@@ -1671,13 +1609,13 @@ void MainWindow::getMac(QString sn_to_search) {
                         ui->getMac->setFocus();
                         ui->wifiOtaMacInput->setText(mac);
                         on_wifiOtaMacInput_returnPressed();
-                        showlog("开始ota升级");
+                        showlog(QStringLiteral("扫SN查表后自动开始 WiFi OTA"));
                     } else if (ui->is_start_bleota->checkState()) {
                         ui->getMac->clear();
                         ui->getMac->setFocus();
                         ui->bleotamacInput->setText(mac);
                         on_bleotamacInput_returnPressed();
-                        showlog("开始蓝牙ota升级");
+                        showlog(QStringLiteral("扫SN查表后自动开始蓝牙 OTA"));
                     } else {
                         ui->macInput->setText(mac);
                         on_macInput_returnPressed();
@@ -1692,15 +1630,9 @@ void MainWindow::getMac(QString sn_to_search) {
     }
 }
 void MainWindow::bandSnMacToCsv(const QString& macAddress, const QString& sn) {
-    QString folderPath = "D:/测试结果";
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 构建完整的文件路径
-    QString filePath = QDir(folderPath).filePath("绑定文件.csv");
+    const QString folderPath = QStringLiteral("D:/测试结果");
+    CommonUtils::ensureDirectory(folderPath);
+    const QString filePath = CommonUtils::joinPath(folderPath, QStringLiteral("绑定文件.csv"));
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         QTextStream stream(&file);
@@ -3442,17 +3374,12 @@ void MainWindow::sendAifile(QString file_id) {
 void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
     ui->testMsg->appendPlainText(msg);
 
-    QString logDir = "所有log/ota升级压测/";
-    QString logFilePath = logDir + "ota升级log.txt";
-
-    // 确保目录存在
-    QDir dir;
-    if (!dir.exists(logDir)) {
-        if (!dir.mkpath(logDir)) {  // 递归创建目录
-            qDebug() << "无法创建日志目录：" << logDir;
-            return;
-        }
+    const QString logDir = QStringLiteral("所有log/ota升级压测/");
+    if (!CommonUtils::ensureLogDirectory(logDir)) {
+        qDebug() << "无法创建日志目录：" << logDir;
+        return;
     }
+    const QString logFilePath = CommonUtils::joinPath(logDir, QStringLiteral("ota升级log.txt"));
 
     QFile logFile(logFilePath);
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {  // 追加模式

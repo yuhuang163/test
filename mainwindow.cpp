@@ -12,6 +12,7 @@
 #include "productlicense.h"
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
+#include "common_utils.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -265,18 +266,18 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(pb, &Qpb::send_pb_info, [&](QString s) {
         appendAndSaveWifiOtaLog(" ");
-        appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + s);
+        appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + s);
 
         ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) + s);
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + s);
     });
 
     connect(pb, &Qpb::send_ota_result, [&](int r) {
         appendAndSaveWifiOtaLog(" ");
-        appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + "OTA 结果 : " + otaResults[r]);
+        appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + "OTA 结果 : " + otaResults[r]);
 
         ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        "OTA 结果 : " + otaResults[r]);
 
         if (r == 11) {
@@ -955,7 +956,7 @@ void MainWindow::on_pushButton_2_clicked() {
         record.horizon_brush.size = 12;
         protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
 
-        ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
+        ui->msgTest->appendPlainText("发送时间:" + CommonUtils::isoDateTime());
     } else {
         ui->msgTest->appendPlainText("输入错误");
     }
@@ -1548,7 +1549,7 @@ void MainWindow::on_bleTestPushButton_clicked() {
         waitWork(ui->testPeriodSpin->value() * 1000);
 
         appendAndSaveWifiOtaLog(QString(""));
-        appendAndSaveWifiOtaLog(QString("%1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
+        appendAndSaveWifiOtaLog(QString("%1").arg(CommonUtils::isoDateTime()));
         appendAndSaveWifiOtaLog(QString("test times:%1").arg(times++));
     }
 
@@ -1760,7 +1761,7 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     if (!ui->is_wifiota_press->checkState())
         ui->wifiOtaMacInput->clear();
 
-    appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + "OTA启动，开始计时");
+    appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + "OTA启动，开始计时");
     totalwifiOtaTime.start();
     timeout.start();
     ui->wifiotaprogress->setValue(0);
@@ -1940,7 +1941,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
                       .arg(deviceName)
                       .arg(deviceSecret)
                       .arg(iotUrl);
-    appendAndSaveWifiOtaLog(QDateTime::currentDateTime().toString(Qt::ISODate) + msg);
+    appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + msg);
 
     protocolManager.set(DeviceCmd::ConfigNetworkApp, QVariant::fromValue(info));
     appendAndSaveWifiOtaLog("已配置网络");
@@ -3190,6 +3191,16 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     on_stopBleOta_clicked();
     on_disconnectButton_clicked();
 
+    if (!bleOtaPressContinuing_ && ui->is_bleota_press->checkState()) {
+        bleOtaPressSucTimes_ = 0;
+        bleOtaPressFailTimes_ = 0;
+        bleOtaPressRound_ = 0;
+        appendAndSaveWifiOtaLog(QStringLiteral("蓝牙 OTA 压测开始"));
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                       QStringLiteral(" 蓝牙 OTA 压测开始"));
+    }
+    bleOtaPressContinuing_ = false;
+
     if (!ui->is_bleota_press->checkState()) {
         clearDisplay();
     }
@@ -3216,6 +3227,8 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     macLabel->setText("蓝牙mac: " + macAddress);
 
     if (!connectBleForOta(macAddress)) {
+        if (ui->is_bleota_press->checkState())
+            tryScheduleBleOtaPressTest(false);
         return;
     }
 
@@ -3230,7 +3243,7 @@ bool MainWindow::connectBleForOta(const QString& mac) {
     QTime bleOtaTimeConnectOut;
     bleOtaTimeConnectOut.start();
     ui->bleOtaMsg->appendPlainText(" ");
-    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate));
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime());
     ui->bleOtaMsg->appendPlainText("开始连接蓝牙");
     stopBleOta = 0;  // 取消停止ota
     while (at->getConnected() == false) {
@@ -3274,13 +3287,12 @@ void MainWindow::startRootBleOta() {
         return;
     }
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::critical(this, QStringLiteral("错误"), QStringLiteral("无法打开 OTA 文件：%1").arg(filePath));
+    QString readError;
+    const QByteArray imageData = CommonUtils::readAllBytes(filePath, &readError);
+    if (!readError.isEmpty()) {
+        QMessageBox::critical(this, QStringLiteral("错误"), readError);
         return;
     }
-    const QByteArray imageData = file.readAll();
-    file.close();
     if (imageData.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("OTA 文件为空"));
         return;
@@ -3305,11 +3317,11 @@ void MainWindow::startRootBleOta() {
                 .arg(imageData.size())
                 .arg(imageCrc32, 8, 16, QChar('0'))
                 .arg(totalBlocks));
-    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 路特 TLV OTA 开始 ") + filePath);
-    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
-    ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 块忙等待时间：%1 ms").arg(blockBusyWaitMs));
 
     at->sendOTADATA(1);
@@ -3319,7 +3331,7 @@ void MainWindow::startRootBleOta() {
         const uint8_t seq = frame.size() > 2 ? static_cast<uint8_t>(frame[2]) : 0;
         const int tlvType = frame.size() > 8 ? static_cast<uint8_t>(frame[8]) : -1;
         ui->bleOtaMsg->appendPlainText(
-            QDateTime::currentDateTime().toString(Qt::ISODate) +
+            CommonUtils::isoDateTime() +
             QStringLiteral(" BLE OTA 发送数据包 type=0x%1 seq=%2 len=%3 data=%4")
                 .arg(tlvType, 2, 16, QChar('0'))
                 .arg(seq)
@@ -3329,7 +3341,7 @@ void MainWindow::startRootBleOta() {
             dongleSerialPort->write(frame);
     });
     rootBleOtaClient_.setLogFunc([this](const QString& msg) {
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) + " " + msg);
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + " " + msg);
     });
     rootBleOtaActive_ = true;
     rootBleOtaClient_.reset();
@@ -3353,7 +3365,7 @@ void MainWindow::startRootBleOta() {
 
     if (stopBleOta) {
         showlog(QStringLiteral("路特 BLE OTA 已停止"));
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        QStringLiteral(" OTA 已停止"));
         return;
     }
@@ -3362,8 +3374,9 @@ void MainWindow::startRootBleOta() {
         ui->bleotaresult->setText(QStringLiteral("PASS"));
         ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
-        showlog(QStringLiteral("路特 BLE OTA 成功，耗时 %1 s").arg(bleOtaTestTime.elapsed() / 1000));
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+        showlog(QStringLiteral("路特 BLE OTA 成功，耗时 %1")
+                    .arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        QStringLiteral(" OTA 成功"));
     } else {
         ui->bleotaresult->setText(QStringLiteral("FAIL"));
@@ -3371,9 +3384,55 @@ void MainWindow::startRootBleOta() {
                                         "white; border-radius: 10px; padding: 10px; text-align: center; ");
         const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
         showlog(QStringLiteral("路特 BLE OTA 失败：") + msg);
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString(Qt::ISODate) +
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        QStringLiteral(" OTA 失败：") + msg);
     }
+
+    tryScheduleBleOtaPressTest(ok);
+}
+
+void MainWindow::tryScheduleBleOtaPressTest(bool lastOk) {
+    if (!ui->is_bleota_press->checkState() || stopBleOta)
+        return;
+
+    if (lastOk)
+        ++bleOtaPressSucTimes_;
+    else
+        ++bleOtaPressFailTimes_;
+    ++bleOtaPressRound_;
+
+    const QString summary =
+        QStringLiteral("蓝牙 OTA 压测 第 %1 轮 %2，累计成功 %3 失败 %4，本轮耗时 %5 s")
+            .arg(bleOtaPressRound_)
+            .arg(lastOk ? QStringLiteral("PASS") : QStringLiteral("FAIL"))
+            .arg(bleOtaPressSucTimes_)
+            .arg(bleOtaPressFailTimes_)
+            .arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed()));
+    showlog(summary);
+    appendAndSaveWifiOtaLog(summary);
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QLatin1Char(' ') + summary);
+
+    const int periodSec = qMax(0, ui->testPeriodSpin->value());
+    if (periodSec > 0) {
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                       QStringLiteral(" 压测间隔等待 %1 s…").arg(periodSec));
+        QElapsedTimer waitTimer;
+        waitTimer.start();
+        while (waitTimer.elapsed() < periodSec * 1000) {
+            if (stopBleOta)
+                return;
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+            QThread::msleep(50);
+        }
+    }
+
+    if (stopBleOta)
+        return;
+
+    on_disconnectButton_clicked();
+    waitWork(500);
+    bleOtaPressContinuing_ = true;
+    on_bleotamacInput_returnPressed();
 }
 
 // 旧 usmile 蓝牙 OTA 流程，当前路特流程不调用，保留用于回退和对照。

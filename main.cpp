@@ -1,4 +1,4 @@
-
+﻿
 // #include <DbgHelp.h>  // 包含 Windows 头文件后再引入
 // #include <Windows.h>  // 必须放在最前
 
@@ -26,6 +26,7 @@
 #include "suction_box.h"
 #include "wifibox.h"
 #include "factory_analyzer.h"
+#include "common_utils.h"
 // #include <Windows.h>
 
 #if _MSC_VER >= 1600
@@ -73,16 +74,12 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
                           .append(QString::number(context.line).append(" 日志内容：" + msg));
     // .append(" version:").append(QString::number(context.version)));
 
-    QString folderName = "所有log/上位机log";
-    QDir dir;
-
-    // 检查并创建目录
-    if (!dir.exists(folderName)) {
-        if (!dir.mkpath(folderName)) {
-            qDebug() << "无法创建目录:" << folderName;
-            return;
-        }
+    const QString folderName = QStringLiteral("所有log/上位机log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
     }
+    QDir dir(folderName);
     QString fileNumber;
     QRegularExpression re("^\\d+");                           // ^ 表示匹配消息的开始
     QRegularExpressionMatch match = re.match(msg.trimmed());  // 使用 trimmed() 去除字符串开头和结尾的空格
@@ -95,13 +92,9 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext& context, con
     // 生成文件路径
     QString hostName = QSysInfo::machineHostName();
 
-    QString fileName =
-        hostName + "_上位机日志_" + fileNumber + "_" + QDate::currentDate().toString("yyyy-MM-dd") + ".txt";
-
-    // QString fileName = QDate::currentDate().toString("上位机日志yyyy-MM-dd")
-    // +
-    // ".txt";
-    QString filePath = dir.filePath(folderName + "/" + fileName);
+    const QString fileName = hostName + QStringLiteral("_上位机日志_") + fileNumber + QLatin1Char('_') +
+                             CommonUtils::formatDateIso() + QStringLiteral(".txt");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile file(filePath);
     const bool isNewLogFile = !file.exists() || file.size() == 0;
