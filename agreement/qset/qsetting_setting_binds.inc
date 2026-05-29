@@ -340,6 +340,7 @@ void loadSystemStation(Ui::qsetting* ui) {
         {QStringLiteral("FREE_WORK"), ui->radioButtonFreeWorkstation},
         {QStringLiteral("KEY_TEST"), ui->radioButtonKeyTest},
         {QStringLiteral("SUCTION_TEST"), ui->radioButtonSuctionTest},
+        {QStringLiteral("CUSTOM_WORK"), ui->radioButtonCustomWorkstation},
         {QStringLiteral("MAIN_TEST"), ui->radioButtonDebug},
         {QStringLiteral("PRESS_TEST"), ui->radioButtonPressTest},
     };
@@ -369,6 +370,7 @@ void saveSystemStation(Ui::qsetting* ui) {
         {ui->radioButtonKeyTest, "KEY_TEST"},
         {ui->radioButtonSuctionTest, "SUCTION_TEST"},
         {ui->radioButtonFreeWorkstation, "FREE_WORK"},
+        {ui->radioButtonCustomWorkstation, "CUSTOM_WORK"},
     };
     for (const auto& item : items) {
         if (item.button && item.button->isChecked()) {

@@ -127,6 +127,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QRadioButton" name="radioButtonCustomWorkstation">
+            <property name="text">
+             <string>自定义数据驱动工站</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>

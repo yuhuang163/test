@@ -313,7 +313,7 @@ bool QCustomWork::isCurrentStep(const QString& stepName) const {
 
 void QCustomWork::refreshBaseData(ProtocolBaseInfoData data) {
     if (isCurrentStep("获取基本信息")) {
-        stepRuntime_.testData = QString("Ver: %1").arg(data.appVer);
+        stepRuntime_.testData = QString("Ver: %1").arg(data.soft_version);
         stepRuntime_.done = true;
         showlog(QString("获取基本信息成功: %1").arg(stepRuntime_.testData));
     }
@@ -322,7 +322,7 @@ void QCustomWork::refreshBaseData(ProtocolBaseInfoData data) {
 
 void QCustomWork::refreshBattaryData(ProtocolBatteryData data) {
     if (isCurrentStep("获取电量")) {
-        stepRuntime_.testData = QString("%1%").arg(data.battery_percent);
+        stepRuntime_.testData = QString("%1%").arg(data.percent);
         stepRuntime_.done = true;
         showlog(QString("获取电量成功: %1").arg(stepRuntime_.testData));
     }

@@ -284,6 +284,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonKeyTest"), 11);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonCustomWorkstation"), 13);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
     QStringList productList = {"V3", "V3Pro"};
@@ -433,6 +434,8 @@ void qsetting::initSettingTooltips() {
         {QStringLiteral("lineEdit_plcPort"), QStringLiteral("PLC/Port。")},
         {QStringLiteral("radioButtonDebug"), QStringLiteral("MAIN_TEST 调试上位机。")},
         {QStringLiteral("radioButtonFreeWorkstation"), QStringLiteral("FREE_WORK 自由工站。")},
+        {QStringLiteral("radioButtonCustomWorkstation"),
+         QStringLiteral("CUSTOM_WORK 自定义数据驱动工站（JSON 步骤配置）；切换后需重启程序。")},
         {QStringLiteral("radioButtonStaticCurrent"), QStringLiteral("QUIESCENT_CURRENT。")},
         {QStringLiteral("radioButtonMotorCalibration"), QStringLiteral("MOTOR_TEST。")},
         {QStringLiteral("radioButtonImuCalibration"), QStringLiteral("IMU_CALI。")},
