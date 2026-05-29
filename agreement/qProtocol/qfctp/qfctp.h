@@ -1,4 +1,4 @@
-﻿#ifndef Qfctp_H
+#ifndef Qfctp_H
 #define Qfctp_H
 #include <QByteArray>
 #include <QHash>

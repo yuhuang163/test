@@ -1,4 +1,4 @@
-﻿#include "pcbabox.h"
+#include "pcbabox.h"
 
 #include <QHBoxLayout>
 #include <QLabel>

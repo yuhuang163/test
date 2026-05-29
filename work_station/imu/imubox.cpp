@@ -1,4 +1,4 @@
-﻿#include "imubox.h"
+#include "imubox.h"
 
 #include <QHBoxLayout>
 #include <QLabel>

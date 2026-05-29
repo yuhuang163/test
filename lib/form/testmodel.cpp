@@ -1,4 +1,4 @@
-﻿#include "testmodel.h"
+#include "testmodel.h"
 
 #include <QDebug>
 #include <QRegularExpression>

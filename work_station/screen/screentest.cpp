@@ -1,4 +1,4 @@
-﻿
+
 #include "screentest.h"
 
 #include "qdebug.h"

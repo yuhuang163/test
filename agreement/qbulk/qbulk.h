@@ -1,4 +1,4 @@
-﻿#ifndef QBULK_H
+#ifndef QBULK_H
 #define QBULK_H
 
 #if _MSC_VER >= 1600

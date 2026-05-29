@@ -1,4 +1,4 @@
-﻿#include "lxmes.h"
+#include "lxmes.h"
 
 #include <QCoreApplication>
 #include <QDebug>

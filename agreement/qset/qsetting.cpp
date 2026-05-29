@@ -2,11 +2,16 @@
 
 #include "qevent.h"
 #include <algorithm>
+#include <initializer_list>
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QLineEdit>
+#include <QRadioButton>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QMap>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QSet>
@@ -59,6 +64,107 @@ void applyNamedTooltips(QWidget* root, const QVector<QPair<QString, QString>>& t
         }
     }
 }
+
+/** SETTINGS 键 ↔ 控件双向绑定；表见 qsetting_setting_binds.inc */
+enum class BindKind {
+    Auto,
+    LineEdit,
+    ComboText,
+    ComboData,
+    ComboIndex,
+    CheckBox,
+};
+
+enum class LineEditStore {
+    Plain,
+    AsInt,
+    AsDouble4,
+};
+
+struct SettingBind {
+    QString key;
+    QWidget* widget = nullptr;
+    QVariant defaultValue;
+    BindKind kind = BindKind::Auto;
+    bool trimOnSave = false;
+    LineEditStore lineEditStore = LineEditStore::Plain;
+};
+
+BindKind detectBindKind(QWidget* widget) {
+    if (qobject_cast<QLineEdit*>(widget)) {
+        return BindKind::LineEdit;
+    }
+    if (qobject_cast<QComboBox*>(widget)) {
+        return BindKind::ComboText;
+    }
+    if (qobject_cast<QCheckBox*>(widget)) {
+        return BindKind::CheckBox;
+    }
+    return BindKind::Auto;
+}
+
+void loadSettingBinds(const QVector<SettingBind>& binds) {
+    for (const SettingBind& bind : binds) {
+        if (!bind.widget) {
+            continue;
+        }
+        const QVariant value = SETTINGS.value(bind.key, bind.defaultValue);
+        const BindKind kind = bind.kind == BindKind::Auto ? detectBindKind(bind.widget) : bind.kind;
+        if (kind == BindKind::LineEdit) {
+            QLineEdit* lineEdit = qobject_cast<QLineEdit*>(bind.widget);
+            if (bind.lineEditStore == LineEditStore::AsInt) {
+                lineEdit->setText(QString::number(value.toInt()));
+            } else if (bind.lineEditStore == LineEditStore::AsDouble4) {
+                lineEdit->setText(QString::number(value.toDouble(), 'f', 4));
+            } else {
+                lineEdit->setText(value.toString());
+            }
+        } else if (kind == BindKind::ComboText) {
+            qobject_cast<QComboBox*>(bind.widget)->setCurrentText(value.toString());
+        } else if (kind == BindKind::ComboData) {
+            QComboBox* combo = qobject_cast<QComboBox*>(bind.widget);
+            const int idx = combo->findData(value);
+            combo->setCurrentIndex(idx < 0 ? 0 : idx);
+        } else if (kind == BindKind::ComboIndex) {
+            qobject_cast<QComboBox*>(bind.widget)->setCurrentIndex(value.toInt());
+        } else if (kind == BindKind::CheckBox) {
+            qobject_cast<QCheckBox*>(bind.widget)->setChecked(value.toBool());
+        }
+    }
+}
+
+void saveSettingBinds(const QVector<SettingBind>& binds) {
+    for (const SettingBind& bind : binds) {
+        if (!bind.widget) {
+            continue;
+        }
+        const BindKind kind = bind.kind == BindKind::Auto ? detectBindKind(bind.widget) : bind.kind;
+        if (kind == BindKind::LineEdit) {
+            const QString text = qobject_cast<QLineEdit*>(bind.widget)->text();
+            SETTINGS.setValue(bind.key, bind.trimOnSave ? text.trimmed() : text);
+        } else if (kind == BindKind::ComboText) {
+            SETTINGS.setValue(bind.key, qobject_cast<QComboBox*>(bind.widget)->currentText());
+        } else if (kind == BindKind::ComboData) {
+            SETTINGS.setValue(bind.key, qobject_cast<QComboBox*>(bind.widget)->currentData().toString().trimmed());
+        } else if (kind == BindKind::ComboIndex) {
+            SETTINGS.setValue(bind.key, qobject_cast<QComboBox*>(bind.widget)->currentIndex());
+        } else if (kind == BindKind::CheckBox) {
+            SETTINGS.setValue(bind.key, qobject_cast<QCheckBox*>(bind.widget)->isChecked());
+        }
+    }
+}
+
+void appendSettingBinds(QVector<SettingBind>& out, const QVector<SettingBind>& part) {
+    out += part;
+}
+
+void appendSettingBinds(QVector<SettingBind>& out, std::initializer_list<SettingBind> part) {
+    out.reserve(out.size() + static_cast<int>(part.size()));
+    for (const SettingBind& bind : part) {
+        out.append(bind);
+    }
+}
+
 const QString kSelectedStationKey = "TestOrderMeta/SelectedStation";
 const QString kSelectedStationNameKey = "TestOrderMeta/SelectedStationName";
 
@@ -129,6 +235,8 @@ QString tupleBaseUrlForKey(const QString& key) {
     }
     return {};
 }
+
+#include "qsetting_setting_binds.inc"
 
 QString orderGroupName(const QString& stationKey) {
     const QString key = stationKey.trimmed();
@@ -1041,368 +1149,13 @@ void qsetting::readSubPIDAndFilter() {
     ui->lineEdit_SubPID_03->setText(subPID_03);
 }
 void qsetting::loadConfig() {
-    // 假设 SETTINGS 是一个 QSettings 实例
-    QString station = SETTINGS.value("SYSTEM/station").toString();  // 读取 station 的值
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
-    QVariant windowSize(availableSize / 4 * 3);
-    this->resize(SETTINGS.value("Window/SettingSize", windowSize).toSize());
+    const QVariant windowSize(availableSize / 4 * 3);
+    resize(SETTINGS.value(QStringLiteral("Window/SettingSize"), windowSize).toSize());
 
-    // 使用映射将 station 和 QRadioButton 关联
-    QMap<QString, QRadioButton*> stationMap = {{"IMU_CALI", ui->radioButtonImuCalibration},
-                                               {"MOTOR_TEST", ui->radioButtonMotorCalibration},
-                                               {"QUIESCENT_CURRENT", ui->radioButtonStaticCurrent},
-                                               {"SCREEN_TEST", ui->radioButtonScreenTest},
-                                               {"CAMERA_TEST", ui->radioButtonCameraTest},
-                                               {"WIFIBLE_TEST", ui->radioButtonSignalTest},
-                                               {"AGE_TEST", ui->radioButtonAgingTest},
-                                               {"PCBA_TEST", ui->radioButtonBoardFactoryTest},
-                                               {"FREE_WORK", ui->radioButtonFreeWorkstation},
-                                               {"KEY_TEST", ui->radioButtonKeyTest},
-                                               {"SUCTION_TEST", ui->radioButtonSuctionTest},
-                                               {"MAIN_TEST", ui->radioButtonDebug},
-                                               {"PRESS_TEST", ui->radioButtonPressTest}};
-
-    // 清除所有 QRadioButton 的选中状态
-    for (auto button : stationMap) {
-        button->setChecked(false);
-    }
-
-    // 根据 station 的值设置对应的 QRadioButton 为选中状态
-    if (stationMap.contains(station)) {
-        stationMap[station]->setChecked(true);
-    }
-
-    // 读取配置文件信息并设置复选框状态
-    ui->checkBox_ShowLocalOTAFunc->setChecked(SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
-    ui->checkBox_ShowUpperComputerOTAFunc->setChecked(SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool());
-    ui->checkBox_SaveToothbrushLog->setChecked(SETTINGS.value("SYSTEM/SaveToothbrushLog").toBool());
-    ui->checkBox_LockProductUI->setChecked(SETTINGS.value("SYSTEM/LockProductUI").toBool());
-
-    ui->checkBox_SimplePcbaTest->setChecked(SETTINGS.value("SYSTEM/SimplePcbaTest").toBool());
-    ui->checkBox_NeedWriteSubpid->setChecked(SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool());
-    ui->checkBox_NeedWriteSkuid->setChecked(SETTINGS.value("SYSTEM/NeedWriteSkuid").toBool());
-
-    ui->checkBox_BluetoothImageTransfer->setChecked(SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool());
-    ui->checkBox_IMUCalibrationWakeup->setChecked(SETTINGS.value("SYSTEM/IMUCalibrationWakeup").toBool());
-    ui->checkBox_DisableSerialPortRx->setChecked(SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool());
-    ui->checkBox_ShipModeResponse->setChecked(SETTINGS.value("SYSTEM/ShipModeResponse").toBool());
-    ui->checkBox_SerialPortMAC->setChecked(SETTINGS.value("SYSTEM/SerialPortMAC").toBool());
-    ui->checkBox_MagneticReuseMotorStatus->setChecked(SETTINGS.value("SYSTEM/MagneticReuseMotorStatus").toBool());
-    ui->checkBox_TestAudioCurrent->setChecked(SETTINGS.value("SYSTEM/TestAudioCurrent").toBool());
-    ui->checkBox_TestShippingCurrent->setChecked(SETTINGS.value("SYSTEM/TestShippingCurrent").toBool());
-    ui->checkBox_PressIndependent->setChecked(SETTINGS.value("SYSTEM/PressIndependent").toBool());
-    ui->checkBox_PressWindow->setChecked(SETTINGS.value("SYSTEM/PressWindow").toBool());
-
-    ui->checkBox_SendMotorCalibration->setChecked(SETTINGS.value("SYSTEM/SendMotorCalibration").toBool());
-    ui->checkBox_LightTest->setChecked(SETTINGS.value("SYSTEM/LightTest").toBool());
-    ui->checkBox_uperMotor->setChecked(SETTINGS.value("SYSTEM/uperMotor").toBool());
-
-    ui->checkBox_ServoMotorStart->setChecked(SETTINGS.value("SYSTEM/ServoMotorStart").toBool());
-    ui->checkBox_TestWifiSignal->setChecked(SETTINGS.value("SYSTEM/TestWifiSignal").toBool());
-    ui->checkBox_IMULastEnterStartTest->setChecked(SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool());
-    ui->lineEdit_CurrentMechine->setText(SETTINGS.value("SYSTEM/CurrentMechine").toString());
-    // 加载 SN
-    ui->snLineEdit->setText(SETTINGS.value("Regex/SNPattern").toString());
-    ui->lineEdit_music_state->setText(SETTINGS.value("Music/MusicState").toString());
-    ui->checkBox_MusicState->setChecked(SETTINGS.value("Music/MusicState_checkBox").toBool());
-
+    loadSystemStation(ui);
+    loadBoundSettings(ui);
     readSubPIDAndFilter();
-
-    // 加载 WIFI 信息
-    ui->wifiAccountLineEdit->setText(SETTINGS.value("WIFI/Name").toString());
-    ui->wifiPasswordLineEdit->setText(SETTINGS.value("WIFI/Password").toString());
-    ui->wifiUpperLimitLineEdit->setText(SETTINGS.value("WIFI/HighRssi").toString());
-    ui->wifiLowerLimitLineEdit->setText(SETTINGS.value("WIFI/LowRssi").toString());
-    ui->wifiIPLineEdit->setText(SETTINGS.value("WIFI/IP").toString());
-
-    // 加载 BLE 信息
-    ui->bluetoothUpperLimitLineEdit->setText(SETTINGS.value("BLE/HighRssi").toString());
-    ui->bluetoothLowerLimitLineEdit->setText(SETTINGS.value("BLE/LowRssi").toString());
-
-    // 加载信号测试次数
-    ui->signalTestCountLineEdit->setText(SETTINGS.value("BLE/RssiCount").toString());
-
-    // 加载老化工站配置
-    ui->lineEdit_ageingBurningMode->setText(SETTINGS.value("AGING/BurningMode", 1).toString());
-    ui->lineEdit_ageingBurningSeconds->setText(SETTINGS.value("AGING/BurningSeconds", 60 * 60 * 4).toString());
-    if (ui->comboBox_systemProtocolType->count() == 0) {
-        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qpb（产测 PB）"), QStringLiteral("qpb"));
-        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qfctp（FCTP）"), QStringLiteral("qfctp"));
-        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qaiot（AIOT TLV）"), QStringLiteral("qaiot"));
-    }
-    {
-        const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))
-                                  .toString()
-                                  .trimmed()
-                                  .toLower();
-        int idx = ui->comboBox_systemProtocolType->findData(proto);
-        if (idx < 0) {
-            idx = 0;
-        }
-        ui->comboBox_systemProtocolType->setCurrentIndex(idx);
-    }
-    ui->lineEdit_brushInstrumentSendPacketCount->setText(
-        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt()));
-    ui->lineEdit_brushInstrumentMaxPer->setText(
-        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble(), 'f', 4));
-    ui->lineEdit_brushInstrumentPacketPhaseWaitMs->setText(
-        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"), 2000).toInt()));
-    ui->lineEdit_brushInstrumentStopAckTimeoutMs->setText(
-        QString::number(SETTINGS.value(QStringLiteral("BrushInstrument/StopAckTimeoutMs"), 5000).toInt()));
-    ui->checkBox_freeInstrumentBleBrushCmwConcurrent->setChecked(
-        SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool());
-    ui->checkBox_freeInstrumentBleBrushCmwOnStopPer->setChecked(
-        SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwOnStopPer"), true).toBool());
-    ui->checkBox_plcModbusTrace->setChecked(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool());
-    ui->lineEdit_plcIpAddress->setText(
-        SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")).toString());
-    ui->lineEdit_plcPort->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/Port"), 502).toInt()));
-    ui->lineEdit_plcUnitId->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/UnitId"), 1).toInt()));
-    ui->lineEdit_plcMCoilOffset->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset"), 0).toInt()));
-    ui->lineEdit_plcMBase->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/MBase"), 200).toInt()));
-    ui->lineEdit_plcMBaseStationStep->setText(
-        QString::number(SETTINGS.value(QStringLiteral("PLC/MBaseStationStep"), 20).toInt()));
-    ui->lineEdit_plcConnectTimeoutMs->setText(
-        QString::number(SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt()));
-    ui->lineEdit_plcRequestTimeoutMs->setText(
-        QString::number(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt()));
-    ui->lineEdit_plcCommandGapMs->setText(QString::number(SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt()));
-    ui->lineEdit_plcSwitchDoneResetM->setText(
-        QString::number(SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM"), 211).toInt()));
-    ui->lineEdit_plcSwitchDoneResetPulseMs->setText(
-        QString::number(SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"), 0).toInt()));
-    ui->checkBox_plcConnectVerifyRead->setChecked(
-        SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool());
-    ui->lineEdit_plcIpAddressStation2->setText(SETTINGS.value(QStringLiteral("PLC/IpAddress_Station2"), QString()).toString());
-    ui->lineEdit_plcPortStation2->setText(SETTINGS.value(QStringLiteral("PLC/Port_Station2"), QString()).toString());
-    ui->lineEdit_plcUnitIdStation2->setText(SETTINGS.value(QStringLiteral("PLC/UnitId_Station2"), QString()).toString());
-    {
-        const int mb2 = SETTINGS.value(QStringLiteral("PLC/MBase_Station2"), -1).toInt();
-        ui->lineEdit_plcMBaseStation2->setText(mb2 < 0 ? QString() : QString::number(mb2));
-    }
-    ui->lineEdit_plcMCoilOffsetStation2->setText(
-        SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset_Station2"), QString()).toString());
-
-    // 加载三元组配置
-    const QString defaultTupleUrl = kTupleEnvPresets.first().baseUrl;
-    const QString savedTupleUrl = SETTINGS.value("Tuple/BaseUrl", defaultTupleUrl).toString();
-    ui->lineEdit_tupleBaseUrl->setText(savedTupleUrl);
-    ui->lineEdit_tupleAuthUser->setText(SETTINGS.value("Tuple/AuthUser").toString());
-    ui->lineEdit_tupleAuthPassword->setText(SETTINGS.value("Tuple/AuthPassword").toString());
-    ui->lineEdit_tupleSku->setText(SETTINGS.value("Tuple/Sku", "").toString());
-    ui->lineEdit_tuplePosition->setText(SETTINGS.value("Tuple/Position", "L").toString());
-
-    {
-        QSignalBlocker blocker(ui->comboBox_tupleEnvironment);
-        QString envKey = SETTINGS.value("Tuple/Environment").toString().trimmed();
-        int idx = envKey.isEmpty() ? -1 : tupleEnvIndexForKey(ui->comboBox_tupleEnvironment, envKey);
-        if (idx < 0) {
-            idx = tupleEnvIndexForUrl(ui->comboBox_tupleEnvironment, savedTupleUrl);
-        }
-        if (idx < 0) {
-            idx = ui->comboBox_tupleEnvironment->count() - 1;
-        }
-        ui->comboBox_tupleEnvironment->setCurrentIndex(idx);
-    }
-
-    // 加载行和列
-    ui->rowLineEdit->setText(SETTINGS.value("User/formRow").toString());
-    ui->columnLineEdit->setText(SETTINGS.value("User/formColumn").toString());
-
-    // 设置控件的值
-    ui->lineEdit_MusicStatus->setText(SETTINGS.value("FIXTEST/MusicState").toString());
-    ui->lineEdit_OvervoltageLightStatus->setText(SETTINGS.value("FIXTEST/OverVoltageLight").toString());
-    ui->lineEdit_Button1Status->setText(SETTINGS.value("FIXTEST/Button1").toString());
-    ui->lineEdit_Button2Status->setText(SETTINGS.value("FIXTEST/Button2").toString());
-
-    // 加载压感参数
-
-    ui->lineEdit_testWaitTime->setText(SETTINGS.value("PRESSURE/TestTime").toString());  // 压感测试时间
-    ui->lineEdit_caliWaitTime->setText(SETTINGS.value("PRESSURE/CaliTime").toString());  // 压感校准时间
-
-    ui->comboBox_pressFunctionSwitch->setCurrentIndex(SETTINGS.value("PRESSURE/functionSwitch", 0).toInt());
-    ui->comboBox_displayImageType->setCurrentIndex(SETTINGS.value("PRESSURE/Use_graph", 0).toInt());
-    ui->comboBox_individualMode->setCurrentIndex(SETTINGS.value("PRESSURE/Module", 0).toInt());
-    ui->lineEdit_PressMechine->setText(SETTINGS.value("PRESSURE/PressMechine").toString());  //选择第几套治具
-    ui->lineEdit_ButtonThreshold->setText(SETTINGS.value("PRESSURE/ButtonThreshold").toString());
-    ui->lineEdit_ButtonThresholdCount->setText(SETTINGS.value("PRESSURE/ButtonThresholdCount").toString());
-    ui->lineEdit_BrushThreshold->setText(SETTINGS.value("PRESSURE/BrushThreshold").toString());
-    ui->lineEdit_BrushThresholdCount->setText(SETTINGS.value("PRESSURE/BrushThresholdCount").toString());
-    ui->lineEdit_press_adc_shake->setText(SETTINGS.value("PRESSURE/ADCShakeValue").toString());
-
-    // 加载摆幅限制设置
-    ui->checkBox_amplitudeLimit->setChecked(SETTINGS.value("Press/AmplitudeLimit", false).toBool());
-    ui->lineEdit_amplitudeLimitUpper->setText(SETTINGS.value("Press/AmplitudeLimitUpper", "0").toString());
-    ui->lineEdit_amplitudeLimitLower->setText(SETTINGS.value("Press/AmplitudeLimitLower", "0").toString());
-    // 加载摆幅误差值
-    ui->lineEdit_amplitudeError->setText(SETTINGS.value("Pressure/AmplitudeError", "0").toString());
-
-    ui->bthPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_upper").toString());
-    ui->bthPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/bth_lower").toString());
-
-    ui->modelPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/model_button_upper").toString());
-    ui->modelPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/model_button_lower").toString());
-
-    ui->powerPressUpperLimitLineEdit->setText(SETTINGS.value("PRESSURE/power_button_upper").toString());
-    ui->powerPressLowerLimitLineEdit->setText(SETTINGS.value("PRESSURE/power_button_lower").toString());
-
-    // 加载 IMU 校准参数
-    ui->lineEdit_calibrationTime->setText(SETTINGS.value("IMU/IMU_Wait_Time").toString());   // imu校准总时间
-    ui->lineEdit_comparisonValue->setText(SETTINGS.value("IMU/ImuCompareData").toString());  // imu测试比较值
-    ui->lineEdit_singlePointTimeout->setText(SETTINGS.value("IMU/imu_cali_wait_time").toString());  // imu单点位超时时间
-    ui->lineEdit_zAxisUpper->setText(SETTINGS.value("IMU/acc_z_up").toString());                    // imu的z轴上限
-    ui->lineEdit_zAxisLower->setText(SETTINGS.value("IMU/acc_z_down").toString());                  // imu的z轴下限
-    ui->lineEdit_xAxisUpper->setText(SETTINGS.value("IMU/acc_x_up").toString());                    // imu的x轴上限
-    ui->lineEdit_xAxisLower->setText(SETTINGS.value("IMU/acc_x_down").toString());                  // imu的x轴下限
-    ui->lineEdit_yAxisUpper->setText(SETTINGS.value("IMU/acc_y_up").toString());                    // imu的y轴上限
-    ui->lineEdit_yAxisLower->setText(SETTINGS.value("IMU/acc_y_down").toString());                  // imu的y轴下限
-    // 加载 IMU 参数
-    ui->lineEdit_threshold->setText(SETTINGS.value("IMU/STATIC_CONV_VAR").toString());       // 数据波动阈值
-    ui->lineEdit_delayFrames->setText(SETTINGS.value("IMU/STATIC_CONV_DELAY").toString());   // 延时帧数
-    ui->lineEdit_sampleFrames->setText(SETTINGS.value("IMU/STATIC_CONV_COUNT").toString());  // 样本帧数
-
-    // 基础信息
-    ui->lineEdit_ProductName->setText(SETTINGS.value("ProductInfo/Product_Name").toString());          // 产品名字
-    ui->lineEdit_HardwareVersion->setText(SETTINGS.value("ProductInfo/Hardware_Version").toString());  // 硬件版本号
-    ui->lineEdit_SoftwareVersion->setText(SETTINGS.value("ProductInfo/Software_Version").toString());    // 软件版本
-    ui->lineEdit_ResourceVersion->setText(SETTINGS.value("ProductInfo/Resource_Version").toString());    // 资源版本
-    ui->lineEdit_AgingStatus->setText(SETTINGS.value("ProductInfo/Age_State").toString());               // 老化状态
-    ui->lineEdit_MotorVersion->setText(SETTINGS.value("ProductInfo/Motor_Ver").toString());              // 电机版本
-    ui->lineEdit_BluetoothVersion->setText(SETTINGS.value("ProductInfo/Ble_Ver").toString());            // 蓝牙版本
-    ui->lineEdit_AppPB->setText(SETTINGS.value("ProductInfo/App_Protocol_Version").toString());          // app的pb
-    ui->lineEdit_FactoryPB->setText(SETTINGS.value("ProductInfo/Factory_Protocol_Version").toString());  // 厂测的pb
-    ui->lineEdit_AlgorithmVersion->setText(SETTINGS.value("ProductInfo/Algorithm_Version").toString());  // 算法版本
-    ui->lineEdit_PressureVersion->setText(SETTINGS.value("ProductInfo/Pressure_Sense_Version").toString());  // 压感版本
-    ui->lineEdit_FSensorVersion->setText(SETTINGS.value("ProductInfo/FSensor_Version").toString());  // 电机压感版本
-    ui->lineEdit_ImuID->setText(SETTINGS.value("ProductInfo/IMU_ID").toString());                    // imu的id
-    ui->lineEdit_CameraID->setText(SETTINGS.value("ProductInfo/Camera_Id").toString());              // 摄像头的id
-
-    // 加载 MAC-SN 文件路径
-    ui->lineEdit_mac_sn_path->setText(
-        SETTINGS.value("MAC_SN/FilePath", "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt").toString());
-
-    ui->checkBox_ProductName->setChecked(SETTINGS.value("ProductInfo/ProductName_checkBox").toBool());
-    ui->checkBox_HardwareVersion->setChecked(SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool());
-    ui->checkBox_SoftwareVersion->setChecked(SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool());
-    ui->checkBox_ResourceVersion->setChecked(SETTINGS.value("ProductInfo/ResourceVersion_checkBox").toBool());
-    ui->checkBox_AgingStatus->setChecked(SETTINGS.value("ProductInfo/AgingStatus_checkBox").toBool());
-    ui->checkBox_MotorVersion->setChecked(SETTINGS.value("ProductInfo/MotorVersion_checkBox").toBool());
-    ui->checkBox_BluetoothVersion->setChecked(SETTINGS.value("ProductInfo/BluetoothVersion_checkBox").toBool());
-    ui->checkBox_AppPB->setChecked(SETTINGS.value("ProductInfo/AppPB_checkBox").toBool());
-    ui->checkBox_FactoryPB->setChecked(SETTINGS.value("ProductInfo/FactoryPB_checkBox").toBool());
-    ui->checkBox_AlgorithmVersion->setChecked(SETTINGS.value("ProductInfo/AlgorithmVersion_checkBox").toBool());
-    ui->checkBox_PressureVersion->setChecked(SETTINGS.value("ProductInfo/PressureVersion_checkBox").toBool());
-    ui->checkBox_FSensorVersion->setChecked(SETTINGS.value("ProductInfo/FSensorVersion_checkBox").toBool());
-    ui->checkBox_ImuID->setChecked(SETTINGS.value("ProductInfo/ImuID_checkBox").toBool());
-    ui->checkBox_CameraID->setChecked(SETTINGS.value("ProductInfo/CameraID_checkBox").toBool());
-
-    // 按键测试 KeyId 配置
-    ui->checkBox_KeyIdPower->setChecked(SETTINGS.value("ProductInfo/KeyIdPower_checkBox", true).toBool());
-    ui->lineEdit_KeyIdPower->setText(SETTINGS.value("ProductInfo/KeyIdPower", "1").toString());
-    ui->checkBox_KeyIdStartPause->setChecked(SETTINGS.value("ProductInfo/KeyIdStartPause_checkBox", true).toBool());
-    ui->lineEdit_KeyIdStartPause->setText(SETTINGS.value("ProductInfo/KeyIdStartPause", "2").toString());
-    ui->checkBox_KeyIdMode->setChecked(SETTINGS.value("ProductInfo/KeyIdMode_checkBox", true).toBool());
-    ui->lineEdit_KeyIdMode->setText(SETTINGS.value("ProductInfo/KeyIdMode", "3").toString());
-    ui->checkBox_KeyIdSpeed->setChecked(SETTINGS.value("ProductInfo/KeyIdSpeed_checkBox", true).toBool());
-    ui->lineEdit_KeyIdSpeed->setText(SETTINGS.value("ProductInfo/KeyIdSpeed", "4").toString());
-    ui->checkBox_KeyIdProgram->setChecked(SETTINGS.value("ProductInfo/KeyIdProgram_checkBox", true).toBool());
-    ui->lineEdit_KeyIdProgram->setText(SETTINGS.value("ProductInfo/KeyIdProgram", "5").toString());
-    ui->checkBox_KeyIdLeft->setChecked(SETTINGS.value("ProductInfo/KeyIdLeft_checkBox", true).toBool());
-    ui->lineEdit_KeyIdLeft->setText(SETTINGS.value("ProductInfo/KeyIdLeft", "6").toString());
-    ui->checkBox_KeyIdRight->setChecked(SETTINGS.value("ProductInfo/KeyIdRight_checkBox", true).toBool());
-    ui->lineEdit_KeyIdRight->setText(SETTINGS.value("ProductInfo/KeyIdRight", "7").toString());
-    ui->checkBox_KeyIdLeftRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdLeftRotate_checkBox", true).toBool());
-    ui->lineEdit_KeyIdLeftRotate->setText(SETTINGS.value("ProductInfo/KeyIdLeftRotate", "10").toString());
-    ui->checkBox_KeyIdRightRotate->setChecked(SETTINGS.value("ProductInfo/KeyIdRightRotate_checkBox", true).toBool());
-    ui->lineEdit_KeyIdRightRotate->setText(SETTINGS.value("ProductInfo/KeyIdRightRotate", "11").toString());
-    ui->lineEdit_KeyCapLow->setText(SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toString());
-    ui->lineEdit_KeyCapHigh->setText(SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toString());
-    ui->lineEdit_KeyCapReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadTimeoutMs"), 5000).toString());
-    ui->lineEdit_KeyCapReadCount->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toString());
-    ui->lineEdit_KeyCapReadIntervalMs->setText(SETTINGS.value(QStringLiteral("KeyCap/ReadIntervalMs"), 80).toString());
-    ui->lineEdit_KeyCapSingleReadTimeoutMs->setText(SETTINGS.value(QStringLiteral("KeyCap/SingleReadTimeoutMs"), 2000).toString());
-    {
-        const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
-        ui->comboBox_KeyCapValueEndian->setCurrentIndex(
-            capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
-    }
-
-    // 船运电流
-    ui->lineEdit_CargoCurrentUpper->setText(SETTINGS.value("Current/HighshipCurrent").toString());
-    ui->lineEdit_CargoCurrentLower->setText(SETTINGS.value("Current/LowshipCurrent").toString());
-
-    // 充电电流
-    ui->lineEdit_ChargingCurrentUpper->setText(SETTINGS.value("Current/HighCharCurrent").toString());
-    ui->lineEdit_ChargingCurrentLower->setText(SETTINGS.value("Current/LowCharCurrent").toString());
-
-    // 工作电流
-    ui->lineEdit_WorkingCurrentUpper->setText(SETTINGS.value("Current/HighworkCurrent").toString());
-    ui->lineEdit_WorkingCurrentLower->setText(SETTINGS.value("Current/LowworkCurrent").toString());
-
-    // 静态电流
-    ui->lineEdit_StaticCurrentUpper->setText(SETTINGS.value("Current/HighstaticCurrent").toString());
-    ui->lineEdit_StaticCurrentLower->setText(SETTINGS.value("Current/LowstaticCurrent").toString());
-
-    // 音频电流
-    ui->lineEdit_AudioCurrentUpper->setText(SETTINGS.value("Current/HighmusicCurrent").toString());
-    ui->lineEdit_AudioCurrentLower->setText(SETTINGS.value("Current/LowmusicCurrent").toString());
-
-    // 测试限制时长
-    ui->lineEdit_TestDuration->setText(SETTINGS.value("Current/measure_wait_time").toString());
-
-    // Peripheral Status
-    ui->lineEdit_imu_status->setText(SETTINGS.value("PeripheralStatus/IMU_Status").toString());      // imu状态
-    ui->lineEdit_flash_status->setText(SETTINGS.value("PeripheralStatus/Flash_Status").toString());  // flash状态
-    ui->lineEdit_magnetic_status->setText(SETTINGS.value("PeripheralStatus/Magnetic_Status").toString());  // 地磁状态
-    ui->lineEdit_pressure_status->setText(SETTINGS.value("PeripheralStatus/Pressure_Status").toString());  // 压感状态
-    ui->lineEdit_audio_status->setText(SETTINGS.value("PeripheralStatus/Audio_Status").toString());  // 音频状态
-
-    ui->checkBox_imu_status->setChecked(SETTINGS.value("PeripheralStatus/IMUStatus_checkBox").toBool());
-    ui->checkBox_flash_status->setChecked(SETTINGS.value("PeripheralStatus/FlashStatus_checkBox").toBool());
-    ui->checkBox_magnetic_status->setChecked(SETTINGS.value("PeripheralStatus/MagneticStatus_checkBox").toBool());
-    ui->checkBox_pressure_status->setChecked(SETTINGS.value("PeripheralStatus/PressureStatus_checkBox").toBool());
-    ui->checkBox_audio_status->setChecked(SETTINGS.value("PeripheralStatus/AudioStatus_checkBox").toBool());
-    ui->lineEdit_freework_press0_status->setText(SETTINGS.value("PeripheralStatus/Press0_Status").toString());
-    ui->lineEdit_freework_press1_status->setText(SETTINGS.value("PeripheralStatus/Press1_Status").toString());
-    ui->lineEdit_freework_battery_ic_status->setText(SETTINGS.value("PeripheralStatus/BatteryIc_Status").toString());
-    ui->lineEdit_freework_touch_ic_status->setText(SETTINGS.value("PeripheralStatus/TouchIc_Status").toString());
-    ui->lineEdit_freework_led_ic_status->setText(SETTINGS.value("PeripheralStatus/LedIc_Status").toString());
-    ui->lineEdit_freework_pd_ic_status->setText(SETTINGS.value("PeripheralStatus/PdIc_Status").toString());
-    ui->checkBox_freework_press0->setChecked(SETTINGS.value("FreeWorkPeripheral/Press0_checkBox", true).toBool());
-    ui->checkBox_freework_press1->setChecked(SETTINGS.value("FreeWorkPeripheral/Press1_checkBox", true).toBool());
-    ui->checkBox_freework_battery_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/BatteryIC_checkBox", true).toBool());
-    ui->checkBox_freework_touch_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/TouchIC_checkBox", true).toBool());
-    ui->checkBox_freework_led_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/LedIC_checkBox", true).toBool());
-    ui->checkBox_freework_pd_ic->setChecked(SETTINGS.value("FreeWorkPeripheral/PdIC_checkBox", true).toBool());
-
-    // Battery Control
-    ui->lineEdit_battery_voltage_control->setText(SETTINGS.value("BATTARY/standbattary").toString());  // 电池电压
-
-    // Camera Position
-    ui->lineEdit_camera_x->setText(SETTINGS.value("CAMERA/Rect1_X").toString());  // 摄像头偏位标准x坐标
-    ui->lineEdit_camera_y->setText(SETTINGS.value("CAMERA/Rect1_Y").toString());  // 摄像头偏位标准y坐标
-    ui->lineEdit_camera_width->setText(SETTINGS.value("CAMERA/Rect1_Width").toString());  // 摄像头偏位标准矩形宽度
-    ui->lineEdit_camera_height->setText(SETTINGS.value("CAMERA/Rect1_Height").toString());  // 摄像头偏位标准矩形高度
-    ui->lineEdit_image_interval->setText(SETTINGS.value("CAMERA/CameraGetTime").toString());  // 重新获取图片时间间隔
-    ui->lineEdit_start_dirty_time->setText(SETTINGS.value("CAMERA/startDirtyTime").toString());
-
-    // MES 相关
-    ui->comboBox_factory->setCurrentText(SETTINGS.value("MES/factory").toString());
-    ui->comboBox_productName->setCurrentText(SETTINGS.value("MES/Product_Name").toString());
-    ui->lineEdit_macStation->setText(SETTINGS.value("MES/xwdWpCode").toString());
-    ui->lineEdit_station->setText(SETTINGS.value("MES/machineNo").toString());
-    ui->lineEdit_mesUrl->setText(SETTINGS.value("MES/NET").toString());
-    ui->lineEdit_mes_config_file_path->setText(SETTINGS.value("MES/ConfigFilePath").toString());
-    ui->lineEdit_processName->setText(SETTINGS.value("MES/test_station").toString());
-    ui->lineEdit_modelName->setText(SETTINGS.value("MES/model").toString());
-    ui->lineEdit_mac_field->setText(SETTINGS.value("MES/FIELD").toString());
-    ui->lineEdit_mes_operator->setText(SETTINGS.value("MES/mUserno").toString());
-    ui->lineEdit_weikesen_order->setText(SETTINGS.value("MES/Work_Order").toString());
-    ui->lineEdit_mes_login_account->setText(SETTINGS.value("MES/M_USERNO").toString());
-    ui->lineEdit_action_huaqin->setText(SETTINGS.value("MES/Action").toString());
-    ui->lineEdit_mes_login_station->setText(SETTINGS.value("MES/M_MACHINENO").toString());
-    ui->lineEdit_line_huaqin->setText(SETTINGS.value("MES/Line").toString());
-    ui->lineEdit_mes_login_password->setText(SETTINGS.value("MES/M_PASSWORD").toString());
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -1466,329 +1219,10 @@ void qsetting::saveSubPIDAndFilter() {
 }
 
 void qsetting::saveConfig() {
-    SETTINGS.setValue("Window/SettingSize", this->size());
-    // 假设 SETTINGS 是一个 QSettings 实例
-    SETTINGS.setValue("SYSTEM/station", ui->radioButtonImuCalibration->isChecked()   ? "IMU_CALI" :
-                                        ui->radioButtonMotorCalibration->isChecked() ? "MOTOR_TEST" :
-                                        ui->radioButtonStaticCurrent->isChecked()    ? "QUIESCENT_CURRENT" :
-                                        ui->radioButtonScreenTest->isChecked()       ? "SCREEN_TEST" :
-                                        ui->radioButtonCameraTest->isChecked()       ? "CAMERA_TEST" :
-                                        ui->radioButtonSignalTest->isChecked()       ? "WIFIBLE_TEST" :
-                                        ui->radioButtonAgingTest->isChecked()        ? "AGE_TEST" :
-                                        ui->radioButtonPressTest->isChecked()        ? "PRESS_TEST" :
-                                        ui->radioButtonBoardFactoryTest->isChecked() ? "PCBA_TEST" :
-                                        ui->radioButtonKeyTest->isChecked()          ? "KEY_TEST" :
-                                        ui->radioButtonSuctionTest->isChecked()      ? "SUCTION_TEST" :
-                                        ui->radioButtonFreeWorkstation->isChecked()  ? "FREE_WORK" :
-                                                                                       "MAIN_TEST");
-
-    // 保存复选框状态到配置文件
-    SETTINGS.setValue("SYSTEM/ShowLocalOTAFunc", ui->checkBox_ShowLocalOTAFunc->isChecked());
-    SETTINGS.setValue("SYSTEM/ShowUpperComputerOTAFunc", ui->checkBox_ShowUpperComputerOTAFunc->isChecked());
-    SETTINGS.setValue("SYSTEM/SaveToothbrushLog", ui->checkBox_SaveToothbrushLog->isChecked());
-    SETTINGS.setValue("SYSTEM/LockProductUI", ui->checkBox_LockProductUI->isChecked());
-
-    SETTINGS.setValue("SYSTEM/SimplePcbaTest", ui->checkBox_SimplePcbaTest->isChecked());
-    SETTINGS.setValue("SYSTEM/NeedWriteSubpid", ui->checkBox_NeedWriteSubpid->isChecked());
-    SETTINGS.setValue("SYSTEM/NeedWriteSkuid", ui->checkBox_NeedWriteSkuid->isChecked());
-
-    SETTINGS.setValue("SYSTEM/BluetoothImageTransfer", ui->checkBox_BluetoothImageTransfer->isChecked());
-    SETTINGS.setValue("SYSTEM/IMUCalibrationWakeup", ui->checkBox_IMUCalibrationWakeup->isChecked());
-    SETTINGS.setValue("SYSTEM/DisableSerialPortRx", ui->checkBox_DisableSerialPortRx->isChecked());
-    SETTINGS.setValue("SYSTEM/ShipModeResponse", ui->checkBox_ShipModeResponse->isChecked());
-    SETTINGS.setValue("SYSTEM/SerialPortMAC", ui->checkBox_SerialPortMAC->isChecked());
-    SETTINGS.setValue("SYSTEM/MagneticReuseMotorStatus", ui->checkBox_MagneticReuseMotorStatus->isChecked());
-    SETTINGS.setValue("SYSTEM/TestAudioCurrent", ui->checkBox_TestAudioCurrent->isChecked());
-    SETTINGS.setValue("SYSTEM/TestShippingCurrent", ui->checkBox_TestShippingCurrent->isChecked());
-    SETTINGS.setValue("SYSTEM/PressIndependent", ui->checkBox_PressIndependent->isChecked());
-    SETTINGS.setValue("SYSTEM/PressWindow", ui->checkBox_PressWindow->isChecked());
-
-    SETTINGS.setValue("SYSTEM/SendMotorCalibration", ui->checkBox_SendMotorCalibration->isChecked());
-    SETTINGS.setValue("SYSTEM/LightTest", ui->checkBox_LightTest->isChecked());
-    SETTINGS.setValue("SYSTEM/ServoMotorStart", ui->checkBox_ServoMotorStart->isChecked());
-    SETTINGS.setValue("SYSTEM/uperMotor", ui->checkBox_uperMotor->isChecked());
-
-    SETTINGS.setValue("SYSTEM/TestWifiSignal", ui->checkBox_TestWifiSignal->isChecked());
-    SETTINGS.setValue("SYSTEM/IMULastEnterStartTest", ui->checkBox_IMULastEnterStartTest->isChecked());
-    SETTINGS.setValue("SYSTEM/CurrentMechine", ui->lineEdit_CurrentMechine->text());
-
-    // 保存 SN
-    SETTINGS.setValue("Regex/SNPattern", ui->snLineEdit->text());
-    SETTINGS.setValue("Music/MusicState", ui->lineEdit_music_state->text());
-    SETTINGS.setValue("Music/MusicState_checkBox", ui->checkBox_MusicState->isChecked());
-
+    SETTINGS.setValue(QStringLiteral("Window/SettingSize"), size());
+    saveSystemStation(ui);
+    saveBoundSettings(ui);
     saveSubPIDAndFilter();
-    // 保存 WIFI 信息
-    SETTINGS.setValue("WIFI/Name", ui->wifiAccountLineEdit->text());
-    SETTINGS.setValue("WIFI/Password", ui->wifiPasswordLineEdit->text());
-    SETTINGS.setValue("WIFI/HighRssi", ui->wifiUpperLimitLineEdit->text());
-    SETTINGS.setValue("WIFI/LowRssi", ui->wifiLowerLimitLineEdit->text());
-    SETTINGS.setValue("WIFI/IP", ui->wifiIPLineEdit->text());
-
-    // 保存 BLE 信息
-    SETTINGS.setValue("BLE/HighRssi", ui->bluetoothUpperLimitLineEdit->text());
-    SETTINGS.setValue("BLE/LowRssi", ui->bluetoothLowerLimitLineEdit->text());
-
-    // 保存信号测试次数
-    SETTINGS.setValue("BLE/RssiCount", ui->signalTestCountLineEdit->text());
-
-    // 保存老化工站配置
-    SETTINGS.setValue("AGING/BurningMode", ui->lineEdit_ageingBurningMode->text());
-    SETTINGS.setValue("AGING/BurningSeconds", ui->lineEdit_ageingBurningSeconds->text());
-    SETTINGS.setValue(QStringLiteral("SYSTEM/ProtocolType"),
-                      ui->comboBox_systemProtocolType->currentData().toString().trimmed());
-    SETTINGS.setValue(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"),
-                      ui->lineEdit_brushInstrumentSendPacketCount->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("BrushInstrument/MaxPer"), ui->lineEdit_brushInstrumentMaxPer->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("BrushInstrument/PacketPhaseWaitMs"),
-                      ui->lineEdit_brushInstrumentPacketPhaseWaitMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("BrushInstrument/StopAckTimeoutMs"),
-                      ui->lineEdit_brushInstrumentStopAckTimeoutMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"),
-                      ui->checkBox_freeInstrumentBleBrushCmwConcurrent->isChecked());
-    SETTINGS.setValue(QStringLiteral("FreeInstrument/BleBrushCmwOnStopPer"),
-                      ui->checkBox_freeInstrumentBleBrushCmwOnStopPer->isChecked());
-    SETTINGS.setValue(QStringLiteral("PLC/ModbusTrace"), ui->checkBox_plcModbusTrace->isChecked());
-    SETTINGS.setValue(QStringLiteral("PLC/IpAddress"), ui->lineEdit_plcIpAddress->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/Port"), ui->lineEdit_plcPort->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/UnitId"), ui->lineEdit_plcUnitId->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/MCoilAddressOffset"), ui->lineEdit_plcMCoilOffset->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/MBase"), ui->lineEdit_plcMBase->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/MBaseStationStep"), ui->lineEdit_plcMBaseStationStep->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/ConnectTimeoutMs"), ui->lineEdit_plcConnectTimeoutMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/RequestTimeoutMs"), ui->lineEdit_plcRequestTimeoutMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/CommandGapMs"), ui->lineEdit_plcCommandGapMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/SwitchTestDoneResetM"), ui->lineEdit_plcSwitchDoneResetM->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"),
-                      ui->lineEdit_plcSwitchDoneResetPulseMs->text().trimmed());
-    SETTINGS.setValue(QStringLiteral("PLC/ConnectVerifyRead"), ui->checkBox_plcConnectVerifyRead->isChecked());
-
-    auto savePlcOptional = [](const QString& key, const QString& raw) {
-        const QString t = raw.trimmed();
-        if (t.isEmpty()) {
-            SETTINGS.remove(key);
-        } else {
-            SETTINGS.setValue(key, t);
-        }
-    };
-    savePlcOptional(QStringLiteral("PLC/IpAddress_Station2"), ui->lineEdit_plcIpAddressStation2->text());
-    savePlcOptional(QStringLiteral("PLC/Port_Station2"), ui->lineEdit_plcPortStation2->text());
-    savePlcOptional(QStringLiteral("PLC/UnitId_Station2"), ui->lineEdit_plcUnitIdStation2->text());
-    {
-        const QString t = ui->lineEdit_plcMBaseStation2->text().trimmed();
-        if (t.isEmpty()) {
-            SETTINGS.remove(QStringLiteral("PLC/MBase_Station2"));
-        } else {
-            SETTINGS.setValue(QStringLiteral("PLC/MBase_Station2"), t.toInt());
-        }
-    }
-    savePlcOptional(QStringLiteral("PLC/MCoilAddressOffset_Station2"), ui->lineEdit_plcMCoilOffsetStation2->text());
-
-    // 保存三元组配置
-    SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
-    SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
-    SETTINGS.setValue("Tuple/AuthUser", ui->lineEdit_tupleAuthUser->text());
-    SETTINGS.setValue("Tuple/AuthPassword", ui->lineEdit_tupleAuthPassword->text());
-    SETTINGS.setValue("Tuple/Sku", ui->lineEdit_tupleSku->text());
-    SETTINGS.setValue("Tuple/Position", ui->lineEdit_tuplePosition->text());
-
-    // 保存行和列
-    SETTINGS.setValue("User/formRow", ui->rowLineEdit->text());
-    SETTINGS.setValue("User/formColumn", ui->columnLineEdit->text());
-
-    // 将控件的值设置回配置文件
-    SETTINGS.setValue("FIXTEST/MusicState", ui->lineEdit_MusicStatus->text());
-    SETTINGS.setValue("FIXTEST/OverVoltageLight", ui->lineEdit_OvervoltageLightStatus->text());
-    SETTINGS.setValue("FIXTEST/Button1", ui->lineEdit_Button1Status->text());
-    SETTINGS.setValue("FIXTEST/Button2", ui->lineEdit_Button2Status->text());
-
-    // 加载压感参数
-
-    SETTINGS.setValue("PRESSURE/CaliTime", ui->lineEdit_caliWaitTime->text());
-    SETTINGS.setValue("PRESSURE/TestTime", ui->lineEdit_testWaitTime->text());
-    SETTINGS.setValue("PRESSURE/functionSwitch", ui->comboBox_pressFunctionSwitch->currentIndex());
-    SETTINGS.setValue("PRESSURE/Use_graph", ui->comboBox_displayImageType->currentIndex());
-    SETTINGS.setValue("PRESSURE/Module", ui->comboBox_individualMode->currentIndex());
-
-    SETTINGS.setValue("PRESSURE/PressMechine", ui->lineEdit_PressMechine->text());
-    SETTINGS.setValue("PRESSURE/ButtonThreshold", ui->lineEdit_ButtonThreshold->text());
-    SETTINGS.setValue("PRESSURE/ButtonThresholdCount", ui->lineEdit_ButtonThresholdCount->text());
-    SETTINGS.setValue("PRESSURE/BrushThreshold", ui->lineEdit_BrushThreshold->text());
-    SETTINGS.setValue("PRESSURE/BrushThresholdCount", ui->lineEdit_BrushThresholdCount->text());
-    SETTINGS.setValue("PRESSURE/ADCShakeValue", ui->lineEdit_press_adc_shake->text());
-
-    // 保存摆幅限制设置
-    SETTINGS.setValue("Press/AmplitudeLimit", ui->checkBox_amplitudeLimit->isChecked());
-    SETTINGS.setValue("Press/AmplitudeLimitUpper", ui->lineEdit_amplitudeLimitUpper->text());
-    SETTINGS.setValue("Press/AmplitudeLimitLower", ui->lineEdit_amplitudeLimitLower->text());
-    // 保存摆幅误差值
-    SETTINGS.setValue("Pressure/AmplitudeError", ui->lineEdit_amplitudeError->text());
-
-    SETTINGS.setValue("PRESSURE/bth_upper", ui->bthPressUpperLimitLineEdit->text());
-    SETTINGS.setValue("PRESSURE/bth_lower", ui->bthPressLowerLimitLineEdit->text());
-
-    SETTINGS.setValue("PRESSURE/model_button_upper", ui->modelPressUpperLimitLineEdit->text());
-    SETTINGS.setValue("PRESSURE/model_button_lower", ui->modelPressLowerLimitLineEdit->text());
-
-    SETTINGS.setValue("PRESSURE/power_button_upper", ui->powerPressUpperLimitLineEdit->text());
-    SETTINGS.setValue("PRESSURE/power_button_lower", ui->powerPressLowerLimitLineEdit->text());
-
-    // 保存 IMU 校准参数
-    SETTINGS.setValue("IMU/IMU_Wait_Time", ui->lineEdit_calibrationTime->text());
-    SETTINGS.setValue("IMU/ImuCompareData", ui->lineEdit_comparisonValue->text());
-    SETTINGS.setValue("IMU/imu_cali_wait_time", ui->lineEdit_singlePointTimeout->text());
-    SETTINGS.setValue("IMU/acc_z_up", ui->lineEdit_zAxisUpper->text());
-    SETTINGS.setValue("IMU/acc_z_down", ui->lineEdit_zAxisLower->text());
-    SETTINGS.setValue("IMU/acc_x_up", ui->lineEdit_xAxisUpper->text());
-    SETTINGS.setValue("IMU/acc_x_down", ui->lineEdit_xAxisLower->text());
-    SETTINGS.setValue("IMU/acc_y_up", ui->lineEdit_yAxisUpper->text());
-    SETTINGS.setValue("IMU/acc_y_down", ui->lineEdit_yAxisLower->text());
-
-    // 保存 IMU 参数
-    SETTINGS.setValue("IMU/STATIC_CONV_VAR", ui->lineEdit_threshold->text());
-    SETTINGS.setValue("IMU/STATIC_CONV_DELAY", ui->lineEdit_delayFrames->text());
-    SETTINGS.setValue("IMU/STATIC_CONV_COUNT", ui->lineEdit_sampleFrames->text());
-
-    // 基础信息
-    SETTINGS.setValue("ProductInfo/Product_Name", ui->lineEdit_ProductName->text());
-    SETTINGS.setValue("ProductInfo/Hardware_Version", ui->lineEdit_HardwareVersion->text());
-    SETTINGS.setValue("ProductInfo/Software_Version", ui->lineEdit_SoftwareVersion->text());
-    SETTINGS.setValue("ProductInfo/Resource_Version", ui->lineEdit_ResourceVersion->text());
-    SETTINGS.setValue("ProductInfo/Age_State", ui->lineEdit_AgingStatus->text());
-    SETTINGS.setValue("ProductInfo/Motor_Ver", ui->lineEdit_MotorVersion->text());
-    SETTINGS.setValue("ProductInfo/Ble_Ver", ui->lineEdit_BluetoothVersion->text());
-    SETTINGS.setValue("ProductInfo/App_Protocol_Version", ui->lineEdit_AppPB->text());
-    SETTINGS.setValue("ProductInfo/Factory_Protocol_Version", ui->lineEdit_FactoryPB->text());
-    SETTINGS.setValue("ProductInfo/Algorithm_Version", ui->lineEdit_AlgorithmVersion->text());
-    SETTINGS.setValue("ProductInfo/Pressure_Sense_Version", ui->lineEdit_PressureVersion->text());
-    SETTINGS.setValue("ProductInfo/FSensor_Version", ui->lineEdit_FSensorVersion->text());
-    SETTINGS.setValue("ProductInfo/IMU_ID", ui->lineEdit_ImuID->text());
-    SETTINGS.setValue("ProductInfo/Camera_Id", ui->lineEdit_CameraID->text());
-
-    // 保存 MAC-SN 文件路径
-    SETTINGS.setValue("MAC_SN/FilePath", ui->lineEdit_mac_sn_path->text());
-
-    SETTINGS.setValue("ProductInfo/ProductName_checkBox", ui->checkBox_ProductName->isChecked());
-    SETTINGS.setValue("ProductInfo/HardwareVersion_checkBox", ui->checkBox_HardwareVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/SoftwareVersion_checkBox", ui->checkBox_SoftwareVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/ResourceVersion_checkBox", ui->checkBox_ResourceVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/AgingStatus_checkBox", ui->checkBox_AgingStatus->isChecked());
-    SETTINGS.setValue("ProductInfo/MotorVersion_checkBox", ui->checkBox_MotorVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/BluetoothVersion_checkBox", ui->checkBox_BluetoothVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/AppPB_checkBox", ui->checkBox_AppPB->isChecked());
-    SETTINGS.setValue("ProductInfo/FactoryPB_checkBox", ui->checkBox_FactoryPB->isChecked());
-    SETTINGS.setValue("ProductInfo/AlgorithmVersion_checkBox", ui->checkBox_AlgorithmVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/PressureVersion_checkBox", ui->checkBox_PressureVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/FSensorVersion_checkBox", ui->checkBox_FSensorVersion->isChecked());
-    SETTINGS.setValue("ProductInfo/ImuID_checkBox", ui->checkBox_ImuID->isChecked());
-    SETTINGS.setValue("ProductInfo/CameraID_checkBox", ui->checkBox_CameraID->isChecked());
-
-    SETTINGS.setValue("ProductInfo/KeyIdPower_checkBox", ui->checkBox_KeyIdPower->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdPower", ui->lineEdit_KeyIdPower->text());
-    SETTINGS.setValue("ProductInfo/KeyIdStartPause_checkBox", ui->checkBox_KeyIdStartPause->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdStartPause", ui->lineEdit_KeyIdStartPause->text());
-    SETTINGS.setValue("ProductInfo/KeyIdMode_checkBox", ui->checkBox_KeyIdMode->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdMode", ui->lineEdit_KeyIdMode->text());
-    SETTINGS.setValue("ProductInfo/KeyIdSpeed_checkBox", ui->checkBox_KeyIdSpeed->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdSpeed", ui->lineEdit_KeyIdSpeed->text());
-    SETTINGS.setValue("ProductInfo/KeyIdProgram_checkBox", ui->checkBox_KeyIdProgram->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdProgram", ui->lineEdit_KeyIdProgram->text());
-    SETTINGS.setValue("ProductInfo/KeyIdLeft_checkBox", ui->checkBox_KeyIdLeft->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdLeft", ui->lineEdit_KeyIdLeft->text());
-    SETTINGS.setValue("ProductInfo/KeyIdRight_checkBox", ui->checkBox_KeyIdRight->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdRight", ui->lineEdit_KeyIdRight->text());
-    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate_checkBox", ui->checkBox_KeyIdLeftRotate->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdLeftRotate", ui->lineEdit_KeyIdLeftRotate->text());
-    SETTINGS.setValue("ProductInfo/KeyIdRightRotate_checkBox", ui->checkBox_KeyIdRightRotate->isChecked());
-    SETTINGS.setValue("ProductInfo/KeyIdRightRotate", ui->lineEdit_KeyIdRightRotate->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/Low"), ui->lineEdit_KeyCapLow->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/High"), ui->lineEdit_KeyCapHigh->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/ReadTimeoutMs"), ui->lineEdit_KeyCapReadTimeoutMs->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/ReadCount"), ui->lineEdit_KeyCapReadCount->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/ReadIntervalMs"), ui->lineEdit_KeyCapReadIntervalMs->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/SingleReadTimeoutMs"), ui->lineEdit_KeyCapSingleReadTimeoutMs->text());
-    SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
-                      ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
-                                                                           : QStringLiteral("big"));
-
-    // 船运电流
-    SETTINGS.setValue("Current/HighshipCurrent", ui->lineEdit_CargoCurrentUpper->text());
-    SETTINGS.setValue("Current/LowshipCurrent", ui->lineEdit_CargoCurrentLower->text());
-
-    // 充电电流
-    SETTINGS.setValue("Current/HighCharCurrent", ui->lineEdit_ChargingCurrentUpper->text());
-    SETTINGS.setValue("Current/LowCharCurrent", ui->lineEdit_ChargingCurrentLower->text());
-
-    // 工作电流
-    SETTINGS.setValue("Current/HighworkCurrent", ui->lineEdit_WorkingCurrentUpper->text());
-    SETTINGS.setValue("Current/LowworkCurrent", ui->lineEdit_WorkingCurrentLower->text());
-
-    // 静态电流
-    SETTINGS.setValue("Current/HighstaticCurrent", ui->lineEdit_StaticCurrentUpper->text());
-    SETTINGS.setValue("Current/LowstaticCurrent", ui->lineEdit_StaticCurrentLower->text());
-
-    // 音频电流
-    SETTINGS.setValue("Current/HighmusicCurrent", ui->lineEdit_AudioCurrentUpper->text());
-    SETTINGS.setValue("Current/LowmusicCurrent", ui->lineEdit_AudioCurrentLower->text());
-
-    // 测试限制时长
-    SETTINGS.setValue("Current/measure_wait_time", ui->lineEdit_TestDuration->text());
-
-    // Peripheral Status
-    SETTINGS.setValue("PeripheralStatus/IMU_Status", ui->lineEdit_imu_status->text());
-    SETTINGS.setValue("PeripheralStatus/Flash_Status", ui->lineEdit_flash_status->text());
-    SETTINGS.setValue("PeripheralStatus/Magnetic_Status", ui->lineEdit_magnetic_status->text());
-    SETTINGS.setValue("PeripheralStatus/Pressure_Status", ui->lineEdit_pressure_status->text());
-    SETTINGS.setValue("PeripheralStatus/Audio_Status", ui->lineEdit_audio_status->text());
-
-    // 检查 QCheckBox 的状态并保存到配置文件
-    SETTINGS.setValue("PeripheralStatus/IMUStatus_checkBox", ui->checkBox_imu_status->isChecked());
-    SETTINGS.setValue("PeripheralStatus/FlashStatus_checkBox", ui->checkBox_flash_status->isChecked());
-    SETTINGS.setValue("PeripheralStatus/MagneticStatus_checkBox", ui->checkBox_magnetic_status->isChecked());
-    SETTINGS.setValue("PeripheralStatus/PressureStatus_checkBox", ui->checkBox_pressure_status->isChecked());
-    SETTINGS.setValue("PeripheralStatus/AudioStatus_checkBox", ui->checkBox_audio_status->isChecked());
-    SETTINGS.setValue("PeripheralStatus/Press0_Status", ui->lineEdit_freework_press0_status->text());
-    SETTINGS.setValue("PeripheralStatus/Press1_Status", ui->lineEdit_freework_press1_status->text());
-    SETTINGS.setValue("PeripheralStatus/BatteryIc_Status", ui->lineEdit_freework_battery_ic_status->text());
-    SETTINGS.setValue("PeripheralStatus/TouchIc_Status", ui->lineEdit_freework_touch_ic_status->text());
-    SETTINGS.setValue("PeripheralStatus/LedIc_Status", ui->lineEdit_freework_led_ic_status->text());
-    SETTINGS.setValue("PeripheralStatus/PdIc_Status", ui->lineEdit_freework_pd_ic_status->text());
-    SETTINGS.setValue("FreeWorkPeripheral/Press0_checkBox", ui->checkBox_freework_press0->isChecked());
-    SETTINGS.setValue("FreeWorkPeripheral/Press1_checkBox", ui->checkBox_freework_press1->isChecked());
-    SETTINGS.setValue("FreeWorkPeripheral/BatteryIC_checkBox", ui->checkBox_freework_battery_ic->isChecked());
-    SETTINGS.setValue("FreeWorkPeripheral/TouchIC_checkBox", ui->checkBox_freework_touch_ic->isChecked());
-    SETTINGS.setValue("FreeWorkPeripheral/LedIC_checkBox", ui->checkBox_freework_led_ic->isChecked());
-    SETTINGS.setValue("FreeWorkPeripheral/PdIC_checkBox", ui->checkBox_freework_pd_ic->isChecked());
-
-    // Battery Control
-    SETTINGS.setValue("BATTARY/standbattary", ui->lineEdit_battery_voltage_control->text());
-
-    // Camera Position
-    SETTINGS.setValue("CAMERA/Rect1_X", ui->lineEdit_camera_x->text());
-    SETTINGS.setValue("CAMERA/Rect1_Y", ui->lineEdit_camera_y->text());
-    SETTINGS.setValue("CAMERA/Rect1_Width", ui->lineEdit_camera_width->text());
-    SETTINGS.setValue("CAMERA/Rect1_Height", ui->lineEdit_camera_height->text());
-    SETTINGS.setValue("CAMERA/CameraGetTime", ui->lineEdit_image_interval->text());
-    SETTINGS.setValue("CAMERA/startDirtyTime", ui->lineEdit_start_dirty_time->text());
-
-    // MES 相关
-    SETTINGS.setValue("MES/factory", ui->comboBox_factory->currentText());
-    SETTINGS.setValue("MES/Product_Name", ui->comboBox_productName->currentText());
-    SETTINGS.setValue("MES/xwdWpCode", ui->lineEdit_macStation->text());
-    SETTINGS.setValue("MES/machineNo", ui->lineEdit_station->text());
-    SETTINGS.setValue("MES/NET", ui->lineEdit_mesUrl->text());
-    SETTINGS.setValue("MES/ConfigFilePath", ui->lineEdit_mes_config_file_path->text());
-    bydmes::loadExternalMesConfig(nullptr);
-    SETTINGS.setValue("MES/test_station", ui->lineEdit_processName->text());
-    SETTINGS.setValue("MES/model", ui->lineEdit_modelName->text());
-    SETTINGS.setValue("MES/FIELD", ui->lineEdit_mac_field->text());
-    SETTINGS.setValue("MES/mUserno", ui->lineEdit_mes_operator->text());
-    SETTINGS.setValue("MES/Work_Order", ui->lineEdit_weikesen_order->text());
-    SETTINGS.setValue("MES/M_USERNO", ui->lineEdit_mes_login_account->text());
-    SETTINGS.setValue("MES/Action", ui->lineEdit_action_huaqin->text());
-    SETTINGS.setValue("MES/M_MACHINENO", ui->lineEdit_mes_login_station->text());
-    SETTINGS.setValue("MES/Line", ui->lineEdit_line_huaqin->text());
-    SETTINGS.setValue("MES/M_PASSWORD", ui->lineEdit_mes_login_password->text());
 }
 
 void qsetting::closeEvent(QCloseEvent* event) {

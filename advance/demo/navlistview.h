@@ -1,4 +1,4 @@
-﻿#ifndef NAVLISTVIEW_H
+#ifndef NAVLISTVIEW_H
 #define NAVLISTVIEW_H
 
 /**

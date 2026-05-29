@@ -1,4 +1,4 @@
-﻿#include "common_class.h"
+#include "common_class.h"
 
 common_class::common_class() {}
 

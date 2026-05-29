@@ -1,4 +1,4 @@
-﻿#ifndef QMES_H
+#ifndef QMES_H
 #define QMES_H
 #include <QString>
 #include <QVector>

@@ -1,4 +1,4 @@
-﻿#ifndef MESMANAGER_H
+#ifndef MESMANAGER_H
 #define MESMANAGER_H
 #include <bydmes.h>  // 比亚迪的mes头文件
 #include <hqmes.h>   // 华勤的mes头文件

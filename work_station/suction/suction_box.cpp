@@ -1,4 +1,4 @@
-﻿#include "suction_box.h"
+#include "suction_box.h"
 
 #include "suction.h"
 #include "ui_suction_box.h"

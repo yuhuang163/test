@@ -14,6 +14,7 @@
 
 #include "Abini.h"
 #include "agreement/qProtocol/qprotocolmanager.h"
+#include "agreement/qtransport/qserialportreader.h"
 #include "qusb.h"
 #include "qvisa.h"
 #include "qcheckbox.h"
@@ -117,6 +118,7 @@ public:
     QTimer* scanSerialPortsTimer = new QTimer(this);
 
     QSerialPort* dongleSerialPort;  // dongle硬件层
+    QSerialPortReader* dongleSerialReader = nullptr;  // dongle 收包防抖（qtransport）
     Qpb* pb;                        // dongle协议层
     Qfctp* qfctp;                   // fctp协议层
     Qaiot* qaiot;                   // aiot协议层
@@ -124,13 +126,16 @@ public:
     Qat* at;                        // dongle协议层
 
     QSerialPort* usbSerialPort;  // 通用硬件层
+    QSerialPortReader* usbSerialReader = nullptr;  // usb 收包防抖（qtransport）
     Qusb* usb;                   // 通用协议层
     Qvisa* visa;                 // 通用 VISA 设备
 
     QSerialPort* jigSerialPort;  // 治具硬件层
+    QSerialPortReader* jigSerialReader = nullptr;  // jig 收包防抖（qtransport）
     Qjig* jig;                   // 治具协议层
 
     QSerialPort* productSerialPort;  // 设备硬件层
+    QSerialPortReader* productSerialReader = nullptr;  // product 收包防抖（qtransport）
     Qproduct* product;               // 设备协议层
 
     QTimer* dongleSerialPortTimer = new QTimer(this);

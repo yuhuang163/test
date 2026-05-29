@@ -1,4 +1,4 @@
-﻿#ifndef KEY_TEST_BOX_H
+#ifndef KEY_TEST_BOX_H
 #define KEY_TEST_BOX_H
 #include "box_base.h"
 

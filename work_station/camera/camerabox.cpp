@@ -1,4 +1,4 @@
-﻿#include "camerabox.h"
+#include "camerabox.h"
 
 #include <QHBoxLayout>
 #include <QLabel>

@@ -1,4 +1,6 @@
 #include "qusb.h"
+#include "qchannel.h"
+#include "qmodbus_pdu.h"
 
 #include <QDebug>
 #include <QMessageBox>
@@ -8,7 +10,6 @@
 #include <cmath>
 
 namespace {
-constexpr int kModbusMinFrameLen = 5;
 constexpr int kModbusMaxBufferedLen = 15;
 constexpr int kReg0HighIndex = 3;
 constexpr int kReg0LowIndex = 4;
@@ -20,11 +21,6 @@ quint16 readBigEndianU16(const QByteArray &buffer, int highIndex, int lowIndex)
 {
     return (static_cast<quint8>(buffer.at(highIndex)) << 8) |
            static_cast<quint8>(buffer.at(lowIndex));
-}
-
-bool isExpectedModbusLength(const QByteArray &buffer, quint8 byteCount)
-{
-    return buffer.length() == kModbusMinFrameLen + byteCount;
 }
 
 bool isLikelyAsciiLine(const QByteArray &buffer)
@@ -512,7 +508,7 @@ void Qusb::sendCmd(QString cmd)
 
     const QByteArray data = cmd.toLocal8Bit();
     qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
 }
 
 bool Qusb::isVisaScpiEnabled() const
@@ -633,7 +629,7 @@ void Qusb::gethqMEASure()
 
     QByteArray data = QByteArray::fromHex(s.toLatin1());
     qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
 }
 void Qusb::getlxMEASure(int mechine)
 {
@@ -648,66 +644,34 @@ void Qusb::getlxMEASure(int mechine)
 
     QByteArray data = QByteArray::fromHex(machineCmdList.at(mechine).toLatin1());
     qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
 }
 void Qusb::sethqMEASure()
 {
     QString s = "010600030006F9C8";   // 设置波特率115200
     QByteArray data = QByteArray::fromHex(s.toLatin1());
     qDebug().noquote() << "USB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
 }
 quint16 calculateCRC(const QByteArray &data)
 {
-    quint16 crc = 0xFFFF;
-
-    for (int i = 0; i < data.length(); ++i)
-    {
-        crc ^= static_cast<quint8>(data.at(i));
-        for (int j = 0; j < 8; ++j)
-        {
-            if (crc & 0x0001)
-            {
-                crc = (crc >> 1) ^ 0xA001;
-            }
-            else
-            {
-                crc >>= 1;
-            }
-        }
-    }
-
-    // Correct the endianness
-    return ((crc & 0x00FF) << 8) | ((crc & 0xFF00) >> 8);
+    return QModbusPdu::crc16ModbusRtuBigEndian(data);
 }
 void Qusb::processModbusRTUData(const QByteArray &response)
 {
-    if (response.length() < kModbusMinFrameLen)
-    {
-        qDebug() << "processModbus RTUDataInvalid Modbus RTU response frame";
-        return;
-    }
-
     qDebug() << "Received Modbus RTU response frame: " << response.toHex().toUpper();
-
-    const quint8 byteCount = static_cast<quint8>(response.at(2));
-    if (!isExpectedModbusLength(response, byteCount))
-    {
-        qDebug() << "Invalid data length";
-        return;
-    }
-
-    const quint16 crcExpected =
-        readBigEndianU16(response, response.length() - 2, response.length() - 1);
+    quint8 byteCount = 0;
+    const bool valid = QModbusPdu::validateRtuFrame(response, &byteCount);
+    const quint16 crcExpected = readBigEndianU16(response, response.length() - 2, response.length() - 1);
     const quint16 crcCalculated = calculateCRC(response.left(response.length() - 2));
 
     qDebug() << "Length: " << response.length() << " Byte Count: " << byteCount
              << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
              << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
 
-    if (crcCalculated != crcExpected)
+    if (!valid)
     {
-        qDebug() << "CRC check failed";
+        qDebug() << "Invalid Modbus RTU frame";
         return;
     }
 
@@ -728,29 +692,19 @@ void Qusb::processlxModbusRTUData(const QByteArray &response)
     if (data.length() > kModbusMaxBufferedLen)
         data = 0;
 
-    if (data.length() < kModbusMinFrameLen)
-    {
-        qDebug() << "processlxModb usRTUData Invalid Modbus RTU response frame";
-        return;
-    }
-
     qDebug() << "Received Modbus RTU data frame: " << data.toHex().toUpper();
-    const quint8 byteCount = static_cast<quint8>(data.at(2));
+    quint8 byteCount = 0;
+    const bool valid = QModbusPdu::validateRtuFrame(data, &byteCount);
     qDebug() << "数据长度：" << byteCount;
-    if (!isExpectedModbusLength(data, byteCount))
-    {
-        qDebug() << "Invalid data length";
-        return;
-    }
 
     const quint16 crcExpected = readBigEndianU16(data, data.length() - 2, data.length() - 1);
     const quint16 crcCalculated = calculateCRC(data.left(data.length() - 2));
     qDebug() << "Length: " << data.length()
              << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
              << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
-    if (crcCalculated != crcExpected)
+    if (!valid)
     {
-        qDebug() << "CRC check failed";
+        qDebug() << "Invalid Modbus RTU frame";
         return;
     }
 

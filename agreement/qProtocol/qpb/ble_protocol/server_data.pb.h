@@ -149,7 +149,7 @@ typedef struct _Setting {
         PlanInfo get_plan_info;
         RecommendInfo get_recommend_info;
         CustomPlanGroupInfo get_custom_group_info;
-    } setting_data; /* 0x0601¡¢0x0602 ... */
+    } setting_data; /* 0x0601ã€0x0602 ... */
 } Setting;
 
 typedef struct _UsGiftDetail { 
@@ -235,7 +235,7 @@ typedef struct _UserThemeInfoVO {
     UserThemeOption theme_info_list[2]; 
 } UserThemeInfoVO;
 
-/* /ÇëÇó·şÎñÆ÷²ÎÊı */
+/* /è¯·æ±‚æœåŠ¡å™¨å‚æ•° */
 typedef struct _RequestPackage { 
     char request_url[128]; 
     RequestType request_type; 
@@ -265,7 +265,7 @@ typedef struct _RequestPackage {
     } request_data; 
 } RequestPackage;
 
-/* /·şÎñÆ÷·µ»ØÊı¾İ */
+/* /æœåŠ¡å™¨è¿”å›æ•°æ® */
 typedef struct _ResponsePackage { 
     bool flag; 
     uint32_t code; 

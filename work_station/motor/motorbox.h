@@ -1,4 +1,4 @@
-﻿#ifndef MOTORmotorbox_H
+#ifndef MOTORmotorbox_H
 #define MOTORmotorbox_H
 
 #include "Abini.h"

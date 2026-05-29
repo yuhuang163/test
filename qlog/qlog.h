@@ -1,4 +1,4 @@
-﻿#ifndef QLOG_H
+#ifndef QLOG_H
 #define QLOG_H
 #include "Abini.h"
 #include "qplaintextedit.h"

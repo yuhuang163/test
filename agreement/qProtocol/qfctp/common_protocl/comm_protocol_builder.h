@@ -1,4 +1,4 @@
-﻿#ifndef __COMM_PROTOCOL_BUILDER_H__
+#ifndef __COMM_PROTOCOL_BUILDER_H__
 #define __COMM_PROTOCOL_BUILDER_H__
 
 #ifdef __cplusplus

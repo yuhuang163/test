@@ -1,4 +1,4 @@
-﻿#ifndef QAT_H
+#ifndef QAT_H
 #define QAT_H
 
 #include <QMessageBox>

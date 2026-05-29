@@ -1,4 +1,6 @@
-﻿#include "qaiot.h"
+#include "qaiot.h"
+
+#include "qchannel.h"
 
 #include <QDebug>
 #include <QStringList>
@@ -85,11 +87,11 @@ bool Qaiot::sendCustomMessage(const QVariantMap& map) {
     }
 
     const QByteArray frame = buildMessage(serviceId, commandId, tlvs);
-    if (!serialPort || !serialPort->isOpen()) {
+    if (!QSerialChannel::isPortOpen(serialPort)) {
         qWarning() << "QAIOT 串口未打开，未发送数据";
         return false;
     }
-    const qint64 n = serialPort->write(frame);
+    const qint64 n = QSerialChannel::write(serialPort, frame);
     qDebug().noquote() << "QAIOT TX:" << hexText(frame);
     if (n != frame.size()) {
         qWarning() << "QAIOT 发送不完整" << n << "/" << frame.size();

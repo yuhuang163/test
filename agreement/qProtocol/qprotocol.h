@@ -1,4 +1,4 @@
-﻿#ifndef QPROTOCOL_H
+#ifndef QPROTOCOL_H
 #define QPROTOCOL_H
 
 #include <QByteArray>

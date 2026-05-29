@@ -1,4 +1,4 @@
-﻿#ifndef WIFIBOX_H
+#ifndef WIFIBOX_H
 #define WIFIBOX_H
 
 #include "box_base.h"

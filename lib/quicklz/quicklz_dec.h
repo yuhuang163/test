@@ -1,4 +1,4 @@
-﻿#ifndef _QUICKLZ_DEC_
+#ifndef _QUICKLZ_DEC_
 #define _QUICKLZ_DEC_
 #include <stdbool.h>
 #include <stdint.h>

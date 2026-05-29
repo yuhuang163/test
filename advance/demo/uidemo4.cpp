@@ -1,4 +1,4 @@
-﻿#include "uidemo4.h"
+#include "uidemo4.h"
 #include "ui_uidemo4.h"
 #include "sliderbar.h"
 #include "quiwidget.h"

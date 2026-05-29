@@ -1,4 +1,4 @@
-﻿#ifndef CAMERATEST_H
+#ifndef CAMERATEST_H
 #define CAMERATEST_H
 
 #include <QApplication>

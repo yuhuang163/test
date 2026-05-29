@@ -1,4 +1,4 @@
-﻿#ifndef SUCTION_BOX_H
+#ifndef SUCTION_BOX_H
 #define SUCTION_BOX_H
 #include "box_base.h"
 

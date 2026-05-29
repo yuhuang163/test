@@ -1,4 +1,4 @@
-﻿#include "jjmes.h"
+#include "jjmes.h"
 #include "QByteArray"
 #include "qdebug.h"
 #include "qeventloop.h"

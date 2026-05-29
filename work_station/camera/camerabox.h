@@ -1,4 +1,4 @@
-﻿#ifndef CAMERABOX_H
+#ifndef CAMERABOX_H
 #define CAMERABOX_H
 
 #include <vector>

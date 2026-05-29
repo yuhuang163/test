@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 #include "my_set/my_typedef.h"
 #include "ui_mainwindow.h"
 // #include "xlsxdocument.h"

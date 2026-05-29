@@ -1,4 +1,4 @@
-﻿#include "uidemo5.h"
+#include "uidemo5.h"
 #include "ui_uidemo5.h"
 #include "navlistview.h"
 #include "quiwidget.h"

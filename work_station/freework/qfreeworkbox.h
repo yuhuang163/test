@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORKBOX_H
+#ifndef QFREEWORKBOX_H
 #define QFREEWORKBOX_H
 
 #include "box_base.h"

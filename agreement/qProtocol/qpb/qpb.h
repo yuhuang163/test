@@ -1,4 +1,4 @@
-﻿#ifndef QPB_H
+#ifndef QPB_H
 #define QPB_H
 
 #include <QObject>
@@ -145,6 +145,7 @@ private:
     int len = 1;
 
     QSerialPort* serialPort;
+    qint64 writeSerial(const QByteArray& data) const;
     std::vector<uint8_t> ibuffer, ipack;
     FactoryDataPackage recievePack = FactoryDataPackage_init_default;
     DataPackage blePack = DataPackage_init_default;

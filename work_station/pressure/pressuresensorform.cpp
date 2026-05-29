@@ -1,4 +1,4 @@
-﻿#include "pressuresensorform.h"
+#include "pressuresensorform.h"
 
 #include <QHBoxLayout>
 #include <QMessageBox>

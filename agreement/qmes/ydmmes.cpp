@@ -1,4 +1,4 @@
-﻿#include "ydmmes.h"
+#include "ydmmes.h"
 
 #include <QCoreApplication>
 #include <QDebug>

@@ -1,5 +1,7 @@
 #include "qpb.h"
 
+#include "qchannel.h"
+
 #include <QDebug>
 #include <iomanip>
 #include <sstream>
@@ -29,6 +31,10 @@ extern "C" {
 Qpb::Qpb(QSerialPort* parent) : qProtocol(parent) {
     serialPort = parent;
     registerCommand();
+}
+
+qint64 Qpb::writeSerial(const QByteArray& data) const {
+    return QSerialChannel::write(serialPort, data);
 }
 
 void Qpb::set(DeviceCmd cmd, const QVariant& data) {
@@ -706,7 +712,7 @@ void Qpb::sendMainPack(const DataPackage& pack) {
         new_buffer.push_back(PHY_CHANNEL_MAIN);               //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
-        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+        writeSerial(QByteArray(reinterpret_cast<const char*>(new_buffer.data()), static_cast<int>(new_buffer.size())));
         qDebug().noquote() << "PB TX:"
                            << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(new_buffer.data()),
                                                              static_cast<int>(new_buffer.size()))
@@ -789,7 +795,7 @@ void Qpb::sendShortPack(const DataPackage& pack) {
         new_buffer.push_back(PHY_CHANNEL_APP);                //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
-        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+        writeSerial(QByteArray(reinterpret_cast<const char*>(new_buffer.data()), static_cast<int>(new_buffer.size())));
         qDebug().noquote() << "PB TX:"
                            << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(new_buffer.data()),
                                                              static_cast<int>(new_buffer.size()))
@@ -844,7 +850,7 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
         new_buffer.push_back(PHY_CHANNEL_FAC);                //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
-        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+        writeSerial(QByteArray(reinterpret_cast<const char*>(new_buffer.data()), static_cast<int>(new_buffer.size())));
         qDebug().noquote() << "PB TX:"
                            << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(new_buffer.data()),
                                                              static_cast<int>(new_buffer.size()))
@@ -932,7 +938,7 @@ uint32_t Qpb::sendlongPack(const FactoryDataPackage& pack) {
             if (i == 0 && length > 0) {
                 // 发送剩余的数据
                 memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt, pkt_payload_len + 1);
-                serialPort->write((char*)small_buffer.data(), pkt_payload_len + 2);
+                writeSerial(QByteArray(reinterpret_cast<const char*>(small_buffer.data()), pkt_payload_len + 2));
                 qDebug().noquote() << "PB TX:"
                                    << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(small_buffer.data()),
                                                                      pkt_payload_len + 2)
@@ -944,7 +950,7 @@ uint32_t Qpb::sendlongPack(const FactoryDataPackage& pack) {
                 qDebug() << "Data in hex:" << byteArray.toHex();
             } else {
                 memcpy(&small_buffer[1], tx_buffer.data() + 1 + (pkt_cnt - i) * max_data_cnt, max_data_cnt);
-                serialPort->write((char*)small_buffer.data(), max_data_cnt + 1);
+                writeSerial(QByteArray(reinterpret_cast<const char*>(small_buffer.data()), max_data_cnt + 1));
                 qDebug().noquote() << "PB TX:"
                                    << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(small_buffer.data()),
                                                                      max_data_cnt + 1)

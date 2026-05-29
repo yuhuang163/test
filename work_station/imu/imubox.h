@@ -1,4 +1,4 @@
-﻿#ifndef IMUBOX_H
+#ifndef IMUBOX_H
 #define IMUBOX_H
 
 #include "Abini.h"

@@ -1,4 +1,4 @@
-﻿#ifndef PRESSURESENSORFORM_H
+#ifndef PRESSURESENSORFORM_H
 #define PRESSURESENSORFORM_H
 
 #include <WinSock2.h>

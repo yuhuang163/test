@@ -1,4 +1,4 @@
-﻿#ifndef SLIDERBAR_H
+#ifndef SLIDERBAR_H
 #define SLIDERBAR_H
 
 /**

@@ -1,4 +1,4 @@
-﻿#ifndef COMMON_CLASS_H
+#ifndef COMMON_CLASS_H
 #define COMMON_CLASS_H
 
 class common_class {

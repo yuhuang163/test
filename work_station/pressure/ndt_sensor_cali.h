@@ -1,4 +1,4 @@
-﻿#ifndef NDT_SENSOR_CALI_H
+#ifndef NDT_SENSOR_CALI_H
 #define NDT_SENSOR_CALI_H
 #include <QMainWindow>
 #include <QThread>

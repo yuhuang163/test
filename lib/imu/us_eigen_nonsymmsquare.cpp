@@ -1,4 +1,4 @@
-﻿#include "us_eigen_nonsymmsquare.h"
+#include "us_eigen_nonsymmsquare.h"
 #include <stdio.h>
 #include <stdlib.h>
 #if _MSC_VER >= 1600

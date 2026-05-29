@@ -1,4 +1,4 @@
-﻿#ifndef MY_TYPEDEF_H
+#ifndef MY_TYPEDEF_H
 #define MY_TYPEDEF_H
 
 #include <QCoreApplication>

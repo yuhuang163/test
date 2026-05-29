@@ -1,4 +1,4 @@
-﻿#ifndef TESTMODEL_H
+#ifndef TESTMODEL_H
 #define TESTMODEL_H
 
 #include <QStandardItemModel >

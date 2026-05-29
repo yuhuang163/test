@@ -1,4 +1,5 @@
 #include "inovance_h5u_modbus_tcp.h"
+#include "qmodbus_pdu.h"
 
 #include <QtEndian>
 #include <QDebug>
@@ -8,18 +9,6 @@
 #endif
 
 namespace {
-constexpr quint8 kFcReadCoils = 0x01;
-constexpr quint8 kFcWriteSingleCoil = 0x05;
-
-void appendUint16Be(QByteArray& b, quint16 v) {
-    b.append(char(quint8(v >> 8)));
-    b.append(char(quint8(v & 0xFF)));
-}
-
-quint16 readUint16Be(const char* p) {
-    return (quint8(p[0]) << 8) | quint8(p[1]);
-}
-
 QString pduHexPreview(const QByteArray& pdu, int maxBytes = 32) {
     QString s;
     const int n = qMin(pdu.size(), maxBytes);
@@ -166,10 +155,10 @@ quint16 InovanceH5uModbusTcp::nextTransactionId() {
 
 QByteArray InovanceH5uModbusTcp::buildAdu(quint16 transactionId, quint8 unitId, const QByteArray& pdu) {
     QByteArray adu;
-    appendUint16Be(adu, transactionId);
-    appendUint16Be(adu, 0);  // Protocol ID Modbus
+    QModbusPdu::appendUint16Be(adu, transactionId);
+    QModbusPdu::appendUint16Be(adu, 0);  // Protocol ID Modbus
     const quint16 following = quint16(1 + pdu.size());
-    appendUint16Be(adu, following);
+    QModbusPdu::appendUint16Be(adu, following);
     adu.append(char(unitId));
     adu.append(pdu);
     return adu;
@@ -185,8 +174,8 @@ bool InovanceH5uModbusTcp::parseResponse(const QByteArray& fullAdu, quint16 expe
         }
         return false;
     }
-    const quint16 tid = readUint16Be(fullAdu.constData());
-    const quint16 len = readUint16Be(fullAdu.constData() + 4);
+    const quint16 tid = QModbusPdu::readUint16Be(fullAdu.constData());
+    const quint16 len = QModbusPdu::readUint16Be(fullAdu.constData() + 4);
     if (fullAdu.size() < 6 + len) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("Modbus 响应长度不足: RawBytes=%1 NeedBytes=%2 LenField=%3 Hex=%4")
@@ -274,7 +263,7 @@ bool InovanceH5uModbusTcp::transact(const QByteArray& pdu, QByteArray* responseP
         }
         buffer.append(socket_.readAll());
     }
-    const quint16 remaining = readUint16Be(buffer.constData() + 4);
+    const quint16 remaining = QModbusPdu::readUint16Be(buffer.constData() + 4);
     const int total = 6 + remaining;
     while (buffer.size() < total) {
         if (!socket_.waitForReadyRead(requestTimeoutMs)) {
@@ -339,10 +328,7 @@ bool InovanceH5uModbusTcp::writeMCoil(int mNumber, bool value, int mCoilAddressO
         qDebug() << "[H5U-Modbus] writeMCoil M" << mNumber << "+offset" << mCoilAddressOffset << "=>addr" << addr
                  << "value" << (value ? 1 : 0) << "unitId" << unitId;
     }
-    QByteArray pdu;
-    pdu.append(char(kFcWriteSingleCoil));
-    appendUint16Be(pdu, addr);
-    appendUint16Be(pdu, value ? quint16(0xFF00) : quint16(0x0000));
+    const QByteArray pdu = QModbusPdu::buildWriteSingleCoilRequestPdu(addr, value);
 
     QByteArray resp;
     if (!transact(pdu, &resp, errorMessage, requestTimeoutMs, unitId)) {
@@ -360,13 +346,11 @@ bool InovanceH5uModbusTcp::writeMCoil(int mNumber, bool value, int mCoilAddressO
         }
         return false;
     }
-    if ((quint8(resp[0]) & 0x80) != 0) {
-        const quint8 ex = resp.size() > 1 ? quint8(resp[1]) : 0;
+    if (QModbusPdu::isExceptionResponse(resp)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("写线圈异常: %1 功能码=0x%2 异常码=%3 RespHex=%4")
+            *errorMessage = QStringLiteral("写线圈异常: %1 %2 RespHex=%3")
                                 .arg(ctx)
-                                .arg(quint8(resp[0]), 2, 16, QChar('0'))
-                                .arg(ex)
+                                .arg(QModbusPdu::formatExceptionMessage(resp))
                                 .arg(pduHexPreview(resp));
         }
         return false;
@@ -426,10 +410,7 @@ bool InovanceH5uModbusTcp::readMCoils(int mStartNumber, int quantity, int mCoilA
         qDebug() << "[H5U-Modbus] readMCoils M" << mStartNumber << "+offset" << mCoilAddressOffset << "=>addr" << addr
                  << "qty" << quantity << "unitId" << unitId;
     }
-    QByteArray pdu;
-    pdu.append(char(kFcReadCoils));
-    appendUint16Be(pdu, addr);
-    appendUint16Be(pdu, quint16(quantity));
+    const QByteArray pdu = QModbusPdu::buildReadCoilsRequestPdu(addr, quint16(quantity));
 
     QByteArray resp;
     if (!transact(pdu, &resp, errorMessage, requestTimeoutMs, unitId)) {
@@ -451,22 +432,20 @@ bool InovanceH5uModbusTcp::readMCoils(int mStartNumber, int quantity, int mCoilA
         return false;
     }
 
-    if ((quint8(resp[0]) & 0x80) != 0) {
-        const quint8 ex = resp.size() > 1 ? quint8(resp[1]) : 0;
+    if (QModbusPdu::isExceptionResponse(resp)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("读线圈异常: %1 功能码=0x%2 异常码=%3 RespHex=%4")
+            *errorMessage = QStringLiteral("读线圈异常: %1 %2 RespHex=%3")
                                 .arg(ctx)
-                                .arg(quint8(resp[0]), 2, 16, QChar('0'))
-                                .arg(ex)
+                                .arg(QModbusPdu::formatExceptionMessage(resp))
                                 .arg(pduHexPreview(resp));
         }
         return false;
     }
-    if (quint8(resp[0]) != kFcReadCoils) {
+    if (!QModbusPdu::functionCodeMatches(resp, QModbusPdu::kFcReadCoils)) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("读线圈响应功能码错误: %1 Expect=0x%2 Actual=0x%3 RespHex=%4")
                                 .arg(ctx)
-                                .arg(kFcReadCoils, 2, 16, QChar('0'))
+                                .arg(QModbusPdu::kFcReadCoils, 2, 16, QChar('0'))
                                 .arg(quint8(resp[0]), 2, 16, QChar('0'))
                                 .arg(pduHexPreview(resp));
         }

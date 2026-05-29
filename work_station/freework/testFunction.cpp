@@ -1,4 +1,4 @@
-﻿
+
 #include "qfreework.h"
 
 #include <QString>

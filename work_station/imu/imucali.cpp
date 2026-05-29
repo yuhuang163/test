@@ -1,4 +1,4 @@
-﻿#include "imucali.h"
+#include "imucali.h"
 
 #include "qdebug.h"
 #include "qserialportinfo.h"

@@ -1,4 +1,4 @@
-﻿#include "qtupleservice.h"
+#include "qtupleservice.h"
 
 #include <QDateTime>
 #include <QEventLoop>

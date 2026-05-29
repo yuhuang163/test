@@ -1,4 +1,4 @@
-﻿#include "MyOpenGLWidget.h"
+#include "MyOpenGLWidget.h"
 #include <QOpenGLShader>
 #include <QOpenGLShaderProgram>
 #include <QVector3D>

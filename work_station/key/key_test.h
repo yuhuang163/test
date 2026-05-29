@@ -1,4 +1,4 @@
-﻿#ifndef KEY_TEST_H
+#ifndef KEY_TEST_H
 #define KEY_TEST_H
 
 #include "test_base.h"

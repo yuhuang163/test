@@ -1,5 +1,6 @@
 #include "qjig.h"
 
+#include "qchannel.h"
 #include "AbIni.h"
 #include "qcoreapplication.h"
 #include "qdatetime.h"
@@ -239,7 +240,7 @@ void Qjig::sendjigData(jigState fixstate) {
 
         if (!dataToSend.isEmpty()) {
             qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-            serialPort->write(dataToSend);
+            QSerialChannel::write(serialPort, dataToSend);
             save_Jig_uart_log(1, dataToSend);
         }
     }
@@ -335,7 +336,7 @@ void Qjig::get_amplitude() {
     QByteArray dataToSend = QByteArray("Test1\r\n");
     if (!dataToSend.isEmpty()) {
         qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
-        serialPort->write(dataToSend);
+        QSerialChannel::write(serialPort, dataToSend);
         save_Jig_uart_log(1, dataToSend);
     }
 }
@@ -354,7 +355,7 @@ void Qjig::getDam3158Measure() {
     }
     const QByteArray data = QByteArray::fromHex("010401000008F030");
     qDebug().noquote() << "JIG TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
     save_Jig_uart_log(1, data);
 }
 

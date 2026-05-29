@@ -1,4 +1,4 @@
-﻿#ifndef QPB_TYPES_H
+#ifndef QPB_TYPES_H
 #define QPB_TYPES_H
 
 #include <QByteArray>

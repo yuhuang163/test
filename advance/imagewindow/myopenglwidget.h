@@ -1,4 +1,4 @@
-﻿#ifndef MYOPENGLWIDGET_H
+#ifndef MYOPENGLWIDGET_H
 #define MYOPENGLWIDGET_H
 
 #include <QOpenGLWidget>

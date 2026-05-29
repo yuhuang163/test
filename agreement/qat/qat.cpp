@@ -1,5 +1,6 @@
 #include "qat.h"
 
+#include "qchannel.h"
 #include <QDebug>
 
 #include "qcoreapplication.h"
@@ -129,7 +130,7 @@ void Qat::sendCmd(QString cmd) {
     }
     const QByteArray data = cmd.toLocal8Bit();
     qDebug().noquote() << "AT TX:" << cmd.trimmed();
-    serialPort->write(data);
+    QSerialChannel::write(serialPort, data);
 }
 void Qat::waitWork(int ms) {
     QTime t;

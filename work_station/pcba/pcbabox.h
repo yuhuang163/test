@@ -1,4 +1,4 @@
-﻿#ifndef PCBABOX_H
+#ifndef PCBABOX_H
 #define PCBABOX_H
 #include "box_base.h"
 #include "fixture_uart.h"

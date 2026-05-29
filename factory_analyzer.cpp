@@ -1,4 +1,4 @@
-﻿#include "factory_analyzer.h"
+#include "factory_analyzer.h"
 #include "my_set/my_typedef.h"
 #include "agreement/qmomcozy/qproduct.h"
 #include "qcustomplot.h"

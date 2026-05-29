@@ -1,4 +1,6 @@
-﻿#include "qfctp.h"
+#include "qfctp.h"
+
+#include "qchannel.h"
 #include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>
@@ -847,11 +849,7 @@ bool Qfctp::tryUnwrapPhyPacket(const QByteArray &packet, QList<QByteArray> &outP
 
 bool Qfctp::sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket) const
 {
-    if (serialPort == nullptr) {
-        qWarning() << "FCTP 串口对象为空，未发送数据包";
-        return false;
-    }
-    if (!serialPort->isOpen()) {
+    if (!QSerialChannel::isPortOpen(serialPort)) {
         qWarning() << "FCTP 串口未打开，未发送数据包";
         return false;
     }
@@ -862,7 +860,7 @@ bool Qfctp::sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket) 
     if (outPhyPacket != nullptr) {
         *outPhyPacket = phyPacket;
     }
-    const qint64 n = serialPort->write(phyPacket);
+    const qint64 n = QSerialChannel::write(serialPort, phyPacket);
     qDebug().noquote() << "FCTP TX:" << QString::fromLatin1(phyPacket.toHex(' ').toUpper());
     if (n != phyPacket.size()) {
         qWarning() << "FCTP 产测模式发送不完整" << n << "/" << phyPacket.size();

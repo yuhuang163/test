@@ -1,4 +1,4 @@
-﻿#ifndef JJMES_H
+#ifndef JJMES_H
 #define JJMES_H
 #include "my_set/my_typedef.h"
 #include "qmes.h"

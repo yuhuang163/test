@@ -1,4 +1,4 @@
-﻿#include "key_test.h"
+#include "key_test.h"
 
 #include "ui_key_test.h"
 #include <QCoreApplication>

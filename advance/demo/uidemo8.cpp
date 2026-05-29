@@ -1,4 +1,4 @@
-﻿#include "uidemo8.h"
+#include "uidemo8.h"
 #include "ui_uidemo8.h"
 
 UIDemo8::UIDemo8(QWidget *parent) :

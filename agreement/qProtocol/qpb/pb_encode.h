@@ -1,4 +1,4 @@
-﻿/* pb_encode.h: Functions to encode protocol buffers. Depends on pb_encode.c.
+/* pb_encode.h: Functions to encode protocol buffers. Depends on pb_encode.c.
  * The main function is pb_encode. You also need an output stream, and the
  * field descriptions created by nanopb_generator.py.
  */

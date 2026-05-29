@@ -1,18 +1,16 @@
 // Qadb.cpp
 #include "Qadb.h"
+#include <QCoreApplication>
 #include <QDebug>
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 Qadb::Qadb(QObject *parent) : QObject(parent) {
-    adbShell = new QProcess(this);
-    adbShell->setProcessChannelMode(QProcess::MergedChannels);
-    connect(adbShell, &QProcess::readyReadStandardOutput, this, &Qadb::onReadyRead);
-    connect(adbShell, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &Qadb::onFinished);
-
-    connect(&timeoutTimer, &QTimer::timeout, this, &Qadb::checkTimeout);
-    timeoutTimer.start(500); // 每 500ms 检查超时
+    channel_ = new QProcessChannel(this);
+    channel_->setTxPrefix(QStringLiteral("ADB TX:"));
+    channel_->setRxPrefix(QStringLiteral("ADB RX:"));
+    // 保持旧行为：命令超时后重启 adb shell，再继续后续队列命令。
+    channel_->setRestartOnTimeout(true, 3000);
 }
 
 Qadb::~Qadb() {
@@ -20,17 +18,12 @@ Qadb::~Qadb() {
 }
 
 bool Qadb::start() {
-    if(adbShell->state() != QProcess::NotRunning) return true;
-
     // 获取程序运行目录
     QString exeDir = QCoreApplication::applicationDirPath();
 
     // 拼接 adb 路径
     QString adbPath = exeDir + R"(\factorydebugv4\adb\adb.exe)";
-
-    adbShell->start(adbPath, {"shell"});
-
-    if(!adbShell->waitForStarted(3000)) {
+    if(!channel_->start(adbPath, {"shell"}, 3000)) {
         qDebug() << "Failed to start adb shell!";
         return false;
     }
@@ -39,15 +32,9 @@ bool Qadb::start() {
 }
 
 void Qadb::stop() {
-    if(adbShell && adbShell->state() != QProcess::NotRunning) {
-        const QByteArray exitCommand = "exit\n";
-        qDebug().noquote() << "ADB TX:" << QString::fromLatin1(exitCommand.toHex(' ').toUpper());
-        adbShell->write(exitCommand);
-        adbShell->waitForFinished(1000);
+    if(channel_) {
+        channel_->stop();
     }
-    commandQueue.clear();
-    isProcessing = false;
-    cmdBuffer.clear();
 }
 
 
@@ -55,90 +42,8 @@ void Qadb::stop() {
 void Qadb::sendCommand(const QString &cmd,
                        std::function<void(const QString &, qint64)> callback,
                        qint64 timeoutMs) {
-
-    QString endMark = QString("__CMD_END_%1__").arg(QDateTime::currentMSecsSinceEpoch());
-    CmdItem item;
-    item.command = cmd;
-    item.endMark = endMark;
-    item.timer.start();
-    item.callback = callback;
-    item.timeoutMs = timeoutMs;
-
-    commandQueue.enqueue(item);
-
-    if(!isProcessing) processNextCommand();
-}
-
-void Qadb::processNextCommand() {
-    if(commandQueue.isEmpty()) {
-        isProcessing = false;
-        return;
-    }
-
-    isProcessing = true;
-    CmdItem &item = commandQueue.head();
-    QString fullCmd = item.command + " ; echo " + item.endMark;
-     // qDebug() << "[Qshell] exec:" << fullCmd;
-    const QByteArray data = (fullCmd + "\n").toUtf8();
-    qDebug().noquote() << "ADB TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    adbShell->write(data);
-}
-
-void Qadb::onReadyRead() {
-    QByteArray output = adbShell->readAllStandardOutput();
-    if(output.isEmpty()) return;
-    qDebug().noquote() << "ADB RX:" << QString::fromLatin1(output.toHex(' ').toUpper());
-
-    cmdBuffer += QString(output);
-
-    if(!commandQueue.isEmpty()) {
-        CmdItem &item = commandQueue.head();
-        if(cmdBuffer.contains(item.endMark)) {
-            QString result = cmdBuffer;
-            result.replace(item.endMark, "").trimmed();
-            if(item.callback) item.callback(result, item.timer.elapsed());
-            commandQueue.dequeue();
-            cmdBuffer.clear();
-            isProcessing = false;
-            processNextCommand();
-        }
-    }
-}
-
-void Qadb::onFinished(int exitCode, QProcess::ExitStatus exitStatus)
-{
-    qDebug() << "[Qadb]adb shell finished:" << exitCode << exitStatus;
-
-    while (!commandQueue.isEmpty()) {
-        // ❶ 先拷贝出来（或 move）
-        CmdItem item = commandQueue.dequeue();
-
-        // ❷ 再调用 callback（此时队列已安全）
-        if (item.callback) {
-            item.callback("ADB shell被中断", item.timer.elapsed());
-        }
-    }
-
-    isProcessing = false;
-    cmdBuffer.clear();
-}
-void Qadb::checkTimeout() {
-    if(commandQueue.isEmpty()) return;
-    CmdItem &item = commandQueue.head();
-    if(item.timer.elapsed() > item.timeoutMs) {
-        if(item.callback) item.callback("命令超时", item.timer.elapsed());
-        commandQueue.dequeue();
-        isProcessing = false;
-        cmdBuffer.clear();
-        // 3️⃣ 杀掉当前 adb shell（关键！）
-        if (adbShell->state() != QProcess::NotRunning) {
-            adbShell->kill();
-            adbShell->waitForFinished(1000);
-        }
-
-        // 4️⃣ 重新启动 adb shell
-        start();
-        processNextCommand();
+    if(channel_) {
+        channel_->sendCommand(cmd, callback, timeoutMs);
     }
 }
 void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)

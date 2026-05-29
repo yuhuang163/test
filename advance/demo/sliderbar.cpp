@@ -1,4 +1,4 @@
-﻿#include "sliderbar.h"
+#include "sliderbar.h"
 #include "qevent.h"
 #include "qpainter.h"
 #include "qtimer.h"

@@ -1,4 +1,4 @@
-﻿#ifndef YDMMES_H
+#ifndef YDMMES_H
 #define YDMMES_H
 
 

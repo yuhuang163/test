@@ -1,4 +1,4 @@
-﻿#ifndef __US_EIGEN_NONSYMMSQUARE__
+#ifndef __US_EIGEN_NONSYMMSQUARE__
 #define __US_EIGEN_NONSYMMSQUARE__
 
 #include "Abini.h"

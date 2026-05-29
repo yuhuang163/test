@@ -1,4 +1,4 @@
-﻿#include "qprotocolmanager.h"
+#include "qprotocolmanager.h"
 
 #include <algorithm>
 #include <cctype>
