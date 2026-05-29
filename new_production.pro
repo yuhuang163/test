@@ -46,7 +46,7 @@ INCLUDEPATH += agreement/qProtocol/qpb
 INCLUDEPATH += agreement/qProtocol/qfctp
 INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
 INCLUDEPATH += agreement/qProtocol/qaiot
-INCLUDEPATH += agreement/qset
+INCLUDEPATH += platform/settings
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -86,7 +86,7 @@ INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
-INCLUDEPATH += platform
+INCLUDEPATH += platform/serial
 
 
 # INCLUDEPATH += advance/xlsx
@@ -97,7 +97,7 @@ INCLUDEPATH += platform
 
 SOURCES += \
     common/common_utils.cpp \
-    platform/serial_channel.cpp \
+    platform/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
@@ -131,7 +131,7 @@ SOURCES += \
     agreement/qProtocol/qpb/pb_decode.c \
     agreement/qProtocol/qpb/pb_encode.c \
     agreement/qProtocol/qpb/qpb.cpp \
-    agreement/qset/qsetting.cpp \
+    platform/settings/qsetting.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qvisa/qvisa.cpp \
@@ -184,7 +184,7 @@ SOURCES += \
 
 HEADERS += \
     common/common_utils.h \
-    platform/serial_channel.h \
+    platform/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
@@ -221,7 +221,7 @@ HEADERS += \
     agreement/qProtocol/qpb/pb_decode.h \
     agreement/qProtocol/qpb/pb_encode.h \
     agreement/qProtocol/qpb/qpb.h \
-    agreement/qset/qsetting.h \
+    platform/settings/qsetting.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
     agreement/qvisa/qvisa.h \
@@ -272,7 +272,7 @@ HEADERS += \
 
 FORMS += \
     agreement/qjig/fixture_uart.ui \
-    agreement/qset/qsetting.ui \
+    platform/settings/qsetting.ui \
     tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \

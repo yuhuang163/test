@@ -1,4 +1,4 @@
----
+﻿---
 description: new_product_test Qt/C++ 工程约定与 AI 协作规则
 alwaysApply: true
 ---
@@ -13,7 +13,7 @@ alwaysApply: true
 
 ## 代码风格（与仓库一致）
 
-- **配置**：统一通过 **`SETTINGS`（`Abini.h` / Ini）** 读写；键名已有惯例如 `BLE/LowRssi`、`BLE/HighRssi`、`Current/LowCharCurrent`、`Current/HighCharCurrent`、`BATTARY/standbattary`、`TestOrderMeta/SelectedStation` 等，新增项沿用 **`分类/键名`**，并在 **`agreement/qset/qsetting`** 做加载/保存/UI（避免「只写代码、设置页缺项」）。
+- **配置**：统一通过 **`SETTINGS`（`Abini.h` / Ini）** 读写；键名已有惯例如 `BLE/LowRssi`、`BLE/HighRssi`、`Current/LowCharCurrent`、`Current/HighCharCurrent`、`BATTARY/standbattary`、`TestOrderMeta/SelectedStation` 等，新增项沿用 **`分类/键名`**，并在 **`platform/settings/qsetting`** 做加载/保存/UI（避免「只写代码、设置页缺项」）。
 - **测试结果**：继承 **`test_base`** 的工站使用 **`passValue` / `failValue`**（中文「通过」「失败」）、**`TestResult`** 与 **`showlog`**；表格分项用 **`TestItem` + `testResultTableUpdate`**。与用户可见结论用 **`showlog`**，调试细节可用 **`qDebug()`**。
 - **字符串比对**：期望值与实测比较优先 **`compareVersions`**（与现有关键键测等逻辑一致），不要随意换成裸 `==` 除非周边代码如此。
 - **头文件 / Qt**：保持与邻文件一致的包含风格（工程内多为 **`#include "..."`**，Qt 模块多为小写 **`#include <qxxx.h>`** 形式）。
@@ -78,4 +78,4 @@ alwaysApply: true
 
 - **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须**分别出现** **`[XXX_VER]`** 与 **`[FREE_VER]`**（可两行或同一行用 **`；`** 分隔）；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿把不同模块要点塞进**同一个** `[XXX_VER]` 说明却不写应有宏。
 - 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
-- **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`agreement/qset/`**、**`agreement/qProtocol/`**（不含 Python39）等。
+- **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`platform/settings/`**、**`agreement/qProtocol/`**（不含 Python39）等。
