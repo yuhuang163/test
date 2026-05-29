@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QCustomWork</class>
+ <widget class="QWidget" name="QCustomWork">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>1200</width><height>800</height></rect>
+  </property>
+  <property name="windowTitle">
+   <string>自定义工站</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <!-- 顶部状态栏 -->
+   <item>
+    <layout class="QHBoxLayout" name="topBar">
+     <item><widget class="QLabel" name="test_result"><property name="text"><string>WAIT</string></property></widget></item>
+     <item><widget class="QLabel" name="mes_state"><property name="text"><string>MES</string></property></widget></item>
+     <item><widget class="QLCDNumber" name="test_time"/></item>
+     <item><widget class="QCheckBox" name="isusemes"><property name="text"><string>MES</string></property></widget></item>
+     <item><widget class="QCheckBox" name="isformmes"><property name="text"><string>格式MES</string></property></widget></item>
+    </layout>
+   </item>
+   <!-- 主体区域 -->
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <!-- Tab 0: 测试运行 -->
+     <widget class="QWidget" name="tab_run">
+      <attribute name="title"><string>测试运行</string></attribute>
+      <layout class="QVBoxLayout" name="runLayout">
+       <!-- SN 和 MAC 输入 -->
+       <item>
+        <layout class="QHBoxLayout" name="inputBar">
+         <item><widget class="QLabel" name="label_sn"><property name="text"><string>SN:</string></property></widget></item>
+         <item><widget class="QLineEdit" name="getMac"><property name="placeholderText"><string>扫描或输入SN</string></property></widget></item>
+         <item><widget class="QLabel" name="label_mac"><property name="text"><string>MAC:</string></property></widget></item>
+         <item><widget class="QLineEdit" name="macInput"><property name="placeholderText"><string>MAC地址</string></property></widget></item>
+        </layout>
+       </item>
+       <!-- 串口连接区域 -->
+       <item>
+        <layout class="QHBoxLayout" name="serialBar">
+         <item><widget class="QLabel" name="label_dongle"><property name="text"><string>Dongle:</string></property></widget></item>
+         <item><widget class="QComboBox" name="comNameCombo"/></item>
+         <item><widget class="QPushButton" name="connectButton"><property name="text"><string>连接</string></property></widget></item>
+         <item><widget class="QPushButton" name="disconnectButton"><property name="text"><string>断开</string></property></widget></item>
+         <item><widget class="QLabel" name="label_usb"><property name="text"><string>USB:</string></property></widget></item>
+         <item><widget class="QComboBox" name="usbcomNameCombo"/></item>
+         <item><widget class="QPushButton" name="usbConnectButton"><property name="text"><string>连接</string></property></widget></item>
+         <item><widget class="QPushButton" name="usbDisconnectButton"><property name="text"><string>断开</string></property></widget></item>
+        </layout>
+       </item>
+       <!-- 测试结果表格 -->
+       <item>
+        <widget class="QTableWidget" name="testResultTable"/>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="controlBar">
+         <item><widget class="QPushButton" name="stopTest"><property name="text"><string>停止测试</string></property></widget></item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <!-- Tab 1: 步骤配置 -->
+     <widget class="QWidget" name="tab_config">
+      <attribute name="title"><string>步骤配置</string></attribute>
+      <layout class="QHBoxLayout" name="configLayout">
+       <!-- 左侧：已选步骤列表 -->
+       <item>
+        <layout class="QVBoxLayout" name="stepListLayout">
+         <item><widget class="QLabel" name="label_steps"><property name="text"><string>已选测试步骤：</string></property></widget></item>
+         <item><widget class="QListWidget" name="stepListWidget"/></item>
+         <item>
+          <layout class="QHBoxLayout" name="stepButtons">
+           <item><widget class="QPushButton" name="addStepButton"><property name="text"><string>添加</string></property></widget></item>
+           <item><widget class="QPushButton" name="removeStepButton"><property name="text"><string>删除</string></property></widget></item>
+           <item><widget class="QPushButton" name="moveUpButton"><property name="text"><string>上移</string></property></widget></item>
+           <item><widget class="QPushButton" name="moveDownButton"><property name="text"><string>下移</string></property></widget></item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="configButtons">
+           <item><widget class="QPushButton" name="saveConfigButton"><property name="text"><string>保存配置</string></property></widget></item>
+           <item><widget class="QPushButton" name="loadConfigButton"><property name="text"><string>加载配置</string></property></widget></item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <!-- 右侧：步骤编辑器 -->
+       <item>
+        <layout class="QVBoxLayout" name="editorLayout">
+         <item><widget class="QLabel" name="label_editor"><property name="text"><string>步骤参数编辑：</string></property></widget></item>
+         <item>
+          <layout class="QFormLayout" name="editorForm">
+           <item row="0" column="0"><widget class="QLabel" name="label_stepName"><property name="text"><string>步骤名称:</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLineEdit" name="editStepName"/></item>
+           <item row="1" column="0"><widget class="QLabel" name="label_actionType"><property name="text"><string>操作类型:</string></property></widget></item>
+           <item row="1" column="1"><widget class="QComboBox" name="editActionType"/></item>
+           <item row="2" column="0"><widget class="QLabel" name="label_deviceCmd"><property name="text"><string>DeviceCmd:</string></property></widget></item>
+           <item row="2" column="1"><widget class="QComboBox" name="editDeviceCmd"><property name="editable"><bool>true</bool></property></widget></item>
+           <item row="3" column="0"><widget class="QLabel" name="label_timeout"><property name="text"><string>超时(ms):</string></property></widget></item>
+           <item row="3" column="1"><widget class="QSpinBox" name="editTimeout"><property name="minimum"><number>50</number></property><property name="maximum"><number>60000</number></property><property name="value"><number>300</number></property></widget></item>
+           <item row="4" column="0"><widget class="QLabel" name="label_needDone"><property name="text"><string>异步判定:</string></property></widget></item>
+           <item row="4" column="1"><widget class="QCheckBox" name="editNeedCaseDone"/></item>
+           <item row="5" column="0"><widget class="QLabel" name="label_mesTag"><property name="text"><string>MES Tag:</string></property></widget></item>
+           <item row="5" column="1"><widget class="QLineEdit" name="editMesTag"/></item>
+           <item row="6" column="0"><widget class="QLabel" name="label_customFunc"><property name="text"><string>自定义函数:</string></property></widget></item>
+           <item row="6" column="1"><widget class="QLineEdit" name="editCustomFunc"/></item>
+          </layout>
+         </item>
+         <!-- 参数编辑表格 -->
+         <item><widget class="QLabel" name="label_params"><property name="text"><string>参数 (key=value):</string></property></widget></item>
+         <item><widget class="QTableWidget" name="paramsTable"/></item>
+         <item>
+          <layout class="QHBoxLayout" name="paramButtons">
+           <item><widget class="QPushButton" name="addParamButton"><property name="text"><string>添加参数</string></property></widget></item>
+           <item><widget class="QPushButton" name="removeParamButton"><property name="text"><string>删除参数</string></property></widget></item>
+          </layout>
+         </item>
+         <item><widget class="QPushButton" name="applyEditButton"><property name="text"><string>应用修改</string></property></widget></item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <!-- Tab 2: 日志 -->
+     <widget class="QWidget" name="tab_log">
+      <attribute name="title"><string>日志</string></attribute>
+      <layout class="QVBoxLayout" name="logLayout">
+       <item><widget class="QPlainTextEdit" name="log"><property name="readOnly"><bool>true</bool></property></widget></item>
+       <item><widget class="QPlainTextEdit" name="msgEdit"><property name="readOnly"><bool>true</bool></property></widget></item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

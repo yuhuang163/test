@@ -26,6 +26,7 @@
 #include "suction_box.h"
 #include "wifibox.h"
 #include "factory_analyzer.h"
+#include "work_station/customwork/qcustomworkbox.h"
 // #include <Windows.h>
 
 #if _MSC_VER >= 1600
@@ -294,7 +295,7 @@ int main(int argc, char* argv[]) {
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},
                                             {"AGE_TEST", 7},          {"PCBA_TEST", 8},   {"PRESS_TEST", 9},
                                             {"FREE_WORK", 10},        {"MAIN_TEST", 11},  {"dji_TEST", 12},
-                                            {"KEY_TEST", 13},         {"SUCTION_TEST", 14}};
+                                            {"KEY_TEST", 13},         {"SUCTION_TEST", 14}, {"CUSTOM_WORK", 15}};
 
     int exitCode = 0;
     do {
@@ -403,6 +404,13 @@ int main(int argc, char* argv[]) {
                 s->show();
                 s->TotallyTask();
                 delete s;
+                break;
+            }
+            case 15: {
+                QCustomWorkBox* cw = new QCustomWorkBox; // 数据驱动自定义工站
+                cw->show();
+                cw->TotallyTask();
+                delete cw;
                 break;
             }
             default:
