@@ -86,6 +86,7 @@ INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
+INCLUDEPATH += platform
 
 
 # INCLUDEPATH += advance/xlsx
@@ -96,6 +97,7 @@ INCLUDEPATH += common
 
 SOURCES += \
     common/common_utils.cpp \
+    platform/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
@@ -182,6 +184,7 @@ SOURCES += \
 
 HEADERS += \
     common/common_utils.h \
+    platform/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \

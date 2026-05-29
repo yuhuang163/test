@@ -13,6 +13,7 @@
 #include <qlog.h>
 
 #include "Abini.h"
+#include "serial_channel.h"
 #include "agreement/qProtocol/qprotocolmanager.h"
 #include "qusb.h"
 #include "qvisa.h"
@@ -116,34 +117,26 @@ public:
     Qlog* log;
     QTimer* scanSerialPortsTimer = new QTimer(this);
 
-    QSerialPort* dongleSerialPort;  // dongle硬件层
+    SerialChannel* dongleSerialChannel_ = nullptr;
+    SerialChannel* usbSerialChannel_ = nullptr;
+    SerialChannel* jigSerialChannel_ = nullptr;
+    SerialChannel* productSerialChannel_ = nullptr;
+    QSerialPort* dongleSerialPort;  // dongle硬件层（指向 dongleSerialChannel_ 内部端口，供 Qpb/Qat 等使用）
     Qpb* pb;                        // dongle协议层
     Qfctp* qfctp;                   // fctp协议层
     Qaiot* qaiot;                   // aiot协议层
     QProtocolManager protocolManager;
     Qat* at;                        // dongle协议层
 
-    QSerialPort* usbSerialPort;  // 通用硬件层
+    QSerialPort* usbSerialPort;  // 通用硬件层（指向 usbSerialChannel_ 内部端口）
     Qusb* usb;                   // 通用协议层
     Qvisa* visa;                 // 通用 VISA 设备
 
-    QSerialPort* jigSerialPort;  // 治具硬件层
+    QSerialPort* jigSerialPort;  // 治具硬件层（指向 jigSerialChannel_ 内部端口）
     Qjig* jig;                   // 治具协议层
 
-    QSerialPort* productSerialPort;  // 设备硬件层
+    QSerialPort* productSerialPort;  // 设备硬件层（指向 productSerialChannel_ 内部端口）
     Qproduct* product;               // 设备协议层
-
-    QTimer* dongleSerialPortTimer = new QTimer(this);
-    QByteArray dongleSerialPortBuf = 0;
-
-    QTimer* usbSerialPortTimer = new QTimer(this);
-    QByteArray usbSerialPortBuf = 0;
-
-    QTimer* jigSerialPortTimer = new QTimer(this);
-    QByteArray jigSerialPortBuf = 0;
-
-    QTimer* productSerialPortTimer = new QTimer(this);
-    QByteArray productSerialPortBuf = 0;
 
     bool getRespone = 0;
     bool canGoNext = false;
@@ -170,23 +163,23 @@ public slots:
     void showlog(QString msg);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);
-    virtual void readDongleSerialPortData(void);
-    void handleDongleSerialPortError(QSerialPort::SerialPortError error);
+    virtual void onDongleSerialFrame(const QByteArray& data);
+    void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);
 
-    void readUsbSerialPortData(void);
-    void handleUsbSerialPortError(QSerialPort::SerialPortError error);
+    virtual void onUsbSerialFrame(const QByteArray& data);
+    void handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
 
-    virtual void readJigSerialPortData(void);
-    void handleJigSerialPortError(QSerialPort::SerialPortError error);
+    void onJigSerialFrame(const QByteArray& data);
+    void handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
 
-    void readProductSerialPortData(void);
-    void handleProductSerialPortError(QSerialPort::SerialPortError error);
+    void onProductSerialFrame(const QByteArray& data);
+    void handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
     void scanSerialPorts();

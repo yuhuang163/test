@@ -86,7 +86,10 @@ void MainWindow::on_pushButton_3_clicked() {
 }
 
 MainWindow::MainWindow(QWidget* parent) :
-    QMainWindow(parent), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
+    QMainWindow(parent),
+    dongleSerialChannel_(new SerialChannel(this)),
+    dongleSerialPort(dongleSerialChannel_->port()),
+    pb(new Qpb(dongleSerialPort)),
     qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
     nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
     ui->setupUi(this);
@@ -344,8 +347,6 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
     connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
-    connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(sendWifiIp(QString)), this, SLOT(getWifiIp(QString)));
 
@@ -385,10 +386,8 @@ MainWindow::MainWindow(QWidget* parent) :
         isovertime = 1;
         waittime->stop();
     });
-    connect(dongleSerialPort, &QSerialPort::readyRead, this, [=]() {
-        dongleSerialPortTimer->start(5);                          // 设置100毫秒的延时
-        dongleSerialPortBuf.append(dongleSerialPort->readAll());  // 将读到的数据放入缓冲区
-    });
+    connect(dongleSerialChannel_, &SerialChannel::frameReceived, this, &MainWindow::onDongleSerialFrame);
+    connect(dongleSerialChannel_, &SerialChannel::errorOccurred, this, &MainWindow::handleDongleSerialPortError);
 
     // 连接信号和槽
     // QObject::connect(cameratimer, &QTimer::timeout, this,
@@ -630,77 +629,29 @@ void MainWindow::closeEvent(QCloseEvent*) {
         qsetting_ui->close();
 }
 
-void MainWindow::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
+void MainWindow::handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
+    Q_UNUSED(message);
     qDebug() << "DongleSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError) {
+    if (error == QSerialPort::PermissionError)
         closeDongleSerialPort();
-    }
 }
 
 void MainWindow::openDongleSerialPort() {
-    if (dongleSerialPort->isOpen()) {
-        disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
-                   &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
-        dongleSerialPort->close();
-    }
+    SerialChannel::OpenParams params;
+    params.portName = ui->comNameCombo->currentText();
+    params.baudRate = 921600;
+    params.readDebounceMs = 5;
+    params.rtsDtrMode = ui->is_reset_dongle->checkState() ? SerialChannel::RtsDtrMode::FullReset
+                                                        : SerialChannel::RtsDtrMode::Enable;
 
-    // 设置串口名
-    dongleSerialPort->setPortName(ui->comNameCombo->currentText());
-    // 设置波特率
-    dongleSerialPort->setBaudRate(921600);
-    // 设置数据位
-    dongleSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    dongleSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    dongleSerialPort->setStopBits(QSerialPort::OneStop);
-    dongleSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    dongleSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (dongleSerialPort->open(QIODevice::ReadWrite)) {
-        if (ui->is_reset_dongle->checkState()) {
-            // 启用RTS信号
-            dongleSerialPort->setRequestToSend(true);
-            // 启用DTR信号
-            dongleSerialPort->setDataTerminalReady(true);
-            // 启用RTS信号
-            dongleSerialPort->setRequestToSend(false);
-            // 启用DTR信号
-            dongleSerialPort->setDataTerminalReady(false);
-            // 启用RTS信号
-            dongleSerialPort->setRequestToSend(true);
-            // 启用DTR信号
-            dongleSerialPort->setDataTerminalReady(true);
-            // 启用RTS信号
-            dongleSerialPort->setRequestToSend(false);
-            // 启用DTR信号
-            dongleSerialPort->setDataTerminalReady(false);
-        } else {
-            // 启用RTS信号
-            dongleSerialPort->setRequestToSend(true);
-            // 启用DTR信号
-            dongleSerialPort->setDataTerminalReady(true);
-        }
-        // showlog("串口连接成功");
+    if (dongleSerialChannel_->open(params))
         emit send_dongle_serialPort_state(1);
-
-        connect(dongleSerialPortTimer, &QTimer::timeout, this,
-                &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
-    } else {
-        appendAndSaveWifiOtaLog("串口被占用！");
-        // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // showlog("打开错误");
-    }
+    else
+        appendAndSaveWifiOtaLog(QStringLiteral("串口被占用！"));
 }
 
 void MainWindow::closeDongleSerialPort() {
-    if (dongleSerialPort->isOpen())
-        dongleSerialPort->close();
-    disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
-               &MainWindow::readDongleSerialPortData);  // timeout执行真正的读取操作
-
+    dongleSerialChannel_->close();
     emit send_dongle_serialPort_state(0);
 }
 

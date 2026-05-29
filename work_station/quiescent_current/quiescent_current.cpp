@@ -1,4 +1,4 @@
-#include "quiescent_current.h"
+﻿#include "quiescent_current.h"
 
 #include "ui_quiescent_current.h"
 #include <QMessageBox>
@@ -670,21 +670,9 @@ void quiescent_current::getTestValue(const int mechines, const QString value) {
 quiescent_current::~quiescent_current() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
-    if (dongleSerialPort->isOpen()) {
-        disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        dongleSerialPort->close();
-        qDebug() << getIndex() << "已关闭dongle串口";
-    }
-    if (usbSerialPort->isOpen()) {
-        disconnect(usbSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        usbSerialPort->close();
-        qDebug() << getIndex() << "已关闭usb串口";
-    }
-    if (jigSerialPort->isOpen()) {
-        disconnect(jigSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        jigSerialPort->close();
-        qDebug() << getIndex() << "已关闭jig串口";
-    }
+    closeDongleSerialPort();
+    closeUsbSerialPort();
+    closeJigSerialPort();
 
     delete ui;
 }

@@ -222,7 +222,7 @@ private slots:
     void start_offset_test();
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
-    void readDongleSerialPortData() override;
+    void onDongleSerialFrame(const QByteArray& data) override;
     void getPictureSendOver(ProtocolPictureSendOverData x);
     void onTimeout();
     void processTheDatagram(QByteArray& datagram);

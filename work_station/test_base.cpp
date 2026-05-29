@@ -30,10 +30,23 @@
 #endif
 
 test_base::test_base(QWidget* parent) :
-    QWidget(parent), log(new Qlog), dongleSerialPort(new QSerialPort(this)), pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), usbSerialPort(new QSerialPort(this)),
-    usb(new Qusb(usbSerialPort)), visa(new Qvisa(this)), jigSerialPort(new QSerialPort(this)),
-    jig(new Qjig(jigSerialPort)), productSerialPort(new QSerialPort(this)),
+    QWidget(parent),
+    log(new Qlog),
+    dongleSerialChannel_(new SerialChannel(this)),
+    usbSerialChannel_(new SerialChannel(this)),
+    jigSerialChannel_(new SerialChannel(this)),
+    productSerialChannel_(new SerialChannel(this)),
+    dongleSerialPort(dongleSerialChannel_->port()),
+    pb(new Qpb(dongleSerialPort)),
+    qfctp(new Qfctp(dongleSerialPort)),
+    qaiot(new Qaiot(dongleSerialPort)),
+    at(new Qat(dongleSerialPort)),
+    usbSerialPort(usbSerialChannel_->port()),
+    usb(new Qusb(usbSerialPort)),
+    visa(new Qvisa(this)),
+    jigSerialPort(jigSerialChannel_->port()),
+    jig(new Qjig(jigSerialPort)),
+    productSerialPort(productSerialChannel_->port()),
     product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -107,36 +120,28 @@ void test_base::signalAndslot() {
     connect(jig, SIGNAL(send_amplitude_data(QString)), this, SLOT(refreshAmplitudeData(QString)));
 
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
-    connect(this->dongleSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(handleDongleSerialPortError(QSerialPort::SerialPortError)));
-    connect(this->usbSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(handleUsbSerialPortError(QSerialPort::SerialPortError)));
-    connect(this->jigSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(handleJigSerialPortError(QSerialPort::SerialPortError)));
-    connect(this->productSerialPort, SIGNAL(error(QSerialPort::SerialPortError)), this,
-            SLOT(handleProductSerialPortError(QSerialPort::SerialPortError)));
+    connect(dongleSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
+        onDongleSerialFrame(data);
+    });
+    connect(usbSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
+        onUsbSerialFrame(data);
+    });
+    connect(jigSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
+        onJigSerialFrame(data);
+    });
+    connect(productSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
+        onProductSerialFrame(data);
+    });
+    connect(dongleSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleDongleSerialPortError);
+    connect(usbSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleUsbSerialPortError);
+    connect(jigSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleJigSerialPortError);
+    connect(productSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleProductSerialPortError);
 
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
     connect(this, SIGNAL(refreshUsbSerialPortState(int)), this, SLOT(refreshUsbUartState(int)));
     connect(this, SIGNAL(refreshJigSerialPortState(int)), this, SLOT(refreshJigUartState(int)));
     connect(this, SIGNAL(refreshProductSerialPortState(int)), this, SLOT(refreshProductUartState(int)));
 
-    connect(dongleSerialPort, &QSerialPort::readyRead, this, [=]() {
-        dongleSerialPortTimer->start(dongleOutTime);              // 设置100毫秒的延时
-        dongleSerialPortBuf.append(dongleSerialPort->readAll());  // 将读到的数据放入缓冲区
-    });
-    connect(usbSerialPort, &QSerialPort::readyRead, this, [=]() {
-        usbSerialPortTimer->start(10);                      // 设置100毫秒的延时
-        usbSerialPortBuf.append(usbSerialPort->readAll());  // 将读到的数据放入缓冲区
-    });
-    connect(jigSerialPort, &QSerialPort::readyRead, this, [=]() {
-        jigSerialPortTimer->start(10);                      // 设置100毫秒的延时
-        jigSerialPortBuf.append(jigSerialPort->readAll());  // 将读到的数据放入缓冲区
-    });
-    connect(productSerialPort, &QSerialPort::readyRead, this, [=]() {
-        productSerialPortTimer->start(10);                          // 设置100毫秒的延时
-        productSerialPortBuf.append(productSerialPort->readAll());  // 将读到的数据放入缓冲区
-    });
 }
 
 void test_base::setVisaProtocolConfig(const Qvisa::ProtocolConfig& config) {
@@ -164,40 +169,10 @@ void test_base::resetVisaBackend() {
 }
 
 void test_base::scanSerialPorts() {
-    QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-
-    auto updateComboBox = [](QComboBox* comboBox, const QList<QSerialPortInfo>& ports) {
-        if (!comboBox) {
-            return;
-        }
-
-        // 获取当前的项目列表
-        QSet<QString> currentItems;
-        for (int i = 0; i < comboBox->count(); ++i) {
-            currentItems.insert(comboBox->itemText(i));
-        }
-
-        // 添加新的项目
-        for (const QSerialPortInfo& info : ports) {
-            if (!currentItems.contains(info.portName())) {
-                comboBox->addItem(info.portName());
-            }
-            currentItems.remove(info.portName());  // 移除已存在的项目
-        }
-
-        // 移除不存在的项目
-        for (const QString& item : currentItems) {
-            int index = comboBox->findText(item);
-            if (index != -1) {
-                comboBox->removeItem(index);
-            }
-        }
-    };
-
-    updateComboBox(getComNameCombo(), ports);
-    updateComboBox(getUsbcomNameCombo(), ports);
-    updateComboBox(getJigcomNameCombo(), ports);
-    updateComboBox(getProductcomNameCombo(), ports);
+    SerialChannel::updateComboBoxPorts(getComNameCombo());
+    SerialChannel::updateComboBoxPorts(getUsbcomNameCombo());
+    SerialChannel::updateComboBoxPorts(getJigcomNameCombo());
+    SerialChannel::updateComboBoxPorts(getProductcomNameCombo());
 }
 
 void test_base::updateHIDComboBox(QComboBox* comboBox) {
@@ -322,11 +297,7 @@ void test_base::getmacadress(const QByteArray& byte) {
     }
 }
 
-void test_base::readDongleSerialPortData() {
-    dongleSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
-    dongleSerialPortBuf.clear();                // 清除缓冲区
-
+void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
@@ -349,311 +320,130 @@ void test_base::readDongleSerialPortData() {
     }
     saveDongleUartLog(logEntry);
 }
-void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error) {
-    if (error == QSerialPort::NoError) {
+void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
+    if (error == QSerialPort::NoError)
         return;
-    }
     qWarning() << "DongleSerialPort串口异常"
-               << "port=" << dongleSerialPort->portName()
-               << "code=" << error
-               << "detail=" << dongleSerialPort->errorString();
+               << "port=" << dongleSerialChannel_->portName() << "code=" << error << "detail=" << message;
     if (error == QSerialPort::PermissionError) {
         closeDongleSerialPort();
-
-        msgEdit()->appendPlainText("串口权限问题");
+        msgEdit()->appendPlainText(QStringLiteral("串口权限问题"));
     }
 }
 
 void test_base::openDongleSerialPort() {
-    if (dongleSerialPort->isOpen()) {
-        disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
-                   &test_base::readDongleSerialPortData);  // timeout执行真正的读取操作
-        dongleSerialPort->close();
-    }
+    SerialChannel::OpenParams params;
+    params.portName = getComNameCombo()->currentText();
+    params.baudRate = dongleBaudRate;
+    params.readDebounceMs = dongleOutTime;
+    params.rtsDtrMode = SerialChannel::RtsDtrMode::ToggleReset;
 
-    // 设置串口名
-    dongleSerialPort->setPortName(getComNameCombo()->currentText());
-    // 设置波特率
-    dongleSerialPort->setBaudRate(dongleBaudRate);
-    // 设置数据位
-    dongleSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    dongleSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    dongleSerialPort->setStopBits(QSerialPort::OneStop);
-    dongleSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    dongleSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (dongleSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        dongleSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        dongleSerialPort->setDataTerminalReady(true);
-        // 启用RTS信号
-        dongleSerialPort->setRequestToSend(false);
-        // 启用DTR信号
-        dongleSerialPort->setDataTerminalReady(false);
-        // 启用RTS信号
-        dongleSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        dongleSerialPort->setDataTerminalReady(true);
-
+    if (dongleSerialChannel_->open(params)) {
         showlog(QStringLiteral("当前设备协议：%1")
                     .arg(QString::fromStdString(
                         QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
         emit send_dongle_serialPort_state(1);
-
-        connect(dongleSerialPortTimer, &QTimer::timeout, this,
-                &test_base::readDongleSerialPortData);  // timeout执行真正的读取操作
     } else {
-        // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        showlog("串口被占用！");
+        showlog(QStringLiteral("串口被占用！"));
     }
 }
 
 void test_base::closeDongleSerialPort() {
-    // // 启用RTS信号
-    // dongleSerialPort->setRequestToSend(false);
-    // // 启用DTR信号
-    // dongleSerialPort->setDataTerminalReady(false);
-    if (dongleSerialPort->isOpen())
-        dongleSerialPort->close();
-    disconnect(dongleSerialPortTimer, &QTimer::timeout, this,
-               &test_base::readDongleSerialPortData);  // timeout执行真正的读取操作
-
+    dongleSerialChannel_->close();
     emit send_dongle_serialPort_state(0);
-    showlog("已经关闭串口");
+    showlog(QStringLiteral("已经关闭串口"));
 }
 
-void test_base::readUsbSerialPortData() {
-    usbSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = usbSerialPortBuf;  // 读取缓冲区数据
-
-    usb->parseCmd(dataTemp);  // 由Qusb内部协议配置决定解析流程
-
-    // getmacadress(dataTemp);
-    //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
-    // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-
-    usbSerialPortBuf.clear();  // 清除缓冲区
+void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
+    usb->parseCmd(dataTemp);
 }
 
-void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error) {
+void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
+    Q_UNUSED(message);
     qDebug() << "UsbSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError) {
+    if (error == QSerialPort::PermissionError)
         closeUsbSerialPort();
-        // QMessageBox::warning(NULL, "警告", " Usb串口连接断开！\t\r\n");
-
-        // showlog("蓝牙连接断开");
-    }
 }
 
 void test_base::openUsbSerialPort() {
-    if (usbSerialPort->isOpen()) {
-        disconnect(usbSerialPortTimer, &QTimer::timeout, this,
-                   &test_base::readUsbSerialPortData);  // timeout执行真正的读取操作
-        usbSerialPort->close();
-    }
+    SerialChannel::OpenParams params;
+    params.portName = getUsbcomNameCombo()->currentText();
+    params.baudRate = usbBaudRate;
+    params.readDebounceMs = 10;
+    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
 
-    // 设置串口名
-    usbSerialPort->setPortName(getUsbcomNameCombo()->currentText());
-    // 设置波特率
-    usbSerialPort->setBaudRate(usbBaudRate);
-    // 设置数据位
-    usbSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    usbSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    usbSerialPort->setStopBits(QSerialPort::OneStop);
-    usbSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    usbSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (usbSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        usbSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        usbSerialPort->setDataTerminalReady(true);
-
-        // showlog("串口连接成功");
+    if (usbSerialChannel_->open(params))
         emit refreshUsbSerialPortState(1);
-
-        connect(usbSerialPortTimer, &QTimer::timeout, this,
-                &test_base::readUsbSerialPortData);  // timeout执行真正的读取操作
-    } else {
-        // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // showlog("打开错误");
-    }
 }
-void test_base::closeUsbSerialPort() {
-    // // 启用RTS信号
-    // usbSerialPort->setRequestToSend(false);
-    // // 启用DTR信号
-    // usbSerialPort->setDataTerminalReady(false);
-    if (usbSerialPort->isOpen())
-        usbSerialPort->close();
-    disconnect(usbSerialPortTimer, &QTimer::timeout, this,
-               &test_base::readUsbSerialPortData);  // timeout执行真正的读取操作
 
+void test_base::closeUsbSerialPort() {
+    usbSerialChannel_->close();
     emit refreshUsbSerialPortState(0);
 }
 
-void test_base::readJigSerialPortData() {
-    jigSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = jigSerialPortBuf;  // 读取缓冲区数据
-
+void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
     qDebug() << getIndex() << "data len : " << dataTemp.size();
-    // at->parseCmd(dataTemp);
-    // pb->parseCmd(dataTemp);
-    // getmacadress(dataTemp);
-    //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
-    // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     jig->parseCmd(dataTemp);
-    jigSerialPortBuf.clear();  // 清除缓冲区
 }
-void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error) {
-    qDebug() << "JigSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError) {
-        closeJigSerialPort();
-        // QMessageBox::warning(NULL, "警告", " 治具串口连接断开！\t\r\n");
 
-        // showlog("蓝牙连接断开");
-    }
+void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
+    Q_UNUSED(message);
+    qDebug() << "JigSerialPort串口问题" << error;
+    if (error == QSerialPort::PermissionError)
+        closeJigSerialPort();
 }
 
 void test_base::openJigSerialPort() {
-    if (jigSerialPort->isOpen()) {
-        disconnect(jigSerialPortTimer, &QTimer::timeout, this,
-                   &test_base::readJigSerialPortData);  // timeout执行真正的读取操作
-        jigSerialPort->close();
-    }
+    SerialChannel::OpenParams params;
+    params.portName = getJigcomNameCombo()->currentText();
+    params.baudRate = jigBaudRate;
+    params.readDebounceMs = 10;
+    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
 
-    // 设置串口名
-    jigSerialPort->setPortName(getJigcomNameCombo()->currentText());
-    // 设置波特率
-    jigSerialPort->setBaudRate(jigBaudRate);
-    // 设置数据位
-    jigSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    jigSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    jigSerialPort->setStopBits(QSerialPort::OneStop);
-    jigSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    jigSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (jigSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        jigSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        jigSerialPort->setDataTerminalReady(true);
-
-        // showlog("串口连接成功");
+    if (jigSerialChannel_->open(params))
         emit refreshJigSerialPortState(1);
-
-        connect(jigSerialPortTimer, &QTimer::timeout, this,
-                &test_base::readJigSerialPortData);  // timeout执行真正的读取操作
-    } else {
-        // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // showlog("打开错误");
-    }
 }
 
 void test_base::closeJigSerialPort() {
-    // // 启用RTS信号
-    // jigSerialPort->setRequestToSend(false);
-    // // 启用DTR信号
-    // jigSerialPort->setDataTerminalReady(false);
-    if (jigSerialPort->isOpen())
-        jigSerialPort->close();
-    disconnect(jigSerialPortTimer, &QTimer::timeout, this,
-               &test_base::readJigSerialPortData);  // timeout执行真正的读取操作
-
+    jigSerialChannel_->close();
     emit refreshJigSerialPortState(0);
 }
 
-void test_base::readProductSerialPortData() {
-    productSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = productSerialPortBuf;  // 读取缓冲区数据
-
+void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
     qDebug() << getIndex() << "product data len : " << dataTemp.size();
     if (product)
         product->parseCmd(dataTemp);
     if (isBrushLogGet)
         log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
-    logEdit()->appendPlainText("收到设备日志");
-    // msgEdit()->appendPlainText(QString::fromUtf8(dataTemp));
-    productSerialPortBuf.clear();  // 清除缓冲区
+    logEdit()->appendPlainText(QStringLiteral("收到设备日志"));
 }
-void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error) {
-    qDebug() << "ProductSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError) {
-        closeProductSerialPort();
-        // QMessageBox::warning(NULL, "警告", " 产品串口连接断开！\t\r\n");
 
-        // showlog("蓝牙连接断开");
-    }
+void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
+    Q_UNUSED(message);
+    qDebug() << "ProductSerialPort串口问题" << error;
+    if (error == QSerialPort::PermissionError)
+        closeProductSerialPort();
 }
 
 void test_base::openProductSerialPort() {
-    if (productSerialPort->isOpen()) {
-        disconnect(productSerialPortTimer, &QTimer::timeout, this,
-                   &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
-        productSerialPort->close();
-        if (product)
-            product->clearProductSerialRxAccum();  // 换口/重开前丢弃旧累积，避免应答串口
-    }
-
-    // 设置串口名
-    productSerialPort->setPortName(getProductcomNameCombo()->currentText());
-    // 设置波特率
-    productSerialPort->setBaudRate(productBaudRate);
-    // 设置数据位
-    productSerialPort->setDataBits(QSerialPort::Data8);
-    // 设置校验位
-    productSerialPort->setParity(QSerialPort::NoParity);
-    // 设置停止位
-    productSerialPort->setStopBits(QSerialPort::OneStop);
-    productSerialPort->setReadBufferSize(4096);
-
-    // 设置流控制
-    productSerialPort->setFlowControl(QSerialPort::NoFlowControl);  // 设置为无流控制
-
-    if (productSerialPort->open(QIODevice::ReadWrite)) {
-        // 启用RTS信号
-        productSerialPort->setRequestToSend(true);
-        // 启用DTR信号
-        productSerialPort->setDataTerminalReady(true);
-
-        // showlog("串口连接成功");
-        emit refreshProductSerialPortState(1);
-        //  at->ask_mac();//连接串口过程，复位设备写入资源复位损坏
-        connect(productSerialPortTimer, &QTimer::timeout, this,
-                &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
-    } else {
-        // QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
-        // showlog("打开错误");
-    }
-}
-
-void test_base::closeProductSerialPort() {
-    // // 启用RTS信号
-    // productSerialPort->setRequestToSend(false);
-    // // 启用DTR信号
-    // productSerialPort->setDataTerminalReady(false);
-    if (productSerialPort->isOpen())
-        productSerialPort->close();
-    disconnect(productSerialPortTimer, &QTimer::timeout, this,
-               &test_base::readProductSerialPortData);  // timeout执行真正的读取操作
-
     if (product)
         product->clearProductSerialRxAccum();
 
+    SerialChannel::OpenParams params;
+    params.portName = getProductcomNameCombo()->currentText();
+    params.baudRate = productBaudRate;
+    params.readDebounceMs = 10;
+    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
+
+    if (productSerialChannel_->open(params))
+        emit refreshProductSerialPortState(1);
+}
+
+void test_base::closeProductSerialPort() {
+    productSerialChannel_->close();
+    if (product)
+        product->clearProductSerialRxAccum();
     emit refreshProductSerialPortState(0);
 }
 

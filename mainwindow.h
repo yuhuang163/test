@@ -48,6 +48,7 @@
 #include "qfctp.h"
 #include "qaiot.h"
 #include "root_ble_ota.h"
+#include "serial_channel.h"
 
 
 
@@ -174,7 +175,8 @@ private:
     QString connectProductName;
     QLabel* bleStatusLabel = nullptr;
     QLabel* WifiStatusLabel = nullptr;
-    QSerialPort* dongleSerialPort;  // dongle硬件层
+    SerialChannel* dongleSerialChannel_ = nullptr;
+    QSerialPort* dongleSerialPort;  // dongle硬件层（指向 dongleSerialChannel_ 内部端口）
     QLabel* uartStatusLabel = nullptr;
     QLabel* frame_rate = nullptr;
     QLabel* macLabel = nullptr;
@@ -224,7 +226,6 @@ private:
 
     QTimer* cameratimer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
-    QTimer* dongleSerialPortTimer = new QTimer(this);
     int imu_wait_time = 15000;
     int music_time = 30000;
     bool isovertime = 0;             // 是否开始发送校验结果
@@ -242,7 +243,6 @@ private:
     // 存储数据包的容器，按序号排序
     QMap<int, QByteArray> packetMap;
     QVector<int> faultData;
-    QByteArray dongleSerialPortBuf = 0;
     QTime bleOtaTestTime;
 
     // 定义用于保存MAC地址的QString变量
@@ -335,8 +335,8 @@ private slots:
     void closeDongleSerialPort(void);
     void refreshDongleUartState(int state);
     void openDongleSerialPort(void);
-    void readDongleSerialPortData(void);
-    void handleDongleSerialPortError(QSerialPort::SerialPortError error);
+    void onDongleSerialFrame(const QByteArray& data);
+    void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void refreshBleRssi(QString data);
     void refreshWifiRssi(QString data);
     void refreshBleState(int state);

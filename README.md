@@ -38,6 +38,9 @@ new_product_test/
 ├── common/                               ← 公共工具类 CommonUtils（字节/时间/文件/字符串）
 │   └── common_utils.h/.cpp
 │
+├── platform/                             ← 平台层（串口通道等 I/O 基础设施）
+│   └── serial_channel.h/.cpp             ← SerialChannel（防抖读、RTS/DTR、QSerialPort 封装）
+│
 ├── my_set/                               ← 工程公共定义与聚合头
 │   ├── AbIni.h                           ← 公共头聚合/版本宏/全局依赖
 │   └── my_typedef.h                      ← 全局类型定义
@@ -152,7 +155,7 @@ new_product_test/
 
 | 层级 | 目录 | 职责 | 典型改动人 |
 |------|------|------|------------|
-| 平台/启动 | `main.cpp`、`qlog/`、`my_set/` | 启动、崩溃/日志、全局宏与类型 | 平台 |
+| 平台/启动 | `main.cpp`、`qlog/`、`my_set/`、`platform/` | 启动、崩溃/日志、串口通道、全局宏与类型 | 平台 |
 | 界面入口 | `mainwindow.*`、`mainlogic.cpp` | UI、工站切换、流程联动 | 业务 + 平台 |
 | 协议层 | `agreement/` | 设备协议、MES、配置、OTA/ADB/Bulk | 协议 |
 | 工站业务 | `work_station/` | 测试步骤、卡控、结果判定 | 业务 |
@@ -161,7 +164,7 @@ new_product_test/
 依赖建议（自上而下，避免反向 include）：
 
 ```text
-UI / 工站  →  QProtocolManager / 平台服务  →  具体协议实现
+UI / 工站  →  SerialChannel / QProtocolManager / 平台服务  →  具体协议实现
 ```
 
 - `tools/factory_analyzer` 使用自有 `FactoryNamedFunction`（定义在 `factory_analyzer.h`），勿 include `common_class.h`，避免与 `MainWindow` 侧 `NamedFunction` 在 `main.cpp` 中重定义。

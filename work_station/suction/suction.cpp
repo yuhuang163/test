@@ -1,4 +1,4 @@
-#include "suction.h"
+﻿#include "suction.h"
 
 #include "qusb.h"
 #include "ui_suction.h"
@@ -717,21 +717,9 @@ void suction::refreshAmmeterData(QString data) {
 suction::~suction() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
-    if (dongleSerialPort->isOpen()) {
-        disconnect(dongleSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        dongleSerialPort->close();
-        qDebug() << getIndex() << "已关闭dongle串口";
-    }
-    if (usbSerialPort->isOpen()) {
-        disconnect(usbSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        usbSerialPort->close();
-        qDebug() << getIndex() << "已关闭usb串口";
-    }
-    if (jigSerialPort->isOpen()) {
-        disconnect(jigSerialPort, SIGNAL(readyRead()), this, SLOT(readData()));
-        jigSerialPort->close();
-        qDebug() << getIndex() << "已关闭jig串口";
-    }
+    closeDongleSerialPort();
+    closeUsbSerialPort();
+    closeJigSerialPort();
     resetVisaBackend();
 
     delete ui;
@@ -1003,23 +991,15 @@ void suction::on_usbconnectButton_clicked() {
             }
             ui->usbcomNameCombo->setCurrentText(picoPort);
         }
-        if (usbSerialPort->isOpen()) {
-            disconnect(usbSerialPortTimer, nullptr, this, nullptr);
-            usbSerialPort->close();
-        }
         picoRxBuffer_.clear();
-        usbSerialPort->setPortName(ui->usbcomNameCombo->currentText().trimmed());
-        usbSerialPort->setBaudRate(usbBaudRate);
-        usbSerialPort->setDataBits(QSerialPort::Data8);
-        usbSerialPort->setParity(QSerialPort::NoParity);
-        usbSerialPort->setStopBits(QSerialPort::OneStop);
-        usbSerialPort->setFlowControl(QSerialPort::HardwareControl);
-        usbSerialPort->setReadBufferSize(4096);
-        if (usbSerialPort->open(QIODevice::ReadWrite)) {
-            // Pico/USB CDC 设备常依赖 DTR 表示主机已就绪；RTS 仍由硬件流控管理。
-            usbSerialPort->setDataTerminalReady(true);
+        SerialChannel::OpenParams params;
+        params.portName = ui->usbcomNameCombo->currentText().trimmed();
+        params.baudRate = usbBaudRate;
+        params.readDebounceMs = 10;
+        params.flowControl = QSerialPort::HardwareControl;
+        params.rtsDtrMode = SerialChannel::RtsDtrMode::DtrOnly;
+        if (usbSerialChannel_->open(params)) {
             emit refreshUsbSerialPortState(1);
-            connect(usbSerialPortTimer, &QTimer::timeout, this, &suction::readUsbSerialPortData, Qt::UniqueConnection);
             showlog(QStringLiteral("Pico吸力板串口已连接：%1，波特率=%2，流控=RTS/CTS")
                         .arg(ui->usbcomNameCombo->currentText())
                         .arg(usbBaudRate));
@@ -1036,18 +1016,14 @@ void suction::on_usbconnectButton_clicked() {
     ui->usbconnectButton->setEnabled(false);
 }
 
-void suction::readUsbSerialPortData() {
+void suction::onUsbSerialFrame(const QByteArray& dataTemp) {
     if (!suctionUsePicoSensor) {
-        test_base::readUsbSerialPortData();
+        test_base::onUsbSerialFrame(dataTemp);
         return;
     }
 
-    usbSerialPortTimer->stop();
-    const QByteArray dataTemp = usbSerialPortBuf;
-    usbSerialPortBuf.clear();
-    if (dataTemp.isEmpty()) {
+    if (dataTemp.isEmpty())
         return;
-    }
 
     picoRxBuffer_ += QString::fromUtf8(dataTemp);
     qDebug() << getIndex() << "Pico raw:" << QString::fromUtf8(dataTemp).trimmed();
@@ -1079,10 +1055,8 @@ void suction::readUsbSerialPortData() {
 }
 
 void suction::on_usbdisconnectButton_clicked() {
-    if (suctionUsePicoSensor) {
+    if (suctionUsePicoSensor)
         sendPicoSysModeStop();
-        disconnect(usbSerialPortTimer, nullptr, this, nullptr);
-    }
     closeUsbSerialPort();
     picoRxBuffer_.clear();
     ui->usbcomNameCombo->setEnabled(true);
@@ -1285,17 +1259,12 @@ void suction::startTask() {
                             state = STATE_SAVE_RESULT;
                             break;
                         }
-                        usbSerialPortBuf.clear();
                         picoRxBuffer_.clear();
                         usbSerialPort->clear(QSerialPort::Input);
                         sendPicoSysModeStart();
                         waitWork(100);
-                        if (usbSerialPort->bytesAvailable() > 0) {
-                            usbSerialPortBuf.append(usbSerialPort->readAll());
-                            readUsbSerialPortData();
-                        } else {
+                        if (picoRxBuffer_.isEmpty())
                             showlog(QStringLiteral("Pico已发送SYSMODE=1，100ms内暂未收到数据"));
-                        }
                     } else if (suctionProtocolType == Qusb::ProtocolType::Byd) {
                         showlog(QStringLiteral("双通道吸力(DAM-3158)：左=第%1路AI，右=第%2路AI（1~8，与接线一致）")
                                     .arg(damLeftChannel)
@@ -1320,11 +1289,7 @@ void suction::startTask() {
                             break;
                         }
                         if (suctionUsePicoSensor) {
-                            // Pico 板持续主动上报 `$左 右 ...;`，这里只采当前最新缓存值。
-                            if (usbSerialPort->bytesAvailable() > 0) {
-                                usbSerialPortBuf.append(usbSerialPort->readAll());
-                                readUsbSerialPortData();
-                            }
+                            // Pico 持续上报，由 onUsbSerialFrame 更新 damLeftKpa_/damRightKpa_
                         } else if (suctionProtocolType == Qusb::ProtocolType::Byd) {
                             jig->getDam3158Measure();
                         } else {

@@ -984,15 +984,12 @@ void cameratest::on_save_photo_clicked() {
         qDebug() << "Pixmap is empty!";
     }
 }
-void cameratest::readDongleSerialPortData() {
-    dongleSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
-    dongleSerialPortBuf.clear();                // 清除缓冲区
-
+void cameratest::onDongleSerialFrame(const QByteArray& dataTemp) {
     int write_len = 0;
     int len = dataTemp.size();
-    write_len = dongleRingBuf->usmile_ring_buffer_write(&p_dongleRingBuffer,
-                                                        reinterpret_cast<uint8_t*>(dataTemp.data()), dataTemp.size());
+    write_len = dongleRingBuf->usmile_ring_buffer_write(
+        &p_dongleRingBuffer, reinterpret_cast<const uint8_t*>(dataTemp.constData()),
+        static_cast<uint32_t>(dataTemp.size()));
 
     if (write_len < len) {
         qDebug() << "write_len:" << write_len << "len:" << dataTemp.size();

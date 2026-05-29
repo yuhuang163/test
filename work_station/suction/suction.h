@@ -1,4 +1,4 @@
-#ifndef SUCTION_H
+﻿#ifndef SUCTION_H
 #define SUCTION_H
 
 #include "test_base.h"
@@ -25,7 +25,7 @@ public:
     ImuDataT orgData;
     void startTask() override;
     void processReceivedData(const QByteArray& data) override;
-    void readUsbSerialPortData(void);
+    void onUsbSerialFrame(const QByteArray& data) override;
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
     void refreshJigUartState(int state) override;

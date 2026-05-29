@@ -456,11 +456,7 @@ void MainWindow::saveDongleUartLog(QString data) {
         qDebug() << "无法打开dongle日志文件：" << fileName;
     }
 }
-void MainWindow::readDongleSerialPortData() {
-    dongleSerialPortTimer->stop();              // 关闭定时器
-    QByteArray dataTemp = dongleSerialPortBuf;  // 读取缓冲区数据
-    dongleSerialPortBuf.clear();                // 清除缓冲区
-
+void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     if (rootBleOtaActive_) {
         rootBleOtaClient_.onRx(dataTemp);
         // const QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
@@ -474,8 +470,9 @@ void MainWindow::readDongleSerialPortData() {
 
     int write_len = 0;
     int len = dataTemp.size();
-    write_len = dongleRingBuf->usmile_ring_buffer_write(&p_dongleRingBuffer,
-                                                        reinterpret_cast<uint8_t*>(dataTemp.data()), dataTemp.size());
+    write_len = dongleRingBuf->usmile_ring_buffer_write(
+        &p_dongleRingBuffer, reinterpret_cast<const uint8_t*>(dataTemp.constData()),
+        static_cast<uint32_t>(dataTemp.size()));
 
     // printSquareData(reinterpret_cast<uint8_t*>(dataTemp.data()),
     // dataTemp.size());
