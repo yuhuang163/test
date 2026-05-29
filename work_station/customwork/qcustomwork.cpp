@@ -107,7 +107,22 @@ void QCustomWork::loadDefaultTemplates() {
         s2.needCaseDone = true;
         s2.mesTag = "BATTERY_INFO";
 
-        selectedSteps_ << s1 << s2;
+        TestStepDescriptor s3;
+        s3.name = "进入厂测模式";
+        s3.actionType = TestStepDescriptor::ProtocolSet;
+        s3.deviceCmd = "FacMode";
+        s3.params["value"] = 1;
+        s3.needCaseDone = true;
+        s3.mesTag = "FAC_MODE";
+
+        TestStepDescriptor s4;
+        s4.name = "读取按键信号";
+        s4.actionType = TestStepDescriptor::ProtocolGet;
+        s4.deviceCmd = "KeySignalRead";
+        s4.needCaseDone = true;
+        s4.mesTag = "KEY_SIGNAL";
+
+        selectedSteps_ << s1 << s2 << s3 << s4;
     }
     refreshStepListUI();
 }
@@ -138,7 +153,7 @@ void QCustomWork::refreshStepEditorUI(int index) {
     if (index < 0 || index >= selectedSteps_.size()) {
         ui->editStepName->clear();
         ui->editActionType->setCurrentIndex(0);
-        ui->editDeviceCmd->clear();
+        ui->editDeviceCmd->setCurrentIndex(-1);
         ui->editTimeout->setValue(300);
         ui->editNeedCaseDone->setChecked(false);
         ui->editMesTag->clear();
@@ -349,8 +364,33 @@ void QCustomWork::on_connectButton_clicked() { openDongleSerialPort(); }
 void QCustomWork::on_disconnectButton_clicked() { closeDongleSerialPort(); }
 void QCustomWork::on_usbConnectButton_clicked() { openUsbSerialPort(); }
 void QCustomWork::on_usbDisconnectButton_clicked() { closeUsbSerialPort(); }
-void QCustomWork::on_macInput_returnPressed() {}
-void QCustomWork::on_getMac_returnPressed() {}
+void QCustomWork::on_macInput_returnPressed() {
+    QString mac = ui->macInput->text().trimmed();
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    if (!macRegex.match(mac).hasMatch()) {
+        showlog("MAC地址格式错误: " + mac);
+        return;
+    }
+    macAddress = mac;
+    showlog("MAC地址已确认: " + mac);
+}
+
+void QCustomWork::on_getMac_returnPressed() {
+    QString sn = ui->getMac->text().trimmed();
+    if (sn.isEmpty()) {
+        showlog("SN/序列号不能为空");
+        return;
+    }
+    QRegularExpression snRegex(snPattern);
+    if (!snPattern.isEmpty() && !snRegex.match(sn).hasMatch()) {
+        showlog("序列号格式错误，要求格式为: " + snPattern);
+        ui->getMac->clear();
+        return;
+    }
+    showlog("SN校验通过，准备开始测试: " + sn);
+    pack.sn = sn;
+    startTask();
+}
 
 // 一些基础回调空实现（如有需要可实现）
 void QCustomWork::refreshBleState(int) {}
