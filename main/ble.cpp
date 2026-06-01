@@ -2,9 +2,6 @@
 #include "config.h"
 #include "esp_gatt_common_api.h"
 
-#include <map>
-#include <string>
-
 uint16_t conn_id = -1;
 static BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
@@ -55,21 +52,34 @@ struct FactoryBleProfile
     BLEUUID serviceUUID;
     BLEUUID notifyUUID;
     BLEUUID writeUUID;
+    bool hasExtraCharacteristics;
+};
+
+struct OtaBleProfile
+{
+    const char *name;
+    BLEUUID serviceUUID;
+    BLEUUID notifyUUID;
+    BLEUUID writeUUID;
+    BLEUUID dataUUID;
 };
 
 static FactoryBleProfile factoryProfiles[] = {
     {"V3",
      BLEUUID("524f4f54-9000-0080-0010-000000020001"),
      BLEUUID("524f4f54-9000-0080-0010-000000020002"),
-     BLEUUID("524f4f54-9000-0080-0010-000000020003")},
+     BLEUUID("524f4f54-9000-0080-0010-000000020003"),
+     false},
     {"TONGYONG",
      BLEUUID("9F6C1A20-3C4D-4E5F-A601-7B8C9D0E1122"),
      BLEUUID("9F6C1A22-3C4D-4E5F-A601-7B8C9D0E1122"),
-     BLEUUID("9F6C1A21-3C4D-4E5F-A601-7B8C9D0E1122")},
+     BLEUUID("9F6C1A21-3C4D-4E5F-A601-7B8C9D0E1122"),
+     false},
     {"usmile",
      BLEUUID("a6ed0201-d344-460a-8075-b9e8ec90d71b"),
      BLEUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b"),
-     BLEUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b")},
+     BLEUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b"),
+     true},
 };
 
 static FactoryBleProfile *activeFactoryProfile = nullptr;
@@ -81,10 +91,20 @@ static BLERemoteCharacteristic *CAMERAUUIDCharacteristic = nullptr;
 static BLERemoteCharacteristic *NotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *WriteCharacteristic = nullptr;
 
-static BLEUUID serviceUUIDOTA("a6ed0101-d344-460a-8075-b9e8ec90d71b"); // app
-static BLEUUID WriteUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b");   // 收发指令的服务
-static BLEUUID NotifyUUIDOTA("a6ed0103-d344-460a-8075-b9e8ec90d71b");  // 收发指令的服务
-static BLEUUID WriteOTADATA("a6ed0102-d344-460a-8075-b9e8ec90d71b");   // 发ota数据包的服务
+static OtaBleProfile otaProfiles[] = {
+    {"usmile",
+     BLEUUID("a6ed0101-d344-460a-8075-b9e8ec90d71b"),
+     BLEUUID("a6ed0103-d344-460a-8075-b9e8ec90d71b"),
+     BLEUUID("a6ed0103-d344-460a-8075-b9e8ec90d71b"),
+     BLEUUID("a6ed0102-d344-460a-8075-b9e8ec90d71b")},
+    {"V3",
+     BLEUUID("524f4f54-9000-0080-0010-000000030001"),
+     BLEUUID("524f4f54-9000-0080-0010-000000030002"),
+     BLEUUID("524f4f54-9000-0080-0010-000000030003"),
+     BLEUUID("524f4f54-9000-0080-0010-000000030003")},
+};
+
+static OtaBleProfile *activeOtaProfile = nullptr;
 static BLERemoteCharacteristic *AppDataCharacteristic = nullptr;       // 发送ota数据的特征
 static BLERemoteCharacteristic *AppNotifyCharacteristic = nullptr;
 static BLERemoteCharacteristic *AppWriteCharacteristic = nullptr;
@@ -99,33 +119,50 @@ static BLERemoteService *findFactoryRemoteService()
 {
     activeFactoryProfile = nullptr;
 
-    std::map<std::string, BLERemoteService *> *services = pClient->getServices();
-    if (!pClient->isConnected())
+    for (size_t i = 0; i < sizeof(factoryProfiles) / sizeof(factoryProfiles[0]); i++)
     {
-        Serial.println("服务发现中连接已断开(facRemoteService)");
-        return nullptr;
-    }
+        FactoryBleProfile *profile = &factoryProfiles[i];
+        BLERemoteService *service = pClient->getService(profile->serviceUUID);
 
-    if (services == nullptr)
-    {
-        return nullptr;
-    }
-
-    for (auto &servicePair : *services)
-    {
-        Serial.print("发现BLE服务：");
-        Serial.println(servicePair.first.c_str());
-
-        for (size_t i = 0; i < sizeof(factoryProfiles) / sizeof(factoryProfiles[0]); i++)
+        if (!pClient->isConnected())
         {
-            FactoryBleProfile *profile = &factoryProfiles[i];
-            if (servicePair.first == profile->serviceUUID.toString().c_str())
-            {
-                activeFactoryProfile = profile;
-                Serial.print("匹配factory服务：");
-                Serial.println(profile->name);
-                return servicePair.second;
-            }
+            Serial.println("服务发现中连接已断开(facRemoteService)");
+            return nullptr;
+        }
+
+        if (service != nullptr)
+        {
+            activeFactoryProfile = profile;
+            Serial.print("匹配factory服务：");
+            Serial.println(profile->name);
+            return service;
+        }
+    }
+
+    return nullptr;
+}
+
+static BLERemoteService *findOtaRemoteService()
+{
+    activeOtaProfile = nullptr;
+
+    for (size_t i = 0; i < sizeof(otaProfiles) / sizeof(otaProfiles[0]); i++)
+    {
+        OtaBleProfile *profile = &otaProfiles[i];
+        BLERemoteService *service = pClient->getService(profile->serviceUUID);
+
+        if (!pClient->isConnected())
+        {
+            Serial.println("服务发现中连接已断开(appRemoteService)");
+            return nullptr;
+        }
+
+        if (service != nullptr)
+        {
+            activeOtaProfile = profile;
+            Serial.print("匹配app服务：");
+            Serial.println(profile->name);
+            return service;
         }
     }
 
@@ -893,7 +930,7 @@ bool connectTobleServer()
                 return false;
             }
 
-            appRemoteService = pClient->getService(serviceUUIDOTA);
+            appRemoteService = findOtaRemoteService();
             if (!pClient->isConnected())
             {
                 Serial.println("服务发现中连接已断开(appRemoteService)");
@@ -920,24 +957,27 @@ bool connectTobleServer()
             return false;
         }
 
-        if (facRemoteService != nullptr)
+        if (facRemoteService != nullptr && activeFactoryProfile != nullptr)
         {
             Serial.println("找到facRemoteService服务");
-            CAMERAUUIDCharacteristic = facRemoteService->getCharacteristic(CameraUUID);
             NotifyCharacteristic = facRemoteService->getCharacteristic(activeFactoryProfile->notifyUUID);
             WriteCharacteristic = facRemoteService->getCharacteristic(activeFactoryProfile->writeUUID);
-            LOGUUIDCharacteristic = facRemoteService->getCharacteristic(LogUUID);
+            if (activeFactoryProfile->hasExtraCharacteristics)
+            {
+                CAMERAUUIDCharacteristic = facRemoteService->getCharacteristic(CameraUUID);
+                LOGUUIDCharacteristic = facRemoteService->getCharacteristic(LogUUID);
+            }
         }
         else
         {
             Serial.println("facRemoteService为空");
         }
-        if (appRemoteService != nullptr)
+        if (appRemoteService != nullptr && activeOtaProfile != nullptr)
         {
             Serial.println("找到appRemoteService服务");
-            AppDataCharacteristic = appRemoteService->getCharacteristic(WriteOTADATA);
-            AppNotifyCharacteristic = appRemoteService->getCharacteristic(NotifyUUIDOTA);
-            AppWriteCharacteristic = appRemoteService->getCharacteristic(WriteUUIDOTA);
+            AppDataCharacteristic = appRemoteService->getCharacteristic(activeOtaProfile->dataUUID);
+            AppNotifyCharacteristic = appRemoteService->getCharacteristic(activeOtaProfile->notifyUUID);
+            AppWriteCharacteristic = appRemoteService->getCharacteristic(activeOtaProfile->writeUUID);
         }
         else
         {
