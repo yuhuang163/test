@@ -1,4 +1,4 @@
-﻿build/*
+build/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/
 build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/
@@ -8,6 +8,8 @@ build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/libcrypto-1_1-x64.dll
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/libssl-1_1-x64.dll
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/Ubuntu.qss
+!build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/
+!build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/**
 new_production.pro.*
 .vscode/
 .qtcreator/

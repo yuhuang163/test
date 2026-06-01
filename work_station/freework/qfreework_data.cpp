@@ -81,6 +81,9 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     }
     qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
 
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(data)))
+        return;
+
     if (!isCurrentStep("获取基本信息")) {
         return;
     }
@@ -120,6 +123,9 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 
 
     // 电量测试为异步判定：在电池回调里显式回填当前步骤。
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(adc)))
+        return;
+
     if (!isCurrentStep("获取电量信息")) {
         return;
     }
@@ -155,6 +161,9 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
     // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolSnData"), QVariant::fromValue(data)))
+        return;
+
     if (!isCurrentStep("获取整机SN码")) {
         return;
     }
@@ -179,6 +188,9 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
 }
 
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolPeriphStateData"), QVariant::fromValue(data)))
+        return;
+
     // “获取外围设备状态”步骤采用异步判定：按设置项勾选和期望值判定通过。
     if (!isCurrentStep("获取外围设备状态")) {
         return;
@@ -246,6 +258,9 @@ void QFreeWork::refreshBleRssi(QString data) {
 }
 
 void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRssiData"), QVariant::fromValue(data)))
+        return;
+
     const int rssi = data.dbm;
     const bool isBtStep = isCurrentStep("获取BT RSSI");
     const bool isBleStep = isCurrentStep("获取BLE RSSI");
@@ -290,6 +305,9 @@ void QFreeWork::refreshKeySignalRead(ProtocolUInt32ValueData data) {
 }
 
 void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(data)))
+        return;
+
     if (!isCurrentStep("读取充电电流")) {
         return;
     }
@@ -510,6 +528,9 @@ void QFreeWork::reportTupleWriteRecord() {
 }
 
 void QFreeWork::refreshTupleData(ProtocolTupleData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolTupleData"), QVariant::fromValue(data)))
+        return;
+
     if (!isCurrentStep("读取设备三元组并比较")) {
         return;
     }

@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>4</number>
      </property>
      <widget class="QWidget" name="tab_key_setting">
       <attribute name="title">
@@ -1732,7 +1732,7 @@
             <x>0</x>
             <y>0</y>
             <width>1090</width>
-            <height>814</height>
+            <height>841</height>
            </rect>
           </property>
           <layout class="QGridLayout" name="gridLayout_7">
@@ -3571,6 +3571,101 @@ QGroupBox::title {
           </widget>
          </item>
         </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_test_flow">
+      <attribute name="title">
+       <string>测试流程编排</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_testFlow">
+       <property name="leftMargin">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="rightMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>4</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_testFlowToolbar">
+         <item>
+          <widget class="QLabel" name="label_testFlowStation">
+           <property name="text">
+            <string>工站</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="comboBox_testFlowStation"/>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_testFlowStopOnTestFail">
+           <property name="text">
+            <string>测试失败时结束整单测试</string>
+           </property>
+           <property name="toolTip">
+            <string>本工站任一步测试失败（含卡控、超时、钩子等）即不再执行后续步骤</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowSave">
+           <property name="text">
+            <string>保存流程</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowClear">
+           <property name="text">
+            <string>一键清空</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowImport">
+           <property name="text">
+            <string>新增已有功能块</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowAdd">
+           <property name="text">
+            <string>+</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollArea_testFlow">
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_testFlow">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>1105</width>
+            <height>775</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_testFlowBlocks"/>
+         </widget>
+        </widget>
        </item>
       </layout>
      </widget>

@@ -19,6 +19,8 @@ namespace Ui {
     class qsetting;
 }
 
+class TestFlowEditor;
+
 class qsetting : public QWidget {
     Q_OBJECT
 
@@ -36,6 +38,7 @@ private:
     void saveSubPIDAndFilter();
     void initSettingTooltips();
     void initFreeWorkTestOrderUi();
+    void initTestFlowEditorUi();
     void reorderFreeWorkCheckBoxes();
     void moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget);
     void moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col);
@@ -70,6 +73,7 @@ private:
     bool switchingTestOrderStation_ = false;
     QString originalStation_;
     bool stationReloading_ = false;
+    TestFlowEditor* testFlowEditor_ = nullptr;
 
 protected:
     virtual void closeEvent(QCloseEvent*);

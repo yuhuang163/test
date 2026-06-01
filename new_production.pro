@@ -47,6 +47,7 @@ INCLUDEPATH += agreement/qProtocol/qfctp
 INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
 INCLUDEPATH += agreement/qProtocol/qaiot
 INCLUDEPATH += platform/settings
+INCLUDEPATH += platform/test_case
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -132,6 +133,9 @@ SOURCES += \
     agreement/qProtocol/qpb/pb_encode.c \
     agreement/qProtocol/qpb/qpb.cpp \
     platform/settings/qsetting.cpp \
+    platform/settings/test_flow_editor.cpp \
+    platform/settings/widgets/test_case_edit_dialog.cpp \
+    platform/test_case/test_case.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qvisa/qvisa.cpp \
@@ -160,6 +164,8 @@ SOURCES += \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/testFunction.cpp \
+    work_station/freework/qfreework_case_hooks.cpp \
+    work_station/freework/qfreework_test_case.cpp \
     agreement/qplc/inovance_h5u_modbus_tcp.cpp \
     work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
@@ -222,6 +228,10 @@ HEADERS += \
     agreement/qProtocol/qpb/pb_encode.h \
     agreement/qProtocol/qpb/qpb.h \
     platform/settings/qsetting.h \
+    platform/settings/test_flow_editor.h \
+    platform/settings/widgets/test_case_edit_dialog.h \
+    platform/test_case/test_case.h \
+    platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
     agreement/qvisa/qvisa.h \
@@ -273,6 +283,7 @@ HEADERS += \
 FORMS += \
     agreement/qjig/fixture_uart.ui \
     platform/settings/qsetting.ui \
+    platform/settings/widgets/test_case_edit_dialog.ui \
     tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/ageing/ageing.ui \

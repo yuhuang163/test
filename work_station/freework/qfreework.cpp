@@ -1,11 +1,14 @@
 ﻿#include "qfreework.h"
 
+#include "test_case.h"
+
 #include <algorithm>
 #include <functional>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QFile>
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QTimer>
@@ -194,6 +197,19 @@ void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool 
     }
 }
 
+void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask) {
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = testData;
+    if (!ask.isEmpty())
+        stepRuntime_.ask = ask;
+}
+
+void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
+    const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
+    appendOneMesStep(&freeWorkMesSegments_, tag, pass, testData);
+}
+
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
@@ -277,6 +293,8 @@ QString plcBoolText(bool on) {
 }
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
+    registerFreeWorkTestCaseHooks();
+    registerQFreeWorkCatalogTestCaseHooks();
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = FREE_VER;
@@ -365,6 +383,24 @@ void QFreeWork::refreshOrderedTestIndexes() {
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
     ui->tabWidget->setTabText(0, tabName);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
+
+    useTestCaseFlow_ = false;
+    orderedTestCaseNames_.clear();
+    stopFlowOnTestFail_ = true;
+    QString stationKey = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+    if (stationKey.isEmpty())
+        stationKey = QStringLiteral("default");
+    if (QFile::exists(TestCasePaths::flowIniPath())) {
+        stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
+        const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
+        if (!flowItems.isEmpty()) {
+            for (const TestFlowItemEntry& entry : flowItems)
+                orderedTestCaseNames_.append(entry.caseName);
+            useTestCaseFlow_ = true;
+            qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
+            return;
+        }
+    }
 
     orderedTestIndexes_.clear();
     QSet<int> validIds;
@@ -462,43 +498,67 @@ void QFreeWork::startTask() {
             teststate++;
         }
         if (canRunOrderedTestStepLoop()) {
-            for (; teststate < orderedTestIndexes_.count();) {
-                const int functionId = orderedTestIndexes_.at(teststate);
-                auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                                       [functionId](const NamedFunction& item) { return item.id == functionId; });
-                if (it == testFunctions.end()) {
-                    ++teststate;
-                    stepRuntime_.reset();
-                    break;
-                }
-                const NamedFunction& currentFunction = *it;
-                const QString functionName = currentFunction.name;
+            const int stepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+            for (; teststate < stepCount;) {
+                TestCaseDefinition caseDef;
+                NamedFunction currentFunction;
+                QString functionName;
+                QString caseName;
+                bool needCaseDone = false;
+                bool hasNamedFunction = false;
 
-                // 阶段1：首次进入当前步骤，仅触发一次动作（通常是发协议命令）
+                if (useTestCaseFlow_) {
+                    caseName = orderedTestCaseNames_.at(teststate);
+                    if (!TestCaseRunner::loadCase(caseName, caseDef)) {
+                        ++teststate;
+                        stepRuntime_.reset();
+                        clearActiveTestCase();
+                        break;
+                    }
+                    functionName = TestCaseRunner::stepLabel(caseDef);
+                    needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
+                } else {
+                    const int functionId = orderedTestIndexes_.at(teststate);
+                    auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
+                                           [functionId](const NamedFunction& item) { return item.id == functionId; });
+                    if (it == testFunctions.end()) {
+                        ++teststate;
+                        stepRuntime_.reset();
+                        break;
+                    }
+                    currentFunction = *it;
+                    hasNamedFunction = true;
+                    functionName = currentFunction.name;
+                    needCaseDone = currentFunction.needCaseDone;
+                }
+
                 if (!stepRuntime_.started) {
                     if (!canGoNext) {
                         break;
                     }
                     stepRuntime_.started = true;
-                    stepRuntime_.functionId = functionId;
-                    stepRuntime_.done = !currentFunction.needCaseDone;
+                    stepRuntime_.functionId = hasNamedFunction ? currentFunction.id : -1;
+                    stepRuntime_.done = useTestCaseFlow_ ? false : !needCaseDone;
                     stepRuntime_.pass = true;
                     stepRuntime_.testData = "-";
                     stepRuntime_.ask = "通过";
                     stepRuntime_.caseTimer.restart();
                     lastCommandRetryCount = 0;
                     showlog("开始测试内容：" + functionName);
-                    executeFunctionByName(functionName);  //执行操作
-                    qDebug() << "程序在跑" << teststate << orderedTestIndexes_.count();
+                    if (useTestCaseFlow_) {
+                        showTestCasePromptForStep(caseDef);
+                        TestCaseRunner::beginStep(this, caseDef);
+                    }
+                    else
+                        executeFunctionByName(functionName);
+                    qDebug() << "程序在跑" << teststate << stepCount;
                     break;
                 }
 
-                // 阶段2：等待通信链路允许继续
                 if (!canGoNext) {
                     break;
                 }
 
-                // 发送重试超时：将当前步骤判失败并放行，避免卡住不判定。
                 if (sendRetryOver) {
                     sendRetryOver = false;
                     stepRuntime_.done = true;
@@ -507,9 +567,13 @@ void QFreeWork::startTask() {
                     showlog("步骤超时未收到响应，判定失败：" + functionName);
                 }
 
-                // 需要业务判定的步骤必须等异步回调将 done 置位后再推进，
-                // 防止“有回包即通过”。
-                if (currentFunction.needCaseDone && !stepRuntime_.done) {
+                if (useTestCaseFlow_ && !caseDef.gate.enabled && !caseDef.hook.enabled && canGoNext && !stepRuntime_.done) {
+                    stepRuntime_.done = true;
+                    stepRuntime_.pass = true;
+                    stepRuntime_.testData = QStringLiteral("ok");
+                }
+
+                if (needCaseDone && !stepRuntime_.done) {
                     break;
                 }
 
@@ -517,32 +581,42 @@ void QFreeWork::startTask() {
                     TestResult = failValue;
                 }
 
-                // static const QSet<QString> skipTableFunctions = {"获取外围设备状态", "获取基本信息"};
-                // if (!skipTableFunctions.contains(functionName)) {
-                    const qint64 caseElapsedMs = stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0;
-                    const int caseRetryCount = lastCommandRetryCount;
-                    showlog(QString("测试内容完成：%1，重试次数=%2，测试时长=%3ms")
-                                .arg(functionName)
-                                .arg(caseRetryCount)
-                                .arg(caseElapsedMs));
-                    TestItem test;
-                    test.testItem = functionName;
-                    test.testData = stepRuntime_.testData;
-                    test.testResult = stepRuntime_.pass ? "通过" : "失败";
-                    test.ask = stepRuntime_.ask;
-                    testItems.append(test);
+                const qint64 caseElapsedMs = stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0;
+                const int caseRetryCount = lastCommandRetryCount;
+                showlog(QString("测试内容完成：%1，重试次数=%2，测试时长=%3ms")
+                            .arg(functionName)
+                            .arg(caseRetryCount)
+                            .arg(caseElapsedMs));
+                TestItem test;
+                test.testItem = functionName;
+                test.testData = stepRuntime_.testData;
+                test.testResult = stepRuntime_.pass ? "通过" : "失败";
+                test.ask = stepRuntime_.ask;
+                testItems.append(test);
+                if (useTestCaseFlow_) {
+                    appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
+                    if (caseDef.timing.delayAfterMs > 0)
+                        waitWork(caseDef.timing.delayAfterMs);
+                    closeTestCasePrompt();
+                    clearActiveTestCase();
+                } else {
                     appendFreeWorkMesForCompletedStep(currentFunction, stepRuntime_.pass, stepRuntime_.testData);
-                    testResultTableUpdate(testItems);
-                // }
+                }
+                testResultTableUpdate(testItems);
 
                 ++teststate;
+                if (useTestCaseFlow_ && stopFlowOnTestFail_ && !stepRuntime_.pass) {
+                    showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
+                    teststate = orderedTestCaseNames_.count();
+                }
                 stepRuntime_.reset();
 
                 break;
             }
         }
 
-        if (teststate == orderedTestIndexes_.count() && teststate != 0) {
+        const int flowStepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+        if (teststate == flowStepCount && teststate != 0) {
             // testItems 在 testResultTableUpdate 内会 clear；MES 分项与上表同步写入 freeWorkMesSegments_。
             const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
             showlog("mesItemValue======" + mesItemValue);
@@ -939,6 +1013,28 @@ void QFreeWork::closeKeyWaitPrompt() {
     }
 }
 
+void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
+    closeTestCasePrompt();
+    if (!def.meta.promptEnabled)
+        return;
+    const QString text = def.meta.promptText.trimmed();
+    if (text.isEmpty())
+        return;
+    const QString title = def.meta.name.trimmed();
+    testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text, QMessageBox::NoButton, this);
+    testCasePrompt_->setStandardButtons(QMessageBox::NoButton);
+    testCasePrompt_->setAttribute(Qt::WA_DeleteOnClose);
+    connect(testCasePrompt_, &QObject::destroyed, this, [this]() { testCasePrompt_ = nullptr; });
+    testCasePrompt_->show();
+}
+
+void QFreeWork::closeTestCasePrompt() {
+    if (testCasePrompt_ != nullptr) {
+        testCasePrompt_->close();
+        testCasePrompt_ = nullptr;
+    }
+}
+
 void QFreeWork::checkbutton(ProtocolButtonStateData data) {
     if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
         return;
@@ -1042,6 +1138,7 @@ void QFreeWork::initDate() {
     currentKeyTestName_.clear();
     currentKeyExpectedKey_.clear();
     closeKeyWaitPrompt();
+    closeTestCasePrompt();
     lastBrushInstrumentProfile_ = -1;
     cmwGprfBurstDoneSinceStartRx_ = false;
     gInstrumentCmwGprfPrimed = false;

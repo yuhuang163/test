@@ -40,7 +40,17 @@ new_product_test/
 │
 ├── platform/                             ← 平台层（I/O、配置 UI 等基础设施）
 │   ├── serial/serial_channel.h/.cpp     ← SerialChannel（防抖读、RTS/DTR、QSerialPort 封装）
-│   └── settings/qsetting.h/.cpp/.ui      ← 上位机设置界面（SETTINGS 加载/保存）
+│   ├── test_case/                        ← 功能测试库（test_case.h/.cpp 单入口）
+│   │   ├── test_case_types.h             ← case 数据结构
+│   │   └── test_case.*                   ← 路径/存储/校验/指令表/卡控/钩子/执行
+│   └── settings/
+│       ├── qsetting.h/.cpp/.ui           ← 上位机设置界面（SETTINGS 加载/保存）
+│       ├── test_flow_editor.*            ← Tab「测试流程编排」+ 流程功能块
+│       └── widgets/test_case_edit_dialog.* ← 测试项配置对话框
+│
+├── test_case/                            ← 运行时目录（与 exe 同级的配置，非源码）
+│   ├── 总的测试流程.ini                   ← [Station/<工站键>]/Items=case1,case2
+│   └── <ASCII名>.ini                     ← 单功能块 Meta/Send/Timing/Gate/Hook
 │
 ├── my_set/                               ← 工程公共定义与聚合头
 │   ├── AbIni.h                           ← 公共头聚合/版本宏/全局依赖

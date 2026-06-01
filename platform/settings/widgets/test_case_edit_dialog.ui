@@ -1,0 +1,316 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TestCaseEditDialog</class>
+ <widget class="QDialog" name="TestCaseEditDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>640</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>测试项配置</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_root">
+   <item>
+    <widget class="QGroupBox" name="groupBox_meta">
+     <property name="title">
+      <string>测试项信息</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_meta">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_caseName">
+        <property name="text">
+         <string>名称</string>
+        </property>
+        <property name="toolTip">
+         <string>流程块、日志与配置文件名（支持中文，勿含 \ / : * ? &quot; &lt; &gt; |）</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="lineEdit_caseName">
+        <property name="placeholderText">
+         <string>例如：读取电量</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_mesTag">
+        <property name="text">
+         <string>上报MES名称</string>
+        </property>
+        <property name="toolTip">
+         <string>勾选MES后，本步结果在系统中的英文项名；需与MES约定一致</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineEdit_mesTag">
+        <property name="placeholderText">
+         <string>例如：BATTERY_INFO</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_promptEnabled">
+        <property name="text">
+         <string>测试时弹出操作提示</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_promptText">
+        <property name="text">
+         <string>提示文字</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QPlainTextEdit" name="plainTextEdit_promptText">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>80</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>例如：请观察电量是否上升</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_send">
+     <property name="title">
+      <string>测试指令</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_send">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_action">
+        <property name="text">
+         <string>操作方式</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_action"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_deviceCmd">
+        <property name="text">
+         <string>指令内容</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_deviceCmd"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_param">
+        <property name="text">
+         <string>指令参数</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QStackedWidget" name="stackedWidget_param">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="page_paramNone"/>
+        <widget class="QWidget" name="page_paramInt">
+         <layout class="QFormLayout" name="formLayout_paramInt">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_intParam">
+            <property name="text">
+             <string>数字参数</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="spinBox_intParam">
+            <property name="minimum">
+             <number>-100000000</number>
+            </property>
+            <property name="maximum">
+             <number>100000000</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="page_paramJson">
+         <layout class="QVBoxLayout" name="verticalLayout_paramJson">
+          <item>
+           <widget class="QPlainTextEdit" name="plainTextEdit_jsonParam">
+            <property name="placeholderText">
+             <string>每行一项：名称=值；或整段 JSON</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_timing">
+     <property name="title">
+      <string>等待时间</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_timing">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_delayBefore">
+        <property name="text">
+         <string>执行前等待(毫秒)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="spinBox_delayBefore">
+        <property name="maximum">
+         <number>600000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_delayAfter">
+        <property name="text">
+         <string>完成后等待(毫秒)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="spinBox_delayAfter">
+        <property name="maximum">
+         <number>600000</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_gate">
+     <property name="title">
+      <string>合格判定</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_gate">
+      <item row="0" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_gateEnabled">
+        <property name="text">
+         <string>根据设备回传结果判定通过/失败</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_gateReportType">
+        <property name="text">
+         <string>回传数据类型</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_gateReportType"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_gateField">
+        <property name="text">
+         <string>判定项目</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QComboBox" name="comboBox_gateField"/>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_gateOp">
+        <property name="text">
+         <string>判定方式</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QComboBox" name="comboBox_gateOp"/>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_gateLow">
+        <property name="text">
+         <string>最小值</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="lineEdit_gateLow"/>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_gateHigh">
+        <property name="text">
+         <string>最大值</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QLineEdit" name="lineEdit_gateHigh"/>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_gateExpected">
+        <property name="text">
+         <string>期望文本</string>
+        </property>
+        <property name="toolTip">
+         <string>仅「等于」版本号等文本判定时填写</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="lineEdit_gateExpected"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_hook">
+     <property name="title">
+      <string>特殊步骤（工程师用）</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_hook">
+      <item row="0" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_hookEnabled">
+        <property name="text">
+         <string>不用测试指令，走预置复杂流程</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_hookId">
+        <property name="text">
+         <string>预置流程类型</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_hookId"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

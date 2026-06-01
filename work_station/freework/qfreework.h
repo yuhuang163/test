@@ -5,11 +5,13 @@
 #include <QTimer>
 #include <QWidget>
 
+#include <QHash>
 #include <QPair>
 #include "Abini.h"
 #include "qtupleservice.h"
 #include "qapplication.h"
 #include "test_base.h"
+#include "test_case_types.h"
 #include "inovance_h5u_modbus_tcp.h"
 #include "ui_qfreework.h"
 
@@ -19,13 +21,27 @@ namespace Ui {
     class QFreeWork;
 }
 
+class QFreeWorkTestCaseHookRegistrar;
+
 class QFreeWork : public test_base {
     Q_OBJECT
+    friend class QFreeWorkTestCaseHookRegistrar;
+
 public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
     Ui::QFreeWork* ui;
     void startTask() override;
+
+    /** test_case 流程运行时（仅本工站使用） */
+    bool useTestCaseFlow(const QString& stationKey = QString()) const;
+    QStringList testCaseFlowItems(const QString& stationKey = QString()) const;
+    void setActiveTestCase(const TestCaseDefinition& def);
+    void clearActiveTestCase();
+    bool isActiveTestCaseStep(const QString& stepLabel) const;
+    bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
+    void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
+    const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
 
 private:
     int teststate = -1;
@@ -99,6 +115,7 @@ private:
     QString currentKeyTestName_;
     QString currentKeyExpectedKey_;
     QMessageBox* keyWaitPrompt_ = nullptr;
+    QMessageBox* testCasePrompt_ = nullptr;
     bool freeWorkKeyWaiting_ = false;
     bool keyWaitPromptProgrammaticClose_ = false;
     /** 用于取消「PLC 后等 BLE 按键」的超时 singleShot。 */
@@ -149,6 +166,21 @@ private:
     void refreshOrderedTestIndexes();
     QVector<int> loadIndexesFromConfig();
     QVector<int> orderedTestIndexes_;
+    QStringList orderedTestCaseNames_;
+    /** 工站级：任一步失败是否结束整单流程（来自 总的测试流程.ini） */
+    bool stopFlowOnTestFail_ = true;
+    bool useTestCaseFlow_ = false;
+    struct TestCaseStepResult {
+        bool done = false;
+        bool pass = true;
+        QString testData;
+    };
+    TestCaseDefinition activeTestCase_;
+    QString activeTestCaseStepLabel_;
+    TestCaseStepResult testCaseStepResult_;
+    bool testCaseStepActive_ = false;
+    void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
+    void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
     /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
     QVector<QPair<QString, QString>> freeWorkMesSegments_;
     QByteArray expectedTailSnFromMes;
@@ -216,6 +248,8 @@ private:
     /** 等待仪器发包后发停止接收并算 PER；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用默认名。 */
     void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
     void closeKeyWaitPrompt();
+    void showTestCasePromptForStep(const TestCaseDefinition& def);
+    void closeTestCasePrompt();
     void runPlcModbusConnectTest();
     /** 旋钮测试流程结束后对 PLC 线圈发复位（默认 M211，PLC/SwitchTestDoneResetM*）。同步一步、无 needCaseDone。 */
     void runPlcSwitchTestDoneResetM();

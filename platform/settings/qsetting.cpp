@@ -16,6 +16,7 @@
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
+#include "test_flow_editor.h"
 #include "bydmes.h"
 
 struct FreeWorkTestCatalogItem {
@@ -217,6 +218,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     });
     initSettingTooltips();
     initFreeWorkTestOrderUi();
+    initTestFlowEditorUi();
     RestoreFacDefaultSetting();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 
@@ -233,6 +235,7 @@ void qsetting::initSettingTooltips() {
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
     const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);
     const int tabFlow = ui->tabWidget->indexOf(ui->tab_3);
+    const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
     if (tabFixture >= 0) {
         ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
     }
@@ -244,6 +247,10 @@ void qsetting::initSettingTooltips() {
     }
     if (tabFlow >= 0) {
         ui->tabWidget->setTabToolTip(tabFlow, QStringLiteral("自由工站测试流程：左侧为执行顺序，右侧按分类勾选后拖入配置区。"));
+    }
+    if (tabTestFlow >= 0) {
+        ui->tabWidget->setTabToolTip(tabTestFlow,
+                                     QStringLiteral("编排 test_case/*.ini 与 总的测试流程.ini；不修改旧 TestOrder。"));
     }
 
     static const QVector<QPair<QString, QString>> kTips = {
@@ -2254,5 +2261,18 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
                                                     "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
     if (!path.isEmpty()) {
         ui->lineEdit_mes_config_file_path->setText(path);
+    }
+}
+
+void qsetting::initTestFlowEditorUi() {
+    testFlowEditor_ = new TestFlowEditor(this);
+    testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
+                            ui->verticalLayout_testFlowBlocks, ui->checkBox_testFlowStopOnTestFail,
+                            ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->pushButton_testFlowImport,
+                            ui->pushButton_testFlowAdd);
+    const int tabIdx = ui->tabWidget->indexOf(ui->tab_test_flow);
+    if (tabIdx >= 0) {
+        ui->tabWidget->setTabToolTip(tabIdx,
+                                     QStringLiteral("编排 test_case/*.ini 与 总的测试流程.ini；不修改旧 TestOrder。"));
     }
 }
