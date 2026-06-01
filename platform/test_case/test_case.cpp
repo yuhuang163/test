@@ -7,7 +7,10 @@
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QSet>
+
+#include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
 
@@ -94,31 +97,38 @@ QString stationGroup(const QString& stationKey) {
     return QStringLiteral("Station/") + stationKey.trimmed();
 }
 
-TestCaseGateOp gateOpFromString(const QString& s) {
-    if (s == QLatin1String("gt"))
-        return TestCaseGateOp::Gt;
-    if (s == QLatin1String("lt"))
-        return TestCaseGateOp::Lt;
-    if (s == QLatin1String("eq"))
-        return TestCaseGateOp::Eq;
-    if (s == QLatin1String("compareVersions"))
-        return TestCaseGateOp::CompareVersions;
-    return TestCaseGateOp::Range;
+QString flowStationsCatalogGroup() {
+    return QStringLiteral("FlowStations");
 }
 
-QString gateOpToString(TestCaseGateOp op) {
-    switch (op) {
-    case TestCaseGateOp::Gt:
-        return QStringLiteral("gt");
-    case TestCaseGateOp::Lt:
-        return QStringLiteral("lt");
-    case TestCaseGateOp::Eq:
-        return QStringLiteral("eq");
-    case TestCaseGateOp::CompareVersions:
-        return QStringLiteral("compareVersions");
-    default:
-        return QStringLiteral("range");
+QVector<TestFlowStationEntry> builtinFlowStationPresets() {
+    return {
+        {QStringLiteral("default"), QStringLiteral("默认工站")},
+        {QStringLiteral("FREE_WORK"), QStringLiteral("自由工站")},
+        {QStringLiteral("ASSEMBLY_CURRENT_TEST"), QStringLiteral("组装电流测试工站")},
+        {QStringLiteral("AGING_TEST"), QStringLiteral("老化测试工站")},
+        {QStringLiteral("BUTTON_TEST"), QStringLiteral("按键测试工站")},
+        {QStringLiteral("SCREEN_TEST"), QStringLiteral("屏幕测试工站")},
+        {QStringLiteral("BLUETOOTH_TEST"), QStringLiteral("蓝牙测试工站")},
+        {QStringLiteral("SUCTION_TEST"), QStringLiteral("吸力测试工站")},
+    };
+}
+
+QString lookupPresetDisplayName(const QString& key) {
+    for (const TestFlowStationEntry& entry : builtinFlowStationPresets()) {
+        if (entry.key.compare(key, Qt::CaseInsensitive) == 0)
+            return entry.displayName;
     }
+    return QString();
+}
+
+QString lookupPresetKeyFromDisplayName(const QString& displayName) {
+    const QString n = displayName.trimmed();
+    for (const TestFlowStationEntry& entry : builtinFlowStationPresets()) {
+        if (entry.displayName == n)
+            return entry.key;
+    }
+    return QString();
 }
 
 /** 与 SETTINGS（上位机设置.ini）一致：IniFormat + UTF-8，避免 Windows 下中文写成 \\x 转义。 */
@@ -147,6 +157,209 @@ void syncTestCaseIni(QSettings& ini, const QString& filePath) {
 }
 
 }  // namespace
+
+QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
+    return builtinFlowStationPresets();
+}
+
+QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
+    TestCasePaths::ensureRootDir();
+    QHash<QString, QString> nameByKey;
+    for (const TestFlowStationEntry& preset : builtinFlowStationPresets())
+        nameByKey.insert(preset.key, preset.displayName);
+
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(flowStationsCatalogGroup());
+    const QStringList catalogKeys = ini.childKeys();
+    for (const QString& key : catalogKeys) {
+        const QString k = key.trimmed();
+        if (k.isEmpty())
+            continue;
+        const QString name = ini.value(key).toString().trimmed();
+        nameByKey.insert(k, name.isEmpty() ? lookupPresetDisplayName(k) : name);
+    }
+    ini.endGroup();
+
+    for (const QString& flowKey : TestCaseStore::listStationKeysFromFlow()) {
+        const QString k = flowKey.trimmed();
+        if (k.isEmpty() || nameByKey.contains(k))
+            continue;
+        const QString presetName = lookupPresetDisplayName(k);
+        nameByKey.insert(k, presetName.isEmpty() ? k : presetName);
+    }
+
+    if (catalogKeys.isEmpty()) {
+        QVector<TestFlowStationEntry> seed;
+        seed.reserve(nameByKey.size());
+        for (auto it = nameByKey.constBegin(); it != nameByKey.constEnd(); ++it)
+            seed.append({it.key(), it.value()});
+        saveFlowStationCatalog(seed);
+    }
+
+    QVector<TestFlowStationEntry> result;
+    result.reserve(nameByKey.size());
+    for (auto it = nameByKey.constBegin(); it != nameByKey.constEnd(); ++it)
+        result.append({it.key(), it.value()});
+    std::sort(result.begin(), result.end(), [](const TestFlowStationEntry& a, const TestFlowStationEntry& b) {
+        if (a.key == QStringLiteral("default"))
+            return true;
+        if (b.key == QStringLiteral("default"))
+            return false;
+        if (a.key == QStringLiteral("FREE_WORK"))
+            return true;
+        if (b.key == QStringLiteral("FREE_WORK"))
+            return false;
+        return a.displayName.localeAwareCompare(b.displayName) < 0;
+    });
+    return result;
+}
+
+bool TestCaseStore::saveFlowStationCatalog(const QVector<TestFlowStationEntry>& entries) {
+    TestCasePaths::ensureRootDir();
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(flowStationsCatalogGroup());
+    const QStringList oldKeys = ini.childKeys();
+    for (const QString& oldKey : oldKeys)
+        ini.remove(oldKey);
+    for (const TestFlowStationEntry& entry : entries) {
+        const QString k = entry.key.trimmed();
+        if (k.isEmpty())
+            continue;
+        const QString name = entry.displayName.trimmed();
+        ini.setValue(k, name.isEmpty() ? lookupPresetDisplayName(k) : name);
+    }
+    ini.endGroup();
+    syncTestCaseIni(ini, flowPath);
+    return true;
+}
+
+QString TestCaseStore::flowStationDisplayName(const QString& stationKey) {
+    const QString k = stationKey.trimmed();
+    if (k.isEmpty())
+        return QString();
+    for (const TestFlowStationEntry& entry : loadFlowStationCatalog()) {
+        if (entry.key.compare(k, Qt::CaseInsensitive) == 0)
+            return entry.displayName;
+    }
+    const QString preset = lookupPresetDisplayName(k);
+    return preset.isEmpty() ? k : preset;
+}
+
+QString TestCaseStore::resolveFlowStationKey(const QString& displayNameOrKey) {
+    const QString t = displayNameOrKey.trimmed();
+    if (t.isEmpty())
+        return QString();
+    for (const TestFlowStationEntry& entry : builtinFlowStationPresets()) {
+        if (entry.key.compare(t, Qt::CaseInsensitive) == 0)
+            return entry.key;
+        if (entry.displayName == t)
+            return entry.key;
+    }
+    const QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    for (const TestFlowStationEntry& entry : catalog) {
+        if (entry.key.compare(t, Qt::CaseInsensitive) == 0)
+            return entry.key;
+        if (entry.displayName == t)
+            return entry.key;
+    }
+    return t;
+}
+
+bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut) {
+    const QString name = displayName.trimmed();
+    if (name.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站名称不能为空");
+        return false;
+    }
+    if (!TestCasePaths::isValidCaseFileName(name, errorOut))
+        return false;
+
+    const QString presetKey = lookupPresetKeyFromDisplayName(name);
+    const QString key = presetKey.isEmpty() ? name : presetKey;
+    QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    for (const TestFlowStationEntry& entry : catalog) {
+        if (entry.displayName == name) {
+            if (errorOut)
+                *errorOut = QStringLiteral("工站名称已存在：%1").arg(name);
+            return false;
+        }
+        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+            if (errorOut)
+                *errorOut = QStringLiteral("工站已存在：%1").arg(name);
+            return false;
+        }
+    }
+    catalog.append({key, name});
+    return saveFlowStationCatalog(catalog);
+}
+
+bool TestCaseStore::removeFlowStation(const QString& key, QString* errorOut) {
+    const QString k = key.trimmed();
+    if (k.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站键无效");
+        return false;
+    }
+    QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    bool found = false;
+    for (int i = catalog.size() - 1; i >= 0; --i) {
+        if (catalog[i].key.compare(k, Qt::CaseInsensitive) == 0) {
+            catalog.removeAt(i);
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站不在目录中：%1").arg(k);
+        return false;
+    }
+    if (!saveFlowStationCatalog(catalog))
+        return false;
+
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(stationGroup(k));
+    ini.remove(QStringLiteral("Items"));
+    ini.remove(QStringLiteral("StopFlowOnTestFail"));
+    ini.remove(QStringLiteral("StopOnGateFail"));
+    ini.endGroup();
+    syncTestCaseIni(ini, flowPath);
+    return true;
+}
+
+TestCaseGateOp gateOpFromString(const QString& s) {
+    if (s == QLatin1String("gt"))
+        return TestCaseGateOp::Gt;
+    if (s == QLatin1String("lt"))
+        return TestCaseGateOp::Lt;
+    if (s == QLatin1String("eq"))
+        return TestCaseGateOp::Eq;
+    if (s == QLatin1String("compareVersions"))
+        return TestCaseGateOp::CompareVersions;
+    return TestCaseGateOp::Range;
+}
+
+QString gateOpToString(TestCaseGateOp op) {
+    switch (op) {
+    case TestCaseGateOp::Gt:
+        return QStringLiteral("gt");
+    case TestCaseGateOp::Lt:
+        return QStringLiteral("lt");
+    case TestCaseGateOp::Eq:
+        return QStringLiteral("eq");
+    case TestCaseGateOp::CompareVersions:
+        return QStringLiteral("compareVersions");
+    default:
+        return QStringLiteral("range");
+    }
+}
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     Q_UNUSED(errorOut);
@@ -178,6 +391,7 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
 
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
     out.timing.delayAfterMs = ini.value(QStringLiteral("Timing/DelayAfterMs"), 0).toInt();
+    out.timing.commandTimeoutMs = ini.value(QStringLiteral("Timing/CommandTimeoutMs"), 0).toInt();
 
     out.gate.enabled = ini.value(QStringLiteral("Gate/Enabled"), false).toBool();
     out.gate.reportType = ini.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
@@ -217,6 +431,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
     ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
+    ini.setValue(QStringLiteral("Timing/CommandTimeoutMs"), def.timing.commandTimeoutMs);
 
     ini.setValue(QStringLiteral("Gate/Enabled"), def.gate.enabled);
     ini.setValue(QStringLiteral("Gate/ReportType"), def.gate.reportType);
@@ -379,6 +594,10 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
 
     if (def.timing.delayBeforeMs < 0 || def.timing.delayAfterMs < 0)
         errors.append(QStringLiteral("延时不能为负数"));
+    if (def.timing.commandTimeoutMs < 0)
+        errors.append(QStringLiteral("指令超时不能为负数"));
+    if (def.timing.commandTimeoutMs > 0 && def.timing.commandTimeoutMs < 100)
+        errors.append(QStringLiteral("指令超时须为 0（自动）或不少于 100 毫秒"));
 
     if (def.meta.promptEnabled && def.meta.promptText.trimmed().isEmpty())
         errors.append(QStringLiteral("已勾选操作提示时须填写提示文字"));
@@ -1022,4 +1241,10 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
     if (def.hook.enabled)
         return true;
     return def.gate.enabled;
+}
+
+int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
+    if (def.timing.commandTimeoutMs > 0)
+        return def.timing.commandTimeoutMs;
+    return def.gate.enabled ? 8000 : 3000;
 }

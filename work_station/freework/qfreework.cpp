@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -387,7 +387,14 @@ void QFreeWork::refreshOrderedTestIndexes() {
     useTestCaseFlow_ = false;
     orderedTestCaseNames_.clear();
     stopFlowOnTestFail_ = true;
-    QString stationKey = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+    QString stationKey = TestCaseStore::resolveFlowStationKey(
+        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    if (TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
+        const QString byName = TestCaseStore::resolveFlowStationKey(
+            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        if (!byName.isEmpty())
+            stationKey = byName;
+    }
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
     if (QFile::exists(TestCasePaths::flowIniPath())) {

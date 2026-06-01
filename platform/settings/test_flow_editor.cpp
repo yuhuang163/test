@@ -1,4 +1,4 @@
-﻿#include "test_flow_editor.h"
+#include "test_flow_editor.h"
 
 #include "test_case.h"
 #include "widgets/test_case_edit_dialog.h"
@@ -11,6 +11,7 @@
 #include <QContextMenuEvent>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QDrag>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
@@ -170,75 +171,6 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     menu.exec(event->globalPos());
 }
 
-// ---------- 工站列表（本文件内） ----------
-
-namespace {
-
-struct TestFlowStationItem {
-    QString name;
-    QString key;
-};
-
-const QVector<TestFlowStationItem> kPresetStations = {
-    {QStringLiteral("default"), QStringLiteral("default")},
-    {QStringLiteral("自由工站"), QStringLiteral("FREE_WORK")},
-    {QStringLiteral("吸力测试工站"), QStringLiteral("SUCTION_TEST")},
-};
-
-QString stationKeyFromDisplayName(const QString& raw) {
-    const QString t = raw.trimmed();
-    for (const auto& p : kPresetStations) {
-        if (p.name == t || p.key == t)
-            return p.key;
-    }
-    return t;
-}
-
-QString stationDisplayNameFromKey(const QString& key) {
-    for (const auto& p : kPresetStations) {
-        if (p.key == key)
-            return p.name;
-    }
-    return key;
-}
-
-QVector<TestFlowStationItem> collectTestFlowStations() {
-    QSet<QString> unique;
-    QVector<TestFlowStationItem> stations;
-    auto append = [&](const QString& name, const QString& key) {
-        const QString k = key.trimmed();
-        if (k.isEmpty() || unique.contains(k))
-            return;
-        unique.insert(k);
-        stations.append({name.trimmed().isEmpty() ? stationDisplayNameFromKey(k) : name.trimmed(), k});
-    };
-
-    for (const auto& p : kPresetStations)
-        append(p.name, p.key);
-
-    append(QString(), SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
-    append(QString(), SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
-
-    for (const QString& k : TestCaseStore::listStationKeysFromFlow())
-        append(stationDisplayNameFromKey(k), k);
-
-    SETTINGS.beginGroup(QStringLiteral("TestOrder"));
-    for (const QString& g : SETTINGS.childGroups())
-        append(g, stationKeyFromDisplayName(g));
-    SETTINGS.endGroup();
-
-    const QStringList rootGroups = SETTINGS.childGroups();
-    for (const QString& g : rootGroups) {
-        if (g.startsWith(QStringLiteral("TestOrder_")))
-            append(stationDisplayNameFromKey(g.mid(11)), g.mid(11));
-    }
-
-    if (stations.isEmpty())
-        stations.append({QStringLiteral("default"), QStringLiteral("default")});
-    return stations;
-}
-
-}  // namespace
 
 // ---------- TestFlowEditor ----------
 
@@ -267,6 +199,15 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     }
 
     if (auto* toolbar = stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
+        const int stationIdx = toolbar->indexOf(stationCombo_);
+        const int insertToolbar = stationIdx >= 0 ? stationIdx + 1 : 1;
+        auto* btnNewStation = new QPushButton(QStringLiteral("新建工站"), stationCombo_->parentWidget());
+        auto* btnDelStation = new QPushButton(QStringLiteral("删除工站"), stationCombo_->parentWidget());
+        btnNewStation->setToolTip(QStringLiteral("登记新工站（仅填中文名称；内置工站如「自由工站」会自动对应产线配置）"));
+        btnDelStation->setToolTip(QStringLiteral("从工站目录移除当前工站，并删除其流程配置（不影响 test_case 功能块 ini）"));
+        toolbar->insertWidget(insertToolbar, btnNewStation);
+        toolbar->insertWidget(insertToolbar + 1, btnDelStation);
+
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
         auto* btnDown = new QPushButton(QStringLiteral("下移"), stationCombo_->parentWidget());
         btnUp->setToolTip(QStringLiteral("将当前选中的功能块上移一步"));
@@ -275,19 +216,15 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         const int insertAt = saveIdx >= 0 ? saveIdx : toolbar->count();
         toolbar->insertWidget(insertAt, btnUp);
         toolbar->insertWidget(insertAt + 1, btnDown);
+        connect(btnNewStation, &QPushButton::clicked, this, [this]() { promptAddFlowStation(); });
+        connect(btnDelStation, &QPushButton::clicked, this, [this]() { promptRemoveCurrentFlowStation(); });
         connect(btnUp, &QPushButton::clicked, this, [this]() { moveSelectedBlock(-1); });
         connect(btnDown, &QPushButton::clicked, this, [this]() { moveSelectedBlock(1); });
     }
 
-    {
-        QSignalBlocker blocker(stationCombo_);
-        stationCombo_->clear();
-        const auto stations = collectTestFlowStations();
-        for (const auto& s : stations)
-            stationCombo_->addItem(s.name, s.key);
-    }
+    stationCombo_->setToolTip(QStringLiteral("工站列表来自 总的测试流程.ini；仅显示工站名称，与产线预设同名时自动对应（如「自由工站」）"));
 
-    connect(stationCombo_, QOverload<int>::of(&QComboBox::activated), this, [this](int) {
+    connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
         reloadCurrentStation();
     });
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
@@ -426,6 +363,9 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                                            "也可选中块后点「上移」「下移」。调整完须点「保存流程」。"));
     }
 
+    TestFlowMeta meta;
+    TestCaseStore::loadFlowMeta(meta);
+    refreshStationCombo(meta.selectedStation);
     reloadCurrentStation();
 }
 
@@ -472,6 +412,93 @@ bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
         }
     }
     return QObject::eventFilter(watched, event);
+}
+
+void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
+    if (!stationCombo_)
+        return;
+    QString keyToSelect = selectKey.trimmed();
+    if (keyToSelect.isEmpty())
+        keyToSelect = currentStationKey();
+    if (keyToSelect.isEmpty()) {
+        TestFlowMeta meta;
+        TestCaseStore::loadFlowMeta(meta);
+        keyToSelect = meta.selectedStation.trimmed();
+    }
+    if (keyToSelect.isEmpty())
+        keyToSelect = QStringLiteral("FREE_WORK");
+
+    const QVector<TestFlowStationEntry> stations = TestCaseStore::loadFlowStationCatalog();
+    QSignalBlocker blocker(stationCombo_);
+    stationCombo_->clear();
+    for (const TestFlowStationEntry& entry : stations)
+        stationCombo_->addItem(entry.displayName, entry.key);
+
+    int idx = stationCombo_->findData(keyToSelect);
+    if (idx < 0)
+        idx = stationCombo_->findText(TestCaseStore::flowStationDisplayName(keyToSelect));
+    if (idx < 0 && !stations.isEmpty())
+        idx = 0;
+    if (idx >= 0)
+        stationCombo_->setCurrentIndex(idx);
+}
+
+void TestFlowEditor::promptAddFlowStation() {
+    if (!dialogParent_)
+        return;
+
+    QDialog dlg(dialogParent_);
+    dlg.setWindowTitle(QStringLiteral("新建工站"));
+    auto* form = new QFormLayout(&dlg);
+    auto* editName = new QLineEdit(&dlg);
+    editName->setPlaceholderText(QStringLiteral("例如：自由工站、吸力测试工站"));
+    form->addRow(QStringLiteral("工站名称"), editName);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const QString displayName = editName->text().trimmed();
+    QString err;
+    if (!TestCaseStore::addFlowStation(displayName, &err)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法新建"), err);
+        return;
+    }
+    refreshStationCombo(TestCaseStore::resolveFlowStationKey(displayName));
+    reloadCurrentStation();
+}
+
+void TestFlowEditor::promptRemoveCurrentFlowStation() {
+    if (!dialogParent_)
+        return;
+    const QString key = currentStationKey();
+    if (key.isEmpty())
+        return;
+    const QString displayName = TestCaseStore::flowStationDisplayName(key);
+    if (displayName == QStringLiteral("默认工站") || displayName == QStringLiteral("自由工站")) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法删除"),
+                             QStringLiteral("内置工站「默认工站」「自由工站」不可删除"));
+        return;
+    }
+    const QString label = stationCombo_->currentText();
+    if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
+                              QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\n"
+                                             "不会删除 test_case 下的功能块 ini。")
+                                  .arg(label))
+        != QMessageBox::Yes) {
+        return;
+    }
+    QString err;
+    if (!TestCaseStore::removeFlowStation(key, &err)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("删除失败"), err);
+        return;
+    }
+    refreshStationCombo(QStringLiteral("FREE_WORK"));
+    reloadCurrentStation();
 }
 
 void TestFlowEditor::setSelectedBlock(TestCaseBlock* block) {
@@ -550,7 +577,7 @@ void TestFlowEditor::saveCurrentFlow() {
     TestFlowMeta meta;
     TestCaseStore::loadFlowMeta(meta);
     meta.selectedStation = key;
-    meta.selectedStationName = stationCombo_->currentText();
+    meta.selectedStationName = TestCaseStore::flowStationDisplayName(key);
     TestCaseStore::saveFlowMeta(meta);
     SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), key);
     SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), meta.selectedStationName);

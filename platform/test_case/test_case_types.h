@@ -27,6 +27,8 @@ struct TestCaseSend {
 struct TestCaseTiming {
     int delayBeforeMs = 0;
     int delayAfterMs = 0;
+    /** sendCommandWithRetry 定时器间隔(ms)；≤0 表示未配置，运行时按卡控开闭回退 8000/3000 */
+    int commandTimeoutMs = 0;
 };
 
 enum class TestCaseGateOp { Range, Gt, Lt, Eq, CompareVersions };
@@ -65,6 +67,12 @@ struct TestFlowMeta {
     int version = 1;
     QString selectedStation;
     QString selectedStationName;
+};
+
+/** 流程编排工站：key 写入 ini，displayName 为下拉显示名 */
+struct TestFlowStationEntry {
+    QString key;
+    QString displayName;
 };
 
 #endif  // PLATFORM_TEST_CASE_TYPES_H

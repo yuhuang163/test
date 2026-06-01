@@ -9,9 +9,15 @@
 #endif
 
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
-    QString key = stationKey.trimmed();
+    QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    if (TestCaseStore::loadStationItems(key).isEmpty()) {
+        const QString byName = TestCaseStore::resolveFlowStationKey(
+            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        if (!byName.isEmpty())
+            key = byName;
+    }
     if (key.isEmpty())
         key = QStringLiteral("default");
     if (!QFile::exists(TestCasePaths::flowIniPath()))
@@ -20,9 +26,15 @@ bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
 }
 
 QStringList QFreeWork::testCaseFlowItems(const QString& stationKey) const {
-    QString key = stationKey.trimmed();
+    QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    if (TestCaseStore::loadStationItems(key).isEmpty()) {
+        const QString byName = TestCaseStore::resolveFlowStationKey(
+            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        if (!byName.isEmpty())
+            key = byName;
+    }
     if (key.isEmpty())
         key = QStringLiteral("default");
     return TestCaseStore::loadStationItems(key);
@@ -95,7 +107,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->protocolManager.set(cmd, def.send.param);
     };
 
-    const int timeoutMs = def.gate.enabled ? 8000 : 3000;
+    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->sendCommandWithRetry(sendFn, timeoutMs);
 }
 

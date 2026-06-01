@@ -1,6 +1,7 @@
-﻿#include "box_base.h"
+#include "box_base.h"
 
 #include <QMessageBox>
+#include <QRegularExpression>
 #include <QtGlobal>
 
 #include "qaction.h"
@@ -340,10 +341,21 @@ void box_base::recoverCustom() {
             testList[i]->getMotorCaliParam()->setText(MotorCaliParam);
         }
 
+        const QString getMacDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString().trimmed();
+        const QString macInputDefault = SETTINGS.value(QString("%1/macInputDefault").arg(baseKey)).toString().trimmed();
+        static const QRegularExpression macRegex(QStringLiteral("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"));
+        const bool getMacDefaultIsMac = macRegex.match(getMacDefault).hasMatch();
+
+        if (testList[i]->macInputLineEdit() != nullptr) {
+            QString macDefault = macInputDefault;
+            if (macDefault.isEmpty() && getMacDefaultIsMac)
+                macDefault = getMacDefault;
+            if (!macDefault.isEmpty())
+                testList[i]->macInputLineEdit()->setText(macDefault);
+        }
         if (testList[i]->getMacLineEdit() != nullptr) {
-            const QString snDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString();
-            if (!snDefault.isEmpty())
-                testList[i]->getMacLineEdit()->setText(snDefault);
+            if (!getMacDefault.isEmpty() && !getMacDefaultIsMac)
+                testList[i]->getMacLineEdit()->setText(getMacDefault);
         }
         // qDebug() << "恢复的串口号" << comName << usbComName << jigComomName << ProductComName;
     }

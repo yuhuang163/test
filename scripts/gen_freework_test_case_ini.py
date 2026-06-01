@@ -38,6 +38,7 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         "[Timing]",
         f"DelayBeforeMs={timing.get('before', 0)}",
         f"DelayAfterMs={timing.get('after', 0)}",
+        f"CommandTimeoutMs={timing.get('command_timeout', 300)}",
         "",
         "[Gate]",
         f"Enabled={'true' if gate.get('enabled') else 'false'}",

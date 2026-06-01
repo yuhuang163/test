@@ -41,6 +41,17 @@ public:
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static QStringList listStationKeysFromFlow();
+
+    /** 内置工站（与设置页 TestOrder 预设一致，并含 default / FREE_WORK） */
+    static QVector<TestFlowStationEntry> defaultFlowStationPresets();
+    /** 从 总的测试流程.ini [FlowStations] 读取；无记录时写入预设并返回 */
+    static QVector<TestFlowStationEntry> loadFlowStationCatalog();
+    static bool saveFlowStationCatalog(const QVector<TestFlowStationEntry>& entries);
+    static QString flowStationDisplayName(const QString& stationKey);
+    /** 显示名或已有键 → 流程 ini 使用的工站键（预设如 自由工站→FREE_WORK） */
+    static QString resolveFlowStationKey(const QString& displayNameOrKey);
+    static bool addFlowStation(const QString& displayName, QString* errorOut = nullptr);
+    static bool removeFlowStation(const QString& stationKey, QString* errorOut = nullptr);
 };
 
 // ---------- 校验 ----------
@@ -116,6 +127,8 @@ public:
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
     static QString stepLabel(const TestCaseDefinition& def);
     static bool needAsyncDone(const TestCaseDefinition& def);
+    /** 本 case 指令等待/重试间隔(ms) */
+    static int commandTimeoutMs(const TestCaseDefinition& def);
 };
 
 #endif  // PLATFORM_TEST_CASE_H
