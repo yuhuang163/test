@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QSet>
 #include <QSettings>
+#include <QTextCodec>
 
 #include "Abini.h"
 #include "common_utils.h"
@@ -120,12 +121,39 @@ QString gateOpToString(TestCaseGateOp op) {
     }
 }
 
+/** 与 SETTINGS（上位机设置.ini）一致：IniFormat + UTF-8，避免 Windows 下中文写成 \\x 转义。 */
+void applyTestCaseIniCodec(QSettings& ini) {
+    ini.setIniCodec(QTextCodec::codecForName("UTF-8"));
+}
+
+void ensureUtf8BomOnIniFile(const QString& filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadWrite))
+        return;
+    QByteArray data = file.readAll();
+    static const QByteArray kUtf8Bom = QByteArray::fromHex("EFBBBF");
+    if (data.startsWith(kUtf8Bom))
+        return;
+    file.seek(0);
+    file.resize(0);
+    file.write(kUtf8Bom);
+    file.write(data);
+}
+
+void syncTestCaseIni(QSettings& ini, const QString& filePath) {
+    ini.sync();
+    if (ini.status() == QSettings::NoError)
+        ensureUtf8BomOnIniFile(filePath);
+}
+
 }  // namespace
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     Q_UNUSED(errorOut);
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::caseIniPath(caseName), QSettings::IniFormat);
+    const QString casePath = TestCasePaths::caseIniPath(caseName);
+    QSettings ini(casePath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
 
     const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
     const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
@@ -169,7 +197,9 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
 bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     Q_UNUSED(errorOut);
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::caseIniPath(def.meta.name), QSettings::IniFormat);
+    const QString casePath = TestCasePaths::caseIniPath(def.meta.name);
+    QSettings ini(casePath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     ini.clear();
 
     ini.setValue(QStringLiteral("Meta/Name"), def.meta.name);
@@ -200,7 +230,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 
     ini.setValue(QStringLiteral("Hook/Enabled"), def.hook.enabled);
     ini.setValue(QStringLiteral("Hook/HookId"), def.hook.hookId);
-    ini.sync();
+    syncTestCaseIni(ini, casePath);
     return true;
 }
 
@@ -221,6 +251,7 @@ QStringList TestCaseStore::listCaseIniNames() {
 bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
     TestCasePaths::ensureRootDir();
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     out.version = ini.value(QStringLiteral("Meta/Version"), 1).toInt();
     out.selectedStation = ini.value(QStringLiteral("Meta/SelectedStation")).toString().trimmed();
     out.selectedStationName = ini.value(QStringLiteral("Meta/SelectedStationName")).toString().trimmed();
@@ -229,11 +260,13 @@ bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
 
 bool TestCaseStore::saveFlowMeta(const TestFlowMeta& meta) {
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     ini.setValue(QStringLiteral("Meta/Version"), meta.version);
     ini.setValue(QStringLiteral("Meta/SelectedStation"), meta.selectedStation);
     ini.setValue(QStringLiteral("Meta/SelectedStationName"), meta.selectedStationName);
-    ini.sync();
+    syncTestCaseIni(ini, flowPath);
     return true;
 }
 
@@ -258,6 +291,7 @@ bool TestCaseStore::saveStationItems(const QString& stationKey, const QStringLis
 bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, bool defaultValue) {
     TestCasePaths::ensureRootDir();
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(stationKey));
     bool result = defaultValue;
     if (ini.contains(QStringLiteral("StopFlowOnTestFail")))
@@ -271,6 +305,7 @@ bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, boo
 QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& stationKey) {
     TestCasePaths::ensureRootDir();
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(stationKey));
     const QString rawItems = ini.value(QStringLiteral("Items")).toString();
     ini.endGroup();
@@ -290,7 +325,9 @@ QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& st
 bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                          bool stopFlowOnTestFail) {
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(stationKey));
     QStringList names;
     for (const TestFlowItemEntry& entry : items) {
@@ -303,13 +340,14 @@ bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVecto
     ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlowOnTestFail);
     ini.remove(QStringLiteral("StopOnGateFail"));
     ini.endGroup();
-    ini.sync();
+    syncTestCaseIni(ini, flowPath);
     return true;
 }
 
 QStringList TestCaseStore::listStationKeysFromFlow() {
     TestCasePaths::ensureRootDir();
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
     QStringList keys;
     const QStringList groups = ini.childGroups();
     const QString prefix = QStringLiteral("Station/");

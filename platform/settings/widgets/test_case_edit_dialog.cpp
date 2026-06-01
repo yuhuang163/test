@@ -8,6 +8,8 @@
 #include <QJsonObject>
 #include <QMessageBox>
 
+#include <QHash>
+
 #include <algorithm>
 
 #if _MSC_VER >= 1600
@@ -70,18 +72,89 @@ void fillGateOpCombo(QComboBox* box) {
     box->addItem(QStringLiteral("等于"), QStringLiteral("eq"));
 }
 
+const QHash<QString, QString>& hookDisplayNameMap() {
+    static const QHash<QString, QString> map = {
+        {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
+        {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
+        {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
+        {QStringLiteral("BT_DIRECT_DCON"), QStringLiteral("直连接蓝牙")},
+        {QStringLiteral("BT_SCAN_MAC"), QStringLiteral("扫描连接蓝牙")},
+        {QStringLiteral("CLOUD_TUPLE_FETCH"), QStringLiteral("获取云端三元组")},
+        {QStringLiteral("WRITE_PRODUCT_KEY"), QStringLiteral("写入 productKey")},
+        {QStringLiteral("WRITE_DEVICE_NAME"), QStringLiteral("写入 deviceName")},
+        {QStringLiteral("WRITE_DEVICE_SECRET"), QStringLiteral("写入 deviceSecret")},
+        {QStringLiteral("TUPLE_WRITE_REPORT"), QStringLiteral("上报三元组写入记录")},
+        {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
+        {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
+        {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
+        {QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"), QStringLiteral("PLC+V3 旋钮测试完成 M 复位")},
+        {QStringLiteral("KEY_POWER"), QStringLiteral("电源键测试")},
+        {QStringLiteral("KEY_START_PAUSE"), QStringLiteral("开始/暂停键测试")},
+        {QStringLiteral("KEY_MODE"), QStringLiteral("模式键测试")},
+        {QStringLiteral("KEY_SPEED"), QStringLiteral("速度键测试")},
+        {QStringLiteral("KEY_PROGRAM"), QStringLiteral("程序键测试")},
+        {QStringLiteral("KEY_LEFT"), QStringLiteral("左键测试")},
+        {QStringLiteral("KEY_RIGHT"), QStringLiteral("右键测试")},
+        {QStringLiteral("KEY_ROT_LEFT"), QStringLiteral("左旋键测试")},
+        {QStringLiteral("KEY_ROT_RIGHT"), QStringLiteral("右旋键测试")},
+        {QStringLiteral("PLC_V3_KEY_MODE"), QStringLiteral("PLC+V3 模式键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_PROGRAM"), QStringLiteral("PLC+V3 程序键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_SPEED"), QStringLiteral("PLC+V3 速度键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_RIGHT"), QStringLiteral("PLC+V3 右键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_START_PAUSE"), QStringLiteral("PLC+V3 开始暂停键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_LEFT"), QStringLiteral("PLC+V3 左键触摸整步")},
+        {QStringLiteral("PLC_V3_KEY_POWER"), QStringLiteral("PLC+V3 电源键触摸整步")},
+        {QStringLiteral("PROD_INST_RESET_ACK_1"), QStringLiteral("产品串口仪器复位应答 1")},
+        {QStringLiteral("PROD_INST_RESET_ACK_2"), QStringLiteral("产品串口仪器复位应答 2")},
+        {QStringLiteral("PROD_INST_RESET_ACK_3"), QStringLiteral("产品串口仪器复位应答 3")},
+        {QStringLiteral("PROD_INST_RESET_ACK_4"), QStringLiteral("产品串口仪器复位应答 4")},
+        {QStringLiteral("PROD_INST_RESET_ACK_5"), QStringLiteral("产品串口仪器复位应答 5")},
+        {QStringLiteral("PROD_INST_RESET_ACK_6"), QStringLiteral("产品串口仪器复位应答 6")},
+        {QStringLiteral("PROD_INST_START_RX_2402_1M"), QStringLiteral("产品串口开始接收 2402 BLE1M")},
+        {QStringLiteral("PROD_INST_START_RX_2440_1M"), QStringLiteral("产品串口开始接收 2440 BLE1M")},
+        {QStringLiteral("PROD_INST_START_RX_2480_1M"), QStringLiteral("产品串口开始接收 2480 BLE1M")},
+        {QStringLiteral("PROD_INST_START_RX_2402_2M"), QStringLiteral("产品串口开始接收 2402 BLE2M")},
+        {QStringLiteral("PROD_INST_START_RX_2440_2M"), QStringLiteral("产品串口开始接收 2440 BLE2M")},
+        {QStringLiteral("PROD_INST_START_RX_2480_2M"), QStringLiteral("产品串口开始接收 2480 BLE2M")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P0"), QStringLiteral("并联 CMW 播放 Profile0")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P1"), QStringLiteral("并联 CMW 播放 Profile1")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P2"), QStringLiteral("并联 CMW 播放 Profile2")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P3"), QStringLiteral("并联 CMW 播放 Profile3")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P4"), QStringLiteral("并联 CMW 播放 Profile4")},
+        {QStringLiteral("FREE_INSTR_CMW_GPRF_P5"), QStringLiteral("并联 CMW 播放 Profile5")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_1"), QStringLiteral("产品串口停止接收与 PER1")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_2"), QStringLiteral("产品串口停止接收与 PER2")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_3"), QStringLiteral("产品串口停止接收与 PER3")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_4"), QStringLiteral("产品串口停止接收与 PER4")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_5"), QStringLiteral("产品串口停止接收与 PER5")},
+        {QStringLiteral("PROD_INST_STOP_RX_PER_6"), QStringLiteral("产品串口停止接收与 PER6")},
+    };
+    return map;
+}
+
 QString hookUiLabel(const QString& hookId) {
-    if (hookId == QLatin1String("NoOp"))
-        return QStringLiteral("空操作（示例）");
-    if (hookId == QLatin1String("FreeWorkNoOpDemo"))
-        return QStringLiteral("示例步骤");
-    return QStringLiteral("未登记流程");
+    const QString key = hookId.trimmed();
+    const auto it = hookDisplayNameMap().constFind(key);
+    if (it != hookDisplayNameMap().cend())
+        return it.value();
+    if (key.isEmpty())
+        return QString();
+    // 已注册但未维护中文名时显示 HookId，避免与「未实现」混淆
+    if (TestCaseHookRegistry::contains(key))
+        return QStringLiteral("%1（待补全显示名）").arg(key);
+    return QStringLiteral("未登记流程：%1").arg(key);
 }
 
 void fillHookCombo(QComboBox* box) {
     box->clear();
+    QVector<QPair<QString, QString>> items;
     for (const QString& id : TestCaseHookRegistry::hookIds())
-        box->addItem(hookUiLabel(id), id);
+        items.append({hookUiLabel(id), id});
+    std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
+        return a.first.localeAwareCompare(b.first) < 0;
+    });
+    for (const auto& item : items)
+        box->addItem(item.first, item.second);
 }
 
 }  // namespace

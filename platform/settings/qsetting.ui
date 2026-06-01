@@ -3604,9 +3604,42 @@ QGroupBox::title {
           <widget class="QComboBox" name="comboBox_testFlowStation"/>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButton_testFlowAdd">
+           <property name="toolTip">
+            <string>在流程末尾插入空白块；右键「打开设置」保存配置后，保存流程时才会写入顺序</string>
+           </property>
+           <property name="text">
+            <string>新建空白块</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowImport">
+           <property name="toolTip">
+            <string>从 test_case 目录选择已保存的功能块，追加到当前工站流程</string>
+           </property>
+           <property name="text">
+            <string>添加已有块</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_testFlowToolbar">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>24</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
           <widget class="QCheckBox" name="checkBox_testFlowStopOnTestFail">
            <property name="text">
-            <string>测试失败时结束整单测试</string>
+            <string>测试失败时结束测试流程</string>
            </property>
            <property name="toolTip">
             <string>本工站任一步测试失败（含卡控、超时、钩子等）即不再执行后续步骤</string>
@@ -3627,20 +3660,6 @@ QGroupBox::title {
           <widget class="QPushButton" name="pushButton_testFlowClear">
            <property name="text">
             <string>一键清空</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pushButton_testFlowImport">
-           <property name="text">
-            <string>新增已有功能块</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pushButton_testFlowAdd">
-           <property name="text">
-            <string>+</string>
            </property>
           </widget>
          </item>

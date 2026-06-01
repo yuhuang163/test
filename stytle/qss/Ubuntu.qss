@@ -186,10 +186,12 @@ QPushButton:pressed{
 	background-color: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 rgba(220, 220, 220, 255), stop:1 rgba(255, 255, 255, 255));
 }
 QPushButton:disabled{
-	color:rgb(174,167,159);
+	color: rgb(120, 120, 120);
 	border-width: 1px;
 	border-radius: 6px;
-	background-color: qlineargradient(spread:pad, x1:0.5, y1:1, x2:0.5, y2:0, stop:0 rgba(200, 200, 200, 255), stop:1 rgba(230, 230, 230, 255));
+	border-style: solid;
+	border-color: rgb(190, 190, 190);
+	background-color: rgb(225, 225, 225);
 }
 QRadioButton {
 	padding: 1px;
@@ -523,4 +525,65 @@ QTextEdit {
 QTimeEdit, QToolBox, QToolBox::tab, QToolBox::tab:selected {
 	color:rgb(81,72,65);
 	background-color: #ffffff;
+}
+
+/* ---------- 禁用态（灰字 + 浅灰底，与可用态区分） ---------- */
+QCheckBox:disabled {
+	color: rgb(130, 130, 130);
+}
+QCheckBox:disabled:hover {
+	border: none;
+	padding: 2px;
+	background-color: transparent;
+}
+QCheckBox::indicator:unchecked:disabled {
+	border: 1px solid rgb(170, 170, 170);
+	border-radius: 4px;
+	background-color: rgb(220, 220, 220);
+}
+QCheckBox::indicator:checked:disabled {
+	border: 1px solid rgb(160, 160, 160);
+	border-radius: 4px;
+	background-color: rgb(190, 190, 190);
+}
+QRadioButton:disabled {
+	color: rgb(130, 130, 130);
+}
+QRadioButton::indicator:!checked:disabled {
+	border-color: rgb(170, 170, 170);
+	background-color: rgb(220, 220, 220);
+}
+QRadioButton::indicator:checked:disabled {
+	border-color: rgb(160, 160, 160);
+	background-color: rgb(190, 190, 190);
+}
+QComboBox:disabled,
+QLineEdit:disabled,
+QPlainTextEdit:disabled,
+QTextEdit:disabled,
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QDateEdit:disabled,
+QTimeEdit:disabled,
+QDateTimeEdit:disabled {
+	color: rgb(130, 130, 130);
+	background-color: rgb(235, 235, 235);
+	border: 1px solid rgb(200, 200, 200);
+}
+QComboBox:disabled::drop-down {
+	border-color: rgb(200, 200, 200);
+	background-color: rgb(225, 225, 225);
+}
+QLabel:disabled {
+	color: rgb(130, 130, 130);
+}
+QGroupBox:disabled {
+	color: rgb(130, 130, 130);
+}
+QTabBar::tab:disabled {
+	color: rgb(150, 150, 150);
+	background-color: rgb(230, 230, 230);
+}
+QScrollBar:disabled {
+	background-color: rgb(240, 240, 240);
 }
