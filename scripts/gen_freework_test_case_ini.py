@@ -179,7 +179,7 @@ def battery_gate():
 CASES = [
     proto("禁止休眠", "FORBID_SLEEP", "Set", "ForbidSleep", {"Param/int": 1}),
     proto("获取整机SN码", "TAIL_SN_READ", "Get", "Sn", {"Param/int": 1}),
-    proto("获取基本信息", "BASE_INFO", "Get", "BaseInfo", gate=base_info_gate(), timing={"command_timeout": 8000}),
+    proto("读取版本号", "BASE_INFO", "Get", "SoftVersionRead", gate=base_info_gate(), timing={"command_timeout": 8000}),
     proto("获取电量信息", "BATTERY_INFO", "Get", "GetBattery", gate=battery_gate()),
     proto("关机", "SHIP_MODE", "Set", "ShipMode", {"Param/int": 1}),
     proto("产测完成写入", "FAC_RESULT_WRITE", "Set", "FacResult", {"Param/int": 1}),

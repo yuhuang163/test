@@ -328,7 +328,8 @@ enum class DeviceCmd {
     BrushControl,           // 【Qpb】电机/动作控制（int，set_brush_control）
     FacMode,                // 【Qpb】工厂模式开关（int，set_fac_mode）；【Qfctp】非 0 进入产测模式（sendFactoryTestMode）
     Sn,                     // 【主入口】SN/三元组写统一入口；Qpb 兼容 set_sn，Qfctp 内部映射 TLV 写入
-    BaseInfo,               // 【主入口】基础信息读写入口；Qfctp 兼容映射三元组读取
+    SoftVersionRead,        // 【Qfctp】读软件版本（getCaseFwVersionRead）；产测 test_case「读取版本号」
+    BaseInfo,               // 【Qpb】基础信息读写（get/set）；FCTP 请用 SoftVersionRead
     CameraPictureState,     // 【Qpb】相机拍照/成像状态（int，set_camera_picture_state）
     LocalOta,               // 【Qpb】本地 OTA（载荷 LocalOtaPayload）
     StartOtaApp,            // 【Qpb】通过 App 通道启动 OTA（RotasFileStatusReq，走 set_start_ota_app）

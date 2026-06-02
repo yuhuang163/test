@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QApplication>
+#include <QClipboard>
 #include <QMessageBox>
 #include <QPushButton>
 
@@ -77,7 +79,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         const QStringList names = DeviceCmdCatalog::allDeviceCmdNames(action, productProtocol);
         items.reserve(names.size());
         for (const QString& name : names)
-            items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
+            items.append({DeviceCmdCatalog::deviceCmdUiLabel(name, productProtocol), name});
     }
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
@@ -91,7 +93,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             }
         }
         if (!found) {
-            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing)
+            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing, productProtocol)
                                   + QStringLiteral("（非当前协议）");
             items.prepend({label, keepCmdIfMissing});
         }
@@ -191,6 +193,7 @@ void applySendParamHintToUi(const SendCmdParamUi& uiSchema, QLabel* hintLabel, Q
         return;
     hintLabel->setText(uiSchema.hint);
     hintLabel->setVisible(uiSchema.valid && !uiSchema.hint.isEmpty());
+    hintLabel->setToolTip(uiSchema.hint.isEmpty() ? QString() : QStringLiteral("可选中文字后 Ctrl+C 复制，或点「复制说明」"));
 
     if (jsonEdit) {
         if (!uiSchema.valid || uiSchema.kind == SendCmdParamKind::None) {
@@ -401,6 +404,12 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateGateFieldsEnabled);
     connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
+    connect(ui->pushButton_copyParamHint, &QPushButton::clicked, this, [this]() {
+        const QString text = ui->label_sendParamHint->text().trimmed();
+        if (text.isEmpty())
+            return;
+        QApplication::clipboard()->setText(text);
+    });
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, [this]() {
         if (saveValidated())
             accept();
@@ -445,8 +454,10 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
     ui->groupBox_send->setVisible(!on);
-    if (!on)
+    if (!on) {
         updateProductProtocolRowVisible();
+        ui->pushButton_copyParamHint->setVisible(false);
+    }
 }
 
 void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
@@ -617,6 +628,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
     applySendParamHintToUi(uiSchema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
+    ui->pushButton_copyParamHint->setVisible(!ui->label_sendParamHint->text().trimmed().isEmpty());
     if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
         ui->label_sendParamHint->setText(uiSchema.hint);

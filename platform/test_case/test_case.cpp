@@ -383,6 +383,10 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
     out.send.productProtocol =
         DeviceCmdCatalog::productProtocolFromIni(ini.value(QStringLiteral("Send/Protocol")).toString());
+    if (out.send.productProtocol == TestCaseProductProtocol::Qfctp
+        && out.send.deviceCmd.compare(QStringLiteral("BaseInfo"), Qt::CaseInsensitive) == 0) {
+        out.send.deviceCmd = QStringLiteral("SoftVersionRead");
+    }
     const QString channelIni = ini.value(QStringLiteral("Send/Channel")).toString().trimmed();
     if (channelIni.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Dongle;
@@ -769,7 +773,11 @@ const CmdEntry kCatalog[] = {
     {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap,
      "读写 SN：which_sn 类型\n  1=整机SN(TAIL)  2=主板  3=三元组相关\n"
      "读整机示例：which_sn=1\n写 SN 另配 which_sn 与写入内容"},
-    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::SoftVersionRead, DeviceCmdParamKind::None,
+     "FCTP：Get SoftVersionRead 回包 soft_version（软件版本），无需参数\n"
+     "卡控：ReportType=ProtocolBaseInfoData，Field=soft_version，Op=compareVersions，Expected=目标版本"},
+    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None,
+     "QPB：读写基础信息（含软件/资源版本等）\nFCTP 请改用 SoftVersionRead（读取版本号）"},
     {DeviceCmd::GetBattery, DeviceCmdParamKind::None, "无需参数"},
     {DeviceCmd::FacResult, DeviceCmdParamKind::JsonMap,
      "产测结果：done=1 通过(留空等同1)，done=0 失败\n示例：done=1 或 {\"done\":1}"},
@@ -794,7 +802,7 @@ const CmdEntry kCatalog[] = {
 #define X(name) \
     { QStringLiteral(#name), DeviceCmd::name },
 const QHash<QString, DeviceCmd> kNameMap = {
-    X(ForbidSleep) X(Sn) X(BaseInfo) X(GetBattery) X(FacResult) X(BurningMode) X(Sleep) X(ShipMode) X(FacMode)
+    X(ForbidSleep) X(Sn) X(SoftVersionRead) X(BaseInfo) X(GetBattery) X(FacResult) X(BurningMode) X(Sleep) X(ShipMode) X(FacMode)
         X(DevReset) X(WifiDisconnect) X(WifiConnect) X(RssiRead) X(ChargeCurrentRead) X(TupleRead) X(PeriphState)
         X(FactoryReset) X(PressSensorTemp) X(UartReceive) X(RgbColor) X(MotorCali) X(MotorDampingState)
         X(MotorTestState) X(MotorCaliState) X(ScreenColor) X(LedColor) X(MotorAdcSwitch) X(MotorParam) X(MotorState)
@@ -829,7 +837,7 @@ const QVector<DeviceCmd>& qfctpSetCmds() {
 const QVector<DeviceCmd>& qfctpGetCmds() {
     static const QVector<DeviceCmd> cmds = {
         DeviceCmd::Sn,               DeviceCmd::TrimRead,         DeviceCmd::MacRead,
-        DeviceCmd::BaseInfo,         DeviceCmd::TupleRead,        DeviceCmd::LightSensorInfo,
+        DeviceCmd::SoftVersionRead,  DeviceCmd::TupleRead,        DeviceCmd::LightSensorInfo,
         DeviceCmd::RssiRead,         DeviceCmd::KeySignalRead,    DeviceCmd::LightCalibRead,
         DeviceCmd::ChargeCurrentRead, DeviceCmd::AgingStatusRead, DeviceCmd::FactoryDoneRead,
         DeviceCmd::DeviceExceptionRead, DeviceCmd::DeviceInfo,   DeviceCmd::PeriphState,
@@ -905,6 +913,7 @@ const QHash<QString, QString>& cmdUiLabelMap() {
     static const QHash<QString, QString> map = {
         {QStringLiteral("ForbidSleep"), QStringLiteral("禁止休眠")},
         {QStringLiteral("Sn"), QStringLiteral("序列号")},
+        {QStringLiteral("SoftVersionRead"), QStringLiteral("版本号")},
         {QStringLiteral("BaseInfo"), QStringLiteral("基本信息")},
         {QStringLiteral("GetBattery"), QStringLiteral("电量")},
         {QStringLiteral("FacResult"), QStringLiteral("产测结果")},
@@ -1131,6 +1140,7 @@ TestCaseSendAction DeviceCmdCatalog::actionFor(DeviceCmd cmd) {
     switch (cmd) {
     case DeviceCmd::Sn:
         return TestCaseSendAction::Set;
+    case DeviceCmd::SoftVersionRead:
     case DeviceCmd::BaseInfo:
         return TestCaseSendAction::Get;
     default:
@@ -1148,6 +1158,10 @@ bool DeviceCmdCatalog::isCmdForAction(DeviceCmd cmd, TestCaseSendAction action) 
 }
 
 QString DeviceCmdCatalog::deviceCmdUiLabel(const QString& enumName) {
+    return deviceCmdUiLabel(enumName, TestCaseProductProtocol::Qfctp);
+}
+
+QString DeviceCmdCatalog::deviceCmdUiLabel(const QString& enumName, TestCaseProductProtocol protocol) {
     const QString key = enumName.trimmed();
     const QString label = cmdUiLabelMap().value(key);
     if (!label.isEmpty())
@@ -1156,7 +1170,12 @@ QString DeviceCmdCatalog::deviceCmdUiLabel(const QString& enumName) {
 }
 
 bool DeviceCmdCatalog::deviceCmdFromName(const QString& name, DeviceCmd& out) {
-    const auto it = kNameMap.constFind(name.trimmed());
+    const QString trimmed = name.trimmed();
+    if (trimmed.compare(QStringLiteral("BaseInfo"), Qt::CaseInsensitive) == 0) {
+        out = DeviceCmd::BaseInfo;
+        return true;
+    }
+    const auto it = kNameMap.constFind(trimmed);
     if (it == kNameMap.cend())
         return false;
     out = it.value();
@@ -1230,6 +1249,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
     const QVariantMap map = param.toMap();
     if (map.isEmpty()) {
         switch (cmd) {
+        case DeviceCmd::SoftVersionRead:
         case DeviceCmd::BaseInfo:
         case DeviceCmd::GetBattery:
         case DeviceCmd::DevReset:
@@ -1271,6 +1291,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
     case DeviceCmd::WifiConnect:
     case DeviceCmd::RssiRead:
         return map;
+    case DeviceCmd::SoftVersionRead:
     case DeviceCmd::BaseInfo:
     case DeviceCmd::GetBattery:
     case DeviceCmd::DevReset:

@@ -1357,7 +1357,8 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseCompensationSet(data.toMap())) return;
         break;
     case DeviceCmd::BaseInfo:
-        qWarning() << "Qfctp 请改用主入口命令，不再使用BaseInfo/Battery携带op";
+    case DeviceCmd::SoftVersionRead:
+        qWarning() << "Qfctp 请改用主入口命令，不再使用 BaseInfo/SoftVersionRead set";
         break;
     case DeviceCmd::DeviceInfo:
         qWarning() << "Qfctp DeviceInfo(set)请改用细分DeviceCmd";
@@ -1392,6 +1393,7 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         if (getCaseMacRead()) return;
         break;
     case DeviceCmd::BaseInfo:
+    case DeviceCmd::SoftVersionRead:
         if (getCaseFwVersionRead()) return;
         break;
     case DeviceCmd::TupleRead:

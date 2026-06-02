@@ -178,17 +178,54 @@
        </widget>
       </item>
       <item row="5" column="0" colspan="2">
-       <widget class="QLabel" name="label_sendParamHint">
-        <property name="text">
-         <string/>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-        <property name="styleSheet">
-         <string>color: #666666;</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout_sendParamHint">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_copyHint">
+          <item>
+           <widget class="QPushButton" name="pushButton_copyParamHint">
+            <property name="text">
+             <string>复制说明</string>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>80</width>
+              <height>16777215</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_copyHint">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_sendParamHint">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="textInteractionFlags">
+           <set>Qt::TextSelectableByMouse</set>
+          </property>
+          <property name="styleSheet">
+           <string>color: #666666;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>

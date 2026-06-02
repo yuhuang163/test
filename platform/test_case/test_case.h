@@ -82,6 +82,7 @@ public:
     static TestCaseSendAction actionFor(DeviceCmd cmd);
     static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
     static QString deviceCmdUiLabel(const QString& enumName);
+    static QString deviceCmdUiLabel(const QString& enumName, TestCaseProductProtocol protocol);
     static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
     static QString deviceCmdToName(DeviceCmd cmd);
     static bool paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out);

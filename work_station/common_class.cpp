@@ -43,7 +43,7 @@ void TestFunctionExecutor::createTestFunctions() {
         {"设置屏幕颜色", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ScreenColor, 1); }); }},
         {"获取整机SN码", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); }); }},
         {"获取设备信息", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::DeviceInfo); }); }},
-        {"获取基本信息", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); }); }},
+        {"读取版本号", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::SoftVersionRead); }); }},
         {"获取外围设备状态", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::PeriphState); }); }},
         {"获取电量信息", [&]() { sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); }); }},
         {"进入船运模式", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); }); }},

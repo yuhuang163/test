@@ -97,7 +97,7 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(data)))
         return;
 
-    if (!isCurrentStep("获取基本信息")) {
+    if (!isCurrentStep(QStringLiteral("读取版本号")) && !isCurrentStep(QStringLiteral("获取基本信息"))) {
         return;
     }
 
