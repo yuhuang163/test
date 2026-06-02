@@ -184,6 +184,8 @@ private:
     /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
     QVector<QPair<QString, QString>> freeWorkMesSegments_;
     QByteArray expectedTailSnFromMes;
+    /** 写整机 SN：优先 MES 缓存 expectedTailSnFromMes，否则 SN 输入框 getMac。 */
+    QByteArray resolvedTailSnToWrite() const;
     void executeFunctionByName(const QString functionName);
     struct NamedFunction {
         int id = -1;
@@ -292,8 +294,16 @@ private:
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
     /** 有序队列中 teststate 对应项；越界或未登记返回 nullptr。 */
     const QFreeWork::NamedFunction* currentOrderedNamedFunction() const;
+    /** 当前队列步是否为「直连接/扫描连接蓝牙」（尚未连上时亦须 tick）。 */
+    bool currentOrderedStepIsDongleBleConnect() const;
     /** startTask 主循环是否允许 tick：dongle 已连，或无需 dongle 亦可推进的例外（见实现内注释）。 */
     bool canRunOrderedTestStepLoop() const;
+    /** teststate==-1：初始化本轮测试（不含蓝牙连接，连接由流程步骤配置）。 */
+    void runTestFlowBootstrap();
+    /** 执行有序队列中的一步；返回本 tick 是否处理了步骤逻辑。 */
+    bool tickOrderedTestStepLoop();
+    /** 全部步骤完成后收尾（MES、UI、断开）。 */
+    void finalizeTestFlowIfComplete();
 
 private slots:
     void initDate();

@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QPushButton>
 
 #include <QHash>
 
@@ -170,6 +171,13 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     registerQFreeWorkCatalogTestCaseHooks();
     fillHookCombo(ui->comboBox_hookId);
 
+    if (QPushButton* saveBtn = ui->buttonBox->button(QDialogButtonBox::Save)) {
+        saveBtn->setText(QStringLiteral("保存"));
+    }
+    if (QPushButton* cancelBtn = ui->buttonBox->button(QDialogButtonBox::Cancel)) {
+        cancelBtn->setText(QStringLiteral("取消"));
+    }
+
     connect(ui->comboBox_deviceCmd, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onDeviceCmdChanged);
     connect(ui->comboBox_gateReportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -259,7 +267,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     {
         int timeoutMs = def.timing.commandTimeoutMs;
         if (timeoutMs <= 0)
-            timeoutMs = def.gate.enabled ? 8000 : 3000;
+            timeoutMs = def.gate.enabled ? 8000 : 300;
         ui->spinBox_commandTimeout->setValue(timeoutMs);
     }
 

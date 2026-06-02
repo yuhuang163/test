@@ -26,6 +26,13 @@ extern "C"  // 由于是C版的dll文件，在C++中引入其头文件要加exte
 {
 #include "lib/nfc/dcrf32.h"
 }
+/** sendCommandWithRetry 等待期间限定应答来源，避免 dongle AT 与产测 FCTP 共用信号误触发 */
+enum class CommandWaitSource {
+    Any = 0,
+    ProductProtocol,
+    DongleAt,
+};
+
 typedef enum {
     STATE_INVALID,
     STATE_WAIT_START,
@@ -77,6 +84,7 @@ public:
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
+    void setCommandWaitSource(CommandWaitSource source) { commandWaitSource_ = source; }
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
@@ -98,6 +106,12 @@ private:  // 通用变量
     void initData();
     void saveDongleUartLog(QString data);
     void getmacadress(const QByteArray& byte);
+
+    /** 指令重试：应答是否计入当前等待（按 CommandWaitSource 过滤 dongle / 产测口） */
+    bool isCommandRetryResponseAccepted(const QObject* source) const;
+    /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
+    void finishCommandRetryWait(bool success, const QString& logMessage);
+    void onCommandRetryTimerTimeout();
 
 public:
     QString macAddress = "没有mac地址";
@@ -138,13 +152,15 @@ public:
     QSerialPort* productSerialPort;  // 设备硬件层（指向 productSerialChannel_ 内部端口）
     Qproduct* product;               // 设备协议层
 
-    bool getRespone = 0;
+    bool getRespone = 0;  // 兼容旧逻辑；sendCommandWithRetry 结束时会清零
     bool canGoNext = false;
     bool sendRetryOver = false;
     QTimer* commandRetryTimer = nullptr;
+    std::function<void()> commandRetryFunc_;
     int commandRetryCount = 0;
     int commandRetrySendCount = 0;
     int lastCommandRetryCount = 0;
+    CommandWaitSource commandWaitSource_ = CommandWaitSource::Any;
 
     bool isTestContinue = false;  //测试是否继续
     bool bandingresult = false;   // mes绑定结果
@@ -158,7 +174,7 @@ public slots:
         independent_state = newState;
     };
     STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; };  //获取当前上位机状态
-    void solveGetBrushResponse(int);
+    void solveGetBrushResponse(int data);  // at / protocolManager 共用，内部转 finishCommandRetryWait
     int getIndex() const;
     void showlog(QString msg);
     void solveMesSucess(const int mechines);

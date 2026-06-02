@@ -108,6 +108,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     };
 
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);
     ctx->sendCommandWithRetry(sendFn, timeoutMs);
 }
 

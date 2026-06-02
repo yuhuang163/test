@@ -253,6 +253,10 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
         off = static_cast<uint16_t>(off + COMM_PROTOCOL_TLV_HEADER_SIZE + len);
     }
 
+    if (!m_pendingRequests.contains(seq)) {
+        qWarning() << "FCTP 响应无对应 pending, 忽略 seq=" << static_cast<int>(seq) << "service=" << serviceId;
+        return;
+    }
     PendingRequest req = m_pendingRequests.take(seq);
     if (req.serviceId == 0 || req.tlvType == 0) {
         req.serviceId = serviceId;
@@ -281,9 +285,9 @@ void Qfctp::handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t
         }
     }
 
-    handleRequestResult(seq, req, mainValueAsInt, hasMainValueAsInt, errCode, hasErrCode);
+    const bool ok = handleRequestResult(seq, req, mainValueAsInt, hasMainValueAsInt, errCode, hasErrCode);
     handleResponseByType(req, mainValue, mainLen);
-    emit sendGetProductResponse(1);
+    emit sendGetProductResponse(ok ? 1 : 0);
 }
 
 void Qfctp::registerResponseHandlers()
@@ -738,15 +742,19 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_
     }
 }
 
-void Qfctp::handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode)
+bool Qfctp::handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode)
 {
+    // 读类指令（已注册 handleRsp*）：回包主体是数据，不以业务 TLV 数值 1 表示成功
     const bool queryResponse = isDataResponse(req.serviceId, req.tlvType);
+    // 服务层错误码 TLV 存在且为 0 才算协议层无错
     const bool errOk = hasErrCode && (errCode == 0u);
+    // 写/设类：无业务值或业务值为 1 视为成功；读类：有数据回包即视为业务成功（具体解析在 handleRsp*）
     const bool bizOk = queryResponse ? true : (!hasMainValue || (mainValue == 1));
     const bool ok = errOk && bizOk;
     const QString bizText = hasMainValue ? QString::number(mainValue) : "N/A";
     const QString errText = hasErrCode ? QString::number(errCode) : "N/A";
     const QByteArray actionUtf8 = req.actionName.toUtf8();
+    // 现场对照：query=1 为读类；写/设类业务值=0 或 errOk 为假时 result=FAIL
     qInfo() << "FCTP SOLVE:"
             << actionUtf8.constData()
             << "seq=" << static_cast<int>(seq)
@@ -754,6 +762,7 @@ void Qfctp::handleRequestResult(uint8_t seq, const PendingRequest &req, int main
             << "业务值=" << bizText
             << "错误码=" << errText
             << "result=" << (ok ? "PASS" : "FAIL");
+    return ok;
 }
 
 QByteArray Qfctp::wrapPhyPacket(const QByteArray &innerPacket) const

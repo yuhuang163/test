@@ -43,7 +43,7 @@ private:
     void        handleFullFrame(const uint8_t *frameData, uint16_t frameLen);
     void        handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen, const QByteArray &frameRaw);
     void        handleNotifyService(uint16_t serviceId, const uint8_t *tlvs, uint16_t serviceLen);
-    void        handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode);
+    bool        handleRequestResult(uint8_t seq, const PendingRequest &req, int mainValue, bool hasMainValue, uint16_t errCode, bool hasErrCode);
     void        registerResponseHandlers();
     void        registerResponseHandler(uint16_t serviceId, uint16_t tlvType, const QString &responseName, ResponseHandler handler);
     void        handleResponseByType(const PendingRequest &req, const uint8_t *mainValue, uint16_t mainLen);

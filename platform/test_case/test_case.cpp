@@ -792,11 +792,40 @@ QVariant readJsonMap(const QSettings& s, const QString& prefix) {
     return map;
 }
 
+void removeKeysWithPrefix(QSettings& s, const QString& prefix) {
+    const QString p = prefix + QLatin1Char('/');
+    for (const QString& key : s.allKeys()) {
+        if (key == prefix || key.startsWith(p))
+            s.remove(key);
+    }
+}
+
 void writeJsonMap(QSettings& s, const QString& prefix, const QVariant& value) {
-    s.remove(prefix);
+    removeKeysWithPrefix(s, prefix);
     const QVariantMap map = value.toMap();
     for (auto it = map.cbegin(); it != map.cend(); ++it)
         s.setValue(prefix + QLatin1Char('/') + it.key(), it.value());
+}
+
+QString sendParamIniPrefix() {
+    return QStringLiteral("Send/Param");
+}
+
+QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue) {
+    const QString sendKey = sendParamIniPrefix() + QLatin1Char('/') + leafKey;
+    if (settings.contains(sendKey))
+        return settings.value(sendKey);
+    const QString legacyKey = QStringLiteral("Param/") + leafKey;
+    if (settings.contains(legacyKey))
+        return settings.value(legacyKey);
+    return defaultValue;
+}
+
+QVariantMap readSendParamMap(const QSettings& settings) {
+    QVariantMap map = readJsonMap(settings, sendParamIniPrefix()).toMap();
+    if (!map.isEmpty())
+        return map;
+    return readJsonMap(settings, QStringLiteral("Param")).toMap();
 }
 
 }  // namespace
@@ -857,40 +886,42 @@ bool DeviceCmdCatalog::paramFromIniGroup(const QSettings& settings, DeviceCmd cm
         out = QVariant();
         return true;
     case DeviceCmdParamKind::Int:
-        out = settings.value(QStringLiteral("Param/int"), 0).toInt();
+        out = readSendScopedParam(settings, QStringLiteral("int"), 0).toInt();
         return true;
     case DeviceCmdParamKind::UInt:
-        out = settings.value(QStringLiteral("Param/uint"), 0).toUInt();
+        out = readSendScopedParam(settings, QStringLiteral("uint"), 0).toUInt();
         return true;
     case DeviceCmdParamKind::String:
-        out = settings.value(QStringLiteral("Param/string")).toString();
+        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
         return true;
     case DeviceCmdParamKind::JsonMap:
-        out = readJsonMap(settings, QStringLiteral("Param"));
+        out = readSendParamMap(settings);
         return true;
     }
     return false;
 }
 
 void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value) {
-    settings.remove(QStringLiteral("Param"));
+    removeKeysWithPrefix(settings, QStringLiteral("Param"));
+    removeKeysWithPrefix(settings, sendParamIniPrefix());
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return;
+    const QString prefix = sendParamIniPrefix();
     switch (schema.kind) {
     case DeviceCmdParamKind::None:
         break;
     case DeviceCmdParamKind::Int:
-        settings.setValue(QStringLiteral("Param/int"), value.toInt());
+        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
         break;
     case DeviceCmdParamKind::UInt:
-        settings.setValue(QStringLiteral("Param/uint"), value.toUInt());
+        settings.setValue(prefix + QStringLiteral("/uint"), value.toUInt());
         break;
     case DeviceCmdParamKind::String:
-        settings.setValue(QStringLiteral("Param/string"), value.toString());
+        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
-        writeJsonMap(settings, QStringLiteral("Param"), value);
+        writeJsonMap(settings, prefix, value);
         break;
     }
 }

@@ -33,11 +33,13 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
     }
     if (hookId == QStringLiteral("BT_DIRECT_DCON")) {
         const QString mac = fw->macAddress;
+        fw->setCommandWaitSource(CommandWaitSource::DongleAt);
         fw->sendCommandWithRetry([fw, mac]() { fw->at->sendDcon(mac); }, 6 * 1000);
         return;
     }
     if (hookId == QStringLiteral("BT_SCAN_MAC")) {
         const QString mac = fw->macAddress;
+        fw->setCommandWaitSource(CommandWaitSource::DongleAt);
         fw->sendCommandWithRetry([fw, mac]() { fw->at->sendMac(mac); }, 6 * 1000);
         return;
     }
@@ -51,6 +53,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             return;
         fw->stepRuntime_.testData = fw->tupleData_.productKey;
         const QByteArray pkUtf8 = fw->tupleData_.productKey.toUtf8();
+        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, pkUtf8]() {
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, pkUtf8}));
@@ -63,6 +66,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             return;
         fw->stepRuntime_.testData = fw->tupleData_.deviceName;
         const QByteArray nameUtf8 = fw->tupleData_.deviceName.toUtf8();
+        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, nameUtf8]() {
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, nameUtf8}));
@@ -75,6 +79,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             return;
         fw->stepRuntime_.testData = fw->tupleData_.deviceSecret;
         const QByteArray secretUtf8 = fw->tupleData_.deviceSecret.toUtf8();
+        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, secretUtf8]() {
             QVariantMap map;
             map[QStringLiteral("value")] = secretUtf8;
@@ -87,7 +92,17 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {
-        const QByteArray tailSn = fw->expectedTailSnFromMes;
+        const QByteArray tailSn = fw->resolvedTailSnToWrite();
+        if (tailSn.isEmpty()) {
+            fw->stepRuntime_.done = true;
+            fw->stepRuntime_.pass = false;
+            fw->stepRuntime_.testData = QStringLiteral("整机SN为空");
+            fw->TestResult = fw->failValue;
+            fw->showlog(QStringLiteral("写入SN码失败：请先在 SN 框扫入整机码(MES 或离线)，再扫 MAC 开始测试"));
+            return;
+        }
+        fw->stepRuntime_.testData = QString::fromUtf8(tailSn);
+        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, tailSn]() {
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));

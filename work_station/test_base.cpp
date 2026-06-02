@@ -469,24 +469,84 @@ void test_base::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
 }
 
-void test_base::solveGetBrushResponse(int data) {
-    getRespone = data;
-    if (data && commandRetryTimer) {
-        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
-        commandRetryTimer->stop();
-        commandRetryTimer->deleteLater();
-        commandRetryTimer = nullptr;
-        lastCommandRetryCount = commandRetrySendCount;
-        commandRetryCount = 0;
-        commandRetrySendCount = 0;
-        canGoNext = 1;
-        sendRetryOver = 0;
-        getRespone = 0;
-        showlog("sendCommandWithRetry完成，收到设备响应");
+bool test_base::isCommandRetryResponseAccepted(const QObject* source) const {
+    if (!commandRetryTimer) {
+        return false;
+    }
+    switch (commandWaitSource_) {
+    case CommandWaitSource::Any:
+        return true;
+    case CommandWaitSource::ProductProtocol:
+        if (source == at) {
+            qDebug() << QStringLiteral("sendCommandWithRetry: 忽略 dongle AT，等待产测协议");
+            return false;
+        }
+        return true;
+    case CommandWaitSource::DongleAt:
+        if (source != static_cast<const QObject*>(at)) {
+            qDebug() << QStringLiteral("sendCommandWithRetry: 忽略非 dongle AT");
+            return false;
+        }
+        return true;
+    }
+    return true;
+}
+
+void test_base::finishCommandRetryWait(bool success, const QString& logMessage) {
+    if (!commandRetryTimer) {
+        return;
+    }
+    disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+    commandRetryTimer->stop();
+    commandRetryTimer->deleteLater();
+    commandRetryTimer = nullptr;
+
+    lastCommandRetryCount = commandRetrySendCount;
+    commandRetryCount = 0;
+    commandRetrySendCount = 0;
+    commandWaitSource_ = CommandWaitSource::Any;
+    getRespone = 0;
+
+    canGoNext = true;
+    sendRetryOver = !success;
+
+    if (!logMessage.isEmpty()) {
+        showlog(logMessage);
     }
 }
 
-// condition=1是成功；timeoutMs 控制等待超时时间
+void test_base::solveGetBrushResponse(int data) {
+    if (!isCommandRetryResponseAccepted(sender())) {
+        return;
+    }
+    const bool success = (data != 0);
+    finishCommandRetryWait(
+        success,
+        success ? QStringLiteral("sendCommandWithRetry完成，收到设备响应")
+                : QStringLiteral("设备应答失败（协议 FAIL）"));
+}
+
+void test_base::onCommandRetryTimerTimeout() {
+    if (!commandRetryTimer) {
+        return;
+    }
+    qDebug() << "retryCount=" << commandRetryCount
+             << QString("sendCommandWithRetry定时器触发, timer=%1")
+                    .arg(reinterpret_cast<quintptr>(commandRetryTimer), 0, 16);
+
+    if (commandRetryCount < 20) {
+        if (commandRetryFunc_ && (commandRetryCount % 5) == 0) {
+            showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
+            ++commandRetrySendCount;
+            commandRetryFunc_();
+        }
+        ++commandRetryCount;
+        return;
+    }
+
+    finishCommandRetryWait(false, QStringLiteral("达到最大重试次数，停止定时器"));
+}
+
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
     if (commandRetryTimer) {
         disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
@@ -494,67 +554,23 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
         commandRetryTimer->deleteLater();
         commandRetryTimer = nullptr;
     }
+
+    commandRetryFunc_ = std::move(commandFunc);
     commandRetryCount = 0;
     commandRetrySendCount = 0;
     lastCommandRetryCount = 0;
     canGoNext = false;
     sendRetryOver = false;
     getRespone = 0;
-    if (commandFunc != nullptr) {
-        // showlog("首次发送指令");
-        commandFunc();  // 重新发送指令
+
+    if (commandRetryFunc_) {
+        commandRetrySendCount = 1;
+        commandRetryFunc_();
     }
 
-    // 启动定时器
     commandRetryTimer = new QTimer(this);
-    connect(commandRetryTimer, &QTimer::timeout, this, [=]() {
-        const QString currentTime = CommonUtils::formatTimestampMs();
-        qDebug() << "retryCount=" << commandRetryCount
-                 << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
-                        .arg(currentTime)
-                        .arg(reinterpret_cast<quintptr>(commandRetryTimer), 0, 16);  // 以16进制显示地址
-
-        if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (commandRetryCount < 20) {  // 如果还有重试次数
-                if (commandFunc != nullptr && !(commandRetryCount % 5)) {
-                    showlog("重新发送指令" + QString::number(commandRetryCount));
-                    commandRetrySendCount++;
-                    commandFunc();  // 重新发送指令
-                }
-                commandRetryCount++;
-            } else {
-                disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
-                getRespone = 0;
-                lastCommandRetryCount = commandRetrySendCount;
-                commandRetryCount = 0;
-                commandRetrySendCount = 0;
-                sendRetryOver = 1;
-                canGoNext = 1;  // 超时后放行状态机，由上层根据 sendRetryOver 判失败
-                commandRetryTimer->stop();  // 达到最大重试次数，停止定时器
-
-                showlog("达到最大重试次数，停止定时器");
-                commandRetryTimer->deleteLater();
-                commandRetryTimer = nullptr;
-                return 0;
-            }
-        } else {  // 如果收到响应
-            disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
-            commandRetryTimer->stop();
-            commandRetryTimer->deleteLater();
-            commandRetryTimer = nullptr;
-            lastCommandRetryCount = commandRetrySendCount;
-            commandRetryCount = 0;
-            commandRetrySendCount = 0;
-            getRespone = 0;
-            canGoNext = 1;
-
-            showlog("sendCommandWithRetry完成，收到设备响应");
-            return 1;
-        }
-        return 0;
-    });
-
-    commandRetryTimer->start(timeoutMs);  // 启动定时器
+    connect(commandRetryTimer, &QTimer::timeout, this, &test_base::onCommandRetryTimerTimeout);
+    commandRetryTimer->start(timeoutMs);
     return 0;
 }
 QString test_base::exportTableContent() {

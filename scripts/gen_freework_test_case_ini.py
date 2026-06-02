@@ -73,11 +73,17 @@ def proto(name, mes, action, cmd, params=None, gate=None, timing=None, prompt=No
     }
 
 
-def hook(name, mes, hook_id=None, timing=None, prompt_text=None):
+def hook(name, mes, hook_id=None, timing=None, prompt_text=None, send=None):
+    """仅 Hook 执行的步骤：Send 供设置页校验与展示，须与 Hook 实际协议一致；未指定时用 DevReset 占位。"""
+    if send is None:
+        send_dict = {"action": "Set", "cmd": "DevReset", "params": {}}
+    else:
+        action, cmd, params = send
+        send_dict = {"action": action, "cmd": cmd, "params": params or {}}
     return {
         "name": name,
         "mes": mes,
-        "send": {"action": "Set", "cmd": "DevReset", "params": {}},
+        "send": send_dict,
         "gate": {"enabled": False},
         "hook": {"enabled": True, "id": hook_id or mes},
         "timing": timing or {},
@@ -141,7 +147,8 @@ CASES = [
     ),
     proto("设置休眠状态", "SLEEP_CMD", "Set", "Sleep", {"Param/int": 1}),
     proto("设置工厂模式", "FAC_MODE_SET", "Set", "FacMode", {"Param/int": 1}),
-    hook("写入SN码", "SN_WRITE_TAIL"),
+    # Sn 载荷由 Hook 从 MES expectedTailSnFromMes 填入；Param/int=1 即 FacDevInfoType_TAIL_SN
+    hook("写入SN码", "SN_WRITE_TAIL", send=("Set", "Sn", {"Param/int": 1})),
     proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState"),
     proto("获取WiFi信息", "WIFI_INFO", "Get", "WifiInfo"),
     hook("读取治具电流测量值", "JIG_CURRENT_READ"),
@@ -164,9 +171,9 @@ CASES = [
     ),
     proto("读取充电电流", "CHARGE_CURRENT_READ", "Get", "ChargeCurrentRead", gate=charge_gate()),
     hook("获取云端三元组", "CLOUD_TUPLE_FETCH"),
-    hook("写入productKey", "WRITE_PRODUCT_KEY"),
-    hook("写入deviceName", "WRITE_DEVICE_NAME"),
-    hook("写入deviceSecret", "WRITE_DEVICE_SECRET"),
+    hook("写入productKey", "WRITE_PRODUCT_KEY", send=("Set", "Sn", {"Param/int": 7})),
+    hook("写入deviceName", "WRITE_DEVICE_NAME", send=("Set", "Sn", {"Param/int": 6})),
+    hook("写入deviceSecret", "WRITE_DEVICE_SECRET", send=("Set", "WriteKey", {})),
     proto("读取设备三元组并比较", "READ_TUPLE_COMPARE", "Get", "TupleRead"),
     hook("上报三元组写入记录", "TUPLE_WRITE_REPORT"),
     hook("扫描连接蓝牙", "BT_SCAN_MAC"),
