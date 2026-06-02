@@ -3,6 +3,7 @@
 #include "test_case.h"
 
 #include "qat.h"
+#include "qprotocol_types.h"
 
 #include <QFile>
 
@@ -94,7 +95,28 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     bool pass = true;
     QString detail;
     GateRegistry::evaluate(activeTestCase_.gate, reportType, payload, pass, detail);
-    markActiveTestCaseStepDone(pass, detail);
+
+    QString testData = detail;
+    QString ask;
+    if (reportType == QStringLiteral("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
+        testData = QString::number(payload.value<ProtocolRssiData>().dbm);
+        if (activeTestCase_.gate.op == TestCaseGateOp::Range) {
+            double low = activeTestCase_.gate.low;
+            double high = activeTestCase_.gate.high;
+            GateRegistry::resolveRangeBounds(activeTestCase_.gate, low, high);
+            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+        }
+    } else if (reportType == QStringLiteral("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
+        const ProtocolBaseInfoData base = payload.value<ProtocolBaseInfoData>();
+        if (activeTestCase_.gate.field == QStringLiteral("soft_version"))
+            testData = base.soft_version.trimmed();
+        else if (activeTestCase_.gate.field == QStringLiteral("res_version"))
+            testData = base.res_version.trimmed();
+        else if (activeTestCase_.gate.field == QStringLiteral("product_name"))
+            testData = base.product_name.trimmed();
+    }
+
+    markActiveTestCaseStepDone(pass, testData, ask);
     if (!pass) {
         result = failValue;
         showlog(QStringLiteral("卡控失败：%1").arg(detail));
@@ -121,6 +143,22 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     if (def.hook.enabled) {
         TestCaseHookRegistry::invoke(def.hook.hookId, ctx);
+        return;
+    }
+
+    if (def.send.channel == TestCaseSendChannel::Cloud) {
+        TupleCmd tupleCmd;
+        if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd)) {
+            ctx->showlog(QStringLiteral("未知云端指令：%1").arg(def.send.deviceCmd));
+            ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
+        if (!TupleCmdCatalog::isCmdForAction(tupleCmd, def.send.action)) {
+            ctx->showlog(QStringLiteral("云端指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+            ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
+        ctx->executeCloudTupleCase(def);
         return;
     }
 

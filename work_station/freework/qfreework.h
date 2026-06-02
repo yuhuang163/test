@@ -44,6 +44,8 @@ public:
     const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
     /** 流程当前 MAC（$MAC 占位符解析用） */
     QString currentMacAddress() const;
+    /** test_case 云端交互通道：按 TupleCmd 执行并更新 stepRuntime_。 */
+    void executeCloudTupleCase(const TestCaseDefinition& def);
 
 private:
     int teststate = -1;

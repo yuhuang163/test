@@ -31,10 +31,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->sendCommandWithRetry([&]() { fw->usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); });
         return;
     }
-    if (hookId == QStringLiteral("CLOUD_TUPLE_FETCH")) {
-        fw->applyTupleByMac();
-        return;
-    }
     if (hookId == QStringLiteral("WRITE_PRODUCT_KEY")) {
         if (fw->failTupleWriteIfNoValidField(QStringLiteral("写入productKey"), !fw->tupleData_.productKey.isEmpty(),
                                              QStringLiteral("productKey为空")))
@@ -73,10 +69,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             map[QStringLiteral("value")] = secretUtf8;
             fw->protocolManager.set(DeviceCmd::WriteKey, map);
         });
-        return;
-    }
-    if (hookId == QStringLiteral("TUPLE_WRITE_REPORT")) {
-        fw->reportTupleWriteRecord();
         return;
     }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {
@@ -323,11 +315,9 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registered = true;
 
     registerHook(QStringLiteral("JIG_CURRENT_READ"));
-    registerHook(QStringLiteral("CLOUD_TUPLE_FETCH"));
     registerHook(QStringLiteral("WRITE_PRODUCT_KEY"));
     registerHook(QStringLiteral("WRITE_DEVICE_NAME"));
     registerHook(QStringLiteral("WRITE_DEVICE_SECRET"));
-    registerHook(QStringLiteral("TUPLE_WRITE_REPORT"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));

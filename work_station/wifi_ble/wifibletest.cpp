@@ -1,4 +1,4 @@
-#include "wifibletest.h"
+﻿#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -203,13 +203,21 @@ bool wifibletest::applyTupleByMacForWifiBle() {
     }
 
     QTupleService service;
-    QString error;
-    if (!service.login(userName, password, &error)) {
-        showlog(QStringLiteral("三元组登录失败：") + error);
+    QVariantMap loginMap;
+    loginMap[QStringLiteral("userName")] = userName;
+    loginMap[QStringLiteral("password")] = password;
+    service.set(TupleCmd::Login, loginMap);
+    if (!service.lastError().isEmpty()) {
+        showlog(QStringLiteral("三元组登录失败：") + service.lastError());
         return false;
     }
 
-    tupleData_ = service.applyTupleByMac(tupleMac, sku, position);
+    QVariantMap applyMap;
+    applyMap[QStringLiteral("mac")] = tupleMac;
+    applyMap[QStringLiteral("sku")] = sku;
+    applyMap[QStringLiteral("position")] = position;
+    service.get(TupleCmd::ApplyTupleByMac, applyMap);
+    tupleData_ = service.lastApplyResult();
     if (!tupleData_.success) {
         showlog(QStringLiteral("三元组获取失败：") + tupleData_.error);
         return false;
@@ -279,18 +287,32 @@ bool wifibletest::reportTupleWriteRecordForWifiBle() {
     }
 
     QTupleService service;
-    QString error;
-    if (!service.login(SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString(),
-                       SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString(), &error)) {
-        showlog(QStringLiteral("三元组写入记录上报登录失败：") + error);
+    QVariantMap loginMap;
+    loginMap[QStringLiteral("userName")] = SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString();
+    loginMap[QStringLiteral("password")] = SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString();
+    service.set(TupleCmd::Login, loginMap);
+    if (!service.lastError().isEmpty()) {
+        showlog(QStringLiteral("三元组写入记录上报登录失败：") + service.lastError());
         return false;
     }
     const bool btRssiPass = intblerssi > BleLowRssi && intblerssi < BleHighRssi;
     const bool bleRssiPass = intblerssi > BleLowRssi && intblerssi < BleHighRssi;
-    if (!service.reportWriteRecord(tupleData_, productSn, TestResult == failValue ? QStringLiteral("NG") : QStringLiteral("OK"),
-                                   BLE_RSSI, btRssiPass, BLE_RSSI, bleRssiPass,
-                                   SETTINGS.value(QStringLiteral("ProductInfo/Software_Version")).toString(), true, &error)) {
-        showlog(QStringLiteral("三元组写入记录上报失败：") + error);
+    QVariantMap reportMap;
+    reportMap[QStringLiteral("productKey")] = tupleData_.productKey;
+    reportMap[QStringLiteral("deviceName")] = tupleData_.deviceName;
+    reportMap[QStringLiteral("deviceSecret")] = tupleData_.deviceSecret;
+    reportMap[QStringLiteral("sn")] = tupleData_.sn;
+    reportMap[QStringLiteral("productSn")] = productSn;
+    reportMap[QStringLiteral("result")] = TestResult == failValue ? QStringLiteral("NG") : QStringLiteral("OK");
+    reportMap[QStringLiteral("btRssi")] = BLE_RSSI;
+    reportMap[QStringLiteral("btRssiPass")] = btRssiPass;
+    reportMap[QStringLiteral("bleRssi")] = BLE_RSSI;
+    reportMap[QStringLiteral("bleRssiPass")] = bleRssiPass;
+    reportMap[QStringLiteral("softwareVersion")] = SETTINGS.value(QStringLiteral("ProductInfo/Software_Version")).toString();
+    reportMap[QStringLiteral("softwareVersionPass")] = true;
+    service.set(TupleCmd::ReportWriteRecord, reportMap);
+    if (!service.lastError().isEmpty()) {
+        showlog(QStringLiteral("三元组写入记录上报失败：") + service.lastError());
         return false;
     }
     showlog(QStringLiteral("三元组写入记录上报成功"));

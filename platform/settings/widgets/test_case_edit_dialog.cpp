@@ -41,6 +41,7 @@ void fillSendChannelCombo(QComboBox* box) {
     box->clear();
     box->addItem(QStringLiteral("产品通信"), QStringLiteral("Product"));
     box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
+    box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
 }
 
 TestCaseSendAction sendActionFromComboData(const QString& data) {
@@ -55,6 +56,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         items.reserve(DongleCmdCatalog::allDongleCmdNames(action).size());
         for (const QString& name : DongleCmdCatalog::allDongleCmdNames(action))
             items.append({DongleCmdCatalog::dongleCmdUiLabel(name), name});
+    } else if (channel == TestCaseSendChannel::Cloud) {
+        items.reserve(TupleCmdCatalog::allTupleCmdNames(action).size());
+        for (const QString& name : TupleCmdCatalog::allTupleCmdNames(action))
+            items.append({TupleCmdCatalog::tupleCmdUiLabel(name), name});
     } else {
         items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size());
         for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames())
@@ -68,12 +73,19 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
 }
 
 TestCaseSendChannel sendChannelFromComboData(const QString& data) {
-    return data.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0 ? TestCaseSendChannel::Dongle
-                                                                            : TestCaseSendChannel::Product;
+    if (data.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Dongle;
+    if (data.compare(QStringLiteral("Cloud"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Cloud;
+    return TestCaseSendChannel::Product;
 }
 
 QString sendChannelComboData(TestCaseSendChannel channel) {
-    return channel == TestCaseSendChannel::Dongle ? QStringLiteral("Dongle") : QStringLiteral("Product");
+    if (channel == TestCaseSendChannel::Dongle)
+        return QStringLiteral("Dongle");
+    if (channel == TestCaseSendChannel::Cloud)
+        return QStringLiteral("Cloud");
+    return QStringLiteral("Product");
 }
 
 enum class SendCmdParamKind { None, Int, UInt, JsonMap, String };
@@ -90,6 +102,24 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (DongleCmdCatalog::dongleCmdFromName(name, dongleCmd)) {
             DeviceCmdParamSchema schema;
             if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
+                out.valid = true;
+                if (schema.kind == DeviceCmdParamKind::None)
+                    out.kind = SendCmdParamKind::None;
+                else if (schema.kind == DeviceCmdParamKind::Int)
+                    out.kind = SendCmdParamKind::Int;
+                else if (schema.kind == DeviceCmdParamKind::String)
+                    out.kind = SendCmdParamKind::String;
+                else
+                    out.kind = SendCmdParamKind::JsonMap;
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::Cloud) {
+        TupleCmd tupleCmd;
+        if (TupleCmdCatalog::tupleCmdFromName(name, tupleCmd)) {
+            DeviceCmdParamSchema schema;
+            if (TupleCmdCatalog::paramSchemaFor(tupleCmd, schema)) {
                 out.valid = true;
                 if (schema.kind == DeviceCmdParamKind::None)
                     out.kind = SendCmdParamKind::None;
@@ -191,6 +221,7 @@ void fillGateOpCombo(QComboBox* box) {
     box->addItem(QStringLiteral("大于"), QStringLiteral("gt"));
     box->addItem(QStringLiteral("小于"), QStringLiteral("lt"));
     box->addItem(QStringLiteral("等于"), QStringLiteral("eq"));
+    box->addItem(QStringLiteral("版本比对"), QStringLiteral("compareVersions"));
 }
 
 const QHash<QString, QString>& hookDisplayNameMap() {
@@ -198,11 +229,9 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
         {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
-        {QStringLiteral("CLOUD_TUPLE_FETCH"), QStringLiteral("获取云端三元组")},
         {QStringLiteral("WRITE_PRODUCT_KEY"), QStringLiteral("写入 productKey")},
         {QStringLiteral("WRITE_DEVICE_NAME"), QStringLiteral("写入 deviceName")},
         {QStringLiteral("WRITE_DEVICE_SECRET"), QStringLiteral("写入 deviceSecret")},
-        {QStringLiteral("TUPLE_WRITE_REPORT"), QStringLiteral("上报三元组写入记录")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
@@ -414,10 +443,11 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     if (fieldIdx >= 0)
         ui->comboBox_gateField->setCurrentIndex(fieldIdx);
 
-    const QString opKey = def.gate.op == TestCaseGateOp::Gt   ? QStringLiteral("gt")
-                          : def.gate.op == TestCaseGateOp::Lt ? QStringLiteral("lt")
-                          : def.gate.op == TestCaseGateOp::Eq ? QStringLiteral("eq")
-                                                             : QStringLiteral("range");
+    const QString opKey = def.gate.op == TestCaseGateOp::Gt              ? QStringLiteral("gt")
+                          : def.gate.op == TestCaseGateOp::Lt            ? QStringLiteral("lt")
+                          : def.gate.op == TestCaseGateOp::Eq            ? QStringLiteral("eq")
+                          : def.gate.op == TestCaseGateOp::CompareVersions ? QStringLiteral("compareVersions")
+                                                                           : QStringLiteral("range");
     const int opIdx = comboIndexByData(ui->comboBox_gateOp, opKey);
     if (opIdx >= 0)
         ui->comboBox_gateOp->setCurrentIndex(opIdx);
@@ -457,10 +487,11 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.gate.reportType = comboData(ui->comboBox_gateReportType);
     def.gate.field = comboData(ui->comboBox_gateField);
     const QString op = comboData(ui->comboBox_gateOp);
-    def.gate.op = op == QLatin1String("gt")   ? TestCaseGateOp::Gt
-                  : op == QLatin1String("lt") ? TestCaseGateOp::Lt
-                  : op == QLatin1String("eq") ? TestCaseGateOp::Eq
-                                              : TestCaseGateOp::Range;
+    def.gate.op = op == QLatin1String("gt")              ? TestCaseGateOp::Gt
+                  : op == QLatin1String("lt")            ? TestCaseGateOp::Lt
+                  : op == QLatin1String("eq")            ? TestCaseGateOp::Eq
+                  : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
+                                                           : TestCaseGateOp::Range;
     def.gate.low = ui->lineEdit_gateLow->text().toDouble();
     def.gate.high = ui->lineEdit_gateHigh->text().toDouble();
     def.gate.expected = ui->lineEdit_gateExpected->text();

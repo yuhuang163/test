@@ -49,6 +49,7 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         f"Low={gate.get('low', 0)}",
         f"High={gate.get('high', 0)}",
         f"Expected={gate.get('expected', '')}",
+        f"ExpectedSettingsKey={gate.get('expected_key', '')}",
         f"LowSettingsKey={gate.get('low_key', '')}",
         f"HighSettingsKey={gate.get('high_key', '')}",
         "",
@@ -90,6 +91,22 @@ def dongle(name, mes, cmd, params=None, timing=None):
     }
 
 
+def cloud(name, mes, action, cmd, params=None, timing=None):
+    return {
+        "name": name,
+        "mes": mes,
+        "send": {
+            "action": action,
+            "channel": "Cloud",
+            "cmd": cmd,
+            "params": params or {},
+        },
+        "gate": {"enabled": False},
+        "hook": {"enabled": False},
+        "timing": timing or {},
+    }
+
+
 def hook(name, mes, hook_id=None, timing=None, prompt_text=None, send=None):
     """仅 Hook 执行的步骤：Send 供设置页校验与展示，须与 Hook 实际协议一致；未指定时用 DevReset 占位。"""
     if send is None:
@@ -109,16 +126,27 @@ def hook(name, mes, hook_id=None, timing=None, prompt_text=None, send=None):
     }
 
 
+def base_info_gate(expected="0.3.30"):
+    return {
+        "enabled": True,
+        "report": "ProtocolBaseInfoData",
+        "field": "soft_version",
+        "op": "compareVersions",
+        "expected": expected,
+        "expected_key": "",
+    }
+
+
 def rssi_gate():
     return {
         "enabled": True,
         "report": "ProtocolRssiData",
         "field": "dbm",
         "op": "range",
-        "low": 0,
-        "high": 0,
-        "low_key": "BLE/LowRssi",
-        "high_key": "BLE/HighRssi",
+        "low": -65,
+        "high": -10,
+        "low_key": "",
+        "high_key": "",
     }
 
 
@@ -151,7 +179,7 @@ def battery_gate():
 CASES = [
     proto("禁止休眠", "FORBID_SLEEP", "Set", "ForbidSleep", {"Param/int": 1}),
     proto("获取整机SN码", "TAIL_SN_READ", "Get", "Sn", {"Param/int": 1}),
-    proto("获取基本信息", "BASE_INFO", "Get", "BaseInfo"),
+    proto("获取基本信息", "BASE_INFO", "Get", "BaseInfo", gate=base_info_gate(), timing={"command_timeout": 8000}),
     proto("获取电量信息", "BATTERY_INFO", "Get", "GetBattery", gate=battery_gate()),
     proto("关机", "SHIP_MODE", "Set", "ShipMode", {"Param/int": 1}),
     proto("产测完成写入", "FAC_RESULT_WRITE", "Set", "FacResult", {"Param/int": 1}),
@@ -187,12 +215,12 @@ CASES = [
         gate=rssi_gate(),
     ),
     proto("读取充电电流", "CHARGE_CURRENT_READ", "Get", "ChargeCurrentRead", gate=charge_gate()),
-    hook("获取云端三元组", "CLOUD_TUPLE_FETCH"),
+    cloud("获取云端三元组", "CLOUD_TUPLE_FETCH", "Get", "ApplyTupleByMac", {"Send/Param/string": "$MAC"}),
     hook("写入productKey", "WRITE_PRODUCT_KEY", send=("Set", "Sn", {"Param/int": 7})),
     hook("写入deviceName", "WRITE_DEVICE_NAME", send=("Set", "Sn", {"Param/int": 6})),
     hook("写入deviceSecret", "WRITE_DEVICE_SECRET", send=("Set", "WriteKey", {})),
     proto("读取设备三元组并比较", "READ_TUPLE_COMPARE", "Get", "TupleRead"),
-    hook("上报三元组写入记录", "TUPLE_WRITE_REPORT"),
+    cloud("上报三元组写入记录", "TUPLE_WRITE_REPORT", "Set", "ReportWriteRecord"),
     dongle("扫描连接蓝牙", "BT_SCAN_MAC", "BleScanConnect"),
     hook("电源键测试", "KEY_POWER", prompt_text="请短按下旋钮"),
     hook("开始/暂停键测试", "KEY_START_PAUSE", prompt_text="请短按下开始/暂停按钮"),

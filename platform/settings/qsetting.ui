@@ -3638,14 +3638,14 @@ QGroupBox::title {
          </item>
          <item>
           <widget class="QCheckBox" name="checkBox_testFlowStopOnTestFail">
-           <property name="text">
-            <string>测试失败时结束测试流程</string>
-           </property>
            <property name="toolTip">
             <string>本工站任一步测试失败（含卡控、超时、钩子等）即不再执行后续步骤</string>
            </property>
+           <property name="text">
+            <string>测试失败时结束测试流程</string>
+           </property>
            <property name="checked">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
           </widget>
          </item>

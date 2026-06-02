@@ -104,11 +104,9 @@ QString flowStationsCatalogGroup() {
 QVector<TestFlowStationEntry> builtinFlowStationPresets() {
     return {
         {QStringLiteral("default"), QStringLiteral("默认工站")},
-        {QStringLiteral("FREE_WORK"), QStringLiteral("自由工站")},
-        {QStringLiteral("ASSEMBLY_CURRENT_TEST"), QStringLiteral("组装电流测试工站")},
+        {QStringLiteral("ASSEMBLY_CURRENT_TEST"), QStringLiteral("半成品工站")},
         {QStringLiteral("AGING_TEST"), QStringLiteral("老化测试工站")},
         {QStringLiteral("BUTTON_TEST"), QStringLiteral("按键测试工站")},
-        {QStringLiteral("SCREEN_TEST"), QStringLiteral("屏幕测试工站")},
         {QStringLiteral("BLUETOOTH_TEST"), QStringLiteral("蓝牙测试工站")},
         {QStringLiteral("SUCTION_TEST"), QStringLiteral("吸力测试工站")},
     };
@@ -388,13 +386,20 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     const QString channelIni = ini.value(QStringLiteral("Send/Channel")).toString().trimmed();
     if (channelIni.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Dongle;
+    } else if (channelIni.compare(QStringLiteral("Cloud"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Cloud;
     } else if (channelIni.compare(QStringLiteral("Product"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Product;
     } else {
+        TupleCmd inferTuple;
         DongleCmd inferDongle;
-        out.send.channel = DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)
-                               ? TestCaseSendChannel::Dongle
-                               : TestCaseSendChannel::Product;
+        if (TupleCmdCatalog::tupleCmdFromName(out.send.deviceCmd, inferTuple)) {
+            out.send.channel = TestCaseSendChannel::Cloud;
+        } else if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)) {
+            out.send.channel = TestCaseSendChannel::Dongle;
+        } else {
+            out.send.channel = TestCaseSendChannel::Product;
+        }
     }
     if (out.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -402,6 +407,13 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
             if (!DongleCmdCatalog::isCmdForAction(dongleCmd, out.send.action))
                 out.send.action = DongleCmdCatalog::actionFor(dongleCmd);
             DongleCmdCatalog::paramFromIniGroup(ini, dongleCmd, out.send.param);
+        }
+    } else if (out.send.channel == TestCaseSendChannel::Cloud) {
+        TupleCmd tupleCmd;
+        if (TupleCmdCatalog::tupleCmdFromName(out.send.deviceCmd, tupleCmd)) {
+            if (!TupleCmdCatalog::isCmdForAction(tupleCmd, out.send.action))
+                out.send.action = TupleCmdCatalog::actionFor(tupleCmd);
+            TupleCmdCatalog::paramFromIniGroup(ini, tupleCmd, out.send.param);
         }
     } else {
         DeviceCmd cmd;
@@ -420,6 +432,7 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.gate.low = ini.value(QStringLiteral("Gate/Low"), 0).toDouble();
     out.gate.high = ini.value(QStringLiteral("Gate/High"), 0).toDouble();
     out.gate.expected = ini.value(QStringLiteral("Gate/Expected")).toString();
+    out.gate.expectedSettingsKey = ini.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
     out.gate.lowSettingsKey = ini.value(QStringLiteral("Gate/LowSettingsKey")).toString();
     out.gate.highSettingsKey = ini.value(QStringLiteral("Gate/HighSettingsKey")).toString();
 
@@ -442,7 +455,33 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
             out.send.deviceCmd = QStringLiteral("BleDirectConnect");
             if (!out.send.param.isValid() || out.send.param.toString().trimmed().isEmpty())
                 out.send.param = QStringLiteral("$MAC");
+        } else if (out.hook.hookId == QStringLiteral("CLOUD_TUPLE_FETCH")) {
+            out.hook.enabled = false;
+            out.send.channel = TestCaseSendChannel::Cloud;
+            out.send.action = TestCaseSendAction::Get;
+            out.send.deviceCmd = QStringLiteral("ApplyTupleByMac");
+            if (!out.send.param.isValid() || out.send.param.toString().trimmed().isEmpty())
+                out.send.param = QStringLiteral("$MAC");
+        } else if (out.hook.hookId == QStringLiteral("TUPLE_WRITE_REPORT")) {
+            out.hook.enabled = false;
+            out.send.channel = TestCaseSendChannel::Cloud;
+            out.send.action = TestCaseSendAction::Set;
+            out.send.deviceCmd = QStringLiteral("ReportWriteRecord");
+            out.send.param = QVariant();
         }
+    }
+
+    // 基本信息软件版本：旧 ini 误用 range + soft_version，改为版本比对（期望写在 case ini 的 Gate/Expected）
+    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData")
+        && out.gate.field == QStringLiteral("soft_version") && out.gate.op == TestCaseGateOp::Range) {
+        out.gate.op = TestCaseGateOp::CompareVersions;
+    }
+    // 旧配置从全局设置读版本：清空，改由 case ini Gate/Expected 配置
+    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData")
+        && out.gate.field == QStringLiteral("soft_version")
+        && out.gate.expectedSettingsKey == QStringLiteral("ProductInfo/Software_Version")
+        && out.gate.expected.trimmed().isEmpty()) {
+        out.gate.expectedSettingsKey.clear();
     }
 
     return true;
@@ -464,13 +503,21 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 
     ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get")
                                                                                           : QStringLiteral("Set"));
-    ini.setValue(QStringLiteral("Send/Channel"),
-                 def.send.channel == TestCaseSendChannel::Dongle ? QStringLiteral("Dongle") : QStringLiteral("Product"));
+    QString channelStr = QStringLiteral("Product");
+    if (def.send.channel == TestCaseSendChannel::Dongle)
+        channelStr = QStringLiteral("Dongle");
+    else if (def.send.channel == TestCaseSendChannel::Cloud)
+        channelStr = QStringLiteral("Cloud");
+    ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
         if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
             DongleCmdCatalog::paramToIniGroup(ini, dongleCmd, def.send.param);
+    } else if (def.send.channel == TestCaseSendChannel::Cloud) {
+        TupleCmd tupleCmd;
+        if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
+            TupleCmdCatalog::paramToIniGroup(ini, tupleCmd, def.send.param);
     } else {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
@@ -488,6 +535,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     ini.setValue(QStringLiteral("Gate/Low"), def.gate.low);
     ini.setValue(QStringLiteral("Gate/High"), def.gate.high);
     ini.setValue(QStringLiteral("Gate/Expected"), def.gate.expected);
+    ini.setValue(QStringLiteral("Gate/ExpectedSettingsKey"), def.gate.expectedSettingsKey);
     ini.setValue(QStringLiteral("Gate/LowSettingsKey"), def.gate.lowSettingsKey);
     ini.setValue(QStringLiteral("Gate/HighSettingsKey"), def.gate.highSettingsKey);
 
@@ -641,6 +689,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
             DeviceCmdParamSchema schema;
             if (!DongleCmdCatalog::paramSchemaFor(dongleCmd, schema))
                 errors.append(QStringLiteral("该 Dongle 指令尚未配置参数模板，请联系工程师"));
+        }
+    } else if (def.send.channel == TestCaseSendChannel::Cloud) {
+        TupleCmd tupleCmd;
+        if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd)) {
+            errors.append(QStringLiteral("云端测试指令无效"));
+        } else if (!TupleCmdCatalog::isCmdForAction(tupleCmd, def.send.action)) {
+            errors.append(QStringLiteral("云端指令与操作方式不匹配"));
+        } else {
+            DeviceCmdParamSchema schema;
+            if (!TupleCmdCatalog::paramSchemaFor(tupleCmd, schema))
+                errors.append(QStringLiteral("该云端指令尚未配置参数模板，请联系工程师"));
         }
     } else {
         DeviceCmd cmd;
@@ -1174,6 +1233,148 @@ void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const
     }
 }
 
+// ===================== TupleCmdCatalog =====================
+
+namespace {
+
+struct TupleCmdEntry {
+    TupleCmd cmd;
+    TestCaseSendAction action;
+    DeviceCmdParamKind kind;
+    const char* hint;
+};
+
+const TupleCmdEntry kTupleCatalog[] = {
+    {TupleCmd::Login, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "userName,password(可空则读SETTINGS)"},
+    {TupleCmd::ApplyTupleByMac, TestCaseSendAction::Get, DeviceCmdParamKind::String, "MAC 或 $MAC"},
+    {TupleCmd::DebugUpdateMacStatus, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "mac,status"},
+    {TupleCmd::ReportWriteRecord, TestCaseSendAction::Set, DeviceCmdParamKind::None, nullptr},
+};
+
+const QHash<QString, TupleCmd> kTupleNameMap = {
+    {QStringLiteral("Login"), TupleCmd::Login},
+    {QStringLiteral("ApplyTupleByMac"), TupleCmd::ApplyTupleByMac},
+    {QStringLiteral("DebugUpdateMacStatus"), TupleCmd::DebugUpdateMacStatus},
+    {QStringLiteral("ReportWriteRecord"), TupleCmd::ReportWriteRecord},
+};
+
+const QHash<QString, QString>& tupleCmdUiLabelMap() {
+    static const QHash<QString, QString> map = {
+        {QStringLiteral("Login"), QStringLiteral("云端登录")},
+        {QStringLiteral("ApplyTupleByMac"), QStringLiteral("获取云端三元组")},
+        {QStringLiteral("DebugUpdateMacStatus"), QStringLiteral("调试更新 MAC 状态")},
+        {QStringLiteral("ReportWriteRecord"), QStringLiteral("上报三元组写入记录")},
+    };
+    return map;
+}
+
+}  // namespace
+
+QStringList TupleCmdCatalog::allTupleCmdNames() {
+    QStringList names = kTupleNameMap.keys();
+    names.sort();
+    return names;
+}
+
+QStringList TupleCmdCatalog::allTupleCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (const TupleCmdEntry& entry : kTupleCatalog) {
+        if (entry.action == action)
+            names.append(tupleCmdToName(entry.cmd));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction TupleCmdCatalog::actionFor(TupleCmd cmd) {
+    for (const TupleCmdEntry& entry : kTupleCatalog) {
+        if (entry.cmd == cmd)
+            return entry.action;
+    }
+    return TestCaseSendAction::Set;
+}
+
+bool TupleCmdCatalog::isCmdForAction(TupleCmd cmd, TestCaseSendAction action) {
+    return actionFor(cmd) == action;
+}
+
+QString TupleCmdCatalog::tupleCmdUiLabel(const QString& enumName) {
+    const QString key = enumName.trimmed();
+    const QString label = tupleCmdUiLabelMap().value(key);
+    if (!label.isEmpty())
+        return label;
+    return QStringLiteral("未登记云端指令");
+}
+
+bool TupleCmdCatalog::tupleCmdFromName(const QString& name, TupleCmd& out) {
+    const auto it = kTupleNameMap.constFind(name.trimmed());
+    if (it == kTupleNameMap.cend())
+        return false;
+    out = it.value();
+    return true;
+}
+
+QString TupleCmdCatalog::tupleCmdToName(TupleCmd cmd) {
+    return QTupleService::tupleCmdToName(cmd);
+}
+
+bool TupleCmdCatalog::paramSchemaFor(TupleCmd cmd, DeviceCmdParamSchema& out) {
+    for (const auto& e : kTupleCatalog) {
+        if (e.cmd == cmd) {
+            out.kind = e.kind;
+            out.hint = e.hint ? QString::fromUtf8(e.hint) : QString();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TupleCmdCatalog::paramFromIniGroup(const QSettings& settings, TupleCmd cmd, QVariant& out) {
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    case DeviceCmdParamKind::Int:
+        out = readSendScopedParam(settings, QStringLiteral("int"), 0).toInt();
+        return true;
+    case DeviceCmdParamKind::String:
+        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
+        return true;
+    case DeviceCmdParamKind::JsonMap:
+        out = readSendParamMap(settings);
+        return true;
+    default:
+        return false;
+    }
+}
+
+void TupleCmdCatalog::paramToIniGroup(QSettings& settings, TupleCmd cmd, const QVariant& value) {
+    removeKeysWithPrefix(settings, QStringLiteral("Param"));
+    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+    const QString prefix = sendParamIniPrefix();
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        break;
+    case DeviceCmdParamKind::Int:
+        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
+        break;
+    case DeviceCmdParamKind::String:
+        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
+        break;
+    case DeviceCmdParamKind::JsonMap:
+        writeJsonMap(settings, prefix, value);
+        break;
+    default:
+        break;
+    }
+}
+
 // ===================== GateRegistry =====================
 
 namespace {
@@ -1428,8 +1629,23 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             detailOut = QStringLiteral("无法从上报数据读取文本字段");
             return true;
         }
-        const QString expected = gate.expected.trimmed();
-        passOut = !expected.isEmpty() && CommonUtils::compareVersions(expected, actual);
+        QString expected = gate.expected.trimmed();
+        if (expected.isEmpty() && !gate.expectedSettingsKey.isEmpty())
+            expected = SETTINGS.value(gate.expectedSettingsKey).toString().trimmed();
+        // 未在 case ini 配置期望时跳过比对（不再回退 上位机设置.ini 的 ProductInfo/Software_Version）
+        if (expected.isEmpty()) {
+            passOut = true;
+            detailOut = QStringLiteral("当前=%1, case 未配置 Gate/Expected").arg(actual);
+            return true;
+        }
+        if (reportType == QLatin1String("ProtocolBaseInfoData") && gate.field == QLatin1String("soft_version")
+            && gate.expected.isEmpty() && !gate.expectedSettingsKey.isEmpty()
+            && !SETTINGS.value(QStringLiteral("ProductInfo/SoftwareVersion_checkBox"), true).toBool()) {
+            passOut = true;
+            detailOut = QStringLiteral("当前=%1, 未启用软件版本校验").arg(actual);
+            return true;
+        }
+        passOut = CommonUtils::compareVersions(expected, actual);
         detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
         return true;
     }
@@ -1442,10 +1658,7 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
 
     double low = gate.low;
     double high = gate.high;
-    if (!gate.lowSettingsKey.isEmpty())
-        low = SETTINGS.value(gate.lowSettingsKey, low).toDouble();
-    if (!gate.highSettingsKey.isEmpty())
-        high = SETTINGS.value(gate.highSettingsKey, high).toDouble();
+    resolveRangeBounds(gate, low, high);
 
     switch (gate.op) {
     case TestCaseGateOp::Gt:
@@ -1463,6 +1676,15 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
     }
     detailOut = QStringLiteral("当前值=%1, 允许[%2,%3]").arg(value).arg(low).arg(high);
     return true;
+}
+
+void GateRegistry::resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut) {
+    lowOut = gate.low;
+    highOut = gate.high;
+    if (!gate.lowSettingsKey.isEmpty())
+        lowOut = SETTINGS.value(gate.lowSettingsKey, lowOut).toDouble();
+    if (!gate.highSettingsKey.isEmpty())
+        highOut = SETTINGS.value(gate.highSettingsKey, highOut).toDouble();
 }
 
 // ===================== TestCaseHookRegistry =====================

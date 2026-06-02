@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "qproduct.h"
+#include "test_case.h"
 
 // 协议 / 治具 / dongle 回包：解析与条件判定（仍为 QFreeWork 成员，仅拆到本翻译单元）
 
@@ -80,6 +81,18 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
             wifiMac += ":";
     }
     qDebug() << getIndex() << "设备的 wifiMac:" << wifiMac;
+
+    if (testCaseStepActive_ && activeTestCase_.gate.reportType == QStringLiteral("ProtocolBaseInfoData")) {
+        softwareVersionForReport_ = data.soft_version;
+        const QString actualSoftwareVersion = data.soft_version.trimmed();
+        QString expectedSoftwareVersion = activeTestCase_.gate.expected.trimmed();
+        if (expectedSoftwareVersion.isEmpty() && !activeTestCase_.gate.expectedSettingsKey.isEmpty()) {
+            expectedSoftwareVersion =
+                SETTINGS.value(activeTestCase_.gate.expectedSettingsKey).toString().trimmed();
+        }
+        softwareVersionPassForReport_ =
+            expectedSoftwareVersion.isEmpty() || compareVersions(expectedSoftwareVersion, actualSoftwareVersion);
+    }
 
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(data)))
         return;
@@ -258,26 +271,45 @@ void QFreeWork::refreshBleRssi(QString data) {
 }
 
 void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
-    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRssiData"), QVariant::fromValue(data)))
-        return;
-
     const int rssi = data.dbm;
-    const bool isBtStep = isCurrentStep("获取BT RSSI");
-    const bool isBleStep = isCurrentStep("获取BLE RSSI");
-    if (!isBtStep && !isBleStep) {
+    const QString value = QString::number(rssi);
+
+    if (testCaseStepActive_) {
+        const QString caseName = activeTestCase_.meta.name.trimmed();
+        const QString mesTag = activeTestCase_.meta.mesTag.trimmed();
+        const bool isBtCase = caseName == QStringLiteral("获取BT RSSI") || mesTag == QStringLiteral("BT_RSSI");
+        const bool isBleCase = caseName == QStringLiteral("获取BLE RSSI") || mesTag == QStringLiteral("BLE_RSSI");
+        if (isBtCase) {
+            ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
+            BT_RSSI = value;
+            intblerssi = rssi;
+        } else if (isBleCase) {
+            ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
+            BLE_RSSI = value;
+            intblerssi = rssi;
+        }
+        if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRssiData"), QVariant::fromValue(data)))
+            return;
         return;
     }
 
-    const QString itemName = isBtStep ? "BT RSSI" : "BLE RSSI";
-    const QString value = QString::number(rssi);
-    const QString ask = QString("[%1,%2]").arg(BleLowRssi).arg(BleHighRssi);
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRssiData"), QVariant::fromValue(data)))
+        return;
+
+    const bool isBtStep = isCurrentStep(QStringLiteral("获取BT RSSI"));
+    const bool isBleStep = isCurrentStep(QStringLiteral("获取BLE RSSI"));
+    if (!isBtStep && !isBleStep)
+        return;
+
+    const QString itemName = isBtStep ? QStringLiteral("BT RSSI") : QStringLiteral("BLE RSSI");
+    const QString ask = QStringLiteral("[%1,%2]").arg(BleLowRssi).arg(BleHighRssi);
     const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
 
     if (isBtStep) {
-        ui->WIFI_RSSI->setText("BT的RSSI：" + value);
+        ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
         BT_RSSI = value;
     } else {
-        ui->BLE_RSSI->setText("BLE的RSSI:" + value);
+        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
         BLE_RSSI = value;
     }
 
@@ -287,9 +319,9 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     stepRuntime_.ask = ask;
     if (!pass) {
         TestResult = failValue;
-        showlog(QString("%1卡控失败，当前=%2，范围=%3").arg(itemName, value, ask));
+        showlog(QStringLiteral("%1卡控失败，当前=%2，范围=%3").arg(itemName, value, ask));
     } else {
-        showlog(QString("%1卡控通过，当前=%2").arg(itemName, value));
+        showlog(QStringLiteral("%1卡控通过，当前=%2").arg(itemName, value));
     }
 }
 
@@ -436,16 +468,24 @@ void QFreeWork::applyTupleByMac() {
     }
 
     QTupleService service;
-    QString error;
-    if (!service.login(userName, password, &error)) {
+    QVariantMap loginMap;
+    loginMap[QStringLiteral("userName")] = userName;
+    loginMap[QStringLiteral("password")] = password;
+    service.set(TupleCmd::Login, loginMap);
+    if (!service.lastError().isEmpty()) {
         stepRuntime_.pass = false;
         stepRuntime_.testData = "登录失败";
         TestResult = failValue;
-        showlog("三元组登录失败：" + error);
+        showlog("三元组登录失败：" + service.lastError());
         return;
     }
 
-    tupleData_ = service.applyTupleByMac(tupleMac, sku, position);
+    QVariantMap applyMap;
+    applyMap[QStringLiteral("mac")] = tupleMac;
+    applyMap[QStringLiteral("sku")] = sku;
+    applyMap[QStringLiteral("position")] = position;
+    service.get(TupleCmd::ApplyTupleByMac, applyMap);
+    tupleData_ = service.lastApplyResult();
     stepRuntime_.pass = tupleData_.success;
     stepRuntime_.testData = tupleData_.success
                                  ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
@@ -481,13 +521,20 @@ void QFreeWork::debugUpdateTupleMacStatus() {
     }
 
     QTupleService service;
-    QString error;
-    if (!service.login(userName, password, &error)) {
-        showlog("调试更新MAC状态登录失败：" + error + " user=" + userName + " password=" + password);
+    QVariantMap loginMap;
+    loginMap[QStringLiteral("userName")] = userName;
+    loginMap[QStringLiteral("password")] = password;
+    service.set(TupleCmd::Login, loginMap);
+    if (!service.lastError().isEmpty()) {
+        showlog("调试更新MAC状态登录失败：" + service.lastError() + " user=" + userName + " password=" + password);
         return;
     }
-    if (!service.debugUpdateMacStatus(tupleMac, 2, &error)) {
-        showlog("调试更新MAC状态失败：" + error);
+    QVariantMap statusMap;
+    statusMap[QStringLiteral("mac")] = tupleMac;
+    statusMap[QStringLiteral("status")] = 2;
+    service.set(TupleCmd::DebugUpdateMacStatus, statusMap);
+    if (!service.lastError().isEmpty()) {
+        showlog("调试更新MAC状态失败：" + service.lastError());
         return;
     }
     showlog("调试更新MAC状态成功：mac=" + tupleMac + " status=1");
@@ -506,25 +553,90 @@ void QFreeWork::reportTupleWriteRecord() {
     }
 
     QTupleService service;
-    QString error;
-    if (!service.login(SETTINGS.value("Tuple/AuthUser").toString(), SETTINGS.value("Tuple/AuthPassword").toString(), &error)) {
+    QVariantMap loginMap;
+    loginMap[QStringLiteral("userName")] = SETTINGS.value("Tuple/AuthUser").toString();
+    loginMap[QStringLiteral("password")] = SETTINGS.value("Tuple/AuthPassword").toString();
+    service.set(TupleCmd::Login, loginMap);
+    if (!service.lastError().isEmpty()) {
         stepRuntime_.pass = false;
         TestResult = failValue;
-        showlog("三元组写入记录上报登录失败：" + error);
+        showlog("三元组写入记录上报登录失败：" + service.lastError());
         return;
     }
     const bool btRssiPass = BT_RSSI.toInt() > BleLowRssi && BT_RSSI.toInt() < BleHighRssi;
     const bool bleRssiPass = BLE_RSSI.toInt() > BleLowRssi && BLE_RSSI.toInt() < BleHighRssi;
-    if (!service.reportWriteRecord(tupleData_, productSn, TestResult == failValue ? "NG" : "OK",
-                                   BT_RSSI, btRssiPass, BLE_RSSI, bleRssiPass,
-                                   softwareVersionForReport_, softwareVersionPassForReport_, &error)) {
+    QVariantMap reportMap;
+    reportMap[QStringLiteral("productKey")] = tupleData_.productKey;
+    reportMap[QStringLiteral("deviceName")] = tupleData_.deviceName;
+    reportMap[QStringLiteral("deviceSecret")] = tupleData_.deviceSecret;
+    reportMap[QStringLiteral("sn")] = tupleData_.sn;
+    reportMap[QStringLiteral("productSn")] = productSn;
+    reportMap[QStringLiteral("result")] = TestResult == failValue ? QStringLiteral("NG") : QStringLiteral("OK");
+    reportMap[QStringLiteral("btRssi")] = BT_RSSI;
+    reportMap[QStringLiteral("btRssiPass")] = btRssiPass;
+    reportMap[QStringLiteral("bleRssi")] = BLE_RSSI;
+    reportMap[QStringLiteral("bleRssiPass")] = bleRssiPass;
+    reportMap[QStringLiteral("softwareVersion")] = softwareVersionForReport_;
+    reportMap[QStringLiteral("softwareVersionPass")] = softwareVersionPassForReport_;
+    service.set(TupleCmd::ReportWriteRecord, reportMap);
+    if (!service.lastError().isEmpty()) {
         stepRuntime_.pass = false;
         TestResult = failValue;
-        showlog("三元组写入记录上报失败：" + error);
+        showlog("三元组写入记录上报失败：" + service.lastError());
         return;
     }
     stepRuntime_.pass = true;
     showlog("三元组写入记录上报成功");
+}
+
+void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
+    TupleCmd cmd;
+    if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, cmd)) {
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    switch (cmd) {
+    case TupleCmd::ApplyTupleByMac:
+        applyTupleByMac();
+        break;
+    case TupleCmd::ReportWriteRecord:
+        reportTupleWriteRecord();
+        break;
+    case TupleCmd::DebugUpdateMacStatus:
+        debugUpdateTupleMacStatus();
+        break;
+    case TupleCmd::Login: {
+        stepRuntime_.done = true;
+        const QVariantMap m = def.send.param.toMap();
+        QString userName = m.value(QStringLiteral("userName")).toString();
+        QString password = m.value(QStringLiteral("password")).toString();
+        if (userName.isEmpty())
+            userName = SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString();
+        if (password.isEmpty())
+            password = SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString();
+        if (userName.isEmpty() || password.isEmpty()) {
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = QStringLiteral("账号未配置");
+            TestResult = failValue;
+            showlog(QStringLiteral("云端登录失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置"));
+            return;
+        }
+        QTupleService service;
+        QVariantMap loginMap;
+        loginMap[QStringLiteral("userName")] = userName;
+        loginMap[QStringLiteral("password")] = password;
+        service.set(TupleCmd::Login, loginMap);
+        stepRuntime_.pass = service.lastError().isEmpty();
+        stepRuntime_.testData = stepRuntime_.pass ? QStringLiteral("登录成功") : service.lastError();
+        if (!stepRuntime_.pass) {
+            TestResult = failValue;
+            showlog(QStringLiteral("云端登录失败：") + service.lastError());
+        } else {
+            showlog(QStringLiteral("云端登录成功"));
+        }
+        break;
+    }
+    }
 }
 
 void QFreeWork::refreshTupleData(ProtocolTupleData data) {

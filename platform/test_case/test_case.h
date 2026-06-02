@@ -3,6 +3,7 @@
 
 #include "qprotocol_types.h"
 #include "qat.h"
+#include "qtupleservice.h"
 #include "test_case_types.h"
 
 #include <QSettings>
@@ -96,6 +97,20 @@ public:
     static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
 };
 
+class TupleCmdCatalog {
+public:
+    static QStringList allTupleCmdNames();
+    static QStringList allTupleCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(TupleCmd cmd);
+    static bool isCmdForAction(TupleCmd cmd, TestCaseSendAction action);
+    static QString tupleCmdUiLabel(const QString& enumName);
+    static bool tupleCmdFromName(const QString& name, TupleCmd& out);
+    static QString tupleCmdToName(TupleCmd cmd);
+    static bool paramSchemaFor(TupleCmd cmd, DeviceCmdParamSchema& out);
+    static bool paramFromIniGroup(const QSettings& settings, TupleCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, TupleCmd cmd, const QVariant& value);
+};
+
 // ---------- 卡控 ----------
 struct GateFieldDescriptor {
     QString field;
@@ -116,6 +131,8 @@ public:
     static QStringList fieldsFor(const QString& reportType);
     static bool evaluate(const TestCaseGate& gate, const QString& reportType, const QVariant& payload, bool& passOut,
                          QString& detailOut);
+    /** 解析 range 卡控上下限（含 LowSettingsKey/HighSettingsKey）。 */
+    static void resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut);
 };
 
 // ---------- 钩子（仅自由工站 QFreeWork 执行） ----------

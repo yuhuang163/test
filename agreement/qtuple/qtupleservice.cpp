@@ -231,10 +231,163 @@ QString QTupleService::inspectionOpDisplayNameFromItem(const QString& itemOrKey)
     return inspectionOpDisplayName(key);
 }
 
+namespace {
+
+QVariantMap variantToMap(const QVariant& v) {
+    return v.toMap();
+}
+
+TupleApplyResult tupleFromMap(const QVariantMap& m) {
+    TupleApplyResult t;
+    t.success = m.value(QStringLiteral("success")).toBool();
+    t.error = m.value(QStringLiteral("error")).toString();
+    t.mac = m.value(QStringLiteral("mac")).toString();
+    t.productKey = m.value(QStringLiteral("productKey")).toString();
+    t.deviceName = m.value(QStringLiteral("deviceName")).toString();
+    t.deviceSecret = m.value(QStringLiteral("deviceSecret")).toString();
+    t.sn = m.value(QStringLiteral("sn")).toString();
+    t.status = m.value(QStringLiteral("status")).toInt();
+    t.availableCount = m.value(QStringLiteral("availableCount")).toInt();
+    return t;
+}
+
+}  // namespace
+
+QString QTupleService::tupleCmdToName(TupleCmd cmd) {
+    switch (cmd) {
+    case TupleCmd::Login:
+        return QStringLiteral("Login");
+    case TupleCmd::ApplyTupleByMac:
+        return QStringLiteral("ApplyTupleByMac");
+    case TupleCmd::DebugUpdateMacStatus:
+        return QStringLiteral("DebugUpdateMacStatus");
+    case TupleCmd::ReportWriteRecord:
+        return QStringLiteral("ReportWriteRecord");
+    }
+    return QString();
+}
+
+bool QTupleService::tupleCmdFromName(const QString& name, TupleCmd& out) {
+    const QString key = name.trimmed();
+    if (key == QStringLiteral("Login")) {
+        out = TupleCmd::Login;
+        return true;
+    }
+    if (key == QStringLiteral("ApplyTupleByMac")) {
+        out = TupleCmd::ApplyTupleByMac;
+        return true;
+    }
+    if (key == QStringLiteral("DebugUpdateMacStatus")) {
+        out = TupleCmd::DebugUpdateMacStatus;
+        return true;
+    }
+    if (key == QStringLiteral("ReportWriteRecord")) {
+        out = TupleCmd::ReportWriteRecord;
+        return true;
+    }
+    return false;
+}
+
+void QTupleService::parseCmd(const QByteArray& byte) {
+    lastApplyResult_ = parseApplyTupleResponse(byte);
+}
+
+void QTupleService::set(TupleCmd cmd, const QVariant& data) {
+    lastError_.clear();
+    const QVariantMap m = variantToMap(data);
+    QString error;
+    switch (cmd) {
+    case TupleCmd::Login: {
+        const QString userName = m.value(QStringLiteral("userName")).toString();
+        const QString password = m.value(QStringLiteral("password")).toString();
+        if (!loginImpl(userName, password, &error)) {
+            lastError_ = error;
+        }
+        break;
+    }
+    case TupleCmd::DebugUpdateMacStatus: {
+        const QString mac = m.value(QStringLiteral("mac")).toString();
+        const int status = m.value(QStringLiteral("status"), 2).toInt();
+        if (!debugUpdateMacStatusImpl(mac, status, &error)) {
+            lastError_ = error;
+        }
+        break;
+    }
+    case TupleCmd::ReportWriteRecord: {
+        const TupleApplyResult tuple = tupleFromMap(m);
+        const QString productSn = m.value(QStringLiteral("productSn")).toString();
+        const QString result = m.value(QStringLiteral("result")).toString();
+        const QString btRssi = m.value(QStringLiteral("btRssi")).toString();
+        const bool btRssiPass = m.value(QStringLiteral("btRssiPass")).toBool();
+        const QString bleRssi = m.value(QStringLiteral("bleRssi")).toString();
+        const bool bleRssiPass = m.value(QStringLiteral("bleRssiPass")).toBool();
+        const QString softwareVersion = m.value(QStringLiteral("softwareVersion")).toString();
+        const bool softwareVersionPass = m.value(QStringLiteral("softwareVersionPass")).toBool();
+        if (!reportWriteRecordImpl(tuple, productSn, result, btRssi, btRssiPass, bleRssi, bleRssiPass, softwareVersion,
+                                   softwareVersionPass, &error)) {
+            lastError_ = error;
+        }
+        break;
+    }
+    case TupleCmd::ApplyTupleByMac:
+        lastError_ = QStringLiteral("ApplyTupleByMac 请使用 get()");
+        break;
+    }
+}
+
+void QTupleService::get(TupleCmd cmd, const QVariant& param) {
+    lastError_.clear();
+    const QVariantMap m = variantToMap(param);
+    switch (cmd) {
+    case TupleCmd::ApplyTupleByMac: {
+        const QString mac = m.value(QStringLiteral("mac")).toString();
+        const QString sku = m.value(QStringLiteral("sku")).toString();
+        const QString position = m.value(QStringLiteral("position"), QStringLiteral("L")).toString();
+        lastApplyResult_ = applyTupleByMacImpl(mac, sku, position);
+        if (!lastApplyResult_.success) {
+            lastError_ = lastApplyResult_.error;
+        }
+        break;
+    }
+    default:
+        lastError_ = QStringLiteral("不支持的 get 指令");
+        break;
+    }
+}
+
+bool QTupleService::sendCustomMessage(const QVariantMap& map) {
+    lastError_.clear();
+    const QString path = map.value(QStringLiteral("path")).toString();
+    if (path.isEmpty()) {
+        lastError_ = QStringLiteral("sendCustomMessage 缺少 path");
+        return false;
+    }
+    const QString method = map.value(QStringLiteral("method"), QStringLiteral("GET")).toString().trimmed().toUpper();
+    const QString query = map.value(QStringLiteral("query")).toString();
+    QByteArray body = map.value(QStringLiteral("body")).toByteArray();
+    if (body.isEmpty() && map.contains(QStringLiteral("body"))) {
+        body = map.value(QStringLiteral("body")).toString().toUtf8();
+    }
+
+    QByteArray response;
+    QString error;
+    const bool ok = method == QStringLiteral("POST")
+                        ? requestPost(path, body, &response, &error)
+                        : requestGet(path, query, &response, &error);
+    if (!ok) {
+        lastError_ = error;
+        return false;
+    }
+    if (map.value(QStringLiteral("parseApplyResult")).toBool()) {
+        parseCmd(response);
+    }
+    return true;
+}
+
 QTupleService::QTupleService(const QString& baseUrl)
     : baseUrl_(baseUrl.isEmpty() ? SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString() : baseUrl) {}
 
-bool QTupleService::login(const QString& userName, const QString& password, QString* error) {
+bool QTupleService::loginImpl(const QString& userName, const QString& password, QString* error) {
     const QByteArray token = QString("%1:%2").arg(userName, password).toUtf8().toBase64();
     authHeader_ = "Basic " + token;
 
@@ -266,7 +419,7 @@ bool QTupleService::login(const QString& userName, const QString& password, QStr
     return true;
 }
 
-TupleApplyResult QTupleService::applyTupleByMac(const QString& mac, const QString& sku, const QString& position) {
+TupleApplyResult QTupleService::applyTupleByMacImpl(const QString& mac, const QString& sku, const QString& position) {
     TupleApplyResult result;
     qDebug().noquote() << "[Tuple] applyTupleByMac params:"
                        << "mac=" + mac
@@ -283,9 +436,18 @@ TupleApplyResult QTupleService::applyTupleByMac(const QString& mac, const QStrin
     }
 
     qDebug().noquote() << "[Tuple] applyTupleByMac response:" << QString::fromUtf8(response);
+    result = parseApplyTupleResponse(response);
+    if (result.mac.isEmpty()) {
+        result.mac = mac;
+    }
+    return result;
+}
+
+TupleApplyResult QTupleService::parseApplyTupleResponse(const QByteArray& response) const {
+    TupleApplyResult result;
     const QJsonDocument doc = QJsonDocument::fromJson(response);
     if (!doc.isObject()) {
-        result.error = "三元组响应不是 JSON 对象";
+        result.error = QStringLiteral("三元组响应不是 JSON 对象");
         return result;
     }
 
@@ -294,11 +456,11 @@ TupleApplyResult QTupleService::applyTupleByMac(const QString& mac, const QStrin
     const int successCode = dataObj.contains("success") ? dataObj.value("success").toInt(-1) : obj.value("success").toInt(0);
     const int code = obj.value("code").toInt(200);
     if (code != 200 || successCode != 0) {
-        result.error = obj.value("message").toString(obj.value("msg").toString("三元组接口返回失败"));
+        result.error = obj.value("message").toString(obj.value("msg").toString(QStringLiteral("三元组接口返回失败")));
         return result;
     }
 
-    result.mac = dataObj.value("mac").toString(mac);
+    result.mac = dataObj.value("mac").toString();
     result.productKey = dataObj.value("productKey").toString();
     result.deviceName = dataObj.value("deviceName").toString();
     result.deviceSecret = dataObj.value("deviceSecret").toString();
@@ -307,12 +469,12 @@ TupleApplyResult QTupleService::applyTupleByMac(const QString& mac, const QStrin
     result.availableCount = dataObj.value("availableCount").toInt();
     result.success = !result.productKey.isEmpty() && !result.deviceName.isEmpty() && !result.deviceSecret.isEmpty();
     if (!result.success) {
-        result.error = "三元组字段缺失";
+        result.error = QStringLiteral("三元组字段缺失");
     }
     return result;
 }
 
-bool QTupleService::debugUpdateMacStatus(const QString& mac, int status, QString* error) {
+bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, QString* error) {
     QJsonObject bodyObj;
     bodyObj.insert("mac", mac);
     bodyObj.insert("status", status);
@@ -327,7 +489,7 @@ bool QTupleService::debugUpdateMacStatus(const QString& mac, int status, QString
     return true;
 }
 
-bool QTupleService::reportWriteRecord(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
+bool QTupleService::reportWriteRecordImpl(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
                                       const QString& btRssi, bool btRssiPass,
                                       const QString& bleRssi, bool bleRssiPass,
                                       const QString& softwareVersion, bool softwareVersionPass, QString* error) {

@@ -6,7 +6,7 @@
 
 enum class TestCaseSendAction { Set, Get };
 
-enum class TestCaseSendChannel { Product, Dongle };
+enum class TestCaseSendChannel { Product, Dongle, Cloud };
 
 struct TestCaseMeta {
     /** 名称：界面显示、日志、ini 文件名（支持中文） */
@@ -44,6 +44,7 @@ struct TestCaseGate {
     double low = 0.0;
     double high = 0.0;
     QString expected;
+    QString expectedSettingsKey;
     QString lowSettingsKey;
     QString highSettingsKey;
 };
