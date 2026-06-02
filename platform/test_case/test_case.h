@@ -74,6 +74,11 @@ class DeviceCmdCatalog {
 public:
     static QStringList allDeviceCmdNames();
     static QStringList allDeviceCmdNames(TestCaseSendAction action);
+    static QStringList allDeviceCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
+    static TestCaseProductProtocol productProtocolFromIni(const QString& text);
+    static QString productProtocolToIni(TestCaseProductProtocol protocol);
+    static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
+    static bool isCmdSupportedByProtocol(DeviceCmd cmd, TestCaseProductProtocol protocol, TestCaseSendAction action);
     static TestCaseSendAction actionFor(DeviceCmd cmd);
     static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
     static QString deviceCmdUiLabel(const QString& enumName);

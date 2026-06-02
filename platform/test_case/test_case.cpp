@@ -8,8 +8,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
-#include <QSet>
-
 #include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
@@ -383,6 +381,8 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                        : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
+    out.send.productProtocol =
+        DeviceCmdCatalog::productProtocolFromIni(ini.value(QStringLiteral("Send/Protocol")).toString());
     const QString channelIni = ini.value(QStringLiteral("Send/Channel")).toString().trimmed();
     if (channelIni.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Dongle;
@@ -512,6 +512,9 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     else if (def.send.channel == TestCaseSendChannel::Cloud)
         channelStr = QStringLiteral("Cloud");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
+    if (def.send.channel == TestCaseSendChannel::Product)
+        ini.setValue(QStringLiteral("Send/Protocol"),
+                     DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -710,6 +713,8 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
             errors.append(QStringLiteral("产品测试指令无效"));
         } else if (!DeviceCmdCatalog::isCmdForAction(cmd, def.send.action)) {
             errors.append(QStringLiteral("产品指令与操作方式不匹配"));
+        } else if (!DeviceCmdCatalog::isCmdSupportedByProtocol(cmd, def.send.productProtocol, def.send.action)) {
+            errors.append(QStringLiteral("该指令不属于所选产品协议（FCTP/QPB）"));
         } else {
             DeviceCmdParamSchema schema;
             if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema))
@@ -806,13 +811,103 @@ const QHash<QString, DeviceCmd> kNameMap = {
         X(DeviceExceptionRead)};
 #undef X
 
+// 与 qfctp.cpp / qpb.cpp 中 set()/get() 的 case 保持一致（未实现的枚举不出现在设置页）。
+// 使用 QVector 而非 QSet：enum class DeviceCmd 未提供 qHash，QSet 无法编译。
+const QVector<DeviceCmd>& qfctpSetCmds() {
+    static const QVector<DeviceCmd> cmds = {
+        DeviceCmd::FacMode,         DeviceCmd::BurningMode,     DeviceCmd::SuctionMode,
+        DeviceCmd::BtSignalMode,    DeviceCmd::BtNoSignalMode,  DeviceCmd::BtFreqMode,
+        DeviceCmd::Sleep,           DeviceCmd::WriteKey,        DeviceCmd::Sn,
+        DeviceCmd::FacResult,       DeviceCmd::TrimSet,         DeviceCmd::MacWrite,
+        DeviceCmd::NightLightSet,   DeviceCmd::LedTest,         DeviceCmd::FactoryReset,
+        DeviceCmd::ShipMode,        DeviceCmd::LcdBacklight,    DeviceCmd::LightReportControl,
+        DeviceCmd::LightCalibWrite, DeviceCmd::CompensationSet,
+    };
+    return cmds;
+}
+
+const QVector<DeviceCmd>& qfctpGetCmds() {
+    static const QVector<DeviceCmd> cmds = {
+        DeviceCmd::Sn,               DeviceCmd::TrimRead,         DeviceCmd::MacRead,
+        DeviceCmd::BaseInfo,         DeviceCmd::TupleRead,        DeviceCmd::LightSensorInfo,
+        DeviceCmd::RssiRead,         DeviceCmd::KeySignalRead,    DeviceCmd::LightCalibRead,
+        DeviceCmd::ChargeCurrentRead, DeviceCmd::AgingStatusRead, DeviceCmd::FactoryDoneRead,
+        DeviceCmd::DeviceExceptionRead, DeviceCmd::DeviceInfo,   DeviceCmd::PeriphState,
+        DeviceCmd::GetBattery,
+    };
+    return cmds;
+}
+
+const QVector<DeviceCmd>& qpbSetCmds() {
+    static const QVector<DeviceCmd> cmds = {
+        DeviceCmd::MotorCali,        DeviceCmd::WifiConnect,      DeviceCmd::CameraState,
+        DeviceCmd::PressCollect,     DeviceCmd::ImuCollect,       DeviceCmd::PressCaliResult,
+        DeviceCmd::ImuCaliResult,    DeviceCmd::NewImuCaliResult, DeviceCmd::LocalOta,
+        DeviceCmd::StartOtaApp,    DeviceCmd::StartMultiBleOtaApp, DeviceCmd::ConfigNetworkApp,
+        DeviceCmd::MotorDampingState, DeviceCmd::RgbColor,        DeviceCmd::LedColor,
+        DeviceCmd::MotorTestState,   DeviceCmd::MotorCaliState,   DeviceCmd::FacResult,
+        DeviceCmd::ScreenColor,      DeviceCmd::ShipMode,         DeviceCmd::MotorAdcSwitch,
+        DeviceCmd::MotorState,       DeviceCmd::MotorParam,       DeviceCmd::MotorCaliResultParam,
+        DeviceCmd::Music,            DeviceCmd::BurningMode,      DeviceCmd::BrushRecord,
+        DeviceCmd::BrushTime,        DeviceCmd::Sleep,             DeviceCmd::ForbidSleep,
+        DeviceCmd::ScreenCameraState, DeviceCmd::CameraLightState, DeviceCmd::CameraSupportState,
+        DeviceCmd::CameraExposureTime, DeviceCmd::DevReset,       DeviceCmd::BrushReset,
+        DeviceCmd::DeviceMode,       DeviceCmd::BrushControl,     DeviceCmd::FacMode,
+        DeviceCmd::CameraPictureState, DeviceCmd::Sn,             DeviceCmd::IAmApp,
+        DeviceCmd::WifiDisconnect,   DeviceCmd::ServoMotorInfo, DeviceCmd::MicControl,
+        DeviceCmd::UploadRecordData, DeviceCmd::SevorMotorParam, DeviceCmd::NewWifiConnect,
+    };
+    return cmds;
+}
+
+const QVector<DeviceCmd>& qpbGetCmds() {
+    static const QVector<DeviceCmd> cmds = {
+        DeviceCmd::GetBattery,       DeviceCmd::BaseInfo,         DeviceCmd::GetImuCaliResult,
+        DeviceCmd::GetPressCaliResult, DeviceCmd::DeviceInfo,     DeviceCmd::PeriphState,
+        DeviceCmd::ConnectInfo,      DeviceCmd::WifiInfo,         DeviceCmd::GetServoMotorInfo,
+        DeviceCmd::NowMusicInfo,     DeviceCmd::SdCardInfo,       DeviceCmd::LightSensorInfo,
+        DeviceCmd::ButtonState,      DeviceCmd::Sn,               DeviceCmd::BurshBacklog,
+    };
+    return cmds;
+}
+
+bool deviceCmdInProtocolSet(DeviceCmd cmd, TestCaseProductProtocol protocol, TestCaseSendAction action) {
+    const QVector<DeviceCmd>& setPool =
+        protocol == TestCaseProductProtocol::Qpb ? qpbSetCmds() : qfctpSetCmds();
+    const QVector<DeviceCmd>& getPool =
+        protocol == TestCaseProductProtocol::Qpb ? qpbGetCmds() : qfctpGetCmds();
+    if (cmd == DeviceCmd::Sn)
+        return action == TestCaseSendAction::Set ? setPool.contains(cmd) : getPool.contains(cmd);
+    if (action == TestCaseSendAction::Set)
+        return setPool.contains(cmd);
+    return getPool.contains(cmd);
+}
+
+/** 设置页「指令内容」下拉：去掉与「操作方式」重复的动作前缀。 */
+QString cmdPickerDisplayLabel(QString label) {
+    label = label.trimmed();
+    if (label.startsWith(QStringLiteral("Dongle "), Qt::CaseInsensitive))
+        label = label.mid(7).trimmed();
+    static const QStringList prefixes = {
+        QStringLiteral("设置"), QStringLiteral("写入"), QStringLiteral("读取"),
+        QStringLiteral("获取"), QStringLiteral("上报"),
+    };
+    for (const QString& prefix : prefixes) {
+        if (label.startsWith(prefix)) {
+            label = label.mid(prefix.size()).trimmed();
+            break;
+        }
+    }
+    return label;
+}
+
 const QHash<QString, QString>& cmdUiLabelMap() {
     static const QHash<QString, QString> map = {
         {QStringLiteral("ForbidSleep"), QStringLiteral("禁止休眠")},
-        {QStringLiteral("Sn"), QStringLiteral("读写序列号")},
-        {QStringLiteral("BaseInfo"), QStringLiteral("读取基本信息")},
-        {QStringLiteral("GetBattery"), QStringLiteral("读取电量")},
-        {QStringLiteral("FacResult"), QStringLiteral("写入产测结果")},
+        {QStringLiteral("Sn"), QStringLiteral("序列号")},
+        {QStringLiteral("BaseInfo"), QStringLiteral("基本信息")},
+        {QStringLiteral("GetBattery"), QStringLiteral("电量")},
+        {QStringLiteral("FacResult"), QStringLiteral("产测结果")},
         {QStringLiteral("BurningMode"), QStringLiteral("老化模式")},
         {QStringLiteral("Sleep"), QStringLiteral("休眠")},
         {QStringLiteral("ShipMode"), QStringLiteral("关机")},
@@ -820,83 +915,83 @@ const QHash<QString, QString>& cmdUiLabelMap() {
         {QStringLiteral("DevReset"), QStringLiteral("设备复位")},
         {QStringLiteral("WifiDisconnect"), QStringLiteral("断开无线网络")},
         {QStringLiteral("WifiConnect"), QStringLiteral("连接无线网络")},
-        {QStringLiteral("RssiRead"), QStringLiteral("读取信号强度")},
-        {QStringLiteral("ChargeCurrentRead"), QStringLiteral("读取充电电流")},
-        {QStringLiteral("TupleRead"), QStringLiteral("读取三元组")},
-        {QStringLiteral("PeriphState"), QStringLiteral("读取外设状态")},
-        {QStringLiteral("FactoryReset"), QStringLiteral("恢复出厂设置")},
+        {QStringLiteral("RssiRead"), QStringLiteral("信号强度")},
+        {QStringLiteral("ChargeCurrentRead"), QStringLiteral("充电电流")},
+        {QStringLiteral("TupleRead"), QStringLiteral("三元组")},
+        {QStringLiteral("PeriphState"), QStringLiteral("外设状态")},
+        {QStringLiteral("FactoryReset"), QStringLiteral("恢复出厂")},
         {QStringLiteral("PressSensorTemp"), QStringLiteral("压力传感器温度")},
         {QStringLiteral("UartReceive"), QStringLiteral("串口接收开关")},
-        {QStringLiteral("RgbColor"), QStringLiteral("设置RGB颜色")},
+        {QStringLiteral("RgbColor"), QStringLiteral("RGB颜色")},
         {QStringLiteral("MotorCali"), QStringLiteral("电机校准")},
         {QStringLiteral("MotorDampingState"), QStringLiteral("电机阻尼状态")},
         {QStringLiteral("MotorTestState"), QStringLiteral("电机测试状态")},
         {QStringLiteral("MotorCaliState"), QStringLiteral("电机校准状态")},
-        {QStringLiteral("ScreenColor"), QStringLiteral("设置屏幕颜色")},
-        {QStringLiteral("LedColor"), QStringLiteral("设置指示灯颜色")},
+        {QStringLiteral("ScreenColor"), QStringLiteral("屏幕颜色")},
+        {QStringLiteral("LedColor"), QStringLiteral("指示灯颜色")},
         {QStringLiteral("MotorAdcSwitch"), QStringLiteral("电机ADC开关")},
-        {QStringLiteral("MotorParam"), QStringLiteral("设置电机参数")},
+        {QStringLiteral("MotorParam"), QStringLiteral("电机参数")},
         {QStringLiteral("MotorState"), QStringLiteral("电机运行状态")},
         {QStringLiteral("MotorCaliResultParam"), QStringLiteral("电机校准结果参数")},
-        {QStringLiteral("Music"), QStringLiteral("设置音乐")},
-        {QStringLiteral("BrushRecord"), QStringLiteral("设置刷牙记录")},
-        {QStringLiteral("BrushTime"), QStringLiteral("设置刷牙时间")},
-        {QStringLiteral("CameraState"), QStringLiteral("设置摄像头状态")},
+        {QStringLiteral("Music"), QStringLiteral("音乐")},
+        {QStringLiteral("BrushRecord"), QStringLiteral("刷牙记录")},
+        {QStringLiteral("BrushTime"), QStringLiteral("刷牙时间")},
+        {QStringLiteral("CameraState"), QStringLiteral("摄像头状态")},
         {QStringLiteral("ScreenCameraState"), QStringLiteral("屏幕摄像头状态")},
         {QStringLiteral("CameraLightState"), QStringLiteral("摄像头补光状态")},
         {QStringLiteral("CameraSupportState"), QStringLiteral("摄像头支持状态")},
         {QStringLiteral("CameraExposureTime"), QStringLiteral("摄像头曝光时间")},
         {QStringLiteral("BrushReset"), QStringLiteral("刷牙复位")},
-        {QStringLiteral("PressCaliResult"), QStringLiteral("写入压力校准结果")},
-        {QStringLiteral("ImuCaliResult"), QStringLiteral("写入惯性校准结果")},
-        {QStringLiteral("NewImuCaliResult"), QStringLiteral("写入新惯性校准结果")},
-        {QStringLiteral("DeviceMode"), QStringLiteral("设置设备模式")},
+        {QStringLiteral("PressCaliResult"), QStringLiteral("压力校准结果")},
+        {QStringLiteral("ImuCaliResult"), QStringLiteral("惯性校准结果")},
+        {QStringLiteral("NewImuCaliResult"), QStringLiteral("新惯性校准结果")},
+        {QStringLiteral("DeviceMode"), QStringLiteral("设备模式")},
         {QStringLiteral("BrushControl"), QStringLiteral("刷牙控制")},
         {QStringLiteral("CameraPictureState"), QStringLiteral("摄像头拍照状态")},
         {QStringLiteral("LocalOta"), QStringLiteral("本地固件升级")},
-        {QStringLiteral("StartOtaApp"), QStringLiteral("启动升级应用")},
+        {QStringLiteral("StartOtaApp"), QStringLiteral("升级应用")},
         {QStringLiteral("IAmApp"), QStringLiteral("应用身份声明")},
-        {QStringLiteral("ConfigNetworkApp"), QStringLiteral("配置网络应用")},
-        {QStringLiteral("StartMultiBleOtaApp"), QStringLiteral("启动多设备蓝牙升级")},
+        {QStringLiteral("ConfigNetworkApp"), QStringLiteral("配网应用")},
+        {QStringLiteral("StartMultiBleOtaApp"), QStringLiteral("多设备蓝牙升级")},
         {QStringLiteral("PressCollect"), QStringLiteral("压力采集")},
         {QStringLiteral("ImuCollect"), QStringLiteral("惯性传感器采集")},
         {QStringLiteral("CameraFaultDataPacket"), QStringLiteral("摄像头故障数据")},
         {QStringLiteral("ServoMotorInfo"), QStringLiteral("舵机信息")},
         {QStringLiteral("MicControl"), QStringLiteral("麦克风控制")},
-        {QStringLiteral("UploadRecordData"), QStringLiteral("上传记录数据")},
-        {QStringLiteral("NewWifiConnect"), QStringLiteral("新方式连接无线网络")},
+        {QStringLiteral("UploadRecordData"), QStringLiteral("记录数据上传")},
+        {QStringLiteral("NewWifiConnect"), QStringLiteral("无线网络(新协议)")},
         {QStringLiteral("SevorMotorParam"), QStringLiteral("舵机参数")},
         {QStringLiteral("SuctionMode"), QStringLiteral("吸力模式")},
         {QStringLiteral("BtSignalMode"), QStringLiteral("蓝牙信号模式")},
         {QStringLiteral("BtNoSignalMode"), QStringLiteral("蓝牙无信号模式")},
         {QStringLiteral("BtFreqMode"), QStringLiteral("蓝牙定频模式")},
-        {QStringLiteral("WriteKey"), QStringLiteral("写入密钥")},
-        {QStringLiteral("TrimSet"), QStringLiteral("写入微调值")},
-        {QStringLiteral("MacWrite"), QStringLiteral("写入网卡地址")},
-        {QStringLiteral("NightLightSet"), QStringLiteral("夜灯设置")},
+        {QStringLiteral("WriteKey"), QStringLiteral("密钥")},
+        {QStringLiteral("TrimSet"), QStringLiteral("微调值")},
+        {QStringLiteral("MacWrite"), QStringLiteral("网卡地址")},
+        {QStringLiteral("NightLightSet"), QStringLiteral("夜灯")},
         {QStringLiteral("LedTest"), QStringLiteral("指示灯测试")},
         {QStringLiteral("LcdBacklight"), QStringLiteral("屏幕背光")},
         {QStringLiteral("LightReportControl"), QStringLiteral("灯光上报控制")},
-        {QStringLiteral("LightCalibWrite"), QStringLiteral("写入灯光校准")},
-        {QStringLiteral("CompensationSet"), QStringLiteral("补偿参数设置")},
+        {QStringLiteral("LightCalibWrite"), QStringLiteral("灯光校准")},
+        {QStringLiteral("CompensationSet"), QStringLiteral("补偿参数")},
         {QStringLiteral("NowMusicInfo"), QStringLiteral("当前音乐信息")},
         {QStringLiteral("SdCardInfo"), QStringLiteral("存储卡信息")},
         {QStringLiteral("LightSensorInfo"), QStringLiteral("环境光传感器信息")},
         {QStringLiteral("ButtonState"), QStringLiteral("按键状态")},
-        {QStringLiteral("GetPressCaliResult"), QStringLiteral("读取压力校准结果")},
-        {QStringLiteral("GetImuCaliResult"), QStringLiteral("读取惯性校准结果")},
-        {QStringLiteral("DeviceInfo"), QStringLiteral("读取设备信息")},
-        {QStringLiteral("ConnectInfo"), QStringLiteral("读取连接信息")},
-        {QStringLiteral("WifiInfo"), QStringLiteral("读取无线网络信息")},
-        {QStringLiteral("GetServoMotorInfo"), QStringLiteral("读取舵机信息")},
+        {QStringLiteral("GetPressCaliResult"), QStringLiteral("压力校准结果")},
+        {QStringLiteral("GetImuCaliResult"), QStringLiteral("惯性校准结果")},
+        {QStringLiteral("DeviceInfo"), QStringLiteral("设备信息")},
+        {QStringLiteral("ConnectInfo"), QStringLiteral("连接信息")},
+        {QStringLiteral("WifiInfo"), QStringLiteral("无线网络信息")},
+        {QStringLiteral("GetServoMotorInfo"), QStringLiteral("舵机信息")},
         {QStringLiteral("BurshBacklog"), QStringLiteral("刷牙积压数据")},
-        {QStringLiteral("TrimRead"), QStringLiteral("读取微调值")},
-        {QStringLiteral("MacRead"), QStringLiteral("读取网卡地址")},
-        {QStringLiteral("KeySignalRead"), QStringLiteral("读取按键信号")},
-        {QStringLiteral("LightCalibRead"), QStringLiteral("读取灯光校准")},
-        {QStringLiteral("AgingStatusRead"), QStringLiteral("读取老化状态")},
-        {QStringLiteral("FactoryDoneRead"), QStringLiteral("读取产测完成标志")},
-        {QStringLiteral("DeviceExceptionRead"), QStringLiteral("读取设备异常")},
+        {QStringLiteral("TrimRead"), QStringLiteral("微调值")},
+        {QStringLiteral("MacRead"), QStringLiteral("网卡地址")},
+        {QStringLiteral("KeySignalRead"), QStringLiteral("按键信号")},
+        {QStringLiteral("LightCalibRead"), QStringLiteral("灯光校准")},
+        {QStringLiteral("AgingStatusRead"), QStringLiteral("老化状态")},
+        {QStringLiteral("FactoryDoneRead"), QStringLiteral("产测完成标志")},
+        {QStringLiteral("DeviceExceptionRead"), QStringLiteral("设备异常")},
     };
     return map;
 }
@@ -993,13 +1088,43 @@ QStringList DeviceCmdCatalog::allDeviceCmdNames() {
 }
 
 QStringList DeviceCmdCatalog::allDeviceCmdNames(TestCaseSendAction action) {
+    return allDeviceCmdNames(action, TestCaseProductProtocol::Qfctp);
+}
+
+QStringList DeviceCmdCatalog::allDeviceCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol) {
     QStringList names;
     for (auto it = kNameMap.cbegin(); it != kNameMap.cend(); ++it) {
-        if (isCmdForAction(it.value(), action))
-            names.append(it.key());
+        if (!isCmdSupportedByProtocol(it.value(), protocol, action))
+            continue;
+        if (!isCmdForAction(it.value(), action))
+            continue;
+        names.append(it.key());
     }
     names.sort();
     return names;
+}
+
+TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& text) {
+    const QString t = text.trimmed();
+    if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0
+        || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
+        return TestCaseProductProtocol::Qpb;
+    return TestCaseProductProtocol::Qfctp;
+}
+
+QString DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol protocol) {
+    return protocol == TestCaseProductProtocol::Qpb ? QStringLiteral("Qpb") : QStringLiteral("Qfctp");
+}
+
+QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protocol) {
+    return protocol == TestCaseProductProtocol::Qpb ? QStringLiteral("QPB") : QStringLiteral("FCTP");
+}
+
+bool DeviceCmdCatalog::isCmdSupportedByProtocol(DeviceCmd cmd, TestCaseProductProtocol protocol,
+                                                  TestCaseSendAction action) {
+    if (!deviceCmdInProtocolSet(cmd, protocol, action))
+        return false;
+    return isCmdForAction(cmd, action);
 }
 
 TestCaseSendAction DeviceCmdCatalog::actionFor(DeviceCmd cmd) {
@@ -1026,7 +1151,7 @@ QString DeviceCmdCatalog::deviceCmdUiLabel(const QString& enumName) {
     const QString key = enumName.trimmed();
     const QString label = cmdUiLabelMap().value(key);
     if (!label.isEmpty())
-        return label;
+        return cmdPickerDisplayLabel(label);
     return QStringLiteral("未登记指令");
 }
 
@@ -1240,17 +1365,17 @@ const QHash<QString, DongleCmd> kDongleLegacyNameMap = {
 
 const QHash<QString, QString>& dongleCmdUiLabelMap() {
     static const QHash<QString, QString> map = {
-        {QStringLiteral("BleScanConnect"), QStringLiteral("Dongle 扫描连接蓝牙")},
-        {QStringLiteral("BleDirectConnect"), QStringLiteral("Dongle 直连蓝牙")},
-        {QStringLiteral("BleOtaConnect"), QStringLiteral("Dongle OTA 蓝牙连接")},
-        {QStringLiteral("BleAppConnect"), QStringLiteral("Dongle App 蓝牙连接")},
-        {QStringLiteral("BleMainConnect"), QStringLiteral("Dongle 主通道蓝牙连接")},
-        {QStringLiteral("OtaDataPassthrough"), QStringLiteral("Dongle OTA 数据透传")},
-        {QStringLiteral("MainDataPassthrough"), QStringLiteral("Dongle 主通道数据透传")},
-        {QStringLiteral("BleLog"), QStringLiteral("Dongle BLE 日志开关")},
-        {QStringLiteral("BleDeviceLog"), QStringLiteral("Dongle BLE 设备日志开关")},
-        {QStringLiteral("Bomb"), QStringLiteral("Dongle 广播注入")},
-        {QStringLiteral("GetGmac"), QStringLiteral("Dongle 读取 GMAC")},
+        {QStringLiteral("BleScanConnect"), QStringLiteral("扫描连接蓝牙")},
+        {QStringLiteral("BleDirectConnect"), QStringLiteral("直连蓝牙")},
+        {QStringLiteral("BleOtaConnect"), QStringLiteral("OTA 蓝牙连接")},
+        {QStringLiteral("BleAppConnect"), QStringLiteral("App 蓝牙连接")},
+        {QStringLiteral("BleMainConnect"), QStringLiteral("主通道蓝牙连接")},
+        {QStringLiteral("OtaDataPassthrough"), QStringLiteral("OTA 数据透传")},
+        {QStringLiteral("MainDataPassthrough"), QStringLiteral("主通道数据透传")},
+        {QStringLiteral("BleLog"), QStringLiteral("BLE 日志开关")},
+        {QStringLiteral("BleDeviceLog"), QStringLiteral("BLE 设备日志开关")},
+        {QStringLiteral("Bomb"), QStringLiteral("广播注入")},
+        {QStringLiteral("GetGmac"), QStringLiteral("GMAC")},
     };
     return map;
 }
@@ -1289,7 +1414,7 @@ QString DongleCmdCatalog::dongleCmdUiLabel(const QString& enumName) {
     const QString key = enumName.trimmed();
     const QString label = dongleCmdUiLabelMap().value(key);
     if (!label.isEmpty())
-        return label;
+        return cmdPickerDisplayLabel(label);
     return QStringLiteral("未登记 Dongle 指令");
 }
 
@@ -1415,9 +1540,9 @@ const QHash<QString, TupleCmd> kTupleNameMap = {
 const QHash<QString, QString>& tupleCmdUiLabelMap() {
     static const QHash<QString, QString> map = {
         {QStringLiteral("Login"), QStringLiteral("云端登录")},
-        {QStringLiteral("ApplyTupleByMac"), QStringLiteral("获取云端三元组")},
-        {QStringLiteral("DebugUpdateMacStatus"), QStringLiteral("调试更新 MAC 状态")},
-        {QStringLiteral("ReportWriteRecord"), QStringLiteral("上报三元组写入记录")},
+        {QStringLiteral("ApplyTupleByMac"), QStringLiteral("云端三元组")},
+        {QStringLiteral("DebugUpdateMacStatus"), QStringLiteral("调试 MAC 状态")},
+        {QStringLiteral("ReportWriteRecord"), QStringLiteral("三元组写入记录")},
     };
     return map;
 }
@@ -1456,7 +1581,7 @@ QString TupleCmdCatalog::tupleCmdUiLabel(const QString& enumName) {
     const QString key = enumName.trimmed();
     const QString label = tupleCmdUiLabelMap().value(key);
     if (!label.isEmpty())
-        return label;
+        return cmdPickerDisplayLabel(label);
     return QStringLiteral("未登记云端指令");
 }
 

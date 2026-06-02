@@ -8,6 +8,9 @@ enum class TestCaseSendAction { Set, Get };
 
 enum class TestCaseSendChannel { Product, Dongle, Cloud };
 
+/** 产品通信协议（仅 Send/Channel=Product 时有效；与 QProtocolManager::ProtocolType 对应）。 */
+enum class TestCaseProductProtocol { Qfctp, Qpb };
+
 struct TestCaseMeta {
     /** 名称：界面显示、日志、ini 文件名（支持中文） */
     QString name;
@@ -22,6 +25,7 @@ struct TestCaseMeta {
 
 struct TestCaseSend {
     TestCaseSendChannel channel = TestCaseSendChannel::Product;
+    TestCaseProductProtocol productProtocol = TestCaseProductProtocol::Qfctp;
     TestCaseSendAction action = TestCaseSendAction::Set;
     QString deviceCmd;
     QVariant param;

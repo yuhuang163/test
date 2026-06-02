@@ -44,12 +44,25 @@ void fillSendChannelCombo(QComboBox* box) {
     box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
 }
 
+void fillProductProtocolCombo(QComboBox* box) {
+    box->clear();
+    box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qfctp),
+                 DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qfctp));
+    box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qpb),
+                 DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qpb));
+}
+
+TestCaseProductProtocol productProtocolFromComboData(const QString& data) {
+    return DeviceCmdCatalog::productProtocolFromIni(data);
+}
+
 TestCaseSendAction sendActionFromComboData(const QString& data) {
     return data.compare(QStringLiteral("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                          : TestCaseSendAction::Set;
 }
 
-void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSendAction action) {
+void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSendAction action,
+                        TestCaseProductProtocol productProtocol, const QString& keepCmdIfMissing = QString()) {
     box->clear();
     QVector<QPair<QString, QString>> items;
     if (channel == TestCaseSendChannel::Dongle) {
@@ -61,13 +74,28 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         for (const QString& name : TupleCmdCatalog::allTupleCmdNames(action))
             items.append({TupleCmdCatalog::tupleCmdUiLabel(name), name});
     } else {
-        items.reserve(DeviceCmdCatalog::allDeviceCmdNames(action).size());
-        for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames(action))
+        const QStringList names = DeviceCmdCatalog::allDeviceCmdNames(action, productProtocol);
+        items.reserve(names.size());
+        for (const QString& name : names)
             items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
     }
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
     });
+    if (channel == TestCaseSendChannel::Product && !keepCmdIfMissing.isEmpty()) {
+        bool found = false;
+        for (const auto& item : items) {
+            if (item.second == keepCmdIfMissing) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing)
+                                  + QStringLiteral("（非当前协议）");
+            items.prepend({label, keepCmdIfMissing});
+        }
+    }
     for (const auto& item : items)
         box->addItem(item.first, item.second);
 }
@@ -343,8 +371,10 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     ui->setupUi(this);
 
     fillSendChannelCombo(ui->comboBox_sendChannel);
+    fillProductProtocolCombo(ui->comboBox_productProtocol);
     fillActionCombo(ui->comboBox_action);
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set,
+                        TestCaseProductProtocol::Qfctp);
     fillGateReportTypeCombo(ui->comboBox_gateReportType);
     fillGateOpCombo(ui->comboBox_gateOp);
     registerFreeWorkTestCaseHooks();
@@ -360,6 +390,8 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
 
     connect(ui->comboBox_sendChannel, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onSendChannelChanged);
+    connect(ui->comboBox_productProtocol, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TestCaseEditDialog::onProductProtocolChanged);
     connect(ui->comboBox_action, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onSendActionChanged);
     connect(ui->comboBox_deviceCmd, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -378,6 +410,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
+    updateProductProtocolRowVisible();
     onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
 }
 
@@ -412,6 +445,8 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
     ui->groupBox_send->setVisible(!on);
+    if (!on)
+        updateProductProtocolRowVisible();
 }
 
 void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
@@ -445,7 +480,16 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
     if (channelIdx >= 0)
         ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action);
+
+    ui->comboBox_productProtocol->blockSignals(true);
+    const int protoIdx =
+        comboIndexByData(ui->comboBox_productProtocol, DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
+    if (protoIdx >= 0)
+        ui->comboBox_productProtocol->setCurrentIndex(protoIdx);
+    ui->comboBox_productProtocol->blockSignals(false);
+    updateProductProtocolRowVisible();
+
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, def.send.productProtocol, def.send.deviceCmd);
     const int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
     if (cmdIdx >= 0)
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
@@ -508,6 +552,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.action = comboData(ui->comboBox_action) == QLatin1String("Get") ? TestCaseSendAction::Get
                                                                              : TestCaseSendAction::Set;
     def.send.channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+    def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel);
     def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
@@ -532,7 +577,18 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     return def;
 }
 
+void TestCaseEditDialog::updateProductProtocolRowVisible() {
+    const bool product = sendChannelFromComboData(comboData(ui->comboBox_sendChannel)) == TestCaseSendChannel::Product;
+    ui->label_productProtocol->setVisible(product);
+    ui->comboBox_productProtocol->setVisible(product);
+}
+
 void TestCaseEditDialog::onSendChannelChanged(int) {
+    updateProductProtocolRowVisible();
+    refreshDeviceCmdCombo();
+}
+
+void TestCaseEditDialog::onProductProtocolChanged(int) {
     refreshDeviceCmdCombo();
 }
 
@@ -544,7 +600,8 @@ void TestCaseEditDialog::refreshDeviceCmdCombo() {
     const QString previousCmd = comboData(ui->comboBox_deviceCmd);
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action);
+    const TestCaseProductProtocol protocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, protocol, previousCmd);
     int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, previousCmd);
     if (cmdIdx < 0 && ui->comboBox_deviceCmd->count() > 0)
         cmdIdx = 0;

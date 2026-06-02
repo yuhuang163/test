@@ -101,33 +101,43 @@
        <widget class="QComboBox" name="comboBox_sendChannel"/>
       </item>
       <item row="1" column="0">
+       <widget class="QLabel" name="label_productProtocol">
+        <property name="text">
+         <string>产品协议</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_productProtocol"/>
+      </item>
+      <item row="2" column="0">
        <widget class="QLabel" name="label_action">
         <property name="text">
          <string>操作方式</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="2" column="1">
        <widget class="QComboBox" name="comboBox_action"/>
       </item>
-      <item row="2" column="0">
+      <item row="3" column="0">
        <widget class="QLabel" name="label_deviceCmd">
         <property name="text">
          <string>指令内容</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item row="3" column="1">
        <widget class="QComboBox" name="comboBox_deviceCmd"/>
       </item>
-      <item row="3" column="0">
+      <item row="4" column="0">
        <widget class="QLabel" name="label_param">
         <property name="text">
          <string>指令参数</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="4" column="1">
        <widget class="QStackedWidget" name="stackedWidget_param">
         <property name="currentIndex">
          <number>0</number>
@@ -167,7 +177,7 @@
         </widget>
        </widget>
       </item>
-      <item row="4" column="0" colspan="2">
+      <item row="5" column="0" colspan="2">
        <widget class="QLabel" name="label_sendParamHint">
         <property name="text">
          <string/>

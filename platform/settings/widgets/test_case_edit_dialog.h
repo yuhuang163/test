@@ -20,6 +20,7 @@ public:
 
 private slots:
     void onSendChannelChanged(int index);
+    void onProductProtocolChanged(int index);
     void onSendActionChanged(int index);
     void onDeviceCmdChanged(int index);
     void onGateReportTypeChanged(int index);
@@ -30,6 +31,7 @@ private slots:
 private:
     bool saveValidated();
     void refreshDeviceCmdCombo();
+    void updateProductProtocolRowVisible();
     void updateSendParamVisibility(bool hasParam);
 
     Ui::TestCaseEditDialog* ui = nullptr;
