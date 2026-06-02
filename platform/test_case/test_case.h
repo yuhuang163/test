@@ -80,6 +80,8 @@ public:
     static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
     static QString deviceCmdToName(DeviceCmd cmd);
     static bool paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out);
+    /** 设置页「指令参数」填写说明（含示例）。 */
+    static QString paramUiHint(const QString& deviceCmdName);
     static QVariant paramFromSettings(const QSettings& settings, const QString& prefix);
     static void paramToSettings(QSettings& settings, const QString& prefix, const QVariant& value);
     static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
@@ -98,6 +100,7 @@ public:
     static bool dongleCmdFromName(const QString& name, DongleCmd& out);
     static QString dongleCmdToName(DongleCmd cmd);
     static bool paramSchemaFor(DongleCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& dongleCmdName);
     static bool paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
 };
@@ -112,6 +115,7 @@ public:
     static bool tupleCmdFromName(const QString& name, TupleCmd& out);
     static QString tupleCmdToName(TupleCmd cmd);
     static bool paramSchemaFor(TupleCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& tupleCmdName);
     static bool paramFromIniGroup(const QSettings& settings, TupleCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, TupleCmd cmd, const QVariant& value);
 };

@@ -759,23 +759,31 @@ struct CmdEntry {
 };
 
 const CmdEntry kCatalog[] = {
-    {DeviceCmd::ForbidSleep, DeviceCmdParamKind::JsonMap, "value:1"},
-    {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap, "which_sn"},
-    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::GetBattery, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::FacResult, DeviceCmdParamKind::JsonMap, "done:1"},
-    {DeviceCmd::BurningMode, DeviceCmdParamKind::JsonMap, "mode,seconds,switch"},
-    {DeviceCmd::Sleep, DeviceCmdParamKind::JsonMap, "switch"},
-    {DeviceCmd::ShipMode, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::FacMode, DeviceCmdParamKind::JsonMap, "value:1进入 0退出"},
-    {DeviceCmd::DevReset, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::WifiConnect, DeviceCmdParamKind::JsonMap, "name,password"},
-    {DeviceCmd::RssiRead, DeviceCmdParamKind::JsonMap, "mode"},
-    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::TupleRead, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::PeriphState, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::FactoryReset, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::ForbidSleep, DeviceCmdParamKind::JsonMap,
+     "禁止休眠：value=1 开启，0 关闭\n示例：{\"value\":1} 或 value=1"},
+    {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap,
+     "读写 SN：which_sn 类型\n  1=整机SN(TAIL)  2=主板  3=三元组相关\n"
+     "读整机示例：which_sn=1\n写 SN 另配 which_sn 与写入内容"},
+    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::GetBattery, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::FacResult, DeviceCmdParamKind::JsonMap,
+     "产测结果：done=1 通过(留空等同1)，done=0 失败\n示例：done=1 或 {\"done\":1}"},
+    {DeviceCmd::BurningMode, DeviceCmdParamKind::JsonMap,
+     "老化：mode、seconds，可选 switch\n示例：{\"mode\":1,\"seconds\":3600}"},
+    {DeviceCmd::Sleep, DeviceCmdParamKind::JsonMap, "休眠：switch=1 进入，0 退出\n示例：{\"switch\":1}"},
+    {DeviceCmd::ShipMode, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::FacMode, DeviceCmdParamKind::JsonMap,
+     "工厂模式：value=1 进入，0 退出\n示例：{\"value\":1}"},
+    {DeviceCmd::DevReset, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::WifiConnect, DeviceCmdParamKind::JsonMap,
+     "WiFi：name=SSID，password=密码\n示例：name=TestAP\npassword=12345678"},
+    {DeviceCmd::RssiRead, DeviceCmdParamKind::JsonMap,
+     "RSSI：mode=0 读 BLE，mode=1 读 BT\n示例：{\"mode\":0}"},
+    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::TupleRead, DeviceCmdParamKind::None, "无需参数；比对在步骤逻辑中与云端三元组比较"},
+    {DeviceCmd::PeriphState, DeviceCmdParamKind::None, "无需参数"},
+    {DeviceCmd::FactoryReset, DeviceCmdParamKind::None, "无需参数"},
 };
 
 #define X(name) \
@@ -1049,10 +1057,21 @@ bool DeviceCmdCatalog::paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out) 
     // 协议枚举已登记、未在 kCatalog 单独维护：默认无参（设置页不显示参数区；有参指令请加入 kCatalog）
     if (kNameMap.contains(deviceCmdToName(cmd))) {
         out.kind = DeviceCmdParamKind::None;
-        out.hint.clear();
+        out.hint = QStringLiteral("未在产测模板登记：一般无需参数；若协议需要请联系工程师加入 kCatalog");
         return true;
     }
     return false;
+}
+
+QString DeviceCmdCatalog::paramUiHint(const QString& deviceCmdName) {
+    DeviceCmd cmd;
+    if (!deviceCmdFromName(deviceCmdName, cmd))
+        return QStringLiteral("未知产品指令");
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return QStringLiteral("该指令未登记");
+    return schema.hint.trimmed().isEmpty() ? QStringLiteral("按协议填写 JSON 或 name=value 行")
+                                           : schema.hint;
 }
 
 bool DeviceCmdCatalog::paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out) {
@@ -1179,17 +1198,23 @@ struct DongleCmdEntry {
 };
 
 const DongleCmdEntry kDongleCatalog[] = {
-    {DongleCmd::BleScanConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleDirectConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleOtaConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleAppConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleMainConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::OtaDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::MainDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::BleLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::BleDeviceLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::Bomb, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "deviceName,rssi,connectionInterval,command"},
-    {DongleCmd::GetGmac, TestCaseSendAction::Get, DeviceCmdParamKind::None, nullptr},
+    {DongleCmd::BleScanConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String,
+     "蓝牙 MAC：留空或 $MAC = 当前工位 MAC\n示例：$MAC"},
+    {DongleCmd::BleDirectConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String,
+     "直连 MAC：留空或 $MAC = 当前工位 MAC\n示例：$MAC"},
+    {DongleCmd::BleOtaConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String,
+     "OTA 连接 MAC：留空或 $MAC\n示例：$MAC"},
+    {DongleCmd::BleAppConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String,
+     "App 通道 MAC：留空或 $MAC\n示例：$MAC"},
+    {DongleCmd::BleMainConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String,
+     "主通道 MAC：留空或 $MAC\n示例：$MAC"},
+    {DongleCmd::OtaDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0=关 1=开"},
+    {DongleCmd::MainDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0=关 1=开"},
+    {DongleCmd::BleLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0=关 1=开"},
+    {DongleCmd::BleDeviceLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0=关 1=开"},
+    {DongleCmd::Bomb, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap,
+     "广播注入：deviceName,rssi,connectionInterval,command\n按 Dongle 协议填 JSON 或 name=value"},
+    {DongleCmd::GetGmac, TestCaseSendAction::Get, DeviceCmdParamKind::None, "无需参数"},
 };
 
 #define Y(name) \
@@ -1302,6 +1327,16 @@ bool DongleCmdCatalog::paramSchemaFor(DongleCmd cmd, DeviceCmdParamSchema& out) 
     return false;
 }
 
+QString DongleCmdCatalog::paramUiHint(const QString& dongleCmdName) {
+    DongleCmd cmd;
+    if (!dongleCmdFromName(dongleCmdName, cmd))
+        return QStringLiteral("未知 Dongle 指令");
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return QStringLiteral("该 Dongle 指令未登记");
+    return schema.hint;
+}
+
 bool DongleCmdCatalog::paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out) {
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
@@ -1360,10 +1395,14 @@ struct TupleCmdEntry {
 };
 
 const TupleCmdEntry kTupleCatalog[] = {
-    {TupleCmd::Login, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "userName,password(可空则读SETTINGS)"},
-    {TupleCmd::ApplyTupleByMac, TestCaseSendAction::Get, DeviceCmdParamKind::String, "MAC 或 $MAC"},
-    {TupleCmd::DebugUpdateMacStatus, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "mac,status"},
-    {TupleCmd::ReportWriteRecord, TestCaseSendAction::Set, DeviceCmdParamKind::None, nullptr},
+    {TupleCmd::Login, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap,
+     "云端登录：userName、password\n留空则从 上位机设置 Tuple/AuthUser、Tuple/AuthPassword 读取"},
+    {TupleCmd::ApplyTupleByMac, TestCaseSendAction::Get, DeviceCmdParamKind::String,
+     "按 MAC 拉三元组：留空或 $MAC = 当前工位 MAC\n示例：$MAC"},
+    {TupleCmd::DebugUpdateMacStatus, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap,
+     "调试：mac、status\n示例：mac=AA1122334455\nstatus=2"},
+    {TupleCmd::ReportWriteRecord, TestCaseSendAction::Set, DeviceCmdParamKind::None,
+     "无需参数；使用内存中已获取的三元组与测试结果"},
 };
 
 const QHash<QString, TupleCmd> kTupleNameMap = {
@@ -1442,6 +1481,16 @@ bool TupleCmdCatalog::paramSchemaFor(TupleCmd cmd, DeviceCmdParamSchema& out) {
         }
     }
     return false;
+}
+
+QString TupleCmdCatalog::paramUiHint(const QString& tupleCmdName) {
+    TupleCmd cmd;
+    if (!tupleCmdFromName(tupleCmdName, cmd))
+        return QStringLiteral("未知云端指令");
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return QStringLiteral("该云端指令未登记");
+    return schema.hint;
 }
 
 bool TupleCmdCatalog::paramFromIniGroup(const QSettings& settings, TupleCmd cmd, QVariant& out) {

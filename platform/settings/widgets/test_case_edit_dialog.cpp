@@ -93,6 +93,7 @@ enum class SendCmdParamKind { None, Int, UInt, JsonMap, String };
 struct SendCmdParamUi {
     bool valid = false;
     SendCmdParamKind kind = SendCmdParamKind::None;
+    QString hint;
 };
 
 SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel channel) {
@@ -103,6 +104,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             DeviceCmdParamSchema schema;
             if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
                 out.valid = true;
+                out.hint = DongleCmdCatalog::paramUiHint(name);
                 if (schema.kind == DeviceCmdParamKind::None)
                     out.kind = SendCmdParamKind::None;
                 else if (schema.kind == DeviceCmdParamKind::Int)
@@ -121,6 +123,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             DeviceCmdParamSchema schema;
             if (TupleCmdCatalog::paramSchemaFor(tupleCmd, schema)) {
                 out.valid = true;
+                out.hint = TupleCmdCatalog::paramUiHint(name);
                 if (schema.kind == DeviceCmdParamKind::None)
                     out.kind = SendCmdParamKind::None;
                 else if (schema.kind == DeviceCmdParamKind::Int)
@@ -138,6 +141,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         DeviceCmdParamSchema schema;
         if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
             out.valid = true;
+            out.hint = DeviceCmdCatalog::paramUiHint(name);
             if (schema.kind == DeviceCmdParamKind::None)
                 out.kind = SendCmdParamKind::None;
             else if (schema.kind == DeviceCmdParamKind::Int)
@@ -151,6 +155,34 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         }
     }
     return out;
+}
+
+void applySendParamHintToUi(const SendCmdParamUi& uiSchema, QLabel* hintLabel, QPlainTextEdit* jsonEdit,
+                            QSpinBox* spinBox) {
+    if (!hintLabel)
+        return;
+    hintLabel->setText(uiSchema.hint);
+    hintLabel->setVisible(uiSchema.valid && !uiSchema.hint.isEmpty());
+
+    if (jsonEdit) {
+        if (!uiSchema.valid || uiSchema.kind == SendCmdParamKind::None) {
+            jsonEdit->setPlaceholderText(QString());
+        } else if (uiSchema.kind == SendCmdParamKind::String) {
+            jsonEdit->setPlaceholderText(QStringLiteral("MAC 等文本，见下方说明"));
+        } else {
+            jsonEdit->setPlaceholderText(QStringLiteral("JSON 或每行 name=value"));
+        }
+        if (uiSchema.valid && !uiSchema.hint.isEmpty())
+            jsonEdit->setToolTip(uiSchema.hint);
+        else
+            jsonEdit->setToolTip(QString());
+    }
+    if (spinBox) {
+        if (uiSchema.valid && uiSchema.kind == SendCmdParamKind::Int)
+            spinBox->setToolTip(uiSchema.hint);
+        else
+            spinBox->setToolTip(QString());
+    }
 }
 
 void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, QWidget* pageNone,
@@ -527,7 +559,14 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
+    applySendParamHintToUi(uiSchema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
     if (!uiSchema.valid) {
+        ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
+        ui->label_sendParamHint->setText(uiSchema.hint);
+        ui->label_sendParamHint->setVisible(!uiSchema.hint.isEmpty());
+        return;
+    }
+    if (uiSchema.kind == SendCmdParamKind::None) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
         return;
     }
