@@ -73,6 +73,9 @@ struct DeviceCmdParamSchema {
 class DeviceCmdCatalog {
 public:
     static QStringList allDeviceCmdNames();
+    static QStringList allDeviceCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(DeviceCmd cmd);
+    static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
     static QString deviceCmdUiLabel(const QString& enumName);
     static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
     static QString deviceCmdToName(DeviceCmd cmd);
@@ -81,6 +84,8 @@ public:
     static void paramToSettings(QSettings& settings, const QString& prefix, const QVariant& value);
     static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value);
+    /** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
+    static QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param);
 };
 
 class DongleCmdCatalog {

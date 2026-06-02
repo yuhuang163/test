@@ -417,8 +417,11 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         }
     } else {
         DeviceCmd cmd;
-        if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd))
+        if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd)) {
+            if (!DeviceCmdCatalog::isCmdForAction(cmd, out.send.action))
+                out.send.action = DeviceCmdCatalog::actionFor(cmd);
             DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
+        }
     }
 
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
@@ -705,6 +708,8 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         DeviceCmd cmd;
         if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
             errors.append(QStringLiteral("产品测试指令无效"));
+        } else if (!DeviceCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+            errors.append(QStringLiteral("产品指令与操作方式不匹配"));
         } else {
             DeviceCmdParamSchema schema;
             if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema))
@@ -754,23 +759,23 @@ struct CmdEntry {
 };
 
 const CmdEntry kCatalog[] = {
-    {DeviceCmd::ForbidSleep, DeviceCmdParamKind::Int, "FacSwitch_OPEN=1"},
-    {DeviceCmd::Sn, DeviceCmdParamKind::Int, "FacDevInfoType"},
-    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::GetBattery, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::FacResult, DeviceCmdParamKind::Int, "1"},
+    {DeviceCmd::ForbidSleep, DeviceCmdParamKind::JsonMap, "value:1"},
+    {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap, "which_sn"},
+    {DeviceCmd::BaseInfo, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::GetBattery, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::FacResult, DeviceCmdParamKind::JsonMap, "done:1"},
     {DeviceCmd::BurningMode, DeviceCmdParamKind::JsonMap, "mode,seconds,switch"},
-    {DeviceCmd::Sleep, DeviceCmdParamKind::Int, "FacSwitch_START"},
-    {DeviceCmd::ShipMode, DeviceCmdParamKind::Int, "1"},
-    {DeviceCmd::FacMode, DeviceCmdParamKind::Int, "1"},
-    {DeviceCmd::DevReset, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::Sleep, DeviceCmdParamKind::JsonMap, "switch"},
+    {DeviceCmd::ShipMode, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::FacMode, DeviceCmdParamKind::JsonMap, "value:1"},
+    {DeviceCmd::DevReset, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::JsonMap, nullptr},
     {DeviceCmd::WifiConnect, DeviceCmdParamKind::JsonMap, "name,password"},
     {DeviceCmd::RssiRead, DeviceCmdParamKind::JsonMap, "mode"},
-    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::TupleRead, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::PeriphState, DeviceCmdParamKind::None, nullptr},
-    {DeviceCmd::FactoryReset, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::TupleRead, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::PeriphState, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::FactoryReset, DeviceCmdParamKind::JsonMap, nullptr},
 };
 
 #define X(name) \
@@ -800,7 +805,7 @@ const QHash<QString, QString>& cmdUiLabelMap() {
         {QStringLiteral("BaseInfo"), QStringLiteral("读取基本信息")},
         {QStringLiteral("GetBattery"), QStringLiteral("读取电量")},
         {QStringLiteral("FacResult"), QStringLiteral("写入产测结果")},
-        {QStringLiteral("BurningMode"), QStringLiteral("老化/烧机模式")},
+        {QStringLiteral("BurningMode"), QStringLiteral("老化模式")},
         {QStringLiteral("Sleep"), QStringLiteral("休眠")},
         {QStringLiteral("ShipMode"), QStringLiteral("关机")},
         {QStringLiteral("FacMode"), QStringLiteral("进入工厂模式")},
@@ -948,12 +953,65 @@ QVariantMap readSendParamMap(const QSettings& settings) {
     return readJsonMap(settings, QStringLiteral("Param")).toMap();
 }
 
+int jsonMapIntValue(const QVariantMap& map, int defaultValue = 0) {
+    if (map.contains(QStringLiteral("int")))
+        return map.value(QStringLiteral("int")).toInt();
+    if (map.contains(QStringLiteral("value")))
+        return map.value(QStringLiteral("value")).toInt();
+    if (map.size() == 1)
+        return map.constBegin().value().toInt();
+    return defaultValue;
+}
+
+QVariantMap jsonMapWithLegacyInt(const QSettings& settings) {
+    QVariantMap map = readSendParamMap(settings);
+    if (!map.isEmpty())
+        return map;
+    const QVariant legacyInt = readSendScopedParam(settings, QStringLiteral("int"), QVariant());
+    if (legacyInt.isValid())
+        map.insert(QStringLiteral("value"), legacyInt);
+    const QString legacyStr = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
+    if (!legacyStr.isEmpty())
+        map.insert(QStringLiteral("value"), legacyStr);
+    return map;
+}
+
 }  // namespace
 
 QStringList DeviceCmdCatalog::allDeviceCmdNames() {
     QStringList names = kNameMap.keys();
     names.sort();
     return names;
+}
+
+QStringList DeviceCmdCatalog::allDeviceCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (auto it = kNameMap.cbegin(); it != kNameMap.cend(); ++it) {
+        if (isCmdForAction(it.value(), action))
+            names.append(it.key());
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction DeviceCmdCatalog::actionFor(DeviceCmd cmd) {
+    switch (cmd) {
+    case DeviceCmd::Sn:
+        return TestCaseSendAction::Set;
+    case DeviceCmd::BaseInfo:
+        return TestCaseSendAction::Get;
+    default:
+        break;
+    }
+    if (static_cast<int>(cmd) >= static_cast<int>(DeviceCmd::NowMusicInfo))
+        return TestCaseSendAction::Get;
+    return TestCaseSendAction::Set;
+}
+
+bool DeviceCmdCatalog::isCmdForAction(DeviceCmd cmd, TestCaseSendAction action) {
+    if (cmd == DeviceCmd::Sn)
+        return action == TestCaseSendAction::Set || action == TestCaseSendAction::Get;
+    return actionFor(cmd) == action;
 }
 
 QString DeviceCmdCatalog::deviceCmdUiLabel(const QString& enumName) {
@@ -1015,10 +1073,73 @@ bool DeviceCmdCatalog::paramFromIniGroup(const QSettings& settings, DeviceCmd cm
         out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
         return true;
     case DeviceCmdParamKind::JsonMap:
-        out = readSendParamMap(settings);
+        out = jsonMapWithLegacyInt(settings);
         return true;
     }
     return false;
+}
+
+QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& param) {
+    if (!param.canConvert<QVariantMap>())
+        return param;
+
+    const QVariantMap map = param.toMap();
+    if (map.isEmpty()) {
+        switch (cmd) {
+        case DeviceCmd::BaseInfo:
+        case DeviceCmd::GetBattery:
+        case DeviceCmd::DevReset:
+        case DeviceCmd::WifiDisconnect:
+        case DeviceCmd::ChargeCurrentRead:
+        case DeviceCmd::TupleRead:
+        case DeviceCmd::PeriphState:
+        case DeviceCmd::FactoryReset:
+        case DeviceCmd::ShipMode:
+            return QVariant();
+        default:
+            break;
+        }
+    }
+
+    switch (cmd) {
+    case DeviceCmd::ForbidSleep:
+    case DeviceCmd::FacMode:
+        return jsonMapIntValue(map, 1);
+    case DeviceCmd::FacResult: {
+        if (map.contains(QStringLiteral("done")))
+            return map;
+        QVariantMap out = map;
+        if (!out.contains(QStringLiteral("done")))
+            out.insert(QStringLiteral("done"), jsonMapIntValue(map, 1));
+        return out;
+    }
+    case DeviceCmd::Sn: {
+        if (map.contains(QStringLiteral("which_sn")))
+            return map.value(QStringLiteral("which_sn")).toInt();
+        if (map.contains(QStringLiteral("which")))
+            return map.value(QStringLiteral("which")).toInt();
+        if (map.contains(QStringLiteral("type")))
+            return map.value(QStringLiteral("type")).toInt();
+        return jsonMapIntValue(map, 0);
+    }
+    case DeviceCmd::Sleep:
+    case DeviceCmd::BurningMode:
+    case DeviceCmd::WifiConnect:
+    case DeviceCmd::RssiRead:
+        return map;
+    case DeviceCmd::BaseInfo:
+    case DeviceCmd::GetBattery:
+    case DeviceCmd::DevReset:
+    case DeviceCmd::WifiDisconnect:
+    case DeviceCmd::ChargeCurrentRead:
+    case DeviceCmd::TupleRead:
+    case DeviceCmd::PeriphState:
+    case DeviceCmd::FactoryReset:
+    case DeviceCmd::ShipMode:
+        return map.isEmpty() ? QVariant() : QVariant(map);
+    default:
+        return map;
+    }
 }
 
 void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value) {
@@ -1028,21 +1149,15 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
     if (!paramSchemaFor(cmd, schema))
         return;
     const QString prefix = sendParamIniPrefix();
-    switch (schema.kind) {
-    case DeviceCmdParamKind::None:
-        break;
-    case DeviceCmdParamKind::Int:
-        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
-        break;
-    case DeviceCmdParamKind::UInt:
-        settings.setValue(prefix + QStringLiteral("/uint"), value.toUInt());
-        break;
-    case DeviceCmdParamKind::String:
-        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
-        break;
-    case DeviceCmdParamKind::JsonMap:
-        writeJsonMap(settings, prefix, value);
-        break;
+    if (schema.kind == DeviceCmdParamKind::JsonMap) {
+        if (value.canConvert<QVariantMap>()) {
+            writeJsonMap(settings, prefix, value);
+        } else if (value.type() == QVariant::String) {
+            settings.setValue(prefix + QStringLiteral("/value"), value.toString());
+        } else {
+            settings.setValue(prefix + QStringLiteral("/value"), value.toInt());
+        }
+        return;
     }
 }
 

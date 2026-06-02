@@ -190,10 +190,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     const auto sendFn = [ctx, def, cmd]() {
+        const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, def.send.param);
         if (def.send.action == TestCaseSendAction::Get)
-            ctx->protocolManager.get(cmd, def.send.param);
+            ctx->protocolManager.get(cmd, wireParam);
         else
-            ctx->protocolManager.set(cmd, def.send.param);
+            ctx->protocolManager.set(cmd, wireParam);
     };
 
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);

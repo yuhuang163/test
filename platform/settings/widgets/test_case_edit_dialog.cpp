@@ -61,8 +61,8 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         for (const QString& name : TupleCmdCatalog::allTupleCmdNames(action))
             items.append({TupleCmdCatalog::tupleCmdUiLabel(name), name});
     } else {
-        items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size());
-        for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames())
+        items.reserve(DeviceCmdCatalog::allDeviceCmdNames(action).size());
+        for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames(action))
             items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
     }
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
