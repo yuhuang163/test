@@ -191,7 +191,8 @@ CASES = [
         {"Param/mode": 1, "Param/seconds": 14400, "Param/switch": 1},
     ),
     proto("设置休眠状态", "SLEEP_CMD", "Set", "Sleep", {"Param/int": 1}),
-    proto("设置工厂模式", "FAC_MODE_SET", "Set", "FacMode", {"Param/int": 1}),
+    proto("进入工厂模式", "FAC_MODE_SET", "Set", "FacMode", {"Param/value": 1}),
+    proto("退出工厂模式", "FAC_MODE_EXIT", "Set", "FacMode", {"Param/value": 0}),
     # Sn 载荷由 Hook 从 MES expectedTailSnFromMes 填入；Param/int=1 即 FacDevInfoType_TAIL_SN
     hook("写入SN码", "SN_WRITE_TAIL", send=("Set", "Sn", {"Param/int": 1})),
     proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState"),

@@ -761,21 +761,21 @@ struct CmdEntry {
 const CmdEntry kCatalog[] = {
     {DeviceCmd::ForbidSleep, DeviceCmdParamKind::JsonMap, "value:1"},
     {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap, "which_sn"},
-    {DeviceCmd::BaseInfo, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::GetBattery, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::BaseInfo, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::GetBattery, DeviceCmdParamKind::None, nullptr},
     {DeviceCmd::FacResult, DeviceCmdParamKind::JsonMap, "done:1"},
     {DeviceCmd::BurningMode, DeviceCmdParamKind::JsonMap, "mode,seconds,switch"},
     {DeviceCmd::Sleep, DeviceCmdParamKind::JsonMap, "switch"},
-    {DeviceCmd::ShipMode, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::FacMode, DeviceCmdParamKind::JsonMap, "value:1"},
-    {DeviceCmd::DevReset, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::ShipMode, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::FacMode, DeviceCmdParamKind::JsonMap, "value:1进入 0退出"},
+    {DeviceCmd::DevReset, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::WifiDisconnect, DeviceCmdParamKind::None, nullptr},
     {DeviceCmd::WifiConnect, DeviceCmdParamKind::JsonMap, "name,password"},
     {DeviceCmd::RssiRead, DeviceCmdParamKind::JsonMap, "mode"},
-    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::TupleRead, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::PeriphState, DeviceCmdParamKind::JsonMap, nullptr},
-    {DeviceCmd::FactoryReset, DeviceCmdParamKind::JsonMap, nullptr},
+    {DeviceCmd::ChargeCurrentRead, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::TupleRead, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::PeriphState, DeviceCmdParamKind::None, nullptr},
+    {DeviceCmd::FactoryReset, DeviceCmdParamKind::None, nullptr},
 };
 
 #define X(name) \
@@ -808,7 +808,7 @@ const QHash<QString, QString>& cmdUiLabelMap() {
         {QStringLiteral("BurningMode"), QStringLiteral("老化模式")},
         {QStringLiteral("Sleep"), QStringLiteral("休眠")},
         {QStringLiteral("ShipMode"), QStringLiteral("关机")},
-        {QStringLiteral("FacMode"), QStringLiteral("进入工厂模式")},
+        {QStringLiteral("FacMode"), QStringLiteral("工厂模式")},
         {QStringLiteral("DevReset"), QStringLiteral("设备复位")},
         {QStringLiteral("WifiDisconnect"), QStringLiteral("断开无线网络")},
         {QStringLiteral("WifiConnect"), QStringLiteral("连接无线网络")},
@@ -1046,7 +1046,7 @@ bool DeviceCmdCatalog::paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out) 
             return true;
         }
     }
-    // 协议枚举中已登记、但未单独维护模板的指令：默认无参数（多数 set/get 不传参即可）
+    // 协议枚举已登记、未在 kCatalog 单独维护：默认无参（设置页不显示参数区；有参指令请加入 kCatalog）
     if (kNameMap.contains(deviceCmdToName(cmd))) {
         out.kind = DeviceCmdParamKind::None;
         out.hint.clear();
@@ -1097,7 +1097,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
         case DeviceCmd::ShipMode:
             return QVariant();
         default:
-            break;
+            return QVariant();
         }
     }
 
@@ -1765,6 +1765,25 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
         return true;
     }
 
+    if (gate.op == TestCaseGateOp::Eq) {
+        bool strOk = false;
+        const QString actual = fieldStringFromVariant(reportType, gate.field, payload, strOk);
+        if (strOk) {
+            QString expected = gate.expected.trimmed();
+            if (expected.isEmpty() && !gate.expectedSettingsKey.isEmpty())
+                expected = SETTINGS.value(gate.expectedSettingsKey).toString().trimmed();
+            if (expected.isEmpty()) {
+                passOut = false;
+                detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(
+                    actual.isEmpty() ? QStringLiteral("-") : actual);
+            } else {
+                passOut = (actual == expected);
+                detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
+            }
+            return true;
+        }
+    }
+
     if (!ok) {
         passOut = false;
         detailOut = QStringLiteral("无法从上报数据读取字段");
@@ -1852,7 +1871,11 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (isDongleBleConnectStep(def))
         return true;
-    return def.gate.enabled;
+    if (def.gate.enabled)
+        return true;
+    if (def.send.action == TestCaseSendAction::Get)
+        return true;
+    return false;
 }
 
 bool TestCaseRunner::isDongleBleConnectStep(const TestCaseDefinition& def) {

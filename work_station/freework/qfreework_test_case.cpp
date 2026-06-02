@@ -92,13 +92,35 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (activeTestCase_.gate.reportType != reportType)
         return false;
 
+    if (reportType == QStringLiteral("ProtocolSnData")) {
+        if (activeTestCase_.send.deviceCmd != QStringLiteral("Sn")
+            || activeTestCase_.send.action != TestCaseSendAction::Get)
+            return false;
+        if (!payload.canConvert<ProtocolSnData>()) {
+            markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
+            showlog(QStringLiteral("卡控失败：SN 回传数据类型无效"));
+            return true;
+        }
+    }
+
+    TestCaseGate gateForEval = activeTestCase_.gate;
+    if (reportType == QStringLiteral("ProtocolSnData") && gateForEval.field == QStringLiteral("value")
+        && gateForEval.expected.trimmed().isEmpty()) {
+        gateForEval.expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
+        if (gateForEval.expected.isEmpty() && ui && ui->getMac)
+            gateForEval.expected = ui->getMac->text().trimmed();
+    }
+
     bool pass = true;
     QString detail;
-    GateRegistry::evaluate(activeTestCase_.gate, reportType, payload, pass, detail);
+    GateRegistry::evaluate(gateForEval, reportType, payload, pass, detail);
 
     QString testData = detail;
     QString ask;
-    if (reportType == QStringLiteral("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
+    if (reportType == QStringLiteral("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
+        testData = payload.value<ProtocolSnData>().value.trimmed();
+        ask = gateForEval.expected.trimmed();
+    } else if (reportType == QStringLiteral("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
         testData = QString::number(payload.value<ProtocolRssiData>().dbm);
         if (activeTestCase_.gate.op == TestCaseGateOp::Range) {
             double low = activeTestCase_.gate.low;

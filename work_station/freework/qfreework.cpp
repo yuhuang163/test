@@ -620,7 +620,10 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 
         if (useTestCaseFlow_ && !caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
-            if (!caseDef.hook.enabled && !dongleBleConnect) {
+            const bool productGet = !caseDef.hook.enabled && !dongleBleConnect
+                                    && caseDef.send.channel == TestCaseSendChannel::Product
+                                    && caseDef.send.action == TestCaseSendAction::Get;
+            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 stepRuntime_.testData = QStringLiteral("ok");

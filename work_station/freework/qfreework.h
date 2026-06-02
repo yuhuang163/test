@@ -40,6 +40,8 @@ public:
     void clearActiveTestCase();
     bool isActiveTestCaseStep(const QString& stepLabel) const;
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
+    /** test_case 流程：读取设备三元组并与云端 tupleData_ 比对。 */
+    bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
     const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
     /** 流程当前 MAC（$MAC 占位符解析用） */

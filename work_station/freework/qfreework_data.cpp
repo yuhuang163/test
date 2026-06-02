@@ -639,7 +639,47 @@ void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
     }
 }
 
+bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data) {
+    if (!testCaseStepActive_)
+        return false;
+    if (activeTestCase_.send.channel != TestCaseSendChannel::Product
+        || activeTestCase_.send.action != TestCaseSendAction::Get
+        || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
+        return false;
+
+    const QString testData =
+        QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    const QString ask = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
+                            .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+
+    if (!tupleData_.success) {
+        markActiveTestCaseStepDone(false, QStringLiteral("云端三元组未获取成功"), ask);
+        TestResult = failValue;
+        showlog(QStringLiteral("设备三元组比较失败：云端三元组未获取成功"));
+        return true;
+    }
+
+    const bool productKeyPass = data.productId.trimmed() == tupleData_.productKey.trimmed();
+    const bool deviceNamePass = data.deviceId.trimmed() == tupleData_.deviceName.trimmed();
+    const bool deviceSecretPass = data.key.trimmed() == tupleData_.deviceSecret.trimmed();
+    const bool pass = productKeyPass && deviceNamePass && deviceSecretPass;
+
+    markActiveTestCaseStepDone(pass, testData, ask);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QStringLiteral("设备三元组比较失败，设备 productKey=%1 deviceName=%2 deviceSecret=%3，云端 productKey=%4 deviceName=%5 deviceSecret=%6")
+                    .arg(data.productId, data.deviceId, data.key, tupleData_.productKey, tupleData_.deviceName,
+                         tupleData_.deviceSecret));
+    } else {
+        showlog(QStringLiteral("设备三元组比较通过"));
+    }
+    return true;
+}
+
 void QFreeWork::refreshTupleData(ProtocolTupleData data) {
+    if (tryCompleteActiveTestCaseTupleCompare(data))
+        return;
+
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolTupleData"), QVariant::fromValue(data)))
         return;
 
@@ -648,21 +688,22 @@ void QFreeWork::refreshTupleData(ProtocolTupleData data) {
     }
 
     stepRuntime_.done = true;
-    const bool productKeyPass = data.productId == tupleData_.productKey;
-    const bool deviceNamePass = data.deviceId == tupleData_.deviceName;
-    const bool deviceSecretPass = data.key == tupleData_.deviceSecret;
+    const bool productKeyPass = data.productId.trimmed() == tupleData_.productKey.trimmed();
+    const bool deviceNamePass = data.deviceId.trimmed() == tupleData_.deviceName.trimmed();
+    const bool deviceSecretPass = data.key.trimmed() == tupleData_.deviceSecret.trimmed();
     const bool pass = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
 
     stepRuntime_.pass = pass;
-    stepRuntime_.testData = QString("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
-    stepRuntime_.ask = QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+    stepRuntime_.testData =
+        QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    stepRuntime_.ask = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
                            .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
     if (!pass) {
         TestResult = failValue;
-        showlog(QString("设备三元组比较失败，设备 productKey=%1 deviceName=%2，云端 productKey=%3 deviceName=%4")
+        showlog(QStringLiteral("设备三元组比较失败，设备 productKey=%1 deviceName=%2，云端 productKey=%3 deviceName=%4")
                     .arg(data.productId, data.deviceId, tupleData_.productKey, tupleData_.deviceName));
     } else {
-        showlog("设备三元组比较通过");
+        showlog(QStringLiteral("设备三元组比较通过"));
     }
 }
 
