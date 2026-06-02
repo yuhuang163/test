@@ -2,6 +2,8 @@
 
 #include "test_case.h"
 
+#include "qat.h"
+
 #include <QFile>
 
 #if _MSC_VER >= 1600
@@ -97,10 +99,28 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    const auto sendFn = [ctx, def]() {
-        DeviceCmd cmd = DeviceCmd::FacMode;
-        if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
-            return;
+    DongleCmd dongleCmd = DongleCmd::BleScanConnect;
+    if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+        const auto sendFn = [ctx, def, dongleCmd]() {
+            if (def.send.action == TestCaseSendAction::Get)
+                ctx->at->get(dongleCmd, def.send.param);
+            else
+                ctx->at->set(dongleCmd, def.send.param);
+        };
+        const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+        ctx->sendCommandWithRetry(sendFn, timeoutMs);
+        return;
+    }
+
+    DeviceCmd cmd = DeviceCmd::FacMode;
+    if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
+        ctx->showlog(QStringLiteral("未知指令：%1").arg(def.send.deviceCmd));
+        ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    const auto sendFn = [ctx, def, cmd]() {
         if (def.send.action == TestCaseSendAction::Get)
             ctx->protocolManager.get(cmd, def.send.param);
         else

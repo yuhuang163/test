@@ -1949,7 +1949,7 @@ void PressureSensorForm::reset_all() {
 
     set_independent_state(STATE_INVALID);
     waitWork(1000);  //给开机时间
-    at->sendMac(ui->macInput->text());
+    at->set(DongleCmd::BleScanConnect, ui->macInput->text());
     showlog("开始测试");
 }
 
@@ -2706,7 +2706,7 @@ void PressureSensorForm::startTask() {
                             at->resetConnected();
                             if (function_switch == FUNCTION_CALIB_TEST || function_switch == FUNCTION_TEST) {
                                 delay_msec(30);
-                                at->sendMac(ui->macInput->text());  // 发送mac地址重连
+                                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址重连
                                 showlog("已发送mac地址");
                                 delay_msec(30);
                                 state = STATE_WAIT_REST;

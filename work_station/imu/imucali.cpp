@@ -808,7 +808,7 @@ void imucali::dataInit() {
 
     pb->reset_all_pb();
     at->resetConnected();
-    //  at->sendMac(ui->macInput->text());//发送mac地址
+    //  at->set(DongleCmd::BleScanConnect, ui->macInput->text());//发送mac地址
     result = passValue;
 
     ui->product_sn->setText("芯片存储的整机sn:");
@@ -860,7 +860,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 showlog("开始测试");
                 dataInit();
                 waitWork(1000);
-                at->sendMac(ui->macInput->text());  // 开始连接
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
 
                 TestTime.start();
@@ -1179,7 +1179,7 @@ void imucali::startTask()  // 编写六轴校准的代码
                 waitWork(WAITTIME);
                 protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
                 waitWork(100);
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 stringsn = "";
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
@@ -1207,7 +1207,7 @@ void imucali::startTask()  // 编写六轴校准的代码
 }
 
 void imucali::on_pushButton_2_clicked() {
-    at->sendBLEDEVICELOG(0);
+    at->set(DongleCmd::BleDeviceLog, 0);
     // for (int la = 0; la < 12; la++)
     // {
     //     QLabel *label = labelList.at(la);
@@ -1300,7 +1300,7 @@ void imucali::processGetMesTestValue() {
 void imucali::on_stopTest_clicked() {
     emit send_end_test(getIndex());
 
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

@@ -11,7 +11,7 @@
 void ageing::on_pushButton_clicked() {
     // ui->macInput->setText("3C:84:27:07:A8:D2");
     // on_macInput_returnPressed();
-    // at->sendMac(ui->macInput->text());  // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
     // waitWork(8000);
     // sendCommandWithRetry([&]() {
     //     QVariantMap m;
@@ -442,7 +442,7 @@ void ageing::startTask() {
                 refresh_periph_times = 1;
                 subpidCompareOk = 0;
                 waitWork(1000);
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 state = STATE_DISABLE_SLEEP_1;
                 break;
@@ -610,7 +610,7 @@ void ageing::startTask() {
                 ui->getMac->setDisabled(0);
                 emit send_end_test(getIndex());
                 
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
                 isTestContinue = false;
                 on_disconnectButton_clicked();

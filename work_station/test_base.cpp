@@ -799,7 +799,7 @@ void test_base::getMac(QString sn_to_search) {
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
     isTestContinue = 0;
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     waitWork(50);
 }
 void test_base::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }

@@ -2,6 +2,7 @@
 #define PLATFORM_TEST_CASE_H
 
 #include "qprotocol_types.h"
+#include "qat.h"
 #include "test_case_types.h"
 
 #include <QSettings>
@@ -79,6 +80,17 @@ public:
     static void paramToSettings(QSettings& settings, const QString& prefix, const QVariant& value);
     static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value);
+};
+
+class DongleCmdCatalog {
+public:
+    static QStringList allDongleCmdNames();
+    static QString dongleCmdUiLabel(const QString& enumName);
+    static bool dongleCmdFromName(const QString& name, DongleCmd& out);
+    static QString dongleCmdToName(DongleCmd cmd);
+    static bool paramSchemaFor(DongleCmd cmd, DeviceCmdParamSchema& out);
+    static bool paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
 };
 
 // ---------- 卡控 ----------

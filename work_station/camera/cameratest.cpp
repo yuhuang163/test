@@ -622,7 +622,7 @@ void cameratest::startTask() {
                 can_start_dirty_test = 0;
                 TestTime.start();
                 waitWork(1000);
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
 
                 state = STATE_WATI_CONNECT;
@@ -762,7 +762,7 @@ void cameratest::startTask() {
                 emit send_end_test(getIndex());
                 if (pack.factory == "lx" && m_index == 1)
                     ui->getMac->setFocus();
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(150);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
@@ -1366,7 +1366,7 @@ void cameratest::on_DirtyTestButton_clicked() {
 void cameratest::on_stopTest_clicked() {
     showlog("用户按了结束测试");
     protocolManager.set(DeviceCmd::DevReset);
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

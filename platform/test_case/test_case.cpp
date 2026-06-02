@@ -385,9 +385,14 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                        : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
-    DeviceCmd cmd;
-    if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd))
-        DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
+    DongleCmd dongleCmd;
+    if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, dongleCmd))
+        DongleCmdCatalog::paramFromIniGroup(ini, dongleCmd, out.send.param);
+    else {
+        DeviceCmd cmd;
+        if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd))
+            DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
+    }
 
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
     out.timing.delayAfterMs = ini.value(QStringLiteral("Timing/DelayAfterMs"), 0).toInt();
@@ -425,9 +430,14 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get")
                                                                                           : QStringLiteral("Set"));
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
-    DeviceCmd cmd;
-    if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
-        DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+    DongleCmd dongleCmd;
+    if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
+        DongleCmdCatalog::paramToIniGroup(ini, dongleCmd, def.send.param);
+    else {
+        DeviceCmd cmd;
+        if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+            DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+    }
 
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
     ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
@@ -581,15 +591,22 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (!TestCasePaths::isValidCaseFileName(def.meta.name, &nameErr))
         errors.append(nameErr);
 
-    DeviceCmd cmd;
     if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
-    } else if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-        errors.append(QStringLiteral("测试指令无效"));
     } else {
-        DeviceCmdParamSchema schema;
-        if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema))
-            errors.append(QStringLiteral("该指令尚未配置参数模板，请联系工程师"));
+        DongleCmd dongleCmd;
+        DeviceCmd cmd;
+        if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+            DeviceCmdParamSchema schema;
+            if (!DongleCmdCatalog::paramSchemaFor(dongleCmd, schema))
+                errors.append(QStringLiteral("该 Dongle 指令尚未配置参数模板，请联系工程师"));
+        } else if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
+            errors.append(QStringLiteral("测试指令无效"));
+        } else {
+            DeviceCmdParamSchema schema;
+            if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema))
+                errors.append(QStringLiteral("该指令尚未配置参数模板，请联系工程师"));
+        }
     }
 
     if (def.timing.delayBeforeMs < 0 || def.timing.delayAfterMs < 0)
@@ -931,6 +948,164 @@ QVariant DeviceCmdCatalog::paramFromSettings(const QSettings&, const QString&) {
 }
 
 void DeviceCmdCatalog::paramToSettings(QSettings&, const QString&, const QVariant&) {}
+
+// ===================== DongleCmdCatalog =====================
+
+namespace {
+
+struct DongleCmdEntry {
+    DongleCmd cmd;
+    DeviceCmdParamKind kind;
+    const char* hint;
+};
+
+const DongleCmdEntry kDongleCatalog[] = {
+    {DongleCmd::BleScanConnect, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleDirectConnect, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleOtaConnect, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleAppConnect, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleMainConnect, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::OtaDataPassthrough, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::MainDataPassthrough, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::BleLog, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::BleDeviceLog, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::Bomb, DeviceCmdParamKind::JsonMap, "deviceName,rssi,connectionInterval,command"},
+    {DongleCmd::GetGmac, DeviceCmdParamKind::None, nullptr},
+};
+
+#define Y(name) \
+    { QStringLiteral(#name), DongleCmd::name },
+const QHash<QString, DongleCmd> kDongleNameMap = {
+    Y(BleScanConnect) Y(BleDirectConnect) Y(BleOtaConnect) Y(BleAppConnect) Y(BleMainConnect)
+        Y(OtaDataPassthrough) Y(MainDataPassthrough) Y(BleLog) Y(BleDeviceLog) Y(Bomb) Y(GetGmac)};
+#undef Y
+
+const QHash<QString, DongleCmd> kDongleLegacyNameMap = {
+    {QStringLiteral("DongleBleScanConnect"), DongleCmd::BleScanConnect},
+    {QStringLiteral("DongleBleDirectConnect"), DongleCmd::BleDirectConnect},
+    {QStringLiteral("DongleBleOtaConnect"), DongleCmd::BleOtaConnect},
+    {QStringLiteral("DongleBleAppConnect"), DongleCmd::BleAppConnect},
+    {QStringLiteral("DongleBleMainConnect"), DongleCmd::BleMainConnect},
+    {QStringLiteral("DongleOtaDataPassthrough"), DongleCmd::OtaDataPassthrough},
+    {QStringLiteral("DongleMainDataPassthrough"), DongleCmd::MainDataPassthrough},
+    {QStringLiteral("DongleBleLog"), DongleCmd::BleLog},
+    {QStringLiteral("DongleBleDeviceLog"), DongleCmd::BleDeviceLog},
+    {QStringLiteral("DongleBomb"), DongleCmd::Bomb},
+    {QStringLiteral("DongleGetGmac"), DongleCmd::GetGmac},
+};
+
+const QHash<QString, QString>& dongleCmdUiLabelMap() {
+    static const QHash<QString, QString> map = {
+        {QStringLiteral("BleScanConnect"), QStringLiteral("Dongle 扫描连接蓝牙")},
+        {QStringLiteral("BleDirectConnect"), QStringLiteral("Dongle 直连蓝牙")},
+        {QStringLiteral("BleOtaConnect"), QStringLiteral("Dongle OTA 蓝牙连接")},
+        {QStringLiteral("BleAppConnect"), QStringLiteral("Dongle App 蓝牙连接")},
+        {QStringLiteral("BleMainConnect"), QStringLiteral("Dongle 主通道蓝牙连接")},
+        {QStringLiteral("OtaDataPassthrough"), QStringLiteral("Dongle OTA 数据透传")},
+        {QStringLiteral("MainDataPassthrough"), QStringLiteral("Dongle 主通道数据透传")},
+        {QStringLiteral("BleLog"), QStringLiteral("Dongle BLE 日志开关")},
+        {QStringLiteral("BleDeviceLog"), QStringLiteral("Dongle BLE 设备日志开关")},
+        {QStringLiteral("Bomb"), QStringLiteral("Dongle 广播注入")},
+        {QStringLiteral("GetGmac"), QStringLiteral("Dongle 读取 GMAC")},
+    };
+    return map;
+}
+
+}  // namespace
+
+QStringList DongleCmdCatalog::allDongleCmdNames() {
+    QStringList names = kDongleNameMap.keys();
+    names.sort();
+    return names;
+}
+
+QString DongleCmdCatalog::dongleCmdUiLabel(const QString& enumName) {
+    const QString key = enumName.trimmed();
+    const QString label = dongleCmdUiLabelMap().value(key);
+    if (!label.isEmpty())
+        return label;
+    return QStringLiteral("未登记 Dongle 指令");
+}
+
+bool DongleCmdCatalog::dongleCmdFromName(const QString& name, DongleCmd& out) {
+    const QString trimmed = name.trimmed();
+    const auto it = kDongleNameMap.constFind(trimmed);
+    if (it != kDongleNameMap.cend()) {
+        out = it.value();
+        return true;
+    }
+    const auto legacy = kDongleLegacyNameMap.constFind(trimmed);
+    if (legacy != kDongleLegacyNameMap.cend()) {
+        out = legacy.value();
+        return true;
+    }
+    return false;
+}
+
+QString DongleCmdCatalog::dongleCmdToName(DongleCmd cmd) {
+    for (auto it = kDongleNameMap.cbegin(); it != kDongleNameMap.cend(); ++it) {
+        if (it.value() == cmd)
+            return it.key();
+    }
+    return QString::number(static_cast<int>(cmd));
+}
+
+bool DongleCmdCatalog::paramSchemaFor(DongleCmd cmd, DeviceCmdParamSchema& out) {
+    for (const auto& e : kDongleCatalog) {
+        if (e.cmd == cmd) {
+            out.kind = e.kind;
+            out.hint = e.hint ? QString::fromUtf8(e.hint) : QString();
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DongleCmdCatalog::paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out) {
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    case DeviceCmdParamKind::Int:
+        out = readSendScopedParam(settings, QStringLiteral("int"), 0).toInt();
+        return true;
+    case DeviceCmdParamKind::String:
+        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
+        return true;
+    case DeviceCmdParamKind::JsonMap:
+        out = readSendParamMap(settings);
+        return true;
+    default:
+        return false;
+    }
+}
+
+void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value) {
+    removeKeysWithPrefix(settings, QStringLiteral("Param"));
+    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+    const QString prefix = sendParamIniPrefix();
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        break;
+    case DeviceCmdParamKind::Int:
+        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
+        break;
+    case DeviceCmdParamKind::String:
+        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
+        break;
+    case DeviceCmdParamKind::JsonMap:
+        writeJsonMap(settings, prefix, value);
+        break;
+    default:
+        break;
+    }
+}
 
 // ===================== GateRegistry =====================
 

@@ -237,7 +237,7 @@ void screentest::startTask()
                 is_lcd_control = 0;
                 TestTime.start();
                 waitWork(1000);                     //给开机时间保险
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 snCompareOk = 0;
                 subpidCompareOk = 0;
@@ -416,7 +416,7 @@ void screentest::startTask()
                 protocolManager.set(DeviceCmd::DevReset);
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
@@ -554,7 +554,7 @@ void screentest::processGetMesTestValue() {
 }
 
 void screentest::on_stopTest_clicked() {
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
     // waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

@@ -64,7 +64,7 @@ suction::suction(int index, QWidget* parent) :
         qDebug() << getIndex() << "计时结束，进入吸力测试" << QDateTime::currentDateTime();
     });
     connect(usblogwaittime, &QTimer::timeout, [=]() {
-        at->ask_mac();
+        at->get(DongleCmd::GetGmac);
         showlog("正在定时器复位设备");
     });
 
@@ -1185,7 +1185,7 @@ void suction::startTask() {
                 at->resetConnected();
                 measure_ammeter = 0;
                 waitWork(1000);
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("已经发送mac地址");
                 TestTime.start();
@@ -1477,7 +1477,7 @@ void suction::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");
     // on_snInput_returnPressed();
-    at->sendMac(ui->macInput->text()); 
+    at->set(DongleCmd::BleScanConnect, ui->macInput->text()); 
     sendCommandWithRetry([&]() { 
         protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
     });
@@ -1507,7 +1507,7 @@ void suction::on_pushButton_clicked() {
 void suction::on_pushButton_3_clicked() {
     usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
 
-    // at->ask_mac();
+    // at->get(DongleCmd::GetGmac);
     // MesInit();
 }
 void suction::processReceivedData(const QByteArray& data) {
@@ -1542,7 +1542,7 @@ void suction::processReceivedData(const QByteArray& data) {
             // 在这里可以将提取到的 MAC 地址用于后续处理
         } else {
             logString = "";
-            at->ask_mac();
+            at->get(DongleCmd::GetGmac);
             showlog("日志数据中未找到完整的MAC地址，正在重发请求获取mac地址");
         }
     } else {

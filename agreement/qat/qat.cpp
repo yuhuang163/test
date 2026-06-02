@@ -1,6 +1,7 @@
-#include "qat.h"
+﻿#include "qat.h"
 
 #include <QDebug>
+#include <map>
 
 #include "qcoreapplication.h"
 #include "qdatetime.h"
@@ -27,7 +28,7 @@ bool isPrintableAtLine(const QString& line) {
 }
 }  // namespace
 
-Qat::Qat(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {
+Qat::Qat(QSerialPort* parent) : QObject(parent), serialPort(parent) {
     if (!serialPort) {
         qDebug() << "Qat指向一个空指针";
         return;
@@ -122,61 +123,100 @@ void Qat::parseCmd(const QByteArray& byte) {
     }
 }
 
-void Qat::sendCmd(QString cmd) {
-    if (!serialPort->isOpen()) {
+void Qat::set(DongleCmd cmd, const QVariant& data) {
+    switch (cmd) {
+    case DongleCmd::BleScanConnect:
+        sendAtLine(QStringLiteral("AT+MAC=%1\r\n").arg(data.toString()));
+        break;
+    case DongleCmd::BleDirectConnect:
+        sendAtLine(QStringLiteral("AT+DCON=%1\r\n").arg(data.toString()));
+        break;
+    case DongleCmd::BleOtaConnect:
+        sendAtLine(QStringLiteral("AT+OTA=%1\r\n").arg(data.toString()));
+        break;
+    case DongleCmd::BleAppConnect:
+        sendAtLine(QStringLiteral("AT+BLE=%1\r\n").arg(data.toString()));
+        break;
+    case DongleCmd::BleMainConnect:
+        sendAtLine(QStringLiteral("AT+MAIN=%1\r\n").arg(data.toString()));
+        break;
+    case DongleCmd::OtaDataPassthrough:
+        sendAtLine(QStringLiteral("AT+OTADATA=%1\r\n").arg(data.toInt()));
+        break;
+    case DongleCmd::MainDataPassthrough:
+        sendAtLine(QStringLiteral("AT+MAINDATA=%1\r\n").arg(data.toInt()));
+        break;
+    case DongleCmd::BleLog: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        sendAtLine(QStringLiteral("AT+BLELOG=%1\r\n").arg(state));
+        break;
+    }
+    case DongleCmd::BleDeviceLog:
+        sendAtLine(QStringLiteral("AT+BLEDEVICELOG=%1\r\n").arg(data.toInt()));
+        break;
+    case DongleCmd::Bomb: {
+        const QVariantMap map = data.toMap();
+        const QString line = QStringLiteral("AT+BOMB=%1,%2,%3,%4\r\n")
+                                 .arg(map.value(QStringLiteral("deviceName")).toString(),
+                                      map.value(QStringLiteral("rssi")).toString(),
+                                      map.value(QStringLiteral("connectionInterval")).toString(),
+                                      map.value(QStringLiteral("command")).toString());
+        qDebug() << "炸弹内容：" << line.trimmed();
+        sendAtLine(line);
+        break;
+    }
+    }
+}
+
+void Qat::get(DongleCmd cmd, const QVariant& param) {
+    Q_UNUSED(param);
+    switch (cmd) {
+    case DongleCmd::GetGmac:
+        sendAtLine(QStringLiteral("AT+GMAC\r\n"));
+        break;
+    }
+}
+
+bool Qat::sendCustomMessage(const QVariantMap& map) {
+    if (map.contains(QStringLiteral("line"))) {
+        sendAtLine(map.value(QStringLiteral("line")).toString());
+        return true;
+    }
+    if (map.contains(QStringLiteral("bomb"))) {
+        const QVariantMap bomb = map.value(QStringLiteral("bomb")).toMap();
+        set(DongleCmd::Bomb, bomb);
+        return true;
+    }
+    const QString atKey = map.value(QStringLiteral("at")).toString();
+    if (!atKey.isEmpty()) {
+        const QString value = map.value(QStringLiteral("value")).toString();
+        const QString line = value.isEmpty() ? QStringLiteral("AT+%1\r\n").arg(atKey)
+                                             : QStringLiteral("AT+%1=%2\r\n").arg(atKey, value);
+        sendAtLine(line);
+        return true;
+    }
+    qWarning() << "Qat sendCustomMessage 缺少 line / at / bomb 参数";
+    return false;
+}
+
+void Qat::sendAtLine(const QString& line) {
+    if (!serialPort || !serialPort->isOpen()) {
         qDebug() << "发送AT指令时候，未打开dongle串口，取消发送";
         return;
     }
-    const QByteArray data = cmd.toLocal8Bit();
-    qDebug().noquote() << "AT TX:" << cmd.trimmed();
+    const QByteArray data = line.toLocal8Bit();
+    qDebug().noquote() << "AT TX:" << line.trimmed();
     serialPort->write(data);
 }
+
 void Qat::waitWork(int ms) {
     QTime t;
     t.start();
     while (t.elapsed() < ms)
         QCoreApplication::processEvents();
-}
-void Qat::sendMac(QString mac) {
-    QString s = "AT+MAC=" + mac + "\r\n";
-    sendCmd(s);
-}
-void Qat::sendDcon(QString mac) {
-    QString s = "AT+DCON=" + mac + "\r\n";
-    sendCmd(s);
-}
-void Qat::sendMAIN(QString mac) {
-    QString s = "AT+MAIN=" + mac + "\r\n";
-    sendCmd(s);
-}
-void Qat::sendBLELOG(int state) {
-    if (state > 1)
-        state = 1;
-    QString s = "AT+BLELOG=" + QString::number(state) + "\r\n";
-    sendCmd(s);
-}
-void Qat::sendBLEDEVICELOG(int state) {
-    QString s = "AT+BLEDEVICELOG=" + QString::number(state) + "\r\n";
-    sendCmd(s);
-}
-//使用的时候需要延时1秒，防止和ota数据粘包了
-void Qat::sendOTADATA(int state) {
-    QString s = "AT+OTADATA=" + QString::number(state) + "\r\n";
-    sendCmd(s);
-}
-void Qat::sendMAINDATA(int state) {
-    QString s = "AT+MAINDATA=" + QString::number(state) + "\r\n";
-    sendCmd(s);
-}
-
-void Qat::sendBOMB(QString devicename, QString rssi, QString connectionInterval, QString command) {
-    QString s = "AT+BOMB=" + devicename + "," + rssi + "," + connectionInterval + "," + command + "\r\n";
-    qDebug() << "炸弹内容：" << s;
-    sendCmd(s);
-}
-void Qat::ask_mac() {
-    QString s = "AT+GMAC\r\n";
-    sendCmd(s);
 }
 void Qat::registerCommand() {
     // 在这里注册命令即可
@@ -196,15 +236,6 @@ void Qat::registerCommand() {
 void Qat::SEND_WIFI_DATA(QString p) { sendWifiMsg(p); }
 void Qat::SEND_WIFI_IP(QString p) { sendWifiIp(p); }
 
-void Qat::sendbleMac(QString mac) {
-    QString s = "AT+BLE=" + mac + "\r\n";
-    sendCmd(s);
-}
-
-void Qat::sendotaMac(QString mac) {
-    QString s = "AT+OTA=" + mac + "\r\n";
-    sendCmd(s);
-}
 void Qat::WIFI_connected(QString p) {Q_UNUSED(p);
     iswifiConnected = true;
     // qDebug() << "wifi连接成功";

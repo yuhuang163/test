@@ -431,7 +431,7 @@ void motor::startTask() {
                 result = passValue;
                 TestTime.start();
                 waitWork(1000);
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 is_battary_test = 0;
 
@@ -655,7 +655,7 @@ void motor::startTask() {
                 waitWork(WAITTIME);
                 protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
                 waitWork(500);
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
                 on_disconnectButton_clicked();
                 // showlog("测试结束");
@@ -771,7 +771,7 @@ void motor::startTest_task() {
                 ui->macInput->setDisabled(0);
                 ui->getMac->setDisabled(0);
                 waitWork(WAITTIME);
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
@@ -924,7 +924,7 @@ void motor::on_end_cali_clicked() {
 }
 
 void motor::on_stopTest_clicked() {
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
     // waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);

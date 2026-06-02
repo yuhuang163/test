@@ -1,5 +1,6 @@
 ﻿#include "mainwindow.h"
 #include "common_utils.h"
+#include "qat.h"
 #include "my_set/my_typedef.h"
 #include "ui_mainwindow.h"
 // #include "xlsxdocument.h"
@@ -2283,7 +2284,7 @@ void MainWindow::updateComboBox() {
 
                 {
                     pb->setNeedAes(false);
-                    at->sendMac(deviceAddress);  // 发送mac地址
+                    at->set(DongleCmd::BleScanConnect, deviceAddress);  // 发送mac地址
                     qDebug() << "开启了扫描到就连接的功能";
                 }
             }
@@ -2293,7 +2294,7 @@ void MainWindow::updateComboBox() {
                 ui->pick_device->addItem(deviceAddress);
                 if (ui->is_scan_connect->checkState()) {
                     pb->setNeedAes(false);
-                    at->sendMac(deviceAddress);  // 发送mac地址
+                    at->set(DongleCmd::BleScanConnect, deviceAddress);  // 发送mac地址
                     pb->setPbMode(1);
                     qDebug() << "开启了扫描到就连接的功能";
                 }

@@ -23,7 +23,7 @@ void PcbaForm::on_pushButton_clicked() {
     // ui->macInput->setText("3C:84:27:07:A8:D2");
 
     // on_macInput_returnPressed();
-    // at->sendMac(ui->macInput->text());  // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
 
     // testData = "连接超时";
     // TestItem test;
@@ -75,14 +75,14 @@ void PcbaForm::on_pushButton_2_clicked()  // 单机
     }
     //     t = 1;
     // }
-    // at->sendBLELOG(1);
+    // at->set(DongleCmd::BleLog, 1);
     // testItem = "六轴状态";
     // testData = "QString::number(data.imu_state)";
 
     // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
     // protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
     // waitWork(100);
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
     // waitWork(50);
     // on_disconnectButton_clicked();
     // // 3C:84:27:07:A8:D2
@@ -162,7 +162,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::P
 
     connect(usblogwaittime, &QTimer::timeout, [=]() {
         if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
-            at->ask_mac();
+            at->get(DongleCmd::GetGmac);
             showlog("正在定时器复位设备");
         }
     });
@@ -362,7 +362,7 @@ void PcbaForm::processReceivedData(const QByteArray& data) {
             // 在这里可以将提取到的 MAC 地址用于后续处理
         } else {
             logString = "";
-            at->ask_mac();
+            at->get(DongleCmd::GetGmac);
             showlog("日志数据中未找到完整的MAC地址，正在重发请求获取mac地址");
         }
     } else {
@@ -1121,7 +1121,7 @@ void PcbaForm::startTask() {
                 is_music_play_over_time = 0;
                 at->resetConnected();
                 waitWork(1000);                     // 用于esp32启动等待时间
-                at->sendMac(ui->macInput->text());  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                 showlog("MAC地址为：" + ui->macInput->text());
                 totalresult = passValue;
                 state = STATE_WATI_CONNECT;
@@ -1256,7 +1256,7 @@ void PcbaForm::startTask() {
                 } else if (!SETTINGS.value("SYSTEM/TestWifiSignal").toBool() &&
                            !SETTINGS.value("SYSTEM/SendMotorCalibration").toBool()) {
                     showlog("5、蓝牙强度测试");
-                    at->sendBLELOG(1);  // 日志开
+                    at->set(DongleCmd::BleLog, 1);  // 日志开
                     rssitestcount = 0;
                     state = STATE_WATI_GET_CORRECT_BLERSSI;
                 } else {
@@ -1315,7 +1315,7 @@ void PcbaForm::startTask() {
                     erroContent << "|WIFI连接:超时";
                     blewaittime->setInterval(ble_wait_time);
                     blewaittime->start();
-                    at->sendBLELOG(1);  // 日志开
+                    at->set(DongleCmd::BleLog, 1);  // 日志开
                     state = STATE_WATI_GET_CORRECT_BLERSSI;
                 }
 
@@ -1349,7 +1349,7 @@ void PcbaForm::startTask() {
 
                             state = STATE_WATI_GET_CORRECT_BLERSSI;
                             showlog("5、蓝牙强度测试");
-                            at->sendBLELOG(1);  // 日志开
+                            at->set(DongleCmd::BleLog, 1);  // 日志开
                             rssitestcount = 0;
                         }
                     } else {
@@ -1381,7 +1381,7 @@ void PcbaForm::startTask() {
                             rssitestfailcount = 0;
                             state = STATE_WATI_GET_CORRECT_BLERSSI;
                             showlog("5、蓝牙强度测试");
-                            at->sendBLELOG(1);  // 日志开
+                            at->set(DongleCmd::BleLog, 1);  // 日志开
                             erroContent << QString("|wifi信号:%1").arg(testData);
                         }
                     }
@@ -1396,7 +1396,7 @@ void PcbaForm::startTask() {
 
                     showlog("已收到电机校准参数");
                     showlog("5、蓝牙强度测试");
-                    at->sendBLELOG(1);  // 日志开
+                    at->set(DongleCmd::BleLog, 1);  // 日志开
                     showlog("已发送蓝牙强度获取指令");
 
                     blewaittime->setInterval(ble_wait_time);
@@ -1427,7 +1427,7 @@ void PcbaForm::startTask() {
                             showlog("蓝牙测试通过" + QString::number(intblerssi) + "测试次数为" +
                                     QString::number(rssitestcount));
                             rssitestcount = 0;
-                            at->sendBLELOG(0);  // 日志关
+                            at->set(DongleCmd::BleLog, 0);  // 日志关
 
                             waitWork(50);  // 防止发送给治具粘包
                             emit overtask(getIndex());
@@ -1481,7 +1481,7 @@ void PcbaForm::startTask() {
                             showlog("蓝牙不合格信号强度" + BLE_RSSI);
                             showlog("当前蓝牙范围为" + QString::number(BleHighRssi) + QString::number(BleLowRssi));
 
-                            at->sendBLELOG(0);  // 日志关
+                            at->set(DongleCmd::BleLog, 0);  // 日志关
                             rssitestfailcount = 0;
                             waitWork(50);  // 防止发送给治具粘包
                             emit overtask(getIndex());
@@ -1633,7 +1633,7 @@ void PcbaForm::startTask() {
                     protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
 
                     waitWork(100);
-                    at->sendMac("00:00:00:00:00:00");
+                    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
                     waitWork(100);
 
                     showlog("已经发送请求设备休眠");
@@ -1656,7 +1656,7 @@ void PcbaForm::startTask() {
                 } else {
                     protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
                     showlog("正在重发开始休眠");
-                    at->sendMac("00:00:00:00:00:00");
+                    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
                     waitWork(500);
                 }
 
@@ -1790,7 +1790,7 @@ void PcbaForm::on_macInput_returnPressed() {
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
-        at->ask_mac();
+        at->get(DongleCmd::GetGmac);
         showlog("Mac地址错误，当前为:" + ui->macInput->text());
         //   QMessageBox::warning(nullptr, "Warning", "Mac地址错误:\n\r" + ui->macInput->text());
 
@@ -1941,7 +1941,7 @@ void PcbaForm::on_start_scan_clicked() {
         on_connectButton_clicked();
     }
 
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->pick_device->clear();
     deviceMap.clear();
 

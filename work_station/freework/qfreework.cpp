@@ -1391,7 +1391,7 @@ void QFreeWork::on_macInput_returnPressed() {
 }
 
 void QFreeWork::on_pushButton_2_clicked() {
-    at->sendBLELOG(1);  // 日志开
+    at->set(DongleCmd::BleLog, 1);  // 日志开
 }
 
 void QFreeWork::on_getMac_returnPressed() {
@@ -1560,7 +1560,7 @@ void QFreeWork::on_mac_combo_textActivated(const QString& arg1) {
         return;
     } else {
         macAddress = arg1;
-        // at->sendMac(macAddress);//发送mac地址
+        // at->set(DongleCmd::BleScanConnect, macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
         bandingMacSn(macAddress, snbanding);
     }
@@ -1648,7 +1648,7 @@ void QFreeWork::on_snbanding_returnPressed() {
         on_connectButton_clicked();
     }
     snbanding = ui->snbanding->text();
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
     bandingresult = true;
 }
@@ -2393,7 +2393,7 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
 }
 
 void QFreeWork::on_stopTest_clicked() {
-    // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
     // waitWork(100);
     clearProductInstrumentWatch();
     inovancePlcTcp_.disconnect();

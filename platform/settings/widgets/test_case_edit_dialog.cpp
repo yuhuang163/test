@@ -40,14 +40,108 @@ void fillActionCombo(QComboBox* box) {
 void fillDeviceCmdCombo(QComboBox* box) {
     box->clear();
     QVector<QPair<QString, QString>> items;
-    items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size());
+    items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size() + DongleCmdCatalog::allDongleCmdNames().size());
     for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames())
         items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
+    for (const QString& name : DongleCmdCatalog::allDongleCmdNames())
+        items.append({DongleCmdCatalog::dongleCmdUiLabel(name), name});
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
     });
     for (const auto& item : items)
         box->addItem(item.first, item.second);
+}
+
+enum class SendCmdParamKind { None, Int, UInt, JsonMap, String };
+
+struct SendCmdParamUi {
+    bool valid = false;
+    SendCmdParamKind kind = SendCmdParamKind::None;
+};
+
+SendCmdParamUi sendCmdParamUiForName(const QString& name) {
+    SendCmdParamUi out;
+    DeviceCmd cmd;
+    if (DeviceCmdCatalog::deviceCmdFromName(name, cmd)) {
+        DeviceCmdParamSchema schema;
+        if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
+            out.valid = true;
+            if (schema.kind == DeviceCmdParamKind::None)
+                out.kind = SendCmdParamKind::None;
+            else if (schema.kind == DeviceCmdParamKind::Int)
+                out.kind = SendCmdParamKind::Int;
+            else if (schema.kind == DeviceCmdParamKind::UInt)
+                out.kind = SendCmdParamKind::UInt;
+            else if (schema.kind == DeviceCmdParamKind::String)
+                out.kind = SendCmdParamKind::String;
+            else
+                out.kind = SendCmdParamKind::JsonMap;
+        }
+        return out;
+    }
+    DongleCmd dongleCmd;
+    if (DongleCmdCatalog::dongleCmdFromName(name, dongleCmd)) {
+        DeviceCmdParamSchema schema;
+        if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
+            out.valid = true;
+            if (schema.kind == DeviceCmdParamKind::None)
+                out.kind = SendCmdParamKind::None;
+            else if (schema.kind == DeviceCmdParamKind::Int)
+                out.kind = SendCmdParamKind::Int;
+            else if (schema.kind == DeviceCmdParamKind::String)
+                out.kind = SendCmdParamKind::String;
+            else
+                out.kind = SendCmdParamKind::JsonMap;
+        }
+    }
+    return out;
+}
+
+void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, QWidget* pageNone,
+                        QWidget* pageInt, QWidget* pageJson, QStackedWidget* stack, QSpinBox* spinBox,
+                        QPlainTextEdit* jsonEdit) {
+    if (!uiSchema.valid || uiSchema.kind == SendCmdParamKind::None) {
+        stack->setCurrentWidget(pageNone);
+        return;
+    }
+    if (uiSchema.kind == SendCmdParamKind::Int || uiSchema.kind == SendCmdParamKind::UInt) {
+        stack->setCurrentWidget(pageInt);
+        spinBox->setValue(param.toInt());
+        return;
+    }
+    stack->setCurrentWidget(pageJson);
+    if (uiSchema.kind == SendCmdParamKind::String)
+        jsonEdit->setPlainText(param.toString());
+    else
+        jsonEdit->setPlainText(
+            QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(param.toMap())).toJson()));
+}
+
+QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, QPlainTextEdit* jsonEdit) {
+    switch (uiSchema.kind) {
+    case SendCmdParamKind::Int:
+    case SendCmdParamKind::UInt:
+        return spinBox->value();
+    case SendCmdParamKind::String:
+        return jsonEdit->toPlainText().trimmed();
+    case SendCmdParamKind::JsonMap: {
+        QVariantMap map;
+        const QString text = jsonEdit->toPlainText().trimmed();
+        const QJsonDocument doc = QJsonDocument::fromJson(text.toUtf8());
+        if (doc.isObject())
+            map = doc.object().toVariantMap();
+        else {
+            for (const QString& line : text.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+                const int eq = line.indexOf(QLatin1Char('='));
+                if (eq > 0)
+                    map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
+            }
+        }
+        return map;
+    }
+    default:
+        return {};
+    }
 }
 
 void fillGateReportTypeCombo(QComboBox* box) {
@@ -250,17 +344,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
     onDeviceCmdChanged(cmdIdx);
 
-    DeviceCmd cmd;
-    if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-        DeviceCmdParamSchema schema;
-        if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
-            if (schema.kind == DeviceCmdParamKind::Int || schema.kind == DeviceCmdParamKind::UInt)
-                ui->spinBox_intParam->setValue(def.send.param.toInt());
-            else if (schema.kind == DeviceCmdParamKind::JsonMap)
-                ui->plainTextEdit_jsonParam->setPlainText(
-                    QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(def.send.param.toMap())).toJson()));
-        }
-    }
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd);
+    applySendParamToUi(uiSchema, def.send.param, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
+                       ui->stackedWidget_param, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
 
     ui->spinBox_delayBefore->setValue(def.timing.delayBeforeMs);
     ui->spinBox_delayAfter->setValue(def.timing.delayAfterMs);
@@ -312,29 +398,8 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.action = comboData(ui->comboBox_action) == QLatin1String("Get") ? TestCaseSendAction::Get
                                                                              : TestCaseSendAction::Set;
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
-    DeviceCmd cmd;
-    if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-        DeviceCmdParamSchema schema;
-        if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
-            if (schema.kind == DeviceCmdParamKind::Int || schema.kind == DeviceCmdParamKind::UInt)
-                def.send.param = ui->spinBox_intParam->value();
-            else if (schema.kind == DeviceCmdParamKind::JsonMap) {
-                QVariantMap map;
-                const QString text = ui->plainTextEdit_jsonParam->toPlainText().trimmed();
-                const QJsonDocument doc = QJsonDocument::fromJson(text.toUtf8());
-                if (doc.isObject())
-                    map = doc.object().toVariantMap();
-                else {
-                    for (const QString& line : text.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-                        const int eq = line.indexOf(QLatin1Char('='));
-                        if (eq > 0)
-                            map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
-                    }
-                }
-                def.send.param = map;
-            }
-        }
-    }
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd);
+    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
@@ -357,19 +422,14 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 
 void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    DeviceCmd cmd;
-    if (!DeviceCmdCatalog::deviceCmdFromName(cmdName, cmd)) {
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName);
+    if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
         return;
     }
-    DeviceCmdParamSchema schema;
-    if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
-        ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
-        return;
-    }
-    if (schema.kind == DeviceCmdParamKind::Int || schema.kind == DeviceCmdParamKind::UInt)
+    if (uiSchema.kind == SendCmdParamKind::Int || uiSchema.kind == SendCmdParamKind::UInt)
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramInt);
-    else if (schema.kind == DeviceCmdParamKind::JsonMap)
+    else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String)
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
     else
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);

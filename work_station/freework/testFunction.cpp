@@ -1,5 +1,6 @@
-﻿
-#include "qfreework.h"
+﻿#include "qfreework.h"
+
+#include "qat.h"
 
 #include <QString>
 #include <QVector>
@@ -100,7 +101,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     /* X(55, "获取连接信息", false, TAG, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ConnectInfo); })) */        \
     X(56, "获取WiFi信息", false, WIFI_INFO, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::WifiInfo); })) \
     X(57, "读取治具电流测量值", true, JIG_CURRENT_READ, sendCommandWithRetry([&]() { usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); })) \
-    X(58, "直连接蓝牙", true, BT_DIRECT_DCON, sendCommandWithRetry([&]() { at->sendDcon(macAddress); }, 6 * 1000)) \
+    X(58, "直连接蓝牙", true, BT_DIRECT_DCON, setCommandWaitSource(CommandWaitSource::DongleAt); sendCommandWithRetry([&]() { at->set(DongleCmd::BleDirectConnect, macAddress); }, 6 * 1000)) \
     X(59, "获取BT RSSI", true, BT_RSSI, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 1; protocolManager.get(DeviceCmd::RssiRead, m); })) \
     X(60, "获取BLE RSSI", true, BLE_RSSI, sendCommandWithRetry([&]() { QVariantMap m; m["mode"] = 0; protocolManager.get(DeviceCmd::RssiRead, m); })) \
     X(61, "读取充电电流", true, CHARGE_CURRENT_READ, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); })) \
@@ -110,7 +111,7 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(65, "写入deviceSecret", false, WRITE_DEVICE_SECRET, if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceSecret"), !tupleData_.deviceSecret.isEmpty(), QStringLiteral("deviceSecret为空"))) return; sendCommandWithRetry([&]() { stepRuntime_.testData = tupleData_.deviceSecret; QVariantMap map; map["value"] = tupleData_.deviceSecret.toUtf8(); protocolManager.set(DeviceCmd::WriteKey, map); })) \
     X(66, "读取设备三元组并比较", true, READ_TUPLE_COMPARE, sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::TupleRead); })) \
     X(67, "上报三元组写入记录", true, TUPLE_WRITE_REPORT, reportTupleWriteRecord()) \
-    X(68, "扫描连接蓝牙", true, BT_SCAN_MAC, sendCommandWithRetry([&]() { at->sendMac(macAddress); }, 6 * 1000)) \
+    X(68, "扫描连接蓝牙", true, BT_SCAN_MAC, setCommandWaitSource(CommandWaitSource::DongleAt); sendCommandWithRetry([&]() { at->set(DongleCmd::BleScanConnect, macAddress); }, 6 * 1000)) \
     X(69, "电源键测试", true, KEY_POWER, startKeyButtonTest("电源键测试", "请短按下旋钮", "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox")) \
     X(70, "开始/暂停键测试", true, KEY_START_PAUSE, startKeyButtonTest("开始/暂停键测试", "请短按下开始/暂停按钮", "ProductInfo/KeyIdStartPause", "ProductInfo/KeyIdStartPause_checkBox")) \
     X(71, "模式键测试", true, KEY_MODE, startKeyButtonTest("模式键测试", "请短按下模式按钮", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox")) \

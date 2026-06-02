@@ -13,6 +13,7 @@
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
 #include "common_utils.h"
+#include "qat.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -57,7 +58,7 @@ void MainWindow::on_pushButton_clicked() {
     // qDebug() << "Converted decodedString:" << decodedString;
     // qDebug() << "Converted localString:" << localString;
 
-    // at->sendOTADATA(1);
+    // at->set(DongleCmd::OtaDataPassthrough, 1);
     // showlog("已发送OTA数据通道开启");
     // waitWork(1000);
     // QByteArray data;
@@ -74,7 +75,7 @@ void MainWindow::on_pushButton_3_clicked() {
 
     // protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFiledata));
     // waitWork(1000);
-    // at->sendOTADATA(1);
+    // at->set(DongleCmd::OtaDataPassthrough, 1);
 
     static int facMode = 0;
 
@@ -370,7 +371,11 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
     connect(ui->is_ota_1, SIGNAL(stateChanged(int)), this, SLOT(otaSourceSet(int)));
     connect(ui->is_ota_2, SIGNAL(stateChanged(int)), this, SLOT(otaFwSet(int)));
-    connect(ui->show_rssi, SIGNAL(stateChanged(int)), at, SLOT(sendBLELOG(int)));
+    connect(ui->show_rssi, &QCheckBox::stateChanged, this, [this](int state) {
+        if (at) {
+            at->set(DongleCmd::BleLog, state > 0 ? 1 : 0);
+        }
+    });
     connect(ui->show_bursh_log, SIGNAL(stateChanged(int)), pb, SLOT(set_uart_receive(int)));
     connect(ui->press_sensor_temp__switch, SIGNAL(stateChanged(int)), pb, SLOT(set_press_sensor_temp(int)));
 
@@ -674,7 +679,7 @@ void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
         return;
     } else {
         macAddress = arg1;
-        at->sendMac(macAddress);  // 发送mac地址
+        at->set(DongleCmd::BleScanConnect, macAddress);  // 发送mac地址
         qDebug() << macAddress;
         bandingMacSn(macAddress, snbanding);
         if (!ui->is_just_banding->checkState())
@@ -692,7 +697,7 @@ void MainWindow::on_snbanding_returnPressed() {
         on_connectButton_clicked();
     }
     snbanding = ui->snbanding->text();
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
 }
 
@@ -706,7 +711,7 @@ void MainWindow::on_damping_close_clicked() { protocolManager.set(DeviceCmd::Mot
 
 void MainWindow::on_disconnectButton_clicked() {
     qDebug() << "on_disconnectButton_clicked";
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
 
     waitWork(100);
 
@@ -764,7 +769,7 @@ void MainWindow::on_macInput_returnPressed() {
         protocolManager.setNeedAes(false);
         macAddress = ui->macInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
-        at->sendMac(ui->macInput->text());  // 开始连接
+        at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 开始连接
         ui->snInput->setFocus();
         if (ui->checkbanding->checkState()) {
             ui->macInput->clear();
@@ -935,7 +940,7 @@ void MainWindow::on_entersleep_clicked() {
         // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_CLOSE));
         protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
         // waitWork(100);
-        // at->sendMac("00:00:00:00:00:00");   // 发送mac地址
+        // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
         waitWork(50);
         // on_disconnectButton_clicked();
         // 3C:84:27:07:A8:D2
@@ -1087,7 +1092,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                                                             "10px; padding: 10px; text-align: center;");
                         protocolManager.set(DeviceCmd::WifiDisconnect);
                         wifiresult = "通过";
-                        at->sendBLELOG(1);  // 日志关
+                        at->set(DongleCmd::BleLog, 1);  // 日志关
                         state = STATE_WATI_GET_CORRECT_BLERSSI;
                         rssitestcount = 0;
                     }
@@ -1106,7 +1111,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                         qDebug() << "wifi不合格信号强度" << WIFI_RSSI;
                         ui->log->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
                         rssitestfailcount = 0;
-                        at->sendBLELOG(1);  // 日志关
+                        at->set(DongleCmd::BleLog, 1);  // 日志关
                         state = STATE_WATI_GET_CORRECT_BLERSSI;
                     }
                 }
@@ -1128,7 +1133,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                         state = STATE_SAVE_RESULT;
                         rssitestcount = 0;
                         bleresult = "通过";
-                        at->sendBLELOG(0);  // 日志关
+                        at->set(DongleCmd::BleLog, 0);  // 日志关
                     }
                     break;
                 } else {
@@ -1146,7 +1151,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                         qDebug() << "蓝牙不合格信号强度" << BLE_RSSI;
                         ui->log->appendPlainText("蓝牙不合格信号强度" + BLE_RSSI);
                         state = STATE_SAVE_RESULT;
-                        at->sendBLELOG(0);  // 日志关
+                        at->set(DongleCmd::BleLog, 0);  // 日志关
                         rssitestfailcount = 0;
                     }
                 }
@@ -1201,7 +1206,7 @@ void MainWindow::on_imuCaliButton_clicked()  // 编写六轴校准的代码
 
                 if (!at->getConnected()) {
                     at->resetConnected();
-                    at->sendMac(ui->macInput->text());  // 发送mac地址
+                    at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
                     showlog(ui->macInput->text());
                 }
 
@@ -1458,7 +1463,7 @@ void MainWindow::on_motor_cali_clicked() {
                 ui->macInput->clear();
                 // ui->macInput->setFocus();
                 waitWork(500);
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
                 on_disconnectButton_clicked();
                 showlog("测试结束");
@@ -1490,12 +1495,12 @@ void MainWindow::on_bleTestPushButton_clicked() {
             QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
             return;
         } else {
-            at->sendotaMac(ui->macInput->text());
+            at->set(DongleCmd::BleOtaConnect, ui->macInput->text());
         }
 
         waitWork(ui->testPeriodSpin->value() * 1000 / 2);
 
-        at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+        at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
 
         waitWork(ui->testPeriodSpin->value() * 1000);
 
@@ -1530,7 +1535,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
     bool result = false;
     bool isStart = false;
     at->resetConnected();
-    at->sendotaMac(ui->wifiOtaMacInput->text());
+    at->set(DongleCmd::BleOtaConnect, ui->wifiOtaMacInput->text());
     protocolManager.setPbMode(0);
     timeout.start();
 
@@ -1664,7 +1669,7 @@ void MainWindow::on_end_motor_cali_clicked() {
     qDebug() << "on_end_motor_cali_clicked";
     is_motor_continue = false;
     motorstate = STATE_IDLE;
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
 }
 void MainWindow::on_getInfoPushButton_clicked() { protocolManager.get(DeviceCmd::ConnectInfo); }
 
@@ -1678,7 +1683,7 @@ void MainWindow::on_start_scan_clicked() {
         on_connectButton_clicked();
     }
     snbanding = ui->snbanding->text();
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->mac_combo->clear();
     deviceMap.clear();
     on_motor_cali_clicked();
@@ -1834,7 +1839,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     }
     waitWork(1000);
     at->resetConnected();
-    at->sendbleMac(ui->wifiOtaMacInput->text());
+    at->set(DongleCmd::BleAppConnect, ui->wifiOtaMacInput->text());
     protocolManager.setPbMode(0);  // app
     configWifitimeout.start();
     isWifiOtaContinue = true;
@@ -1850,7 +1855,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             }
             waitWork(500);
 
-            at->sendbleMac(ui->wifiOtaMacInput->text());
+            at->set(DongleCmd::BleAppConnect, ui->wifiOtaMacInput->text());
         }
         if (isWifiOtaContinue == false)
             break;
@@ -1920,7 +1925,7 @@ void MainWindow::on_open_press_collect_clicked() {
 }
 
 void MainWindow::on_close_press_collect_clicked() { protocolManager.set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_CLOSE)); }
-void MainWindow::on_app_connect_clicked() { at->sendotaMac(ui->wifiOtaMacInput->text()); }
+void MainWindow::on_app_connect_clicked() { at->set(DongleCmd::BleOtaConnect, ui->wifiOtaMacInput->text()); }
 void MainWindow::on_wifiOtaMacInput_returnPressed() {
     on_disconnectButton_clicked();
     // on_macInput_returnPressed();
@@ -2086,7 +2091,7 @@ void MainWindow::on_start_search_clicked() {
 
     ui->pick_device->clear();
     deviceMap.clear();
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
 }
 
 void MainWindow::on_pick_device_textActivated(const QString& arg1) {
@@ -2104,7 +2109,7 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
     } else {
         protocolManager.setNeedAes(false);
         macAddress = arg1;
-        at->sendMac(macAddress);  // 发送mac地址
+        at->set(DongleCmd::BleScanConnect, macAddress);  // 发送mac地址
     }
 }
 
@@ -3172,7 +3177,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     }
 
     waitWork(500);
-    at->sendOTADATA(0);
+    at->set(DongleCmd::OtaDataPassthrough, 0);
     protocolManager.resetAllPb();
     macAddress = ui->bleotamacInput->text();
     macLabel->setText("蓝牙mac: " + macAddress);
@@ -3189,7 +3194,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
 
 bool MainWindow::connectBleForOta(const QString& mac) {
     at->resetConnected();
-    at->sendotaMac(mac);
+    at->set(DongleCmd::BleOtaConnect, mac);
 
     QTime bleOtaTimeConnectOut;
     bleOtaTimeConnectOut.start();
@@ -3210,7 +3215,7 @@ bool MainWindow::connectBleForOta(const QString& mac) {
             waitWork(500);
             if (at->getConnected())
                 break;
-            at->sendotaMac(mac);
+            at->set(DongleCmd::BleOtaConnect, mac);
         }
         if (stopBleOta) {
             showlog("停止测试");
@@ -3275,7 +3280,7 @@ void MainWindow::startRootBleOta() {
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 块忙等待时间：%1 ms").arg(blockBusyWaitMs));
 
-    at->sendOTADATA(1);
+    at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
     rootBleOtaClient_.setSendFunc([this](const QByteArray& frame) {
@@ -3311,7 +3316,7 @@ void MainWindow::startRootBleOta() {
         });
 
     rootBleOtaActive_ = false;
-    at->sendOTADATA(0);
+    at->set(DongleCmd::OtaDataPassthrough, 0);
     waitWork(200);
 
     if (stopBleOta) {
@@ -3409,7 +3414,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
     }
 
     waitWork(500);
-    at->sendOTADATA(0);
+    at->set(DongleCmd::OtaDataPassthrough, 0);
     protocolManager.resetAllPb();
     macAddress = ui->bleotamacInput->text();
     macLabel->setText("蓝牙mac: " + macAddress);
@@ -3573,7 +3578,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     showlog("开始OTA!");
     waitWork(1000);
     showlog("开始发送OTA数据通道开启");
-    at->sendOTADATA(1);
+    at->set(DongleCmd::OtaDataPassthrough, 1);
     showlog("已发送OTA数据通道开启");
     waitWork(1000);
     if (connectProductName != "U7" && connectProductName != "U7P") {
@@ -3703,7 +3708,12 @@ void MainWindow::on_ship_bomb_clicked() {
         on_connectButton_clicked();
     }
     waitWork(1000);
-    at->sendBOMB(ui->bombname->text(), ui->bombrssi->text(), ui->bombinterval->text(), "0008021a0408051001e6");
+    QVariantMap bomb;
+    bomb.insert(QStringLiteral("deviceName"), ui->bombname->text());
+    bomb.insert(QStringLiteral("rssi"), ui->bombrssi->text());
+    bomb.insert(QStringLiteral("connectionInterval"), ui->bombinterval->text());
+    bomb.insert(QStringLiteral("command"), QStringLiteral("0008021a0408051001e6"));
+    at->set(DongleCmd::Bomb, bomb);
 
     protocolManager.setShipCount(1);
 }

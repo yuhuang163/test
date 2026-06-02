@@ -1,5 +1,7 @@
 ﻿#include "qfreework.h"
 
+#include "qat.h"
+
 #include "test_case.h"
 
 #include "qusb.h"
@@ -34,13 +36,13 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
     if (hookId == QStringLiteral("BT_DIRECT_DCON")) {
         const QString mac = fw->macAddress;
         fw->setCommandWaitSource(CommandWaitSource::DongleAt);
-        fw->sendCommandWithRetry([fw, mac]() { fw->at->sendDcon(mac); }, 6 * 1000);
+        fw->sendCommandWithRetry([fw, mac]() { fw->at->set(DongleCmd::BleDirectConnect, mac); }, 6 * 1000);
         return;
     }
     if (hookId == QStringLiteral("BT_SCAN_MAC")) {
         const QString mac = fw->macAddress;
         fw->setCommandWaitSource(CommandWaitSource::DongleAt);
-        fw->sendCommandWithRetry([fw, mac]() { fw->at->sendMac(mac); }, 6 * 1000);
+        fw->sendCommandWithRetry([fw, mac]() { fw->at->set(DongleCmd::BleScanConnect, mac); }, 6 * 1000);
         return;
     }
     if (hookId == QStringLiteral("CLOUD_TUPLE_FETCH")) {

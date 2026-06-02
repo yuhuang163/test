@@ -479,7 +479,7 @@ void wifibletest::refreshBaseData(ProtocolBaseInfoData data) {
             TestResult = failValue;
             isTestContinue = false;
             showlog("停止运行");
-            // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+            // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
             waitWork(100);
             ui->macInput->setDisabled(0);
             ui->getMac->setDisabled(0);
@@ -1564,7 +1564,7 @@ void wifibletest::startTask() {
             case STATE_IDLE:  // 复位一切
                 initDate();
                 waitWork(1000);           //给开机时间
-                at->sendMac(macAddress);  // 开始连接
+                at->set(DongleCmd::BleScanConnect, macAddress);  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
                 showlog("开始测试");
                 state = getNextState(state);
@@ -1597,7 +1597,7 @@ void wifibletest::startTask() {
                 if (canGoNext) {
                     showlog("已检查设备状态");
                     showlog("打开蓝牙日志");
-                    at->sendBLELOG(1);  // 日志开
+                    at->set(DongleCmd::BleLog, 1);  // 日志开
                     state = STATE_WATI_GET_CORRECT_BLERSSI;
                 }
 
@@ -1624,7 +1624,7 @@ void wifibletest::startTask() {
                                     QString::number(rssitestcount));
 
                             rssitestcount = 0;
-                            at->sendBLELOG(0);  // 日志关
+                            at->set(DongleCmd::BleLog, 0);  // 日志关
                             if (SETTINGS.value(QStringLiteral("BlePer/EnableRxTest"), true).toBool()) {
                                 state = STATE_BLE_PER_INIT;
                             } else {
@@ -1655,7 +1655,7 @@ void wifibletest::startTask() {
                             showlog("蓝牙不合格信号强度" + BLE_RSSI);
                             showlog("当前蓝牙范围为" + QString::number(BleHighRssi) + QString::number(BleLowRssi));
 
-                            at->sendBLELOG(0);  // 日志关
+                            at->set(DongleCmd::BleLog, 0);  // 日志关
                             rssitestfailcount = 0;
 
                             if (SETTINGS.value("SYSTEM/TestWifiSignal").toBool()) {
@@ -1985,7 +1985,7 @@ void wifibletest::startTask() {
                     }
                 }
 
-                at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
                 waitWork(50);
                 on_disconnectButton_clicked();
 
@@ -2069,7 +2069,7 @@ void wifibletest::on_macInput_returnPressed() {
 }
 
 void wifibletest::on_pushButton_2_clicked() {
-    at->sendBLELOG(1);  // 日志开
+    at->set(DongleCmd::BleLog, 1);  // 日志开
 }
 
 void wifibletest::on_getMac_returnPressed() {
@@ -2221,7 +2221,7 @@ void wifibletest::on_mac_combo_textActivated(const QString& arg1) {
         return;
     } else {
         macAddress = arg1;
-        // at->sendMac(macAddress);//发送mac地址
+        // at->set(DongleCmd::BleScanConnect, macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
         bandingMacSn(macAddress, snbanding);
         bandingMacSn_mes(macAddress, snbanding);
@@ -2323,7 +2323,7 @@ void wifibletest::on_snbanding_returnPressed() {
         on_connectButton_clicked();
     }
     snbanding = ui->snbanding->text();
-    at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
     bandingresult = true;
 }
@@ -2684,7 +2684,7 @@ void wifibletest::on_productDisconnectButton_clicked() {
 }
 
 void wifibletest::on_stopTest_clicked() {
-    // at->sendMac("00:00:00:00:00:00");  // 发送mac地址
+    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
