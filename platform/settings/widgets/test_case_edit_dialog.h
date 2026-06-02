@@ -1,4 +1,4 @@
-#ifndef TEST_CASE_EDIT_DIALOG_H
+﻿#ifndef TEST_CASE_EDIT_DIALOG_H
 #define TEST_CASE_EDIT_DIALOG_H
 
 #include "test_case_types.h"
@@ -19,6 +19,8 @@ public:
     TestCaseDefinition definition() const;
 
 private slots:
+    void onSendChannelChanged(int index);
+    void onSendActionChanged(int index);
     void onDeviceCmdChanged(int index);
     void onGateReportTypeChanged(int index);
     void updateGateFieldsEnabled();
@@ -27,6 +29,8 @@ private slots:
 
 private:
     bool saveValidated();
+    void refreshDeviceCmdCombo();
+    void updateSendParamVisibility(bool hasParam);
 
     Ui::TestCaseEditDialog* ui = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */

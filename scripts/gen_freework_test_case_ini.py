@@ -28,6 +28,7 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         f"PromptText={meta.get('prompt_text', '')}",
         "",
         "[Send]",
+        f"Channel={send.get('channel', 'Product')}",
         f"Action={send['action']}",
         f"DeviceCmd={send['cmd']}",
     ]
@@ -70,6 +71,22 @@ def proto(name, mes, action, cmd, params=None, gate=None, timing=None, prompt=No
         "hook": {"enabled": False},
         "timing": timing or {},
         "prompt": prompt,
+    }
+
+
+def dongle(name, mes, cmd, params=None, timing=None):
+    return {
+        "name": name,
+        "mes": mes,
+        "send": {
+            "action": "Set",
+            "channel": "Dongle",
+            "cmd": cmd,
+            "params": params or {"Send/Param/string": "$MAC"},
+        },
+        "gate": {"enabled": False},
+        "hook": {"enabled": False},
+        "timing": timing or {"command_timeout": 6000},
     }
 
 
@@ -152,7 +169,7 @@ CASES = [
     proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState"),
     proto("获取WiFi信息", "WIFI_INFO", "Get", "WifiInfo"),
     hook("读取治具电流测量值", "JIG_CURRENT_READ"),
-    hook("直连接蓝牙", "BT_DIRECT_DCON"),
+    dongle("直连接蓝牙", "BT_DIRECT_DCON", "BleDirectConnect"),
     proto(
         "获取BT RSSI",
         "BT_RSSI",
@@ -176,7 +193,7 @@ CASES = [
     hook("写入deviceSecret", "WRITE_DEVICE_SECRET", send=("Set", "WriteKey", {})),
     proto("读取设备三元组并比较", "READ_TUPLE_COMPARE", "Get", "TupleRead"),
     hook("上报三元组写入记录", "TUPLE_WRITE_REPORT"),
-    hook("扫描连接蓝牙", "BT_SCAN_MAC"),
+    dongle("扫描连接蓝牙", "BT_SCAN_MAC", "BleScanConnect"),
     hook("电源键测试", "KEY_POWER", prompt_text="请短按下旋钮"),
     hook("开始/暂停键测试", "KEY_START_PAUSE", prompt_text="请短按下开始/暂停按钮"),
     hook("模式键测试", "KEY_MODE", prompt_text="请短按下模式按钮"),

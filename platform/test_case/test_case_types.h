@@ -6,6 +6,8 @@
 
 enum class TestCaseSendAction { Set, Get };
 
+enum class TestCaseSendChannel { Product, Dongle };
+
 struct TestCaseMeta {
     /** 名称：界面显示、日志、ini 文件名（支持中文） */
     QString name;
@@ -19,6 +21,7 @@ struct TestCaseMeta {
 };
 
 struct TestCaseSend {
+    TestCaseSendChannel channel = TestCaseSendChannel::Product;
     TestCaseSendAction action = TestCaseSendAction::Set;
     QString deviceCmd;
     QVariant param;

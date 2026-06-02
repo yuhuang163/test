@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>520</width>
-    <height>841</height>
+    <height>868</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -43,7 +43,7 @@
          <string>勾选MES后，本步结果在系统中的英文项名；需与MES约定一致</string>
         </property>
         <property name="text">
-         <string>上报MES名称</string>
+         <string>上报MES的字段</string>
         </property>
        </widget>
       </item>
@@ -91,33 +91,43 @@
      </property>
      <layout class="QFormLayout" name="formLayout_send">
       <item row="0" column="0">
+       <widget class="QLabel" name="label_sendChannel">
+        <property name="text">
+         <string>通信类型</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_sendChannel"/>
+      </item>
+      <item row="1" column="0">
        <widget class="QLabel" name="label_action">
         <property name="text">
          <string>操作方式</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
+      <item row="1" column="1">
        <widget class="QComboBox" name="comboBox_action"/>
       </item>
-      <item row="1" column="0">
+      <item row="2" column="0">
        <widget class="QLabel" name="label_deviceCmd">
         <property name="text">
          <string>指令内容</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="2" column="1">
        <widget class="QComboBox" name="comboBox_deviceCmd"/>
       </item>
-      <item row="2" column="0">
+      <item row="3" column="0">
        <widget class="QLabel" name="label_param">
         <property name="text">
          <string>指令参数</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item row="3" column="1">
        <widget class="QStackedWidget" name="stackedWidget_param">
         <property name="currentIndex">
          <number>0</number>

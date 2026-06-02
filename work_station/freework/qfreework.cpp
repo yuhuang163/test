@@ -479,10 +479,6 @@ const QFreeWork::NamedFunction* QFreeWork::currentOrderedNamedFunction() const {
 
 namespace {
 
-bool isDongleBleConnectHookId(const QString& hookId) {
-    return hookId == QStringLiteral("BT_DIRECT_DCON") || hookId == QStringLiteral("BT_SCAN_MAC");
-}
-
 bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
@@ -501,7 +497,7 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
         if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
             return false;
         }
-        if (caseDef.hook.enabled && isDongleBleConnectHookId(caseDef.hook.hookId)) {
+        if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
             return true;
         }
         return isDongleBleConnectStepName(caseDef.meta.name);
@@ -623,17 +619,16 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         }
 
         if (useTestCaseFlow_ && !caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
-            if (!caseDef.hook.enabled) {
+            const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
+            if (!caseDef.hook.enabled && !dongleBleConnect) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 stepRuntime_.testData = QStringLiteral("ok");
-            } else if (caseDef.hook.enabled
-                       && (lastCommandRetryCount > 0
-                           || (isDongleBleConnectHookId(caseDef.hook.hookId) && at->getConnected()))) {
-                // 钩子内 sendCommandWithRetry 成功后由 solveGetBrushResponse 置 canGoNext
+            } else if ((caseDef.hook.enabled || dongleBleConnect)
+                       && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
-                if (isDongleBleConnectHookId(caseDef.hook.hookId) && at->getConnected()) {
+                if (dongleBleConnect && at->getConnected()) {
                     stepRuntime_.testData = QStringLiteral("已连接");
                 } else if (stepRuntime_.testData == QLatin1String("-")) {
                     stepRuntime_.testData = QStringLiteral("ok");

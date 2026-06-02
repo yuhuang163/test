@@ -33,23 +33,47 @@ QString comboData(const QComboBox* box) {
 
 void fillActionCombo(QComboBox* box) {
     box->clear();
-    box->addItem(QStringLiteral("下发给设备"), QStringLiteral("Set"));
-    box->addItem(QStringLiteral("从设备读取"), QStringLiteral("Get"));
+    box->addItem(QStringLiteral("设置"), QStringLiteral("Set"));
+    box->addItem(QStringLiteral("读取"), QStringLiteral("Get"));
 }
 
-void fillDeviceCmdCombo(QComboBox* box) {
+void fillSendChannelCombo(QComboBox* box) {
+    box->clear();
+    box->addItem(QStringLiteral("产品通信"), QStringLiteral("Product"));
+    box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
+}
+
+TestCaseSendAction sendActionFromComboData(const QString& data) {
+    return data.compare(QStringLiteral("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
+                                                                         : TestCaseSendAction::Set;
+}
+
+void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSendAction action) {
     box->clear();
     QVector<QPair<QString, QString>> items;
-    items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size() + DongleCmdCatalog::allDongleCmdNames().size());
-    for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames())
-        items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
-    for (const QString& name : DongleCmdCatalog::allDongleCmdNames())
-        items.append({DongleCmdCatalog::dongleCmdUiLabel(name), name});
+    if (channel == TestCaseSendChannel::Dongle) {
+        items.reserve(DongleCmdCatalog::allDongleCmdNames(action).size());
+        for (const QString& name : DongleCmdCatalog::allDongleCmdNames(action))
+            items.append({DongleCmdCatalog::dongleCmdUiLabel(name), name});
+    } else {
+        items.reserve(DeviceCmdCatalog::allDeviceCmdNames().size());
+        for (const QString& name : DeviceCmdCatalog::allDeviceCmdNames())
+            items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
+    }
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
     });
     for (const auto& item : items)
         box->addItem(item.first, item.second);
+}
+
+TestCaseSendChannel sendChannelFromComboData(const QString& data) {
+    return data.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0 ? TestCaseSendChannel::Dongle
+                                                                            : TestCaseSendChannel::Product;
+}
+
+QString sendChannelComboData(TestCaseSendChannel channel) {
+    return channel == TestCaseSendChannel::Dongle ? QStringLiteral("Dongle") : QStringLiteral("Product");
 }
 
 enum class SendCmdParamKind { None, Int, UInt, JsonMap, String };
@@ -59,8 +83,26 @@ struct SendCmdParamUi {
     SendCmdParamKind kind = SendCmdParamKind::None;
 };
 
-SendCmdParamUi sendCmdParamUiForName(const QString& name) {
+SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel channel) {
     SendCmdParamUi out;
+    if (channel == TestCaseSendChannel::Dongle) {
+        DongleCmd dongleCmd;
+        if (DongleCmdCatalog::dongleCmdFromName(name, dongleCmd)) {
+            DeviceCmdParamSchema schema;
+            if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
+                out.valid = true;
+                if (schema.kind == DeviceCmdParamKind::None)
+                    out.kind = SendCmdParamKind::None;
+                else if (schema.kind == DeviceCmdParamKind::Int)
+                    out.kind = SendCmdParamKind::Int;
+                else if (schema.kind == DeviceCmdParamKind::String)
+                    out.kind = SendCmdParamKind::String;
+                else
+                    out.kind = SendCmdParamKind::JsonMap;
+            }
+        }
+        return out;
+    }
     DeviceCmd cmd;
     if (DeviceCmdCatalog::deviceCmdFromName(name, cmd)) {
         DeviceCmdParamSchema schema;
@@ -72,22 +114,6 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name) {
                 out.kind = SendCmdParamKind::Int;
             else if (schema.kind == DeviceCmdParamKind::UInt)
                 out.kind = SendCmdParamKind::UInt;
-            else if (schema.kind == DeviceCmdParamKind::String)
-                out.kind = SendCmdParamKind::String;
-            else
-                out.kind = SendCmdParamKind::JsonMap;
-        }
-        return out;
-    }
-    DongleCmd dongleCmd;
-    if (DongleCmdCatalog::dongleCmdFromName(name, dongleCmd)) {
-        DeviceCmdParamSchema schema;
-        if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
-            out.valid = true;
-            if (schema.kind == DeviceCmdParamKind::None)
-                out.kind = SendCmdParamKind::None;
-            else if (schema.kind == DeviceCmdParamKind::Int)
-                out.kind = SendCmdParamKind::Int;
             else if (schema.kind == DeviceCmdParamKind::String)
                 out.kind = SendCmdParamKind::String;
             else
@@ -172,8 +198,6 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
         {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
-        {QStringLiteral("BT_DIRECT_DCON"), QStringLiteral("直连接蓝牙")},
-        {QStringLiteral("BT_SCAN_MAC"), QStringLiteral("扫描连接蓝牙")},
         {QStringLiteral("CLOUD_TUPLE_FETCH"), QStringLiteral("获取云端三元组")},
         {QStringLiteral("WRITE_PRODUCT_KEY"), QStringLiteral("写入 productKey")},
         {QStringLiteral("WRITE_DEVICE_NAME"), QStringLiteral("写入 deviceName")},
@@ -257,8 +281,9 @@ void fillHookCombo(QComboBox* box) {
 TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(new Ui::TestCaseEditDialog) {
     ui->setupUi(this);
 
+    fillSendChannelCombo(ui->comboBox_sendChannel);
     fillActionCombo(ui->comboBox_action);
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set);
     fillGateReportTypeCombo(ui->comboBox_gateReportType);
     fillGateOpCombo(ui->comboBox_gateOp);
     registerFreeWorkTestCaseHooks();
@@ -272,6 +297,10 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         cancelBtn->setText(QStringLiteral("取消"));
     }
 
+    connect(ui->comboBox_sendChannel, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TestCaseEditDialog::onSendChannelChanged);
+    connect(ui->comboBox_action, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TestCaseEditDialog::onSendActionChanged);
     connect(ui->comboBox_deviceCmd, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onDeviceCmdChanged);
     connect(ui->comboBox_gateReportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -288,6 +317,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
+    onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
 }
 
 TestCaseEditDialog::~TestCaseEditDialog() {
@@ -296,30 +326,36 @@ TestCaseEditDialog::~TestCaseEditDialog() {
 
 void TestCaseEditDialog::updateGateFieldsEnabled() {
     const bool on = ui->checkBox_gateEnabled->isChecked();
-    ui->label_gateReportType->setEnabled(on);
-    ui->comboBox_gateReportType->setEnabled(on);
-    ui->label_gateField->setEnabled(on);
-    ui->comboBox_gateField->setEnabled(on);
-    ui->label_gateOp->setEnabled(on);
-    ui->comboBox_gateOp->setEnabled(on);
-    ui->label_gateLow->setEnabled(on);
-    ui->lineEdit_gateLow->setEnabled(on);
-    ui->label_gateHigh->setEnabled(on);
-    ui->lineEdit_gateHigh->setEnabled(on);
-    ui->label_gateExpected->setEnabled(on);
-    ui->lineEdit_gateExpected->setEnabled(on);
+    ui->label_gateReportType->setVisible(on);
+    ui->comboBox_gateReportType->setVisible(on);
+    ui->label_gateField->setVisible(on);
+    ui->comboBox_gateField->setVisible(on);
+    ui->label_gateOp->setVisible(on);
+    ui->comboBox_gateOp->setVisible(on);
+    ui->label_gateLow->setVisible(on);
+    ui->lineEdit_gateLow->setVisible(on);
+    ui->label_gateHigh->setVisible(on);
+    ui->lineEdit_gateHigh->setVisible(on);
+    ui->label_gateExpected->setVisible(on);
+    ui->lineEdit_gateExpected->setVisible(on);
 }
 
 void TestCaseEditDialog::updatePromptFieldsEnabled() {
     const bool on = ui->checkBox_promptEnabled->isChecked();
-    ui->label_promptText->setEnabled(on);
-    ui->plainTextEdit_promptText->setEnabled(on);
+    ui->label_promptText->setVisible(on);
+    ui->plainTextEdit_promptText->setVisible(on);
 }
 
 void TestCaseEditDialog::updateHookFieldsEnabled() {
     const bool on = ui->checkBox_hookEnabled->isChecked();
-    ui->label_hookId->setEnabled(on);
-    ui->comboBox_hookId->setEnabled(on);
+    ui->label_hookId->setVisible(on);
+    ui->comboBox_hookId->setVisible(on);
+    ui->groupBox_send->setVisible(!on);
+}
+
+void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
+    ui->label_param->setVisible(hasParam);
+    ui->stackedWidget_param->setVisible(hasParam);
 }
 
 void TestCaseEditDialog::onGateReportTypeChanged(int) {
@@ -333,18 +369,30 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->checkBox_promptEnabled->setChecked(def.meta.promptEnabled);
     ui->plainTextEdit_promptText->setPlainText(def.meta.promptText);
 
+    const TestCaseSendAction action = def.send.action;
+    ui->comboBox_action->blockSignals(true);
     const int actionIdx = comboIndexByData(ui->comboBox_action,
-                                           def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get")
-                                                                                      : QStringLiteral("Set"));
+                                           action == TestCaseSendAction::Get ? QStringLiteral("Get")
+                                                                             : QStringLiteral("Set"));
     if (actionIdx >= 0)
         ui->comboBox_action->setCurrentIndex(actionIdx);
+    ui->comboBox_action->blockSignals(false);
 
+    const TestCaseSendChannel channel = def.send.channel;
+    ui->comboBox_sendChannel->blockSignals(true);
+    ui->comboBox_deviceCmd->blockSignals(true);
+    const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
+    if (channelIdx >= 0)
+        ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action);
     const int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
     if (cmdIdx >= 0)
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
+    ui->comboBox_sendChannel->blockSignals(false);
+    ui->comboBox_deviceCmd->blockSignals(false);
     onDeviceCmdChanged(cmdIdx);
 
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel);
     applySendParamToUi(uiSchema, def.send.param, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
                        ui->stackedWidget_param, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
 
@@ -397,8 +445,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 
     def.send.action = comboData(ui->comboBox_action) == QLatin1String("Get") ? TestCaseSendAction::Get
                                                                              : TestCaseSendAction::Set;
+    def.send.channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel);
     def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
@@ -420,9 +469,33 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     return def;
 }
 
+void TestCaseEditDialog::onSendChannelChanged(int) {
+    refreshDeviceCmdCombo();
+}
+
+void TestCaseEditDialog::onSendActionChanged(int) {
+    refreshDeviceCmdCombo();
+}
+
+void TestCaseEditDialog::refreshDeviceCmdCombo() {
+    const QString previousCmd = comboData(ui->comboBox_deviceCmd);
+    const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+    const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action);
+    int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, previousCmd);
+    if (cmdIdx < 0 && ui->comboBox_deviceCmd->count() > 0)
+        cmdIdx = 0;
+    if (cmdIdx >= 0)
+        ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
+    onDeviceCmdChanged(cmdIdx);
+}
+
 void TestCaseEditDialog::onDeviceCmdChanged(int) {
+    const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel);
+    const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
+    updateSendParamVisibility(hasParam);
     if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
         return;

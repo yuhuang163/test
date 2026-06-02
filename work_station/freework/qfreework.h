@@ -42,6 +42,8 @@ public:
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
     const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
+    /** 流程当前 MAC（$MAC 占位符解析用） */
+    QString currentMacAddress() const;
 
 private:
     int teststate = -1;

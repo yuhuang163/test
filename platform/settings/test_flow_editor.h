@@ -1,4 +1,4 @@
-#ifndef TEST_FLOW_EDITOR_H
+﻿#ifndef TEST_FLOW_EDITOR_H
 
 #define TEST_FLOW_EDITOR_H
 
@@ -141,6 +141,8 @@ private:
     QVector<TestFlowItemEntry> currentFlowEntries() const;
 
     void saveCurrentFlow();
+
+    void persistSelectedStation(const QString& key);
 
     void openEditDialog(TestCaseBlock* block);
 

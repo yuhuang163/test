@@ -385,10 +385,25 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                        : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
-    DongleCmd dongleCmd;
-    if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, dongleCmd))
-        DongleCmdCatalog::paramFromIniGroup(ini, dongleCmd, out.send.param);
-    else {
+    const QString channelIni = ini.value(QStringLiteral("Send/Channel")).toString().trimmed();
+    if (channelIni.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Dongle;
+    } else if (channelIni.compare(QStringLiteral("Product"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Product;
+    } else {
+        DongleCmd inferDongle;
+        out.send.channel = DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)
+                               ? TestCaseSendChannel::Dongle
+                               : TestCaseSendChannel::Product;
+    }
+    if (out.send.channel == TestCaseSendChannel::Dongle) {
+        DongleCmd dongleCmd;
+        if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, dongleCmd)) {
+            if (!DongleCmdCatalog::isCmdForAction(dongleCmd, out.send.action))
+                out.send.action = DongleCmdCatalog::actionFor(dongleCmd);
+            DongleCmdCatalog::paramFromIniGroup(ini, dongleCmd, out.send.param);
+        }
+    } else {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd))
             DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
@@ -410,6 +425,26 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
 
     out.hook.enabled = ini.value(QStringLiteral("Hook/Enabled"), false).toBool();
     out.hook.hookId = ini.value(QStringLiteral("Hook/HookId")).toString().trimmed();
+
+    // 旧 AT 钩子迁移为 Dongle ini（BT_SCAN_MAC / BT_DIRECT_DCON）
+    if (out.hook.enabled) {
+        if (out.hook.hookId == QStringLiteral("BT_SCAN_MAC")) {
+            out.hook.enabled = false;
+            out.send.channel = TestCaseSendChannel::Dongle;
+            out.send.action = TestCaseSendAction::Set;
+            out.send.deviceCmd = QStringLiteral("BleScanConnect");
+            if (!out.send.param.isValid() || out.send.param.toString().trimmed().isEmpty())
+                out.send.param = QStringLiteral("$MAC");
+        } else if (out.hook.hookId == QStringLiteral("BT_DIRECT_DCON")) {
+            out.hook.enabled = false;
+            out.send.channel = TestCaseSendChannel::Dongle;
+            out.send.action = TestCaseSendAction::Set;
+            out.send.deviceCmd = QStringLiteral("BleDirectConnect");
+            if (!out.send.param.isValid() || out.send.param.toString().trimmed().isEmpty())
+                out.send.param = QStringLiteral("$MAC");
+        }
+    }
+
     return true;
 }
 
@@ -429,11 +464,14 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 
     ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get")
                                                                                           : QStringLiteral("Set"));
+    ini.setValue(QStringLiteral("Send/Channel"),
+                 def.send.channel == TestCaseSendChannel::Dongle ? QStringLiteral("Dongle") : QStringLiteral("Product"));
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
-    DongleCmd dongleCmd;
-    if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
-        DongleCmdCatalog::paramToIniGroup(ini, dongleCmd, def.send.param);
-    else {
+    if (def.send.channel == TestCaseSendChannel::Dongle) {
+        DongleCmd dongleCmd;
+        if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
+            DongleCmdCatalog::paramToIniGroup(ini, dongleCmd, def.send.param);
+    } else {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
@@ -593,15 +631,21 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
 
     if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
-    } else {
+    } else if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
-        DeviceCmd cmd;
-        if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+        if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+            errors.append(QStringLiteral("Dongle 测试指令无效"));
+        } else if (!DongleCmdCatalog::isCmdForAction(dongleCmd, def.send.action)) {
+            errors.append(QStringLiteral("Dongle 指令与操作方式不匹配"));
+        } else {
             DeviceCmdParamSchema schema;
             if (!DongleCmdCatalog::paramSchemaFor(dongleCmd, schema))
                 errors.append(QStringLiteral("该 Dongle 指令尚未配置参数模板，请联系工程师"));
-        } else if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-            errors.append(QStringLiteral("测试指令无效"));
+        }
+    } else {
+        DeviceCmd cmd;
+        if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
+            errors.append(QStringLiteral("产品测试指令无效"));
         } else {
             DeviceCmdParamSchema schema;
             if (!DeviceCmdCatalog::paramSchemaFor(cmd, schema))
@@ -955,22 +999,23 @@ namespace {
 
 struct DongleCmdEntry {
     DongleCmd cmd;
+    TestCaseSendAction action;
     DeviceCmdParamKind kind;
     const char* hint;
 };
 
 const DongleCmdEntry kDongleCatalog[] = {
-    {DongleCmd::BleScanConnect, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleDirectConnect, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleOtaConnect, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleAppConnect, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::BleMainConnect, DeviceCmdParamKind::String, "MAC"},
-    {DongleCmd::OtaDataPassthrough, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::MainDataPassthrough, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::BleLog, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::BleDeviceLog, DeviceCmdParamKind::Int, "0/1"},
-    {DongleCmd::Bomb, DeviceCmdParamKind::JsonMap, "deviceName,rssi,connectionInterval,command"},
-    {DongleCmd::GetGmac, DeviceCmdParamKind::None, nullptr},
+    {DongleCmd::BleScanConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleDirectConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleOtaConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleAppConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::BleMainConnect, TestCaseSendAction::Set, DeviceCmdParamKind::String, "MAC"},
+    {DongleCmd::OtaDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::MainDataPassthrough, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::BleLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::BleDeviceLog, TestCaseSendAction::Set, DeviceCmdParamKind::Int, "0/1"},
+    {DongleCmd::Bomb, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap, "deviceName,rssi,connectionInterval,command"},
+    {DongleCmd::GetGmac, TestCaseSendAction::Get, DeviceCmdParamKind::None, nullptr},
 };
 
 #define Y(name) \
@@ -1017,6 +1062,28 @@ QStringList DongleCmdCatalog::allDongleCmdNames() {
     QStringList names = kDongleNameMap.keys();
     names.sort();
     return names;
+}
+
+QStringList DongleCmdCatalog::allDongleCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (const DongleCmdEntry& entry : kDongleCatalog) {
+        if (entry.action == action)
+            names.append(dongleCmdToName(entry.cmd));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction DongleCmdCatalog::actionFor(DongleCmd cmd) {
+    for (const DongleCmdEntry& entry : kDongleCatalog) {
+        if (entry.cmd == cmd)
+            return entry.action;
+    }
+    return TestCaseSendAction::Set;
+}
+
+bool DongleCmdCatalog::isCmdForAction(DongleCmd cmd, TestCaseSendAction action) {
+    return actionFor(cmd) == action;
 }
 
 QString DongleCmdCatalog::dongleCmdUiLabel(const QString& enumName) {
@@ -1446,11 +1513,22 @@ QString TestCaseRunner::stepLabel(const TestCaseDefinition& def) {
 bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
     if (def.hook.enabled)
         return true;
+    if (isDongleBleConnectStep(def))
+        return true;
     return def.gate.enabled;
+}
+
+bool TestCaseRunner::isDongleBleConnectStep(const TestCaseDefinition& def) {
+    if (def.send.channel != TestCaseSendChannel::Dongle || def.send.action != TestCaseSendAction::Set)
+        return false;
+    return def.send.deviceCmd == QStringLiteral("BleScanConnect")
+           || def.send.deviceCmd == QStringLiteral("BleDirectConnect");
 }
 
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (isDongleBleConnectStep(def))
+        return 6000;
     return def.gate.enabled ? 8000 : 3000;
 }

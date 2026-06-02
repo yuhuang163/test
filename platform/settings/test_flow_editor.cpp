@@ -1,4 +1,4 @@
-#include "test_flow_editor.h"
+﻿#include "test_flow_editor.h"
 
 #include "test_case.h"
 #include "widgets/test_case_edit_dialog.h"
@@ -225,6 +225,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     stationCombo_->setToolTip(QStringLiteral("工站列表来自 总的测试流程.ini；仅显示工站名称，与产线预设同名时自动对应（如「自由工站」）"));
 
     connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        persistSelectedStation(currentStationKey());
         reloadCurrentStation();
     });
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
@@ -365,7 +366,14 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
 
     TestFlowMeta meta;
     TestCaseStore::loadFlowMeta(meta);
-    refreshStationCombo(meta.selectedStation);
+    QString initialKey = TestCaseStore::resolveFlowStationKey(
+        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed());
+    if (initialKey.isEmpty())
+        initialKey = TestCaseStore::resolveFlowStationKey(meta.selectedStation.trimmed());
+    if (initialKey.isEmpty())
+        initialKey = QStringLiteral("FREE_WORK");
+    refreshStationCombo(initialKey);
+    persistSelectedStation(initialKey);
     reloadCurrentStation();
 }
 
@@ -469,6 +477,7 @@ void TestFlowEditor::promptAddFlowStation() {
         return;
     }
     refreshStationCombo(TestCaseStore::resolveFlowStationKey(displayName));
+    persistSelectedStation(currentStationKey());
     reloadCurrentStation();
 }
 
@@ -498,6 +507,7 @@ void TestFlowEditor::promptRemoveCurrentFlowStation() {
         return;
     }
     refreshStationCombo(QStringLiteral("FREE_WORK"));
+    persistSelectedStation(currentStationKey());
     reloadCurrentStation();
 }
 
@@ -561,6 +571,21 @@ QVector<TestFlowItemEntry> TestFlowEditor::currentFlowEntries() const {
     return entries;
 }
 
+void TestFlowEditor::persistSelectedStation(const QString& key) {
+    const QString resolved = TestCaseStore::resolveFlowStationKey(key.trimmed());
+    if (resolved.isEmpty())
+        return;
+
+    const QString displayName = TestCaseStore::flowStationDisplayName(resolved);
+    TestFlowMeta meta;
+    TestCaseStore::loadFlowMeta(meta);
+    meta.selectedStation = resolved;
+    meta.selectedStationName = displayName;
+    TestCaseStore::saveFlowMeta(meta);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), resolved);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), displayName);
+}
+
 void TestFlowEditor::saveCurrentFlow() {
     const QString key = currentStationKey();
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
@@ -574,13 +599,7 @@ void TestFlowEditor::saveCurrentFlow() {
     const bool stopFlowOnTestFail =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
     TestCaseStore::saveStationFlowItems(key, entries, stopFlowOnTestFail);
-    TestFlowMeta meta;
-    TestCaseStore::loadFlowMeta(meta);
-    meta.selectedStation = key;
-    meta.selectedStationName = TestCaseStore::flowStationDisplayName(key);
-    TestCaseStore::saveFlowMeta(meta);
-    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), key);
-    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), meta.selectedStationName);
+    persistSelectedStation(key);
     QMessageBox::information(dialogParent_, QStringLiteral("已保存"),
                              QStringLiteral("流程已写入 test_case/总的测试流程.ini"));
 }

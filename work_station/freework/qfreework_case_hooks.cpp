@@ -1,7 +1,5 @@
 ﻿#include "qfreework.h"
 
-#include "qat.h"
-
 #include "test_case.h"
 
 #include "qusb.h"
@@ -31,18 +29,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
 
     if (hookId == QStringLiteral("JIG_CURRENT_READ")) {
         fw->sendCommandWithRetry([&]() { fw->usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); });
-        return;
-    }
-    if (hookId == QStringLiteral("BT_DIRECT_DCON")) {
-        const QString mac = fw->macAddress;
-        fw->setCommandWaitSource(CommandWaitSource::DongleAt);
-        fw->sendCommandWithRetry([fw, mac]() { fw->at->set(DongleCmd::BleDirectConnect, mac); }, 6 * 1000);
-        return;
-    }
-    if (hookId == QStringLiteral("BT_SCAN_MAC")) {
-        const QString mac = fw->macAddress;
-        fw->setCommandWaitSource(CommandWaitSource::DongleAt);
-        fw->sendCommandWithRetry([fw, mac]() { fw->at->set(DongleCmd::BleScanConnect, mac); }, 6 * 1000);
         return;
     }
     if (hookId == QStringLiteral("CLOUD_TUPLE_FETCH")) {
@@ -337,8 +323,6 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registered = true;
 
     registerHook(QStringLiteral("JIG_CURRENT_READ"));
-    registerHook(QStringLiteral("BT_DIRECT_DCON"));
-    registerHook(QStringLiteral("BT_SCAN_MAC"));
     registerHook(QStringLiteral("CLOUD_TUPLE_FETCH"));
     registerHook(QStringLiteral("WRITE_PRODUCT_KEY"));
     registerHook(QStringLiteral("WRITE_DEVICE_NAME"));

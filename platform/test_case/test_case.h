@@ -85,6 +85,9 @@ public:
 class DongleCmdCatalog {
 public:
     static QStringList allDongleCmdNames();
+    static QStringList allDongleCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(DongleCmd cmd);
+    static bool isCmdForAction(DongleCmd cmd, TestCaseSendAction action);
     static QString dongleCmdUiLabel(const QString& enumName);
     static bool dongleCmdFromName(const QString& name, DongleCmd& out);
     static QString dongleCmdToName(DongleCmd cmd);
@@ -139,6 +142,8 @@ public:
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
     static QString stepLabel(const TestCaseDefinition& def);
     static bool needAsyncDone(const TestCaseDefinition& def);
+    /** Dongle 扫描/直连蓝牙：需等待连接成功，不能发完即过步 */
+    static bool isDongleBleConnectStep(const TestCaseDefinition& def);
     /** 本 case 指令等待/重试间隔(ms) */
     static int commandTimeoutMs(const TestCaseDefinition& def);
 };

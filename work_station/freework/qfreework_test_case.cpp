@@ -10,6 +10,31 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
+namespace {
+
+bool isRuntimeMacPlaceholder(const QString& text) {
+    const QString s = text.trimmed();
+    return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
+}
+
+QVariant resolveRuntimeSendParam(QFreeWork* ctx, const QVariant& param) {
+    if (!ctx || param.userType() != QMetaType::QString)
+        return param;
+    if (!isRuntimeMacPlaceholder(param.toString()))
+        return param;
+    return ctx->currentMacAddress();
+}
+
+}  // namespace
+
+QString QFreeWork::currentMacAddress() const {
+    if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
+        return macAddress.trimmed();
+    if (ui && ui->macInput)
+        return ui->macInput->text().trimmed();
+    return macAddress.trimmed();
+}
+
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
     QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
@@ -100,12 +125,18 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
-    if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+    if (def.send.channel == TestCaseSendChannel::Dongle) {
+        if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+            ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
+            ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
         const auto sendFn = [ctx, def, dongleCmd]() {
+            const QVariant param = resolveRuntimeSendParam(ctx, def.send.param);
             if (def.send.action == TestCaseSendAction::Get)
-                ctx->at->get(dongleCmd, def.send.param);
+                ctx->at->get(dongleCmd, param);
             else
-                ctx->at->set(dongleCmd, def.send.param);
+                ctx->at->set(dongleCmd, param);
         };
         const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
