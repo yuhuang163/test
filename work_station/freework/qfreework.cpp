@@ -122,6 +122,24 @@ static int brushProfileToBleCmwMHz(int profile) {
     }
 }
 
+static QString brushInstrumentBandLabel(int profile) {
+    switch (profile) {
+        case 1:
+            return QStringLiteral("2440_BLE1M");
+        case 2:
+            return QStringLiteral("2480_BLE1M");
+        case 3:
+            return QStringLiteral("2402_BLE2M");
+        case 4:
+            return QStringLiteral("2440_BLE2M");
+        case 5:
+            return QStringLiteral("2480_BLE2M");
+        case 0:
+        default:
+            return QStringLiteral("2402_BLE1M");
+    }
+}
+
 static bool parseBlePerCmwArbScountFree(const QString& response, double* countTime, int* cycles, int* samplesCurrent) {
     const QString clean = response.trimmed().remove(QLatin1Char('"'));
     const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
@@ -1819,8 +1837,13 @@ QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
 }
 
 void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
-    const QString stepName =
-        stepNameIn.isEmpty() ? QStringLiteral("产品串口仪器复位应答") : stepNameIn;
+    QString stepName = stepNameIn.trimmed();
+    if (stepName.isEmpty()) {
+        stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
+                                       : QStringLiteral("产品串口仪器复位应答");
+    }
+    if (stepName.isEmpty())
+        stepName = QStringLiteral("产品串口仪器复位应答");
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
@@ -1840,7 +1863,7 @@ void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
     stepRuntime_.testData = QStringLiteral("等待040E0405030C00");
 
     productInstConn_ = connect(product, &Qproduct::instrumentAckResetSeen, this, [this, stepName]() {
-        if (!isCurrentStep(stepName)) {
+        if (!isCurrentInstrumentStep(stepName)) {
             return;
         }
         if (stepRuntime_.done) {
@@ -1877,7 +1900,7 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
     stepRuntime_.testData = QStringLiteral("Profile=%1 等待040E0405332000").arg(profile);
 
     productInstConn_ = connect(product, &Qproduct::instrumentAckStartReceiveSeen, this, [this, stepName]() {
-        if (!isCurrentStep(stepName)) {
+        if (!isCurrentInstrumentStep(stepName)) {
             return;
         }
         if (stepRuntime_.done) {
@@ -1893,8 +1916,13 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
 }
 
 void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
-    const QString stepName =
-        stepNameIn.isEmpty() ? QStringLiteral("产品串口停止接收与PER") : stepNameIn;
+    QString stepName = stepNameIn.trimmed();
+    if (stepName.isEmpty()) {
+        stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
+                                       : QStringLiteral("产品串口停止接收与PER");
+    }
+    if (stepName.isEmpty())
+        stepName = QStringLiteral("产品串口停止接收与PER");
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
@@ -1933,7 +1961,7 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
                 .arg(waitPacketMs));
 
     QTimer::singleShot(delayBeforeStopMs, this, [this, stepName, stopAckTimeout]() {
-        if (!isCurrentStep(stepName)) {
+        if (!isCurrentInstrumentStep(stepName)) {
             return;
         }
         QString err;
@@ -1948,7 +1976,7 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
         // 应答由构造函数中 connect 的 onProductInstrumentStopReceiveAckForPer 处理，此处仅登记当前步骤名
         productInstrumentStopWaitStepName_ = stepName;
         QTimer::singleShot(stopAckTimeout, this, [this, stepName]() {
-            if (!isCurrentStep(stepName)) {
+            if (!isCurrentInstrumentStep(stepName)) {
                 return;
             }
             if (stepRuntime_.done) {
@@ -2266,10 +2294,10 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
         showlog(QStringLiteral("%1：无有效 brush profile（请先完成对应「开始接收」），跳过 CMW").arg(scenarioLabel));
         return true;
     }
-    // 流程含「并联CMW播放Profile*」时，PER 步不再打第二发（与 docs/测试.md、BleBrushCmwOnStopPer 说明一致）。
+    // 流程含「并联CMW播放*MHz」时，PER 步不再打第二发（与 docs/测试.md、BleBrushCmwOnStopPer 说明一致）。
     if (cmwGprfBurstDoneSinceStartRx_) {
         showlog(QStringLiteral(
-                     "%1：本收包周期内「并联CMW播放Profile*」已发过射频，PER 内跳过重复 GPRF（仅发停止接收；无并联播放步时可开 "
+                     "%1：本收包周期内「并联CMW播放*MHz」已发过射频，PER 内跳过重复 GPRF（仅发停止接收；无并联播放步时可开 "
                      "FreeInstrument/BleBrushCmwOnStopPer）")
                     .arg(scenarioLabel));
         if (ranCmwBurst) {
@@ -2327,12 +2355,12 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
     };
     if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool()) {
         const QString msg = QStringLiteral("跳过：未勾选并联 CMW100（BleBrushCmwConcurrent）");
-        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(msg));
+        showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(msg));
         setDetail(msg);
         return true;
     }
     if (brushProfile < 0 || brushProfile > 5) {
-        const QString msg = QStringLiteral("Profile无效：%1").arg(brushProfile);
+        const QString msg = QStringLiteral("频点无效：%1").arg(brushProfile);
         setDetail(msg);
         showlog(QStringLiteral("并联CMW失败：%1").arg(msg));
         return false;
@@ -2340,7 +2368,7 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
     loadWifiBleCmw100Config();
     if (cmw100VisaConfig_.visaAddress.isEmpty()) {
         const QString msg = QStringLiteral("跳过：未配置 BlePer/CmwVisaAddress");
-        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(msg));
+        showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(msg));
         setDetail(msg);
         return true;
     }
@@ -2361,30 +2389,31 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
         })) {
         const QString err = QStringLiteral("CMW VISA连接失败（%1）").arg(cmw100VisaConfig_.visaAddress);
         setDetail(err);
-        showlog(QStringLiteral("并联CMW Profile%1：%2").arg(brushProfile).arg(err));
+        showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(err));
         return false;
     }
     const QString wfPath = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
     if (wfPath.isEmpty()) {
-        showlog(QStringLiteral("并联CMW Profile%1：CMW ARB 波形未配置（BlePer/CmwWaveformFile 为空）").arg(brushProfile));
+        showlog(QStringLiteral("并联CMW %1：CMW ARB 波形未配置（BlePer/CmwWaveformFile 为空）")
+                    .arg(brushInstrumentBandLabel(brushProfile)));
     } else {
-        showlog(QStringLiteral("并联CMW Profile%1：CMW ARB 波形文件 %2").arg(brushProfile).arg(wfPath));
+        showlog(QStringLiteral("并联CMW %1：CMW ARB 波形文件 %2").arg(brushInstrumentBandLabel(brushProfile)).arg(wfPath));
     }
     QString primeErr;
     if (!freeWorkPrimeInstrumentCmwGprf(&primeErr)) {
         setDetail(primeErr);
-        showlog(QStringLiteral("并联CMW Profile%1 GPRF初始化失败：%2").arg(brushProfile).arg(primeErr));
+        showlog(QStringLiteral("并联CMW %1 GPRF初始化失败：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(primeErr));
         return false;
     }
     const int mhz = brushProfileToBleCmwMHz(brushProfile);
-    const QString label = QStringLiteral("并联CMW播放 Profile%1@%2MHz").arg(brushProfile).arg(mhz);
+    const QString label = QStringLiteral("并联CMW播放%1@%2MHz").arg(brushInstrumentBandLabel(brushProfile)).arg(mhz);
     QString burstErr;
     if (!freeWorkRunSingleCmwBurstAtMhz(mhz, label, &burstErr)) {
         setDetail(burstErr);
-        showlog(QStringLiteral("并联CMW Profile%1 失败：%2").arg(brushProfile).arg(burstErr));
+        showlog(QStringLiteral("并联CMW %1 失败：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(burstErr));
         return false;
     }
-    const QString okLine = QStringLiteral("OK Profile%1 %2MHz").arg(brushProfile).arg(mhz);
+    const QString okLine = QStringLiteral("OK %1 %2MHz").arg(brushInstrumentBandLabel(brushProfile)).arg(mhz);
     setDetail(okLine);
     showlog(okLine);
     cmwGprfBurstDoneSinceStartRx_ = true;

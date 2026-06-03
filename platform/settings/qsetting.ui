@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>4</number>
      </property>
      <widget class="QWidget" name="tab_key_setting">
       <attribute name="title">
@@ -3217,7 +3217,7 @@
         <item row="5" column="0" colspan="2">
          <widget class="QCheckBox" name="checkBox_freeInstrumentBleBrushCmwOnStopPer">
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;勾选：每个「停止接收与PER」步在等待发包窗口前再打一发GPRF（与 profile 对齐）。取消勾选：适合已在前序执行「并联CMW播放Profile0～5」，避免 PER1～PER6 重复触发。INI：FreeInstrument/BleBrushCmwOnStopPer，默认勾选。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;勾选：每个「停止接收与PER」步在等待发包窗口前再打一发GPRF（与 profile 对齐）。取消勾选：适合已在前序执行六个「并联CMW播放*MHz」步，避免停止接收/PER 步重复打射频。INI：FreeInstrument/BleBrushCmwOnStopPer，默认勾选。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="text">
            <string>停止接收/PER步内再打一发GPRF（按频点）</string>

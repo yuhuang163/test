@@ -133,30 +133,20 @@ QString freeWorkTestCategoryForItem(int id, const QString& name) {
     X(87, "PLC_V3_power触摸整步", true, PLC_V3_KEY_POWER, startPlcKeyButtonTest("PLC+V3电源键", QString(), "ProductInfo/KeyIdPower", "ProductInfo/KeyIdPower_checkBox", 6)) \
     X(88, "PLC_V3_switch旋钮整步右旋", true, PLC_V3_SWITCH_RIGHT_WHOLE, startPlcSwitchPlcAndWaitRightRotate()) \
    /* X(89, "PLC_V3_switch旋钮旋上报", true, PLC_V3_SWITCH_ROT_RIGHT, startKeyButtonTest("PLC+V3旋钮右旋", "请在旋钮整步右旋通过后确认设备上报右旋", "ProductInfo/KeyIdRightRotate", "ProductInfo/KeyIdRightRotate_checkBox")) */ \
-    X(90, "产品串口仪器复位应答1", true, PROD_INST_RESET_ACK_1, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答1"))) \
-    X(91, "产品串口仪器复位应答2", true, PROD_INST_RESET_ACK_2, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答2"))) \
-    X(92, "产品串口仪器复位应答3", true, PROD_INST_RESET_ACK_3, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答3"))) \
-    X(93, "产品串口仪器复位应答4", true, PROD_INST_RESET_ACK_4, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答4"))) \
-    X(94, "产品串口仪器复位应答5", true, PROD_INST_RESET_ACK_5, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答5"))) \
-    X(95, "产品串口仪器复位应答6", true, PROD_INST_RESET_ACK_6, startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答6"))) \
+    X(90, "产品串口仪器复位应答", true, PROD_INST_RESET_ACK, startProductInstrumentResetAndWaitAck(QString())) \
     X(96, "产品串口开始接收2402_BLE1M", true, PROD_INST_START_RX_2402_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2402_BLE1M"), 0)) \
     X(97, "产品串口开始接收2440_BLE1M", true, PROD_INST_START_RX_2440_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2440_BLE1M"), 1)) \
     X(98, "产品串口开始接收2480_BLE1M", true, PROD_INST_START_RX_2480_1M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE1M"), 2)) \
     X(99, "产品串口开始接收2402_BLE2M", true, PROD_INST_START_RX_2402_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2402_BLE2M"), 3)) \
     X(100, "产品串口开始接收2440_BLE2M", true, PROD_INST_START_RX_2440_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2440_BLE2M"), 4)) \
     X(101, "产品串口开始接收2480_BLE2M", true, PROD_INST_START_RX_2480_2M, startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE2M"), 5)) \
-    X(111, "并联CMW播放Profile0", false, FREE_INSTR_CMW_GPRF_P0, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 0); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(112, "并联CMW播放Profile1", false, FREE_INSTR_CMW_GPRF_P1, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 1); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(113, "并联CMW播放Profile2", false, FREE_INSTR_CMW_GPRF_P2, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 2); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(114, "并联CMW播放Profile3", false, FREE_INSTR_CMW_GPRF_P3, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 3); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(115, "并联CMW播放Profile4", false, FREE_INSTR_CMW_GPRF_P4, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 4); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(116, "并联CMW播放Profile5", false, FREE_INSTR_CMW_GPRF_P5, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 5); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
-    X(102, "产品串口停止接收与PER1", true, PROD_INST_STOP_RX_PER_1, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER1"))) \
-    X(103, "产品串口停止接收与PER2", true, PROD_INST_STOP_RX_PER_2, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER2"))) \
-    X(104, "产品串口停止接收与PER3", true, PROD_INST_STOP_RX_PER_3, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER3"))) \
-    X(105, "产品串口停止接收与PER4", true, PROD_INST_STOP_RX_PER_4, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER4"))) \
-    X(106, "产品串口停止接收与PER5", true, PROD_INST_STOP_RX_PER_5, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER5"))) \
-    X(107, "产品串口停止接收与PER6", true, PROD_INST_STOP_RX_PER_6, startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER6"))) \
+    X(111, "并联CMW播放2402_BLE1M", false, FREE_INSTR_CMW_GPRF_2402_1M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 0); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(112, "并联CMW播放2440_BLE1M", false, FREE_INSTR_CMW_GPRF_2440_1M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 1); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(113, "并联CMW播放2480_BLE1M", false, FREE_INSTR_CMW_GPRF_2480_1M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 2); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(114, "并联CMW播放2402_BLE2M", false, FREE_INSTR_CMW_GPRF_2402_2M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 3); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(115, "并联CMW播放2440_BLE2M", false, FREE_INSTR_CMW_GPRF_2440_2M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 4); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(116, "并联CMW播放2480_BLE2M", false, FREE_INSTR_CMW_GPRF_2480_2M, {QString d; const bool ok = runFreeInstrumentBleCmwBurstForBrushProfile(&d, 5); stepRuntime_.testData = d; stepRuntime_.pass = ok; if (!ok) TestResult = failValue; }) \
+    X(102, "产品串口停止接收与PER", true, PROD_INST_STOP_RX_PER, startProductInstrumentStopReceiveAndPer(QString())) \
     X(108, "进入蓝牙非信令模式", false, BT_NO_SIGNAL_ENTER, { QVariantMap m; m["enter"] = 1; protocolManager.set(DeviceCmd::BtNoSignalMode, m); stepRuntime_.testData = QStringLiteral("已下发(无回包放行)");     waitWork(3000); }) \
     X(109, "PLC_V3_switch测试完成M复位", false, PLC_V3_SWITCH_DONE_RESET_M, runPlcSwitchTestDoneResetM()) \
 

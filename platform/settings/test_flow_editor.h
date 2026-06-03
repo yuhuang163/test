@@ -120,6 +120,12 @@ public:
 
     void reloadCurrentStation();
 
+    /** 当前工站流程相对上次保存/加载是否有改动。 */
+    bool hasUnsavedChanges() const;
+
+    /** 有未保存改动时弹窗：保存 / 不保存 / 取消。返回 true 表示可离开。 */
+    bool confirmDiscardOrSaveOnLeave();
+
 
 
 private:
@@ -141,6 +147,10 @@ private:
     QVector<TestFlowItemEntry> currentFlowEntries() const;
 
     void saveCurrentFlow();
+
+    bool saveStationFlow(const QString& stationKey);
+
+    void updateSavedSnapshot();
 
     void persistSelectedStation(const QString& key);
 
@@ -167,6 +177,16 @@ private:
     QWidget* flowContainer_ = nullptr;
 
     bool uiBound_ = false;
+
+    bool suppressStationChange_ = false;
+
+    int stationComboPrevIndex_ = 0;
+
+    QString lastLoadedStationKey_;
+
+    QVector<TestFlowItemEntry> savedEntriesSnapshot_;
+
+    bool savedStopFlowOnTestFail_ = true;
 
     /** 每个流程块最多一个配置窗；关闭后自动移除。 */
     QHash<TestCaseBlock*, QPointer<TestCaseEditDialog>> openEditDialogs_;

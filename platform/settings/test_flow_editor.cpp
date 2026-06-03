@@ -68,6 +68,16 @@ bool acceptsTestCaseFlowMime(const QMimeData* mime) {
     return mime && mime->hasFormat(QLatin1String(kTestCaseFlowMime));
 }
 
+bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlowItemEntry>& b) {
+    if (a.size() != b.size())
+        return false;
+    for (int i = 0; i < a.size(); ++i) {
+        if (a.at(i).caseName != b.at(i).caseName)
+            return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 // ---------- TestCaseBlock ----------
@@ -224,7 +234,16 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
 
     stationCombo_->setToolTip(QStringLiteral("工站列表来自 总的测试流程.ini；仅显示工站名称，与产线预设同名时自动对应（如「自由工站」）"));
 
-    connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+    connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int newIdx) {
+        if (suppressStationChange_)
+            return;
+        if (!confirmDiscardOrSaveOnLeave()) {
+            suppressStationChange_ = true;
+            stationCombo_->setCurrentIndex(stationComboPrevIndex_);
+            suppressStationChange_ = false;
+            return;
+        }
+        stationComboPrevIndex_ = newIdx;
         persistSelectedStation(currentStationKey());
         reloadCurrentStation();
     });
@@ -375,6 +394,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     refreshStationCombo(initialKey);
     persistSelectedStation(initialKey);
     reloadCurrentStation();
+    stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
 }
 
 void TestFlowEditor::moveSelectedBlock(int delta) {
@@ -586,26 +606,83 @@ void TestFlowEditor::persistSelectedStation(const QString& key) {
     SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), displayName);
 }
 
-void TestFlowEditor::saveCurrentFlow() {
-    const QString key = currentStationKey();
+bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
+    const QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
+    if (key.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), QStringLiteral("工站无效"));
+        return false;
+    }
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
     for (const TestFlowItemEntry& entry : entries) {
         if (!QFile::exists(TestCasePaths::caseIniPath(entry.caseName))) {
             QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"),
                                  QStringLiteral("case 不存在: %1，请先保存配置").arg(entry.caseName));
-            return;
+            return false;
         }
     }
     const bool stopFlowOnTestFail =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
     TestCaseStore::saveStationFlowItems(key, entries, stopFlowOnTestFail);
     persistSelectedStation(key);
+    lastLoadedStationKey_ = key;
+    updateSavedSnapshot();
+    return true;
+}
+
+void TestFlowEditor::saveCurrentFlow() {
+    if (!saveStationFlow(currentStationKey()))
+        return;
     QMessageBox::information(dialogParent_, QStringLiteral("已保存"),
                              QStringLiteral("流程已写入 test_case/总的测试流程.ini"));
 }
 
+void TestFlowEditor::updateSavedSnapshot() {
+    savedEntriesSnapshot_ = currentFlowEntries();
+    savedStopFlowOnTestFail_ =
+        stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
+}
+
+bool TestFlowEditor::hasUnsavedChanges() const {
+    if (!uiBound_ || !flowLayout_)
+        return false;
+    if (!flowEntriesEqual(currentFlowEntries(), savedEntriesSnapshot_))
+        return true;
+    if (stopFlowOnTestFailCheck_
+        && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
+        return true;
+    }
+    return false;
+}
+
+bool TestFlowEditor::confirmDiscardOrSaveOnLeave() {
+    if (!hasUnsavedChanges())
+        return true;
+
+    QMessageBox box(dialogParent_);
+    box.setWindowTitle(QStringLiteral("未保存的更改"));
+    box.setText(QStringLiteral("测试流程编排已修改，是否保存？"));
+    box.setIcon(QMessageBox::Question);
+    auto* btnSave = box.addButton(QStringLiteral("保存"), QMessageBox::AcceptRole);
+    auto* btnDiscard = box.addButton(QStringLiteral("不保存"), QMessageBox::DestructiveRole);
+    auto* btnCancel = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.setDefaultButton(btnSave);
+    box.exec();
+
+    if (box.clickedButton() == btnCancel)
+        return false;
+    if (box.clickedButton() == btnSave) {
+        const QString key = lastLoadedStationKey_.isEmpty() ? currentStationKey() : lastLoadedStationKey_;
+        if (!saveStationFlow(key))
+            return false;
+        return true;
+    }
+    reloadCurrentStation();
+    return true;
+}
+
 void TestFlowEditor::reloadCurrentStation() {
     const QString key = currentStationKey();
+    lastLoadedStationKey_ = key;
     clearBlocks();
     if (stopFlowOnTestFailCheck_) {
         QSignalBlocker blocker(stopFlowOnTestFailCheck_);
@@ -618,6 +695,7 @@ void TestFlowEditor::reloadCurrentStation() {
         if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(0)->widget()))
             setSelectedBlock(block);
     }
+    updateSavedSnapshot();
 }
 
 void TestFlowEditor::openEditDialog(TestCaseBlock* block) {

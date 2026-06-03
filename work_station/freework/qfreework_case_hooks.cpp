@@ -9,6 +9,33 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
+namespace {
+
+/** FREE_INSTR_CMW_GPRF_* HookId → brush profile 0～5；兼容旧 Profile0～5 与新区段命名。 */
+int freeInstrCmwGprfHookProfile(const QString& hookId) {
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P0")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"))
+        return 0;
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P1")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"))
+        return 1;
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P2")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"))
+        return 2;
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P3")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"))
+        return 3;
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P4")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"))
+        return 4;
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P5")
+        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"))
+        return 5;
+    return -1;
+}
+
+}  // namespace
+
 /** 友元类静态成员可访问 QFreeWork 私有接口；lambda 不行，故用 dispatch。 */
 class QFreeWorkTestCaseHookRegistrar {
 public:
@@ -146,28 +173,9 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
                                   QStringLiteral("ProductInfo/KeyIdPower_checkBox"), 6, false);
         return;
     }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_1")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答1"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_2")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答2"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_3")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答3"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_4")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答4"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_5")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答5"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK_6")) {
-        fw->startProductInstrumentResetAndWaitAck(QStringLiteral("产品串口仪器复位应答6"));
+    if (hookId == QStringLiteral("PROD_INST_RESET_ACK")
+        || hookId.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
+        fw->startProductInstrumentResetAndWaitAck(QString());
         return;
     }
     if (hookId == QStringLiteral("PROD_INST_START_RX_2402_1M")) {
@@ -194,76 +202,20 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->startProductInstrumentStartReceiveForCatalog(QStringLiteral("产品串口开始接收2480_BLE2M"), 5);
         return;
     }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P0")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 0);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
+    {
+        const int cmwProfile = freeInstrCmwGprfHookProfile(hookId);
+        if (cmwProfile >= 0) {
+            QString detail;
+            const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, cmwProfile);
+            fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
+            if (!ok)
+                fw->TestResult = fw->failValue;
+            return;
+        }
     }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P1")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 1);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
-    }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P2")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 2);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
-    }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P3")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 3);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
-    }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P4")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 4);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
-    }
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P5")) {
-        QString detail;
-        const bool ok = fw->runFreeInstrumentBleCmwBurstForBrushProfile(&detail, 5);
-        fw->markActiveTestCaseStepDone(ok, detail, ok ? QStringLiteral("通过") : QStringLiteral("失败"));
-        if (!ok)
-            fw->TestResult = fw->failValue;
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_1")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER1"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_2")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER2"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_3")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER3"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_4")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER4"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_5")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER5"));
-        return;
-    }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER_6")) {
-        fw->startProductInstrumentStopReceiveAndPer(QStringLiteral("产品串口停止接收与PER6"));
+    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER")
+        || hookId.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
+        fw->startProductInstrumentStopReceiveAndPer(QString());
         return;
     }
 }
@@ -295,30 +247,26 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("PLC_V3_KEY_START_PAUSE"));
     registerHook(QStringLiteral("PLC_V3_KEY_LEFT"));
     registerHook(QStringLiteral("PLC_V3_KEY_POWER"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_1"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_2"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_3"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_4"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_5"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK_6"));
+    registerHook(QStringLiteral("PROD_INST_RESET_ACK"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2402_1M"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2440_1M"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2480_1M"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2402_2M"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2440_2M"));
     registerHook(QStringLiteral("PROD_INST_START_RX_2480_2M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"));
+    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P0"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P1"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P2"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P3"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P4"));
     registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P5"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_1"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_2"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_3"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_4"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_5"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER_6"));
+    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER"));
 }
 
 void registerQFreeWorkCatalogTestCaseHooks() {

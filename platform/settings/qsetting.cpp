@@ -324,7 +324,7 @@ void qsetting::initSettingTooltips() {
              "FreeInstrument/BleBrushCmwConcurrent：启用 CMW GPRF；“停止接收/PER…”项见另一勾选（BleBrushCmwOnStopPer）。需 BlePer/CmwVisaAddress；可选 BlePer/CmwVisaTrace；BlePer/CmwQueryCurrentArbFile（默认 true，查询 SOURce:GPRF:GEN:ARB:FILE? 打日志）；BlePer/CmwBurstPollArbScount、BlePer/CmwWaitArbScount；详见 docs/cmw100rx第四节。")},
         {QStringLiteral("checkBox_freeInstrumentBleBrushCmwOnStopPer"),
          QStringLiteral(
-             "FreeInstrument/BleBrushCmwOnStopPer（默认勾选）：勾选时 PER 步内按上个「开始接收」profile 再打一发；“并联CMW播放Profile0～5”六个前序步后若不想重复触发可取消勾选。")},
+             "FreeInstrument/BleBrushCmwOnStopPer（默认勾选）：勾选时 PER 步内按上个「开始接收」频点再打一发；若前序已执行六个「并联CMW播放*MHz」步，可取消勾选以免 PER 重复打射频。")},
         {QStringLiteral("lineEdit_plcSwitchDoneResetM"),
          QStringLiteral("PLC/SwitchTestDoneResetM：旋钮测试完成复位线圈 M 默认值（211）；双工位时工位2可单独设 ini 键 SwitchTestDoneResetM_Station2（如231），工位N 用 SwitchTestDoneResetM_StationN，有则优先于本项。")},
         {QStringLiteral("lineEdit_plcSwitchDoneResetPulseMs"), QStringLiteral("PLC/SwitchTestDoneResetPulseMs：复位脉冲毫秒；>0 时置1后经此时长再置0，0 表示仅置1由 PLC 清零。")},
@@ -1804,6 +1804,13 @@ void qsetting::closeEvent(QCloseEvent* event) {
         event->accept();
         return;
     }
+    const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
+    if (testFlowEditor_ && tabTestFlow >= 0 && ui->tabWidget->currentIndex() == tabTestFlow) {
+        if (!testFlowEditor_->confirmDiscardOrSaveOnLeave()) {
+            event->ignore();
+            return;
+        }
+    }
     saveCurrentTestOrder();
     saveConfig();
     qDebug() << "已经保存配置信息";
@@ -2275,4 +2282,16 @@ void qsetting::initTestFlowEditorUi() {
         ui->tabWidget->setTabToolTip(tabIdx,
                                      QStringLiteral("编排 test_case/*.ini 与 总的测试流程.ini；不修改旧 TestOrder。"));
     }
+    lastSettingsTabIndex_ = ui->tabWidget->currentIndex();
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
+        const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
+        if (tabTestFlow >= 0 && lastSettingsTabIndex_ == tabTestFlow && index != tabTestFlow && testFlowEditor_) {
+            if (!testFlowEditor_->confirmDiscardOrSaveOnLeave()) {
+                QSignalBlocker blocker(ui->tabWidget);
+                ui->tabWidget->setCurrentIndex(tabTestFlow);
+                return;
+            }
+        }
+        lastSettingsTabIndex_ = index;
+    });
 }

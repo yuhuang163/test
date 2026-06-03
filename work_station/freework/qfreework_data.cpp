@@ -13,7 +13,7 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
         return;
     }
     const QString stepName = productInstrumentStopWaitStepName_;
-    if (!isCurrentStep(stepName)) {
+    if (!isCurrentInstrumentStep(stepName)) {
         qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "currentFid=" << stepRuntime_.functionId
                  << "recvPkts=" << recvPkts << "工位=" << getIndex();
         return;
@@ -47,6 +47,12 @@ bool QFreeWork::isCurrentStep(const QString& functionName) const {
     auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
                            [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
     return it != testFunctions.cend() && it->name == functionName;
+}
+
+bool QFreeWork::isCurrentInstrumentStep(const QString& stepName) const {
+    if (isCurrentStep(stepName))
+        return true;
+    return isActiveTestCaseStep(stepName);
 }
 
 void QFreeWork::appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name,

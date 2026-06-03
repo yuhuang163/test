@@ -154,7 +154,7 @@ private:
     QString productInstrumentStopWaitStepName_;
     /** 最近一次「产品串口开始接收」用到的 profile（0～5），供 PER 步与 CMW 切频对齐。 */
     int lastBrushInstrumentProfile_ = -1;
-    /** 自上次「开始接收」后是否已在「并联CMW播放Profile*」步成功打过 GPRF；PER 步据此避免重复播放。 */
+    /** 自上次「开始接收」后是否已在「并联CMW播放*」步成功打过 GPRF；PER 步据此避免重复播放。 */
     bool cmwGprfBurstDoneSinceStartRx_ = false;
     /** CMW100 VISA 配置，与 Wifi_ble 侧 BlePer/Cmw* 同源。 */
     Qvisa::ProtocolConfig cmw100VisaConfig_;
@@ -236,6 +236,8 @@ private:
     } stepRuntime_;
     InovanceH5uModbusTcp inovancePlcTcp_;
     bool isCurrentStep(const QString& functionName) const;
+    /** 产品串口仪器步骤：兼容旧宏流程（functionId）与 test_case 流程（activeTestCaseStepLabel_）。 */
+    bool isCurrentInstrumentStep(const QString& stepName) const;
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
     void applyTupleByMac();
@@ -256,11 +258,11 @@ private:
     void startPlcSwitchPlcAndWaitLeftRotate();
     /** PLC 旋钮整步后等右旋编码器上报（phase 4）；期望 ID 与勾选见 ProductInfo/KeyIdRightRotate*。 */
     void startPlcSwitchPlcAndWaitRightRotate();
-    /** 经产品串口发复位帧并等仪器应答；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用单步调试用默认名。 */
+    /** 经产品串口发复位帧并等仪器应答；stepName 空则取当前 test_case 名或默认「产品串口仪器复位应答」。 */
     void startProductInstrumentResetAndWaitAck(QString stepName = QString());
     /** 发「开始接收」并等 040E0405332000；stepName 须与 FREEWORK_TEST_LIST 中该项中文名一致（供 isCurrentStep）。 */
     void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile);
-    /** 等待仪器发包后发停止接收并算 PER；stepName 须与 FREEWORK_TEST_LIST 该项中文名一致（供 isCurrentStep）；空则沿用默认名。 */
+    /** 等待仪器发包后发停止接收并算 PER；stepName 空则取当前 test_case 名或默认名；频点用 lastBrushInstrumentProfile_。 */
     void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
     void closeKeyWaitPrompt();
     void showTestCasePromptForStep(const TestCaseDefinition& def);
