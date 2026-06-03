@@ -216,6 +216,10 @@ public:
     static bool needAsyncDone(const TestCaseDefinition& def);
     /** Dongle 扫描/直连蓝牙：需等待连接成功，不能发完即过步 */
     static bool isDongleBleConnectStep(const TestCaseDefinition& def);
+    /** 本步是否必须通过已连接的产品 BLE 收发协议（仅此类步骤在未连蓝牙时阻塞流程） */
+    static bool stepRequiresProductBle(const TestCaseDefinition& def);
+    /** 弹窗提示步：须用户点「是」或关闭窗口后才过步 */
+    static bool stepWaitsForPromptAck(const TestCaseDefinition& def);
     /** 本 case 指令等待/重试间隔(ms) */
     static int commandTimeoutMs(const TestCaseDefinition& def);
 };

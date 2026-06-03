@@ -2680,6 +2680,16 @@ QString TestCaseRunner::stepLabel(const TestCaseDefinition& def) {
     return def.meta.name.trimmed();
 }
 
+bool TestCaseRunner::stepWaitsForPromptAck(const TestCaseDefinition& def) {
+    if (!def.meta.promptEnabled || def.hook.enabled || def.gate.enabled)
+        return false;
+    if (isDongleBleConnectStep(def))
+        return false;
+    if (def.send.action == TestCaseSendAction::Get)
+        return false;
+    return true;
+}
+
 bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
     if (def.hook.enabled)
         return true;
@@ -2691,6 +2701,8 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.action == TestCaseSendAction::Get)
         return true;
+    if (stepWaitsForPromptAck(def))
+        return true;
     return false;
 }
 
@@ -2699,6 +2711,21 @@ bool TestCaseRunner::isDongleBleConnectStep(const TestCaseDefinition& def) {
         return false;
     return def.send.deviceCmd == QStringLiteral("BleScanConnect")
            || def.send.deviceCmd == QStringLiteral("BleDirectConnect");
+}
+
+bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
+    if (def.hook.enabled)
+        return false;
+    if (def.send.channel != TestCaseSendChannel::Product)
+        return false;
+    // 仅弹窗提示、无卡控：不依赖 BLE，流程可继续（如「弹窗提示开机」）
+    if (def.meta.promptEnabled && !def.gate.enabled)
+        return false;
+    if (def.send.action == TestCaseSendAction::Get)
+        return true;
+    if (def.gate.enabled)
+        return true;
+    return true;
 }
 
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {

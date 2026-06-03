@@ -308,6 +308,14 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected()
+        && !TestCaseRunner::stepRequiresProductBle(def)) {
+        ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
+        if (!TestCaseRunner::stepWaitsForPromptAck(def))
+            ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+        return;
+    }
+
     if (def.send.channel == TestCaseSendChannel::Cloud) {
         TupleCmd tupleCmd;
         if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd)) {

@@ -528,25 +528,18 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (at->getConnected()) {
         return true;
     }
-    // 未连设备：仍须 tick 的例外（仪器段、蓝牙连接步与 BLE 业务解耦，避免步间卡死）
     if (stepRuntime_.started) {
-        return true;
-    }
-    if (currentOrderedStepIsDongleBleConnect()) {
         return true;
     }
     if (useTestCaseFlow_ && teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
         TestCaseDefinition caseDef;
         if (TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
-            if (caseDef.send.channel == TestCaseSendChannel::ProductSerial)
-                return true;
-            if (caseDef.hook.enabled) {
-                const QString hookId = caseDef.hook.hookId;
-                if (hookId.startsWith(QStringLiteral("PROD_INST"))
-                    || hookId.startsWith(QStringLiteral("FREE_INSTR_CMW")))
-                    return true;
-            }
+            return !TestCaseRunner::stepRequiresProductBle(caseDef);
         }
+        return true;
+    }
+    if (currentOrderedStepIsDongleBleConnect()) {
+        return true;
     }
     const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
     return nf != nullptr
@@ -625,6 +618,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             stepRuntime_.ask = QStringLiteral("通过");
             stepRuntime_.caseTimer.restart();
             lastCommandRetryCount = 0;
+            testCasePromptAcknowledged_ = false;
+            testCasePromptProgrammaticClose_ = false;
             showlog(QStringLiteral("开始测试内容：") + functionName);
             if (useTestCaseFlow_) {
                 showTestCasePromptForStep(caseDef);
@@ -655,9 +650,12 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                                     && caseDef.send.channel == TestCaseSendChannel::Product
                                     && caseDef.send.action == TestCaseSendAction::Get;
             if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
-                stepRuntime_.done = true;
-                stepRuntime_.pass = true;
-                stepRuntime_.testData = QStringLiteral("ok");
+                if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
+                    stepRuntime_.done = true;
+                    stepRuntime_.pass = true;
+                    if (stepRuntime_.testData == QLatin1String("-"))
+                        stepRuntime_.testData = QStringLiteral("ok");
+                }
             } else if ((caseDef.hook.enabled || dongleBleConnect)
                        && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
                 stepRuntime_.done = true;
@@ -1154,11 +1152,33 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
     if (text.isEmpty())
         return;
     const QString title = def.meta.name.trimmed();
-    testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text, QMessageBox::NoButton, this);
-    testCasePrompt_->setStandardButtons(QMessageBox::NoButton);
+    testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text, QMessageBox::Yes, this);
+    if (QAbstractButton* yesBtn = testCasePrompt_->button(QMessageBox::Yes))
+        yesBtn->setText(QStringLiteral("是"));
+    testCasePrompt_->setDefaultButton(QMessageBox::Yes);
     testCasePrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    connect(testCasePrompt_, &QObject::destroyed, this, [this]() { testCasePrompt_ = nullptr; });
+    testCasePromptProgrammaticClose_ = false;
+    connect(testCasePrompt_, &QMessageBox::finished, this, [this](int) {
+        if (!testCasePromptProgrammaticClose_)
+            onTestCasePromptAcknowledged();
+    });
+    connect(testCasePrompt_, &QObject::destroyed, this, [this]() {
+        testCasePrompt_ = nullptr;
+        testCasePromptProgrammaticClose_ = false;
+    });
     testCasePrompt_->show();
+}
+
+void QFreeWork::onTestCasePromptAcknowledged() {
+    testCasePromptAcknowledged_ = true;
+    if (!useTestCaseFlow_ || !stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
+        return;
+    if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
+        return;
+    stepRuntime_.done = true;
+    stepRuntime_.pass = true;
+    if (stepRuntime_.testData == QLatin1String("-"))
+        stepRuntime_.testData = QStringLiteral("已确认");
 }
 
 void QFreeWork::closeTestCasePrompt() {
@@ -1166,6 +1186,7 @@ void QFreeWork::closeTestCasePrompt() {
         return;
     QMessageBox* box = testCasePrompt_;
     testCasePrompt_ = nullptr;
+    testCasePromptProgrammaticClose_ = true;
     box->close();
 }
 

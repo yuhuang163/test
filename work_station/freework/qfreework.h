@@ -131,6 +131,8 @@ private:
     QString currentKeyExpectedKey_;
     QMessageBox* keyWaitPrompt_ = nullptr;
     QMessageBox* testCasePrompt_ = nullptr;
+    bool testCasePromptAcknowledged_ = false;
+    bool testCasePromptProgrammaticClose_ = false;
     bool freeWorkKeyWaiting_ = false;
     bool keyWaitPromptProgrammaticClose_ = false;
     /** 用于取消「PLC 后等 BLE 按键」的超时 singleShot。 */
@@ -269,6 +271,7 @@ private:
     void closeKeyWaitPrompt();
     void showTestCasePromptForStep(const TestCaseDefinition& def);
     void closeTestCasePrompt();
+    void onTestCasePromptAcknowledged();
     void runPlcModbusConnectTest();
     /** 旋钮测试流程结束后对 PLC 线圈发复位（默认 M211，PLC/SwitchTestDoneResetM*）。同步一步、无 needCaseDone。 */
     void runPlcSwitchTestDoneResetM();
