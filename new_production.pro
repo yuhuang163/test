@@ -47,13 +47,15 @@ INCLUDEPATH += agreement/qProtocol/qfctp
 INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
 INCLUDEPATH += agreement/qProtocol/qaiot
 INCLUDEPATH += platform/settings
+INCLUDEPATH += platform/settings/test_flow
+INCLUDEPATH += platform/settings/widgets
 INCLUDEPATH += platform/test_case
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/qjig
 INCLUDEPATH += agreement/qbrush
-INCLUDEPATH += agreement/qmomcozy
+INCLUDEPATH += agreement/qproduct
 INCLUDEPATH += agreement/adb
 INCLUDEPATH += agreement/qtuple
 INCLUDEPATH += agreement/qplc
@@ -111,7 +113,7 @@ SOURCES += \
     agreement/qProtocol/root_ble_ota.cpp \
     agreement/qadb/qadb.cpp \
     agreement/qat/qat.cpp \
-    agreement/qmomcozy/qproduct.cpp \
+    agreement/qproduct/qproduct.cpp \
     agreement/qbulk/crc_md5.cpp \
     agreement/qbulk/qbulk.cpp \
     agreement/qjig/fixture_uart.cpp \
@@ -133,7 +135,7 @@ SOURCES += \
     agreement/qProtocol/qpb/pb_encode.c \
     agreement/qProtocol/qpb/qpb.cpp \
     platform/settings/qsetting.cpp \
-    platform/settings/test_flow_editor.cpp \
+    platform/settings/test_flow/test_flow_editor.cpp \
     platform/settings/widgets/test_case_edit_dialog.cpp \
     platform/test_case/test_case.cpp \
     agreement/qshell/qshell.cpp \
@@ -206,7 +208,7 @@ HEADERS += \
     agreement/qProtocol/root_ble_ota.h \
     agreement/qadb/qadb.h \
     agreement/qat/qat.h \
-    agreement/qmomcozy/qproduct.h \
+    agreement/qproduct/qproduct.h \
     agreement/qbulk/qbulk.h \
     agreement/qjig/fixture_uart.h \
     agreement/qjig/qjig.h \
@@ -228,7 +230,7 @@ HEADERS += \
     agreement/qProtocol/qpb/pb_encode.h \
     agreement/qProtocol/qpb/qpb.h \
     platform/settings/qsetting.h \
-    platform/settings/test_flow_editor.h \
+    platform/settings/test_flow/test_flow_editor.h \
     platform/settings/widgets/test_case_edit_dialog.h \
     platform/test_case/test_case.h \
     platform/test_case/test_case_types.h \

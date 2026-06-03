@@ -1,7 +1,7 @@
 ﻿#include "test_flow_editor.h"
 
 #include "test_case.h"
-#include "widgets/test_case_edit_dialog.h"
+#include "test_case_edit_dialog.h"
 
 #include "Abini.h"
 

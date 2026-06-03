@@ -3614,7 +3614,7 @@ QGroupBox::title {
             <string>新建、重命名、复制或删除工站；工站下拉框与列表项上也可右键打开本菜单</string>
            </property>
            <property name="text">
-            <string>管理  </string>
+            <string>工站管理  </string>
            </property>
            <property name="popupMode">
             <enum>QToolButton::InstantPopup</enum>

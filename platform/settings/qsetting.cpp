@@ -16,7 +16,7 @@
 #include <QVector>
 #include "qpainter.h"
 #include "ui_qsetting.h"
-#include "test_flow_editor.h"
+#include "test_flow/test_flow_editor.h"
 #include "bydmes.h"
 
 struct FreeWorkTestCatalogItem {

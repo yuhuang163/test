@@ -44,9 +44,9 @@ new_product_test/
 │   │   ├── test_case_types.h             ← case 数据结构
 │   │   └── test_case.*                   ← 路径/存储/校验/指令表/卡控/钩子/执行
 │   └── settings/
-│       ├── qsetting.h/.cpp/.ui           ← 上位机设置界面（SETTINGS 加载/保存）
-│       ├── test_flow_editor.*            ← Tab「测试流程编排」+ 流程功能块
-│       └── widgets/test_case_edit_dialog.* ← 测试项配置对话框
+│       ├── qsetting.h/.cpp/.ui           ← 设置主界面（各 Tab、SETTINGS 加载/保存）
+│       ├── test_flow/test_flow_editor.*  ← Tab「测试流程编排」逻辑
+│       └── widgets/test_case_edit_dialog.* ← 功能块编辑对话框
 │
 ├── test_case/                            ← 运行时目录（与 exe 同级的配置，非源码）
 │   ├── 总的测试流程.ini                   ← [Station/<工站键>]/Items=case1,case2
@@ -84,7 +84,7 @@ new_product_test/
 │   ├── qjig/                             ← 治具串口协议（气缸/继电器）
 │   │   ├── qjig.h/.cpp                   ← 治具串口调试工具（不带ui，每一路都单独控制）
 │   │   └── fixture_uart.h/.cpp/.ui       ← 治具串口调试工具（带ui，一个治具）
-│   ├── qmomcozy/
+│   ├── qproduct/
 │   │   └── qproduct.h/.cpp               ← 产品串口通信封装
 │   ├── qbulk/
 │   │   ├── qbulk.h/.cpp                  ← 大包/批量传输处理

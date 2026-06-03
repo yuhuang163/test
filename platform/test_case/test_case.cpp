@@ -256,8 +256,6 @@ QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
 QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
     TestCasePaths::ensureRootDir();
     QHash<QString, QString> nameByKey;
-    for (const TestFlowStationEntry& preset : builtinFlowStationPresets())
-        nameByKey.insert(preset.key, preset.displayName);
 
     const QString flowPath = TestCasePaths::flowIniPath();
     QSettings ini(flowPath, QSettings::IniFormat);
@@ -273,6 +271,7 @@ QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
     }
     ini.endGroup();
 
+    // 仅有 [Station/xxx] 流程段、未写入 FlowStations 时补登记（不自动补回已删除的内置工站）
     for (const QString& flowKey : TestCaseStore::listStationKeysFromFlow()) {
         const QString k = flowKey.trimmed();
         if (k.isEmpty() || nameByKey.contains(k))
@@ -281,7 +280,12 @@ QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
         nameByKey.insert(k, presetName.isEmpty() ? k : presetName);
     }
 
-    if (catalogKeys.isEmpty()) {
+    if (catalogKeys.isEmpty() && nameByKey.isEmpty()) {
+        for (const TestFlowStationEntry& preset : builtinFlowStationPresets())
+            nameByKey.insert(preset.key, preset.displayName);
+    }
+
+    if (catalogKeys.isEmpty() && !nameByKey.isEmpty()) {
         QVector<TestFlowStationEntry> seed;
         seed.reserve(nameByKey.size());
         for (auto it = nameByKey.constBegin(); it != nameByKey.constEnd(); ++it)
@@ -515,9 +519,7 @@ bool TestCaseStore::removeFlowStation(const QString& key, QString* errorOut) {
     QSettings ini(flowPath, QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(k));
-    ini.remove(QStringLiteral("Items"));
-    ini.remove(QStringLiteral("StopFlowOnTestFail"));
-    ini.remove(QStringLiteral("StopOnGateFail"));
+    ini.remove(QString());
     ini.endGroup();
     syncTestCaseIni(ini, flowPath);
     return true;

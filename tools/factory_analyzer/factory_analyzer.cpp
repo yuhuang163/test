@@ -1,6 +1,6 @@
 ﻿#include "factory_analyzer.h"
 #include "my_set/my_typedef.h"
-#include "agreement/qmomcozy/qproduct.h"
+#include "qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
 #include <QCoreApplication>
