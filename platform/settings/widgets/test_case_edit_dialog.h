@@ -5,6 +5,8 @@
 
 #include <QDialog>
 
+class QTableWidget;
+
 namespace Ui {
 class TestCaseEditDialog;
 }
@@ -25,6 +27,9 @@ private slots:
     void onDeviceCmdChanged(int index);
     void onGateReportTypeChanged(int index);
     void updateGateFieldsEnabled();
+    bool isPeriphMultiGateMode() const;
+    QVector<TestCaseGate> readPeriphGatesFromTable() const;
+    void writePeriphGatesToTable(const QVector<TestCaseGate>& gates);
     void updatePromptFieldsEnabled();
     void updateHookFieldsEnabled();
 
@@ -35,6 +40,7 @@ private:
     void updateSendParamVisibility(bool hasParam);
 
     Ui::TestCaseEditDialog* ui = nullptr;
+    QTableWidget* tableWidget_periphGates_ = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */
     QString originalCaseName_;
 };

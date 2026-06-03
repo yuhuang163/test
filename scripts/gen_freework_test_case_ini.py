@@ -47,15 +47,38 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         "[Gate]",
         f"Enabled={'true' if gate.get('enabled') else 'false'}",
         f"ReportType={gate.get('report', '')}",
-        f"Field={gate.get('field', '')}",
-        f"Op={gate.get('op', 'range')}",
-        f"Low={gate.get('low', 0)}",
-        f"High={gate.get('high', 0)}",
-        f"Expected={gate.get('expected', '')}",
-        f"ExpectedSettingsKey={gate.get('expected_key', '')}",
-        f"LowSettingsKey={gate.get('low_key', '')}",
-        f"HighSettingsKey={gate.get('high_key', '')}",
-        "",
+    ]
+    multi = gate.get("multi_gates")
+    if multi:
+        lines += [
+            "Field=multi",
+            f"Count={len(multi)}",
+            "",
+        ]
+        for idx, item in enumerate(multi, start=1):
+            field, expected = item[0], item[1]
+            lines += [
+                f"[Gate/{idx}]",
+                f"Field={field}",
+                "Op=eq",
+                f"Expected={expected}",
+                f"Low={expected}",
+                f"High={expected}",
+                "",
+            ]
+    else:
+        lines += [
+            f"Field={gate.get('field', '')}",
+            f"Op={gate.get('op', 'range')}",
+            f"Low={gate.get('low', 0)}",
+            f"High={gate.get('high', 0)}",
+            f"Expected={gate.get('expected', '')}",
+            f"ExpectedSettingsKey={gate.get('expected_key', '')}",
+            f"LowSettingsKey={gate.get('low_key', '')}",
+            f"HighSettingsKey={gate.get('high_key', '')}",
+            "",
+        ]
+    lines += [
         "[Hook]",
         f"Enabled={'true' if hook.get('enabled') else 'false'}",
         f"HookId={hook.get('id', '')}",
@@ -233,6 +256,22 @@ def battery_gate():
     }
 
 
+def periph_gate():
+    """外设状态：每项独立期望值（等于）。"""
+    return {
+        "enabled": True,
+        "report": "ProtocolPeriphStateData",
+        "multi_gates": [
+            ("press0_state", "0"),
+            ("press1_state", "0"),
+            ("battery_ic_state", "1"),
+            ("touch_ic_state", "1"),
+            ("led_ic_state", "0"),
+            ("pd_ic_state", "-1"),
+        ],
+    }
+
+
 CASES = [
     proto("禁止休眠", "FORBID_SLEEP", "Set", "ForbidSleep", {"Param/int": 1}),
     proto("获取整机SN码", "TAIL_SN_READ", "Get", "Sn", {"Param/int": 1}),
@@ -252,7 +291,7 @@ CASES = [
     proto("退出工厂模式", "FAC_MODE_EXIT", "Set", "FacMode", {"Param/value": 0}),
     # Sn 载荷由 Hook 从 MES expectedTailSnFromMes 填入；Param/int=1 即 FacDevInfoType_TAIL_SN
     hook("写入SN码", "SN_WRITE_TAIL", send=("Set", "Sn", {"Param/int": 1})),
-    proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState"),
+    proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState", gate=periph_gate()),
     proto("获取WiFi信息", "WIFI_INFO", "Get", "WifiInfo"),
     hook("读取治具电流测量值", "JIG_CURRENT_READ"),
     dongle("直连接蓝牙", "BT_DIRECT_DCON", "BleDirectConnect"),

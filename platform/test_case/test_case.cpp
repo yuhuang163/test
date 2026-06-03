@@ -552,6 +552,88 @@ QString gateOpToString(TestCaseGateOp op) {
     }
 }
 
+namespace {
+
+void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
+    out.gates.clear();
+    const int count = ini.value(QStringLiteral("Gate/Count"), 0).toInt();
+    const QString reportType = out.gate.reportType;
+    if (count > 0) {
+        for (int i = 1; i <= count; ++i) {
+            ini.beginGroup(QStringLiteral("Gate/%1").arg(i));
+            TestCaseGate g;
+            g.enabled = true;
+            g.reportType = reportType;
+            g.field = ini.value(QStringLiteral("Field")).toString().trimmed();
+            g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
+            g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
+            g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
+            g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            ini.endGroup();
+            if (!g.field.isEmpty())
+                out.gates.append(g);
+        }
+        return;
+    }
+    if (count <= 0 && out.gate.field == QLatin1String("multi")) {
+        for (int i = 1; i <= 32; ++i) {
+            ini.beginGroup(QStringLiteral("Gate/%1").arg(i));
+            const QString field = ini.value(QStringLiteral("Field")).toString().trimmed();
+            if (field.isEmpty()) {
+                ini.endGroup();
+                break;
+            }
+            TestCaseGate g;
+            g.enabled = true;
+            g.reportType = reportType;
+            g.field = field;
+            g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
+            g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
+            g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
+            g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            ini.endGroup();
+            out.gates.append(g);
+        }
+        if (!out.gates.isEmpty())
+            return;
+    }
+    if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field)
+        && reportType == QStringLiteral("ProtocolPeriphStateData")) {
+        for (const QString& f : GateRegistry::fieldsFor(reportType)) {
+            TestCaseGate g = out.gate;
+            g.field = f;
+            g.op = TestCaseGateOp::Eq;
+            g.expected = QString::number(static_cast<int>(out.gate.low));
+            out.gates.append(g);
+        }
+        return;
+    }
+    if (out.gate.enabled)
+        out.gates.append(out.gate);
+}
+
+void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
+    for (int i = 1; i <= 32; ++i)
+        ini.remove(QStringLiteral("Gate/%1").arg(i));
+    ini.remove(QStringLiteral("Gate/Count"));
+    if (def.gates.size() <= 1)
+        return;
+    ini.setValue(QStringLiteral("Gate/Count"), def.gates.size());
+    ini.setValue(QStringLiteral("Gate/Field"), QStringLiteral("multi"));
+    for (int i = 0; i < def.gates.size(); ++i) {
+        ini.beginGroup(QStringLiteral("Gate/%1").arg(i + 1));
+        const TestCaseGate& g = def.gates.at(i);
+        ini.setValue(QStringLiteral("Field"), g.field);
+        ini.setValue(QStringLiteral("Op"), gateOpToString(g.op));
+        ini.setValue(QStringLiteral("Expected"), g.expected);
+        ini.setValue(QStringLiteral("Low"), g.low);
+        ini.setValue(QStringLiteral("High"), g.high);
+        ini.endGroup();
+    }
+}
+
+}  // namespace
+
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     Q_UNUSED(errorOut);
     TestCasePaths::ensureRootDir();
@@ -729,6 +811,8 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         out.gate.expectedSettingsKey.clear();
     }
 
+    loadMultiGatesFromIni(ini, out);
+
     return true;
 }
 
@@ -788,11 +872,24 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     ini.setValue(QStringLiteral("Gate/ExpectedSettingsKey"), def.gate.expectedSettingsKey);
     ini.setValue(QStringLiteral("Gate/LowSettingsKey"), def.gate.lowSettingsKey);
     ini.setValue(QStringLiteral("Gate/HighSettingsKey"), def.gate.highSettingsKey);
+    saveMultiGatesToIni(ini, def);
 
     ini.setValue(QStringLiteral("Hook/Enabled"), def.hook.enabled);
     ini.setValue(QStringLiteral("Hook/HookId"), def.hook.hookId);
     syncTestCaseIni(ini, casePath);
     return true;
+}
+
+QVector<TestCaseGate> TestCaseStore::effectiveGates(const TestCaseDefinition& def) {
+    if (!def.gates.isEmpty())
+        return def.gates;
+    if (def.gate.enabled)
+        return {def.gate};
+    return {};
+}
+
+bool TestCaseStore::usesMultiFieldGates(const TestCaseDefinition& def) {
+    return def.gates.size() > 1;
 }
 
 QStringList TestCaseStore::listCaseIniNames() {
@@ -985,10 +1082,21 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
 
     if (def.gate.enabled) {
         GateTypeDescriptor desc;
-        if (!GateRegistry::descriptorFor(def.gate.reportType, desc))
+        if (!GateRegistry::descriptorFor(def.gate.reportType, desc)) {
             errors.append(QStringLiteral("回传数据类型未登记，请联系工程师"));
-        else if (!GateRegistry::fieldsFor(def.gate.reportType).contains(def.gate.field))
+        } else if (TestCaseStore::usesMultiFieldGates(def)) {
+            const QStringList fields = GateRegistry::fieldsFor(def.gate.reportType);
+            for (const TestCaseGate& g : def.gates) {
+                if (!fields.contains(g.field))
+                    errors.append(QStringLiteral("分项判定字段未登记：%1").arg(g.field));
+                if (g.op == TestCaseGateOp::Eq && g.expected.trimmed().isEmpty())
+                    errors.append(QStringLiteral("分项「%1」须填写期望值")
+                                      .arg(GateRegistry::fieldDisplayName(def.gate.reportType, g.field)));
+            }
+        } else if (!GateRegistry::isAllFieldsGateField(def.gate.field)
+                 && !GateRegistry::fieldsFor(def.gate.reportType).contains(def.gate.field)) {
             errors.append(QStringLiteral("判定项目未登记，请联系工程师"));
+        }
     }
 
     if (def.hook.enabled && !TestCaseHookRegistry::contains(def.hook.hookId))
@@ -2296,6 +2404,32 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return d.key.trimmed();
         }
+    } else if (reportType == QLatin1String("ProtocolPeriphStateData")) {
+        const auto d = payload.value<ProtocolPeriphStateData>();
+        if (field == QLatin1String("press0_state")) {
+            ok = true;
+            return QString::number(d.press0_state);
+        }
+        if (field == QLatin1String("press1_state")) {
+            ok = true;
+            return QString::number(d.press1_state);
+        }
+        if (field == QLatin1String("battery_ic_state")) {
+            ok = true;
+            return QString::number(d.battery_ic_state);
+        }
+        if (field == QLatin1String("touch_ic_state")) {
+            ok = true;
+            return QString::number(d.touch_ic_state);
+        }
+        if (field == QLatin1String("led_ic_state")) {
+            ok = true;
+            return QString::number(d.led_ic_state);
+        }
+        if (field == QLatin1String("pd_ic_state")) {
+            ok = true;
+            return QString::number(d.pd_ic_state);
+        }
     }
     return {};
 }
@@ -2333,12 +2467,52 @@ QStringList GateRegistry::fieldsFor(const QString& reportType) {
     return fields;
 }
 
+bool GateRegistry::isAllFieldsGateField(const QString& field) {
+    const QString f = field.trimmed();
+    return f.isEmpty() || f == QLatin1String("*") || f.compare(QLatin1String("all"), Qt::CaseInsensitive) == 0;
+}
+
+QString GateRegistry::fieldDisplayName(const QString& reportType, const QString& field) {
+    GateTypeDescriptor desc;
+    if (!descriptorFor(reportType, desc))
+        return field;
+    for (const GateFieldDescriptor& fd : desc.fields) {
+        if (fd.field == field)
+            return fd.displayName;
+    }
+    return field;
+}
+
 bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType, const QVariant& payload, bool& passOut,
                             QString& detailOut) {
     passOut = true;
     detailOut.clear();
     if (!gate.enabled)
         return true;
+
+    if (isAllFieldsGateField(gate.field)) {
+        const QStringList fields = fieldsFor(reportType);
+        if (fields.isEmpty()) {
+            passOut = false;
+            detailOut = QStringLiteral("回传类型无可用判定字段");
+            return true;
+        }
+        bool allPass = true;
+        QStringList parts;
+        for (const QString& subField : fields) {
+            TestCaseGate subGate = gate;
+            subGate.field = subField;
+            bool subPass = true;
+            QString subDetail;
+            evaluate(subGate, reportType, payload, subPass, subDetail);
+            if (!subPass)
+                allPass = false;
+            parts.append(QStringLiteral("%1(%2)").arg(fieldDisplayName(reportType, subField), subDetail));
+        }
+        passOut = allPass;
+        detailOut = parts.join(QStringLiteral("; "));
+        return true;
+    }
 
     bool ok = false;
     double value = fieldValueFromVariant(reportType, gate.field, payload, ok);
@@ -2407,14 +2581,48 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
     case TestCaseGateOp::Lt:
         passOut = value < low;
         break;
-    case TestCaseGateOp::Eq:
-        passOut = qAbs(value - low) < 0.0001;
-        break;
+    case TestCaseGateOp::Eq: {
+        double expectVal = low;
+        if (!gate.expected.trimmed().isEmpty()) {
+            bool convOk = false;
+            const double parsed = gate.expected.trimmed().toDouble(&convOk);
+            if (convOk)
+                expectVal = parsed;
+        }
+        passOut = qAbs(value - expectVal) < 0.0001;
+        detailOut = QStringLiteral("当前值=%1, 期望=%2").arg(value).arg(expectVal);
+        return true;
+    }
     default:
         passOut = value >= low && value <= high;
         break;
     }
     detailOut = QStringLiteral("当前值=%1, 允许[%2,%3]").arg(value).arg(low).arg(high);
+    return true;
+}
+
+bool GateRegistry::evaluateAll(const QVector<TestCaseGate>& gates, const QString& reportType,
+                               const QVariant& payload, bool& passOut, QString& detailOut) {
+    passOut = true;
+    detailOut.clear();
+    if (gates.isEmpty())
+        return true;
+    bool allPass = true;
+    QStringList parts;
+    for (const TestCaseGate& g : gates) {
+        TestCaseGate ge = g;
+        ge.enabled = true;
+        ge.reportType = reportType;
+        bool subPass = true;
+        QString subDetail;
+        evaluate(ge, reportType, payload, subPass, subDetail);
+        if (!subPass)
+            allPass = false;
+        parts.append(QStringLiteral("%1(%2)")
+                         .arg(fieldDisplayName(reportType, ge.field), subDetail));
+    }
+    passOut = allPass;
+    detailOut = parts.join(QStringLiteral("; "));
     return true;
 }
 

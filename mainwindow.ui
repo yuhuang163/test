@@ -4229,7 +4229,7 @@
                   <item>
                    <widget class="QLineEdit" name="OtaTimeInterval">
                     <property name="text">
-                     <string>10</string>
+                     <string>2</string>
                     </property>
                    </widget>
                   </item>
@@ -4260,7 +4260,7 @@
                      <string>BLOCK_DATA 每帧携带的镜像字节数，默认 400；过大可能超出 BLE MTU</string>
                     </property>
                     <property name="text">
-                     <string>400</string>
+                     <string>200</string>
                     </property>
                    </widget>
                   </item>

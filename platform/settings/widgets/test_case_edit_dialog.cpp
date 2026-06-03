@@ -10,6 +10,8 @@
 #include <QClipboard>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QTableWidget>
+#include <QHeaderView>
 
 #include <QHash>
 
@@ -302,6 +304,27 @@ void fillGateFieldCombo(QComboBox* box, const QString& reportType) {
         box->addItem(f.displayName, f.field);
 }
 
+void initPeriphGateTable(QTableWidget* table) {
+    GateTypeDescriptor desc;
+    if (!GateRegistry::descriptorFor(QStringLiteral("ProtocolPeriphStateData"), desc))
+        return;
+    table->clear();
+    table->setColumnCount(2);
+    table->setHorizontalHeaderLabels(
+        {QStringLiteral("外设项"), QStringLiteral("期望值（等于）")});
+    table->setRowCount(desc.fields.size());
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->verticalHeader()->setVisible(false);
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+    for (int i = 0; i < desc.fields.size(); ++i) {
+        auto* nameItem = new QTableWidgetItem(desc.fields.at(i).displayName);
+        nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+        nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
+        table->setItem(i, 0, nameItem);
+        table->setItem(i, 1, new QTableWidgetItem(QStringLiteral("0")));
+    }
+}
+
 void fillGateOpCombo(QComboBox* box) {
     box->clear();
     box->addItem(QStringLiteral("在范围内"), QStringLiteral("range"));
@@ -419,6 +442,11 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     });
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
+    tableWidget_periphGates_ = new QTableWidget(ui->groupBox_gate);
+    initPeriphGateTable(tableWidget_periphGates_);
+    ui->formLayout_gate->addRow(tableWidget_periphGates_);
+    tableWidget_periphGates_->setVisible(false);
+
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
@@ -430,20 +458,76 @@ TestCaseEditDialog::~TestCaseEditDialog() {
     delete ui;
 }
 
+bool TestCaseEditDialog::isPeriphMultiGateMode() const {
+    return ui->checkBox_gateEnabled->isChecked()
+           && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolPeriphStateData");
+}
+
+void TestCaseEditDialog::writePeriphGatesToTable(const QVector<TestCaseGate>& gates) {
+    if (!tableWidget_periphGates_)
+        return;
+    for (int row = 0; row < tableWidget_periphGates_->rowCount(); ++row) {
+        QTableWidgetItem* nameItem = tableWidget_periphGates_->item(row, 0);
+        if (!nameItem)
+            continue;
+        const QString field = nameItem->data(Qt::UserRole).toString();
+        QString expected = QStringLiteral("0");
+        for (const TestCaseGate& g : gates) {
+            if (g.field == field) {
+                expected = g.expected.trimmed();
+                if (expected.isEmpty() && g.op == TestCaseGateOp::Eq)
+                    expected = QString::number(static_cast<int>(g.low));
+                break;
+            }
+        }
+        if (QTableWidgetItem* valItem = tableWidget_periphGates_->item(row, 1))
+            valItem->setText(expected);
+        else
+            tableWidget_periphGates_->setItem(row, 1, new QTableWidgetItem(expected));
+    }
+}
+
+QVector<TestCaseGate> TestCaseEditDialog::readPeriphGatesFromTable() const {
+    QVector<TestCaseGate> gates;
+    if (!tableWidget_periphGates_)
+        return gates;
+    const QString reportType = comboData(ui->comboBox_gateReportType);
+    for (int row = 0; row < tableWidget_periphGates_->rowCount(); ++row) {
+        QTableWidgetItem* nameItem = tableWidget_periphGates_->item(row, 0);
+        QTableWidgetItem* valItem = tableWidget_periphGates_->item(row, 1);
+        if (!nameItem || !valItem)
+            continue;
+        TestCaseGate g;
+        g.enabled = true;
+        g.reportType = reportType;
+        g.field = nameItem->data(Qt::UserRole).toString();
+        g.op = TestCaseGateOp::Eq;
+        g.expected = valItem->text().trimmed();
+        g.low = g.expected.toDouble();
+        g.high = g.low;
+        gates.append(g);
+    }
+    return gates;
+}
+
 void TestCaseEditDialog::updateGateFieldsEnabled() {
     const bool on = ui->checkBox_gateEnabled->isChecked();
+    const bool periphMulti = on && isPeriphMultiGateMode();
     ui->label_gateReportType->setVisible(on);
     ui->comboBox_gateReportType->setVisible(on);
-    ui->label_gateField->setVisible(on);
-    ui->comboBox_gateField->setVisible(on);
-    ui->label_gateOp->setVisible(on);
-    ui->comboBox_gateOp->setVisible(on);
-    ui->label_gateLow->setVisible(on);
-    ui->lineEdit_gateLow->setVisible(on);
-    ui->label_gateHigh->setVisible(on);
-    ui->lineEdit_gateHigh->setVisible(on);
-    ui->label_gateExpected->setVisible(on);
-    ui->lineEdit_gateExpected->setVisible(on);
+    if (tableWidget_periphGates_)
+        tableWidget_periphGates_->setVisible(periphMulti);
+    const bool single = on && !periphMulti;
+    ui->label_gateField->setVisible(single);
+    ui->comboBox_gateField->setVisible(single);
+    ui->label_gateOp->setVisible(single);
+    ui->comboBox_gateOp->setVisible(single);
+    ui->label_gateLow->setVisible(single);
+    ui->lineEdit_gateLow->setVisible(single);
+    ui->label_gateHigh->setVisible(single);
+    ui->lineEdit_gateHigh->setVisible(single);
+    ui->label_gateExpected->setVisible(single);
+    ui->lineEdit_gateExpected->setVisible(single);
 }
 
 void TestCaseEditDialog::updatePromptFieldsEnabled() {
@@ -470,6 +554,7 @@ void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
 
 void TestCaseEditDialog::onGateReportTypeChanged(int) {
     fillGateFieldCombo(ui->comboBox_gateField, comboData(ui->comboBox_gateReportType));
+    updateGateFieldsEnabled();
 }
 
 void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QString& storageKey) {
@@ -546,6 +631,10 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
     ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
     ui->lineEdit_gateExpected->setText(def.gate.expected);
+    if (def.gate.reportType == QLatin1String("ProtocolPeriphStateData") && !def.gates.isEmpty())
+        writePeriphGatesToTable(def.gates);
+    else if (def.gate.reportType == QLatin1String("ProtocolPeriphStateData") && def.gate.enabled)
+        writePeriphGatesToTable({def.gate});
     ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
     const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
     if (hookIdx >= 0)
@@ -577,16 +666,30 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.timing.commandTimeoutMs = ui->spinBox_commandTimeout->value();
     def.gate.enabled = ui->checkBox_gateEnabled->isChecked();
     def.gate.reportType = comboData(ui->comboBox_gateReportType);
-    def.gate.field = comboData(ui->comboBox_gateField);
-    const QString op = comboData(ui->comboBox_gateOp);
-    def.gate.op = op == QLatin1String("gt")              ? TestCaseGateOp::Gt
-                  : op == QLatin1String("lt")            ? TestCaseGateOp::Lt
-                  : op == QLatin1String("eq")            ? TestCaseGateOp::Eq
-                  : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
-                                                           : TestCaseGateOp::Range;
-    def.gate.low = ui->lineEdit_gateLow->text().toDouble();
-    def.gate.high = ui->lineEdit_gateHigh->text().toDouble();
-    def.gate.expected = ui->lineEdit_gateExpected->text();
+    def.gates.clear();
+    if (def.gate.enabled && isPeriphMultiGateMode()) {
+        def.gates = readPeriphGatesFromTable();
+        if (!def.gates.isEmpty()) {
+            def.gate = def.gates.first();
+            def.gate.enabled = true;
+            def.gate.reportType = comboData(ui->comboBox_gateReportType);
+            def.gate.field = QStringLiteral("multi");
+            def.gate.op = TestCaseGateOp::Eq;
+        }
+    } else {
+        def.gate.field = comboData(ui->comboBox_gateField);
+        const QString op = comboData(ui->comboBox_gateOp);
+        def.gate.op = op == QLatin1String("gt")              ? TestCaseGateOp::Gt
+                      : op == QLatin1String("lt")            ? TestCaseGateOp::Lt
+                      : op == QLatin1String("eq")            ? TestCaseGateOp::Eq
+                      : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
+                                                               : TestCaseGateOp::Range;
+        def.gate.low = ui->lineEdit_gateLow->text().toDouble();
+        def.gate.high = ui->lineEdit_gateHigh->text().toDouble();
+        def.gate.expected = ui->lineEdit_gateExpected->text();
+        if (def.gate.enabled)
+            def.gates.append(def.gate);
+    }
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
     return def;

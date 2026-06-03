@@ -22,6 +22,16 @@ constexpr uint16_t kNackBusyBlock = 0xFFFFu;
 constexpr uint8_t kNackReasonBusy = 0x01;
 constexpr uint8_t kNackReasonReassembleFailed = 0x02;
 
+/** 与 MainWindow::waitWork 相同：按毫秒等待并处理事件，避免 Windows 上 QThread::msleep(2) 被量化到 ~15ms */
+void waitWork(int ms) {
+    if (ms <= 0)
+        return;
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < ms)
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
+}
+
 }  // namespace
 
 void RootBleOtaClient::reset() {
@@ -168,6 +178,8 @@ bool RootBleOtaClient::sendTlvRequest(uint8_t tlvType, const QByteArray& tlvValu
                     .arg(sendSeq)
                     .arg(frame.size())
                     .arg(QString::fromLatin1(frame.toHex(' ').toUpper()));
+
+                    // qDebug() << "BLE OTA 发送数据包";
     sendFunc_(frame);
     return true;
 }
@@ -326,7 +338,7 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
         const BlockSendResult nackResult = checkPendingNack();
         if (nackResult != BlockSendResult::Success)
             return nackResult;
-        QThread::msleep(intervalMs);
+        waitWork(intervalMs);
     }
 
     QByteArray complete;

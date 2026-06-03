@@ -41,7 +41,14 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
 }
 
 bool QFreeWork::isCurrentStep(const QString& functionName) const {
-    if (!stepRuntime_.started || stepRuntime_.functionId < 0) {
+    if (!stepRuntime_.started) {
+        return false;
+    }
+    // test_case 流程无 functionId，用当前激活的 case 名称匹配
+    if (useTestCaseFlow_ && isActiveTestCaseStep(functionName)) {
+        return true;
+    }
+    if (stepRuntime_.functionId < 0) {
         return false;
     }
     auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),

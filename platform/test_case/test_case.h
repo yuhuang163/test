@@ -32,6 +32,9 @@ class TestCaseStore {
 public:
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
+    /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
+    static QVector<TestCaseGate> effectiveGates(const TestCaseDefinition& def);
+    static bool usesMultiFieldGates(const TestCaseDefinition& def);
     static QStringList listCaseIniNames();
     static bool loadFlowMeta(TestFlowMeta& out);
     static bool saveFlowMeta(const TestFlowMeta& meta);
@@ -175,8 +178,14 @@ public:
     static QVector<GateTypeDescriptor> allTypeDescriptors();
     static bool descriptorFor(const QString& reportType, GateTypeDescriptor& out);
     static QStringList fieldsFor(const QString& reportType);
+    /** Gate/Field 为 *、all 或空时，对同一回包内全部已登记字段套用相同判定条件。 */
+    static bool isAllFieldsGateField(const QString& field);
+    static QString fieldDisplayName(const QString& reportType, const QString& field);
     static bool evaluate(const TestCaseGate& gate, const QString& reportType, const QVariant& payload, bool& passOut,
                          QString& detailOut);
+    /** 多项卡控须全部通过 */
+    static bool evaluateAll(const QVector<TestCaseGate>& gates, const QString& reportType, const QVariant& payload,
+                            bool& passOut, QString& detailOut);
     /** 解析 range 卡控上下限（含 LowSettingsKey/HighSettingsKey）。 */
     static void resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut);
 };

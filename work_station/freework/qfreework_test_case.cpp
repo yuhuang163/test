@@ -198,47 +198,84 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         }
     }
 
-    TestCaseGate gateForEval = activeTestCase_.gate;
-    if (reportType == QStringLiteral("ProtocolSnData") && gateForEval.field == QStringLiteral("value")
-        && gateForEval.expected.trimmed().isEmpty()) {
-        gateForEval.expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
-        if (gateForEval.expected.isEmpty() && ui && ui->getMac)
-            gateForEval.expected = ui->getMac->text().trimmed();
+    QVector<TestCaseGate> gatesForEval = TestCaseStore::effectiveGates(activeTestCase_);
+    if (gatesForEval.isEmpty()) {
+        if (activeTestCase_.gate.enabled) {
+            markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
+            showlog(QStringLiteral("卡控失败：未加载到判定项（请检查 case ini 的 Gate/Count 与 Gate/1..N）"));
+        }
+        return activeTestCase_.gate.enabled;
+    }
+
+    if (reportType == QStringLiteral("ProtocolSnData") && gatesForEval.size() == 1
+        && gatesForEval.first().field == QStringLiteral("value")
+        && gatesForEval.first().expected.trimmed().isEmpty()) {
+        gatesForEval[0].expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
+        if (gatesForEval[0].expected.isEmpty() && ui && ui->getMac)
+            gatesForEval[0].expected = ui->getMac->text().trimmed();
     }
 
     bool pass = true;
     QString detail;
-    GateRegistry::evaluate(gateForEval, reportType, payload, pass, detail);
+    if (gatesForEval.size() > 1)
+        GateRegistry::evaluateAll(gatesForEval, reportType, payload, pass, detail);
+    else
+        GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
 
+    const TestCaseGate& primaryGate = gatesForEval.first();
     QString testData = detail;
     QString ask;
     if (reportType == QStringLiteral("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
         testData = payload.value<ProtocolSnData>().value.trimmed();
-        ask = gateForEval.expected.trimmed();
+        ask = primaryGate.expected.trimmed();
     } else if (reportType == QStringLiteral("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
         testData = QString::number(payload.value<ProtocolRssiData>().dbm);
-        if (activeTestCase_.gate.op == TestCaseGateOp::Range) {
-            double low = activeTestCase_.gate.low;
-            double high = activeTestCase_.gate.high;
-            GateRegistry::resolveRangeBounds(activeTestCase_.gate, low, high);
+        if (primaryGate.op == TestCaseGateOp::Range) {
+            double low = primaryGate.low;
+            double high = primaryGate.high;
+            GateRegistry::resolveRangeBounds(primaryGate, low, high);
             ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
         }
     } else if (reportType == QStringLiteral("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
         testData = QString::number(payload.value<ProtocolBatteryData>().percent);
-        if (activeTestCase_.gate.op == TestCaseGateOp::Range) {
-            double low = activeTestCase_.gate.low;
-            double high = activeTestCase_.gate.high;
-            GateRegistry::resolveRangeBounds(activeTestCase_.gate, low, high);
+        if (primaryGate.op == TestCaseGateOp::Range) {
+            double low = primaryGate.low;
+            double high = primaryGate.high;
+            GateRegistry::resolveRangeBounds(primaryGate, low, high);
             ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
         }
     } else if (reportType == QStringLiteral("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
         const ProtocolBaseInfoData base = payload.value<ProtocolBaseInfoData>();
-        if (activeTestCase_.gate.field == QStringLiteral("soft_version"))
+        if (primaryGate.field == QStringLiteral("soft_version"))
             testData = base.soft_version.trimmed();
-        else if (activeTestCase_.gate.field == QStringLiteral("res_version"))
+        else if (primaryGate.field == QStringLiteral("res_version"))
             testData = base.res_version.trimmed();
-        else if (activeTestCase_.gate.field == QStringLiteral("product_name"))
+        else if (primaryGate.field == QStringLiteral("product_name"))
             testData = base.product_name.trimmed();
+    } else if (reportType == QStringLiteral("ProtocolPeriphStateData")
+               && payload.canConvert<ProtocolPeriphStateData>()) {
+        const ProtocolPeriphStateData periph = payload.value<ProtocolPeriphStateData>();
+        testData = QStringLiteral("press0=%1;press1=%2;battery=%3;touch=%4;led=%5;pd=%6")
+                       .arg(periph.press0_state)
+                       .arg(periph.press1_state)
+                       .arg(periph.battery_ic_state)
+                       .arg(periph.touch_ic_state)
+                       .arg(periph.led_ic_state)
+                       .arg(periph.pd_ic_state);
+        if (TestCaseStore::usesMultiFieldGates(activeTestCase_)) {
+            QStringList expectedParts;
+            for (const TestCaseGate& g : gatesForEval)
+                expectedParts.append(QStringLiteral("%1=%2")
+                                         .arg(GateRegistry::fieldDisplayName(reportType, g.field), g.expected));
+            ask = expectedParts.join(QLatin1Char(';'));
+        } else if (primaryGate.op == TestCaseGateOp::Eq) {
+            ask = primaryGate.expected;
+        } else if (primaryGate.op == TestCaseGateOp::Range) {
+            double low = primaryGate.low;
+            double high = primaryGate.high;
+            GateRegistry::resolveRangeBounds(primaryGate, low, high);
+            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+        }
     }
 
     markActiveTestCaseStepDone(pass, testData, ask);

@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QVariant>
+#include <QVector>
 
 enum class TestCaseSendAction { Set, Get };
 
@@ -67,7 +68,10 @@ struct TestCaseDefinition {
     TestCaseMeta meta;
     TestCaseSend send;
     TestCaseTiming timing;
+    /** 主卡控（单项或兼容旧 ini）；多项时见 gates */
     TestCaseGate gate;
+    /** 同一回包多项独立判定（如外设状态 6 路各自期望值） */
+    QVector<TestCaseGate> gates;
     TestCaseHook hook;
 };
 

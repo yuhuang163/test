@@ -3288,20 +3288,26 @@ void MainWindow::startRootBleOta() {
                                    QStringLiteral(" BLOCK_DATA 分片大小：%1 字节（单帧约 %2 字节）")
                                        .arg(fragmentSize)
                                        .arg(17 + fragmentSize));
-
+     showlog(CommonUtils::isoDateTime() +
+                                   QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
     rootBleOtaClient_.setSendFunc([this](const QByteArray& frame) {
         const uint8_t seq = frame.size() > 2 ? static_cast<uint8_t>(frame[2]) : 0;
         const int tlvType = frame.size() > 8 ? static_cast<uint8_t>(frame[8]) : -1;
+        // ui->bleOtaMsg->appendPlainText(
+        //      QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd")+
+        //     QStringLiteral(" BLE OTA 发送数据包 type=0x%1 seq=%2 len=%3 data=%4")
+        //         .arg(tlvType, 2, 16, QChar('0'))
+        //         .arg(seq)
+        //         .arg(frame.size())
+        //         .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
+
         ui->bleOtaMsg->appendPlainText(
-            CommonUtils::isoDateTime() +
-            QStringLiteral(" BLE OTA 发送数据包 type=0x%1 seq=%2 len=%3 data=%4")
-                .arg(tlvType, 2, 16, QChar('0'))
-                .arg(seq)
-                .arg(frame.size())
-                .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
+            QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd")+
+            QStringLiteral(" BLE OTA 发送数据片"));
+
         if (dongleSerialPort && dongleSerialPort->isOpen())
             dongleSerialPort->write(frame);
     });
