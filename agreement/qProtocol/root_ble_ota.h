@@ -50,9 +50,9 @@ public:
 
     using ProgressFunc = std::function<void(int percent)>;
 
-    /** 执行完整 OTA；intervalMs 为片段发送间隔，blockBusyWaitMs 为设备忙退避等待 */
+    /** 执行完整 OTA；intervalMs 为片段发送间隔，blockBusyWaitMs 为设备忙退避等待，fragmentSize 为 BLOCK_DATA 单帧数据长度 */
     bool runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                     int blockBusyWaitMs, CancelPredicate cancelled, QString* errorOut,
+                     int blockBusyWaitMs, int fragmentSize, CancelPredicate cancelled, QString* errorOut,
                      ProgressFunc onProgress = nullptr);
 
     static uint32_t calculateImageCrc32(const QByteArray& imageData);
@@ -71,11 +71,12 @@ private:
     bool parseOneFrame(const QByteArray& frame);
     bool sendTlvRequest(uint8_t tlvType, const QByteArray& tlvValue);
     bool waitTlv(uint8_t tlvType, int timeoutMs, QByteArray* outValue, CancelPredicate cancelled);
-    bool negotiateBlockSize(int* outBlockSize, CancelPredicate cancelled, QString* errorOut);
+    bool negotiateBlockSize(int* outBlockSize, int fragmentSize, CancelPredicate cancelled, QString* errorOut);
     bool startOtaSession(uint32_t imageId, uint32_t version, int blockSize, const QByteArray& imageData,
                        int* outNextBlock, CancelPredicate cancelled, QString* errorOut);
     BlockSendResult sendBlock(int blockNumber, int blockSize, const QByteArray& imageData, int intervalMs,
-                              CancelPredicate cancelled, QString* errorOut, ProgressFunc onProgress);
+                              int fragmentSize, CancelPredicate cancelled, QString* errorOut,
+                              ProgressFunc onProgress);
     bool endOtaSession(uint32_t imageId, CancelPredicate cancelled, QString* errorOut);
 
     SendFunc sendFunc_;

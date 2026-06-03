@@ -188,7 +188,8 @@ bool RootBleOtaClient::waitTlv(uint8_t tlvType, int timeoutMs, QByteArray* outVa
     return false;
 }
 
-bool RootBleOtaClient::negotiateBlockSize(int* outBlockSize, CancelPredicate cancelled, QString* errorOut) {
+bool RootBleOtaClient::negotiateBlockSize(int* outBlockSize, int fragmentSize, CancelPredicate cancelled,
+                                          QString* errorOut) {
     QByteArray req;
     CommonUtils::appendLe16(&req, static_cast<quint16>(kDefaultSuggestBlockSize));
     if (!sendTlvRequest(NegotiateBsReq, req)) {
@@ -212,7 +213,7 @@ bool RootBleOtaClient::negotiateBlockSize(int* outBlockSize, CancelPredicate can
     if (deviceMax > 0)
         blockSize = qMin(blockSize, deviceMax);
     if (blockSize <= 0)
-        blockSize = kDefaultFragmentSize;
+        blockSize = qMax(1, fragmentSize);
     *outBlockSize = blockSize;
     return true;
 }
@@ -259,8 +260,9 @@ bool RootBleOtaClient::startOtaSession(uint32_t imageId, uint32_t version, int b
 
 RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, int blockSize,
                                                               const QByteArray& imageData, int intervalMs,
-                                                              CancelPredicate cancelled, QString* errorOut,
-                                                              ProgressFunc onProgress) {
+                                                              int fragmentSize, CancelPredicate cancelled,
+                                                              QString* errorOut, ProgressFunc onProgress) {
+    const int fragStep = qMax(1, fragmentSize);
     const int totalSize = imageData.size();
     const int blockOffset = blockNumber * blockSize;
     const int blockLen = qMin(blockSize, totalSize - blockOffset);
@@ -301,14 +303,14 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
         return handleNack(nack);
     };
 
-    for (int fragOff = 0; fragOff < blockLen; fragOff += kDefaultFragmentSize) {
+    for (int fragOff = 0; fragOff < blockLen; fragOff += fragStep) {
         if (cancelled && cancelled())
             return BlockSendResult::Failed;
         QCoreApplication::processEvents(QEventLoop::AllEvents, 1);
         const BlockSendResult pendingNackResult = checkPendingNack();
         if (pendingNackResult != BlockSendResult::Success)
             return pendingNackResult;
-        const int fragLen = qMin(kDefaultFragmentSize, blockLen - fragOff);
+        const int fragLen = qMin(fragStep, blockLen - fragOff);
         QByteArray tlvValue;
         CommonUtils::appendLe16(&tlvValue, static_cast<quint16>(blockNumber));
         CommonUtils::appendLe16(&tlvValue, static_cast<quint16>(fragOff));
@@ -383,8 +385,9 @@ bool RootBleOtaClient::endOtaSession(uint32_t imageId, CancelPredicate cancelled
 }
 
 bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                                   int blockBusyWaitMs, CancelPredicate cancelled, QString* errorOut,
+                                   int blockBusyWaitMs, int fragmentSize, CancelPredicate cancelled, QString* errorOut,
                                    ProgressFunc onProgress) {
+    const int fragSize = qMax(1, fragmentSize);
     if (imageData.isEmpty()) {
         if (errorOut)
             *errorOut = QStringLiteral("镜像数据为空");
@@ -399,7 +402,7 @@ bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId
     reset();
 
     int blockSize = 0;
-    if (!negotiateBlockSize(&blockSize, cancelled, errorOut))
+    if (!negotiateBlockSize(&blockSize, fragSize, cancelled, errorOut))
         return false;
 
     int nextBlock = 0;
@@ -416,7 +419,8 @@ bool RootBleOtaClient::runTransfer(const QByteArray& imageData, uint32_t imageId
         for (int retry = 0; retry < kMaxRetry && !blockDone; ++retry) {
             if (retry > 0 && logFunc_)
                 logFunc_(QStringLiteral("BLE OTA 重发整块 %1，第 %2 次").arg(block).arg(retry + 1));
-            const BlockSendResult result = sendBlock(block, blockSize, imageData, intervalMs, cancelled, errorOut, onProgress);
+            const BlockSendResult result =
+                sendBlock(block, blockSize, imageData, intervalMs, fragSize, cancelled, errorOut, onProgress);
             if (result == BlockSendResult::Success) {
                 blockDone = true;
             } else if (result == BlockSendResult::Failed) {

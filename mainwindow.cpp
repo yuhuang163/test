@@ -3264,6 +3264,11 @@ void MainWindow::startRootBleOta() {
     if (!blockBusyWaitOk || blockBusyWaitMs < 0)
         blockBusyWaitMs = RootBleOtaClient::kDefaultBlockBusyWaitMs;
 
+    bool fragmentSizeOk = false;
+    int fragmentSize = ui->OtaFragmentSize->text().toInt(&fragmentSizeOk);
+    if (!fragmentSizeOk || fragmentSize <= 0)
+        fragmentSize = RootBleOtaClient::kDefaultFragmentSize;
+
     const uint32_t imageCrc32 = RootBleOtaClient::calculateImageCrc32(imageData);
     const int totalBlocks =
         (imageData.size() + RootBleOtaClient::kDefaultSuggestBlockSize - 1) / RootBleOtaClient::kDefaultSuggestBlockSize;
@@ -3279,6 +3284,10 @@ void MainWindow::startRootBleOta() {
                                    QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 块忙等待时间：%1 ms").arg(blockBusyWaitMs));
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                   QStringLiteral(" BLOCK_DATA 分片大小：%1 字节（单帧约 %2 字节）")
+                                       .arg(fragmentSize)
+                                       .arg(17 + fragmentSize));
 
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
@@ -3306,7 +3315,8 @@ void MainWindow::startRootBleOta() {
     QString errorText;
     const uint32_t version = 0x00010001u;
     const bool ok = rootBleOtaClient_.runTransfer(
-        imageData, imageId, version, intervalMs, blockBusyWaitMs, [this]() { return stopBleOta != 0; }, &errorText,
+        imageData, imageId, version, intervalMs, blockBusyWaitMs, fragmentSize,
+        [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
             ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
             if (progressToSourceBar)

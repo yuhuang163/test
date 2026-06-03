@@ -4248,6 +4248,23 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QLabel" name="label_ota_fragment_size">
+                    <property name="text">
+                     <string>分片大小（字节）</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="OtaFragmentSize">
+                    <property name="toolTip">
+                     <string>BLOCK_DATA 每帧携带的镜像字节数，默认 400；过大可能超出 BLE MTU</string>
+                    </property>
+                    <property name="text">
+                     <string>400</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QCheckBox" name="is_clear_mac">
                     <property name="text">
                      <string>是否升级完成清空mac</string>
