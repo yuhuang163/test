@@ -771,8 +771,13 @@ const CmdEntry kCatalog[] = {
     {DeviceCmd::ForbidSleep, DeviceCmdParamKind::JsonMap,
      "禁止休眠：value=1 开启，0 关闭\n示例：{\"value\":1} 或 value=1"},
     {DeviceCmd::Sn, DeviceCmdParamKind::JsonMap,
-     "读写 SN：which_sn 类型\n  1=整机SN(TAIL)  2=主板  3=三元组相关\n"
-     "读整机示例：which_sn=1\n写 SN 另配 which_sn 与写入内容"},
+     "读写 SN：which_sn 类型\n"
+     "  1=整机SN(TAIL)  6=deviceName(SUB_PID)  7=productKey(SKUID)\n"
+     "写 productKey：which_sn=7，sn=$TUPLE_PRODUCT_KEY\n"
+     "写 deviceName：which_sn=6，sn=$TUPLE_DEVICE_NAME\n"
+     "写整机 SN：which_sn=1，sn=具体值或 $TAIL_SN"},
+    {DeviceCmd::WriteKey, DeviceCmdParamKind::JsonMap,
+     "写 deviceSecret：value=$TUPLE_DEVICE_SECRET（默认取云端已获取三元组）"},
     {DeviceCmd::SoftVersionRead, DeviceCmdParamKind::None,
      "FCTP：Get SoftVersionRead 回包 soft_version（软件版本），无需参数\n"
      "卡控：ReportType=ProtocolBaseInfoData，Field=soft_version，Op=compareVersions，Expected=目标版本"},
@@ -1278,12 +1283,31 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
         return out;
     }
     case DeviceCmd::Sn: {
-        if (map.contains(QStringLiteral("which_sn")))
-            return map.value(QStringLiteral("which_sn")).toInt();
-        if (map.contains(QStringLiteral("which")))
-            return map.value(QStringLiteral("which")).toInt();
-        if (map.contains(QStringLiteral("type")))
-            return map.value(QStringLiteral("type")).toInt();
+        const auto whichFromMap = [&map]() -> int {
+            if (map.contains(QStringLiteral("which_sn")))
+                return map.value(QStringLiteral("which_sn")).toInt();
+            if (map.contains(QStringLiteral("which")))
+                return map.value(QStringLiteral("which")).toInt();
+            if (map.contains(QStringLiteral("type")))
+                return map.value(QStringLiteral("type")).toInt();
+            return jsonMapIntValue(map, 0);
+        };
+        QByteArray snBytes;
+        if (map.contains(QStringLiteral("sn")))
+            snBytes = map.value(QStringLiteral("sn")).toString().toUtf8();
+        else if (map.contains(QStringLiteral("value")))
+            snBytes = map.value(QStringLiteral("value")).toString().toUtf8();
+        else if (map.contains(QStringLiteral("string")))
+            snBytes = map.value(QStringLiteral("string")).toString().toUtf8();
+        if (!snBytes.isEmpty()) {
+            DeviceSnPayload payload;
+            payload.which_sn = static_cast<FacDevInfoType>(whichFromMap());
+            payload.sn = snBytes;
+            return QVariant::fromValue(payload);
+        }
+        if (map.contains(QStringLiteral("which_sn")) || map.contains(QStringLiteral("which"))
+            || map.contains(QStringLiteral("type")))
+            return whichFromMap();
         return jsonMapIntValue(map, 0);
     }
     case DeviceCmd::Sleep:

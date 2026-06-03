@@ -18,15 +18,110 @@ bool isRuntimeMacPlaceholder(const QString& text) {
     return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
 }
 
-QVariant resolveRuntimeSendParam(QFreeWork* ctx, const QVariant& param) {
-    if (!ctx || param.userType() != QMetaType::QString)
-        return param;
-    if (!isRuntimeMacPlaceholder(param.toString()))
-        return param;
-    return ctx->currentMacAddress();
+enum class TuplePlaceholderKind {
+    None,
+    ProductKey,
+    DeviceName,
+    DeviceSecret,
+};
+
+TuplePlaceholderKind tuplePlaceholderKind(const QString& text) {
+    const QString s = text.trimmed();
+    if (s.compare(QStringLiteral("$TUPLE_PRODUCT_KEY"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("${TUPLE_PRODUCT_KEY}"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("$PRODUCT_KEY"), Qt::CaseInsensitive) == 0)
+        return TuplePlaceholderKind::ProductKey;
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_NAME"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("${TUPLE_DEVICE_NAME}"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("$DEVICE_NAME"), Qt::CaseInsensitive) == 0)
+        return TuplePlaceholderKind::DeviceName;
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_SECRET"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("${TUPLE_DEVICE_SECRET}"), Qt::CaseInsensitive) == 0
+        || s.compare(QStringLiteral("$DEVICE_SECRET"), Qt::CaseInsensitive) == 0)
+        return TuplePlaceholderKind::DeviceSecret;
+    return TuplePlaceholderKind::None;
+}
+
+bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
+    if (param.userType() == QMetaType::QString)
+        return tuplePlaceholderKind(param.toString()) != TuplePlaceholderKind::None;
+    if (param.canConvert<QVariantMap>()) {
+        const QVariantMap map = param.toMap();
+        for (auto it = map.cbegin(); it != map.cend(); ++it) {
+            if (paramTreeReferencesTuplePlaceholder(it.value()))
+                return true;
+        }
+    }
+    if (param.type() == QVariant::List) {
+        const QVariantList list = param.toList();
+        for (const QVariant& item : list) {
+            if (paramTreeReferencesTuplePlaceholder(item))
+                return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace
+
+QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
+    if (isRuntimeMacPlaceholder(text))
+        return currentMacAddress();
+    switch (tuplePlaceholderKind(text)) {
+    case TuplePlaceholderKind::ProductKey:
+        return tupleData_.productKey;
+    case TuplePlaceholderKind::DeviceName:
+        return tupleData_.deviceName;
+    case TuplePlaceholderKind::DeviceSecret:
+        return tupleData_.deviceSecret;
+    default:
+        break;
+    }
+    return text;
+}
+
+QVariant QFreeWork::resolveTestCaseSendParamTree(const QVariant& param) const {
+    if (param.userType() == QMetaType::QString)
+        return resolveTestCaseSendPlaceholder(param.toString());
+    if (param.canConvert<QVariantMap>()) {
+        QVariantMap map = param.toMap();
+        for (auto it = map.begin(); it != map.end(); ++it)
+            it.value() = resolveTestCaseSendParamTree(it.value());
+        return map;
+    }
+    if (param.type() == QVariant::List) {
+        QVariantList list = param.toList();
+        for (int i = 0; i < list.size(); ++i)
+            list[i] = resolveTestCaseSendParamTree(list[i]);
+        return list;
+    }
+    return param;
+}
+
+bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd,
+                                                    const QVariant& wireParam) {
+    if (!paramTreeReferencesTuplePlaceholder(def.send.param))
+        return true;
+
+    const QString stepName = def.meta.displayName.trimmed().isEmpty() ? def.meta.name.trimmed()
+                                                                       : def.meta.displayName.trimmed();
+    if (failTupleWriteIfNoValidField(stepName, tupleData_.success, QStringLiteral("云端三元组未获取成功")))
+        return false;
+
+    QString writeText;
+    if (cmd == DeviceCmd::Sn && wireParam.canConvert<DeviceSnPayload>()) {
+        writeText = QString::fromUtf8(wireParam.value<DeviceSnPayload>().sn);
+    } else if (cmd == DeviceCmd::WriteKey) {
+        writeText = QString::fromUtf8(wireParam.toMap().value(QStringLiteral("value")).toByteArray());
+    }
+
+    if (writeText.trimmed().isEmpty()) {
+        failTupleWriteIfNoValidField(stepName, false, QStringLiteral("三元组字段为空"));
+        return false;
+    }
+    stepRuntime_.testData = writeText;
+    return true;
+}
 
 QString QFreeWork::currentMacAddress() const {
     if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
@@ -192,7 +287,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             return;
         }
         const auto sendFn = [ctx, def, dongleCmd]() {
-            const QVariant param = resolveRuntimeSendParam(ctx, def.send.param);
+            const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
             if (def.send.action == TestCaseSendAction::Get)
                 ctx->at->get(dongleCmd, param);
             else
@@ -211,8 +306,14 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    const auto sendFn = [ctx, def, cmd]() {
-        const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, def.send.param);
+    const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
+    const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, resolvedParam);
+    if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTupleProductWriteForTestCase(def, cmd, wireParam)) {
+        ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+        return;
+    }
+
+    const auto sendFn = [ctx, def, cmd, wireParam]() {
         if (def.send.action == TestCaseSendAction::Get)
             ctx->protocolManager.get(cmd, wireParam);
         else

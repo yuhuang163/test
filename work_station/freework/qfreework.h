@@ -43,9 +43,16 @@ public:
     /** test_case 流程：读取设备三元组并与云端 tupleData_ 比对。 */
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
+    QString activeTestCaseStepTestData() const { return stepRuntime_.testData; }
     const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
     /** 流程当前 MAC（$MAC 占位符解析用） */
     QString currentMacAddress() const;
+    /** test_case 发送参数：解析 $MAC、$TUPLE_* 等占位符（字符串或参数树）。 */
+    QString resolveTestCaseSendPlaceholder(const QString& text) const;
+    QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
+    /** 三元组写入步骤：校验云端三元组并写入 stepRuntime_.testData；无需校验时返回 true。 */
+    bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd,
+                                             const QVariant& wireParam);
     /** test_case 云端交互通道：按 TupleCmd 执行并更新 stepRuntime_。 */
     void executeCloudTupleCase(const TestCaseDefinition& def);
 
