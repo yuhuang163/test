@@ -708,6 +708,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                 waitWork(caseDef.timing.delayAfterMs);
             }
             closeTestCasePrompt();
+            closeKeyWaitPrompt();
             clearActiveTestCase();
         } else {
             appendFreeWorkMesForCompletedStep(currentFunction, stepRuntime_.pass, stepRuntime_.testData);
@@ -882,6 +883,7 @@ void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promp
     stepRuntime_.testData = "等待按键上报";
     stepRuntime_.ask = SETTINGS.value(expectedKey).toString();
 
+    closeTestCasePrompt();
     closeKeyWaitPrompt();
     keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, "按键测试", promptText, QMessageBox::NoButton, this);
     keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
@@ -1143,6 +1145,9 @@ void QFreeWork::closeKeyWaitPrompt() {
 
 void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
     closeTestCasePrompt();
+    // Hook 步骤（按键/PLC 等）在钩子内自行弹窗，避免与 Meta/Prompt 重复叠两个框
+    if (def.hook.enabled)
+        return;
     if (!def.meta.promptEnabled)
         return;
     const QString text = def.meta.promptText.trimmed();
@@ -1157,10 +1162,11 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
 }
 
 void QFreeWork::closeTestCasePrompt() {
-    if (testCasePrompt_ != nullptr) {
-        testCasePrompt_->close();
-        testCasePrompt_ = nullptr;
-    }
+    if (testCasePrompt_ == nullptr)
+        return;
+    QMessageBox* box = testCasePrompt_;
+    testCasePrompt_ = nullptr;
+    box->close();
 }
 
 void QFreeWork::checkbutton(ProtocolButtonStateData data) {

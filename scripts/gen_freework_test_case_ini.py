@@ -148,7 +148,8 @@ def hook(name, mes, hook_id=None, timing=None, prompt_text=None, send=None):
         "hook": {"enabled": True, "id": hook_id or mes},
         "timing": timing or {},
         "prompt_text": prompt_text or "",
-        "prompt_enabled": bool(prompt_text),
+        # Hook 内自带弹窗；勿开 Meta/Prompt，否则 test_case 流程会叠两个 QMessageBox
+        "prompt_enabled": False,
     }
 
 
