@@ -21,6 +21,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QListView>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSet>
@@ -28,6 +29,7 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QToolButton>
 #include <QSet>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
@@ -210,24 +212,6 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     }
 
     if (auto* toolbar = stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
-        const int stationIdx = toolbar->indexOf(stationCombo_);
-        const int insertToolbar = stationIdx >= 0 ? stationIdx + 1 : 1;
-        auto* btnNewStation = new QPushButton(QStringLiteral("新建工站"), stationCombo_->parentWidget());
-        auto* btnRenameStation = new QPushButton(QStringLiteral("重命名工站"), stationCombo_->parentWidget());
-        auto* btnCopyStation = new QPushButton(QStringLiteral("复制工站"), stationCombo_->parentWidget());
-        auto* btnDelStation = new QPushButton(QStringLiteral("删除工站"), stationCombo_->parentWidget());
-        btnNewStation->setToolTip(
-            QStringLiteral("登记新工站：界面显示中文名称；ini 内自动分配英文键（如 FLOW_ST_0001），避免 %U5389 乱码"));
-        btnRenameStation->setToolTip(
-            QStringLiteral("修改当前工站在下拉框中的显示名称；流程数据仍保存在原工站键下，不影响 test_case 功能块"));
-        btnCopyStation->setToolTip(
-            QStringLiteral("以当前编排区内容（含未保存修改）复制为新工站；功能块 ini 不重复，仅复制流程顺序"));
-        btnDelStation->setToolTip(QStringLiteral("从工站目录移除当前工站，并删除其流程配置（不影响 test_case 功能块 ini）"));
-        toolbar->insertWidget(insertToolbar, btnNewStation);
-        toolbar->insertWidget(insertToolbar + 1, btnRenameStation);
-        toolbar->insertWidget(insertToolbar + 2, btnCopyStation);
-        toolbar->insertWidget(insertToolbar + 3, btnDelStation);
-
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
         auto* btnDown = new QPushButton(QStringLiteral("下移"), stationCombo_->parentWidget());
         btnUp->setToolTip(QStringLiteral("将当前选中的功能块上移一步"));
@@ -236,16 +220,11 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         const int insertAt = saveIdx >= 0 ? saveIdx : toolbar->count();
         toolbar->insertWidget(insertAt, btnUp);
         toolbar->insertWidget(insertAt + 1, btnDown);
-        connect(btnNewStation, &QPushButton::clicked, this, [this]() { promptAddFlowStation(); });
-        connect(btnRenameStation, &QPushButton::clicked, this, [this]() { promptRenameCurrentFlowStation(); });
-        connect(btnCopyStation, &QPushButton::clicked, this, [this]() { promptCopyCurrentFlowStation(); });
-        connect(btnDelStation, &QPushButton::clicked, this, [this]() { promptRemoveCurrentFlowStation(); });
         connect(btnUp, &QPushButton::clicked, this, [this]() { moveSelectedBlock(-1); });
         connect(btnDown, &QPushButton::clicked, this, [this]() { moveSelectedBlock(1); });
     }
 
-    stationCombo_->setToolTip(
-        QStringLiteral("工站列表来自 总的测试流程.ini；下拉框不可直接编辑，请用「重命名工站」修改显示名"));
+    setupStationComboContextMenu();
 
     connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int newIdx) {
         if (suppressStationChange_)
@@ -482,6 +461,88 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
         idx = 0;
     if (idx >= 0)
         stationCombo_->setCurrentIndex(idx);
+}
+
+QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex) {
+    auto* menu = new QMenu(parent);
+    QAction* const actNew = menu->addAction(QStringLiteral("新建工站"));
+    QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
+    QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));
+    QAction* const actDel = menu->addAction(QStringLiteral("删除工站"));
+
+    const bool hasStation = stationCombo_ && stationCombo_->count() > 0;
+    actRename->setEnabled(hasStation);
+    actCopy->setEnabled(hasStation);
+    actDel->setEnabled(hasStation);
+
+    connect(actNew, &QAction::triggered, this, [this]() { promptAddFlowStation(); });
+    connect(actRename, &QAction::triggered, this, [this, hitComboIndex]() {
+        if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
+            return;
+        promptRenameCurrentFlowStation();
+    });
+    connect(actCopy, &QAction::triggered, this, [this, hitComboIndex]() {
+        if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
+            return;
+        promptCopyCurrentFlowStation();
+    });
+    connect(actDel, &QAction::triggered, this, [this, hitComboIndex]() {
+        if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
+            return;
+        promptRemoveCurrentFlowStation();
+    });
+    return menu;
+}
+
+void TestFlowEditor::setupStationComboContextMenu() {
+    if (!stationCombo_)
+        return;
+
+    stationCombo_->setToolTip(QStringLiteral("选择要编辑的测试工站；数据来自 test_case/总的测试流程.ini"));
+
+    if (auto* manageBtn =
+            stationCombo_->parentWidget()->findChild<QToolButton*>(QStringLiteral("toolButton_testFlowStationMenu"))) {
+        manageBtn->setMenu(createFlowStationMenu(manageBtn, stationCombo_->currentIndex()));
+        manageBtn->setPopupMode(QToolButton::InstantPopup);
+        connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), manageBtn,
+                [this, manageBtn](int) {
+                    manageBtn->setMenu(createFlowStationMenu(manageBtn, stationCombo_->currentIndex()));
+                });
+    }
+
+    stationCombo_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(stationCombo_, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        QMenu* const menu = createFlowStationMenu(stationCombo_, stationCombo_->currentIndex());
+        menu->exec(stationCombo_->mapToGlobal(pos));
+        menu->deleteLater();
+    });
+
+    auto* stationView = new QListView(stationCombo_);
+    stationView->setContextMenuPolicy(Qt::CustomContextMenu);
+    stationCombo_->setView(stationView);
+    connect(stationView, &QWidget::customContextMenuRequested, this, [this, stationView](const QPoint& pos) {
+        const QModelIndex modelIndex = stationView->indexAt(pos);
+        const int row = modelIndex.isValid() ? modelIndex.row() : stationCombo_->currentIndex();
+        QMenu* const menu = createFlowStationMenu(stationView, row);
+        menu->exec(stationView->viewport()->mapToGlobal(pos));
+        menu->deleteLater();
+    });
+}
+
+bool TestFlowEditor::activateStationComboIndex(int index) {
+    if (!stationCombo_ || index < 0 || index >= stationCombo_->count())
+        return false;
+    if (index == stationCombo_->currentIndex())
+        return true;
+    if (!confirmDiscardOrSaveOnLeave())
+        return false;
+    suppressStationChange_ = true;
+    stationCombo_->setCurrentIndex(index);
+    stationComboPrevIndex_ = index;
+    suppressStationChange_ = false;
+    persistSelectedStation(currentStationKey());
+    reloadCurrentStation();
+    return true;
 }
 
 void TestFlowEditor::promptAddFlowStation() {

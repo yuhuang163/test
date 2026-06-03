@@ -225,10 +225,10 @@ def battery_gate():
         "enabled": True,
         "report": "ProtocolBatteryData",
         "field": "percent",
-        "op": "gt",
+        "op": "range",
         "low": 0,
         "high": 100,
-        "low_key": "BATTARY/standbattary",
+        "low_key": "",
         "high_key": "",
     }
 

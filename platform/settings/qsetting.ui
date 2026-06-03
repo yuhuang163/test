@@ -3609,6 +3609,19 @@ QGroupBox::title {
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_testFlowToolbar">
          <item>
+          <widget class="QToolButton" name="toolButton_testFlowStationMenu">
+           <property name="toolTip">
+            <string>新建、重命名、复制或删除工站；工站下拉框与列表项上也可右键打开本菜单</string>
+           </property>
+           <property name="text">
+            <string>管理  </string>
+           </property>
+           <property name="popupMode">
+            <enum>QToolButton::InstantPopup</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QLabel" name="label_testFlowStation">
            <property name="text">
             <string>工站</string>
@@ -3616,7 +3629,27 @@ QGroupBox::title {
           </widget>
          </item>
          <item>
-          <widget class="QComboBox" name="comboBox_testFlowStation"/>
+          <widget class="QComboBox" name="comboBox_testFlowStation">
+           <property name="minimumSize">
+            <size>
+             <width>160</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
          </item>
          <item>
           <widget class="QPushButton" name="pushButton_testFlowAdd">

@@ -21,6 +21,7 @@ class TestCaseEditDialog;
 
 
 class QComboBox;
+class QMenu;
 
 class QDragEnterEvent;
 
@@ -139,6 +140,12 @@ private:
     void promptCopyCurrentFlowStation();
 
     void promptRemoveCurrentFlowStation();
+
+    void setupStationComboContextMenu();
+
+    QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
+
+    bool activateStationComboIndex(int index);
 
     void clearBlocks();
 

@@ -223,6 +223,14 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             GateRegistry::resolveRangeBounds(activeTestCase_.gate, low, high);
             ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
         }
+    } else if (reportType == QStringLiteral("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
+        testData = QString::number(payload.value<ProtocolBatteryData>().percent);
+        if (activeTestCase_.gate.op == TestCaseGateOp::Range) {
+            double low = activeTestCase_.gate.low;
+            double high = activeTestCase_.gate.high;
+            GateRegistry::resolveRangeBounds(activeTestCase_.gate, low, high);
+            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+        }
     } else if (reportType == QStringLiteral("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
         const ProtocolBaseInfoData base = payload.value<ProtocolBaseInfoData>();
         if (activeTestCase_.gate.field == QStringLiteral("soft_version"))
