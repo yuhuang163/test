@@ -279,6 +279,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    if (def.send.channel == TestCaseSendChannel::ProductSerial) {
+        ctx->executeProductSerialCase(def);
+        return;
+    }
+
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
@@ -323,6 +328,38 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);
     ctx->sendCommandWithRetry(sendFn, timeoutMs);
+}
+
+void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
+    ProductSerialCmd serialCmd;
+    if (!ProductSerialCmdCatalog::productSerialCmdFromName(def.send.deviceCmd, serialCmd)) {
+        showlog(QStringLiteral("未知产品串口指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!ProductSerialCmdCatalog::isCmdForAction(serialCmd, def.send.action)) {
+        showlog(QStringLiteral("产品串口指令仅支持设置：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    switch (serialCmd) {
+    case ProductSerialCmd::InstrumentReset:
+        startProductInstrumentResetAndWaitAck(QString());
+        break;
+    case ProductSerialCmd::StopRxAndPer:
+        startProductInstrumentStopReceiveAndPer(QString());
+        break;
+    default: {
+        const int profile = ProductSerialCmdCatalog::brushProfileForCmd(serialCmd);
+        if (profile < 0) {
+            markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
+        startProductInstrumentStartReceiveForCatalog(QString(), profile);
+        break;
+    }
+    }
 }
 
 void registerFreeWorkTestCaseHooks() {

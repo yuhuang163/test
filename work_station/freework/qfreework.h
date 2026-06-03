@@ -55,6 +55,8 @@ public:
                                              const QVariant& wireParam);
     /** test_case 云端交互通道：按 TupleCmd 执行并更新 stepRuntime_。 */
     void executeCloudTupleCase(const TestCaseDefinition& def);
+    /** test_case 产品串口通道：仪器复位 / 开始接收 / 停止与 PER。 */
+    void executeProductSerialCase(const TestCaseDefinition& def);
 
 private:
     int teststate = -1;

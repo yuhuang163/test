@@ -212,11 +212,16 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         const int stationIdx = toolbar->indexOf(stationCombo_);
         const int insertToolbar = stationIdx >= 0 ? stationIdx + 1 : 1;
         auto* btnNewStation = new QPushButton(QStringLiteral("新建工站"), stationCombo_->parentWidget());
+        auto* btnRenameStation = new QPushButton(QStringLiteral("重命名工站"), stationCombo_->parentWidget());
         auto* btnDelStation = new QPushButton(QStringLiteral("删除工站"), stationCombo_->parentWidget());
-        btnNewStation->setToolTip(QStringLiteral("登记新工站（仅填中文名称；内置工站如「自由工站」会自动对应产线配置）"));
+        btnNewStation->setToolTip(
+            QStringLiteral("登记新工站：界面显示中文名称；ini 内自动分配英文键（如 FLOW_ST_0001），避免 %U5389 乱码"));
+        btnRenameStation->setToolTip(
+            QStringLiteral("修改当前工站在下拉框中的显示名称；流程数据仍保存在原工站键下，不影响 test_case 功能块"));
         btnDelStation->setToolTip(QStringLiteral("从工站目录移除当前工站，并删除其流程配置（不影响 test_case 功能块 ini）"));
         toolbar->insertWidget(insertToolbar, btnNewStation);
-        toolbar->insertWidget(insertToolbar + 1, btnDelStation);
+        toolbar->insertWidget(insertToolbar + 1, btnRenameStation);
+        toolbar->insertWidget(insertToolbar + 2, btnDelStation);
 
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
         auto* btnDown = new QPushButton(QStringLiteral("下移"), stationCombo_->parentWidget());
@@ -227,12 +232,14 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         toolbar->insertWidget(insertAt, btnUp);
         toolbar->insertWidget(insertAt + 1, btnDown);
         connect(btnNewStation, &QPushButton::clicked, this, [this]() { promptAddFlowStation(); });
+        connect(btnRenameStation, &QPushButton::clicked, this, [this]() { promptRenameCurrentFlowStation(); });
         connect(btnDelStation, &QPushButton::clicked, this, [this]() { promptRemoveCurrentFlowStation(); });
         connect(btnUp, &QPushButton::clicked, this, [this]() { moveSelectedBlock(-1); });
         connect(btnDown, &QPushButton::clicked, this, [this]() { moveSelectedBlock(1); });
     }
 
-    stationCombo_->setToolTip(QStringLiteral("工站列表来自 总的测试流程.ini；仅显示工站名称，与产线预设同名时自动对应（如「自由工站」）"));
+    stationCombo_->setToolTip(
+        QStringLiteral("工站列表来自 总的测试流程.ini；下拉框不可直接编辑，请用「重命名工站」修改显示名"));
 
     connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int newIdx) {
         if (suppressStationChange_)
@@ -499,6 +506,44 @@ void TestFlowEditor::promptAddFlowStation() {
     refreshStationCombo(TestCaseStore::resolveFlowStationKey(displayName));
     persistSelectedStation(currentStationKey());
     reloadCurrentStation();
+}
+
+void TestFlowEditor::promptRenameCurrentFlowStation() {
+    if (!dialogParent_ || !stationCombo_)
+        return;
+    const QString key = currentStationKey();
+    if (key.isEmpty())
+        return;
+
+    const QString oldName = TestCaseStore::flowStationDisplayName(key);
+
+    QDialog dlg(dialogParent_);
+    dlg.setWindowTitle(QStringLiteral("重命名工站"));
+    auto* form = new QFormLayout(&dlg);
+    auto* editName = new QLineEdit(oldName, &dlg);
+    editName->setPlaceholderText(QStringLiteral("仅改显示名称，工站内部键不变"));
+    editName->selectAll();
+    form->addRow(QStringLiteral("工站名称"), editName);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const QString newName = editName->text().trimmed();
+    if (newName == oldName)
+        return;
+
+    QString err;
+    if (!TestCaseStore::renameFlowStation(key, newName, &err)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法重命名"), err);
+        return;
+    }
+    refreshStationCombo(key);
+    persistSelectedStation(key);
 }
 
 void TestFlowEditor::promptRemoveCurrentFlowStation() {

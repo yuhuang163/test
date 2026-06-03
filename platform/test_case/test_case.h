@@ -53,6 +53,8 @@ public:
     /** 显示名或已有键 → 流程 ini 使用的工站键（预设如 自由工站→FREE_WORK） */
     static QString resolveFlowStationKey(const QString& displayNameOrKey);
     static bool addFlowStation(const QString& displayName, QString* errorOut = nullptr);
+    static bool renameFlowStation(const QString& stationKey, const QString& newDisplayName,
+                                  QString* errorOut = nullptr);
     static bool removeFlowStation(const QString& stationKey, QString* errorOut = nullptr);
 };
 
@@ -109,6 +111,31 @@ public:
     static QString paramUiHint(const QString& dongleCmdName);
     static bool paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
+};
+
+enum class ProductSerialCmd {
+    InstrumentReset,
+    StartRx2402Ble1M,
+    StartRx2440Ble1M,
+    StartRx2480Ble1M,
+    StartRx2402Ble2M,
+    StartRx2440Ble2M,
+    StartRx2480Ble2M,
+    StopRxAndPer,
+};
+
+class ProductSerialCmdCatalog {
+public:
+    static QStringList allProductSerialCmdNames();
+    static TestCaseSendAction actionFor(ProductSerialCmd cmd);
+    static bool isCmdForAction(ProductSerialCmd cmd, TestCaseSendAction action);
+    static QString productSerialCmdUiLabel(const QString& enumName);
+    static bool productSerialCmdFromName(const QString& name, ProductSerialCmd& out);
+    static QString productSerialCmdToName(ProductSerialCmd cmd);
+    static bool paramSchemaFor(ProductSerialCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    /** 开始接收类指令对应的 brush profile 0～5；-1 表示非此类指令。 */
+    static int brushProfileForCmd(ProductSerialCmd cmd);
 };
 
 class TupleCmdCatalog {

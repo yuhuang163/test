@@ -535,6 +535,19 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (currentOrderedStepIsDongleBleConnect()) {
         return true;
     }
+    if (useTestCaseFlow_ && teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
+        TestCaseDefinition caseDef;
+        if (TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
+            if (caseDef.send.channel == TestCaseSendChannel::ProductSerial)
+                return true;
+            if (caseDef.hook.enabled) {
+                const QString hookId = caseDef.hook.hookId;
+                if (hookId.startsWith(QStringLiteral("PROD_INST"))
+                    || hookId.startsWith(QStringLiteral("FREE_INSTR_CMW")))
+                    return true;
+            }
+        }
+    }
     const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
     return nf != nullptr
            && (nf->name.startsWith(QStringLiteral("产品串口"))

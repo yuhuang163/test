@@ -32,6 +32,9 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         f"Action={send['action']}",
         f"DeviceCmd={send['cmd']}",
     ]
+    channel = send.get("channel", "Product")
+    if channel == "Product":
+        lines.append(f"Protocol={send.get('protocol', 'Qfctp')}")
     for k, v in send.get("params", {}).items():
         lines.append(f"{k}={v}")
     lines += [
@@ -63,11 +66,17 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         f.write("\n".join(lines))
 
 
-def proto(name, mes, action, cmd, params=None, gate=None, timing=None, prompt=None):
+def proto(name, mes, action, cmd, params=None, gate=None, timing=None, prompt=None, protocol="Qfctp"):
     return {
         "name": name,
         "mes": mes,
-        "send": {"action": action, "cmd": cmd, "params": params or {}},
+        "send": {
+            "action": action,
+            "channel": "Product",
+            "cmd": cmd,
+            "protocol": protocol,
+            "params": params or {},
+        },
         "gate": gate or {"enabled": False},
         "hook": {"enabled": False},
         "timing": timing or {},
@@ -104,6 +113,23 @@ def cloud(name, mes, action, cmd, params=None, timing=None):
         "gate": {"enabled": False},
         "hook": {"enabled": False},
         "timing": timing or {},
+    }
+
+
+def product_serial(name, mes, cmd, timing=None):
+    """产品串口仪器步骤：Channel=ProductSerial，不再使用 Hook。"""
+    return {
+        "name": name,
+        "mes": mes,
+        "send": {
+            "action": "Set",
+            "channel": "ProductSerial",
+            "cmd": cmd,
+            "params": {},
+        },
+        "gate": {"enabled": False},
+        "hook": {"enabled": False},
+        "timing": timing or {"command_timeout": 30000},
     }
 
 
@@ -298,20 +324,20 @@ CASES = [
     hook("PLC_V3_left触摸整步", "PLC_V3_KEY_LEFT"),
     hook("PLC_V3_power触摸整步", "PLC_V3_KEY_POWER"),
     hook("PLC_V3_switch旋钮整步右旋", "PLC_V3_SWITCH_RIGHT_WHOLE"),
-    hook("产品串口仪器复位应答", "PROD_INST_RESET_ACK"),
-    hook("产品串口开始接收2402_BLE1M", "PROD_INST_START_RX_2402_1M"),
-    hook("产品串口开始接收2440_BLE1M", "PROD_INST_START_RX_2440_1M"),
-    hook("产品串口开始接收2480_BLE1M", "PROD_INST_START_RX_2480_1M"),
-    hook("产品串口开始接收2402_BLE2M", "PROD_INST_START_RX_2402_2M"),
-    hook("产品串口开始接收2440_BLE2M", "PROD_INST_START_RX_2440_2M"),
-    hook("产品串口开始接收2480_BLE2M", "PROD_INST_START_RX_2480_2M"),
+    product_serial("产品串口仪器复位应答", "PROD_INST_RESET_ACK", "InstrumentReset"),
+    product_serial("产品串口开始接收2402_BLE1M", "PROD_INST_START_RX_2402_1M", "StartRx2402Ble1M"),
+    product_serial("产品串口开始接收2440_BLE1M", "PROD_INST_START_RX_2440_1M", "StartRx2440Ble1M"),
+    product_serial("产品串口开始接收2480_BLE1M", "PROD_INST_START_RX_2480_1M", "StartRx2480Ble1M"),
+    product_serial("产品串口开始接收2402_BLE2M", "PROD_INST_START_RX_2402_2M", "StartRx2402Ble2M"),
+    product_serial("产品串口开始接收2440_BLE2M", "PROD_INST_START_RX_2440_2M", "StartRx2440Ble2M"),
+    product_serial("产品串口开始接收2480_BLE2M", "PROD_INST_START_RX_2480_2M", "StartRx2480Ble2M"),
     hook("并联CMW播放2402_BLE1M", "FREE_INSTR_CMW_GPRF_2402_1M"),
     hook("并联CMW播放2440_BLE1M", "FREE_INSTR_CMW_GPRF_2440_1M"),
     hook("并联CMW播放2480_BLE1M", "FREE_INSTR_CMW_GPRF_2480_1M"),
     hook("并联CMW播放2402_BLE2M", "FREE_INSTR_CMW_GPRF_2402_2M"),
     hook("并联CMW播放2440_BLE2M", "FREE_INSTR_CMW_GPRF_2440_2M"),
     hook("并联CMW播放2480_BLE2M", "FREE_INSTR_CMW_GPRF_2480_2M"),
-    hook("产品串口停止接收与PER", "PROD_INST_STOP_RX_PER"),
+    product_serial("产品串口停止接收与PER", "PROD_INST_STOP_RX_PER", "StopRxAndPer"),
     proto(
         "进入蓝牙非信令模式",
         "BT_NO_SIGNAL_ENTER",

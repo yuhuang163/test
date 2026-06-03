@@ -1,6 +1,7 @@
 ﻿#include "test_case.h"
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -152,6 +153,100 @@ void syncTestCaseIni(QSettings& ini, const QString& filePath) {
         ensureUtf8BomOnIniFile(filePath);
 }
 
+/** FlowStations / Station 组用的 ini 键须为 ASCII，否则 QSettings 会写成 %U5389%U5BB3 等形式。 */
+bool isAsciiFlowStationKey(const QString& key) {
+    const QString k = key.trimmed();
+    if (k.isEmpty())
+        return false;
+    for (const QChar c : k) {
+        if (c.unicode() > 127)
+            return false;
+        if (c == QLatin1Char('/') || c == QLatin1Char('\\'))
+            return false;
+    }
+    return true;
+}
+
+QString allocateCustomFlowStationKey(const QVector<TestFlowStationEntry>& catalog) {
+    for (int n = 1; n < 10000; ++n) {
+        const QString key = QStringLiteral("FLOW_ST_%1").arg(n, 4, 10, QChar(QLatin1Char('0')));
+        bool taken = false;
+        for (const TestFlowStationEntry& entry : catalog) {
+            if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+                taken = true;
+                break;
+            }
+        }
+        if (!taken)
+            return key;
+    }
+    return QStringLiteral("FLOW_ST_%1").arg(QDateTime::currentMSecsSinceEpoch());
+}
+
+void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, const QString& displayName) {
+    if (oldKey.isEmpty() || newKey.isEmpty() || oldKey.compare(newKey, Qt::CaseInsensitive) == 0)
+        return;
+
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+
+    const QString oldGroup = stationGroup(oldKey);
+    const QString newGroup = stationGroup(newKey);
+
+    ini.beginGroup(oldGroup);
+    const bool hadData = ini.contains(QStringLiteral("Items")) || ini.contains(QStringLiteral("StopFlowOnTestFail"))
+                         || ini.contains(QStringLiteral("StopOnGateFail"));
+    const QVariant items = ini.value(QStringLiteral("Items"));
+    const QVariant stopFlow = ini.value(QStringLiteral("StopFlowOnTestFail"));
+    const QVariant stopGate = ini.value(QStringLiteral("StopOnGateFail"));
+    ini.endGroup();
+
+    if (hadData) {
+        ini.beginGroup(newGroup);
+        if (items.isValid())
+            ini.setValue(QStringLiteral("Items"), items);
+        if (stopFlow.isValid())
+            ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlow);
+        if (stopGate.isValid())
+            ini.setValue(QStringLiteral("StopOnGateFail"), stopGate);
+        ini.endGroup();
+        ini.beginGroup(oldGroup);
+        ini.remove(QString());
+        ini.endGroup();
+    }
+
+    TestFlowMeta meta;
+    TestCaseStore::loadFlowMeta(meta);
+    bool metaChanged = false;
+    if (meta.selectedStation.compare(oldKey, Qt::CaseInsensitive) == 0) {
+        meta.selectedStation = newKey;
+        metaChanged = true;
+    }
+    if (meta.selectedStationName.compare(oldKey, Qt::CaseInsensitive) == 0) {
+        meta.selectedStationName = displayName.isEmpty() ? newKey : displayName;
+        metaChanged = true;
+    }
+    if (metaChanged)
+        TestCaseStore::saveFlowMeta(meta);
+
+    syncTestCaseIni(ini, flowPath);
+}
+
+bool normalizeFlowStationCatalogKeys(QVector<TestFlowStationEntry>& catalog) {
+    bool changed = false;
+    for (int i = 0; i < catalog.size(); ++i) {
+        if (isAsciiFlowStationKey(catalog[i].key))
+            continue;
+        const QString oldKey = catalog[i].key;
+        const QString newKey = allocateCustomFlowStationKey(catalog);
+        migrateFlowStationIniData(oldKey, newKey, catalog[i].displayName);
+        catalog[i].key = newKey;
+        changed = true;
+    }
+    return changed;
+}
+
 }  // namespace
 
 QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
@@ -209,10 +304,15 @@ QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
             return false;
         return a.displayName.localeAwareCompare(b.displayName) < 0;
     });
+    if (normalizeFlowStationCatalogKeys(result))
+        saveFlowStationCatalog(result);
     return result;
 }
 
 bool TestCaseStore::saveFlowStationCatalog(const QVector<TestFlowStationEntry>& entries) {
+    QVector<TestFlowStationEntry> normalized = entries;
+    normalizeFlowStationCatalogKeys(normalized);
+
     TestCasePaths::ensureRootDir();
     const QString flowPath = TestCasePaths::flowIniPath();
     QSettings ini(flowPath, QSettings::IniFormat);
@@ -221,7 +321,7 @@ bool TestCaseStore::saveFlowStationCatalog(const QVector<TestFlowStationEntry>& 
     const QStringList oldKeys = ini.childKeys();
     for (const QString& oldKey : oldKeys)
         ini.remove(oldKey);
-    for (const TestFlowStationEntry& entry : entries) {
+    for (const TestFlowStationEntry& entry : normalized) {
         const QString k = entry.key.trimmed();
         if (k.isEmpty())
             continue;
@@ -276,8 +376,8 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
         return false;
 
     const QString presetKey = lookupPresetKeyFromDisplayName(name);
-    const QString key = presetKey.isEmpty() ? name : presetKey;
     QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    const QString key = presetKey.isEmpty() ? allocateCustomFlowStationKey(catalog) : presetKey;
     for (const TestFlowStationEntry& entry : catalog) {
         if (entry.displayName == name) {
             if (errorOut)
@@ -291,6 +391,56 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
         }
     }
     catalog.append({key, name});
+    return saveFlowStationCatalog(catalog);
+}
+
+bool TestCaseStore::renameFlowStation(const QString& stationKey, const QString& newDisplayName,
+                                      QString* errorOut) {
+    const QString k = stationKey.trimmed();
+    const QString name = newDisplayName.trimmed();
+    if (k.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站键无效");
+        return false;
+    }
+    if (!TestCasePaths::isValidCaseFileName(name, errorOut))
+        return false;
+
+    QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    int targetIdx = -1;
+    for (int i = 0; i < catalog.size(); ++i) {
+        if (catalog[i].key.compare(k, Qt::CaseInsensitive) == 0) {
+            targetIdx = i;
+            break;
+        }
+    }
+    if (targetIdx < 0) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站不在目录中：%1").arg(k);
+        return false;
+    }
+    if (catalog[targetIdx].displayName == name)
+        return true;
+
+    const QString presetKeyForName = lookupPresetKeyFromDisplayName(name);
+    if (!presetKeyForName.isEmpty() && presetKeyForName.compare(k, Qt::CaseInsensitive) != 0) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("名称与工站「%1」冲突")
+                              .arg(lookupPresetDisplayName(presetKeyForName));
+        }
+        return false;
+    }
+    for (int i = 0; i < catalog.size(); ++i) {
+        if (i == targetIdx)
+            continue;
+        if (catalog[i].displayName == name) {
+            if (errorOut)
+                *errorOut = QStringLiteral("工站名称已存在：%1").arg(name);
+            return false;
+        }
+    }
+
+    catalog[targetIdx].displayName = name;
     return saveFlowStationCatalog(catalog);
 }
 
@@ -392,12 +542,17 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         out.send.channel = TestCaseSendChannel::Dongle;
     } else if (channelIni.compare(QStringLiteral("Cloud"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Cloud;
+    } else if (channelIni.compare(QStringLiteral("ProductSerial"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::ProductSerial;
     } else if (channelIni.compare(QStringLiteral("Product"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Product;
     } else {
+        ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
-        if (TupleCmdCatalog::tupleCmdFromName(out.send.deviceCmd, inferTuple)) {
+        if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, inferSerial)) {
+            out.send.channel = TestCaseSendChannel::ProductSerial;
+        } else if (TupleCmdCatalog::tupleCmdFromName(out.send.deviceCmd, inferTuple)) {
             out.send.channel = TestCaseSendChannel::Cloud;
         } else if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)) {
             out.send.channel = TestCaseSendChannel::Dongle;
@@ -418,6 +573,12 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
             if (!TupleCmdCatalog::isCmdForAction(tupleCmd, out.send.action))
                 out.send.action = TupleCmdCatalog::actionFor(tupleCmd);
             TupleCmdCatalog::paramFromIniGroup(ini, tupleCmd, out.send.param);
+        }
+    } else if (out.send.channel == TestCaseSendChannel::ProductSerial) {
+        ProductSerialCmd serialCmd;
+        if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, serialCmd)) {
+            out.send.action = ProductSerialCmdCatalog::actionFor(serialCmd);
+            out.send.param = QVariant();
         }
     } else {
         DeviceCmd cmd;
@@ -475,6 +636,38 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
             out.send.action = TestCaseSendAction::Set;
             out.send.deviceCmd = QStringLiteral("ReportWriteRecord");
             out.send.param = QVariant();
+        } else {
+            QString serialCmd;
+            const QString hid = out.hook.hookId;
+            if (hid == QStringLiteral("PROD_INST_RESET_ACK")
+                || hid.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
+                serialCmd = QStringLiteral("InstrumentReset");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2402_1M")) {
+                serialCmd = QStringLiteral("StartRx2402Ble1M");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2440_1M")) {
+                serialCmd = QStringLiteral("StartRx2440Ble1M");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2480_1M")) {
+                serialCmd = QStringLiteral("StartRx2480Ble1M");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2402_2M")) {
+                serialCmd = QStringLiteral("StartRx2402Ble2M");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2440_2M")) {
+                serialCmd = QStringLiteral("StartRx2440Ble2M");
+            } else if (hid == QStringLiteral("PROD_INST_START_RX_2480_2M")) {
+                serialCmd = QStringLiteral("StartRx2480Ble2M");
+            } else if (hid == QStringLiteral("PROD_INST_STOP_RX_PER")
+                       || hid.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
+                serialCmd = QStringLiteral("StopRxAndPer");
+            }
+            if (!serialCmd.isEmpty()) {
+                out.hook.enabled = false;
+                out.hook.hookId.clear();
+                out.send.channel = TestCaseSendChannel::ProductSerial;
+                out.send.action = TestCaseSendAction::Set;
+                out.send.deviceCmd = serialCmd;
+                out.send.param = QVariant();
+                if (out.timing.commandTimeoutMs <= 0)
+                    out.timing.commandTimeoutMs = 30000;
+            }
         }
     }
 
@@ -515,6 +708,8 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         channelStr = QStringLiteral("Dongle");
     else if (def.send.channel == TestCaseSendChannel::Cloud)
         channelStr = QStringLiteral("Cloud");
+    else if (def.send.channel == TestCaseSendChannel::ProductSerial)
+        channelStr = QStringLiteral("ProductSerial");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product)
         ini.setValue(QStringLiteral("Send/Protocol"),
@@ -528,7 +723,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         TupleCmd tupleCmd;
         if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
             TupleCmdCatalog::paramToIniGroup(ini, tupleCmd, def.send.param);
-    } else {
+    } else if (def.send.channel != TestCaseSendChannel::ProductSerial) {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
@@ -710,6 +905,13 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
             DeviceCmdParamSchema schema;
             if (!TupleCmdCatalog::paramSchemaFor(tupleCmd, schema))
                 errors.append(QStringLiteral("该云端指令尚未配置参数模板，请联系工程师"));
+        }
+    } else if (def.send.channel == TestCaseSendChannel::ProductSerial) {
+        ProductSerialCmd serialCmd;
+        if (!ProductSerialCmdCatalog::productSerialCmdFromName(def.send.deviceCmd, serialCmd)) {
+            errors.append(QStringLiteral("产品串口测试指令无效"));
+        } else if (!ProductSerialCmdCatalog::isCmdForAction(serialCmd, def.send.action)) {
+            errors.append(QStringLiteral("产品串口指令仅支持「设置」"));
         }
     } else {
         DeviceCmd cmd;
@@ -1553,6 +1755,144 @@ void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const
     }
 }
 
+// ===================== ProductSerialCmdCatalog =====================
+
+namespace {
+
+struct ProductSerialCmdEntry {
+    ProductSerialCmd cmd;
+    TestCaseSendAction action;
+    const char* hint;
+};
+
+const ProductSerialCmdEntry kProductSerialCatalog[] = {
+    {ProductSerialCmd::InstrumentReset, TestCaseSendAction::Set,
+     "经产品串口发复位帧，等待仪器应答 040E0405030C00"},
+    {ProductSerialCmd::StartRx2402Ble1M, TestCaseSendAction::Set,
+     "开始接收 2402MHz BLE 1M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StartRx2440Ble1M, TestCaseSendAction::Set,
+     "开始接收 2440MHz BLE 1M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StartRx2480Ble1M, TestCaseSendAction::Set,
+     "开始接收 2480MHz BLE 1M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StartRx2402Ble2M, TestCaseSendAction::Set,
+     "开始接收 2402MHz BLE 2M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StartRx2440Ble2M, TestCaseSendAction::Set,
+     "开始接收 2440MHz BLE 2M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StartRx2480Ble2M, TestCaseSendAction::Set,
+     "开始接收 2480MHz BLE 2M，等待应答 040E0405332000"},
+    {ProductSerialCmd::StopRxAndPer, TestCaseSendAction::Set,
+     "停止接收并统计 PER；可与前序「开始接收」及并联 CMW 配置配合"},
+};
+
+const QHash<QString, ProductSerialCmd> kProductSerialNameMap = {
+    {QStringLiteral("InstrumentReset"), ProductSerialCmd::InstrumentReset},
+    {QStringLiteral("StartRx2402Ble1M"), ProductSerialCmd::StartRx2402Ble1M},
+    {QStringLiteral("StartRx2440Ble1M"), ProductSerialCmd::StartRx2440Ble1M},
+    {QStringLiteral("StartRx2480Ble1M"), ProductSerialCmd::StartRx2480Ble1M},
+    {QStringLiteral("StartRx2402Ble2M"), ProductSerialCmd::StartRx2402Ble2M},
+    {QStringLiteral("StartRx2440Ble2M"), ProductSerialCmd::StartRx2440Ble2M},
+    {QStringLiteral("StartRx2480Ble2M"), ProductSerialCmd::StartRx2480Ble2M},
+    {QStringLiteral("StopRxAndPer"), ProductSerialCmd::StopRxAndPer},
+};
+
+const QHash<QString, QString>& productSerialCmdUiLabelMap() {
+    static const QHash<QString, QString> map = {
+        {QStringLiteral("InstrumentReset"), QStringLiteral("仪器复位应答")},
+        {QStringLiteral("StartRx2402Ble1M"), QStringLiteral("开始接收 2402 BLE1M")},
+        {QStringLiteral("StartRx2440Ble1M"), QStringLiteral("开始接收 2440 BLE1M")},
+        {QStringLiteral("StartRx2480Ble1M"), QStringLiteral("开始接收 2480 BLE1M")},
+        {QStringLiteral("StartRx2402Ble2M"), QStringLiteral("开始接收 2402 BLE2M")},
+        {QStringLiteral("StartRx2440Ble2M"), QStringLiteral("开始接收 2440 BLE2M")},
+        {QStringLiteral("StartRx2480Ble2M"), QStringLiteral("开始接收 2480 BLE2M")},
+        {QStringLiteral("StopRxAndPer"), QStringLiteral("停止接收与 PER")},
+    };
+    return map;
+}
+
+}  // namespace
+
+QStringList ProductSerialCmdCatalog::allProductSerialCmdNames() {
+    QStringList names = kProductSerialNameMap.keys();
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction ProductSerialCmdCatalog::actionFor(ProductSerialCmd cmd) {
+    for (const ProductSerialCmdEntry& entry : kProductSerialCatalog) {
+        if (entry.cmd == cmd)
+            return entry.action;
+    }
+    return TestCaseSendAction::Set;
+}
+
+bool ProductSerialCmdCatalog::isCmdForAction(ProductSerialCmd cmd, TestCaseSendAction action) {
+    return actionFor(cmd) == action;
+}
+
+QString ProductSerialCmdCatalog::productSerialCmdUiLabel(const QString& enumName) {
+    const QString key = enumName.trimmed();
+    const QString label = productSerialCmdUiLabelMap().value(key);
+    if (!label.isEmpty())
+        return cmdPickerDisplayLabel(label);
+    return QStringLiteral("未登记串口指令");
+}
+
+bool ProductSerialCmdCatalog::productSerialCmdFromName(const QString& name, ProductSerialCmd& out) {
+    const auto it = kProductSerialNameMap.constFind(name.trimmed());
+    if (it == kProductSerialNameMap.cend())
+        return false;
+    out = it.value();
+    return true;
+}
+
+QString ProductSerialCmdCatalog::productSerialCmdToName(ProductSerialCmd cmd) {
+    for (auto it = kProductSerialNameMap.cbegin(); it != kProductSerialNameMap.cend(); ++it) {
+        if (it.value() == cmd)
+            return it.key();
+    }
+    return QString();
+}
+
+bool ProductSerialCmdCatalog::paramSchemaFor(ProductSerialCmd cmd, DeviceCmdParamSchema& out) {
+    for (const ProductSerialCmdEntry& entry : kProductSerialCatalog) {
+        if (entry.cmd == cmd) {
+            out.kind = DeviceCmdParamKind::None;
+            out.hint = QString::fromUtf8(entry.hint);
+            return true;
+        }
+    }
+    return false;
+}
+
+QString ProductSerialCmdCatalog::paramUiHint(const QString& enumName) {
+    ProductSerialCmd cmd;
+    if (!productSerialCmdFromName(enumName, cmd))
+        return QString();
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return QString();
+    return schema.hint;
+}
+
+int ProductSerialCmdCatalog::brushProfileForCmd(ProductSerialCmd cmd) {
+    switch (cmd) {
+        case ProductSerialCmd::StartRx2402Ble1M:
+            return 0;
+        case ProductSerialCmd::StartRx2440Ble1M:
+            return 1;
+        case ProductSerialCmd::StartRx2480Ble1M:
+            return 2;
+        case ProductSerialCmd::StartRx2402Ble2M:
+            return 3;
+        case ProductSerialCmd::StartRx2440Ble2M:
+            return 4;
+        case ProductSerialCmd::StartRx2480Ble2M:
+            return 5;
+        default:
+            return -1;
+    }
+}
+
 // ===================== TupleCmdCatalog =====================
 
 namespace {
@@ -2090,6 +2430,8 @@ QString TestCaseRunner::stepLabel(const TestCaseDefinition& def) {
 bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
     if (def.hook.enabled)
         return true;
+    if (def.send.channel == TestCaseSendChannel::ProductSerial)
+        return true;
     if (isDongleBleConnectStep(def))
         return true;
     if (def.gate.enabled)
@@ -2109,6 +2451,8 @@ bool TestCaseRunner::isDongleBleConnectStep(const TestCaseDefinition& def) {
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (def.send.channel == TestCaseSendChannel::ProductSerial)
+        return 30000;
     if (isDongleBleConnectStep(def))
         return 6000;
     return def.gate.enabled ? 8000 : 3000;

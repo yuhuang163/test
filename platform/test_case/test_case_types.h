@@ -6,9 +6,9 @@
 
 enum class TestCaseSendAction { Set, Get };
 
-enum class TestCaseSendChannel { Product, Dongle, Cloud };
+enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud };
 
-/** 产品通信协议（仅 Send/Channel=Product 时有效；与 QProtocolManager::ProtocolType 对应）。 */
+/** 产品蓝牙通信协议（仅 Send/Channel=Product 时有效；与 QProtocolManager::ProtocolType 对应）。 */
 enum class TestCaseProductProtocol { Qfctp, Qpb };
 
 struct TestCaseMeta {

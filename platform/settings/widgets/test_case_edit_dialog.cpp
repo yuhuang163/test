@@ -41,7 +41,8 @@ void fillActionCombo(QComboBox* box) {
 
 void fillSendChannelCombo(QComboBox* box) {
     box->clear();
-    box->addItem(QStringLiteral("产品通信"), QStringLiteral("Product"));
+    box->addItem(QStringLiteral("产品蓝牙通信"), QStringLiteral("Product"));
+    box->addItem(QStringLiteral("产品串口通信"), QStringLiteral("ProductSerial"));
     box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
     box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
 }
@@ -75,6 +76,13 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         items.reserve(TupleCmdCatalog::allTupleCmdNames(action).size());
         for (const QString& name : TupleCmdCatalog::allTupleCmdNames(action))
             items.append({TupleCmdCatalog::tupleCmdUiLabel(name), name});
+    } else if (channel == TestCaseSendChannel::ProductSerial) {
+        items.reserve(ProductSerialCmdCatalog::allProductSerialCmdNames().size());
+        for (const QString& name : ProductSerialCmdCatalog::allProductSerialCmdNames()) {
+            if (ProductSerialCmd cmd; ProductSerialCmdCatalog::productSerialCmdFromName(name, cmd)
+                && ProductSerialCmdCatalog::isCmdForAction(cmd, action))
+                items.append({ProductSerialCmdCatalog::productSerialCmdUiLabel(name), name});
+        }
     } else {
         const QStringList names = DeviceCmdCatalog::allDeviceCmdNames(action, productProtocol);
         items.reserve(names.size());
@@ -107,6 +115,8 @@ TestCaseSendChannel sendChannelFromComboData(const QString& data) {
         return TestCaseSendChannel::Dongle;
     if (data.compare(QStringLiteral("Cloud"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Cloud;
+    if (data.compare(QStringLiteral("ProductSerial"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::ProductSerial;
     return TestCaseSendChannel::Product;
 }
 
@@ -115,6 +125,8 @@ QString sendChannelComboData(TestCaseSendChannel channel) {
         return QStringLiteral("Dongle");
     if (channel == TestCaseSendChannel::Cloud)
         return QStringLiteral("Cloud");
+    if (channel == TestCaseSendChannel::ProductSerial)
+        return QStringLiteral("ProductSerial");
     return QStringLiteral("Product");
 }
 
@@ -162,6 +174,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                     out.kind = SendCmdParamKind::String;
                 else
                     out.kind = SendCmdParamKind::JsonMap;
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::ProductSerial) {
+        ProductSerialCmd serialCmd;
+        if (ProductSerialCmdCatalog::productSerialCmdFromName(name, serialCmd)) {
+            DeviceCmdParamSchema schema;
+            if (ProductSerialCmdCatalog::paramSchemaFor(serialCmd, schema)) {
+                out.valid = true;
+                out.hint = ProductSerialCmdCatalog::paramUiHint(name);
+                out.kind = SendCmdParamKind::None;
             }
         }
         return out;
@@ -312,20 +336,12 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("PLC_V3_KEY_START_PAUSE"), QStringLiteral("PLC+V3 开始暂停键触摸整步")},
         {QStringLiteral("PLC_V3_KEY_LEFT"), QStringLiteral("PLC+V3 左键触摸整步")},
         {QStringLiteral("PLC_V3_KEY_POWER"), QStringLiteral("PLC+V3 电源键触摸整步")},
-        {QStringLiteral("PROD_INST_RESET_ACK"), QStringLiteral("产品串口仪器复位应答")},
-        {QStringLiteral("PROD_INST_START_RX_2402_1M"), QStringLiteral("产品串口开始接收 2402 BLE1M")},
-        {QStringLiteral("PROD_INST_START_RX_2440_1M"), QStringLiteral("产品串口开始接收 2440 BLE1M")},
-        {QStringLiteral("PROD_INST_START_RX_2480_1M"), QStringLiteral("产品串口开始接收 2480 BLE1M")},
-        {QStringLiteral("PROD_INST_START_RX_2402_2M"), QStringLiteral("产品串口开始接收 2402 BLE2M")},
-        {QStringLiteral("PROD_INST_START_RX_2440_2M"), QStringLiteral("产品串口开始接收 2440 BLE2M")},
-        {QStringLiteral("PROD_INST_START_RX_2480_2M"), QStringLiteral("产品串口开始接收 2480 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"), QStringLiteral("并联 CMW 播放 2402 BLE1M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"), QStringLiteral("并联 CMW 播放 2440 BLE1M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"), QStringLiteral("并联 CMW 播放 2480 BLE1M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"), QStringLiteral("并联 CMW 播放 2402 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"), QStringLiteral("并联 CMW 播放 2440 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"), QStringLiteral("并联 CMW 播放 2480 BLE2M")},
-        {QStringLiteral("PROD_INST_STOP_RX_PER"), QStringLiteral("产品串口停止接收与 PER")},
     };
     return map;
 }
@@ -478,6 +494,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
     if (channelIdx >= 0)
         ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
+    ui->comboBox_action->setEnabled(channel != TestCaseSendChannel::ProductSerial);
 
     ui->comboBox_productProtocol->blockSignals(true);
     const int protoIdx =
@@ -583,6 +600,14 @@ void TestCaseEditDialog::updateProductProtocolRowVisible() {
 
 void TestCaseEditDialog::onSendChannelChanged(int) {
     updateProductProtocolRowVisible();
+    const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+    const bool serial = channel == TestCaseSendChannel::ProductSerial;
+    ui->comboBox_action->setEnabled(!serial);
+    if (serial) {
+        const int setIdx = comboIndexByData(ui->comboBox_action, QStringLiteral("Set"));
+        if (setIdx >= 0)
+            ui->comboBox_action->setCurrentIndex(setIdx);
+    }
     refreshDeviceCmdCombo();
 }
 
