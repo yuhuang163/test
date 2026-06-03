@@ -135,6 +135,7 @@ SOURCES += \
     agreement/qProtocol/qpb/pb_encode.c \
     agreement/qProtocol/qpb/qpb.cpp \
     platform/settings/qsetting.cpp \
+    platform/settings/qsetting_bindings.cpp \
     platform/settings/test_flow/test_flow_editor.cpp \
     platform/settings/widgets/test_case_edit_dialog.cpp \
     platform/test_case/test_case.cpp \
@@ -230,6 +231,7 @@ HEADERS += \
     agreement/qProtocol/qpb/pb_encode.h \
     agreement/qProtocol/qpb/qpb.h \
     platform/settings/qsetting.h \
+    platform/settings/qsetting_bindings.h \
     platform/settings/test_flow/test_flow_editor.h \
     platform/settings/widgets/test_case_edit_dialog.h \
     platform/test_case/test_case.h \
