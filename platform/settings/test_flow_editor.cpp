@@ -18,6 +18,7 @@
 #include <QDropEvent>
 #include <QFile>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMenu>
@@ -213,15 +214,19 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         const int insertToolbar = stationIdx >= 0 ? stationIdx + 1 : 1;
         auto* btnNewStation = new QPushButton(QStringLiteral("新建工站"), stationCombo_->parentWidget());
         auto* btnRenameStation = new QPushButton(QStringLiteral("重命名工站"), stationCombo_->parentWidget());
+        auto* btnCopyStation = new QPushButton(QStringLiteral("复制工站"), stationCombo_->parentWidget());
         auto* btnDelStation = new QPushButton(QStringLiteral("删除工站"), stationCombo_->parentWidget());
         btnNewStation->setToolTip(
             QStringLiteral("登记新工站：界面显示中文名称；ini 内自动分配英文键（如 FLOW_ST_0001），避免 %U5389 乱码"));
         btnRenameStation->setToolTip(
             QStringLiteral("修改当前工站在下拉框中的显示名称；流程数据仍保存在原工站键下，不影响 test_case 功能块"));
+        btnCopyStation->setToolTip(
+            QStringLiteral("以当前编排区内容（含未保存修改）复制为新工站；功能块 ini 不重复，仅复制流程顺序"));
         btnDelStation->setToolTip(QStringLiteral("从工站目录移除当前工站，并删除其流程配置（不影响 test_case 功能块 ini）"));
         toolbar->insertWidget(insertToolbar, btnNewStation);
         toolbar->insertWidget(insertToolbar + 1, btnRenameStation);
-        toolbar->insertWidget(insertToolbar + 2, btnDelStation);
+        toolbar->insertWidget(insertToolbar + 2, btnCopyStation);
+        toolbar->insertWidget(insertToolbar + 3, btnDelStation);
 
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
         auto* btnDown = new QPushButton(QStringLiteral("下移"), stationCombo_->parentWidget());
@@ -233,6 +238,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         toolbar->insertWidget(insertAt + 1, btnDown);
         connect(btnNewStation, &QPushButton::clicked, this, [this]() { promptAddFlowStation(); });
         connect(btnRenameStation, &QPushButton::clicked, this, [this]() { promptRenameCurrentFlowStation(); });
+        connect(btnCopyStation, &QPushButton::clicked, this, [this]() { promptCopyCurrentFlowStation(); });
         connect(btnDelStation, &QPushButton::clicked, this, [this]() { promptRemoveCurrentFlowStation(); });
         connect(btnUp, &QPushButton::clicked, this, [this]() { moveSelectedBlock(-1); });
         connect(btnDown, &QPushButton::clicked, this, [this]() { moveSelectedBlock(1); });
@@ -544,6 +550,71 @@ void TestFlowEditor::promptRenameCurrentFlowStation() {
     }
     refreshStationCombo(key);
     persistSelectedStation(key);
+}
+
+void TestFlowEditor::promptCopyCurrentFlowStation() {
+    if (!dialogParent_ || !stationCombo_)
+        return;
+    const QString sourceKey = currentStationKey();
+    if (sourceKey.isEmpty())
+        return;
+
+    const QString sourceLabel = stationCombo_->currentText();
+    const QVector<TestFlowStationEntry> catalog = TestCaseStore::loadFlowStationCatalog();
+    auto displayNameTaken = [&catalog](const QString& name) {
+        for (const TestFlowStationEntry& entry : catalog) {
+            if (entry.displayName == name)
+                return true;
+        }
+        return false;
+    };
+    QString defaultName = sourceLabel + QStringLiteral(" 副本");
+    if (displayNameTaken(defaultName)) {
+        for (int n = 2; n < 100; ++n) {
+            const QString candidate = sourceLabel + QStringLiteral(" 副本%1").arg(n);
+            if (!displayNameTaken(candidate)) {
+                defaultName = candidate;
+                break;
+            }
+        }
+    }
+
+    QDialog dlg(dialogParent_);
+    dlg.setWindowTitle(QStringLiteral("复制工站"));
+    auto* form = new QFormLayout(&dlg);
+    auto* editName = new QLineEdit(defaultName, &dlg);
+    editName->setPlaceholderText(QStringLiteral("新工站显示名称"));
+    editName->selectAll();
+    form->addRow(QStringLiteral("源工站"), new QLabel(sourceLabel, &dlg));
+    form->addRow(QStringLiteral("新工站名称"), editName);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const QString newName = editName->text().trimmed();
+    const QVector<TestFlowItemEntry> entries = currentFlowEntries();
+    const bool stopFlow =
+        stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
+
+    QString newKey;
+    QString err;
+    if (!TestCaseStore::copyFlowStation(sourceKey, newName, entries, stopFlow, &newKey, &err)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), err);
+        return;
+    }
+
+    lastLoadedStationKey_.clear();
+    refreshStationCombo(newKey);
+    persistSelectedStation(newKey);
+    reloadCurrentStation();
+    QMessageBox::information(dialogParent_, QStringLiteral("已复制"),
+                             QStringLiteral("已创建工站「%1」，流程已写入 总的测试流程.ini")
+                                 .arg(TestCaseStore::flowStationDisplayName(newKey)));
 }
 
 void TestFlowEditor::promptRemoveCurrentFlowStation() {

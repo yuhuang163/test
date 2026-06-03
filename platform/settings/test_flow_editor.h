@@ -136,6 +136,8 @@ private:
 
     void promptRenameCurrentFlowStation();
 
+    void promptCopyCurrentFlowStation();
+
     void promptRemoveCurrentFlowStation();
 
     void clearBlocks();

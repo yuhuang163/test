@@ -53,6 +53,10 @@ public:
     /** 显示名或已有键 → 流程 ini 使用的工站键（预设如 自由工站→FREE_WORK） */
     static QString resolveFlowStationKey(const QString& displayNameOrKey);
     static bool addFlowStation(const QString& displayName, QString* errorOut = nullptr);
+    /** 复制工站流程（功能块列表与 StopFlowOnTestFail）到新工站。 */
+    static bool copyFlowStation(const QString& sourceStationKey, const QString& newDisplayName,
+                                const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail,
+                                QString* outNewKey = nullptr, QString* errorOut = nullptr);
     static bool renameFlowStation(const QString& stationKey, const QString& newDisplayName,
                                   QString* errorOut = nullptr);
     static bool removeFlowStation(const QString& stationKey, QString* errorOut = nullptr);

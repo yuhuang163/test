@@ -394,6 +394,49 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
     return saveFlowStationCatalog(catalog);
 }
 
+bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QString& newDisplayName,
+                                    const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail,
+                                    QString* outNewKey, QString* errorOut) {
+    const QString src = resolveFlowStationKey(sourceStationKey.trimmed());
+    if (src.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("源工站无效");
+        return false;
+    }
+
+    bool sourceListed = false;
+    for (const TestFlowStationEntry& entry : loadFlowStationCatalog()) {
+        if (entry.key.compare(src, Qt::CaseInsensitive) == 0) {
+            sourceListed = true;
+            break;
+        }
+    }
+    if (!sourceListed) {
+        if (errorOut)
+            *errorOut = QStringLiteral("源工站不在目录中：%1").arg(src);
+        return false;
+    }
+
+    if (!addFlowStation(newDisplayName, errorOut))
+        return false;
+
+    const QString newKey = resolveFlowStationKey(newDisplayName.trimmed());
+    if (newKey.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("新工站创建后无法解析键");
+        return false;
+    }
+    if (!saveStationFlowItems(newKey, items, stopFlowOnTestFail)) {
+        if (errorOut)
+            *errorOut = QStringLiteral("无法写入新工站流程");
+        removeFlowStation(newKey, nullptr);
+        return false;
+    }
+    if (outNewKey)
+        *outNewKey = newKey;
+    return true;
+}
+
 bool TestCaseStore::renameFlowStation(const QString& stationKey, const QString& newDisplayName,
                                       QString* errorOut) {
     const QString k = stationKey.trimmed();
