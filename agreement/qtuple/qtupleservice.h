@@ -1,4 +1,4 @@
-#ifndef QTUPLESERVICE_H
+﻿#ifndef QTUPLESERVICE_H
 #define QTUPLESERVICE_H
 
 #include <QByteArray>
@@ -40,6 +40,12 @@ public:
 
     static QString tupleCmdToName(TupleCmd cmd);
     static bool tupleCmdFromName(const QString& name, TupleCmd& out);
+
+    /** 登录成功后写入，供同一次测试流程内后续 QTupleService 实例复用。 */
+    static void clearSharedSession();
+    static bool hasSharedSession();
+
+    bool hasAuth() const { return !authHeader_.isEmpty(); }
 
     /** 检验项操作码（如 R_D_TUPLE、R_VAR）→ 人可读中文名；未知则返回 \a opKey。 */
     static QString inspectionOpDisplayName(const QString& opKey);

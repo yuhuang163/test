@@ -624,17 +624,41 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
     if (!block || !dialogParent_)
         return;
     setSelectedBlock(block);
-    TestCaseEditDialog dlg(dialogParent_);
+
+    if (QPointer<TestCaseEditDialog> existing = openEditDialogs_.value(block)) {
+        existing->raise();
+        existing->activateWindow();
+        return;
+    }
+
+    const QString oldFlowKey = block->caseName();
+    auto* dlg = new TestCaseEditDialog(dialogParent_);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    dlg->setWindowModality(Qt::NonModal);
+    dlg->setWindowFlag(Qt::Window, true);
+
     if (!block->isBlank()) {
         TestCaseDefinition def;
         TestCaseStore::loadCase(block->caseName(), def);
-        dlg.setDefinition(def, block->caseName());
+        dlg->setDefinition(def, block->caseName());
+        dlg->setWindowTitle(QStringLiteral("测试项配置 - %1").arg(block->caseName()));
+    } else {
+        dlg->setWindowTitle(QStringLiteral("测试项配置 - 新步骤"));
     }
-    if (dlg.exec() != QDialog::Accepted)
-        return;
-    const QString oldFlowKey = block->caseName();
-    const TestCaseDefinition saved = dlg.definition();
-    block->setCaseName(saved.meta.name);
-    if (!oldFlowKey.isEmpty() && oldFlowKey != saved.meta.name)
-        TestCaseStore::saveStationFlowItems(currentStationKey(), currentFlowEntries());
+
+    openEditDialogs_.insert(block, dlg);
+    connect(dlg, &QObject::destroyed, this, [this, block]() { openEditDialogs_.remove(block); });
+
+    QPointer<TestCaseBlock> blockGuard(block);
+    QPointer<TestCaseEditDialog> dlgGuard(dlg);
+    connect(dlg, &QDialog::accepted, this, [this, blockGuard, dlgGuard, oldFlowKey]() {
+        if (!blockGuard || !dlgGuard)
+            return;
+        const TestCaseDefinition saved = dlgGuard->definition();
+        blockGuard->setCaseName(saved.meta.name);
+        if (!oldFlowKey.isEmpty() && oldFlowKey != saved.meta.name)
+            TestCaseStore::saveStationFlowItems(currentStationKey(), currentFlowEntries());
+    });
+
+    dlg->show();
 }

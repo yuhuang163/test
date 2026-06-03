@@ -163,6 +163,36 @@ def charge_gate():
     }
 
 
+TUPLE_ENV_PRESETS = [
+    ("dev", "http://192.168.200.140:8080"),
+    ("prod", "https://lute-aiot-mac.luteos.com"),
+    ("build-dev-inner", "http://192.168.200.140:8080"),
+    ("build-dev", "https://983ug2va5885.vicp.fun"),
+    ("build-prod", "https://lute-aiot-mac.luteos.com"),
+]
+
+
+def tuple_cloud_login_cases():
+    cases = []
+    for env_key, base_url in TUPLE_ENV_PRESETS:
+        display = f"三元组云端登录（{env_key}）"
+        mes = f"CLOUD_TUPLE_LOGIN_{env_key.upper().replace('-', '_')}"
+        cases.append(
+            cloud(
+                display,
+                mes,
+                "Set",
+                "Login",
+                {
+                    "Param/baseUrl": base_url,
+                    "Param/userName": "INTER_QC",
+                    "Param/password": "Aa123456",
+                },
+            )
+        )
+    return cases
+
+
 def battery_gate():
     return {
         "enabled": True,
@@ -216,7 +246,14 @@ CASES = [
         gate=rssi_gate(),
     ),
     proto("读取充电电流", "CHARGE_CURRENT_READ", "Get", "ChargeCurrentRead", gate=charge_gate()),
-    cloud("获取云端三元组", "CLOUD_TUPLE_FETCH", "Get", "ApplyTupleByMac", {"Send/Param/string": "$MAC"}),
+    *tuple_cloud_login_cases(),
+    cloud(
+        "获取云端三元组",
+        "CLOUD_TUPLE_FETCH",
+        "Get",
+        "ApplyTupleByMac",
+        {"Param/mac": "$MAC", "Param/sku": "PH9", "Param/position": "L"},
+    ),
     proto(
         "写入productKey",
         "WRITE_PRODUCT_KEY",

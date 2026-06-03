@@ -27,6 +27,9 @@
 
 namespace {
 
+QByteArray g_tupleSharedAuthHeader;
+QString g_tupleSharedBaseUrl;
+
 /** 上报检验项中的 deviceSecret 脱敏：保留前面内容，末尾 3 个字符用 '*' 代替（过短则全部打码）。 */
 QString maskDeviceSecretTail3(const QString& secret) {
     const int n = secret.size();
@@ -298,10 +301,15 @@ void QTupleService::set(TupleCmd cmd, const QVariant& data) {
     QString error;
     switch (cmd) {
     case TupleCmd::Login: {
+        const QString urlOverride = m.value(QStringLiteral("baseUrl")).toString().trimmed();
+        if (!urlOverride.isEmpty())
+            baseUrl_ = urlOverride;
         const QString userName = m.value(QStringLiteral("userName")).toString();
         const QString password = m.value(QStringLiteral("password")).toString();
         if (!loginImpl(userName, password, &error)) {
             lastError_ = error;
+        } else {
+            g_tupleSharedBaseUrl = baseUrl_;
         }
         break;
     }
@@ -384,8 +392,26 @@ bool QTupleService::sendCustomMessage(const QVariantMap& map) {
     return true;
 }
 
+void QTupleService::clearSharedSession() {
+    g_tupleSharedAuthHeader.clear();
+    g_tupleSharedBaseUrl.clear();
+}
+
+bool QTupleService::hasSharedSession() {
+    return !g_tupleSharedAuthHeader.isEmpty();
+}
+
 QTupleService::QTupleService(const QString& baseUrl)
-    : baseUrl_(baseUrl.isEmpty() ? SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString() : baseUrl) {}
+    : baseUrl_(baseUrl) {
+    if (baseUrl_.trimmed().isEmpty()) {
+        if (!g_tupleSharedBaseUrl.isEmpty())
+            baseUrl_ = g_tupleSharedBaseUrl;
+        else
+            baseUrl_ = SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString();
+    }
+    if (!g_tupleSharedAuthHeader.isEmpty())
+        authHeader_ = g_tupleSharedAuthHeader;
+}
 
 bool QTupleService::loginImpl(const QString& userName, const QString& password, QString* error) {
     const QByteArray token = QString("%1:%2").arg(userName, password).toUtf8().toBase64();
@@ -412,10 +438,12 @@ bool QTupleService::loginImpl(const QString& userName, const QString& password, 
                            << "responseBody=" << QString::fromUtf8(response)
                            << "error=" << (error ? *error : QString());
         authHeader_.clear();
+        g_tupleSharedAuthHeader.clear();
         return false;
     }
     qDebug().noquote() << "[Tuple] login ok httpStatus=" << httpStatus
                        << "responseBody=" << QString::fromUtf8(response);
+    g_tupleSharedAuthHeader = authHeader_;
     return true;
 }
 

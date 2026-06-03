@@ -1566,9 +1566,11 @@ struct TupleCmdEntry {
 
 const TupleCmdEntry kTupleCatalog[] = {
     {TupleCmd::Login, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap,
-     "云端登录：userName、password\n留空则从 上位机设置 Tuple/AuthUser、Tuple/AuthPassword 读取"},
-    {TupleCmd::ApplyTupleByMac, TestCaseSendAction::Get, DeviceCmdParamKind::String,
-     "按 MAC 拉三元组：留空或 $MAC = 当前工位 MAC\n示例：$MAC"},
+     "三元组云端登录（环境）：每环境单独 ini，如 三元组云端登录（prod）\n"
+     "Param/baseUrl、Param/userName、Param/password；须在获取三元组之前执行"},
+    {TupleCmd::ApplyTupleByMac, TestCaseSendAction::Get, DeviceCmdParamKind::JsonMap,
+     "按 MAC 拉三元组：Param/mac 留空或 $MAC；Param/sku、Param/position 在用例 ini 配置\n"
+     "示例：mac=$MAC，sku=PH9，position=L"},
     {TupleCmd::DebugUpdateMacStatus, TestCaseSendAction::Set, DeviceCmdParamKind::JsonMap,
      "调试：mac、status\n示例：mac=AA1122334455\nstatus=2"},
     {TupleCmd::ReportWriteRecord, TestCaseSendAction::Set, DeviceCmdParamKind::None,
@@ -1584,7 +1586,7 @@ const QHash<QString, TupleCmd> kTupleNameMap = {
 
 const QHash<QString, QString>& tupleCmdUiLabelMap() {
     static const QHash<QString, QString> map = {
-        {QStringLiteral("Login"), QStringLiteral("云端登录")},
+        {QStringLiteral("Login"), QStringLiteral("三元组云端登录")},
         {QStringLiteral("ApplyTupleByMac"), QStringLiteral("云端三元组")},
         {QStringLiteral("DebugUpdateMacStatus"), QStringLiteral("调试 MAC 状态")},
         {QStringLiteral("ReportWriteRecord"), QStringLiteral("三元组写入记录")},

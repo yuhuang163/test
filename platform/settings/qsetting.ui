@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>4</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_key_setting">
       <attribute name="title">
@@ -2847,19 +2847,19 @@
         </item>
        </layout>
       </widget>
-      <widget class="QGroupBox" name="groupBox_tupleConfig">
+      <widget class="QGroupBox" name="groupBox_tupleEnvironment">
        <property name="geometry">
         <rect>
          <x>266</x>
          <y>9</y>
          <width>398</width>
-         <height>137</height>
+         <height>110</height>
         </rect>
        </property>
        <property name="title">
-        <string>三元组配置</string>
+        <string>环境信息</string>
        </property>
-       <layout class="QGridLayout" name="gridLayout_tupleConfig">
+       <layout class="QGridLayout" name="gridLayout_tupleEnvironment">
         <item row="0" column="0">
          <widget class="QLabel" name="label_tupleEnvironment">
           <property name="text">
@@ -2908,24 +2908,39 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
+       </layout>
+      </widget>
+      <widget class="QGroupBox" name="groupBox_tupleConfig">
+       <property name="geometry">
+        <rect>
+         <x>266</x>
+         <y>125</y>
+         <width>398</width>
+         <height>55</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>三元组配置</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_tupleConfig">
+        <item row="0" column="0">
          <widget class="QLabel" name="label_tupleSku">
           <property name="text">
            <string>SKU</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
+        <item row="0" column="1">
          <widget class="QLineEdit" name="lineEdit_tupleSku"/>
         </item>
-        <item row="3" column="2">
+        <item row="0" column="2">
          <widget class="QLabel" name="label_tuplePosition">
           <property name="text">
            <string>Position</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="3">
+        <item row="0" column="3">
          <widget class="QLineEdit" name="lineEdit_tuplePosition">
           <property name="text">
            <string>L</string>
@@ -3123,8 +3138,8 @@
       <widget class="QGroupBox" name="groupBox_brushInstrument">
        <property name="geometry">
         <rect>
-         <x>290</x>
-         <y>160</y>
+         <x>320</x>
+         <y>220</y>
          <width>304</width>
          <height>207</height>
         </rect>

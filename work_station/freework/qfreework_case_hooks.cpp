@@ -31,46 +31,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->sendCommandWithRetry([&]() { fw->usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); });
         return;
     }
-    if (hookId == QStringLiteral("WRITE_PRODUCT_KEY")) {
-        if (fw->failTupleWriteIfNoValidField(QStringLiteral("写入productKey"), !fw->tupleData_.productKey.isEmpty(),
-                                             QStringLiteral("productKey为空")))
-            return;
-        fw->stepRuntime_.testData = fw->tupleData_.productKey;
-        const QByteArray pkUtf8 = fw->tupleData_.productKey.toUtf8();
-        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
-        fw->sendCommandWithRetry([fw, pkUtf8]() {
-            fw->protocolManager.set(DeviceCmd::Sn,
-                                    QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, pkUtf8}));
-        });
-        return;
-    }
-    if (hookId == QStringLiteral("WRITE_DEVICE_NAME")) {
-        if (fw->failTupleWriteIfNoValidField(QStringLiteral("写入deviceName"), !fw->tupleData_.deviceName.isEmpty(),
-                                             QStringLiteral("deviceName为空")))
-            return;
-        fw->stepRuntime_.testData = fw->tupleData_.deviceName;
-        const QByteArray nameUtf8 = fw->tupleData_.deviceName.toUtf8();
-        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
-        fw->sendCommandWithRetry([fw, nameUtf8]() {
-            fw->protocolManager.set(DeviceCmd::Sn,
-                                    QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, nameUtf8}));
-        });
-        return;
-    }
-    if (hookId == QStringLiteral("WRITE_DEVICE_SECRET")) {
-        if (fw->failTupleWriteIfNoValidField(QStringLiteral("写入deviceSecret"),
-                                             !fw->tupleData_.deviceSecret.isEmpty(), QStringLiteral("deviceSecret为空")))
-            return;
-        fw->stepRuntime_.testData = fw->tupleData_.deviceSecret;
-        const QByteArray secretUtf8 = fw->tupleData_.deviceSecret.toUtf8();
-        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
-        fw->sendCommandWithRetry([fw, secretUtf8]() {
-            QVariantMap map;
-            map[QStringLiteral("value")] = secretUtf8;
-            fw->protocolManager.set(DeviceCmd::WriteKey, map);
-        });
-        return;
-    }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {
         const QByteArray tailSn = fw->resolvedTailSnToWrite();
         if (tailSn.isEmpty()) {
@@ -315,9 +275,6 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registered = true;
 
     registerHook(QStringLiteral("JIG_CURRENT_READ"));
-    registerHook(QStringLiteral("WRITE_PRODUCT_KEY"));
-    registerHook(QStringLiteral("WRITE_DEVICE_NAME"));
-    registerHook(QStringLiteral("WRITE_DEVICE_SECRET"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));

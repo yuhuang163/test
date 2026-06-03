@@ -440,46 +440,62 @@ void QFreeWork::reportBydBluetoothMesKeyMaterials() {
 
 void QFreeWork::applyTupleByMac() {
     tupleData_ = TupleApplyResult{};
-    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
-    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
-    const QString sku = SETTINGS.value("Tuple/Sku", "").toString();
-    const QString position = SETTINGS.value("Tuple/Position", "L").toString();
-    QString tupleMac = ui->macInput->text();
-    tupleMac.remove(":");
-    tupleMac.remove("-");
-    tupleMac.remove(" ");
+    QString sku;
+    QString position = QStringLiteral("L");
+    QString macFromParam;
+
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
+        const QVariant resolved = resolveTestCaseSendParamTree(activeTestCase_.send.param);
+        if (resolved.canConvert<QVariantMap>()) {
+            const QVariantMap m = resolved.toMap();
+            sku = m.value(QStringLiteral("sku")).toString().trimmed();
+            position = m.value(QStringLiteral("position"), QStringLiteral("L")).toString().trimmed();
+            macFromParam = m.value(QStringLiteral("mac")).toString().trimmed();
+            if (macFromParam.isEmpty())
+                macFromParam = m.value(QStringLiteral("string")).toString().trimmed();
+        } else if (resolved.userType() == QMetaType::QString) {
+            macFromParam = resolved.toString().trimmed();
+        }
+    }
+    if (sku.isEmpty())
+        sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString().trimmed();
+    if (position.isEmpty())
+        position = SETTINGS.value(QStringLiteral("Tuple/Position"), QStringLiteral("L")).toString().trimmed();
+
+    QString tupleMac = macFromParam;
+    if (tupleMac.isEmpty())
+        tupleMac = ui->macInput->text();
+    tupleMac.remove(QLatin1Char(':'));
+    tupleMac.remove(QLatin1Char('-'));
+    tupleMac.remove(QLatin1Char(' '));
     tupleMac = tupleMac.trimmed().toUpper();
 
     stepRuntime_.done = true;
     stepRuntime_.ask = "获取成功";
-    if (tupleMac.isEmpty() || tupleMac == "没有MAC地址") {
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac")
+        && sku.isEmpty()) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("SKU未配置");
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：请在用例 ini 配置 Param/sku（及 Param/position）"));
+        return;
+    }
+    if (tupleMac.isEmpty() || tupleMac == QStringLiteral("没有MAC地址")) {
         stepRuntime_.pass = false;
         stepRuntime_.testData = "MAC为空";
         TestResult = failValue;
         showlog("三元组获取失败：MAC为空");
         return;
     }
-    if (userName.isEmpty() || password.isEmpty()) {
+    if (!QTupleService::hasSharedSession()) {
         stepRuntime_.pass = false;
-        stepRuntime_.testData = "账号未配置";
+        stepRuntime_.testData = QStringLiteral("未登录");
         TestResult = failValue;
-        showlog("三元组获取失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+        showlog(QStringLiteral("三元组获取失败：请先执行「三元组云端登录」步骤"));
         return;
     }
 
     QTupleService service;
-    QVariantMap loginMap;
-    loginMap[QStringLiteral("userName")] = userName;
-    loginMap[QStringLiteral("password")] = password;
-    service.set(TupleCmd::Login, loginMap);
-    if (!service.lastError().isEmpty()) {
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = "登录失败";
-        TestResult = failValue;
-        showlog("三元组登录失败：" + service.lastError());
-        return;
-    }
-
     QVariantMap applyMap;
     applyMap[QStringLiteral("mac")] = tupleMac;
     applyMap[QStringLiteral("sku")] = sku;
@@ -503,8 +519,6 @@ void QFreeWork::applyTupleByMac() {
 }
 
 void QFreeWork::debugUpdateTupleMacStatus() {
-    const QString userName = SETTINGS.value("Tuple/AuthUser").toString();
-    const QString password = SETTINGS.value("Tuple/AuthPassword").toString();
     QString tupleMac = ui->macInput->text();
     tupleMac.remove(":");
     tupleMac.remove("-");
@@ -515,20 +529,12 @@ void QFreeWork::debugUpdateTupleMacStatus() {
         showlog("调试更新MAC状态失败：MAC为空");
         return;
     }
-    if (userName.isEmpty() || password.isEmpty()) {
-        showlog("调试更新MAC状态失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置");
+    if (!QTupleService::hasSharedSession()) {
+        showlog(QStringLiteral("调试更新MAC状态失败：请先执行「三元组云端登录」"));
         return;
     }
 
     QTupleService service;
-    QVariantMap loginMap;
-    loginMap[QStringLiteral("userName")] = userName;
-    loginMap[QStringLiteral("password")] = password;
-    service.set(TupleCmd::Login, loginMap);
-    if (!service.lastError().isEmpty()) {
-        showlog("调试更新MAC状态登录失败：" + service.lastError() + " user=" + userName + " password=" + password);
-        return;
-    }
     QVariantMap statusMap;
     statusMap[QStringLiteral("mac")] = tupleMac;
     statusMap[QStringLiteral("status")] = 2;
@@ -552,17 +558,14 @@ void QFreeWork::reportTupleWriteRecord() {
         return;
     }
 
-    QTupleService service;
-    QVariantMap loginMap;
-    loginMap[QStringLiteral("userName")] = SETTINGS.value("Tuple/AuthUser").toString();
-    loginMap[QStringLiteral("password")] = SETTINGS.value("Tuple/AuthPassword").toString();
-    service.set(TupleCmd::Login, loginMap);
-    if (!service.lastError().isEmpty()) {
+    if (!QTupleService::hasSharedSession()) {
         stepRuntime_.pass = false;
         TestResult = failValue;
-        showlog("三元组写入记录上报登录失败：" + service.lastError());
+        showlog(QStringLiteral("三元组写入记录上报失败：请先执行「三元组云端登录」"));
         return;
     }
+
+    QTupleService service;
     const bool btRssiPass = BT_RSSI.toInt() > BleLowRssi && BT_RSSI.toInt() < BleHighRssi;
     const bool bleRssiPass = BLE_RSSI.toInt() > BleLowRssi && BLE_RSSI.toInt() < BleHighRssi;
     QVariantMap reportMap;
@@ -607,32 +610,32 @@ void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
         break;
     case TupleCmd::Login: {
         stepRuntime_.done = true;
+        QTupleService service;
+        QString loginError;
         const QVariantMap m = def.send.param.toMap();
-        QString userName = m.value(QStringLiteral("userName")).toString();
-        QString password = m.value(QStringLiteral("password")).toString();
-        if (userName.isEmpty())
-            userName = SETTINGS.value(QStringLiteral("Tuple/AuthUser")).toString();
-        if (password.isEmpty())
-            password = SETTINGS.value(QStringLiteral("Tuple/AuthPassword")).toString();
+        QString userName = m.value(QStringLiteral("userName")).toString().trimmed();
+        QString password = m.value(QStringLiteral("password")).toString().trimmed();
         if (userName.isEmpty() || password.isEmpty()) {
             stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("账号未配置");
-            TestResult = failValue;
-            showlog(QStringLiteral("云端登录失败：Tuple/AuthUser 或 Tuple/AuthPassword 未配置"));
-            return;
+            loginError = QStringLiteral("请在用例 ini 配置 Param/userName、Param/password（及 Param/baseUrl）");
+        } else {
+            QVariantMap loginMap;
+            loginMap[QStringLiteral("userName")] = userName;
+            loginMap[QStringLiteral("password")] = password;
+            const QString baseUrl = m.value(QStringLiteral("baseUrl")).toString().trimmed();
+            if (!baseUrl.isEmpty())
+                loginMap[QStringLiteral("baseUrl")] = baseUrl;
+            service.set(TupleCmd::Login, loginMap);
+            stepRuntime_.pass = service.lastError().isEmpty();
+            if (!stepRuntime_.pass)
+                loginError = service.lastError();
         }
-        QTupleService service;
-        QVariantMap loginMap;
-        loginMap[QStringLiteral("userName")] = userName;
-        loginMap[QStringLiteral("password")] = password;
-        service.set(TupleCmd::Login, loginMap);
-        stepRuntime_.pass = service.lastError().isEmpty();
-        stepRuntime_.testData = stepRuntime_.pass ? QStringLiteral("登录成功") : service.lastError();
+        stepRuntime_.testData = stepRuntime_.pass ? QStringLiteral("登录成功") : loginError;
         if (!stepRuntime_.pass) {
             TestResult = failValue;
-            showlog(QStringLiteral("云端登录失败：") + service.lastError());
+            showlog(QStringLiteral("三元组云端登录失败：") + loginError);
         } else {
-            showlog(QStringLiteral("云端登录成功"));
+            showlog(QStringLiteral("三元组云端登录成功"));
         }
         break;
     }

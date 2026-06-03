@@ -9,14 +9,14 @@
 
 
 #include <QCheckBox>
-
+#include <QHash>
 #include <QObject>
-
+#include <QPointer>
 #include <QPoint>
-
 #include <QString>
-
 #include <QVector>
+
+class TestCaseEditDialog;
 
 
 
@@ -167,6 +167,9 @@ private:
     QWidget* flowContainer_ = nullptr;
 
     bool uiBound_ = false;
+
+    /** 每个流程块最多一个配置窗；关闭后自动移除。 */
+    QHash<TestCaseBlock*, QPointer<TestCaseEditDialog>> openEditDialogs_;
 
 };
 

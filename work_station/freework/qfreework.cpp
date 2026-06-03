@@ -1255,6 +1255,7 @@ void QFreeWork::initDate() {
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     tupleData_ = TupleApplyResult{};
+    QTupleService::clearSharedSession();
     freeWorkMesSegments_.clear();
     TestTime.start();
 }
