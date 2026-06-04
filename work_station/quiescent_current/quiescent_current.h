@@ -1,4 +1,4 @@
-﻿#ifndef QUIESCENT_CURRENT_H
+#ifndef QUIESCENT_CURRENT_H
 #define QUIESCENT_CURRENT_H
 
 #include "test_base.h"

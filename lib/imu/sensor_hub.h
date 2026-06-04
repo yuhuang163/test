@@ -1,4 +1,4 @@
-﻿#ifndef __SENSOR_HUB_H__
+#ifndef __SENSOR_HUB_H__
 #define __SENSOR_HUB_H__
 #include "Abini.h"
 #include "us_eigen_nonsymmsquare.h"

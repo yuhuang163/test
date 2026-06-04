@@ -1,4 +1,4 @@
-﻿#include "ageingbox.h"
+#include "ageingbox.h"
 
 #include <QHBoxLayout>
 #include <QLabel>

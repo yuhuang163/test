@@ -1,4 +1,4 @@
-﻿#include "common_utils.h"
+#include "common_utils.h"
 
 #include <QDir>
 #include <QFile>

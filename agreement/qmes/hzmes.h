@@ -1,4 +1,4 @@
-﻿#ifndef HZMES_H
+#ifndef HZMES_H
 #define HZMES_H
 
 #include "my_set/my_typedef.h"

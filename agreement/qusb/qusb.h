@@ -1,4 +1,4 @@
-﻿#ifndef QUSB_H
+#ifndef QUSB_H
 #define QUSB_H
 #include <QObject>
 #include <QSerialPort>

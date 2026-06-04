@@ -1,4 +1,4 @@
-﻿#include "suction.h"
+#include "suction.h"
 
 #include "qusb.h"
 #include "ui_suction.h"

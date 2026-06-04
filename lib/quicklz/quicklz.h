@@ -1,4 +1,4 @@
-﻿#ifndef QLZ_HEADER
+#ifndef QLZ_HEADER
 #define QLZ_HEADER
 
 // This commercial license lets you use QuickLZ version 1.0.0 to 1.9.9, both inclusive, for development within the

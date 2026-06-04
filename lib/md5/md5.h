@@ -1,4 +1,4 @@
-﻿
+
 #ifndef __MD5_H__
 #define __MD5_H__
 #include <stdio.h>

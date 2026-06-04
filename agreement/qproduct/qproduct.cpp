@@ -1,4 +1,4 @@
-﻿#include "qproduct.h"
+#include "qproduct.h"
 
 #include <QDebug>
 #include <QSerialPort>

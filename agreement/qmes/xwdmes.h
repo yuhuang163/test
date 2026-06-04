@@ -1,4 +1,4 @@
-﻿#ifndef XWDMES_H
+#ifndef XWDMES_H
 #define XWDMES_H
 
 #include "my_set/my_typedef.h"

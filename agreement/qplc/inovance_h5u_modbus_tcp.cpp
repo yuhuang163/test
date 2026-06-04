@@ -1,4 +1,4 @@
-﻿#include "inovance_h5u_modbus_tcp.h"
+#include "inovance_h5u_modbus_tcp.h"
 #include "qmodbus_pdu.h"
 
 #include <QtEndian>

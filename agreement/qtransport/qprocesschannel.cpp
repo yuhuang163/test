@@ -1,4 +1,4 @@
-﻿#include "qprocesschannel.h"
+#include "qprocesschannel.h"
 
 #include <QDateTime>
 #include <QDebug>

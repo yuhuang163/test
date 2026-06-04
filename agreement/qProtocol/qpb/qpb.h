@@ -1,4 +1,4 @@
-﻿#ifndef QPB_H
+#ifndef QPB_H
 #define QPB_H
 
 #include <QObject>

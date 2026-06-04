@@ -1,4 +1,4 @@
-﻿#include "wifibletest.h"
+#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>

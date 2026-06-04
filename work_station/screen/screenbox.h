@@ -1,4 +1,4 @@
-﻿#ifndef SCREENBOX_H
+#ifndef SCREENBOX_H
 #define SCREENBOX_H
 
 #include "box_base.h"

@@ -1,4 +1,4 @@
-﻿// Qshell.h
+// Qshell.h
 #pragma once
 #include <QObject>
 #include <QString>

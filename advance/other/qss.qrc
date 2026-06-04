@@ -1,4 +1,4 @@
-﻿<RCC>
+<RCC>
     <qresource prefix="/">
         <file>qss/black.css</file>
         <file>qss/blue.css</file>

@@ -1,4 +1,4 @@
-﻿#ifndef PLATFORM_TEST_CASE_H
+#ifndef PLATFORM_TEST_CASE_H
 #define PLATFORM_TEST_CASE_H
 
 #include "qprotocol_types.h"

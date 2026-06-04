@@ -1,4 +1,4 @@
-﻿#include "uidemo3.h"
+#include "uidemo3.h"
 #include "ui_uidemo3.h"
 #include "quiwidget.h"
 #include "frmdevice.h"

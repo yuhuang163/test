@@ -1,4 +1,4 @@
-﻿#ifndef UIDEMO6_H
+#ifndef UIDEMO6_H
 #define UIDEMO6_H
 
 #include <QDialog>

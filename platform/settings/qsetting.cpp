@@ -1,4 +1,4 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qsetting_bindings.h"
 #include "qevent.h"

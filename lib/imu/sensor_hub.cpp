@@ -1,4 +1,4 @@
-﻿#include "sensor_hub.h"
+#include "sensor_hub.h"
 
 #include <math.h>
 #include <stdio.h>

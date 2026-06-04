@@ -1,4 +1,4 @@
-﻿#include "qpb.h"
+#include "qpb.h"
 
 
 #include <QDebug>

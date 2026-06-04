@@ -1,4 +1,4 @@
-﻿#include "qaiot.h"
+#include "qaiot.h"
 
 #include <QDebug>
 #include <QStringList>

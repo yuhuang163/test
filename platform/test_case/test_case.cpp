@@ -1,4 +1,4 @@
-﻿#include "test_case.h"
+#include "test_case.h"
 
 #include <QCoreApplication>
 #include <QDateTime>

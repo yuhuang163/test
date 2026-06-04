@@ -1,4 +1,4 @@
-﻿#include "wksmes.h"
+#include "wksmes.h"
 
 #include <QCoreApplication>
 #include <QDebug>

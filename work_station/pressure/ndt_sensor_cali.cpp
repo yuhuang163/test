@@ -1,4 +1,4 @@
-﻿#include "ndt_sensor_cali.h"
+#include "ndt_sensor_cali.h"
 
 #include <QSettings>
 

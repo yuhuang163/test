@@ -1,4 +1,4 @@
-﻿#include "uidemo6.h"
+#include "uidemo6.h"
 #include "ui_uidemo6.h"
 #include "quiwidget.h"
 

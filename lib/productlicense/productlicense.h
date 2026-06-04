@@ -1,4 +1,4 @@
-﻿#ifndef PRODUCTLICENSE_H
+#ifndef PRODUCTLICENSE_H
 #define PRODUCTLICENSE_H
 #include <QtCore>
 

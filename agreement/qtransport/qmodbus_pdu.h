@@ -1,4 +1,4 @@
-﻿#ifndef QMODBUS_PDU_H
+#ifndef QMODBUS_PDU_H
 #define QMODBUS_PDU_H
 
 #include <QByteArray>

@@ -1,4 +1,4 @@
-﻿
+
 #include "motorbox.h"
 
 #include <QHBoxLayout>

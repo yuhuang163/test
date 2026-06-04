@@ -1,4 +1,4 @@
-﻿#ifndef PRESS_CALIB_BOX_H
+#ifndef PRESS_CALIB_BOX_H
 #define PRESS_CALIB_BOX_H
 
 #include <QMainWindow>

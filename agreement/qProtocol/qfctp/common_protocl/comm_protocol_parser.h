@@ -1,4 +1,4 @@
-﻿#ifndef __COMM_PROTOCOL_PARSER_H__
+#ifndef __COMM_PROTOCOL_PARSER_H__
 #define __COMM_PROTOCOL_PARSER_H__
 
 #ifdef __cplusplus

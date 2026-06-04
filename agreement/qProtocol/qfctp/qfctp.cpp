@@ -1,4 +1,4 @@
-﻿#include "qfctp.h"
+#include "qfctp.h"
 #include "Abini.h"
 #include <QDebug>
 #include <QVariantMap>

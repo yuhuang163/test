@@ -1,4 +1,4 @@
-﻿/* pb_decode.c -- decode a protobuf using minimal resources
+/* pb_decode.c -- decode a protobuf using minimal resources
  *
  * 2011 Petteri Aimonen <jpa@kapsi.fi>
  */

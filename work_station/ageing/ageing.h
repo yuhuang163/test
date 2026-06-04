@@ -1,4 +1,4 @@
-﻿#ifndef AGEING_H
+#ifndef AGEING_H
 #define AGEING_H
 
 #include "Abini.h"

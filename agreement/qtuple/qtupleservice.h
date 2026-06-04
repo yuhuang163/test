@@ -1,4 +1,4 @@
-﻿#ifndef QTUPLESERVICE_H
+#ifndef QTUPLESERVICE_H
 #define QTUPLESERVICE_H
 
 #include <QByteArray>

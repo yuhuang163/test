@@ -1,4 +1,4 @@
-﻿
+
 #include "cameratest.h"
 
 #include <QColor>

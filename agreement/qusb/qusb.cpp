@@ -1,4 +1,4 @@
-﻿#include "qusb.h"
+#include "qusb.h"
 #include "qmodbus_pdu.h"
 
 #include <QDebug>

@@ -1,4 +1,4 @@
-﻿#ifndef LXMES_H
+#ifndef LXMES_H
 #define LXMES_H
 
 #include "my_set/my_typedef.h"

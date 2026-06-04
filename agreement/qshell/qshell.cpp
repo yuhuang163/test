@@ -1,4 +1,4 @@
-﻿// Qshell.cpp
+// Qshell.cpp
 #include "Qshell.h"
 #include <QDebug>
 

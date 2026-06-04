@@ -1,4 +1,4 @@
-﻿#ifndef QPROTOCOLMANAGER_H
+#ifndef QPROTOCOLMANAGER_H
 #define QPROTOCOLMANAGER_H
 
 #include "qprotocol.h"

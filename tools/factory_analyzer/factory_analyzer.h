@@ -1,4 +1,4 @@
-﻿#ifndef FACTORY_ANALYZER_H
+#ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
 #include "qadb.h"

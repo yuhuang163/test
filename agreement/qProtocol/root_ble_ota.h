@@ -1,4 +1,4 @@
-﻿#ifndef ROOT_BLE_OTA_H
+#ifndef ROOT_BLE_OTA_H
 #define ROOT_BLE_OTA_H
 
 #include <QByteArray>

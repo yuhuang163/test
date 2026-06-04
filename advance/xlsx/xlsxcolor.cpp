@@ -1,4 +1,4 @@
-﻿#include "xlsxcolor_p.h"
+#include "xlsxcolor_p.h"
 #include "xlsxstyles_p.h"
 #include "xlsxutility_p.h"
 

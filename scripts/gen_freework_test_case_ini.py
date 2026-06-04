@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """根据 work_station/freework/testFunction.cpp FREEWORK_TEST_LIST 生成 test_case ini。"""
 import os
 

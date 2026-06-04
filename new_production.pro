@@ -1,4 +1,4 @@
-﻿QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
+QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
 
 
 QMAKE_PROJECT_DEPTH = 0
@@ -28,10 +28,10 @@ QMAKE_CXXFLAGS += /utf-8
 
 # force utf-8 msvc output 不勾选
 # 默认编码utf-8
-# 如果是utf-8添加bom
+# 总是删除with bom
 # text codec for tools用local
 # 语言用中文
-# 项目编码规则  crlf  utf-8 with bom
+# 项目编码规则  crlf  utf-8
 
 # Qt Creator编写代码时界面经常卡死解决办法
 # 帮助->关于插件->C+±>取消勾选ClangCodeModel（重启QtCreator）

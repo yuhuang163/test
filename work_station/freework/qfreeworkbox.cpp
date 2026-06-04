@@ -1,4 +1,4 @@
-﻿#include "qfreeworkbox.h"
+#include "qfreeworkbox.h"
 
 #include <QAction>
 #include "qfreework.h"

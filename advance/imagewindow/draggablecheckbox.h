@@ -1,4 +1,4 @@
-﻿#ifndef DRAGGABLECHECKBOX_H
+#ifndef DRAGGABLECHECKBOX_H
 #define DRAGGABLECHECKBOX_H
 
 #include <QtWidgets/QCheckBox>

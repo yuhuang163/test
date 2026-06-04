@@ -1,4 +1,4 @@
-﻿#include "qvisa.h"
+#include "qvisa.h"
 
 #include <QDebug>
 #include "Abini.h"

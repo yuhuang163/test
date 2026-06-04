@@ -1,4 +1,4 @@
-﻿#include "qsetting_bindings.h"
+#include "qsetting_bindings.h"
 
 #include "my_set/my_typedef.h"
 

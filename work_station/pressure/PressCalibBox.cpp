@@ -1,4 +1,4 @@
-﻿#include "PressCalibBox.h"
+#include "PressCalibBox.h"
 
 #include <QHBoxLayout>
 #include <QLabel>

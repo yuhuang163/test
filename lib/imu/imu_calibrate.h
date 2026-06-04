@@ -1,4 +1,4 @@
-﻿#ifndef __IMU_CALIBRATE_H__
+#ifndef __IMU_CALIBRATE_H__
 #define __IMU_CALIBRATE_H__
 
 #include "Abini.h"

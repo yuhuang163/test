@@ -1,4 +1,4 @@
-﻿#include "root_ble_ota.h"
+#include "root_ble_ota.h"
 
 #include <QCoreApplication>
 #include <QDebug>

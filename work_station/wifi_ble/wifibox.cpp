@@ -1,4 +1,4 @@
-﻿#include "wifibox.h"
+#include "wifibox.h"
 
 #include "ui_wifibox.h"
 #include "wifibletest.h"

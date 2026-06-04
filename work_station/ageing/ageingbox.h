@@ -1,4 +1,4 @@
-﻿#ifndef AGEINGBOX_H
+#ifndef AGEINGBOX_H
 #define AGEINGBOX_H
 
 #include "box_base.h"

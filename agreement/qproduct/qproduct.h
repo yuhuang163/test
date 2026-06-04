@@ -1,4 +1,4 @@
-﻿#ifndef QPRODUCT_H
+#ifndef QPRODUCT_H
 #define QPRODUCT_H
 
 #include <QByteArray>

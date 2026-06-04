@@ -1,4 +1,4 @@
-﻿#include "qmes.h"
+#include "qmes.h"
 
 #include <QStringList>
 

@@ -1,4 +1,4 @@
-﻿# New Product Test Framework (Qt)
+# New Product Test Framework (Qt)
 基于模块化与分层设计的多工站产测上位机工程框架。
 
 ## 克隆后首次设置（Git 提交钩子）

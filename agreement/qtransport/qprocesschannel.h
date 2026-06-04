@@ -1,4 +1,4 @@
-﻿#ifndef QPROCESSCHANNEL_H
+#ifndef QPROCESSCHANNEL_H
 #define QPROCESSCHANNEL_H
 
 #include <QElapsedTimer>

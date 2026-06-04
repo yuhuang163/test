@@ -1,4 +1,4 @@
-﻿
+
 #include "motor.h"
 
 #include "common_utils.h"

@@ -1,4 +1,4 @@
-﻿#include "qmodbus_pdu.h"
+#include "qmodbus_pdu.h"
 
 namespace QModbusPdu {
 

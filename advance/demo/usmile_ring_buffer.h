@@ -1,4 +1,4 @@
-﻿#ifndef __USMILIE_RING_BUFFER_H__
+#ifndef __USMILIE_RING_BUFFER_H__
 #define __USMILIE_RING_BUFFER_H__
 
 /*

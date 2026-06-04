@@ -1,4 +1,4 @@
-﻿#ifndef SUCTION_H
+#ifndef SUCTION_H
 #define SUCTION_H
 
 #include "test_base.h"

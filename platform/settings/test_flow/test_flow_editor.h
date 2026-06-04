@@ -1,4 +1,4 @@
-﻿#ifndef TEST_FLOW_EDITOR_H
+#ifndef TEST_FLOW_EDITOR_H
 
 #define TEST_FLOW_EDITOR_H
 

@@ -1,4 +1,4 @@
-﻿#ifndef PLATFORM_SERIAL_CHANNEL_H
+#ifndef PLATFORM_SERIAL_CHANNEL_H
 #define PLATFORM_SERIAL_CHANNEL_H
 
 #include <QByteArray>

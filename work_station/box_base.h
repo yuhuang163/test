@@ -1,4 +1,4 @@
-﻿#ifndef BOX_BASE_H
+#ifndef BOX_BASE_H
 #define BOX_BASE_H
 
 #include <QHBoxLayout>

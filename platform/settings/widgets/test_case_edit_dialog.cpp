@@ -1,4 +1,4 @@
-﻿#include "test_case_edit_dialog.h"
+#include "test_case_edit_dialog.h"
 #include "ui_test_case_edit_dialog.h"
 
 #include "test_case.h"

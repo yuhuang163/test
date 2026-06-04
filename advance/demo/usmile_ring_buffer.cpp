@@ -1,4 +1,4 @@
-﻿
+
 #include "usmile_ring_buffer.h"
 #include <string.h>
 

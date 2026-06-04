@@ -1,4 +1,4 @@
-﻿#include "qjig.h"
+#include "qjig.h"
 
 #include "AbIni.h"
 #include "common_utils.h"

@@ -1,4 +1,4 @@
-﻿#include "mesmanager.h"
+#include "mesmanager.h"
 
 QMesManager::QMesManager() {
     MesSystems.push_back(&BydMes);

@@ -1,4 +1,4 @@
-﻿#ifndef TEST_CASE_EDIT_DIALOG_H
+#ifndef TEST_CASE_EDIT_DIALOG_H
 #define TEST_CASE_EDIT_DIALOG_H
 
 #include "test_case_types.h"

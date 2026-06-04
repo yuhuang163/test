@@ -1,4 +1,4 @@
-﻿#ifndef FIXTURE_UART_H
+#ifndef FIXTURE_UART_H
 #define FIXTURE_UART_H
 
 #include <QObject>

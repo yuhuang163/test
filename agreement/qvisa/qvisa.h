@@ -1,4 +1,4 @@
-﻿#ifndef QVISA_H
+#ifndef QVISA_H
 #define QVISA_H
 
 #include <QObject>

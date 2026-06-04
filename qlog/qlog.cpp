@@ -1,4 +1,4 @@
-﻿#include "qlog.h"
+#include "qlog.h"
 
 #include "common_utils.h"
 #if _MSC_VER >= 1600

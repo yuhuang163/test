@@ -1,4 +1,4 @@
-﻿#include "quicklz_dec.h"
+#include "quicklz_dec.h"
 
 #include <stdio.h>
 

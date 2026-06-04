@@ -1,4 +1,4 @@
-﻿#include "productlicense.h"
+#include "productlicense.h"
 static const LicensePair license[] = {
     // 生产版本
     {"k0fylisHJpn", "2SXhb9sweQYPQQBxvoaK", "3a55f70e0295c0319a995f92080cb464"},

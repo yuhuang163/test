@@ -1,4 +1,4 @@
-﻿#include "xwdmes.h"
+#include "xwdmes.h"
 
 #include "qeventloop.h"
 

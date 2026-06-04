@@ -1,4 +1,4 @@
-﻿#include "quiescent_current_box.h"
+#include "quiescent_current_box.h"
 
 #include "quiescent_current.h"
 #include "ui_quiescent_current_box.h"

@@ -1,4 +1,4 @@
-﻿#include "draggablecheckbox.h"
+#include "draggablecheckbox.h"
 #include "qapplication.h"
 
 DraggableCheckBox::DraggableCheckBox(const QString& text, int index, QWidget* parent)

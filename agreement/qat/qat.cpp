@@ -1,4 +1,4 @@
-﻿#include "qat.h"
+#include "qat.h"
 
 #include <QDebug>
 #include <map>

@@ -1,4 +1,4 @@
-﻿#ifndef QJIG_H
+#ifndef QJIG_H
 #define QJIG_H
 #include <QMessageBox>
 #include <QObject>

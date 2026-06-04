@@ -1,4 +1,4 @@
-﻿#ifndef WKSMES_H
+#ifndef WKSMES_H
 #define WKSMES_H
 
 #include "my_set/my_typedef.h"

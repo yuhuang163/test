@@ -1,4 +1,4 @@
-﻿// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
+// BYD MES2 实现分区：匿名空间 ①～③，成员实现 ④～⑧（与 bydmes.h 类注释一致）。
 #include "bydmes.h"
 
 #include <QDateTime>

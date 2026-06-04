@@ -1,4 +1,4 @@
-﻿#include "ageing.h"
+#include "ageing.h"
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>

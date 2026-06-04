@@ -1,4 +1,4 @@
-﻿#ifndef COMMON_UTILS_H
+#ifndef COMMON_UTILS_H
 #define COMMON_UTILS_H
 
 #include <QByteArray>

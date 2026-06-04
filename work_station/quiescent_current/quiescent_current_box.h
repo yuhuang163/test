@@ -1,4 +1,4 @@
-﻿#ifndef QUIESCENT_CURRENT_BOX_H
+#ifndef QUIESCENT_CURRENT_BOX_H
 #define QUIESCENT_CURRENT_BOX_H
 #include "box_base.h"
 

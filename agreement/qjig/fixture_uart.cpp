@@ -1,4 +1,4 @@
-﻿#include "fixture_uart.h"
+#include "fixture_uart.h"
 
 #include "common_utils.h"
 #include "qdebug.h"

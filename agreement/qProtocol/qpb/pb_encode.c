@@ -1,4 +1,4 @@
-﻿/* pb_encode.c -- encode a protobuf using minimal resources
+/* pb_encode.c -- encode a protobuf using minimal resources
  *
  * 2011 Petteri Aimonen <jpa@kapsi.fi>
  */

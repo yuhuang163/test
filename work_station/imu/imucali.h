@@ -1,4 +1,4 @@
-﻿#ifndef IMUCALI_H
+#ifndef IMUCALI_H
 #define IMUCALI_H
 
 #include "Abini.h"

@@ -1,4 +1,4 @@
-﻿#include "navlistview.h"
+#include "navlistview.h"
 #include "qfontdatabase.h"
 #include "qpainter.h"
 #include "qfile.h"

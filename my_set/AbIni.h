@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef ABINI_H
 #define ABINI_H  // Qt库头文件

@@ -1,4 +1,4 @@
-﻿#ifndef QSETTING_H
+#ifndef QSETTING_H
 #define QSETTING_H
 
 #include <QHash>

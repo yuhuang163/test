@@ -1,4 +1,4 @@
-﻿#ifndef QAIOT_H
+#ifndef QAIOT_H
 #define QAIOT_H
 
 #include <QByteArray>

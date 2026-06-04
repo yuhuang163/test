@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "test_case.h"
 

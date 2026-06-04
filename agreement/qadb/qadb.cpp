@@ -1,4 +1,4 @@
-﻿// Qadb.cpp
+// Qadb.cpp
 #include "Qadb.h"
 #include <QCoreApplication>
 #include <QDebug>

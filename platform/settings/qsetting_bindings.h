@@ -1,4 +1,4 @@
-﻿#ifndef QSETTING_BINDINGS_H
+#ifndef QSETTING_BINDINGS_H
 #define QSETTING_BINDINGS_H
 
 class QWidget;

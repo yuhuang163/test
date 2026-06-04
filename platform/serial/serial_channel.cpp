@@ -1,4 +1,4 @@
-﻿#include "serial_channel.h"
+#include "serial_channel.h"
 
 #include <QComboBox>
 #include <QSerialPortInfo>

@@ -1,4 +1,4 @@
-﻿// Qadb.h
+// Qadb.h
 #pragma once
 #include <QFile>
 #include <QObject>

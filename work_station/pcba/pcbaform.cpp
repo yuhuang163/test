@@ -1,4 +1,4 @@
-﻿#include "pcbaform.h"
+#include "pcbaform.h"
 
 #include <QMessageBox>
 #include <QSerialPortInfo>

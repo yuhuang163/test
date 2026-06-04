@@ -1,4 +1,4 @@
-﻿#include "hzmes.h"
+#include "hzmes.h"
 
 #include <QEventLoop>
 #include <QJsonDocument>

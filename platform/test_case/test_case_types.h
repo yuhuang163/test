@@ -1,4 +1,4 @@
-﻿#ifndef PLATFORM_TEST_CASE_TYPES_H
+#ifndef PLATFORM_TEST_CASE_TYPES_H
 #define PLATFORM_TEST_CASE_TYPES_H
 
 #include <QString>

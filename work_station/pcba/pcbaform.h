@@ -1,4 +1,4 @@
-﻿#ifndef PCBAFORM_H
+#ifndef PCBAFORM_H
 #define PCBAFORM_H
 
 #include <QWidget>
