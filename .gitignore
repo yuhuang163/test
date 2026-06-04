@@ -11,7 +11,9 @@ build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/**
 new_production.pro.*
-.vscode/
+# 仅共享工作区编码等团队约定，其余 VS Code 本地项仍忽略
+.vscode/*
+!.vscode/settings.json
 .qtcreator/
 
 路特上位机运行环境/所有log
