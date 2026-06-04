@@ -696,12 +696,15 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     .arg(functionName)
                     .arg(caseRetryCount)
                     .arg(caseElapsedMs));
-        TestItem test;
-        test.testItem = functionName;
-        test.testData = stepRuntime_.testData;
-        test.testResult = stepRuntime_.pass ? QStringLiteral("通过") : QStringLiteral("失败");
-        test.ask = stepRuntime_.ask;
-        testItems.append(test);
+        if (!(useTestCaseFlow_ && testCaseMultiGateTableEmitted_)) {
+            TestItem test;
+            test.testItem = functionName;
+            test.testData = stepRuntime_.testData;
+            test.testResult = stepRuntime_.pass ? QStringLiteral("通过") : QStringLiteral("失败");
+            test.ask = stepRuntime_.ask;
+            testItems.append(test);
+        }
+        testCaseMultiGateTableEmitted_ = false;
         if (useTestCaseFlow_) {
             appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
             if (caseDef.timing.delayAfterMs > 0) {

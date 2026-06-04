@@ -18,7 +18,7 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         if (Fixture_uart_ui == nullptr) {
             Fixture_uart_ui = new Fixture_uart;
             connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this, SLOT(startTest()));
-            Fixture_uart_ui->fixBaudRate = 115200;
+            // Fixture_uart_ui->fixBaudRate = 115200;
 
             QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);

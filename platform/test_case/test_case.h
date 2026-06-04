@@ -131,6 +131,34 @@ enum class ProductSerialCmd {
     StopRxAndPer,
 };
 
+/** PCBA 治具 0x55 协议指令（Send/Channel=Fixture 且 Send/Protocol=Pcba）。 */
+enum class FixturePcbaCmd {
+    StartTest,
+    StartSleep,
+    StartWhiteMode,
+    WaitFixturePacket,
+    WaitStartTestAck,
+    WaitSleepRequest,
+};
+
+class FixturePcbaCmdCatalog {
+public:
+    static QStringList allFixturePcbaCmdNames();
+    static QStringList allFixturePcbaCmdNames(TestCaseSendAction action);
+    static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
+    static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
+    static QString fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol);
+    static TestCaseSendAction actionFor(FixturePcbaCmd cmd);
+    static bool isCmdForAction(FixturePcbaCmd cmd, TestCaseSendAction action);
+    static QString fixturePcbaCmdUiLabel(const QString& enumName);
+    static bool fixturePcbaCmdFromName(const QString& name, FixturePcbaCmd& out);
+    static QString fixturePcbaCmdToName(FixturePcbaCmd cmd);
+    static bool paramSchemaFor(FixturePcbaCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, FixturePcbaCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, FixturePcbaCmd cmd, const QVariant& value);
+};
+
 class ProductSerialCmdCatalog {
 public:
     static QStringList allProductSerialCmdNames();

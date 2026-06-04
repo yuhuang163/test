@@ -15,6 +15,8 @@
 
 #include "Abini.h"
 #include "common_utils.h"
+#include "protocol/fixture_uart_types.h"
+#include "protocol/fixture_pcba_uart_protocol.h"
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -658,8 +660,9 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                        : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
-    out.send.productProtocol =
-        DeviceCmdCatalog::productProtocolFromIni(ini.value(QStringLiteral("Send/Protocol")).toString());
+    const QString protocolIni = ini.value(QStringLiteral("Send/Protocol")).toString();
+    out.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
+    out.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
     if (out.send.productProtocol == TestCaseProductProtocol::Qfctp
         && out.send.deviceCmd.compare(QStringLiteral("BaseInfo"), Qt::CaseInsensitive) == 0) {
         out.send.deviceCmd = QStringLiteral("SoftVersionRead");
@@ -673,11 +676,16 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         out.send.channel = TestCaseSendChannel::ProductSerial;
     } else if (channelIni.compare(QStringLiteral("Product"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Product;
+    } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Fixture;
     } else {
+        FixturePcbaCmd inferFixturePcba;
         ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
-        if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, inferSerial)) {
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, inferFixturePcba)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+        } else if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, inferSerial)) {
             out.send.channel = TestCaseSendChannel::ProductSerial;
         } else if (TupleCmdCatalog::tupleCmdFromName(out.send.deviceCmd, inferTuple)) {
             out.send.channel = TestCaseSendChannel::Cloud;
@@ -706,6 +714,13 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, serialCmd)) {
             out.send.action = ProductSerialCmdCatalog::actionFor(serialCmd);
             out.send.param = QVariant();
+        }
+    } else if (out.send.channel == TestCaseSendChannel::Fixture) {
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, fixtureCmd)) {
+            if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, out.send.action))
+                out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
+            FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
         }
     } else {
         DeviceCmd cmd;
@@ -839,10 +854,15 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         channelStr = QStringLiteral("Cloud");
     else if (def.send.channel == TestCaseSendChannel::ProductSerial)
         channelStr = QStringLiteral("ProductSerial");
+    else if (def.send.channel == TestCaseSendChannel::Fixture)
+        channelStr = QStringLiteral("Fixture");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product)
         ini.setValue(QStringLiteral("Send/Protocol"),
                      DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
+    else if (def.send.channel == TestCaseSendChannel::Fixture)
+        ini.setValue(QStringLiteral("Send/Protocol"),
+                     FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -852,6 +872,10 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         TupleCmd tupleCmd;
         if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
             TupleCmdCatalog::paramToIniGroup(ini, tupleCmd, def.send.param);
+    } else if (def.send.channel == TestCaseSendChannel::Fixture) {
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+            FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
     } else if (def.send.channel != TestCaseSendChannel::ProductSerial) {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
@@ -1054,6 +1078,20 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
             errors.append(QStringLiteral("产品串口测试指令无效"));
         } else if (!ProductSerialCmdCatalog::isCmdForAction(serialCmd, def.send.action)) {
             errors.append(QStringLiteral("产品串口指令仅支持「设置」"));
+        }
+    } else if (def.send.channel == TestCaseSendChannel::Fixture) {
+        if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
+            errors.append(QStringLiteral("治具协议类型无效"));
+        }
+        FixturePcbaCmd fixtureCmd;
+        if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd)) {
+            errors.append(QStringLiteral("治具 PCBA 测试指令无效"));
+        } else if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, def.send.action)) {
+            errors.append(QStringLiteral("治具指令与操作方式不匹配"));
+        } else {
+            DeviceCmdParamSchema schema;
+            if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
+                errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
         }
     } else {
         DeviceCmd cmd;
@@ -1908,6 +1946,203 @@ void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const
     }
 }
 
+// ===================== FixturePcbaCmdCatalog =====================
+
+namespace {
+
+struct FixturePcbaCmdEntry {
+    FixturePcbaCmd cmd;
+    TestCaseSendAction action;
+    DeviceCmdParamKind paramKind;
+    const char* hint;
+};
+
+const FixturePcbaCmdEntry kFixturePcbaCatalog[] = {
+    {FixturePcbaCmd::StartTest, TestCaseSendAction::Set, DeviceCmdParamKind::Int,
+     "开始测试 AA+机位：0 或 $INDEX=当前工位号(getIndex)，1~15=指定机位"},
+    {FixturePcbaCmd::StartSleep, TestCaseSendAction::Set, DeviceCmdParamKind::Int,
+     "开始休眠 CC+机位：0 或 $INDEX=当前工位号，1~15=指定机位"},
+    {FixturePcbaCmd::StartWhiteMode, TestCaseSendAction::Set, DeviceCmdParamKind::Int,
+     "亮白模式 EE+机位：0 或 $INDEX=当前工位号，1~15=指定机位"},
+    {FixturePcbaCmd::WaitFixturePacket, TestCaseSendAction::Get, DeviceCmdParamKind::None,
+     "等待 0x55 治具长包（电流/按键等），回传类型选 ProtocolFixturePcbaData"},
+    {FixturePcbaCmd::WaitStartTestAck, TestCaseSendAction::Get, DeviceCmdParamKind::None,
+     "等待治具短包「开始测试」应答（55 AA … AA AA）"},
+    {FixturePcbaCmd::WaitSleepRequest, TestCaseSendAction::Get, DeviceCmdParamKind::None,
+     "等待治具短包「请求休眠」（55 xx 05 CC AA）"},
+};
+
+const QHash<QString, FixturePcbaCmd> kFixturePcbaNameMap = {
+    {QStringLiteral("StartTest"), FixturePcbaCmd::StartTest},
+    {QStringLiteral("StartSleep"), FixturePcbaCmd::StartSleep},
+    {QStringLiteral("StartWhiteMode"), FixturePcbaCmd::StartWhiteMode},
+    {QStringLiteral("WaitFixturePacket"), FixturePcbaCmd::WaitFixturePacket},
+    {QStringLiteral("WaitStartTestAck"), FixturePcbaCmd::WaitStartTestAck},
+    {QStringLiteral("WaitSleepRequest"), FixturePcbaCmd::WaitSleepRequest},
+};
+
+const QHash<QString, QString>& fixturePcbaCmdUiLabelMap() {
+    static const QHash<QString, QString> map = {
+        {QStringLiteral("StartTest"), QStringLiteral("开始测试（AA）")},
+        {QStringLiteral("StartSleep"), QStringLiteral("开始休眠（CC）")},
+        {QStringLiteral("StartWhiteMode"), QStringLiteral("亮白模式（EE）")},
+        {QStringLiteral("WaitFixturePacket"), QStringLiteral("等待治具数据长包")},
+        {QStringLiteral("WaitStartTestAck"), QStringLiteral("等待开始测试应答")},
+        {QStringLiteral("WaitSleepRequest"), QStringLiteral("等待休眠请求")},
+    };
+    return map;
+}
+
+}  // namespace
+
+QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames() {
+    QStringList names = kFixturePcbaNameMap.keys();
+    names.sort();
+    return names;
+}
+
+QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (const FixturePcbaCmdEntry& entry : kFixturePcbaCatalog) {
+        if (entry.action == action)
+            names.append(fixturePcbaCmdToName(entry.cmd));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QString& text) {
+    if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::Pcba;
+    return TestCaseFixtureProtocol::Pcba;
+}
+
+QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol protocol) {
+    Q_UNUSED(protocol);
+    return QStringLiteral("Pcba");
+}
+
+QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol) {
+    Q_UNUSED(protocol);
+    return QStringLiteral("PCBA测试协议");
+}
+
+TestCaseSendAction FixturePcbaCmdCatalog::actionFor(FixturePcbaCmd cmd) {
+    for (const FixturePcbaCmdEntry& entry : kFixturePcbaCatalog) {
+        if (entry.cmd == cmd)
+            return entry.action;
+    }
+    return TestCaseSendAction::Set;
+}
+
+bool FixturePcbaCmdCatalog::isCmdForAction(FixturePcbaCmd cmd, TestCaseSendAction action) {
+    return actionFor(cmd) == action;
+}
+
+QString FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(const QString& enumName) {
+    const QString key = enumName.trimmed();
+    const QString label = fixturePcbaCmdUiLabelMap().value(key);
+    if (!label.isEmpty())
+        return cmdPickerDisplayLabel(label);
+    return QStringLiteral("未登记治具指令");
+}
+
+bool FixturePcbaCmdCatalog::fixturePcbaCmdFromName(const QString& name, FixturePcbaCmd& out) {
+    const auto it = kFixturePcbaNameMap.constFind(name.trimmed());
+    if (it == kFixturePcbaNameMap.cend())
+        return false;
+    out = it.value();
+    return true;
+}
+
+QString FixturePcbaCmdCatalog::fixturePcbaCmdToName(FixturePcbaCmd cmd) {
+    for (auto it = kFixturePcbaNameMap.cbegin(); it != kFixturePcbaNameMap.cend(); ++it) {
+        if (it.value() == cmd)
+            return it.key();
+    }
+    return QString();
+}
+
+bool FixturePcbaCmdCatalog::paramSchemaFor(FixturePcbaCmd cmd, DeviceCmdParamSchema& out) {
+    for (const FixturePcbaCmdEntry& entry : kFixturePcbaCatalog) {
+        if (entry.cmd == cmd) {
+            out.kind = entry.paramKind;
+            out.hint = QString::fromUtf8(entry.hint);
+            return true;
+        }
+    }
+    return false;
+}
+
+QString FixturePcbaCmdCatalog::paramUiHint(const QString& enumName) {
+    FixturePcbaCmd cmd;
+    if (!fixturePcbaCmdFromName(enumName, cmd))
+        return QString();
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return QString();
+    return schema.hint;
+}
+
+bool FixturePcbaCmdCatalog::paramFromIniGroup(const QSettings& settings, FixturePcbaCmd cmd, QVariant& out) {
+    switch (cmd) {
+    case FixturePcbaCmd::StartTest:
+    case FixturePcbaCmd::StartSleep:
+    case FixturePcbaCmd::StartWhiteMode: {
+        QVariant machine = readSendScopedParam(settings, QStringLiteral("MachineIndex"), QVariant());
+        if (!machine.isValid())
+            machine = settings.value(QStringLiteral("Send/Param/MachineIndex"));
+        if (!machine.isValid()) {
+            const QString legacyKey = QStringLiteral("SendParam/MachineIndex");
+            if (settings.contains(legacyKey))
+                machine = settings.value(legacyKey);
+        }
+        if (!machine.isValid()) {
+            out = QStringLiteral("$INDEX");
+            break;
+        }
+        if (machine.userType() == QMetaType::QString) {
+            const QString s = machine.toString().trimmed();
+            if (s.compare(QStringLiteral("$INDEX"), Qt::CaseInsensitive) == 0
+                || s.compare(QStringLiteral("$SLOT"), Qt::CaseInsensitive) == 0 || s.isEmpty()) {
+                out = QStringLiteral("$INDEX");
+                break;
+            }
+        }
+        bool ok = false;
+        int idx = machine.toInt(&ok);
+        if (!ok || idx == 0)
+            out = QStringLiteral("$INDEX");
+        else
+            out = qBound(1, idx, 15);
+        break;
+    }
+    default:
+        out = QVariant();
+        break;
+    }
+    return true;
+}
+
+void FixturePcbaCmdCatalog::paramToIniGroup(QSettings& settings, FixturePcbaCmd cmd, const QVariant& value) {
+    removeKeysWithPrefix(settings, QStringLiteral("SendParam"));
+    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    const QString prefix = sendParamIniPrefix();
+    switch (cmd) {
+    case FixturePcbaCmd::StartTest:
+    case FixturePcbaCmd::StartSleep:
+    case FixturePcbaCmd::StartWhiteMode:
+        if (value.userType() == QMetaType::QString)
+            settings.setValue(prefix + QStringLiteral("/MachineIndex"), value.toString().trimmed());
+        else
+            settings.setValue(prefix + QStringLiteral("/MachineIndex"), value.toInt());
+        break;
+    default:
+        break;
+    }
+}
+
 // ===================== ProductSerialCmdCatalog =====================
 
 namespace {
@@ -2250,6 +2485,20 @@ const QVector<GateTypeDescriptor> kTypes = {
      {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"),
      {{QStringLiteral("result"), QStringLiteral("结果码")}}},
+    {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"),
+     {{QStringLiteral("machineNumber"), QStringLiteral("机号")},
+      {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")},
+      {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")},
+      {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")},
+      {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")},
+      {QStringLiteral("shipCurrent"), QStringLiteral("待机电流(uA)")},
+      {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")},
+      {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")},
+      {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")},
+      {QStringLiteral("button1"), QStringLiteral("按键1")},
+      {QStringLiteral("button2"), QStringLiteral("按键2")},
+      {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")},
+      {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2355,6 +2604,28 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("result")) {
             ok = true;
             return d.result;
+        }
+    } else if (reportType == QLatin1String("ProtocolFixturePcbaData")) {
+        QVariantMap m = payload.toMap();
+        if (m.isEmpty()) {
+            const FixturePacketData pack = payload.value<FixturePacketData>();
+            m.insert(QStringLiteral("machineNumber"), pack.machineNumber);
+            m.insert(QStringLiteral("staticCurrent"), pack.staticCurrent);
+            m.insert(QStringLiteral("workingCurrent"), pack.workingCurrent);
+            m.insert(QStringLiteral("chargingCurrent"), pack.chargingCurrent);
+            m.insert(QStringLiteral("musicCurrent"), pack.musicCurrent);
+            m.insert(QStringLiteral("shipCurrent"), pack.shipCurrent);
+            m.insert(QStringLiteral("pumpVoltageMv"), pack.pumpVoltageMv);
+            m.insert(QStringLiteral("mcuVoltageMv"), pack.mcuVoltageMv);
+            m.insert(QStringLiteral("batteryVoltageMv"), pack.batteryVoltageMv);
+            m.insert(QStringLiteral("button1"), pack.button1);
+            m.insert(QStringLiteral("button2"), pack.button2);
+            m.insert(QStringLiteral("overVoltageLight"), pack.overVoltageLight);
+            m.insert(QStringLiteral("fixerro"), pack.fixerro);
+        }
+        if (m.contains(field)) {
+            ok = true;
+            return m.value(field).toDouble();
         }
     }
     return 0.0;
@@ -2695,6 +2966,8 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)
         return true;
+    if (def.send.channel == TestCaseSendChannel::Fixture)
+        return true;
     if (isDongleBleConnectStep(def))
         return true;
     if (def.gate.enabled)
@@ -2731,6 +3004,8 @@ bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (def.send.channel == TestCaseSendChannel::Fixture)
+        return def.gate.enabled ? 8000 : 5000;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)
         return 30000;
     if (isDongleBleConnectStep(def))

@@ -27,8 +27,13 @@ private slots:
     void onDeviceCmdChanged(int index);
     void onGateReportTypeChanged(int index);
     void updateGateFieldsEnabled();
+    bool isMultiGateTableMode() const;
     bool isPeriphMultiGateMode() const;
+    bool isFixturePcbaMultiGateMode() const;
+    void rebuildMultiGateTable();
+    QVector<TestCaseGate> readMultiGatesFromTable() const;
     QVector<TestCaseGate> readPeriphGatesFromTable() const;
+    void writeMultiGatesToTable(const QVector<TestCaseGate>& gates);
     void writePeriphGatesToTable(const QVector<TestCaseGate>& gates);
     void updatePromptFieldsEnabled();
     void updateHookFieldsEnabled();
@@ -40,7 +45,8 @@ private:
     void updateSendParamVisibility(bool hasParam);
 
     Ui::TestCaseEditDialog* ui = nullptr;
-    QTableWidget* tableWidget_periphGates_ = nullptr;
+    /** 一项回包多项卡控（外设状态 / PCBA治具数据包） */
+    QTableWidget* tableWidget_multiGates_ = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */
     QString originalCaseName_;
 };

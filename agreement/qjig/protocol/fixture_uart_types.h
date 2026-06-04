@@ -106,6 +106,9 @@ typedef struct FixturePacketData {
     uint staticCurrent = 0;
     uint workingCurrent = 0;
     uint chargingCurrent = 0;
+    uint pumpVoltageMv = 0;
+    uint mcuVoltageMv = 0;
+    uint batteryVoltageMv = 0;
     uint8_t fixerro = 0;
     uint machine_get_mac_state = 0;
     machine_command_id_e machine_command_id = COMMAND_ID_BASE;

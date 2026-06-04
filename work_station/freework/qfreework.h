@@ -57,6 +57,11 @@ public:
     void executeCloudTupleCase(const TestCaseDefinition& def);
     /** test_case 产品串口通道：仪器复位 / 开始接收 / 停止与 PER。 */
     void executeProductSerialCase(const TestCaseDefinition& def);
+    /** test_case 治具串口通道（PCBA 0x55 协议，需已打开治具串口窗口）。 */
+    void executeFixturePcbaCase(const TestCaseDefinition& def);
+
+    /** 治具机位：ini 为 $INDEX/0 时用当前工位 getIndex()，否则用配置值 1~15。 */
+    int resolveFixtureMachineIndex(const QVariant& param) const;
 
 private:
     int teststate = -1;
@@ -194,7 +199,11 @@ private:
     QString activeTestCaseStepLabel_;
     TestCaseStepResult testCaseStepResult_;
     bool testCaseStepActive_ = false;
+    /** 治具/外设多项卡控已在 evaluate 时写入结果表，步骤结束不再追加汇总单行 */
+    bool testCaseMultiGateTableEmitted_ = false;
     void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
+    void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                       const QVariant& payload, bool& allPass, QString& detailOut);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
     /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
     QVector<QPair<QString, QString>> freeWorkMesSegments_;

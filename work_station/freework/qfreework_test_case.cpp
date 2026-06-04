@@ -3,15 +3,52 @@
 #include "test_case.h"
 
 #include "qat.h"
+#include "qfreeworkbox.h"
+#include "fixture_uart.h"
+#include "protocol/fixture_pcba_uart_protocol.h"
 #include "qprotocol_types.h"
 
 #include <QFile>
+#include <QTimer>
+
+#include <memory>
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
+
+bool isRuntimeMachineIndexPlaceholder(const QString& text) {
+    const QString s = text.trimmed();
+    return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}")
+           || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}")
+           || s == QStringLiteral("{index}");
+}
+
+int fixtureMachineIndexFromParam(const QVariant& param) {
+    if (param.canConvert<QVariantMap>()) {
+        const QVariantMap map = param.toMap();
+        const QStringList keys = {QStringLiteral("MachineIndex"), QStringLiteral("machineIndex"),
+                                  QStringLiteral("int"),         QStringLiteral("value")};
+        for (const QString& key : keys) {
+            if (!map.contains(key))
+                continue;
+            const int v = map.value(key).toInt();
+            if (v >= 1 && v <= 15)
+                return v;
+        }
+    }
+    bool ok = false;
+    int idx = param.toInt(&ok);
+    if ((!ok || idx <= 0) && param.type() == QVariant::String)
+        idx = param.toString().trimmed().toInt(&ok);
+    if (idx < 1)
+        idx = 1;
+    if (idx > 15)
+        idx = 15;
+    return idx;
+}
 
 bool isRuntimeMacPlaceholder(const QString& text) {
     const QString s = text.trimmed();
@@ -63,6 +100,18 @@ bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
 }
 
 }  // namespace
+
+int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
+    const QVariant resolved = resolveTestCaseSendParamTree(param);
+    if (resolved.userType() == QMetaType::QString
+        && isRuntimeMachineIndexPlaceholder(resolved.toString())) {
+        return qBound(1, getIndex(), 15);
+    }
+    int idx = fixtureMachineIndexFromParam(resolved);
+    if (idx <= 0)
+        return qBound(1, getIndex(), 15);
+    return idx;
+}
 
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
     if (isRuntimeMacPlaceholder(text))
@@ -168,6 +217,7 @@ void QFreeWork::setActiveTestCase(const TestCaseDefinition& def) {
     activeTestCaseStepLabel_ = def.meta.name.trimmed();
     testCaseStepActive_ = true;
     testCaseStepResult_ = {};
+    testCaseMultiGateTableEmitted_ = false;
 }
 
 void QFreeWork::clearActiveTestCase() {
@@ -175,6 +225,61 @@ void QFreeWork::clearActiveTestCase() {
     activeTestCaseStepLabel_.clear();
     testCaseStepActive_ = false;
     testCaseStepResult_ = {};
+    testCaseMultiGateTableEmitted_ = false;
+}
+
+namespace {
+
+QString formatFixtureGateAsk(const TestCaseGate& g) {
+    if (g.op == TestCaseGateOp::Range) {
+        double low = g.low;
+        double high = g.high;
+        GateRegistry::resolveRangeBounds(g, low, high);
+        return QStringLiteral("[%1,%2]").arg(low).arg(high);
+    }
+    if (g.op == TestCaseGateOp::Gt)
+        return QStringLiteral(">%1").arg(g.low);
+    if (g.op == TestCaseGateOp::Lt)
+        return QStringLiteral("<%1").arg(g.high);
+    if (g.op == TestCaseGateOp::Eq)
+        return g.expected;
+    return g.expected;
+}
+
+}  // namespace
+
+void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                              const QVariant& payload, bool& allPass, QString& detailOut) {
+    allPass = true;
+    detailOut.clear();
+    QVector<TestItem> rows;
+    rows.reserve(gates.size());
+    const QString stepName = activeTestCaseStepLabel_.trimmed();
+    QStringList detailParts;
+    for (const TestCaseGate& g : gates) {
+        TestCaseGate ge = g;
+        ge.enabled = true;
+        ge.reportType = reportType;
+        bool subPass = true;
+        QString subDetail;
+        GateRegistry::evaluate(ge, reportType, payload, subPass, subDetail);
+        if (!subPass)
+            allPass = false;
+        detailParts.append(QStringLiteral("%1(%2)")
+                               .arg(GateRegistry::fieldDisplayName(reportType, ge.field), subDetail));
+        TestItem item;
+        item.testItem =
+            stepName + QLatin1Char('-') + GateRegistry::fieldDisplayName(reportType, ge.field);
+        item.testData = subDetail;
+        item.ask = formatFixtureGateAsk(ge);
+        item.testResult = subPass ? passValue : failValue;
+        rows.append(item);
+    }
+    detailOut = detailParts.join(QStringLiteral("; "));
+    if (!rows.isEmpty()) {
+        testResultTableUpdate(rows);
+        testCaseMultiGateTableEmitted_ = true;
+    }
 }
 
 bool QFreeWork::isActiveTestCaseStep(const QString& stepLabel) const {
@@ -217,10 +322,15 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
 
     bool pass = true;
     QString detail;
-    if (gatesForEval.size() > 1)
+    const bool fixtureMultiGate = reportType == QStringLiteral("ProtocolFixturePcbaData")
+                                  && TestCaseStore::usesMultiFieldGates(activeTestCase_);
+    if (fixtureMultiGate) {
+        emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
+    } else if (gatesForEval.size() > 1) {
         GateRegistry::evaluateAll(gatesForEval, reportType, payload, pass, detail);
-    else
+    } else {
         GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
+    }
 
     const TestCaseGate& primaryGate = gatesForEval.first();
     QString testData = detail;
@@ -252,6 +362,45 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             testData = base.res_version.trimmed();
         else if (primaryGate.field == QStringLiteral("product_name"))
             testData = base.product_name.trimmed();
+    } else if (reportType == QStringLiteral("ProtocolFixturePcbaData")
+               && payload.canConvert<FixturePacketData>()) {
+        const FixturePacketData pack = payload.value<FixturePacketData>();
+        testData = QStringLiteral("机号=%1 静态=%2 工作=%3 充电=%4 泵=%5 MCU=%6 电池=%7")
+                       .arg(pack.machineNumber)
+                       .arg(pack.staticCurrent)
+                       .arg(pack.workingCurrent)
+                       .arg(pack.chargingCurrent)
+                       .arg(pack.pumpVoltageMv)
+                       .arg(pack.mcuVoltageMv)
+                       .arg(pack.batteryVoltageMv);
+        if (TestCaseStore::usesMultiFieldGates(activeTestCase_)) {
+            QStringList expectedParts;
+            for (const TestCaseGate& g : gatesForEval) {
+                const QString name = GateRegistry::fieldDisplayName(reportType, g.field);
+                if (g.op == TestCaseGateOp::Range) {
+                    double low = g.low;
+                    double high = g.high;
+                    GateRegistry::resolveRangeBounds(g, low, high);
+                    expectedParts.append(QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high));
+                } else if (g.op == TestCaseGateOp::Eq) {
+                    expectedParts.append(QStringLiteral("%1=%2").arg(name, g.expected));
+                } else if (g.op == TestCaseGateOp::Gt) {
+                    expectedParts.append(QStringLiteral("%1>%2").arg(name).arg(g.low));
+                } else if (g.op == TestCaseGateOp::Lt) {
+                    expectedParts.append(QStringLiteral("%1<%2").arg(name).arg(g.high));
+                } else {
+                    expectedParts.append(QStringLiteral("%1:%2").arg(name, g.expected));
+                }
+            }
+            ask = expectedParts.join(QLatin1Char(';'));
+        } else if (primaryGate.op == TestCaseGateOp::Range) {
+            double low = primaryGate.low;
+            double high = primaryGate.high;
+            GateRegistry::resolveRangeBounds(primaryGate, low, high);
+            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+        } else if (primaryGate.op == TestCaseGateOp::Eq) {
+            ask = primaryGate.expected;
+        }
     } else if (reportType == QStringLiteral("ProtocolPeriphStateData")
                && payload.canConvert<ProtocolPeriphStateData>()) {
         const ProtocolPeriphStateData periph = payload.value<ProtocolPeriphStateData>();
@@ -313,6 +462,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
         if (!TestCaseRunner::stepWaitsForPromptAck(def))
             ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+        return;
+    }
+
+    if (def.send.channel == TestCaseSendChannel::Fixture) {
+        ctx->executeFixturePcbaCase(def);
         return;
     }
 
@@ -381,6 +535,150 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);
     ctx->sendCommandWithRetry(sendFn, timeoutMs);
+}
+
+void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
+        showlog(QStringLiteral("暂不支持的治具协议类型"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    FixturePcbaCmd cmd;
+    if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知治具 PCBA 指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!FixturePcbaCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    Fixture_uart* uart = box ? box->fixtureUartWidget() : nullptr;
+    if (!uart || !uart->isFixtureSerialOpen()) {
+        showlog(QStringLiteral("治具串口未连接，请从菜单打开「连接治具串口」"));
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    const int machineIndex = resolveFixtureMachineIndex(def.send.param);
+
+    if (def.send.action == TestCaseSendAction::Set) {
+        QByteArray frame;
+        switch (cmd) {
+        case FixturePcbaCmd::StartTest:
+            frame = FixturePcbaUartProtocol::buildStartTestCommand(machineIndex);
+            break;
+        case FixturePcbaCmd::StartSleep:
+            frame = FixturePcbaUartProtocol::buildSleepCommand(machineIndex);
+            break;
+        case FixturePcbaCmd::StartWhiteMode:
+            frame = FixturePcbaUartProtocol::buildWhiteModeCommand(machineIndex);
+            break;
+        default:
+            markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
+        if (frame.isEmpty()) {
+            showlog(QStringLiteral("治具 PCBA 组包失败：机位 %1（有效范围 1~15）").arg(machineIndex));
+            markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+            return;
+        }
+        uart->sendPcbaFrame(frame);
+        showlog(QStringLiteral("已发送治具 PCBA：%1，机位 %2，帧 %3")
+                    .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
+                    .arg(machineIndex)
+                    .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, QString::number(machineIndex), QStringLiteral("通过"));
+        return;
+    }
+
+    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    auto* timeoutTimer = new QTimer(this);
+    timeoutTimer->setSingleShot(true);
+    timeoutTimer->setInterval(timeoutMs);
+    const auto waitTimerStopped = std::make_shared<bool>(false);
+
+    const auto stopWaitTimer = [timeoutTimer, waitTimerStopped]() {
+        if (*waitTimerStopped)
+            return;
+        *waitTimerStopped = true;
+        timeoutTimer->disconnect();
+        timeoutTimer->stop();
+        timeoutTimer->deleteLater();
+    };
+
+    const auto onFixtureTimeout = [this, def, stopWaitTimer]() {
+        if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
+            return;
+        stopWaitTimer();
+        showlog(QStringLiteral("治具等待超时：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+    };
+    connect(timeoutTimer, &QTimer::timeout, this, onFixtureTimeout);
+
+    const auto handlePacket = [this, def, stopWaitTimer](const FixturePacketData& pack) {
+        if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
+            return;
+        stopWaitTimer();
+        const QVariant payload = QVariant::fromValue(pack);
+        if (def.gate.enabled
+            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
+            return;
+        const QString detail =
+            QStringLiteral("机号=%1 静态=%2uA 工作=%3mA")
+                .arg(pack.machineNumber)
+                .arg(pack.staticCurrent)
+                .arg(pack.workingCurrent);
+        markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        showlog(QStringLiteral("治具回包：%1").arg(detail));
+    };
+
+    if (cmd == FixturePcbaCmd::WaitFixturePacket) {
+        const auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine, this,
+                           [connPtr, handlePacket](const FixturePacketData& pack) {
+                               QObject::disconnect(*connPtr);
+                               handlePacket(pack);
+                           });
+    } else if (cmd == FixturePcbaCmd::WaitSleepRequest) {
+        const auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine_sleep, this,
+                           [connPtr, handlePacket](const FixturePacketData& pack) {
+                               QObject::disconnect(*connPtr);
+                               handlePacket(pack);
+                           });
+    } else if (cmd == FixturePcbaCmd::WaitStartTestAck) {
+        const auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine_start, this,
+                           [this, def, stopWaitTimer, connPtr]() {
+                               QObject::disconnect(*connPtr);
+                               if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
+                                   return;
+                               stopWaitTimer();
+                               if (!def.gate.enabled) {
+                                   markActiveTestCaseStepDone(true, QStringLiteral("开始测试应答"),
+                                                              QStringLiteral("通过"));
+                                   showlog(QStringLiteral("收到治具开始测试应答"));
+                               } else {
+                                   showlog(QStringLiteral(
+                                       "WaitStartTestAck 不支持卡控，请关闭卡控或改用 WaitFixturePacket"));
+                                   markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
+                               }
+                           });
+    } else {
+        stopWaitTimer();
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    timeoutTimer->start();
+    showlog(QStringLiteral("等待治具回包：%1（超时 %2ms）")
+                .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
+                .arg(timeoutMs));
 }
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {

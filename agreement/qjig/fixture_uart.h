@@ -45,6 +45,11 @@ public:
     void send_command_to_machine(int command_id, int numb);
     void delay_msec(unsigned int msec);
 
+    /** test_case 治具通道：串口是否已打开。 */
+    bool isFixtureSerialOpen() const;
+    /** 发送 PCBA 0x55 组包帧（由上位机组包，不记 start_action）。 */
+    void sendPcbaFrame(const QByteArray& frame);
+
     int fixBaudRate = 9600;
 
 private:

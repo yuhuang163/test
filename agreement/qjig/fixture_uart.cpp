@@ -16,6 +16,8 @@
 
 Fixture_uart::Fixture_uart(QWidget* parent) :
     QWidget(parent), ui(new Ui::Fixture_uart), fixtureSerialPort(new QSerialPort(this)) {
+    // 串口解析在 QtConcurrent 线程 emit，跨线程 QueuedConnection 须注册自定义类型
+    qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
     foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
@@ -107,6 +109,18 @@ void Fixture_uart::openFixtureSerialPort(void) {
     } else {
         QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
     }
+}
+
+bool Fixture_uart::isFixtureSerialOpen() const {
+    return fixtureSerialPort && fixtureSerialPort->isOpen();
+}
+
+void Fixture_uart::sendPcbaFrame(const QByteArray& frame) {
+    if (!isFixtureSerialOpen()) {
+        qDebug() << "治具串口未打开，无法发送 PCBA 帧";
+        return;
+    }
+    writeFixturePort(frame, true, false);
 }
 
 void Fixture_uart::writeFixturePort(const QByteArray& data, bool logTx, bool startAction) {
