@@ -8,6 +8,7 @@
 #include <QVariantMap>
 
 #include "my_set/my_typedef.h"
+#include "qlog.h"
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -47,13 +48,16 @@ public:
     void waitWork(int ms);
     void set_relay_state(int state);
     void get_amplitude();
-    void save_Jig_uart_log(int txrx, QByteArray data);
     void parseCmd(const QByteArray& byte);
     void set(JigCmd cmd, const QVariant& data = {});
     void get(JigCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
+
 signals:
     void send_amplitude_data(QString);
+
+private:
+    Qlog log_;
 };
 
 #endif  // QJIG_H

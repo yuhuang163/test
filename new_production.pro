@@ -121,6 +121,10 @@ SOURCES += \
     agreement/qbulk/crc_md5.cpp \
     agreement/qbulk/qbulk.cpp \
     agreement/qjig/fixture_uart.cpp \
+    agreement/qjig/protocol/fixture_camera_uart_protocol.cpp \
+    agreement/qjig/protocol/fixture_imu_uart_protocol.cpp \
+    agreement/qjig/protocol/fixture_pcba_uart_protocol.cpp \
+    agreement/qjig/protocol/fixture_press_uart_protocol.cpp \
     agreement/qjig/qjig.cpp \
     agreement/qmes/bydmes.cpp \
     agreement/qmes/hqmes.cpp \
@@ -219,6 +223,11 @@ HEADERS += \
     agreement/qproduct/qproduct.h \
     agreement/qbulk/qbulk.h \
     agreement/qjig/fixture_uart.h \
+    agreement/qjig/protocol/fixture_camera_uart_protocol.h \
+    agreement/qjig/protocol/fixture_imu_uart_protocol.h \
+    agreement/qjig/protocol/fixture_pcba_uart_protocol.h \
+    agreement/qjig/protocol/fixture_press_uart_protocol.h \
+    agreement/qjig/protocol/fixture_uart_types.h \
     agreement/qjig/qjig.h \
     agreement/qmes/bydmes.h \
     agreement/qmes/hqmes.h \

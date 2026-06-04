@@ -271,7 +271,7 @@ void Qjig::sendjigData(jigState fixstate) {
         if (!dataToSend.isEmpty()) {
             qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
             serialPort->write(dataToSend);
-            save_Jig_uart_log(1, dataToSend);
+            log_.save_jig_uart_log(1, dataToSend);
         }
     }
 }
@@ -344,40 +344,6 @@ void Qjig::get_amplitude() {
     if (!dataToSend.isEmpty()) {
         qDebug().noquote() << "JIG TX:" << QString::fromLatin1(dataToSend.toHex(' ').toUpper());
         serialPort->write(dataToSend);
-        save_Jig_uart_log(1, dataToSend);
-    }
-}
-
-void Qjig::save_Jig_uart_log(int txrx, QByteArray data) {
-    const QString folderName = QStringLiteral("所有log/治具log");
-    if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
-        return;
-    }
-
-    const QString fileName = QStringLiteral("Jig治具日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile logFile(filePath);
-    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        qDebug() << "写入成功治具日志";
-        // 写入数据
-        QTextStream out(&logFile);
-        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
-        const QString detailedTimestamp = CommonUtils::formatTimestampMs();
-        const QString hexData = CommonUtils::toHexUpperSpaced(data);
-
-        if (txrx)  // 发送的
-        {
-            out << detailedTimestamp << tr("- tx发送的原始数据为：") << data << "\n";
-            out << detailedTimestamp << tr("- tx发送的16进制数据：") << hexData << "\n";
-        } else {
-            out << detailedTimestamp << tr("- rx接收的原始数据为：") << data << "\n";
-            out << detailedTimestamp << tr("- rx接收的16进制数据：") << hexData << "\n";
-        }
-
-        logFile.close();
-    } else {
-        qDebug() << "无法打开治具日志文件：" << fileName;
+        log_.save_jig_uart_log(1, dataToSend);
     }
 }

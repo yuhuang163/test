@@ -1,5 +1,9 @@
 #include "qlog.h"
 
+#include <QDebug>
+#include <QFile>
+#include <QTextStream>
+
 #include "common_utils.h"
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -70,4 +74,48 @@ void Qlog::save_brush_log(int m_index, QString macAddress, QString data) {
     } else {
         qDebug() << "无法打开设备日志文件：" << fileName;
     }
+}
+
+namespace {
+
+void saveJigUartLogImpl(int txrx, const QByteArray& data, const QString& fileNamePrefix) {
+    const QString folderName = QStringLiteral("所有log/治具log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        qDebug() << "无法创建目录:" << folderName;
+        return;
+    }
+
+    const QString fileName = fileNamePrefix + CommonUtils::dateStampYmd() + QStringLiteral(".log");
+    const QString filePath = CommonUtils::joinPath(folderName, fileName);
+
+    QFile logFile(filePath);
+    if (!logFile.open(QIODevice::Append | QIODevice::Text)) {
+        qDebug() << "无法打开治具日志文件：" << fileName;
+        return;
+    }
+
+    qDebug() << "写入成功治具日志";
+    QTextStream out(&logFile);
+    out.setCodec("UTF-8");
+    const QString detailedTimestamp = CommonUtils::formatTimestampMs();
+    const QString hexData = CommonUtils::toHexUpperSpaced(data);
+
+    if (txrx) {
+        out << detailedTimestamp << QStringLiteral("- tx发送的原始数据为：") << data << "\n";
+        out << detailedTimestamp << QStringLiteral("- tx发送的16进制数据：") << hexData << "\n";
+    } else {
+        out << detailedTimestamp << QStringLiteral("- rx接收的原始数据为：") << data << "\n";
+        out << detailedTimestamp << QStringLiteral("- rx接收的16进制数据：") << hexData << "\n";
+    }
+    logFile.close();
+}
+
+}  // namespace
+
+void Qlog::save_fixture_uart_log(int txrx, const QByteArray& data) {
+    saveJigUartLogImpl(txrx, data, QStringLiteral("治具日志"));
+}
+
+void Qlog::save_jig_uart_log(int txrx, const QByteArray& data) {
+    saveJigUartLogImpl(txrx, data, QStringLiteral("Jig治具日志"));
 }
