@@ -1,4 +1,4 @@
-#ifndef QUIESCENT_CURRENT_H
+﻿#ifndef QUIESCENT_CURRENT_H
 #define QUIESCENT_CURRENT_H
 
 #include "test_base.h"
@@ -53,8 +53,7 @@ public:
 
 private:
     void applyCurrentProtocolConfig();
-    void loadCurrentAmmeterVisaConfig(Qusb::ProtocolConfig* cfg);
-    void loadCurrentProgrammablePowerConfig();
+    void syncVisaPowerUiFromSettings();
     bool setProgrammablePowerOutput(bool enable);
     void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
     QByteArray sn;
@@ -85,7 +84,6 @@ private:
     QString totalresult = "";
     Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
     bool useProgrammablePower = false;
-    Qvisa::ProtocolConfig programmablePowerVisaConfig_;
     double programmablePowerMeasuredCurrentA_ = 0.0;
     bool programmablePowerCurrentReadOk_ = false;
     typedef enum {

@@ -161,9 +161,7 @@ private:
     /** 自上次「开始接收」后是否已在「并联CMW播放*」步成功打过 GPRF；PER 步据此避免重复播放。 */
     bool cmwGprfBurstDoneSinceStartRx_ = false;
     /** CMW100 VISA 配置，与 Wifi_ble 侧 BlePer/Cmw* 同源。 */
-    Qvisa::ProtocolConfig cmw100VisaConfig_;
     void loadWifiBleCmw100Config();
-    bool runCmwVisa(const std::function<bool(Qvisa*)>& action);
     bool freeWorkCmwVisaWrite(const QString& cmd);
     bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
     /** 并联 GPRF：`alignedPostTrigHoldMs>=0` 时 TRIG 后固定等待使用该值（与 BrushInstrument/PacketPhaseWaitMs 同源）；若为真且 **`outAlignedWaitDoneByCmw` 输出 true**，表示已在仪器路径内阻塞等满，PER 勿再延时 waitPacketMs。仅当 **未** 开 `BlePer/CmwWaitArbScount` 时才能把「对齐等满」记在 CMW 内。 */

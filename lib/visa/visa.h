@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*/
+﻿/*---------------------------------------------------------------------------*/
 /* Distributed by the IVI Foundation                                         */
 /* Contains National Instruments extensions.                                 */
 /* Do not modify the contents of this file.                                  */

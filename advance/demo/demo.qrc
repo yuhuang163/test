@@ -1,4 +1,4 @@
-<RCC>
+﻿<RCC>
     <qresource prefix="/">
         <file>demo/main_about.png</file>
         <file>demo/main_company.png</file>

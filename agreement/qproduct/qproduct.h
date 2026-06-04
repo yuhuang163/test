@@ -4,6 +4,8 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QVariant>
+#include <QVariantMap>
 
 class QSerialPort;
 
@@ -16,6 +18,22 @@ class QSerialPort;
 class Qproduct : public QObject {
     Q_OBJECT
 public:
+    enum class ProductCmd {
+        WriteRaw,           // set: QByteArray
+        WriteHex,           // set: QString
+        ParseRx,            // set: QByteArray
+        ClearRxAccum,       // set/get
+        SendReset,          // set
+        SendStopReceive,    // set
+        SendStart2402Ble1M, // set
+        SendStart2440Ble1M, // set
+        SendStart2480Ble1M, // set
+        SendStart2402Ble2M, // set
+        SendStart2440Ble2M, // set
+        SendStart2480Ble2M, // set
+        GetStopReceiveCount // get: QVariant(QByteArray)
+    };
+
     explicit Qproduct(QSerialPort* port, QObject* parent = nullptr);
 
     QSerialPort* serialPort() const { return port_; }
@@ -30,6 +48,9 @@ public:
 
     /** 与 jig->parseCmd 一致：由 readProductSerialPortData 在每批聚合数据上调用，追加缓冲并扫描 docs/测试.md 固定应答，必要时发 instrument* 信号。 */
     void parseCmd(const QByteArray& data);
+    void set(ProductCmd cmd, const QVariant& data = {});
+    void get(ProductCmd cmd, const QVariant& param = {});
+    bool sendCustomMessage(const QVariantMap& map);
     const QByteArray& productSerialRxAccum() const { return productSerialRxAccum_; }
     void clearProductSerialRxAccum();
 

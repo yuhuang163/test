@@ -2,6 +2,7 @@
 #define MESMANAGER_H
 #include <bydmes.h>  // 比亚迪的mes头文件
 #include <hqmes.h>   // 华勤的mes头文件
+#include <hzmes.h>   // 华庄的mes头文件
 #include <jjmes.h>   // 金进的mes头文件
 #include <lxmes.h>   // 立讯的mes头文件
 #include <wksmes.h>  // 伟克森的mes头文件
@@ -37,6 +38,7 @@ private:
     xwdmes XwdMes;
     lxmes LxMes;
     hqmes HqMes;
+    hzmes HzMes;
     wksmes WksMes;
     ydmmes YdmMes;
     std::vector<Qmes*> MesSystems;

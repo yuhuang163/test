@@ -1,11 +1,9 @@
 ﻿// Qshell.h
 #pragma once
 #include <QObject>
-#include <QProcess>
-#include <QQueue>
-#include <QElapsedTimer>
-#include <QTimer>
+#include <QString>
 #include <functional>
+#include "qprocesschannel.h"
 
 class Qshell : public QObject
 {
@@ -21,26 +19,6 @@ public:
                      std::function<void(const QString &, qint64)> callback,
                      qint64 timeoutMs = 3000);
 
-private slots:
-    void onReadyRead();
-    void onFinished(int exitCode, QProcess::ExitStatus status);
-    void checkTimeout();
-
 private:
-    struct CmdItem {
-        QString command;
-        QString endMark;
-        QElapsedTimer timer;
-        std::function<void(const QString &, qint64)> callback;
-        qint64 timeoutMs;
-    };
-
-    void processNextCommand();
-
-private:
-    QProcess *shell = nullptr;
-    QQueue<CmdItem> commandQueue;
-    QString cmdBuffer;
-    bool isProcessing = false;
-    QTimer timeoutTimer;
+    QProcessChannel* channel_ = nullptr;
 };

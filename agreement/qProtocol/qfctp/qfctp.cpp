@@ -856,11 +856,7 @@ bool Qfctp::tryUnwrapPhyPacket(const QByteArray &packet, QList<QByteArray> &outP
 
 bool Qfctp::sendPacket(const QByteArray &innerPacket, QByteArray *outPhyPacket) const
 {
-    if (serialPort == nullptr) {
-        qWarning() << "FCTP 串口对象为空，未发送数据包";
-        return false;
-    }
-    if (!serialPort->isOpen()) {
+    if (!serialPort || !serialPort->isOpen()) {
         qWarning() << "FCTP 串口未打开，未发送数据包";
         return false;
     }

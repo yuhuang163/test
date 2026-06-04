@@ -102,7 +102,7 @@ void quiescent_current::applyCurrentProtocolConfig() {
     cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
     cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
     cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
-    loadCurrentAmmeterVisaConfig(&cfg);
+    syncVisaPowerUiFromSettings();
 
     if (cfg.protocol == Qusb::ProtocolType::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
@@ -116,77 +116,29 @@ void quiescent_current::applyCurrentProtocolConfig() {
     }
 
     currentProtocolType = cfg.protocol;
-    useProgrammablePower = SETTINGS.value("Current/UseProgrammablePower", true).toBool();
+    useProgrammablePower = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
 
     usb->setProtocolConfig(cfg);
-    loadCurrentProgrammablePowerConfig();
-
 
     showlog("静态电流协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
     showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
             ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange +
-            ", VISA配置=" + QString(cfg.scpiUseVisa ? "ON" : "OFF") +
-            ", 地址=" + cfg.scpiVisaAddress);
-    showlog("程控电源开关=" + QString(useProgrammablePower ? "ON" : "OFF") +
-            ", VISA=" + programmablePowerVisaConfig_.visaAddress +
-            ", V=" + QString::number(programmablePowerVisaConfig_.powerVoltageV, 'f', 3) +
-            ", A=" + QString::number(programmablePowerVisaConfig_.powerCurrentA, 'f', 3));
-}
-
-void quiescent_current::loadCurrentAmmeterVisaConfig(Qusb::ProtocolConfig* cfg) {
-    if (!cfg) {
-        return;
+            ", VISA配置=" + QString(SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() ? "ON" : "OFF") +
+            ", 地址=" + SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString());
+    {
+        showlog("程控电源开关=" + QString(useProgrammablePower ? "ON" : "OFF") +
+                ", VISA=" + SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString() +
+                ", V=" + QString::number(SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble(), 'f', 3) +
+                ", A=" + QString::number(SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble(), 'f', 3));
     }
-
-    cfg->scpiUseVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool();
-    cfg->scpiVisaAddress =
-        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("ASRL10::INSTR")).toString().trimmed();
-    cfg->scpiReadCurrentCmd =
-        SETTINGS.value(QStringLiteral("Current/ScpiReadCurrentCmd"), QStringLiteral("MEASure:CURRent:DC? 500e-3"))
-            .toString();
-
-    ui->currentAmmeterUseVisaCheckBox->setChecked(cfg->scpiUseVisa);
-    ui->currentAmmeterVisaAddressEdit->setText(cfg->scpiVisaAddress);
 }
 
-void quiescent_current::loadCurrentProgrammablePowerConfig() {
-    // 程控电源只读取 VisaPower/，避免和 Current/ 下的万用表 VISA 地址串用。
-    programmablePowerVisaConfig_.useVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool();
-    programmablePowerVisaConfig_.visaAddress =
-        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("GPIB0::8::INSTR")).toString();
-    programmablePowerVisaConfig_.timeoutMs = SETTINGS.value(QStringLiteral("VisaPower/TimeoutMs"), 3000).toInt();
-    programmablePowerVisaConfig_.powerVoltageV =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiPowerVoltageV"), 12))
-            .toDouble();
-    programmablePowerVisaConfig_.powerCurrentA =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiPowerCurrentA"), 2.5))
-            .toDouble();
-    programmablePowerVisaConfig_.setVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiSetVoltageCmd"), QStringLiteral("VOLT %1")))
-            .toString();
-    programmablePowerVisaConfig_.setCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiSetCurrentCmd"), QStringLiteral("CURR %1")))
-            .toString();
-    programmablePowerVisaConfig_.outputOnCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiOutputOnCmd"), QStringLiteral("OUTP ON")))
-            .toString();
-    programmablePowerVisaConfig_.outputOffCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"),
-                       SETTINGS.value(QStringLiteral("Current/ScpiOutputOffCmd"), QStringLiteral("OUTP OFF")))
-            .toString();
-    programmablePowerVisaConfig_.readVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), QStringLiteral("MEASure:VOLTage:DC?")).toString();
-    programmablePowerVisaConfig_.readCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"),
-                       QStringLiteral("MEASure:CURRent:DC? 500e-3"))
-            .toString();
-    setVisaProtocolConfig(programmablePowerVisaConfig_);
+void quiescent_current::syncVisaPowerUiFromSettings() {
+    ui->currentAmmeterUseVisaCheckBox->setChecked(
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool());
+    ui->currentAmmeterVisaAddressEdit->setText(
+        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("ASRL10::INSTR")).toString().trimmed());
 }
 
 bool quiescent_current::setProgrammablePowerOutput(bool enable) {
@@ -195,12 +147,16 @@ bool quiescent_current::setProgrammablePowerOutput(bool enable) {
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         return true;
     }
-    bool ok = runVisa([enable](Qvisa* device) { return device->setProgrammablePowerOutput(enable); }, useProgrammablePower);
+    if (!visa) {
+        return false;
+    }
+    const VisaCmd cmd = enable ? VisaCmd::PowerOutputOn : VisaCmd::PowerOutputOff;
+    bool ok = visa->set(cmd);
     if (!ok) {
         showlog(QStringLiteral("程控电源输出%1失败，重连VISA后重试")
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         resetVisaBackend();
-        ok = runVisa([enable](Qvisa* device) { return device->setProgrammablePowerOutput(enable); }, useProgrammablePower);
+        ok = visa->set(cmd);
     }
     showlog(QStringLiteral("程控电源输出%1=%2")
                 .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭"))
@@ -638,6 +594,23 @@ void quiescent_current::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        sn = snFromMes.toUtf8();
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
@@ -713,6 +686,7 @@ void quiescent_current::on_snInput_returnPressed() {
     usblogwaittime->setInterval(5000);
     usblogwaittime->start();
     firstconnectbrush = 1;
+    applyAdaptiveV3ProductBySn(ui->snInput);
 
     QRegularExpression snRegex(snPattern);
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
@@ -773,6 +747,12 @@ void quiescent_current::on_macInput_returnPressed() {
 }
 
 void quiescent_current::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->snInput->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->snInput->text();
         pack.is_hq_send_mac = 1;
@@ -922,7 +902,8 @@ void quiescent_current::startTask() {
             case STATE_IDLE: {  // 复位一切
                 if (useProgrammablePower) {
                     applyCurrentProtocolConfig();
-                    if (!programmablePowerVisaConfig_.useVisa || programmablePowerVisaConfig_.visaAddress.trimmed().isEmpty()) {
+                    if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()
+                        || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
                         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
                         pack.itemvalue = "power_visa_config=NG";
                         totalresult = failValue;
@@ -930,10 +911,13 @@ void quiescent_current::startTask() {
                         break;
                     }
                     showlog(QStringLiteral("开始配置程控电源：address=%1")
-                                .arg(programmablePowerVisaConfig_.visaAddress));
-                    const bool powerCfgOk =
-                        runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); },
-                                useProgrammablePower);
+                                .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString()));
+                    bool powerCfgOk = true;
+                    if (!visa) {
+                        powerCfgOk = false;
+                    } else {
+                        powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
+                    }
                     const bool outOk = setProgrammablePowerOutput(true);
                     showlog(QString("程控电源配置=%1, 输出打开=%2")
                                 .arg(powerCfgOk ? "OK" : "NG")
@@ -1169,7 +1153,9 @@ void quiescent_current::on_pushButton_clicked() {
 
 void quiescent_current::on_pushButton_3_clicked() {
     if (useProgrammablePower) {
-        runVisa([](Qvisa* device) { return device->readProgrammablePowerCurrent(); }, useProgrammablePower);
+        if (visa) {
+            visa->get(VisaCmd::ReadCurrent);
+        }
     } else {
         usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
     }
@@ -1310,15 +1296,19 @@ void quiescent_current::on_visa_test_clicked()
 {
     applyCurrentProtocolConfig();
 
-    if (!programmablePowerVisaConfig_.useVisa || programmablePowerVisaConfig_.visaAddress.trimmed().isEmpty()) {
+    if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()
+        || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
         return;
     }
-    if (!runVisa([](Qvisa* device) { return device->sendPowerInstruction(Qvisa::PowerAction::ConfigurePowerSupply); })) {
+    if (!visa) {
         showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
         return;
     }
-
+    if (!visa->set(VisaCmd::ConfigurePowerSupply)) {
+        showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
+        return;
+    }
 
     const bool outOnOk = setProgrammablePowerOutput(true);
     if (!outOnOk) {
@@ -1329,9 +1319,10 @@ void quiescent_current::on_visa_test_clicked()
     const bool outOffOk = setProgrammablePowerOutput(false);
 
     showlog(QStringLiteral("程控电源已按配置上电：电压=%1V，限流=%2A，链路=%3")
-                    .arg(programmablePowerVisaConfig_.powerVoltageV, 0, 'f', 2)
-                    .arg(programmablePowerVisaConfig_.powerCurrentA, 0, 'f', 3)
-                    .arg(QStringLiteral("VISA:%1").arg(programmablePowerVisaConfig_.visaAddress)));
+                    .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble(), 0, 'f', 2)
+                    .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble(), 0, 'f', 3)
+                    .arg(QStringLiteral("VISA:%1")
+                             .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString())));
     showlog(QStringLiteral("程控电源输出关闭=%1").arg(outOffOk ? QStringLiteral("OK") : QStringLiteral("NG")));
 }
 

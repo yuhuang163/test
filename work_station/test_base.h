@@ -92,6 +92,7 @@ public:
     QString toHex(const QByteArray& data);
     QString parseMacFromSn(const QString& snCode);
     QString generateDateCode();
+    bool applyAdaptiveV3ProductBySn(QLineEdit* snEdit);
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
     QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
@@ -240,10 +241,7 @@ public slots:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
-    void setVisaProtocolConfig(const Qvisa::ProtocolConfig& config);
-    bool runVisa(const std::function<bool(Qvisa*)>& action, bool enabled = true);
     void resetVisaBackend();
-    Qvisa::ProtocolConfig visaProtocolConfig_;
 
 private slots:
     void getDongleVer(QString);

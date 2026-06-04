@@ -1,4 +1,4 @@
-#ifndef INOVANCE_H5U_MODBUS_TCP_H
+﻿#ifndef INOVANCE_H5U_MODBUS_TCP_H
 #define INOVANCE_H5U_MODBUS_TCP_H
 
 #include <QString>

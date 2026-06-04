@@ -1,14 +1,13 @@
-#include "qusb.h"
+﻿#include "qusb.h"
+#include "qmodbus_pdu.h"
 
 #include <QDebug>
-#include <QMessageBox>
 #include <QSerialPort>
 #include <QStringList>
 #include <QVector>
 #include <cmath>
 
 namespace {
-constexpr int kModbusMinFrameLen = 5;
 constexpr int kModbusMaxBufferedLen = 15;
 constexpr int kReg0HighIndex = 3;
 constexpr int kReg0LowIndex = 4;
@@ -20,11 +19,6 @@ quint16 readBigEndianU16(const QByteArray &buffer, int highIndex, int lowIndex)
 {
     return (static_cast<quint8>(buffer.at(highIndex)) << 8) |
            static_cast<quint8>(buffer.at(lowIndex));
-}
-
-bool isExpectedModbusLength(const QByteArray &buffer, quint8 byteCount)
-{
-    return buffer.length() == kModbusMinFrameLen + byteCount;
 }
 
 bool isLikelyAsciiLine(const QByteArray &buffer)
@@ -47,36 +41,6 @@ bool isLikelyAsciiLine(const QByteArray &buffer)
     }
     return true;
 }
-
-// 避免未连接时 sendPowerInstruction / sendCmd 在循环里反复弹 QMessageBox
-bool g_qusbUsbNotOpenDialogShown = false;
-bool g_qusbVisaNotReadyDialogShown = false;
-
-void qusbResetUsbNotOpenDialogIfOpen(QSerialPort* sp)
-{
-    if (sp && sp->isOpen())
-        g_qusbUsbNotOpenDialogShown = false;
-}
-
-void qusbWarnUsbSerialNotOpenOnce()
-{
-    qDebug() << "Qusb: 未打开 usb 串口，无法发送数据";
-    if (g_qusbUsbNotOpenDialogShown)
-        return;
-    g_qusbUsbNotOpenDialogShown = true;
-    QMessageBox::warning(nullptr, QStringLiteral("警告"),
-                          QStringLiteral("未打开 usb 串口\n无法发送数据！"));
-}
-
-void qusbWarnVisaNotConnectedOnce()
-{
-    qDebug() << "Qusb: VISA 资源未连接，无法发送电源指令";
-    if (g_qusbVisaNotReadyDialogShown)
-        return;
-    g_qusbVisaNotReadyDialogShown = true;
-    QMessageBox::warning(nullptr, QStringLiteral("警告"),
-                          QStringLiteral("VISA 资源未连接，无法发送电源指令！"));
-}
 }   // namespace
 #if _MSC_VER >= 1600
     #pragma execution_character_set(push, "utf-8")
@@ -93,14 +57,9 @@ QSerialPort(parent), serialPort(parent)
 
 
     registerCommand();
-    connect(&visa_, &Qvisa::programmablePowerVoltageRead, this, &Qusb::programmablePowerVoltageRead);
-    connect(&visa_, &Qvisa::programmablePowerCurrentRead, this, &Qusb::programmablePowerCurrentRead);
 }
 
-Qusb::~Qusb()
-{
-    closeVisaConnection();
-}
+Qusb::~Qusb() = default;
 
 void Qusb::registerCommand()
 {
@@ -132,23 +91,15 @@ void Qusb::parseCmd(const QByteArray &byte)
     case ProtocolType::LxModbus:
         processlxModbusRTUData(byte);
         break;
-    case ProtocolType::Byd:
-        processModbusRTUData(byte);
-        break;
     case ProtocolType::Auto:
         processScpiData(byte);
         break;
     }
 }
 
-bool Qusb::programmablePowerVisaConfigured() const
-{
-    return protocolConfig_.scpiUseVisa && !protocolConfig_.scpiVisaAddress.trimmed().isEmpty();
-}
-
 bool Qusb::configureProgrammablePower(double voltageV, double currentA)
 {
-    if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
+    if (!serialPort || !serialPort->isOpen())
     {
         return false;
     }
@@ -165,7 +116,7 @@ bool Qusb::configureProgrammablePower(double voltageV, double currentA)
 
 bool Qusb::setProgrammablePowerOutput(bool enable)
 {
-    if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
+    if (!serialPort || !serialPort->isOpen())
     {
         return false;
     }
@@ -180,27 +131,9 @@ bool Qusb::setProgrammablePowerOutput(bool enable)
 
 bool Qusb::readProgrammablePowerVoltage()
 {
-    if (!programmablePowerVisaConfigured() && (!serialPort || !serialPort->isOpen()))
+    if (!serialPort || !serialPort->isOpen())
     {
         return false;
-    }
-    if (programmablePowerVisaConfigured())
-    {
-        if (!ensureVisaConnected())
-        {
-            emit programmablePowerVoltageRead(0.0, false);
-            return false;
-        }
-        QString resp;
-        if (!visaQuery(protocolConfig_.scpiReadVoltageCmd, &resp))
-        {
-            emit programmablePowerVoltageRead(0.0, false);
-            return false;
-        }
-        bool ok = false;
-        const double v = resp.trimmed().toDouble(&ok);
-        emit programmablePowerVoltageRead(v, ok);
-        return true;
     }
     // 串口：下一行 SCPI 回包在 processCmd 中按 pending 解析并 emit
     pendingProgPowerRead_ = ProgrammablePowerReadPending::Voltage;
@@ -210,27 +143,9 @@ bool Qusb::readProgrammablePowerVoltage()
 
 bool Qusb::readProgrammablePowerCurrent()
 {
-    if (!programmablePowerVisaConfigured() && (!serialPort || !serialPort->isOpen()))
+    if (!serialPort || !serialPort->isOpen())
     {
         return false;
-    }
-    if (programmablePowerVisaConfigured())
-    {
-        if (!ensureVisaConnected())
-        {
-            emit programmablePowerCurrentRead(0.0, false);
-            return false;
-        }
-        QString resp;
-        if (!visaQuery(protocolConfig_.scpiReadCurrentCmd, &resp))
-        {
-            emit programmablePowerCurrentRead(0.0, false);
-            return false;
-        }
-        bool ok = false;
-        const double v = resp.trimmed().toDouble(&ok);
-        emit programmablePowerCurrentRead(v, ok);
-        return true;
     }
     pendingProgPowerRead_ = ProgrammablePowerReadPending::Current;
     sendCmd(protocolConfig_.scpiReadCurrentCmd);
@@ -239,7 +154,7 @@ bool Qusb::readProgrammablePowerCurrent()
 
 bool Qusb::initializeProgrammablePower()
 {
-    if (!isVisaScpiEnabled() && (!serialPort || !serialPort->isOpen()))
+    if (!serialPort || !serialPort->isOpen())
     {
         return false;
     }
@@ -279,11 +194,6 @@ void Qusb::processScpiData(const QByteArray &byte)
 
 void Qusb::setProtocolConfig(const ProtocolConfig &config)
 {
-    if (protocolConfig_.scpiUseVisa != config.scpiUseVisa ||
-        protocolConfig_.scpiVisaAddress != config.scpiVisaAddress)
-    {
-        closeVisaConnection();
-    }
     protocolConfig_ = config;
 }
 
@@ -292,22 +202,122 @@ Qusb::ProtocolConfig Qusb::protocolConfig() const
     return protocolConfig_;
 }
 
+void Qusb::set(UsbCmd cmd, const QVariant& data)
+{
+    switch (cmd)
+    {
+    case UsbCmd::PowerActionCmd:
+        sendPowerInstruction(static_cast<PowerAction>(data.toInt()));
+        return;
+    case UsbCmd::ProtocolConfigCmd:
+    {
+        ProtocolConfig cfg = protocolConfig_;
+        const QVariantMap m = data.toMap();
+        if (m.contains(QStringLiteral("protocol")))
+            cfg.protocol = static_cast<ProtocolType>(m.value(QStringLiteral("protocol")).toInt());
+        if (m.contains(QStringLiteral("luxshareMachineId")))
+            cfg.luxshareMachineId = m.value(QStringLiteral("luxshareMachineId")).toInt();
+        setProtocolConfig(cfg);
+        return;
+    }
+    case UsbCmd::SendScpiLine:
+        sendCmd(data.toString());
+        return;
+    case UsbCmd::ConfigureProgrammablePower:
+    {
+        const QVariantMap m = data.toMap();
+        configureProgrammablePower(m.value(QStringLiteral("voltage")).toDouble(),
+                                   m.value(QStringLiteral("current")).toDouble());
+        return;
+    }
+    case UsbCmd::ProgrammablePowerOutput:
+        setProgrammablePowerOutput(data.toBool());
+        return;
+    case UsbCmd::ReadProgrammablePowerVoltageCmd:
+        readProgrammablePowerVoltage();
+        return;
+    case UsbCmd::ReadProgrammablePowerCurrentCmd:
+        readProgrammablePowerCurrent();
+        return;
+    case UsbCmd::InitializeProgrammablePowerCmd:
+        initializeProgrammablePower();
+        return;
+    }
+}
+
+void Qusb::get(UsbCmd cmd, const QVariant& param)
+{
+    Q_UNUSED(param);
+    switch (cmd)
+    {
+    case UsbCmd::PowerActionCmd:
+        return;
+    case UsbCmd::ProtocolConfigCmd:
+        return;
+    case UsbCmd::SendScpiLine:
+        return;
+    case UsbCmd::ConfigureProgrammablePower:
+        return;
+    case UsbCmd::ProgrammablePowerOutput:
+        return;
+    case UsbCmd::ReadProgrammablePowerVoltageCmd:
+        readProgrammablePowerVoltage();
+        return;
+    case UsbCmd::ReadProgrammablePowerCurrentCmd:
+        readProgrammablePowerCurrent();
+        return;
+    case UsbCmd::InitializeProgrammablePowerCmd:
+        initializeProgrammablePower();
+        return;
+    }
+}
+
+bool Qusb::sendCustomMessage(const QVariantMap& map)
+{
+    const QString action = map.value(QStringLiteral("action")).toString().trimmed().toLower();
+    if (action == QStringLiteral("poweraction")) {
+        set(UsbCmd::PowerActionCmd, map.value(QStringLiteral("value")));
+        return true;
+    }
+    if (action == QStringLiteral("sendscpiline")) {
+        set(UsbCmd::SendScpiLine, map.value(QStringLiteral("line")));
+        return true;
+    }
+    if (action == QStringLiteral("configureprogrammablepower")) {
+        QVariantMap payload;
+        payload.insert(QStringLiteral("voltage"), map.value(QStringLiteral("voltage")));
+        payload.insert(QStringLiteral("current"), map.value(QStringLiteral("current")));
+        set(UsbCmd::ConfigureProgrammablePower, payload);
+        return true;
+    }
+    if (action == QStringLiteral("programmablepoweroutput")) {
+        set(UsbCmd::ProgrammablePowerOutput, map.value(QStringLiteral("enable")));
+        return true;
+    }
+    if (action == QStringLiteral("readprogrammablepowervoltage")) {
+        get(UsbCmd::ReadProgrammablePowerVoltageCmd);
+        return true;
+    }
+    if (action == QStringLiteral("readprogrammablepowercurrent")) {
+        get(UsbCmd::ReadProgrammablePowerCurrentCmd);
+        return true;
+    }
+    if (action == QStringLiteral("initializeprogrammablepower")) {
+        get(UsbCmd::InitializeProgrammablePowerCmd);
+        return true;
+    }
+    if (action == QStringLiteral("setprotocolconfig")) {
+        set(UsbCmd::ProtocolConfigCmd, map);
+        return true;
+    }
+    return false;
+}
+
 bool Qusb::sendPowerInstruction(PowerAction action)
 {
-    qusbResetUsbNotOpenDialogIfOpen(serialPort);
-
-    if (isVisaScpiEnabled())
+    if (!serialPort || !serialPort->isOpen())
     {
-        if (!ensureVisaConnected())
-        {
-            qusbWarnVisaNotConnectedOnce();
-            return false;
-        }
-        g_qusbVisaNotReadyDialogShown = false;
-    }
-    else if (!serialPort || !serialPort->isOpen())
-    {
-        qusbWarnUsbSerialNotOpenOnce();
+        qDebug() << "Qusb: 未打开 usb 串口，无法发送数据";
         return false;
     }
 
@@ -319,8 +329,6 @@ bool Qusb::sendPowerInstruction(PowerAction action)
         return handleHqAction(action);
     case ProtocolType::LxModbus:
         return handleLxAction(action);
-    case ProtocolType::Byd:
-        return handlebydAction(action);
     case ProtocolType::Auto:
         return handleScpiAction(action);
     }
@@ -424,39 +432,6 @@ bool Qusb::handleLxAction(PowerAction action)
     return false;
 }
 
-bool Qusb::handlebydAction(PowerAction action)
-{
-    switch (action)
-    {
-    case PowerAction::ReadMeasurement:
-        getbydmeaSure(QString());
-        return true;
-    case PowerAction::ConfigurePowerSupply:
-        // BYD 电源配置：统一入口调度到 SCPI 指令链（WFP60H 等）
-        sendCONF(protocolConfig_.scpiCurrentType, protocolConfig_.scpiCurrentMode, protocolConfig_.scpiRange);
-        sendCmd(protocolConfig_.scpiSetVoltageCmd.arg(QString::number(protocolConfig_.scpiPowerVoltageV, 'f', 3)));
-        sendCmd(protocolConfig_.scpiSetCurrentCmd.arg(QString::number(protocolConfig_.scpiPowerCurrentA, 'f', 3)));
-        sendCmd(protocolConfig_.scpiOutputOnCmd);
-        return true;
-    case PowerAction::ReadConfiguration:
-        // BYD 电源读配置
-        getbydCONF(QString());
-        return true;
-    case PowerAction::InitializeDevice:
-        // BYD 电源初始化
-        sendCmd("*RST");
-        return true;
-    case PowerAction::ReadProgrammablePowerVoltage:
-        return readProgrammablePowerVoltage();
-    case PowerAction::ReadProgrammablePowerCurrent:
-        return readProgrammablePowerCurrent();
-    case PowerAction::ReadsuctionData:
-        qDebug() << "BYD 协议未实现 ReadsuctionData";
-        return false;
-    }
-    return false;
-}
-
 void Qusb::emitProgrammablePowerReadIfPending(const QString& scpiLine)
 {
     if (pendingProgPowerRead_ == ProgrammablePowerReadPending::None) {
@@ -495,16 +470,9 @@ void Qusb::processCmd(QString cmd, QString parameter)
 }
 void Qusb::sendCmd(QString cmd)
 {
-    if (isVisaScpiEnabled())
-    {
-        visaWrite(cmd);
-        return;
-    }
-
-    qusbResetUsbNotOpenDialogIfOpen(serialPort);
     if (!serialPort || !serialPort->isOpen())
     {
-        qusbWarnUsbSerialNotOpenOnce();
+        qDebug() << "Qusb: 未打开 usb 串口，无法发送数据";
         return;
     }
 
@@ -515,63 +483,6 @@ void Qusb::sendCmd(QString cmd)
     serialPort->write(data);
 }
 
-bool Qusb::isVisaScpiEnabled() const
-{
-    // Scpi：整口 SCPI；Byd：DAM 等为 Modbus，程控电源仍用同一套 VisaPower SCPI 走 VISA
-    if (!programmablePowerVisaConfigured()) {
-        return false;
-    }
-    const ProtocolType p = resolveProtocolForOutput();
-    return p == ProtocolType::Scpi || p == ProtocolType::Byd;
-}
-
-Qvisa::ProtocolConfig Qusb::visaConfigFromProtocolConfig() const
-{
-    Qvisa::ProtocolConfig cfg;
-    cfg.useVisa = protocolConfig_.scpiUseVisa;
-    cfg.visaAddress = protocolConfig_.scpiVisaAddress;
-    cfg.powerVoltageV = protocolConfig_.scpiPowerVoltageV;
-    cfg.powerCurrentA = protocolConfig_.scpiPowerCurrentA;
-    cfg.setVoltageCmd = protocolConfig_.scpiSetVoltageCmd;
-    cfg.setCurrentCmd = protocolConfig_.scpiSetCurrentCmd;
-    cfg.outputOnCmd = protocolConfig_.scpiOutputOnCmd;
-    cfg.outputOffCmd = protocolConfig_.scpiOutputOffCmd;
-    cfg.readVoltageCmd = protocolConfig_.scpiReadVoltageCmd;
-    cfg.readCurrentCmd = protocolConfig_.scpiReadCurrentCmd;
-    return cfg;
-}
-
-bool Qusb::ensureVisaConnected()
-{
-    if (!isVisaScpiEnabled()) {
-        return false;
-    }
-    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
-    return visa_.ensureConnected();
-}
-
-void Qusb::closeVisaConnection()
-{
-    visa_.closeConnection();
-}
-
-bool Qusb::visaWrite(const QString &cmd)
-{
-    if (!isVisaScpiEnabled()) {
-        return false;
-    }
-    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
-    return visa_.writeCommand(cmd);
-}
-
-bool Qusb::visaQuery(const QString &cmd, QString *response)
-{
-    if (!isVisaScpiEnabled()) {
-        return false;
-    }
-    visa_.setProtocolConfig(visaConfigFromProtocolConfig());
-    return visa_.queryCommand(cmd, response);
-}
 void Qusb::sendCONF(QString current, QString dc, QString range)
 {
     // 构建 CONF 命令字符串
@@ -588,37 +499,6 @@ void Qusb::getCONF(QString mac)
     // s = "CONFigure:RANGe?";
     // sendCmd(s);
     s = "CONFigure:FUNCtion?";
-    sendCmd(s);
-}
-void Qusb::getbydCONF(QString mac)
-{
-    Q_UNUSED(mac);
-    const QString s = "CONFigure:FUNCtion?";
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA配置查询返回:" << resp;
-        }
-        return;
-    }
-    sendCmd(s);
-}
-void Qusb::getbydmeaSure(QString mac)
-{
-    Q_UNUSED(mac);
-    QString s = protocolConfig_.scpiReadCurrentCmd;
-    if (isVisaScpiEnabled())
-    {
-        QString resp;
-        if (visaQuery(s, &resp))
-        {
-            qDebug().noquote() << "VISA测量返回:" << resp;
-            emit send_ammeter_data(resp);
-        }
-        return;
-    }
     sendCmd(s);
 }
 void Qusb::getMEASure(QString mac)
@@ -659,55 +539,23 @@ void Qusb::sethqMEASure()
 }
 quint16 calculateCRC(const QByteArray &data)
 {
-    quint16 crc = 0xFFFF;
-
-    for (int i = 0; i < data.length(); ++i)
-    {
-        crc ^= static_cast<quint8>(data.at(i));
-        for (int j = 0; j < 8; ++j)
-        {
-            if (crc & 0x0001)
-            {
-                crc = (crc >> 1) ^ 0xA001;
-            }
-            else
-            {
-                crc >>= 1;
-            }
-        }
-    }
-
-    // Correct the endianness
-    return ((crc & 0x00FF) << 8) | ((crc & 0xFF00) >> 8);
+    return QModbusPdu::crc16ModbusRtuBigEndian(data);
 }
 void Qusb::processModbusRTUData(const QByteArray &response)
 {
-    if (response.length() < kModbusMinFrameLen)
-    {
-        qDebug() << "processModbus RTUDataInvalid Modbus RTU response frame";
-        return;
-    }
-
     qDebug() << "Received Modbus RTU response frame: " << response.toHex().toUpper();
-
-    const quint8 byteCount = static_cast<quint8>(response.at(2));
-    if (!isExpectedModbusLength(response, byteCount))
-    {
-        qDebug() << "Invalid data length";
-        return;
-    }
-
-    const quint16 crcExpected =
-        readBigEndianU16(response, response.length() - 2, response.length() - 1);
+    quint8 byteCount = 0;
+    const bool valid = QModbusPdu::validateRtuFrame(response, &byteCount);
+    const quint16 crcExpected = readBigEndianU16(response, response.length() - 2, response.length() - 1);
     const quint16 crcCalculated = calculateCRC(response.left(response.length() - 2));
 
     qDebug() << "Length: " << response.length() << " Byte Count: " << byteCount
              << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
              << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
 
-    if (crcCalculated != crcExpected)
+    if (!valid)
     {
-        qDebug() << "CRC check failed";
+        qDebug() << "Invalid Modbus RTU frame";
         return;
     }
 
@@ -728,29 +576,19 @@ void Qusb::processlxModbusRTUData(const QByteArray &response)
     if (data.length() > kModbusMaxBufferedLen)
         data = 0;
 
-    if (data.length() < kModbusMinFrameLen)
-    {
-        qDebug() << "processlxModb usRTUData Invalid Modbus RTU response frame";
-        return;
-    }
-
     qDebug() << "Received Modbus RTU data frame: " << data.toHex().toUpper();
-    const quint8 byteCount = static_cast<quint8>(data.at(2));
+    quint8 byteCount = 0;
+    const bool valid = QModbusPdu::validateRtuFrame(data, &byteCount);
     qDebug() << "数据长度：" << byteCount;
-    if (!isExpectedModbusLength(data, byteCount))
-    {
-        qDebug() << "Invalid data length";
-        return;
-    }
 
     const quint16 crcExpected = readBigEndianU16(data, data.length() - 2, data.length() - 1);
     const quint16 crcCalculated = calculateCRC(data.left(data.length() - 2));
     qDebug() << "Length: " << data.length()
              << " Expected CRC: " << QString::number(crcExpected, 16).toUpper()
              << " Calculated CRC: " << QString::number(crcCalculated, 16).toUpper();
-    if (crcCalculated != crcExpected)
+    if (!valid)
     {
-        qDebug() << "CRC check failed";
+        qDebug() << "Invalid Modbus RTU frame";
         return;
     }
 

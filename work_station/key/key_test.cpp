@@ -1155,6 +1155,7 @@ void key_test::on_snInput_returnPressed() {
     usblogwaittime->setInterval(5000);
     usblogwaittime->start();
     firstconnectbrush = 1;
+    applyAdaptiveV3ProductBySn(ui->snInput);
     // 与按键测试工站保持一致：仅使用公司SN规则校验（字母数字且长度>12）
 
      // 检查是否是序列号格式
@@ -1184,6 +1185,12 @@ void key_test::on_snInput_returnPressed() {
 }
 
 void key_test::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->snInput->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->snInput->text();
         pack.is_hq_send_mac = 1;
@@ -1234,6 +1241,22 @@ void key_test::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {

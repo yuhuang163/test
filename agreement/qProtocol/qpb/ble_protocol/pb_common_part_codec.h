@@ -1,4 +1,4 @@
-#ifndef __PB_COMMON_PART_CODEC_H__
+﻿#ifndef __PB_COMMON_PART_CODEC_H__
 #define __PB_COMMON_PART_CODEC_H__
 #include "ble_protocol_msg_process.h"
 #include "server_data.pb.h"

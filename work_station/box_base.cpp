@@ -1,4 +1,4 @@
-#include "box_base.h"
+﻿#include "box_base.h"
 
 #include <QMessageBox>
 #include <QRegularExpression>

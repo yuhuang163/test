@@ -1,4 +1,4 @@
-/*
+﻿/*
  * xusb: Generic USB test program
  * Copyright © 2009-2012 Pete Batard <pete@akeo.ie>
  * Contributions to Mass Storage by Alan Stern.

@@ -1,4 +1,4 @@
-#include "qproduct.h"
+﻿#include "qproduct.h"
 
 #include <QDebug>
 #include <QSerialPort>
@@ -92,6 +92,121 @@ void Qproduct::parseCmd(const QByteArray& data) {
         productSerialRxAccum_.append(data);
         scanRxForInstrumentEvents();
     }
+}
+
+void Qproduct::set(ProductCmd cmd, const QVariant& data) {
+    switch (cmd) {
+        case ProductCmd::WriteRaw:
+            writeRaw(data.toByteArray());
+            return;
+        case ProductCmd::WriteHex:
+            writeHex(data.toString());
+            return;
+        case ProductCmd::ParseRx:
+            parseCmd(data.toByteArray());
+            return;
+        case ProductCmd::ClearRxAccum:
+            clearProductSerialRxAccum();
+            return;
+        case ProductCmd::SendReset:
+            writeRaw(cmdReset());
+            return;
+        case ProductCmd::SendStopReceive:
+            writeRaw(cmdStopReceive());
+            return;
+        case ProductCmd::SendStart2402Ble1M:
+            writeRaw(buildStartReceiveCmd2402Ble1M());
+            return;
+        case ProductCmd::SendStart2440Ble1M:
+            writeRaw(buildStartReceiveCmd2440Ble1M());
+            return;
+        case ProductCmd::SendStart2480Ble1M:
+            writeRaw(buildStartReceiveCmd2480Ble1M());
+            return;
+        case ProductCmd::SendStart2402Ble2M:
+            writeRaw(buildStartReceiveCmd2402Ble2M());
+            return;
+        case ProductCmd::SendStart2440Ble2M:
+            writeRaw(buildStartReceiveCmd2440Ble2M());
+            return;
+        case ProductCmd::SendStart2480Ble2M:
+            writeRaw(buildStartReceiveCmd2480Ble2M());
+            return;
+        case ProductCmd::GetStopReceiveCount:
+            return;
+    }
+}
+
+void Qproduct::get(ProductCmd cmd, const QVariant& param) {
+    switch (cmd) {
+        case ProductCmd::GetStopReceiveCount: {
+            const QByteArray rx = param.toByteArray().isEmpty() ? productSerialRxAccum_ : param.toByteArray();
+            qDebug() << "[Qproduct] stop receive packet count =" << parseStopReceivePacketCountLe(rx);
+            return;
+        }
+        case ProductCmd::ClearRxAccum:
+            clearProductSerialRxAccum();
+            return;
+        default:
+            return;
+    }
+}
+
+bool Qproduct::sendCustomMessage(const QVariantMap& map) {
+    const QString action = map.value(QStringLiteral("action")).toString().trimmed().toLower();
+    if (action == QStringLiteral("writeraw")) {
+        set(ProductCmd::WriteRaw, map.value(QStringLiteral("bytes")).toByteArray());
+        return true;
+    }
+    if (action == QStringLiteral("writehex")) {
+        set(ProductCmd::WriteHex, map.value(QStringLiteral("hex")).toString());
+        return true;
+    }
+    if (action == QStringLiteral("parse")) {
+        set(ProductCmd::ParseRx, map.value(QStringLiteral("bytes")).toByteArray());
+        return true;
+    }
+    if (action == QStringLiteral("clear")) {
+        set(ProductCmd::ClearRxAccum);
+        return true;
+    }
+    if (action == QStringLiteral("reset")) {
+        set(ProductCmd::SendReset);
+        return true;
+    }
+    if (action == QStringLiteral("stopreceive")) {
+        set(ProductCmd::SendStopReceive);
+        return true;
+    }
+    if (action == QStringLiteral("start2402ble1m")) {
+        set(ProductCmd::SendStart2402Ble1M);
+        return true;
+    }
+    if (action == QStringLiteral("start2440ble1m")) {
+        set(ProductCmd::SendStart2440Ble1M);
+        return true;
+    }
+    if (action == QStringLiteral("start2480ble1m")) {
+        set(ProductCmd::SendStart2480Ble1M);
+        return true;
+    }
+    if (action == QStringLiteral("start2402ble2m")) {
+        set(ProductCmd::SendStart2402Ble2M);
+        return true;
+    }
+    if (action == QStringLiteral("start2440ble2m")) {
+        set(ProductCmd::SendStart2440Ble2M);
+        return true;
+    }
+    if (action == QStringLiteral("start2480ble2m")) {
+        set(ProductCmd::SendStart2480Ble2M);
+        return true;
+    }
+    if (action == QStringLiteral("getstopreceivecount")) {
+        get(ProductCmd::GetStopReceiveCount, map.value(QStringLiteral("rx")));
+        return true;
+    }
+    return false;
 }
 
 void Qproduct::clearProductSerialRxAccum() {

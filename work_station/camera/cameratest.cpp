@@ -833,6 +833,20 @@ void cameratest::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
             mesmacAddress = value;
@@ -857,6 +871,7 @@ void cameratest::on_getMac_returnPressed() {
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
     ui->getMac->setDisabled(1);
     ui->macInput->setDisabled(1);
+    applyAdaptiveV3ProductBySn(ui->getMac);
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配
@@ -881,6 +896,12 @@ void cameratest::on_getMac_returnPressed() {
     processGetMesTestValue();  // mes获取
 }
 void cameratest::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->getMac->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
         pack.is_hq_send_mac = 1;

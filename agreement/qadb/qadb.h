@@ -1,19 +1,12 @@
 ﻿// Qadb.h
 #pragma once
+#include <QFile>
 #include <QObject>
 #include <QProcess>
-#include <QQueue>
-#include <QDateTime>
+#include <QString>
 #include <QTimer>
+#include "qprocesschannel.h"
 #include <functional>
-
-struct CmdItem {
-    QString command;
-    QString endMark;
-    QElapsedTimer timer;
-    std::function<void(const QString &, qint64)> callback;
-    qint64 timeoutMs = 5000; // 默认超时
-};
 
 class Qadb : public QObject {
     Q_OBJECT
@@ -32,18 +25,8 @@ public:
     void startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb);
     void stopKeyMonitorAdbShell();
 
-private slots:
-    void onReadyRead();
-    void onFinished(int exitCode, QProcess::ExitStatus exitStatus);
-    void checkTimeout();
-
 private:
-    void processNextCommand();
-    QProcess *adbShell = nullptr;
-    QQueue<CmdItem> commandQueue;
-    bool isProcessing = false;
-    QString cmdBuffer;            // 缓存 adb 输出
-    QTimer timeoutTimer;
+    QProcessChannel* channel_ = nullptr;
     struct InputEvent {
         qint64 sec;
         qint64 usec;

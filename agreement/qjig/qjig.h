@@ -1,9 +1,11 @@
-#ifndef QJIG_H
+﻿#ifndef QJIG_H
 #define QJIG_H
 #include <QMessageBox>
 #include <QObject>
 #include <QQueue>
 #include <QSerialPort>
+#include <QVariant>
+#include <QVariantMap>
 
 #include "my_set/my_typedef.h"
 
@@ -13,6 +15,13 @@
 class Qjig : public QSerialPort {
     Q_OBJECT
 public:
+    enum class JigCmd {
+        SendState,         // data: int(jigState)
+        SetCylinderState,  // data: QVariantMap{state:int, mechine:int}
+        SetRelayState,     // data: int
+        GetAmplitude       // get
+    };
+
     explicit Qjig(QSerialPort* parent = nullptr);
     QSerialPort* serialPort;
     typedef enum {
@@ -38,18 +47,13 @@ public:
     void waitWork(int ms);
     void set_relay_state(int state);
     void get_amplitude();
-    void getDam3158Measure();
-    void setDam3158Channel(int channel);
-    void setDam3158RangeCode(quint16 rangeCode);
     void save_Jig_uart_log(int txrx, QByteArray data);
     void parseCmd(const QByteArray& byte);
+    void set(JigCmd cmd, const QVariant& data = {});
+    void get(JigCmd cmd, const QVariant& param = {});
+    bool sendCustomMessage(const QVariantMap& map);
 signals:
     void send_amplitude_data(QString);
-    void send_suction_data(QString);
-
-private:
-    int dam3158Channel_ = 0;
-    quint16 dam3158RangeCode_ = 0;
 };
 
 #endif  // QJIG_H

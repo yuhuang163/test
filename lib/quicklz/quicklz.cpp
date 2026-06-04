@@ -1,4 +1,4 @@
-// This commercial license lets you use QuickLZ version 1.0.0 to 1.9.9, both inclusive, for development within the
+﻿// This commercial license lets you use QuickLZ version 1.0.0 to 1.9.9, both inclusive, for development within the
 // company for any amount of closed source products and product titles with unlimited distribution.
 // The license is persistent, non-exclusive and non-transferable.
 // The license does not cover derived or ported versions created by third parties under GPL.

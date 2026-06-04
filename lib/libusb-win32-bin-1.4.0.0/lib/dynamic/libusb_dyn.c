@@ -1,4 +1,4 @@
-/* LIBUSB-WIN32, Generic Windows USB Library
+﻿/* LIBUSB-WIN32, Generic Windows USB Library
  * Copyright (C) 2017-2024 Peter Dons Tychsen <pdt@dontech.dk>
  * Copyright (c) 2002-2005 Stephan Meyer <ste_meyer@web.de>
  *

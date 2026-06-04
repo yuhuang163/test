@@ -222,6 +222,20 @@ void imucali::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             // on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
             mesmacAddress = value;
@@ -1258,6 +1272,7 @@ void imucali::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -1287,6 +1302,12 @@ void imucali::on_getMac_returnPressed() {
 }
 
 void imucali::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->getMac->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
         pack.is_hq_send_mac = 1;

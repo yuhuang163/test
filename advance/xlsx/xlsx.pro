@@ -1,4 +1,4 @@
-TARGET = QtXlsx
+﻿TARGET = QtXlsx
 
 QMAKE_DOCS = $$PWD/doc/qtxlsx.qdocconf
 

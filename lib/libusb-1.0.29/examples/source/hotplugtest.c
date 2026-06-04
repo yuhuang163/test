@@ -1,4 +1,4 @@
-/* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
+﻿/* -*- Mode: C; indent-tabs-mode:t ; c-basic-offset:8 -*- */
 /*
  * libusb example program for hotplug API
  * Copyright © 2012-2013 Nathan Hjelm <hjelmn@mac.com>

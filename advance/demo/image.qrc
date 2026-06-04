@@ -1,4 +1,4 @@
-<RCC>
+﻿<RCC>
     <qresource prefix="/">
         <file>image/gametest.png</file>
         <file>image/gametest_focus.png</file>

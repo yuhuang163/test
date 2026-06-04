@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright © 2001 Stephen Williams (steve@icarus.com)
  * Copyright © 2001-2002 David Brownell (dbrownell@users.sourceforge.net)
  * Copyright © 2008 Roger Williams (rawqux@users.sourceforge.net)
