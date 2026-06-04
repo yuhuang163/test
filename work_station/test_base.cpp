@@ -227,27 +227,7 @@ QString test_base::toHex(const QByteArray& data) {
     return CommonUtils::toHexUpperSpaced(data);
 }
 void test_base::saveDongleUartLog(QString data) {
-    const QString folderName = QStringLiteral("所有log/dongle的log");
-    if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
-        return;
-    }
-
-    const QString fileName =
-        QStringLiteral("dongle日志_") + QString::number(m_index) + QLatin1Char('_') + CommonUtils::dateStampYmd() +
-        QStringLiteral(".log");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile logFile(filePath);
-    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&logFile);
-        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
-        // 获取当前时间的详细时间戳
-        out << data << "\n";
-        logFile.close();
-    } else {
-        qDebug() << "无法打开dongle日志文件：" << fileName;
-    }
+    Qlog::saveDongleUartLog(m_index, data);
 }
 
 void test_base::getmacadress(const QByteArray& byte) {
@@ -432,11 +412,7 @@ void test_base::closeProductSerialPort() {
 void test_base::refreshPbData(QString data) { msgEdit()->appendPlainText(data); }
 
 void test_base::showlog(QString msg) {
-    qDebug() << getIndex() << msg;
-    if (!msgEdit()) {
-        return;
-    }
-    msgEdit()->appendPlainText(msg);
+    Qlog::showlog(msg, m_index, msgEdit());
 }
 
 int test_base::getIndex() const { return m_index; }

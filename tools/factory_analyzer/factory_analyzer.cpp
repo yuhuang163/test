@@ -1538,12 +1538,9 @@ factory_analyzer::~factory_analyzer() {
 }
 
 void factory_analyzer::showlog(const QString &msg) {
-    if (msg.isEmpty())
-        return;
     if (!ui || !ui->msgEdit)
         return;
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << "factory_analyzer" << msg;
+    Qlog::showlog(msg, 0, ui->msgEdit);
 }
 
 // --------------------------

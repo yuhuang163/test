@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "common_utils.h"
+#include "qlog.h"
 #include "qat.h"
 #include "my_set/my_typedef.h"
 #include "ui_mainwindow.h"
@@ -347,26 +348,7 @@ void MainWindow::readPendingDatagrams() {
     }
 }
 void MainWindow::saveblackbox(QString data) {
-    const QString folderName = QStringLiteral("所有log/设备黑盒的log");
-    if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
-        return;
-    }
-
-    const QString fileName = QStringLiteral("黑盒日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile logFile(filePath);
-    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&logFile);
-        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
-        // 获取当前时间的详细时间戳
-        QString detailedTimestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        out << detailedTimestamp << "\n" << data << "\n";
-        logFile.close();
-    } else {
-        qDebug() << "无法打开黑盒日志文件：" << fileName;
-    }
+    Qlog::saveBlackboxLog(data.toUtf8());
 }
 void MainWindow::solve_frame(void) {
     while (true) {
@@ -437,25 +419,7 @@ void MainWindow::solve_frame(void) {
 }
 // int cameradatasize = 0;
 void MainWindow::saveDongleUartLog(QString data) {
-    const QString folderName = QStringLiteral("所有log/dongle的log");
-    if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
-        return;
-    }
-
-    const QString fileName = QStringLiteral("dongle日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile logFile(filePath);
-    if (logFile.open(QIODevice::Append | QIODevice::Text)) {
-        QTextStream out(&logFile);
-        out.setCodec("UTF-8");  // 设置编码格式为UTF-8
-        // 获取当前时间的详细时间戳
-        out << data << "\n";
-        logFile.close();
-    } else {
-        qDebug() << "无法打开dongle日志文件：" << fileName;
-    }
+    Qlog::saveDongleUartLogMain(data);
 }
 void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     if (rootBleOtaActive_) {
@@ -2252,18 +2216,11 @@ void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult) {
 }
 
 void MainWindow::showlog(QString msg) {
-    if (msg.isEmpty()) {
-        qDebug() << "showlog: 收到空消息，跳过日志输出";
-        return;
-    }
-
     if (!ui || !ui->msgEdit) {
         qDebug() << "showlog: ui 或 msgEdit 未初始化";
         return;
     }
-
-    ui->msgEdit->appendPlainText(msg);
-    qDebug() << "mainwindow的" << msg;
+    Qlog::showlog(msg, 0, ui->msgEdit);
 }
 
 void MainWindow::updateComboBox() {
@@ -3371,23 +3328,7 @@ void MainWindow::sendAifile(QString file_id) {
 }
 void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
     ui->testMsg->appendPlainText(msg);
-
-    const QString logDir = QStringLiteral("所有log/ota升级压测/");
-    if (!CommonUtils::ensureLogDirectory(logDir)) {
-        qDebug() << "无法创建日志目录：" << logDir;
-        return;
-    }
-    const QString logFilePath = CommonUtils::joinPath(logDir, QStringLiteral("ota升级log.txt"));
-
-    QFile logFile(logFilePath);
-    if (logFile.open(QIODevice::Append | QIODevice::Text)) {  // 追加模式
-        QTextStream out(&logFile);
-        out.setCodec("UTF-8");  // 确保兼容中文
-        out << msg << "\n";
-        logFile.close();
-    } else {
-        qDebug() << "无法打开日志文件：" << logFilePath;
-    }
+    Qlog::saveOtaStressLog(msg);
 }
 
 void MainWindow::solve_photosensitive_info(ProtocolPhotosensitiveData x) {

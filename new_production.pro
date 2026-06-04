@@ -167,6 +167,7 @@ SOURCES += \
     mainlogic.cpp \
     mainwindow.cpp \
     qlog/qlog.cpp \
+    qlog/qlog_win.cpp \
     work_station/box_base.cpp \
     work_station/ageing/ageing.cpp \
     work_station/ageing/ageingbox.cpp \
@@ -272,6 +273,7 @@ HEADERS += \
     my_set/AbIni.h \
     my_set/my_typedef.h \
     qlog/qlog.h \
+    qlog/qlog_win.h \
     work_station/box_base.h \
     work_station/ageing/ageing.h \
     work_station/ageing/ageingbox.h \

@@ -27,7 +27,11 @@
 #include "wifibox.h"
 #include "factory_analyzer.h"
 #include "common_utils.h"
-// #include <Windows.h>
+#include "qlog.h"
+
+#ifdef Q_OS_WIN
+#include "qlog_win.h"
+#endif
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -51,181 +55,6 @@
 // qFatal("This is a fatal message.");
 // drmemory.exe -- new_production_20250228.exe
 
-// 自定义消息处理函数
-void customMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
-    QString text;
-    switch (type) {
-        case QtInfoMsg: text = QString("[Info]"); break;
-        case QtDebugMsg: text = QString("[Debug]"); break;
-        case QtWarningMsg: text = QString("[Warning]"); break;
-        case QtCriticalMsg: text = QString("[Critical]"); break;
-        case QtFatalMsg: text = QString("[Fatal]");
-    }
-
-    QDateTime current_date_time = QDateTime::currentDateTime();
-    QString current_date = current_date_time.toString("yyyy-MM-dd hh:mm:ss.zzz ddd");
-    QString message = text.append(current_date)
-                          .append(" ")
-                          //.append(" file:")
-                          .append(QString(context.file).split("\\").last())
-                          //.append("function:").append(context.function)
-                          // .append(" category:").append(context.category)
-                          .append(" line:")
-                          .append(QString::number(context.line).append(" 日志内容：" + msg));
-    // .append(" version:").append(QString::number(context.version)));
-
-    const QString folderName = QStringLiteral("所有log/上位机log");
-    if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
-        return;
-    }
-    QDir dir(folderName);
-    QString fileNumber;
-    QRegularExpression re("^\\d+");                           // ^ 表示匹配消息的开始
-    QRegularExpressionMatch match = re.match(msg.trimmed());  // 使用 trimmed() 去除字符串开头和结尾的空格
-    if (match.hasMatch()) {
-        fileNumber = match.captured(0);
-    } else {
-        // 如果没有找到数字，使用默认值
-        fileNumber = "default";
-    }
-    // 生成文件路径
-    QString hostName = QSysInfo::machineHostName();
-
-    const QString fileName = hostName + QStringLiteral("_上位机日志_") + fileNumber + QLatin1Char('_') +
-                             CommonUtils::formatDateIso() + QStringLiteral(".txt");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile file(filePath);
-    const bool isNewLogFile = !file.exists() || file.size() == 0;
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        return;
-    }
-    QTextStream text_stream(&file);
-    text_stream.setCodec("UTF-8");
-    // 新建日志写入 UTF-8 BOM，避免中文 Windows 上被误识别为 GBK/ANSI。
-    text_stream.setGenerateByteOrderMark(isNewLogFile);
-
-    printf("%s", current_date.toLocal8Bit().constData());
-    // 打印 msg 并换行
-    printf("  %s\r\n", msg.toLocal8Bit().constData());
-    fflush(stdout);
-    text_stream << message << "\r\n";
-    file.close();
-}
-#include <DbgHelp.h>
-#include <Windows.h>
-
-#include <ctime>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-#include <string>
-// 处理应用程序崩溃时的函数
-LONG ApplicationCrashHandler(EXCEPTION_POINTERS* pException) {
-    // 获取当前时间
-    time_t now = time(0);
-    tm* ltm = localtime(&now);
-
-    // 使用 stringstream 格式化时间为 YYYY-MM-DD_HH-MM-SS
-    std::stringstream ss;
-    ss << std::setw(4) << std::setfill('0') << (1900 + ltm->tm_year) << "-" << std::setw(2) << std::setfill('0')
-       << (1 + ltm->tm_mon) << "-" << std::setw(2) << std::setfill('0') << ltm->tm_mday << "_" << std::setw(2)
-       << std::setfill('0') << ltm->tm_hour << "-" << std::setw(2) << std::setfill('0') << ltm->tm_min << "-"
-       << std::setw(2) << std::setfill('0') << ltm->tm_sec;
-
-    // 获取时间戳字符串
-    std::string timeStr = ss.str();
-
-    // 目标文件夹路径
-    std::wstring folderPath = L"所有log";
-
-    // 确保文件夹存在
-    CreateDirectory(folderPath.c_str(), NULL);
-
-    // 生成 dump 文件的完整路径（添加时间戳）
-    std::wstring dumpFilePath = folderPath + L"\\" + std::wstring(timeStr.begin(), timeStr.end()) + L"_闪退记录.dmp";
-
-    // 创建 dump 文件
-    HANDLE hDumpFile =
-        CreateFile(dumpFilePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (hDumpFile != INVALID_HANDLE_VALUE) {
-        // Dump信息
-        MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
-        dumpInfo.ExceptionPointers = pException;
-        dumpInfo.ThreadId = GetCurrentThreadId();
-        dumpInfo.ClientPointers = TRUE;
-
-        // 写入Dump文件内容
-        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, MiniDumpNormal, &dumpInfo, NULL, NULL);
-        CloseHandle(hDumpFile);
-    }
-
-    // 记录堆栈跟踪信息
-    HANDLE hProcess = GetCurrentProcess();
-    HANDLE hThread = GetCurrentThread();
-    CONTEXT context;
-    RtlCaptureContext(&context);
-
-    STACKFRAME64 stackFrame;
-    memset(&stackFrame, 0, sizeof(STACKFRAME64));
-
-    stackFrame.AddrPC.Mode = AddrModeFlat;
-    stackFrame.AddrStack.Mode = AddrModeFlat;
-    stackFrame.AddrFrame.Mode = AddrModeFlat;
-
-// Initialize stack frame based on context
-#ifdef _M_IX86
-    stackFrame.AddrPC.Offset = context.Eip;
-    stackFrame.AddrStack.Offset = context.Esp;
-    stackFrame.AddrFrame.Offset = context.Ebp;
-#elif defined(_M_X64)
-    stackFrame.AddrPC.Offset = context.Rip;
-    stackFrame.AddrStack.Offset = context.Rsp;
-    stackFrame.AddrFrame.Offset = context.Rbp;
-#endif
-
-    // 打开DbgHelp库以获取符号信息
-    SymInitialize(hProcess, NULL, TRUE);
-
-    // 打印堆栈跟踪
-    std::wstring stackTrace = L"堆栈跟踪:\n";
-    while (StackWalk64(IMAGE_FILE_MACHINE_AMD64, hProcess, hThread, &stackFrame, &context, NULL,
-                       SymFunctionTableAccess64, SymGetModuleBase64, NULL)) {
-        DWORD64 dwDisplacement = 0;
-        char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_PATH];
-        SYMBOL_INFO* symbol = (SYMBOL_INFO*)symbolBuffer;
-        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-        symbol->MaxNameLen = MAX_PATH;
-
-        if (SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &dwDisplacement, symbol)) {
-            stackTrace += std::wstring(symbol->Name, symbol->Name + strlen(symbol->Name)) + L"\n";
-        }
-    }
-
-    // 记录堆栈信息到 dump 文件中
-    std::wstring logFilePath = folderPath + L"\\" + std::wstring(timeStr.begin(), timeStr.end()) + L"_闪退堆栈.log";
-    std::ofstream logFile(logFilePath, std::ios::out | std::ios::trunc);
-
-    if (logFile.is_open()) {
-        logFile << "崩溃发生时的堆栈跟踪:\n";
-
-        // 将宽字符串 stackTrace 转换为窄字符串
-        logFile << std::string(stackTrace.begin(), stackTrace.end());
-
-        logFile.close();
-    }
-    // 打印堆栈跟踪到控制台
-    std::wcout << stackTrace;
-
-    // 弹出消息框
-    MessageBoxW(NULL, L"上位机奔溃\r\n奔溃记录已保存", L"Error", MB_OK | MB_ICONERROR);
-
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
 class MyApplication : public QApplication {
 public:
     using QApplication::QApplication;
@@ -233,7 +62,7 @@ public:
     bool notify(QObject* receiver, QEvent* event) override {
         __try {
             return QApplication::notify(receiver, event);
-        } __except (ApplicationCrashHandler(GetExceptionInformation())) {
+        } __except (QlogApplicationCrashHandler(GetExceptionInformation())) {
             // 清空事件队列
 
             QCoreApplication::processEvents(QEventLoop::AllEvents);
@@ -245,7 +74,7 @@ public:
 };
 
 int main(int argc, char* argv[]) {
-    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);  //注冊异常捕获函数
+    Qlog::installWindowsCrashHandler();
 
     // QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     // QLoggingCategory::setFilterRules("*.debug=true");
@@ -255,8 +84,7 @@ int main(int argc, char* argv[]) {
     // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     MyApplication a(argc, argv);
 
-    // 安装自定义消息处理程序
-    qInstallMessageHandler(customMessageHandler);
+    Qlog::installQtMessageHandler();
 
     // qDebug() << "串口问题"<<QSslSocket::sslLibraryBuildVersionString();
     a.setFont(QFont("Microsoft Yahei", 9));
