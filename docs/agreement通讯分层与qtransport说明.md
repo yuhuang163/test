@@ -37,7 +37,8 @@ QSerialPort / QTcpSocket / QProcess / …
 | `agreement/qProtocol/` | **设备产测协议**：qpb、qfctp、qaiot + `QProtocolManager` |
 | `agreement/qat/` | Dongle AT 文本（并行解析，不并入 qProtocol） |
 | `agreement/qusb/`、`qvisa/` | 仪器：SCPI / Modbus 等 |
-| `agreement/qjig/`、`qmomcozy/` | 治具 / 产品仪器固定帧 |
+| `agreement/qfixture/`、`qmomcozy/` | 治具 UART / 产品仪器固定帧 |
+| `agreement/qjig/` | 治具气缸/继电器控制 |
 | `agreement/qplc/` | Modbus TCP |
 | `agreement/qadb/`、`qshell/` | 持久进程 + 命令队列 |
 | `agreement/qmes/`、`qtuple/` | HTTP / HTTPS |
@@ -62,7 +63,7 @@ qint64 write(QSerialPort* port, const QByteArray& data);
 **已接入写路径：**
 
 - 协议层：`Qpb::writeSerial()`、`Qfctp::sendPacket()`、`Qaiot` 发送
-- 仪器/治具：`qusb`、`qat`、`qjig`、`fixture_uart`
+- 仪器/治具：`qusb`、`qat`、`qjig`、`qfixture`（`fixture_uart`）
 - Dongle AT：`qat::sendCmd`
 
 新增串口发送时：**不要**再直接 `serialPort->write`，统一走 `QSerialChannel::write`。

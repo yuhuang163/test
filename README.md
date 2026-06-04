@@ -81,9 +81,11 @@ new_product_test/
 │   │   └── qat.h/.cpp
 │   ├── qusb/                             ← USB电流表协议（SCPI/HQ/LX统一入口）
 │   │   └── qusb.h/.cpp
-│   ├── qjig/                             ← 治具串口协议（气缸/继电器）
-│   │   ├── qjig.h/.cpp                   ← 治具串口调试工具（不带ui，每一路都单独控制）
-│   │   └── fixture_uart.h/.cpp/.ui       ← 治具串口调试工具（带ui，一个治具）
+│   ├── qjig/                             ← 治具控制（气缸/继电器，无 UI）
+│   │   └── qjig.h/.cpp
+│   ├── qfixture/                         ← 治具 UART（PCBA/压感/IMU/相机等）
+│   │   ├── fixture_uart.h/.cpp/.ui       ← 治具串口调试（带 UI）
+│   │   └── protocol/                     ← 各工站治具帧协议
 │   ├── qproduct/
 │   │   └── qproduct.h/.cpp               ← 产品串口通信封装
 │   ├── qbulk/

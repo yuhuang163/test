@@ -56,6 +56,7 @@ INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/qjig
+INCLUDEPATH += agreement/qfixture
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/qproduct
 INCLUDEPATH += agreement/adb
@@ -120,11 +121,11 @@ SOURCES += \
     agreement/qproduct/qproduct.cpp \
     agreement/qbulk/crc_md5.cpp \
     agreement/qbulk/qbulk.cpp \
-    agreement/qjig/fixture_uart.cpp \
-    agreement/qjig/protocol/fixture_camera_uart_protocol.cpp \
-    agreement/qjig/protocol/fixture_imu_uart_protocol.cpp \
-    agreement/qjig/protocol/fixture_pcba_uart_protocol.cpp \
-    agreement/qjig/protocol/fixture_press_uart_protocol.cpp \
+    agreement/qfixture/fixture_uart.cpp \
+    agreement/qfixture/protocol/fixture_camera_uart_protocol.cpp \
+    agreement/qfixture/protocol/fixture_imu_uart_protocol.cpp \
+    agreement/qfixture/protocol/fixture_pcba_uart_protocol.cpp \
+    agreement/qfixture/protocol/fixture_press_uart_protocol.cpp \
     agreement/qjig/qjig.cpp \
     agreement/qmes/bydmes.cpp \
     agreement/qmes/hqmes.cpp \
@@ -222,12 +223,12 @@ HEADERS += \
     agreement/qat/qat.h \
     agreement/qproduct/qproduct.h \
     agreement/qbulk/qbulk.h \
-    agreement/qjig/fixture_uart.h \
-    agreement/qjig/protocol/fixture_camera_uart_protocol.h \
-    agreement/qjig/protocol/fixture_imu_uart_protocol.h \
-    agreement/qjig/protocol/fixture_pcba_uart_protocol.h \
-    agreement/qjig/protocol/fixture_press_uart_protocol.h \
-    agreement/qjig/protocol/fixture_uart_types.h \
+    agreement/qfixture/fixture_uart.h \
+    agreement/qfixture/protocol/fixture_camera_uart_protocol.h \
+    agreement/qfixture/protocol/fixture_imu_uart_protocol.h \
+    agreement/qfixture/protocol/fixture_pcba_uart_protocol.h \
+    agreement/qfixture/protocol/fixture_press_uart_protocol.h \
+    agreement/qfixture/protocol/fixture_uart_types.h \
     agreement/qjig/qjig.h \
     agreement/qmes/bydmes.h \
     agreement/qmes/hqmes.h \
@@ -302,7 +303,7 @@ HEADERS += \
     work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
-    agreement/qjig/fixture_uart.ui \
+    agreement/qfixture/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
     tools/factory_analyzer/factory_analyzer.ui \
