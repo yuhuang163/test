@@ -1,4 +1,4 @@
-QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
+﻿QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
 
 
 QMAKE_PROJECT_DEPTH = 0
@@ -31,6 +31,7 @@ QMAKE_CXXFLAGS += /utf-8
 # 如果是utf-8添加bom
 # text codec for tools用local
 # 语言用中文
+# 项目编码规则  crlf  utf-8 with bom
 
 # Qt Creator编写代码时界面经常卡死解决办法
 # 帮助->关于插件->C+±>取消勾选ClangCodeModel（重启QtCreator）
@@ -41,6 +42,7 @@ INCLUDEPATH += agreement/qmes
 INCLUDEPATH += agreement/qadb
 INCLUDEPATH += agreement/qshell
 INCLUDEPATH += agreement/qat
+INCLUDEPATH += agreement/qtransport
 INCLUDEPATH += agreement/qProtocol
 INCLUDEPATH += agreement/qProtocol/qpb
 INCLUDEPATH += agreement/qProtocol/qfctp
@@ -104,6 +106,8 @@ SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
+    agreement/qtransport/qmodbus_pdu.cpp \
+    agreement/qtransport/qprocesschannel.cpp \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.cpp \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.cpp \
     agreement/qProtocol/qaiot/qaiot.cpp \
@@ -120,6 +124,7 @@ SOURCES += \
     agreement/qjig/qjig.cpp \
     agreement/qmes/bydmes.cpp \
     agreement/qmes/hqmes.cpp \
+    agreement/qmes/hzmes.cpp \
     agreement/qmes/jjmes.cpp \
     agreement/qmes/lxmes.cpp \
     agreement/qmes/mesmanager.cpp \
@@ -197,6 +202,8 @@ HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
+    agreement/qtransport/qmodbus_pdu.h \
+    agreement/qtransport/qprocesschannel.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.h \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_defs.h \
@@ -215,6 +222,7 @@ HEADERS += \
     agreement/qjig/qjig.h \
     agreement/qmes/bydmes.h \
     agreement/qmes/hqmes.h \
+    agreement/qmes/hzmes.h \
     agreement/qmes/jjmes.h \
     agreement/qmes/lxmes.h \
     agreement/qmes/mesmanager.h \
@@ -348,7 +356,7 @@ win32 {
 
 win32 {
     # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
-    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头（AbIni.h → qusb.h → qvisa.h）。
+    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头（AbIni.h → qvisa.h 等）。
     VISA_DIR = $$PWD/lib/visa
     exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
         INCLUDEPATH += $$VISA_DIR
@@ -386,6 +394,3 @@ DISTFILES += \
 
 RESOURCES += \
     new_production.qrc
-
-
-

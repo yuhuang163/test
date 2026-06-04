@@ -1,4 +1,5 @@
-#include "qpb.h"
+﻿#include "qpb.h"
+
 
 #include <QDebug>
 #include <iomanip>
@@ -707,6 +708,7 @@ void Qpb::sendMainPack(const DataPackage& pack) {
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
         serialPort->write((char*)new_buffer.data(), new_buffer.size());
+                          serialPort->write((char*)new_buffer.data(), new_buffer.size());
         qDebug().noquote() << "PB TX:"
                            << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(new_buffer.data()),
                                                              static_cast<int>(new_buffer.size()))

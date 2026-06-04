@@ -144,24 +144,6 @@ void test_base::signalAndslot() {
 
 }
 
-void test_base::setVisaProtocolConfig(const Qvisa::ProtocolConfig& config) {
-    visaProtocolConfig_ = config;
-    if (visa) {
-        visa->setProtocolConfig(visaProtocolConfig_);
-    }
-}
-
-bool test_base::runVisa(const std::function<bool(Qvisa*)>& action, bool enabled) {
-    if (!enabled) {
-        return true;
-    }
-    if (!action || !visa) {
-        return false;
-    }
-    visa->setProtocolConfig(visaProtocolConfig_);
-    return action(visa);
-}
-
 void test_base::resetVisaBackend() {
     if (visa) {
         visa->closeConnection();
@@ -866,6 +848,43 @@ QString test_base::generateDateCode() {
     }
 
     return QString::number(year) + QChar::fromLatin1(monthCode) + QChar::fromLatin1(dayCode);
+}
+
+bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
+    if (!snEdit) {
+        return false;
+    }
+    QString snText = snEdit->text().trimmed();
+    snText.remove(QRegularExpression(QStringLiteral("[^0-9A-Za-z]")));
+    if (snText.isEmpty()) {
+        return false;
+    }
+    snEdit->setText(snText);
+
+    const QString upperSn = snText.toUpper();
+    QString targetProduct;
+    int targetLen = 0;
+
+    if (upperSn.contains(QStringLiteral("V3PRO")) || snText.length() == 15) {
+        targetProduct = QStringLiteral("V3Pro");
+        targetLen = 15;
+    } else if (upperSn.contains(QStringLiteral("V3")) || snText.length() == 12) {
+        targetProduct = QStringLiteral("V3");
+        targetLen = 12;
+    } else {
+        return false;
+    }
+
+    const QString targetRegex = QStringLiteral("^[0-9a-zA-Z]{%1}$").arg(targetLen);
+    SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), targetProduct);
+    SETTINGS.setValue(QStringLiteral("MES/Product_Name"), targetProduct);
+    SETTINGS.setValue(QStringLiteral("Regex/SNPattern"), targetRegex);
+    SETTINGS.sync();
+
+    pack.product = targetProduct;
+    snPattern = targetRegex;
+    showlog(QStringLiteral("识别产品型号：%1，SN校验规则切换为%2").arg(targetProduct, snPattern));
+    return true;
 }
 
 QString test_base::parseMacFromSn(const QString& snCode) {

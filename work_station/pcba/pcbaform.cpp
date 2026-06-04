@@ -1887,6 +1887,7 @@ void PcbaForm::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);

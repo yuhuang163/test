@@ -1069,45 +1069,46 @@ int wifibletest::parseBlePerRxCount(const QByteArray& response, bool* ok) const 
 }
 
 void wifibletest::loadWifiBleCmw100Config() {
-    cmw100VisaConfig_.useVisa = true;
-    cmw100VisaConfig_.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();
-    cmw100VisaConfig_.timeoutMs = SETTINGS.value(QStringLiteral("BlePer/CmwTimeoutMs"), 5000).toInt();
-    setVisaProtocolConfig(cmw100VisaConfig_);
-}
-
-bool wifibletest::runCmwVisa(const std::function<bool(Qvisa*)>& action) {
-    setVisaProtocolConfig(cmw100VisaConfig_);
-    return runVisa(action);
+    if (visa) {
+        visa->set(VisaCmd::DeviceProfile, static_cast<int>(VisaDeviceProfile::RxCmwInstrument));
+    }
 }
 
 bool wifibletest::cmwVisaWrite(const QString& cmd) {
-    return runCmwVisa([&cmd](Qvisa* device) { return device->writeCommand(cmd); });
+    loadWifiBleCmw100Config();
+    return visa && visa->set(VisaCmd::WriteLine, cmd);
 }
 
 bool wifibletest::cmwVisaQuery(const QString& cmd, QString* response) {
-    return runCmwVisa([&cmd, response](Qvisa* device) { return device->queryCommand(cmd, response); });
+    loadWifiBleCmw100Config();
+    if (!visa || !visa->get(VisaCmd::QueryLine, cmd)) {
+        return false;
+    }
+    if (response) {
+        *response = visa->lastQueryResponse();
+    }
+    return true;
 }
 
 bool wifibletest::prepareBlePerCmw(QString* errorMessage) {
     loadWifiBleCmw100Config();
-    if (cmw100VisaConfig_.visaAddress.isEmpty()) {
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("BlePer/CmwVisaAddress 未配置");
         }
         return false;
     }
     QString idn;
-    const bool connected = runCmwVisa([this, &idn](Qvisa* device) {
-        if (!device->ensureConnected()) {
-            return false;
-        }
-        if (device->queryCommand(QStringLiteral("*IDN?"), &idn)) {
-            showlog(QStringLiteral("CMW100: %1").arg(idn));
-        }
-        return true;
-    });
+    const bool connected = visa && visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"));
+    if (connected) {
+        idn = visa->lastQueryResponse();
+    }
+    if (connected && !idn.trimmed().isEmpty()) {
+        showlog(QStringLiteral("CMW100: %1").arg(idn.trimmed()));
+    }
     if (!connected && errorMessage) {
-        *errorMessage = QStringLiteral("CMW100 VISA连接失败: %1").arg(cmw100VisaConfig_.visaAddress);
+        *errorMessage = QStringLiteral("CMW100 VISA连接失败: %1")
+                            .arg(SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed());
     }
     return connected;
 }
@@ -2107,6 +2108,7 @@ void wifibletest::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -2167,6 +2169,12 @@ void wifibletest::processInspection(QString stringsn) {
 }
 
 void wifibletest::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->getMac->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
         pack.is_hq_send_mac = 1;
@@ -2391,6 +2399,21 @@ void wifibletest::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
@@ -2894,7 +2917,7 @@ void wifibletest::on_get_battery_clicked() {
 void wifibletest::on_usbconnectButton_clicked()
 {
     loadWifiBleCmw100Config();
-    if (cmw100VisaConfig_.visaAddress.trimmed().isEmpty()) {
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
         showlog(QStringLiteral("CMW100 VISA地址未配置：请配置 BlePer/CmwVisaAddress"));
         return;
     }
@@ -2905,19 +2928,16 @@ void wifibletest::on_usbconnectButton_clicked()
     }
 
     QString response;
-    const bool ok = runCmwVisa([this, &cmd, &response](Qvisa* device) {
-        if (!device->ensureConnected()) {
-            showlog(QStringLiteral("CMW100 VISA连接失败: %1").arg(cmw100VisaConfig_.visaAddress));
-            return false;
-        }
-        return device->queryCommand(cmd, &response);
-    });
+    const bool ok = visa && visa->get(VisaCmd::QueryLine, cmd);
+    if (ok) {
+        response = visa->lastQueryResponse();
+    }
     if (!ok) {
         showlog(QStringLiteral("CMW100 指令交互失败: %1").arg(cmd));
         return;
     }
 
-    showlog(QStringLiteral("CMW100 VISA已连接: %1").arg(cmw100VisaConfig_.visaAddress));
+    showlog(QStringLiteral("CMW100 VISA已连接: %1").arg(visa ? visa->protocolConfig().visaAddress : QString()));
     showlog(QStringLiteral("CMW100 指令 %1 返回: %2").arg(cmd, response));
 }
 

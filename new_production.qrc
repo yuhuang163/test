@@ -1,4 +1,4 @@
-<RCC>
+﻿<RCC>
     <qresource prefix="/">
         <file>new_production.qml</file>
         <file>stytle/qss/Ubuntu.qss</file>

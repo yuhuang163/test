@@ -2,6 +2,8 @@
 
 #include "test_case.h"
 
+#include "test_case.h"
+
 #include <algorithm>
 #include <functional>
 #include <QMessageBox>
@@ -1462,6 +1464,7 @@ void QFreeWork::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -1510,6 +1513,12 @@ void QFreeWork::processInspection(QString inputSnText) {
 }
 
 void QFreeWork::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->getMac->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
 
@@ -1751,6 +1760,21 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+        expectedTailSnFromMes = snFromMes.toUtf8();
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
@@ -2033,24 +2057,18 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
 }
 
 void QFreeWork::loadWifiBleCmw100Config() {
-    cmw100VisaConfig_.useVisa = true;
-    cmw100VisaConfig_.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();
-    cmw100VisaConfig_.timeoutMs = SETTINGS.value(QStringLiteral("BlePer/CmwTimeoutMs"), 5000).toInt();
-    setVisaProtocolConfig(cmw100VisaConfig_);
-}
-
-bool QFreeWork::runCmwVisa(const std::function<bool(Qvisa*)>& action) {
-    loadWifiBleCmw100Config();
-    setVisaProtocolConfig(cmw100VisaConfig_);
-    return runVisa(action);
+    if (visa) {
+        visa->set(VisaCmd::DeviceProfile, static_cast<int>(VisaDeviceProfile::RxCmwInstrument));
+    }
 }
 
 bool QFreeWork::freeWorkCmwVisaWrite(const QString& cmd) {
+    loadWifiBleCmw100Config();
     const bool trace = freeWorkShouldLogCmwVisaIo();
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] >> %1").arg(cmd));
     }
-    const bool ok = runCmwVisa([&cmd](Qvisa* device) { return device->writeCommand(cmd); });
+    const bool ok = visa && visa->set(VisaCmd::WriteLine, cmd);
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] << (write ok=%1)").arg(ok ? QStringLiteral("yes") : QStringLiteral("no")));
     }
@@ -2058,13 +2076,17 @@ bool QFreeWork::freeWorkCmwVisaWrite(const QString& cmd) {
 }
 
 bool QFreeWork::freeWorkCmwVisaQuery(const QString& cmd, QString* response) {
+    loadWifiBleCmw100Config();
     const bool trace = freeWorkShouldLogCmwVisaIo();
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] >> %1").arg(cmd));
     }
     QString stack;
     QString& ref = response ? *response : stack;
-    const bool ok = runCmwVisa([&cmd, &ref](Qvisa* device) { return device->queryCommand(cmd, &ref); });
+    const bool ok = visa && visa->get(VisaCmd::QueryLine, cmd);
+    if (ok) {
+        ref = visa->lastQueryResponse();
+    }
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] << %1").arg(ref));
     }
@@ -2326,7 +2348,7 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
         return true;
     }
     loadWifiBleCmw100Config();
-    if (cmw100VisaConfig_.visaAddress.isEmpty()) {
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
         showlog(QStringLiteral("%1：已启用并联射频但未配置 BlePer/CmwVisaAddress，跳过 CMW").arg(scenarioLabel));
         return true;
     }
@@ -2346,26 +2368,15 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
         return true;
     }
     QString idn;
-    if (!runCmwVisa([this, &idn](Qvisa* device) {
-            if (!device->ensureConnected()) {
-                return false;
-            }
-            const QString q = QStringLiteral("*IDN?");
-            if (freeWorkShouldLogCmwVisaIo()) {
-                showlog(QStringLiteral("[CMW-VISA] >> %1").arg(q));
-            }
-            const bool qok = device->queryCommand(q, &idn);
-            if (freeWorkShouldLogCmwVisaIo()) {
-                showlog(QStringLiteral("[CMW-VISA] << %1").arg(idn));
-            }
-            return qok;
-        })) {
+    if (!visa || !visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"))) {
         if (errorMessage) {
             *errorMessage =
-                QStringLiteral("CMW VISA连接失败（%1）").arg(cmw100VisaConfig_.visaAddress);
+                QStringLiteral("CMW VISA连接失败（%1）")
+                    .arg(SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed());
         }
         return false;
     }
+    idn = visa->lastQueryResponse();
     if (!idn.trimmed().isEmpty()) {
         showlog(QStringLiteral("并联CMW: %1").arg(idn.trimmed()));
     }
@@ -2406,32 +2417,22 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
         return false;
     }
     loadWifiBleCmw100Config();
-    if (cmw100VisaConfig_.visaAddress.isEmpty()) {
+    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
         const QString msg = QStringLiteral("跳过：未配置 BlePer/CmwVisaAddress");
         showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(msg));
         setDetail(msg);
         return true;
     }
+    loadWifiBleCmw100Config();
     QString idn;
-    if (!runCmwVisa([this, &idn](Qvisa* device) {
-            if (!device->ensureConnected()) {
-                return false;
-            }
-            const QString q = QStringLiteral("*IDN?");
-            if (freeWorkShouldLogCmwVisaIo()) {
-                showlog(QStringLiteral("[CMW-VISA] >> %1").arg(q));
-            }
-            const bool qok = device->queryCommand(q, &idn);
-            if (freeWorkShouldLogCmwVisaIo()) {
-                showlog(QStringLiteral("[CMW-VISA] << %1").arg(idn));
-            }
-            return qok;
-        })) {
-        const QString err = QStringLiteral("CMW VISA连接失败（%1）").arg(cmw100VisaConfig_.visaAddress);
+    if (!visa || !visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"))) {
+        const QString err = QStringLiteral("CMW VISA连接失败（%1）")
+                                  .arg(SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed());
         setDetail(err);
         showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(err));
         return false;
     }
+    idn = visa->lastQueryResponse();
     const QString wfPath = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
     if (wfPath.isEmpty()) {
         showlog(QStringLiteral("并联CMW %1：CMW ARB 波形未配置（BlePer/CmwWaveformFile 为空）")

@@ -1,4 +1,4 @@
-/* USB Benchmark for libusb-win32
+﻿/* USB Benchmark for libusb-win32
 
  Copyright (C) 2010 Travis Robinson. <libusbdotnet@gmail.com>
  website: https://github.com/mcuee/libusb-win32

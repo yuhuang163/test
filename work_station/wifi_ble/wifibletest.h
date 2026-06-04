@@ -1,12 +1,10 @@
-
+﻿
 #ifndef WIFIBLETEST_H
 #define WIFIBLETEST_H
 
 #include <QList>
 #include <QSerialPort>
 #include <QVariant>
-
-#include <functional>
 
 #include "Abini.h"
 #include "qtupleservice.h"
@@ -79,7 +77,6 @@ private:
     bool blePerRxDone = false;
     bool blePerRxPass = true;
     QString blePerRxMesValue = QStringLiteral("未测");
-    Qvisa::ProtocolConfig cmw100VisaConfig_;
     QSerialPort* blePerUart = nullptr;
 
     struct BlePerScenario {
@@ -137,7 +134,6 @@ private:
     QByteArray sendBlePerUartCommandHex(const QString& hex, const QString& stageName, QString* errorMessage);
     int parseBlePerRxCount(const QByteArray& response, bool* ok) const;
     void loadWifiBleCmw100Config();
-    bool runCmwVisa(const std::function<bool(Qvisa*)>& action);
     bool cmwVisaWrite(const QString& cmd);
     bool cmwVisaQuery(const QString& cmd, QString* response);
     bool prepareBlePerCmw(QString* errorMessage);

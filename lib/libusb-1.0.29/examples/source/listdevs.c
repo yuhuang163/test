@@ -1,4 +1,4 @@
-/*
+﻿/*
  * libusb example program to list devices on the bus
  * Copyright © 2007 Daniel Drake <dsd@gentoo.org>
  *

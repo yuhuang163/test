@@ -1,4 +1,4 @@
-#include "ageing.h"
+﻿#include "ageing.h"
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>
@@ -131,6 +131,23 @@ void ageing::getTestValue(const int mechines, const QString value) {
             ui->macInput->setText(mesmacAddress);
             on_macInput_returnPressed();
         }
+    } else if (pack.factory == "hz") {
+        if (mechines != getIndex()) {
+            return;
+        }
+        const QString snFromMes = value.trimmed();
+        mesmacAddress = parseMacFromSn(snFromMes);
+        if (mesmacAddress.isEmpty()) {
+            showlog(QStringLiteral("MES 返回 SN 解析 MAC 失败"));
+            showlog(value);
+            return;
+        }
+
+        writesn = snFromMes.toUtf8();
+        stringsn = snFromMes;
+        ui->macInput->setText(mesmacAddress);
+        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
@@ -640,6 +657,7 @@ void ageing::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
@@ -723,6 +741,12 @@ void ageing::show_product(QString name) {
 }
 
 void ageing::processGetMesTestValue() {
+    if (pack.factory == "hz") {
+        pack.sn = ui->getMac->text();
+        pack.mechines = getIndex();
+        getTestValue(getIndex(), pack.sn.trimmed());
+        return;
+    }
     if (ui->isformmes->checkState()) {
         pack.sn = ui->getMac->text();
         pack.is_hq_send_mac = 1;
@@ -733,6 +757,7 @@ void ageing::processGetMesTestValue() {
 }
 
 void ageing::on_snInput_returnPressed() {
+    applyAdaptiveV3ProductBySn(ui->snInput);
     // 检查是否是序列号格式
     QRegularExpression snRegex(snPattern);
     // 使用正则表达式匹配

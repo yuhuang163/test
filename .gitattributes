@@ -1,6 +1,13 @@
-﻿# Windows 下 *.cmd 使用 CRLF，避免批处理换行异常；若编辑器写入 UTF-8 BOM，仍可能破坏首行，需单独注意保存方式。
-*.cmd text eol=crlf
+﻿# Windows 工程：仓库与工作区均按 CRLF 原样存储（不做入库 LF 规范化）。
+# Shell / Git 钩子仍在仓库中保持 LF，避免 #!/bin/sh 带 \r。
+* -text
 
-# commit-msg 由 sh 执行；CRLF 会使 #!/bin/sh 带 \r，导致 Windows 上无法正确启动钩子。
+# Windows 下 *.cmd 使用 CRLF；若编辑器写入 UTF-8 BOM，仍可能破坏首行，需单独注意保存方式。
+*.cmd -text
+
+# qmake 不接受 UTF-8 BOM，但换行可用 CRLF
+*.pro -text
+*.pri -text
+
 .githooks/commit-msg text eol=lf
 *.sh text eol=lf

@@ -1,12 +1,9 @@
-#ifndef QUSB_H
+﻿#ifndef QUSB_H
 #define QUSB_H
-#include <QMessageBox>
 #include <QObject>
 #include <QSerialPort>
 #include <functional>
 #include <map>
-
-#include "qvisa.h"
 
 class Qusb : public QSerialPort
 {
@@ -17,8 +14,7 @@ public:
         Auto,
         Scpi,
         HqModbus,
-        LxModbus,
-        Byd
+        LxModbus
     };
 
     enum class PowerAction
@@ -34,12 +30,22 @@ public:
         InitializeDevice
     };
 
+    enum class UsbCmd
+    {
+        PowerActionCmd,          // set/get: Qusb::PowerAction(int)
+        ProtocolConfigCmd,       // set: QVariantMap
+        SendScpiLine,            // set: QString
+        ConfigureProgrammablePower, // set: QVariantMap{voltage:double,current:double}
+        ProgrammablePowerOutput, // set: bool
+        ReadProgrammablePowerVoltageCmd, // get
+        ReadProgrammablePowerCurrentCmd, // get
+        InitializeProgrammablePowerCmd   // set/get
+    };
+
     struct ProtocolConfig
     {
         ProtocolType protocol = ProtocolType::Auto;
         int luxshareMachineId = 1;
-        bool scpiUseVisa = false;
-        QString scpiVisaAddress = "GPIB0::7::INSTR";
         QString scpiCurrentType = "CURRent";
         QString scpiCurrentMode = "DC";
         QString scpiRange = "500e-3";
@@ -67,10 +73,11 @@ public:
     void getlxMEASure(int mechine);
     void processlxModbusRTUData(const QByteArray &data);
     void sethqMEASure();
-    void getbydmeaSure(QString mac);
     void getCONF(QString mac);
-    void getbydCONF(QString mac);
     void parseCmd(const QByteArray &byte);
+    void set(UsbCmd cmd, const QVariant& data = {});
+    void get(UsbCmd cmd, const QVariant& param = {});
+    bool sendCustomMessage(const QVariantMap& map);
     bool configureProgrammablePower(double voltageV, double currentA);
     bool setProgrammablePowerOutput(bool enable);
     bool readProgrammablePowerVoltage();
@@ -79,7 +86,7 @@ public:
 
 signals:
     void send_ammeter_data(QString data);   // 信号声明
-    /// 程控电源 SCPI 读电压完成：VISA 为同步回包；串口为解析到一行后的异步回包。valueVolts 单位 V，ok 为数值解析是否成功
+    /// 程控电源 SCPI 读电压完成（串口异步回包）。valueVolts 单位 V，ok 为数值解析是否成功
     void programmablePowerVoltageRead(double valueVolts, bool ok);
     /// 程控电源 SCPI 读电流完成，valueAmps 单位 A
     void programmablePowerCurrentRead(double valueAmps, bool ok);
@@ -97,16 +104,6 @@ private:
     bool handleScpiAction(PowerAction action);
     bool handleHqAction(PowerAction action);
     bool handleLxAction(PowerAction action);
-    bool handlebydAction(PowerAction action);
-    /// 已配置程控电源 VISA 地址（与当前协议是否为 Scpi 无关，供 Byd 口上电源 SCPI）
-    bool programmablePowerVisaConfigured() const;
-    /// 程控电源 SCPI 是否走 VISA：protocol 为 Scpi 或 Byd（Byd 时 DAM 仍 Modbus，电源指令走 VISA）
-    bool isVisaScpiEnabled() const;
-    Qvisa::ProtocolConfig visaConfigFromProtocolConfig() const;
-    bool ensureVisaConnected();
-    void closeVisaConnection();
-    bool visaWrite(const QString &cmd);
-    bool visaQuery(const QString &cmd, QString *response);
     void processScpiData(const QByteArray &byte);
     void processModbusRTUData(const QByteArray &data);
     QString cmd, parameter;
@@ -119,7 +116,6 @@ private:
     QByteArray data = 0;
     ProtocolConfig protocolConfig_;
     ProgrammablePowerReadPending pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
-    Qvisa visa_;
 
 private slots:
     void processCmd(QString cmd, QString parameter);

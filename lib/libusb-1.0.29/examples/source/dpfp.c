@@ -1,4 +1,4 @@
-/*
+﻿/*
  * libusb example program to manipulate U.are.U 4000B fingerprint scanner.
  * Copyright © 2007 Daniel Drake <dsd@gentoo.org>
  * Copyright © 2016 Nathan Hjelm <hjelmn@mac.com>

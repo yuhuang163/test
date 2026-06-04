@@ -1,4 +1,4 @@
-#include "qbulk.h"
+﻿#include "qbulk.h"
 #include <QDebug>
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")

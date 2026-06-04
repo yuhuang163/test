@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Test suite program based of libusb-0.1-compat testlibusb
 * Copyright (c) 2013 Nathan Hjelm <hjelmn@mac.ccom>
 *
