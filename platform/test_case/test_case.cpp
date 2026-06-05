@@ -2128,7 +2128,19 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
 
 QString fieldStringFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
     ok = false;
-    if (reportType == QLatin1String("ProtocolSnData")) {
+    if (reportType == QLatin1String("ProtocolRssiData")) {
+        const auto d = payload.value<ProtocolRssiData>();
+        if (field == QLatin1String("dbm")) {
+            ok = true;
+            return QString::number(d.dbm);
+        }
+    } else if (reportType == QLatin1String("ProtocolBatteryData")) {
+        const auto d = payload.value<ProtocolBatteryData>();
+        if (field == QLatin1String("percent")) {
+            ok = true;
+            return QString::number(d.percent);
+        }
+    } else if (reportType == QLatin1String("ProtocolSnData")) {
         const auto d = payload.value<ProtocolSnData>();
         if (field == QLatin1String("value")) {
             ok = true;
@@ -2399,6 +2411,102 @@ void GateRegistry::resolveRangeBounds(const TestCaseGate& gate, double& lowOut, 
         lowOut = SETTINGS.value(gate.lowSettingsKey, lowOut).toDouble();
     if (!gate.highSettingsKey.isEmpty())
         highOut = SETTINGS.value(gate.highSettingsKey, highOut).toDouble();
+}
+
+QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& reportType) {
+    Q_UNUSED(reportType);
+    if (gate.op == TestCaseGateOp::Range) {
+        double low = gate.low;
+        double high = gate.high;
+        resolveRangeBounds(gate, low, high);
+        return QStringLiteral("[%1,%2]").arg(low).arg(high);
+    }
+    if (gate.op == TestCaseGateOp::Gt)
+        return QStringLiteral(">%1").arg(gate.low);
+    if (gate.op == TestCaseGateOp::Lt)
+        return QStringLiteral("<%1").arg(gate.high);
+    if (gate.op == TestCaseGateOp::Eq || gate.op == TestCaseGateOp::CompareVersions)
+        return gate.expected.trimmed();
+    return gate.expected.trimmed();
+}
+
+QString GateRegistry::formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType) {
+    QStringList expectedParts;
+    expectedParts.reserve(gates.size());
+    for (const TestCaseGate& g : gates) {
+        const QString name = fieldDisplayName(reportType, g.field);
+        if (g.op == TestCaseGateOp::Range) {
+            double low = g.low;
+            double high = g.high;
+            resolveRangeBounds(g, low, high);
+            expectedParts.append(QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high));
+        } else if (g.op == TestCaseGateOp::Eq) {
+            expectedParts.append(QStringLiteral("%1=%2").arg(name, g.expected));
+        } else if (g.op == TestCaseGateOp::Gt) {
+            expectedParts.append(QStringLiteral("%1>%2").arg(name).arg(g.low));
+        } else if (g.op == TestCaseGateOp::Lt) {
+            expectedParts.append(QStringLiteral("%1<%2").arg(name).arg(g.high));
+        } else {
+            expectedParts.append(QStringLiteral("%1:%2").arg(name, g.expected));
+        }
+    }
+    return expectedParts.join(QLatin1Char(';'));
+}
+
+namespace {
+
+QString fixturePacketSummary(const FixturePacketData& pack) {
+    return QStringLiteral("机号=%1 静态=%2 工作=%3 充电=%4 泵=%5 MCU=%6 电池=%7")
+        .arg(pack.machineNumber)
+        .arg(pack.staticCurrent)
+        .arg(pack.workingCurrent)
+        .arg(pack.chargingCurrent)
+        .arg(pack.pumpVoltageMv)
+        .arg(pack.mcuVoltageMv)
+        .arg(pack.batteryVoltageMv);
+}
+
+QString periphStateSummary(const ProtocolPeriphStateData& periph) {
+    return QStringLiteral("press0=%1;press1=%2;battery=%3;touch=%4;led=%5;pd=%6")
+        .arg(periph.press0_state)
+        .arg(periph.press1_state)
+        .arg(periph.battery_ic_state)
+        .arg(periph.touch_ic_state)
+        .arg(periph.led_ic_state)
+        .arg(periph.pd_ic_state);
+}
+
+QString primaryFieldTestData(const TestCaseGate& primaryGate, const QString& reportType, const QVariant& payload) {
+    bool strOk = false;
+    const QString fromField = fieldStringFromVariant(reportType, primaryGate.field, payload, strOk);
+    if (strOk && !fromField.isEmpty())
+        return fromField;
+    bool numOk = false;
+    const double fromNum = fieldValueFromVariant(reportType, primaryGate.field, payload, numOk);
+    if (numOk)
+        return QString::number(fromNum);
+    return {};
+}
+
+}  // namespace
+
+GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate, const QVector<TestCaseGate>& allGates,
+                                                const QString& reportType, const QVariant& payload,
+                                                bool multiFieldMode) {
+    GateStepDisplay out;
+    if (reportType == QLatin1String("ProtocolFixturePcbaData") && payload.canConvert<FixturePacketData>()) {
+        out.testData = fixturePacketSummary(payload.value<FixturePacketData>());
+    } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
+        out.testData = periphStateSummary(payload.value<ProtocolPeriphStateData>());
+    } else {
+        out.testData = primaryFieldTestData(primaryGate, reportType, payload);
+    }
+
+    if (multiFieldMode && allGates.size() > 1)
+        out.ask = formatMultiFieldAsk(allGates, reportType);
+    else
+        out.ask = formatGateAsk(primaryGate, reportType);
+    return out;
 }
 
 // ===================== TestCaseHookRegistry =====================

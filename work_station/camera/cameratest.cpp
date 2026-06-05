@@ -110,8 +110,6 @@ cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new U
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_dirty_test);
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_offset_test);
 
-    connect(pb, SIGNAL(send_get_picture_send_over(ProtocolPictureSendOverData)), this,
-            SLOT(getPictureSendOver(ProtocolPictureSendOverData)));
     viewercamrea = new ImageViewer("image_markings.png", this);
     ui->verticalLayout->addWidget(viewercamrea);  // 将 ImageViewer 添加到布局中
     viewercamrea->show();                         // 显示 ImageViewer

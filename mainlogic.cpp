@@ -62,7 +62,7 @@ QString MainWindow::getCaliMarkString(CaliMark caliMark) {
         default: return "未知校准标志";
     }
 }
-void MainWindow::getServoMotorInfoMsg(ProtocolServoMotorInfoData data) {
+void MainWindow::refreshServoMotorInfo(ProtocolServoMotorInfoData data) {
     showlog("伺服电机上报类型：" + QString::number(data.uploadType));
     showlog("伺服电机上报值类型：" + QString::number(data.whichValue));
     showlog("伺服电机校准标志：" + getCaliMarkString(static_cast<CaliMark>(data.motorCaliMark)));
@@ -1309,7 +1309,7 @@ void MainWindow::getDongleWifi(QString data) {
     ui->ssid_lineEdit->setText(SETTINGS.value(QString("WIFI/Name%1").arg(0), "请在配置文件中设置").toString());
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
-void MainWindow::updateWifi(ProtocolWifiStateData wifi) {
+void MainWindow::refreshWifiStateData(ProtocolWifiStateData wifi) {
     showlog(wifi.wifiName);
     showlog(wifi.wifiPassword);
 }
@@ -1422,7 +1422,7 @@ void MainWindow::saveToCsv(const QString& filename, const ProtocolImuSampleData&
     qDebug() << "文件保存成功：" << filename;
     qDebug() << "保存数量为" << sampleCount;
 }
-void MainWindow::getimuData(ProtocolImuSampleData x) {
+void MainWindow::refreshImuSampleData(ProtocolImuSampleData x) {
     qDebug() << "开始保存";
     const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
     showlog("收到的个数=" + QString::number(sampleCount));
@@ -1680,7 +1680,7 @@ void MainWindow::refreshWifiDemand(ProtocolWifiDemandData x) {
         showlog("WIFI连接成功");
     }
 }
-void MainWindow::updateLocalOtaResult(ProtocolInternetOtaData x) {
+void MainWindow::refreshInternetOtaData(ProtocolInternetOtaData x) {
     if (x.result)
         qDebug() << "本地ota返回错误，结果为" << x.result;
     ui->local_ota_result->setText("OTA");
@@ -1705,7 +1705,7 @@ QString MainWindow::generateOutputFilePath() {
     return QDir(musicFolderPath).filePath(fileName);
 }
 
-void MainWindow::getPressSensorData(ProtocolPressSampleData x) {
+void MainWindow::refreshPressSampleData(ProtocolPressSampleData x) {
     showlog("保存压感数据ing");
     if (x.adcValues.size() >= 4 && x.valueValues.size() >= 4) {
         ui->brush_value->setText("电机压力：" + QString::number(x.valueValues[0]));
@@ -2478,8 +2478,13 @@ void MainWindow::initBasicInfo() {
 
     basicInfoModel->resetAllTestResult();
 
-    QObject::connect(&protocolManager, &QProtocolManager::send_base_data, this,
-                     [=](ProtocolBaseInfoData baseInfo) {
+    QObject::connect(&protocolManager, &QProtocolManager::reportReceived, this,
+                     [=](const ProtocolReport& report) {
+        if (report.reportType != QLatin1String("ProtocolBaseInfoData")
+            || !report.payload.canConvert<ProtocolBaseInfoData>()) {
+            return;
+        }
+        const ProtocolBaseInfoData baseInfo = report.payload.value<ProtocolBaseInfoData>();
         connectProductName = baseInfo.product_name;
 
         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
@@ -2591,45 +2596,51 @@ void MainWindow::initPeriphState() {
     ui->peripheralView->setColumnHidden(1, true);
     ui->peripheralView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     peripheralModel->resetAllTestResult();
-    QObject::connect(pb, QOverload<ProtocolPeriphStateData>::of(&Qpb::send_periph_data), this,
-                     [=](ProtocolPeriphStateData state) {
-        peripheralModel->getTestItemByName("flash_state")
-            ->setData(QString("%1").arg(state.flash_state), Qt::DisplayRole);
-        peripheralModel->getTestItemByName("imu_state")->setData(QString("%1").arg(state.imu_state), Qt::DisplayRole);
-        peripheralModel->getTestItemByName("magnet_state")
-            ->setData(QString("%1").arg(state.magnet_state), Qt::DisplayRole);
-        peripheralModel->getTestItemByName("press_state")
-            ->setData(QString("%1").arg(state.press_state), Qt::DisplayRole);
-        writePeripheralDataToCSVFile();
+    QObject::connect(&protocolManager, &QProtocolManager::reportReceived, this,
+                     [=](const ProtocolReport& report) {
+        if (report.reportType != QLatin1String("ProtocolPeriphStateData")
+            || !report.payload.canConvert<ProtocolPeriphStateData>()) {
+            return;
+        }
+        const ProtocolPeriphStateData state = report.payload.value<ProtocolPeriphStateData>();
+        if (protocolManager.isQpbProtocolActive()) {
+            peripheralModel->getTestItemByName("flash_state")
+                ->setData(QString("%1").arg(state.flash_state), Qt::DisplayRole);
+            peripheralModel->getTestItemByName("imu_state")->setData(QString("%1").arg(state.imu_state), Qt::DisplayRole);
+            peripheralModel->getTestItemByName("magnet_state")
+                ->setData(QString("%1").arg(state.magnet_state), Qt::DisplayRole);
+            peripheralModel->getTestItemByName("press_state")
+                ->setData(QString("%1").arg(state.press_state), Qt::DisplayRole);
+            writePeripheralDataToCSVFile();
 
-        if (state.flash_state == flashStatus && state.imu_state == imuStatus && state.press_state == pressureStatus &&
-            state.magnet_state == magneticStatus) {
-            ;
-        } else {
-            motorresult = failValue;
+            if (state.flash_state == flashStatus && state.imu_state == imuStatus && state.press_state == pressureStatus &&
+                state.magnet_state == magneticStatus) {
+                ;
+            } else {
+                motorresult = failValue;
+            }
+            return;
+        }
+        if (protocolManager.isQfctpProtocolActive()) {
+            auto *press0Item = peripheralModel->getTestItemByName("press0_state");
+            auto *press1Item = peripheralModel->getTestItemByName("press1_state");
+            auto *batteryItem = peripheralModel->getTestItemByName("battery_ic_state");
+            auto *touchItem = peripheralModel->getTestItemByName("touch_ic_state");
+            auto *ledItem = peripheralModel->getTestItemByName("led_ic_state");
+            auto *pdItem = peripheralModel->getTestItemByName("pd_ic_state");
+
+            if (press0Item) press0Item->setData(QString::number(state.press0_state), Qt::DisplayRole);
+            if (press1Item) press1Item->setData(QString::number(state.press1_state), Qt::DisplayRole);
+            if (batteryItem) batteryItem->setData(QString::number(state.battery_ic_state), Qt::DisplayRole);
+            if (touchItem) touchItem->setData(QString::number(state.touch_ic_state), Qt::DisplayRole);
+            if (ledItem) ledItem->setData(QString::number(state.led_ic_state), Qt::DisplayRole);
+            if (pdItem) {
+                pdItem->setData(state.pd_ic_state >= 0 ? QString::number(state.pd_ic_state) : QString("未上报"),
+                                Qt::DisplayRole);
+            }
+            writePeripheralDataToCSVFile();
         }
     });
-
-    QObject::connect(qfctp, QOverload<ProtocolPeriphStateData>::of(&Qfctp::send_periph_data), this,
-                     [=](ProtocolPeriphStateData state) {
-                         auto *press0Item = peripheralModel->getTestItemByName("press0_state");
-                         auto *press1Item = peripheralModel->getTestItemByName("press1_state");
-                         auto *batteryItem = peripheralModel->getTestItemByName("battery_ic_state");
-                         auto *touchItem = peripheralModel->getTestItemByName("touch_ic_state");
-                         auto *ledItem = peripheralModel->getTestItemByName("led_ic_state");
-                         auto *pdItem = peripheralModel->getTestItemByName("pd_ic_state");
-
-                         if (press0Item) press0Item->setData(QString::number(state.press0_state), Qt::DisplayRole);
-                         if (press1Item) press1Item->setData(QString::number(state.press1_state), Qt::DisplayRole);
-                         if (batteryItem) batteryItem->setData(QString::number(state.battery_ic_state), Qt::DisplayRole);
-                         if (touchItem) touchItem->setData(QString::number(state.touch_ic_state), Qt::DisplayRole);
-                         if (ledItem) ledItem->setData(QString::number(state.led_ic_state), Qt::DisplayRole);
-                         if (pdItem) {
-                             pdItem->setData(state.pd_ic_state >= 0 ? QString::number(state.pd_ic_state) : QString("未上报"),
-                                             Qt::DisplayRole);
-                         }
-                         writePeripheralDataToCSVFile();
-                     });
 }
 
 bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
@@ -2735,7 +2746,7 @@ bool MainWindow::deleteCsvFile(const QString& filePath) {
         return false;
     }
 }
-void MainWindow::getPictureSendOver(ProtocolPictureSendOverData x) {
+void MainWindow::refreshPictureSendOver(ProtocolPictureSendOverData x) {
     Q_UNUSED(x);
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
@@ -3015,7 +3026,7 @@ void MainWindow::renameAduioFilesInFolder(const QString& folderPath) {
     showlog("发送结束");
     showlog("耗时" + QString::number(TestTime.elapsed() / 1000) + "秒");
 }
-void MainWindow::getPresscalidata(ProtocolPressCalibResultData x) {
+void MainWindow::refreshPressCalibResult(ProtocolPressCalibResultData x) {
     showlog("电机" + QString::number(x.brushHeadAdc));
     showlog("模式" + QString::number(x.modeButtonAdc));
     showlog("电源" + QString::number(x.powerButtonAdc));
@@ -3331,10 +3342,10 @@ void MainWindow::appendAndSaveWifiOtaLog(const QString& msg) {
     Qlog::saveOtaStressLog(msg);
 }
 
-void MainWindow::solve_photosensitive_info(ProtocolPhotosensitiveData x) {
+void MainWindow::refreshPhotosensitiveData(ProtocolPhotosensitiveData x) {
     showlog("获取到光敏电阻值：" + QString::number(x.lightSensor));
 }
-void MainWindow::solve_sd_info(ProtocolSdInfoData x) {
+void MainWindow::refreshSdInfo(ProtocolSdInfoData x) {
     showlog(QString("获取到 SD 卡命令: %1").arg(x.cmd));
     showlog(QString("获取到sd卡信息: ") + x.data);
 }

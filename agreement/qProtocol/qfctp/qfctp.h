@@ -127,20 +127,6 @@ private:
     /** handleResponseByType 内当前应答对应的请求上下文（供按键电容等需关联请求参数的处理）。 */
     PendingRequest m_currentResponseRequest;
 
-signals:
-    void send_tuple_parsed(ProtocolTupleData data);
-    void send_aging_status(ProtocolAgingStatusData data);
-    void send_device_exception(ProtocolDeviceExceptionData data);
-    void send_trim_read(ProtocolUInt32ValueData data);
-    void send_factory_done_read(ProtocolFactoryDoneData data);
-    void send_rssi_read(ProtocolRssiData data);
-    void send_mac_read(ProtocolMacData data);
-    void send_key_signal_read(ProtocolUInt32ValueData data);
-    void send_light_calib_read(ProtocolUInt32ValueData data);
-    void send_lcd_backlight_ack(ProtocolAckData data);
-    void send_light_report_ctrl_ack(ProtocolAckData data);
-    void send_light_calib_write_ack(ProtocolUInt32ValueData data);
-    void send_charge_current_read(ProtocolUInt32ValueData data);
 };
 
 #endif // Qfctp_H

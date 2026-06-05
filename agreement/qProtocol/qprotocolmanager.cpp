@@ -10,34 +10,6 @@
 #    pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-void syncManagerSignals(qProtocol* protocol, QProtocolManager* manager, bool shouldConnect) {
-    if (protocol == nullptr || manager == nullptr) {
-        return;
-    }
-
-    if (shouldConnect) {
-        QObject::connect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
-        QObject::connect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
-        QObject::connect(protocol, &qProtocol::send_base_data, manager, &QProtocolManager::send_base_data);
-        QObject::connect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
-        QObject::connect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
-        QObject::connect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
-        QObject::connect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
-        QObject::connect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
-        return;
-    }
-
-    QObject::disconnect(protocol, &qProtocol::send_pb_date, manager, &QProtocolManager::send_pb_date);
-    QObject::disconnect(protocol, &qProtocol::sendGetProductResponse, manager, &QProtocolManager::sendGetProductResponse);
-    QObject::disconnect(protocol, &qProtocol::send_base_data, manager, &QProtocolManager::send_base_data);
-    QObject::disconnect(protocol, &qProtocol::send_sn_data, manager, &QProtocolManager::send_sn_data);
-    QObject::disconnect(protocol, &qProtocol::send_battary, manager, &QProtocolManager::send_battary);
-    QObject::disconnect(protocol, &qProtocol::send_button_state, manager, &QProtocolManager::send_button_state);
-    QObject::disconnect(protocol, &qProtocol::send_periph_data, manager, &QProtocolManager::send_periph_data);
-    QObject::disconnect(protocol, &qProtocol::send_photosensitive_info, manager, &QProtocolManager::send_photosensitive_info);
-}
-}  // namespace
 
 QProtocolManager::QProtocolManager(QObject* parent) : QObject(parent) {}
 
@@ -75,21 +47,47 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
     }
 }
 
+void QProtocolManager::bindProtocolUpstream(qProtocol* protocol) {
+    if (protocol == nullptr) {
+        return;
+    }
+    QObject::connect(protocol, &qProtocol::reportReceived, this, &QProtocolManager::reportReceived);
+    QObject::connect(protocol, &qProtocol::sendGetProductResponse, this, &QProtocolManager::sendGetProductResponse);
+}
+
+void QProtocolManager::unbindProtocolUpstream(qProtocol* protocol) {
+    if (protocol == nullptr) {
+        return;
+    }
+    QObject::disconnect(protocol, nullptr, this, nullptr);
+}
+
 void QProtocolManager::bindQpb(Qpb* pb) {
-    qpb_ = pb;
+    if (qpb_ != pb) {
+        unbindProtocolUpstream(qpb_);
+        qpb_ = pb;
+        bindProtocolUpstream(qpb_);
+    }
     syncActivePointer();
 }
 
 void QProtocolManager::bindQfctp(Qfctp* fctp) {
-    qfctp_ = fctp;
+    if (qfctp_ != fctp) {
+        unbindProtocolUpstream(qfctp_);
+        qfctp_ = fctp;
+        bindProtocolUpstream(qfctp_);
+    }
     syncActivePointer();
 }
 
 void QProtocolManager::bindQaiot(Qaiot* aiot) {
-    qaiot_ = aiot;
+    if (qaiot_ != aiot) {
+        unbindProtocolUpstream(qaiot_);
+        qaiot_ = aiot;
+        bindProtocolUpstream(qaiot_);
+    }
     syncActivePointer();
 }
-
 
 qProtocol* QProtocolManager::currentProtocol() const {
     return active_;
@@ -253,22 +251,15 @@ bool QProtocolManager::isQaiotProtocolActive() const {
 }
 
 void QProtocolManager::syncActivePointer() {
-    syncManagerSignals(qpb_, this, false);
-    syncManagerSignals(qfctp_, this, false);
-    syncManagerSignals(qaiot_, this, false);
-
     switch (currentType_) {
         case ProtocolType::Qpb:
             active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
-            syncManagerSignals(active_, this, true);
             break;
         case ProtocolType::Qfctp:
             active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
-            syncManagerSignals(active_, this, true);
             break;
         case ProtocolType::Qaiot:
             active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
-            syncManagerSignals(active_, this, true);
             break;
         default:
             active_ = nullptr;

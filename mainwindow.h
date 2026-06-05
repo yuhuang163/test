@@ -252,6 +252,13 @@ private:
     // QTextToSpeech* tts;
     QString result = "";
     bool otaFinish = false;
+    /** OTA 压测循环：由 onProtocolReport 回填进度/结果 */
+    bool otaStressListen_ = false;
+    bool otaStressFinish_ = false;
+    bool otaStressRefresh_ = false;
+    bool otaStressResult_ = false;
+    bool otaStressIsStart_ = false;
+    QTime otaStressTotalTime_;
     QStringList otaResults;
     QTimer* bleotatimer = new QTimer(this);
     int currentChunk = 0;
@@ -263,8 +270,13 @@ protected:
     void closeEvent(QCloseEvent*) override;
 
 private slots:
-    void solve_photosensitive_info(ProtocolPhotosensitiveData x);
-    void solve_sd_info(ProtocolSdInfoData x);
+    void onProtocolReport(const ProtocolReport& report);
+    void refreshOtaFlowControl(int state);
+    void refreshOtaProgress(int progress);
+    void refreshPbInfo(const QString& info);
+    void refreshOtaResult(int result);
+    void refreshPhotosensitiveData(ProtocolPhotosensitiveData data);
+    void refreshSdInfo(ProtocolSdInfoData data);
     void appendAndSaveWifiOtaLog(const QString& msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
@@ -278,7 +290,6 @@ private slots:
     void setting_ui();
     void saveblackbox(QString data);
     void sendNoisyData();
-    void setBleOtaState(int);
     void checkAndUpdateFile();
     void deleteFile(const QString& remoteUrl);
     void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
@@ -311,7 +322,7 @@ private slots:
     void waitWork(int ms);
     void sendBrushData(bool is_random);
     void sendRecord();
-    void getPictureSendOver(ProtocolPictureSendOverData x);
+    void refreshPictureSendOver(ProtocolPictureSendOverData data);
     void updateImageOnMainThread();
     void refreshLogData(QString data);
     void saveToCsv(const QString& filename, const ProtocolImuSampleData& x);
@@ -340,18 +351,18 @@ private slots:
     void refreshBleRssi(QString data);
     void refreshWifiRssi(QString data);
     void refreshBleState(int state);
-    void getimuData(ProtocolImuSampleData x);
+    void refreshImuSampleData(ProtocolImuSampleData data);
     void refreshBattaryData(ProtocolBatteryData adc);
-    void updateWifi(ProtocolWifiStateData wifi);
+    void refreshWifiStateData(ProtocolWifiStateData data);
     void bandingMacSn(QString bandingmac, QString bandingsn);
     void getMac(QString sn_to_search);
-    void updateLocalOtaResult(ProtocolInternetOtaData x);
-    void refreshWifiDemand(ProtocolWifiDemandData);
+    void refreshInternetOtaData(ProtocolInternetOtaData data);
+    void refreshWifiDemand(ProtocolWifiDemandData data);
     void otaSourceSet(int state);
     void otaFwSet(int state);
     void refreshPbData(QString data);
-    void getPressSensorData(ProtocolPressSampleData x);
-    void getServoMotorInfoMsg(ProtocolServoMotorInfoData data);
+    void refreshPressSampleData(ProtocolPressSampleData x);
+    void refreshServoMotorInfo(ProtocolServoMotorInfoData data);
     void convertCsvToXls(const QString& csvFilename, const QString& xlsFilename);
     void savePressDataToLocalFolder(const ProtocolPressSampleData& x, bool appHeader);
     void readPendingDatagrams();
@@ -368,9 +379,9 @@ private slots:
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
     void refreshMusicState(ProtocolMusicStateData data);
-    void getPresscalidata(ProtocolPressCalibResultData x);
+    void refreshPressCalibResult(ProtocolPressCalibResultData data);
     void scanIpPorts();
-    void checkbutton(ProtocolButtonStateData data);
+    void refreshButtonState(ProtocolButtonStateData data);
 private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();

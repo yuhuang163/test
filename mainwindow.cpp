@@ -259,114 +259,22 @@ MainWindow::MainWindow(QWidget* parent) :
                << "资源更新中"
                << "存储空间不足";
 
-    connect(pb, SIGNAL(send_ota_flow_control(int)), this, SLOT(setBleOtaState(int)));
+    connect(&protocolManager, &QProtocolManager::reportReceived, this, &MainWindow::onProtocolReport);
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
 
-    connect(pb, SIGNAL(send_press_cali_data(ProtocolPressCalibResultData)), this,
-            SLOT(getPresscalidata(ProtocolPressCalibResultData)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
-    connect(&protocolManager, SIGNAL(send_pb_date(QString)), this, SLOT(refreshPbData(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
-    connect(pb, &Qpb::send_pb_info, [&](QString s) {
-        appendAndSaveWifiOtaLog(" ");
-        appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + s);
-
-        ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + s);
-    });
-
-    connect(pb, &Qpb::send_ota_result, [&](int r) {
-        appendAndSaveWifiOtaLog(" ");
-        appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + "OTA 结果 : " + otaResults[r]);
-
-        ui->bleOtaMsg->appendPlainText(" ");
-        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
-                                       "OTA 结果 : " + otaResults[r]);
-
-        if (r == 11) {
-            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaSuctimes++) +
-                                    QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
-            ui->wifiota_suc_times->setText(QString("成功升级次数:%1").arg(wifiotaSuctimes));
-            ui->bleotaresult->setText("PASS");
-            ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                            "black; border: 2px solid #00FF00; border-radius: "
-                                            "10px; padding: 10px; text-align: center;");
-            on_disconnectButton_clicked();
-            if (ui->is_bleota_press->checkState()) {
-                on_bleotamacInput_returnPressed();
-            } else if (ui->is_wifiota_press->checkState()) {
-                on_wifiOtaMacInput_returnPressed();
-
-            } else {
-                if (ui->is_clear_mac->checkState()) {
-                    ui->bleotamacInput->clear();
-                    ui->bleotamacInput->setFocus();
-                }
-            }
-
-        } else if (r == 12) {
-            appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaFaiTimes++) +
-                                    QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
-            ui->wifiota_fai_times->setText(QString("失败升级次数:%1").arg(wifiotaFaiTimes));
-            on_stopBleOta_clicked();
-            on_disconnectButton_clicked();
-            ui->bleotaresult->setText("FAIL");
-            ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
-                                            "black; border: 2px solid #FF0000; border-radius: "
-                                            "10px; padding: 10px; text-align: center; ");
-            if (ui->is_bleota_press->checkState()) {
-                on_bleotamacInput_returnPressed();
-            } else if (ui->is_wifiota_press->checkState()) {
-                on_wifiOtaMacInput_returnPressed();
-
-            } else {
-                if (ui->is_clear_mac->checkState()) {
-                    ui->bleotamacInput->clear();
-                    ui->bleotamacInput->setFocus();
-                }
-            }
-        }
-    });
     connect(this, SIGNAL(sendPicture_speed(int)), ui->picture_speed, SLOT(setValue(int)));
     connect(this, SIGNAL(sendBelOtaSpeed(int)), ui->bel_fw_ota_speed, SLOT(setValue(int)));
     connect(this, SIGNAL(sendBelSourceOtaSpeed(int)), ui->bel_source_ota_speed, SLOT(setValue(int)));
 
-    connect(pb, SIGNAL(send_ota_progress(int)), ui->bel_ota_receive_speed, SLOT(setValue(int)));
-
-    connect(&protocolManager, SIGNAL(send_photosensitive_info(ProtocolPhotosensitiveData)), this,
-            SLOT(solve_photosensitive_info(ProtocolPhotosensitiveData)));
-    connect(pb, SIGNAL(send_sd_info(ProtocolSdInfoData)), this, SLOT(solve_sd_info(ProtocolSdInfoData)));
-
-    connect(pb, SIGNAL(send_get_picture_send_over(ProtocolPictureSendOverData)), this,
-            SLOT(getPictureSendOver(ProtocolPictureSendOverData)));
-
-    connect(pb, SIGNAL(send_press_data(ProtocolPressSampleData)), this, SLOT(getPressSensorData(ProtocolPressSampleData)));
-    connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
-    connect(&protocolManager, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
-    connect(pb, SIGNAL(send_wifi_State(ProtocolWifiStateData)), this, SLOT(updateWifi(ProtocolWifiStateData)));
-    connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
-    connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(sendWifiIp(QString)), this, SLOT(getWifiIp(QString)));
 
-    connect(pb, SIGNAL(send_FactroyCmd_INTERNET_OTA(ProtocolInternetOtaData)), this,
-            SLOT(updateLocalOtaResult(ProtocolInternetOtaData)));
-
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
-
-    connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
-
-    connect(pb, SIGNAL(send_FactroyCmd_WIFI_DEMAND(ProtocolWifiDemandData)), this,
-            SLOT(refreshWifiDemand(ProtocolWifiDemandData)));
-
-    connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
-            SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
-
-    connect(pb, SIGNAL(send_servo_motor_info_msg(ProtocolServoMotorInfoData)), this,
-            SLOT(getServoMotorInfoMsg(ProtocolServoMotorInfoData)));
 
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
     connect(ui->is_ota_1, SIGNAL(stateChanged(int)), this, SLOT(otaSourceSet(int)));
@@ -526,13 +434,151 @@ MainWindow::MainWindow(QWidget* parent) :
     aimanager = new QNetworkAccessManager(this);
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
     ui->wifiotaprogress->setMaximum(100);
-    connect(pb, &Qpb::send_ota_progress, [&](int s) { ui->wifiotaprogress->setValue(s); });
-    connect(&protocolManager, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
 }
 
-void MainWindow::checkbutton(ProtocolButtonStateData x) {
-    showlog("电源按键" + QString::number(x.powerButtonState));
-    showlog("模式按键" + QString::number(x.modeButtonState));
+void MainWindow::onProtocolReport(const ProtocolReport& report) {
+    const QString& reportType = report.reportType;
+    const QVariant& payload = report.payload;
+    if (reportType == QLatin1String("ProtocolOtaFlowControl")) {
+        refreshOtaFlowControl(payload.toInt());
+    } else if (reportType == QLatin1String("ProtocolOtaProgress")) {
+        refreshOtaProgress(payload.toInt());
+    } else if (reportType == QLatin1String("ProtocolPbInfo")) {
+        refreshPbInfo(payload.toString());
+    } else if (reportType == QLatin1String("ProtocolOtaResult")) {
+        refreshOtaResult(payload.toInt());
+    } else if (reportType == QLatin1String("ProtocolPbDate")) {
+        refreshPbData(payload.toString());
+    } else if (reportType == QLatin1String("ProtocolPressCalibResultData")
+               && payload.canConvert<ProtocolPressCalibResultData>()) {
+        refreshPressCalibResult(payload.value<ProtocolPressCalibResultData>());
+    } else if (reportType == QLatin1String("ProtocolPhotosensitiveData")
+               && payload.canConvert<ProtocolPhotosensitiveData>()) {
+        refreshPhotosensitiveData(payload.value<ProtocolPhotosensitiveData>());
+    } else if (reportType == QLatin1String("ProtocolSdInfoData") && payload.canConvert<ProtocolSdInfoData>()) {
+        refreshSdInfo(payload.value<ProtocolSdInfoData>());
+    } else if (reportType == QLatin1String("ProtocolPictureSendOverData") && payload.canConvert<ProtocolResultData>()) {
+        refreshPictureSendOver(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolPressSampleData") && payload.canConvert<ProtocolPressSampleData>()) {
+        refreshPressSampleData(payload.value<ProtocolPressSampleData>());
+    } else if (reportType == QLatin1String("ProtocolImuSampleData") && payload.canConvert<ProtocolImuSampleData>()) {
+        refreshImuSampleData(payload.value<ProtocolImuSampleData>());
+    } else if (reportType == QLatin1String("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
+        refreshBattaryData(payload.value<ProtocolBatteryData>());
+    } else if (reportType == QLatin1String("ProtocolWifiStateData") && payload.canConvert<ProtocolWifiStateData>()) {
+        refreshWifiStateData(payload.value<ProtocolWifiStateData>());
+    } else if (reportType == QLatin1String("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
+        refreshSn(payload.value<ProtocolSnData>());
+    } else if (reportType == QLatin1String("ProtocolMusicStateData") && payload.canConvert<ProtocolMusicStateData>()) {
+        refreshMusicState(payload.value<ProtocolMusicStateData>());
+    } else if (reportType == QLatin1String("ProtocolInternetOtaData") && payload.canConvert<ProtocolResultData>()) {
+        refreshInternetOtaData(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolMotorCaliMsg")) {
+        refreshMotorCaliMsg(payload.toString());
+    } else if (reportType == QLatin1String("ProtocolWifiDemandData") && payload.canConvert<ProtocolResultData>()) {
+        refreshWifiDemand(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolImuCalibResultData")
+               && payload.canConvert<ProtocolImuCalibResultData>()) {
+        refreshImuCaliResult(payload.value<ProtocolImuCalibResultData>());
+    } else if (reportType == QLatin1String("ProtocolServoMotorInfoData")
+               && payload.canConvert<ProtocolServoMotorInfoData>()) {
+        refreshServoMotorInfo(payload.value<ProtocolServoMotorInfoData>());
+    } else if (reportType == QLatin1String("ProtocolButtonStateData")
+               && payload.canConvert<ProtocolButtonStateData>()) {
+        refreshButtonState(payload.value<ProtocolButtonStateData>());
+    }
+}
+
+void MainWindow::refreshOtaFlowControl(int state) {
+    if (state) {
+        bleotatimer->start(ui->OtaTimeInterval->text().toInt());
+    } else {
+        bleotatimer->stop();
+    }
+}
+
+void MainWindow::refreshOtaProgress(int progress) {
+    ui->bel_ota_receive_speed->setValue(progress);
+    ui->wifiotaprogress->setValue(progress);
+    if (!otaStressListen_) {
+        return;
+    }
+    ui->progressBar->show();
+    ui->progressBar->setMaximum(100);
+    ui->progressBar->setValue(progress);
+    otaStressRefresh_ = true;
+    if (progress == 100) {
+        appendAndSaveWifiOtaLog(QString("ota time:%1s").arg(otaStressTotalTime_.elapsed() / 1000));
+        otaStressFinish_ = true;
+    }
+}
+
+void MainWindow::refreshPbInfo(const QString& info) {
+    if (otaStressListen_) {
+        ui->testMsg->appendPlainText(info);
+    }
+    appendAndSaveWifiOtaLog(" ");
+    appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + info);
+    ui->bleOtaMsg->appendPlainText(" ");
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + info);
+}
+
+void MainWindow::refreshOtaResult(int result) {
+    if (otaStressListen_) {
+        otaStressFinish_ = true;
+        if (result == 11 || result == 0) {
+            otaStressResult_ = true;
+        }
+        if (result == 0) {
+            otaStressIsStart_ = true;
+        }
+        return;
+    }
+    appendAndSaveWifiOtaLog(" ");
+    appendAndSaveWifiOtaLog(CommonUtils::isoDateTime() + "OTA 结果 : " + otaResults[result]);
+    ui->bleOtaMsg->appendPlainText(" ");
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + "OTA 结果 : " + otaResults[result]);
+    if (result == 11) {
+        appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaSuctimes++) +
+                                QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
+        ui->wifiota_suc_times->setText(QString("成功升级次数:%1").arg(wifiotaSuctimes));
+        ui->bleotaresult->setText("PASS");
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
+                                        "black; border: 2px solid #00FF00; border-radius: "
+                                        "10px; padding: 10px; text-align: center;");
+        on_disconnectButton_clicked();
+        if (ui->is_bleota_press->checkState()) {
+            on_bleotamacInput_returnPressed();
+        } else if (ui->is_wifiota_press->checkState()) {
+            on_wifiOtaMacInput_returnPressed();
+        } else if (ui->is_clear_mac->checkState()) {
+            ui->bleotamacInput->clear();
+            ui->bleotamacInput->setFocus();
+        }
+    } else if (result == 12) {
+        appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(wifiotaFaiTimes++) +
+                                QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
+        ui->wifiota_fai_times->setText(QString("失败升级次数:%1").arg(wifiotaFaiTimes));
+        on_stopBleOta_clicked();
+        on_disconnectButton_clicked();
+        ui->bleotaresult->setText("FAIL");
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+                                        "black; border: 2px solid #FF0000; border-radius: "
+                                        "10px; padding: 10px; text-align: center; ");
+        if (ui->is_bleota_press->checkState()) {
+            on_bleotamacInput_returnPressed();
+        } else if (ui->is_wifiota_press->checkState()) {
+            on_wifiOtaMacInput_returnPressed();
+        } else if (ui->is_clear_mac->checkState()) {
+            ui->bleotamacInput->clear();
+            ui->bleotamacInput->setFocus();
+        }
+    }
+}
+
+void MainWindow::refreshButtonState(ProtocolButtonStateData data) {
+    showlog("电源按键" + QString::number(data.powerButtonState));
+    showlog("模式按键" + QString::number(data.modeButtonState));
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {
@@ -1528,12 +1574,12 @@ void MainWindow::on_otaTestPushButton_clicked() {
     ui->otaTestPushButton->setEnabled(false);
     ui->otaTestPushButton_2->setEnabled(false);
 
-    bool finish = false;
     QTime timeout;
-    QTime totalTime;
-    bool refresh = false;
-    bool result = false;
-    bool isStart = false;
+    otaStressListen_ = true;
+    otaStressFinish_ = false;
+    otaStressRefresh_ = false;
+    otaStressResult_ = false;
+    otaStressIsStart_ = false;
     at->resetConnected();
     at->set(DongleCmd::BleOtaConnect, ui->wifiOtaMacInput->text());
     protocolManager.setPbMode(0);
@@ -1552,32 +1598,6 @@ void MainWindow::on_otaTestPushButton_clicked() {
     ui->progressBar->show();
     ui->progressBar->setMaximum(100);
 
-    connect(pb, &Qpb::send_ota_progress, [&](int s) {
-        ui->progressBar->show();
-        ui->progressBar->setMaximum(100);
-        ui->progressBar->setValue(s);
-        refresh = true;
-        if (s == 100) {
-            appendAndSaveWifiOtaLog(QString("ota time:%1s").arg(totalTime.elapsed() / 1000));
-            finish = true;
-        }
-    });
-    connect(pb, SIGNAL(send_pb_info(QString)), ui->testMsg, SLOT(appendPlainText(QString)));
-    connect(pb, &Qpb::send_ota_progress, [&](int s) {
-        ui->progressBar->setValue(s);
-        refresh = true;
-    });
-    connect(pb, &Qpb::send_ota_result, [&](int r) {
-        finish = true;
-
-        if (r == 11 || r == 0) {
-            result = true;
-        }
-        if (r == 0) {
-            isStart = true;
-        }
-    });
-
     while (isWifiOtaContinue) {
         if (!dongleSerialPort->isOpen()) {
             on_connectButton_clicked();
@@ -1587,7 +1607,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
         RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
         protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFiledata));
         timeout.restart();
-        isStart = false;
+        otaStressIsStart_ = false;
 
         appendAndSaveWifiOtaLog("启动OTA，开始计时");
         int counter = 0;
@@ -1597,7 +1617,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
                 RotasFiledata.fileType = RotasUpdateFile_WIFI_FIRMWARE;
                 protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFiledata));
             }
-            if (isStart == true) {
+            if (otaStressIsStart_) {
                 break;
             }
             waitWork(1000);
@@ -1605,37 +1625,37 @@ void MainWindow::on_otaTestPushButton_clicked() {
             if (isWifiOtaContinue == false)
                 break;
         }
-        if (isStart == false) {
+        if (!otaStressIsStart_) {
             isWifiOtaContinue = false;
             appendAndSaveWifiOtaLog("设备无法接收蓝牙指令");
         }
 
-        totalTime.start();
-        finish = false;
-        result = false;
+        otaStressTotalTime_.start();
+        otaStressFinish_ = false;
+        otaStressResult_ = false;
 
-        while (finish == false) {
+        while (!otaStressFinish_) {
             if (timeout.elapsed() > 3 * 60 * 1000) {
                 appendAndSaveWifiOtaLog("下载超时");
-                finish = true;
+                otaStressFinish_ = true;
                 break;
             }
             waitWork(200);
             if (isWifiOtaContinue == false)
                 break;
-            if (refresh) {
-                refresh = false;
+            if (otaStressRefresh_) {
+                otaStressRefresh_ = false;
                 timeout.restart();
             }
             if (at->getConnected() == false && timeout.elapsed() > 10000) {
-                finish = true;
+                otaStressFinish_ = true;
             }
-            ui->lcdNumber->display(totalTime.elapsed() / 1000);
+            ui->lcdNumber->display(otaStressTotalTime_.elapsed() / 1000);
         }
 
         appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(otaTesttimes++));
-        appendAndSaveWifiOtaLog(QString("耗时:%1 s").arg(totalTime.elapsed() / 1000));
-        if (result == false) {
+        appendAndSaveWifiOtaLog(QString("耗时:%1 s").arg(otaStressTotalTime_.elapsed() / 1000));
+        if (!otaStressResult_) {
             appendAndSaveWifiOtaLog("升级失败");
         } else {
             appendAndSaveWifiOtaLog("升级成功");
@@ -1662,6 +1682,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
     ui->bleTestPushButton->setEnabled(true);
     ui->configWifiPushButton->setEnabled(true);
     ui->otaTestPushButton->setEnabled(true);
+    otaStressListen_ = false;
 }
 
 void MainWindow::on_configWifiPushButton_clicked() {}
@@ -3706,12 +3727,6 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     QTimer::singleShot(100, this, [this]() { bleotatimer->start(); });
 }
 
-void MainWindow::setBleOtaState(int state) {
-    if (state)
-        bleotatimer->start(ui->OtaTimeInterval->text().toInt());
-    else
-        bleotatimer->stop();
-}
 void MainWindow::on_selectPath_clicked() {
     QString path = QFileDialog::getOpenFileName(this, "选择文件路径");
     if (!path.isEmpty()) {

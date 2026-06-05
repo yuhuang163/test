@@ -83,38 +83,16 @@ void test_base::initData() {
     snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
-    connect(&protocolManager, &QProtocolManager::send_pb_date, this, &test_base::refreshPbData);
+    // 产测协议上行：统一 reportReceived 入口（sendGetProductResponse 仍为传输 ACK，单独连接）
+    connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
+    connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
+
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
     connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
-
-    connect(pb, SIGNAL(send_press_cali_data(ProtocolPressCalibResultData)), this,
-            SLOT(getPresscalidata(ProtocolPressCalibResultData)));
-    connect(pb, SIGNAL(send_press_data(ProtocolPressSampleData)), this, SLOT(getPressSensorData(ProtocolPressSampleData)));
-    connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
-    connect(&protocolManager, SIGNAL(send_button_state(ProtocolButtonStateData)), this, SLOT(checkbutton(ProtocolButtonStateData)));
-    connect(pb, SIGNAL(send_BrushControl_state(ProtocolBrushControlData)), this,
-            SLOT(checkBrushControlState(ProtocolBrushControlData)));
-    connect(pb, SIGNAL(send_LED_CONTROL_state(ProtocolLedControlData)), this, SLOT(checkLedControlState(ProtocolLedControlData)));
-    connect(pb, SIGNAL(send_camera_CONTROL_state(ProtocolCameraControlData)), this,
-            SLOT(refreshCameraControl(ProtocolCameraControlData)));
-    connect(pb, SIGNAL(send_imu_data(ProtocolImuSampleData)), this, SLOT(getimuData(ProtocolImuSampleData)));
-    connect(pb, SIGNAL(send_IMU_CALIB_result(ProtocolImuCalibResultData)), this,
-            SLOT(refreshImuCaliResult(ProtocolImuCalibResultData)));
-    connect(pb, SIGNAL(send_motor_cali_msg(QString)), this, SLOT(refreshMotorCaliMsg(QString)));
-    connect(&protocolManager, SIGNAL(send_periph_data(ProtocolPeriphStateData)), this, SLOT(refreshPeriphData(ProtocolPeriphStateData)));
-    connect(pb, SIGNAL(send_Lcd_CONTROL_state(ProtocolLcdControlData)), this, SLOT(refreshLcdControl(ProtocolLcdControlData)));
-    connect(&protocolManager, SIGNAL(send_base_data(ProtocolBaseInfoData)), this, SLOT(refreshBaseData(ProtocolBaseInfoData)));
-    connect(&protocolManager, SIGNAL(send_battary(ProtocolBatteryData)), this, SLOT(refreshBattaryData(ProtocolBatteryData)));
-    connect(&protocolManager, SIGNAL(send_sn_data(ProtocolSnData)), this, SLOT(refreshSn(ProtocolSnData)));
-    connect(qfctp, SIGNAL(send_rssi_read(ProtocolRssiData)), this, SLOT(refreshRssiRead(ProtocolRssiData)));
-    connect(qfctp, SIGNAL(send_charge_current_read(ProtocolUInt32ValueData)), this, SLOT(refreshChargeCurrentRead(ProtocolUInt32ValueData)));
-    connect(qfctp, SIGNAL(send_key_signal_read(ProtocolUInt32ValueData)), this, SLOT(refreshKeySignalRead(ProtocolUInt32ValueData)));
-    connect(qfctp, SIGNAL(send_tuple_parsed(ProtocolTupleData)), this, SLOT(refreshTupleData(ProtocolTupleData)));
-    connect(pb, SIGNAL(send_music_state(ProtocolMusicStateData)), this, SLOT(refreshMusicState(ProtocolMusicStateData)));
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
     connect(jig, SIGNAL(send_amplitude_data(QString)), this, SLOT(refreshAmplitudeData(QString)));
@@ -470,6 +448,62 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
 
     if (!logMessage.isEmpty()) {
         showlog(logMessage);
+    }
+}
+
+void test_base::onProtocolReport(const ProtocolReport& report) {
+    dispatchLegacyProtocolReport(report.reportType, report.payload);
+}
+
+void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QVariant& payload) {
+    if (reportType == QLatin1String("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
+        refreshBaseData(payload.value<ProtocolBaseInfoData>());
+    } else if (reportType == QLatin1String("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
+        refreshSn(payload.value<ProtocolSnData>());
+    } else if (reportType == QLatin1String("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
+        refreshBattaryData(payload.value<ProtocolBatteryData>());
+    } else if (reportType == QLatin1String("ProtocolButtonStateData") && payload.canConvert<ProtocolButtonStateData>()) {
+        checkbutton(payload.value<ProtocolButtonStateData>());
+    } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
+        refreshPeriphData(payload.value<ProtocolPeriphStateData>());
+    } else if (reportType == QLatin1String("ProtocolPbDate")) {
+        refreshPbData(payload.toString());
+    } else if (reportType == QLatin1String("ProtocolPressCalibResultData")
+               && payload.canConvert<ProtocolPressCalibResultData>()) {
+        getPresscalidata(payload.value<ProtocolPressCalibResultData>());
+    } else if (reportType == QLatin1String("ProtocolPressSampleData") && payload.canConvert<ProtocolPressSampleData>()) {
+        getPressSensorData(payload.value<ProtocolPressSampleData>());
+    } else if (reportType == QLatin1String("ProtocolBrushControlData")
+               && payload.canConvert<ProtocolBrushControlData>()) {
+        checkBrushControlState(payload.value<ProtocolBrushControlData>());
+    } else if (reportType == QLatin1String("ProtocolLedControlData") && payload.canConvert<ProtocolLedControlData>()) {
+        checkLedControlState(payload.value<ProtocolLedControlData>());
+    } else if (reportType == QLatin1String("ProtocolCameraControlData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshCameraControl(payload.value<ProtocolTypeData>());
+    } else if (reportType == QLatin1String("ProtocolImuSampleData") && payload.canConvert<ProtocolImuSampleData>()) {
+        getimuData(payload.value<ProtocolImuSampleData>());
+    } else if (reportType == QLatin1String("ProtocolImuCalibResultData")
+               && payload.canConvert<ProtocolImuCalibResultData>()) {
+        refreshImuCaliResult(payload.value<ProtocolImuCalibResultData>());
+    } else if (reportType == QLatin1String("ProtocolMotorCaliMsg")) {
+        refreshMotorCaliMsg(payload.toString());
+    } else if (reportType == QLatin1String("ProtocolLcdControlData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshLcdControl(payload.value<ProtocolTypeData>());
+    } else if (reportType == QLatin1String("ProtocolMusicStateData") && payload.canConvert<ProtocolMusicStateData>()) {
+        refreshMusicState(payload.value<ProtocolMusicStateData>());
+    } else if (reportType == QLatin1String("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
+        refreshRssiRead(payload.value<ProtocolRssiData>());
+    } else if (reportType == QLatin1String("ProtocolUInt32ValueData") && payload.canConvert<ProtocolUInt32ValueData>()) {
+        const auto data = payload.value<ProtocolUInt32ValueData>();
+        // 同一类型对应多个槽，各槽内部有步骤/状态守卫
+        refreshKeySignalRead(data);
+        refreshChargeCurrentRead(data);
+    } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
+        refreshTupleData(payload.value<ProtocolTupleData>());
+    } else if (reportType == QLatin1String("ProtocolPictureSendOverData") && payload.canConvert<ProtocolResultData>()) {
+        getPictureSendOver(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolAgingStatusData") && payload.canConvert<ProtocolAgingStatusData>()) {
+        refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
     }
 }
 

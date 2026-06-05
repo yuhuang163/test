@@ -1,4 +1,4 @@
-#include "qaiot.h"
+﻿#include "qaiot.h"
 
 #include <QDebug>
 #include <QStringList>
@@ -40,17 +40,17 @@ void Qaiot::parseCmd(const QByteArray& byte) {
     }
 
     qDebug().noquote() << "QAIOT RX:" << hexText(byte);
-    emit send_pb_date(QStringLiteral("QAIOT RX %1").arg(describeMessage(message)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT RX %1").arg(describeMessage(message)));
 }
 
 void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
     Q_UNUSED(data);
-    emit send_pb_date(QStringLiteral("QAIOT 暂未映射 set 命令，cmd=%1").arg(static_cast<int>(cmd)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT 暂未映射 set 命令，cmd=%1").arg(static_cast<int>(cmd)));
 }
 
 void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
     Q_UNUSED(param);
-    emit send_pb_date(QStringLiteral("QAIOT 暂未映射 get 命令，cmd=%1").arg(static_cast<int>(cmd)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT 暂未映射 get 命令，cmd=%1").arg(static_cast<int>(cmd)));
 }
 
 bool Qaiot::sendCustomMessage(const QVariantMap& map) {

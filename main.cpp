@@ -96,27 +96,7 @@ int main(int argc, char* argv[]) {
     // qDebug() << "串口问题"<<QSslSocket::sslLibraryBuildVersionString();
     a.setFont(QFont("Microsoft Yahei", 9));
     qRegisterMetaType<FacErrorCode>("FacErrorCode");
-    qRegisterMetaType<ProtocolSnData>("ProtocolSnData");
-    qRegisterMetaType<ProtocolBatteryData>("ProtocolBatteryData");
-    qRegisterMetaType<ProtocolWifiStateData>("ProtocolWifiStateData");
-    qRegisterMetaType<ProtocolMusicStateData>("ProtocolMusicStateData");
-    qRegisterMetaType<ProtocolBaseInfoData>("ProtocolBaseInfoData");
-    qRegisterMetaType<ProtocolPeriphStateData>("ProtocolPeriphStateData");
-    qRegisterMetaType<ProtocolButtonStateData>("ProtocolButtonStateData");
-    qRegisterMetaType<ProtocolBrushControlData>("ProtocolBrushControlData");
-    qRegisterMetaType<ProtocolLedControlData>("ProtocolLedControlData");
-    qRegisterMetaType<ProtocolLcdControlData>("ProtocolLcdControlData");
-    qRegisterMetaType<ProtocolPressSampleData>("ProtocolPressSampleData");
-    qRegisterMetaType<ProtocolImuSampleData>("ProtocolImuSampleData");
-    qRegisterMetaType<ProtocolImuCalibResultData>("ProtocolImuCalibResultData");
-    qRegisterMetaType<ProtocolPressCalibResultData>("ProtocolPressCalibResultData");
-    qRegisterMetaType<ProtocolInternetOtaData>("ProtocolInternetOtaData");
-    qRegisterMetaType<ProtocolWifiDemandData>("ProtocolWifiDemandData");
-    qRegisterMetaType<ProtocolCameraControlData>("ProtocolCameraControlData");
-    qRegisterMetaType<ProtocolServoMotorInfoData>("ProtocolServoMotorInfoData");
-    qRegisterMetaType<ProtocolPictureSendOverData>("ProtocolPictureSendOverData");
-    qRegisterMetaType<ProtocolPhotosensitiveData>("ProtocolPhotosensitiveData");
-    qRegisterMetaType<ProtocolSdInfoData>("ProtocolSdInfoData");
+    qRegisterMetaType<ProtocolReport>("ProtocolReport");
 
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2},  {"IMU_CALI", 3},
                                             {"SCREEN_TEST", 4},       {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6},

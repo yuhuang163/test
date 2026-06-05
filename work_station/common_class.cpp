@@ -6,7 +6,7 @@ TestFunctionExecutor::TestFunctionExecutor(Qpb* pb) : pb(pb) {
     protocolManager.bindQpb(pb);
     protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     createTestFunctions();
-    connect(pb, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
+    connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
 }
 
 void TestFunctionExecutor::executeFunctionByName(const QString& functionName) {

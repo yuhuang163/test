@@ -397,6 +397,17 @@ public:
     virtual void get(DeviceCmd cmd, const QVariant& param = {}) = 0;
 };
 
+/** 协议上行统一信封：reportType 与 GateRegistry::kTypes 一致，payload 为具体结构或调试文本 */
+struct ProtocolReport {
+    QString reportType;
+    QVariant payload;
+
+    ProtocolReport() = default;
+    ProtocolReport(const QString& type, const QVariant& data = {}) : reportType(type), payload(data) {}
+};
+Q_DECLARE_METATYPE(ProtocolReport)
+
+// payload 内 QVariant 装箱所需（信封层仅 ProtocolReport，各 Protocol*Data 仍须单独声明）
 Q_DECLARE_METATYPE(ProtocolSnData)
 Q_DECLARE_METATYPE(ProtocolBatteryData)
 Q_DECLARE_METATYPE(ProtocolWifiStateData)

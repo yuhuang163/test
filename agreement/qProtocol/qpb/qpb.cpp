@@ -1,4 +1,4 @@
-#include "qpb.h"
+﻿#include "qpb.h"
 
 
 #include <QDebug>
@@ -543,7 +543,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                 pbChannel = (ext_ble_phy_channel_e)x;
 
                 if (x > 3 || x == 0) {
-                    emit send_pb_date("通道出错，请更新dongle固件为1.3.3");
+                    emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
 
                     state = STATE_IDLE;
                     break;
@@ -626,7 +626,7 @@ void Qpb::parseCmd(const QByteArray& byte) {
                                 qDebug() << "ble 解码失败原因：" << PB_GET_ERROR(&istream);
                             }
                         } else {
-                            emit send_pb_date("通道出错，请更新dongle固件为1.3.3");
+                            emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
                         }
 
                     } else {
@@ -2062,7 +2062,7 @@ void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 
     memset(&pack, 0, sizeof(pack));
 
     if (count > sizeof(pack.command_data.upload_picture_data.fault_data_packet) / sizeof(uint32_t)) {
-        emit send_pb_date("丢包过多" + QString::number(count));
+        emitReport(QStringLiteral("ProtocolPbDate"), "丢包过多" + QString::number(count));
         count = 50;
     }
 
@@ -2076,7 +2076,7 @@ void Qpb::set_camera_fault_data_packet(int count, const QVector<int>& data)  // 
 
     sendShortPack(pack);
 
-    emit send_pb_date("成功发送摄像头错误数据包个数" + QString::number(count));
+    emitReport(QStringLiteral("ProtocolPbDate"), "成功发送摄像头错误数据包个数" + QString::number(count));
 }
 
 void Qpb::set_imu_cali_result(ImuCalData cali_ok)  // 发送校准结果
@@ -2277,7 +2277,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f) {
     if (x.send_data_over == FacErrorCode_NO_ERROR) {
         ProtocolPictureSendOverData pictureAckData;
         pictureAckData.result = static_cast<int>(x.result);
-        emit send_get_picture_send_over(pictureAckData);
+        emitReport(QStringLiteral("ProtocolPictureSendOverData"), QVariant::fromValue(pictureAckData));
         emit sendGetProductResponse(1);
     }
 
@@ -2290,7 +2290,7 @@ void Qpb::process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f) {
 
     ProtocolWifiDemandData wifiDemandData;
     wifiDemandData.result = static_cast<int>(x.result);
-    emit send_FactroyCmd_WIFI_DEMAND(wifiDemandData);
+    emitReport(QStringLiteral("ProtocolWifiDemandData"), QVariant::fromValue(wifiDemandData));
     qDebug() << "收到wifi连接回应" << x.result;
     emit sendGetProductResponse(1);
 
@@ -2301,7 +2301,7 @@ void Qpb::process_FactroyCmd_INTERNET_OTA(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     ProtocolInternetOtaData internetOtaData;
     internetOtaData.result = static_cast<int>(x.result);
-    emit send_FactroyCmd_INTERNET_OTA(internetOtaData);
+    emitReport(QStringLiteral("ProtocolInternetOtaData"), QVariant::fromValue(internetOtaData));
     qDebug() << "收到本地ota控制回应:" << x.result;
     emit sendGetProductResponse(1);
 }
@@ -2310,7 +2310,7 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     ProtocolCameraControlData cameraControlData;
     cameraControlData.type = static_cast<int>(x.type);
-    emit send_camera_CONTROL_state(cameraControlData);
+    emitReport(QStringLiteral("ProtocolCameraControlData"), QVariant::fromValue(cameraControlData));
     qDebug() << "收到摄像头控制回应:" << x.type;
     is_camera_control = true;
     emit sendGetProductResponse(1);
@@ -2318,11 +2318,11 @@ void Qpb::process_FactroyCmd_CAMERA_CONTROL(FactoryDataPackage& f) {
 void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     FacMotorCalibResult x;
     memcpy(&x, &f.command_data, sizeof(x));
-    emit send_pb_date("收到设备上报信息");
+    emitReport(QStringLiteral("ProtocolPbDate"), "收到设备上报信息");
     if (x.which_value_item == FacMotorCalibResult_hall_calibration_data_tag &&
         x.type == FacMotorUploadType_HALL_CALIBRATION_DATA) {
         emit sendGetProductResponse(1);
-        emit send_pb_date("hall_calibration_data" + QString::number(x.value_item.hall_calibration_data));
+        emitReport(QStringLiteral("ProtocolPbDate"), "hall_calibration_data" + QString::number(x.value_item.hall_calibration_data));
         qDebug() << "获取到霍尔校准结果" << x.value_item.hall_calibration_data;
         if (x.value_item.hall_calibration_data == 0)
             is_hall_cali = 1;
@@ -2332,13 +2332,13 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
     if (x.which_value_item == FacMotorCalibResult_zero_calibration_data_tag &&
         x.type == FacMotorUploadType_ZERO_CALIBRATION_DATA) {
         emit sendGetProductResponse(1);
-        emit send_pb_date("获取到0点校准结果为" + QString::number(x.value_item.zero_calibration_data));
+        emitReport(QStringLiteral("ProtocolPbDate"), "获取到0点校准结果为" + QString::number(x.value_item.zero_calibration_data));
         qDebug() << "获取到0点校准结果" << x.value_item.zero_calibration_data;
         if (x.value_item.zero_calibration_data == 0) {
-            emit send_pb_date("0点校准成功");
+            emitReport(QStringLiteral("ProtocolPbDate"), "0点校准成功");
             is_zero_cali = 1;
         } else {
-            emit send_pb_date("0点校准失败");
+            emitReport(QStringLiteral("ProtocolPbDate"), "0点校准失败");
             is_zero_cali = 2;
         }
     }
@@ -2356,14 +2356,14 @@ void Qpb::process_FactroyCmd_UPLOAD_MOTORCALI_DATA(FactoryDataPackage& f) {
         servoMotorInfoData.faultCode = static_cast<int>(x.value_item.servo_info.FaultCode);
         servoMotorInfoData.hallInfo = QString::fromUtf8(x.value_item.servo_info.opera_info.hall_info);
         servoMotorInfoData.zeroInfo = QString::fromUtf8(x.value_item.servo_info.opera_info.zero_info);
-        emit send_servo_motor_info_msg(servoMotorInfoData);
+        emitReport(QStringLiteral("ProtocolServoMotorInfoData"), QVariant::fromValue(servoMotorInfoData));
         emit sendGetProductResponse(1);
     }
 
     if (x.which_value_item == FacMotorCalibResult_motor_log_tag && x.type == FacMotorUploadType_MOTOR_LOG) {
         qDebug() << "收到电机日志" << x.value_item.motor_log;
         QString motorLogString = QString::fromLatin1(x.value_item.motor_log);
-        emit send_motor_cali_msg(motorLogString);
+        emitReport(QStringLiteral("ProtocolMotorCaliMsg"), motorLogString);
         emit sendGetProductResponse(1);
     }
 
@@ -2421,7 +2421,7 @@ void Qpb::process_FactroyCmd_LCD_CONTROL(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     ProtocolLcdControlData lcdControlData;
     lcdControlData.type = static_cast<int>(x.type);
-    emit send_Lcd_CONTROL_state(lcdControlData);
+    emitReport(QStringLiteral("ProtocolLcdControlData"), QVariant::fromValue(lcdControlData));
     qDebug() << "收到屏幕控制回应:" << x.type;
     emit sendGetProductResponse(1);
 }
@@ -2467,11 +2467,11 @@ void Qpb::process_FactroyCmd_GET_IMU_CALIB(FactoryDataPackage& f) {
     imuCalibData.syx = static_cast<int>(x.new_cali.syx);
     imuCalibData.szx = static_cast<int>(x.new_cali.szx);
     imuCalibData.szy = static_cast<int>(x.new_cali.szy);
-    emit send_IMU_CALIB_result(imuCalibData);
+    emitReport(QStringLiteral("ProtocolImuCalibResultData"), QVariant::fromValue(imuCalibData));
     if (x.result) {
-        emit send_pb_date("设备六轴校准数据有问题,可能是初始值");
+        emitReport(QStringLiteral("ProtocolPbDate"), "设备六轴校准数据有问题,可能是初始值");
     } else {
-        emit send_pb_date("设备六轴校准数据是工厂值,是可靠的");
+        emitReport(QStringLiteral("ProtocolPbDate"), "设备六轴校准数据是工厂值,是可靠的");
     }
     emit sendGetProductResponse(1);
 }
@@ -2481,7 +2481,7 @@ void Qpb::process_FactroyCmd_LED_CONTROL(FactoryDataPackage& f) {
     ProtocolLedControlData ledControlData;
     ledControlData.switchState = static_cast<int>(x.switch_state);
     ledControlData.ledStateCount = static_cast<int>(x.led_state_count);
-    emit send_LED_CONTROL_state(ledControlData);
+    emitReport(QStringLiteral("ProtocolLedControlData"), QVariant::fromValue(ledControlData));
     qDebug() << "收到灯光控制回应:" << x.switch_state;
 
     qDebug() << "收到灯光count:" << x.led_state_count;
@@ -2492,7 +2492,7 @@ void Qpb::process_FactroyCmd_BRUSH_CONTROL(FactoryDataPackage& f) {
     memcpy(&x, &f.command_data, sizeof(x));
     ProtocolBrushControlData brushControlData;
     brushControlData.brushStart = static_cast<int>(x.value_item.brush_start);
-    emit send_BrushControl_state(brushControlData);
+    emitReport(QStringLiteral("ProtocolBrushControlData"), QVariant::fromValue(brushControlData));
     qDebug() << "收到设备控制回应:" << x.value_item.brush_start;
     emit sendGetProductResponse(1);
 }
@@ -2506,7 +2506,7 @@ void Qpb::process_FactroyCmd_UPLOAD_BUTTON_STATE(FactoryDataPackage& f) {
     ProtocolButtonStateData buttonStateData;
     buttonStateData.modeButtonState = static_cast<int>(x.button_state[1].command_data.mode_button.button_state_now);
     buttonStateData.powerButtonState = static_cast<int>(x.button_state[0].command_data.power_button.button_state_now);
-    emit send_button_state(buttonStateData);
+    emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(buttonStateData));
     emit sendGetProductResponse(1);
 }
 
@@ -2519,7 +2519,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         batteryData.chargeState = static_cast<int>(x.dev_info[0].value_item.battery.charge_state);
         batteryData.percent = static_cast<int>(x.dev_info[0].value_item.battery.percent);
         batteryData.voltageMv = static_cast<int>(x.dev_info[0].value_item.battery.voltage);
-        emit send_battary(batteryData);
+        emitReport(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(batteryData));
         qDebug() << "获取到电量信息";
         emit sendGetProductResponse(1);
         is_get_battery_data = 1;
@@ -2528,34 +2528,34 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         ProtocolWifiStateData wifiData;
         wifiData.wifiName = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_name);
         wifiData.wifiPassword = QString::fromUtf8(x.dev_info[0].value_item.wifi_info.wifi_password);
-        emit send_wifi_State(wifiData);
+        emitReport(QStringLiteral("ProtocolWifiStateData"), QVariant::fromValue(wifiData));
         qDebug() << "获取到wifi信息";
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_board_sn_tag) {
-        emit send_sn_data({ProtocolSnType::BoardSn, QString::fromUtf8(x.dev_info[0].value_item.board_sn)});
+        emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(ProtocolSnData{ProtocolSnType::BoardSn, QString::fromUtf8(x.dev_info[0].value_item.board_sn)}));
         qDebug() << "获取到板子的sn" << x.dev_info[0].value_item.board_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_tail_sn_tag) {
-        emit send_sn_data({ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.product_sn)});
+        emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(ProtocolSnData{ProtocolSnType::TailSn, QString::fromUtf8(x.dev_info[0].value_item.product_sn)}));
         qDebug() << "获取到回复整机的sn" << x.dev_info[0].value_item.product_sn;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sub_pid_tag) {
-        emit send_sn_data({ProtocolSnType::SubPid, QString::fromUtf8(x.dev_info[0].value_item.sub_pid)});
+        emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(ProtocolSnData{ProtocolSnType::SubPid, QString::fromUtf8(x.dev_info[0].value_item.sub_pid)}));
         qDebug() << "获取到回应sub_pid" << x.dev_info[0].value_item.sub_pid;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_sku_id_tag) {
-        emit send_sn_data({ProtocolSnType::SkuId, QString::fromUtf8(x.dev_info[0].value_item.sku_id)});
+        emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(ProtocolSnData{ProtocolSnType::SkuId, QString::fromUtf8(x.dev_info[0].value_item.sku_id)}));
         qDebug() << "获取到回应sku_id" << x.dev_info[0].value_item.sku_id;
         emit sendGetProductResponse(1);
     }
     if (x.dev_info[0].which_value_item == FacDevInfoValue_music_state_tag) {
         ProtocolMusicStateData musicStateData;
         musicStateData.musicState = static_cast<int>(x.dev_info[0].value_item.music_state);
-        emit send_music_state(musicStateData);
+        emitReport(QStringLiteral("ProtocolMusicStateData"), QVariant::fromValue(musicStateData));
         qDebug() << "获取到音乐状态回应" << x.dev_info[0].value_item.music_state;
         emit sendGetProductResponse(1);
     }
@@ -2564,7 +2564,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
         ProtocolSdInfoData sdInfoData;
         sdInfoData.cmd = static_cast<int>(x.dev_info[0].value_item.sdcard.cmd);
         sdInfoData.data = QString::fromUtf8(x.dev_info[0].value_item.sdcard.data);
-        emit send_sd_info(sdInfoData);
+        emitReport(QStringLiteral("ProtocolSdInfoData"), QVariant::fromValue(sdInfoData));
         qDebug() << "获取到sd卡命令" << x.dev_info[0].value_item.sdcard.cmd;
         qDebug() << "获取到sd卡信息" << x.dev_info[0].value_item.sdcard.data;
         emit sendGetProductResponse(1);
@@ -2572,12 +2572,12 @@ void Qpb::process_FactroyCmd_GET_DEVICE_INFO(FactoryDataPackage& f) {
     if (x.dev_info[0].which_value_item == FacDevInfoValue_light_sensor_tag) {
         ProtocolPhotosensitiveData photosensitiveData;
         photosensitiveData.lightSensor = static_cast<int>(x.dev_info[0].value_item.light_sensor);
-        emit send_photosensitive_info(photosensitiveData);
+        emitReport(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(photosensitiveData));
         qDebug() << "获取到光敏电阻信息" << x.dev_info[0].value_item.light_sensor;
         emit sendGetProductResponse(1);
     }
 
-    emit send_pb_date("获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));
+    emitReport(QStringLiteral("ProtocolPbDate"), "获取到写入的日期版本信息内容:" + QString(x.dev_info[0].write_info));
 }
 
 void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
@@ -2590,7 +2590,7 @@ void Qpb::process_FactroyCmd_GET_PERIPH_STATE(FactoryDataPackage& f) {
     periphData.press_state = x.press_state ? 1 : 0;
     periphData.audio_state = x.audio_state ? 1 : 0;
     periphData.result = static_cast<int>(x.result);
-    emit send_periph_data(periphData);
+    emitReport(QStringLiteral("ProtocolPeriphStateData"), QVariant::fromValue(periphData));
     qDebug() << "获取到外设状态";
     emit sendGetProductResponse(1);
 }
@@ -2623,7 +2623,7 @@ void Qpb::process_FactroyCmd_GET_DEVICE_BASE_INFO(FactoryDataPackage& f) {
     baseInfoData.result = static_cast<int>(x.result);
     baseInfoData.ageing_state = x.ageing_state ? 1 : 0;
     baseInfoData.ageingState = baseInfoData.ageing_state;
-    emit send_base_data(baseInfoData);
+    emitReport(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(baseInfoData));
     emit sendGetProductResponse(1);
 }
 void Qpb::process_FactroyCmd_SET_IMU_CALIB(FactoryDataPackage& f) {
@@ -2644,7 +2644,7 @@ void Qpb::process_FactroyCmd_GET_PRESS_SENSOR_CALIB(FactoryDataPackage& f) {
     pressCalibData.powerButtonAdc = static_cast<int>(x.power_button_adc);
     pressCalibData.assistantComponent = static_cast<int>(x.assistant_component);
     pressCalibData.temperature = static_cast<int>(x.temperature);
-    emit send_press_cali_data(pressCalibData);
+    emitReport(QStringLiteral("ProtocolPressCalibResultData"), QVariant::fromValue(pressCalibData));
     is_save_press_cali_ok = 1;
     emit sendGetProductResponse(1);
 }
@@ -2677,7 +2677,7 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     }
     if (x.dev_state_type == DevStateType_SHIP) {
         qDebug() << "设置船运成功";
-        emit send_pb_date("设置船运成功" + QString::number(shipCount));
+        emitReport(QStringLiteral("ProtocolPbDate"), "设置船运成功" + QString::number(shipCount));
         emit sendGetProductResponse(1);
         if (shipCount) {
             increaseShipCount();
@@ -2685,12 +2685,12 @@ void Qpb::process_FactroyCmd_SET_DEVICE_STATE(FactoryDataPackage& f) {
     }
     if (x.dev_state_type == DevStateType_FACTORY_QRCORD) {
         qDebug() << "设置工厂模式成功";
-        emit send_pb_date("设置工厂模式成功");
+        emitReport(QStringLiteral("ProtocolPbDate"), "设置工厂模式成功");
         emit sendGetProductResponse(1);
     }
     if (x.dev_state_type == DevStateType_UART_RECEIVE) {
         qDebug() << "设置串口状态成功";
-        emit send_pb_date("设置串口状态成功");
+        emitReport(QStringLiteral("ProtocolPbDate"), "设置串口状态成功");
         emit sendGetProductResponse(1);
     }
 }
@@ -2747,14 +2747,14 @@ void Qpb::process_CommandId_GET_USER_INFO(DataPackage& f) {
     qDebug() << "x.which_command_data" << x.which_command_data;
     if (x.which_command_data == DataPackage_get_user_info_tag)  //回应是0
     {
-        emit send_pb_date("成功收到获取user_info指令回应");
+        emitReport(QStringLiteral("ProtocolPbDate"), "成功收到获取user_info指令回应");
         is_set_i_am_app = 1;
         emit sendGetProductResponse(1);
     }
 }
 
 void Qpb::process_CommandId_CONNECT_PRO(DataPackage& f) {
-    emit send_pb_info(QString("firmware version : %1").arg(f.command_data.connect_pro.firmware_id));
+    emitReport(QStringLiteral("ProtocolPbInfo"), QString("firmware version : %1").arg(f.command_data.connect_pro.firmware_id));
     qDebug() << "获取到版本号" << f.command_data.connect_pro.firmware_id;
     emit sendGetProductResponse(1);
 }
@@ -2763,13 +2763,13 @@ void Qpb::process_CommandId_ROTAS_RESULT_RSP(DataPackage& f) {
     RotasResultRsp x;
     memcpy(&x, &f.command_data, sizeof(x));
     if (x.rotaStatus == RotaFileStatus_ROTA_PAUSE) {
-        emit send_pb_date("流控停止");
-        emit send_ota_flow_control(0);
+        emitReport(QStringLiteral("ProtocolPbDate"), "流控停止");
+        emitReport(QStringLiteral("ProtocolOtaFlowControl"), QVariant::fromValue(0));
         emit sendGetProductResponse(1);
     }
     if (x.rotaStatus == RotaFileStatus_ROTA_START) {
-        emit send_pb_date("流控开始");
-        emit send_ota_flow_control(1);
+        emitReport(QStringLiteral("ProtocolPbDate"), "流控开始");
+        emitReport(QStringLiteral("ProtocolOtaFlowControl"), QVariant::fromValue(1));
         emit sendGetProductResponse(1);
     }
 }
@@ -2803,21 +2803,21 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
     switch (f.command_id) {
         case CommandId_ROTAS_FILE_STATUS_RSP:
             if (f.command_data.rota_file_status_rsp.result < s.size()) {
-                emit send_pb_info(s[f.command_data.rota_file_status_rsp.result]);
+                emitReport(QStringLiteral("ProtocolPbInfo"), s[f.command_data.rota_file_status_rsp.result]);
 
                 if (f.command_data.rota_file_status_rsp.result == 0) {
-                    emit send_pb_date("成功收到开始ota指令回应");
+                    emitReport(QStringLiteral("ProtocolPbDate"), "成功收到开始ota指令回应");
                     is_ota_start = 1;
                 }
 
             } else {
-                emit send_pb_date(QString("未知错误码: %1").arg(f.command_data.rota_file_status_rsp.result));
+                emitReport(QStringLiteral("ProtocolPbDate"), QString("未知错误码: %1").arg(f.command_data.rota_file_status_rsp.result));
             }
             break;
 
         case CommandId_ROTAS_DATA_RSP:
             if (f.command_data.rota_data_rsp.progress) {
-                emit send_ota_progress(f.command_data.rota_data_rsp.progress);
+                emitReport(QStringLiteral("ProtocolOtaProgress"), QVariant::fromValue(f.command_data.rota_data_rsp.progress));
             } else {
                 qDebug() << "是0的进度已经省略显示";
             }
@@ -2825,10 +2825,10 @@ void Qpb::process_CommandId_ROTAS(DataPackage& f) {
 
         case CommandId_ROTAS_RESULT_REQ:
             if (f.command_data.rota_result_req.rotaResult < s.size()) {
-                emit send_pb_date(s[f.command_data.rota_result_req.rotaResult]);
-                emit send_ota_result(f.command_data.rota_result_req.rotaResult);
+                emitReport(QStringLiteral("ProtocolPbDate"), s[f.command_data.rota_result_req.rotaResult]);
+                emitReport(QStringLiteral("ProtocolOtaResult"), QVariant::fromValue(static_cast<int>(f.command_data.rota_result_req.rotaResult)));
             } else {
-                emit send_pb_date(QString("未知结果码: %1").arg(f.command_data.rota_result_req.rotaResult));
+                emitReport(QStringLiteral("ProtocolPbDate"), QString("未知结果码: %1").arg(f.command_data.rota_result_req.rotaResult));
             }
             break;
 
@@ -3003,7 +3003,7 @@ void Qpb::process_FactroyCmd_UPLOAD_PRESS_SENSOR(FactoryDataPackage& f) {
             pressData.valueValues.push_back(static_cast<int>(x.sensor_data[i].assistant_component.value));
         }
     }
-    emit send_press_data(pressData);
+    emitReport(QStringLiteral("ProtocolPressSampleData"), QVariant::fromValue(pressData));
     is_set_press_collect_param = 1;
     emit sendGetProductResponse(1);
 }
@@ -3029,7 +3029,7 @@ void Qpb::process_FactroyCmd_UPLOAD_NINE_ALEX(FactoryDataPackage& f) {
         imuData.gyroValues.push_back(static_cast<int>(x.data[i].gyro_y));
         imuData.gyroValues.push_back(static_cast<int>(x.data[i].gyro_z));
     }
-    emit send_imu_data(imuData);
+    emitReport(QStringLiteral("ProtocolImuSampleData"), QVariant::fromValue(imuData));
     is_setimu_collect_param = 1;
     emit sendGetProductResponse(1);
 }

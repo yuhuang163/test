@@ -295,30 +295,6 @@ private slots:
     void process_FactroyCmd_WIFI_DEMAND(FactoryDataPackage& f);
     void process_FactroyCmd_UPLOAD_PICTURE_DATA(FactoryDataPackage& f);
     void process_FactroyCmd_FAC_LOG(FactoryDataPackage& f);
-signals:
-    // ==================== 信号输出（上层订阅） ====================
-    void send_sd_info(ProtocolSdInfoData);
-    void send_press_data(ProtocolPressSampleData);
-    void send_base_data(ProtocolBaseInfoData data);
-    void send_imu_data(ProtocolImuSampleData);
-    void send_wifi_State(ProtocolWifiStateData);
-    void send_music_state(ProtocolMusicStateData);
-    void send_BrushControl_state(ProtocolBrushControlData);
-    void send_LED_CONTROL_state(ProtocolLedControlData);
-    void send_Lcd_CONTROL_state(ProtocolLcdControlData);
-    void send_IMU_CALIB_result(ProtocolImuCalibResultData);
-    void send_FactroyCmd_INTERNET_OTA(ProtocolInternetOtaData);
-    void send_FactroyCmd_WIFI_DEMAND(ProtocolWifiDemandData);
-    void send_camera_CONTROL_state(ProtocolCameraControlData);
-    void send_servo_motor_info_msg(ProtocolServoMotorInfoData);
-    void send_get_picture_send_over(ProtocolPictureSendOverData);
-    void send_press_cali_data(ProtocolPressCalibResultData x);
-
-    void send_ota_flow_control(int state);
-    void send_motor_cali_msg(QString data);
-    void send_pb_info(QString info);
-    void send_ota_progress(int progress);
-    void send_ota_result(int result);
 };
 
 #endif  // QPB_H

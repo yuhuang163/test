@@ -204,6 +204,8 @@ private:
     void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
     void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                        const QVariant& payload, bool& allPass, QString& detailOut);
+    /** SN 读回卡控：case 未配 Expected 时用 MES/输入框 SN 回填。 */
+    void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
     /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
     QVector<QPair<QString, QString>> freeWorkMesSegments_;

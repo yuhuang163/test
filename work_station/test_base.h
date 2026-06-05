@@ -110,8 +110,6 @@ private:  // 通用变量
 
     /** 指令重试：应答是否计入当前等待（按 CommandWaitSource 过滤 dongle / 产测口） */
     bool isCommandRetryResponseAccepted(const QObject* source) const;
-    /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
-    void finishCommandRetryWait(bool success, const QString& logMessage);
     void onCommandRetryTimerTimeout();
 
 public:
@@ -232,6 +230,8 @@ public slots:
     virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData){};
     virtual void refreshKeySignalRead(ProtocolUInt32ValueData){};
     virtual void refreshTupleData(ProtocolTupleData){};
+    virtual void getPictureSendOver(ProtocolPictureSendOverData){};
+    virtual void refreshAgingStatus(ProtocolAgingStatusData){};
     virtual void refreshAmmeterData(QString){};
     virtual void refreshDongleUartState(int){};
     virtual void refreshUsbUartState(int){};
@@ -240,6 +240,11 @@ public slots:
     virtual void processReceivedData(const QByteArray&){};
 
 protected:
+    /** 协议上行统一分发：reportType 与 GateRegistry 注册名一致，默认转发到 legacy refresh* */
+    virtual void onProtocolReport(const ProtocolReport& report);
+    void dispatchLegacyProtocolReport(const QString& reportType, const QVariant& payload);
+    /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
+    void finishCommandRetryWait(bool success, const QString& logMessage);
     void closeEvent(QCloseEvent* event) override;
     void resetVisaBackend();
 

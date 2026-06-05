@@ -184,6 +184,12 @@ struct GateTypeDescriptor {
     QVector<GateFieldDescriptor> fields;
 };
 
+/** 卡控步 MES/表格展示用的 testData 与 ask。 */
+struct GateStepDisplay {
+    QString testData;
+    QString ask;
+};
+
 class GateRegistry {
 public:
     static QStringList reportTypes();
@@ -200,6 +206,13 @@ public:
                             bool& passOut, QString& detailOut);
     /** 解析 range 卡控上下限（含 LowSettingsKey/HighSettingsKey）。 */
     static void resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut);
+    /** 单项卡控的期望展示（范围/比较符/等值）。 */
+    static QString formatGateAsk(const TestCaseGate& gate, const QString& reportType);
+    /** 多项卡控合并期望展示。 */
+    static QString formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType);
+    /** 从回包与主卡控项生成步骤 testData/ask（判定逻辑仍用 evaluate/evaluateAll）。 */
+    static GateStepDisplay formatStepDisplay(const TestCaseGate& primaryGate, const QVector<TestCaseGate>& allGates,
+                                             const QString& reportType, const QVariant& payload, bool multiFieldMode);
 };
 
 // ---------- 钩子（仅自由工站 QFreeWork 执行） ----------
