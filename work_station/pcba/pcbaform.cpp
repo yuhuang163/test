@@ -916,7 +916,8 @@ void PcbaForm::get_remain_data(const FixturePacketData packetData) {
 
     // 根据产品类型进行特定测试
     if (SETTINGS.value("SYSTEM/TestShippingCurrent").toBool()) {
-        processTestItem("船运电流", packetData.shipCurrent, LowshipCurrent, HighshipCurrent, testItems);
+        processTestItem(QStringLiteral("待机电流"), packetData.standbyCurrentUa, LowshipCurrent, HighshipCurrent,
+                        testItems);
     }
 
     if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool()) {
@@ -1018,7 +1019,7 @@ void PcbaForm::logPacketData(const FixturePacketData& packetData) {
     showlog("充电电流:" + QString::number(packetData.chargingCurrent) + "ma");
     showlog("治具错误码:" + QString::number(packetData.fixerro));
 
-    showlog("船运电流:" + QString::number(packetData.shipCurrent) + "ua");
+    showlog(QStringLiteral("待机电流:") + QString::number(packetData.standbyCurrentUa) + QStringLiteral("uA"));
     showlog("音频电流:" + QString::number(packetData.musicCurrent) + "ma");
     showlog("产品为:" + QString(pack.product));
 }

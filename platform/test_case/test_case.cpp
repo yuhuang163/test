@@ -2491,7 +2491,7 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")},
       {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")},
       {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")},
-      {QStringLiteral("shipCurrent"), QStringLiteral("待机电流(uA)")},
+      {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")},
       {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")},
       {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")},
       {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")},
@@ -2614,7 +2614,7 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             m.insert(QStringLiteral("workingCurrent"), pack.workingCurrent);
             m.insert(QStringLiteral("chargingCurrent"), pack.chargingCurrent);
             m.insert(QStringLiteral("musicCurrent"), pack.musicCurrent);
-            m.insert(QStringLiteral("shipCurrent"), pack.shipCurrent);
+            m.insert(QStringLiteral("standbyCurrentUa"), pack.standbyCurrentUa);
             m.insert(QStringLiteral("pumpVoltageMv"), pack.pumpVoltageMv);
             m.insert(QStringLiteral("mcuVoltageMv"), pack.mcuVoltageMv);
             m.insert(QStringLiteral("batteryVoltageMv"), pack.batteryVoltageMv);

@@ -30,7 +30,7 @@ struct ext_uart_phy_layer_t {
     uint16_t chargingCurrent;     // 充电电流 mA
     uint8_t music_state;          // 旧版字节 12：音频状态
     uint16_t musicCurrent;        // 旧:13~14 音频电流；新:12~13 音频 IC mA（见 parse）
-    uint16_t shipCurrent;         // 旧:船运 uA；新:14~15 待机 uA
+    uint16_t standbyCurrentUa;    // 字节 14~15：待机电流 uA
     uint16_t pumpVoltageMv;       // 新:16~17 泵电压 mV
     uint16_t mcuVoltageMv;        // 新:18~19 MCU 电压 mV
     uint16_t batteryVoltageMv;    // 新:20~21 电池电压 mV
@@ -84,7 +84,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
     parseFixturePacketCommonHead(receivebuf, datapack);
     datapack.music_state = 0;
     datapack.musicCurrent = 0;
-    datapack.shipCurrent = 0;
+    datapack.standbyCurrentUa = 0;
     datapack.pumpVoltageMv = 0;
     datapack.mcuVoltageMv = 0;
     datapack.batteryVoltageMv = 0;
@@ -92,7 +92,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
 
     if (declaredLen >= kPcbaFullFrameLenV2) {
         datapack.musicCurrent = readBe16(receivebuf, 12);
-        datapack.shipCurrent = readBe16(receivebuf, 14);
+        datapack.standbyCurrentUa = readBe16(receivebuf, 14);
         datapack.pumpVoltageMv = readBe16(receivebuf, 16);
         datapack.mcuVoltageMv = readBe16(receivebuf, 18);
         datapack.batteryVoltageMv = readBe16(receivebuf, 20);
@@ -108,7 +108,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
         datapack.music_state = static_cast<uchar>(receivebuf.at(12));
     }
     if (SETTINGS.value("SYSTEM/TestShippingCurrent").toBool() && declaredLen > 14)
-        datapack.shipCurrent = readBe16(receivebuf, 14);
+        datapack.standbyCurrentUa = readBe16(receivebuf, 14);
     if (declaredLen >= 18)
         datapack.fixerro = static_cast<uint8_t>(receivebuf.at(17));
     return true;
@@ -260,14 +260,14 @@ FixturePcbaUartEvent FixturePcbaUartProtocol::parseFullFrame(const QByteArray& d
     qDebug() << "充电电流:" << datapack.chargingCurrent << "mA";
     if (extended) {
         qDebug() << "音频IC电流:" << datapack.musicCurrent << "mA";
-        qDebug() << "待机电流:" << datapack.shipCurrent << "uA";
+        qDebug() << "待机电流:" << datapack.standbyCurrentUa << "uA";
         qDebug() << "泵电压:" << datapack.pumpVoltageMv << "mV";
         qDebug() << "MCU电压:" << datapack.mcuVoltageMv << "mV";
         qDebug() << "电池电压:" << datapack.batteryVoltageMv << "mV";
         qDebug() << "治具错误码:" << datapack.fixerro;
     } else {
         qDebug() << "治具错误码:" << datapack.fixerro;
-        qDebug() << "船运电流:" << datapack.shipCurrent << "uA";
+        qDebug() << "待机电流:" << datapack.standbyCurrentUa << "uA";
         if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool())
             qDebug() << "音频电流:" << datapack.musicCurrent << "mA";
         else

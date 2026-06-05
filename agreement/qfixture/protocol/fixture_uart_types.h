@@ -101,7 +101,8 @@ typedef struct FixturePacketData {
     uchar button1 = 0;
     uchar button2 = 0;
     uint musicCurrent = 0;
-    uint shipCurrent = 0;
+    /** 治具长包字节 14~15：待机电流 uA（原 shipCurrent，与蓝牙船运模式无关） */
+    uint standbyCurrentUa = 0;
     uchar music_state = 0;
     uint staticCurrent = 0;
     uint workingCurrent = 0;
