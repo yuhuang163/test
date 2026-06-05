@@ -1,4 +1,4 @@
-#ifndef PCBAFORM_H
+﻿#ifndef PCBAFORM_H
 #define PCBAFORM_H
 
 #include <QWidget>
@@ -45,7 +45,6 @@ public:
     Ui::PcbaForm* ui;
     int firstconnectbrush = 1;
     bool mac_retry_flag = false;
-
     void startTask() override;
     void overTask() override;
     void startTest() override;
@@ -53,7 +52,7 @@ public:
 
 private slots:
 
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
     void getimuData(ProtocolImuSampleData x) override;
     void get_remain_data(const FixturePacketData packetData);
@@ -83,7 +82,7 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void checkbutton(ProtocolButtonStateData data) override;
+    void checkButton(ProtocolButtonStateData data) override;
     void checkBrushControlState(ProtocolBrushControlData data) override;
     void checkLedControlState(ProtocolLedControlData data) override;
     void on_pushButton_clicked();

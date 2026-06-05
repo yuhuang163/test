@@ -1,4 +1,4 @@
-#include "pcbaform.h"
+﻿#include "pcbaform.h"
 
 #include <QMessageBox>
 #include <QSerialPortInfo>
@@ -488,7 +488,7 @@ void PcbaForm::checkBrushControlState(ProtocolBrushControlData data) {
              << "收到设备控制状态:" << data.brushStart;
     isbrushcontrol = 1;
 }
-void PcbaForm::checkbutton(ProtocolButtonStateData data) {
+void PcbaForm::checkButton(ProtocolButtonStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "获取到开关按键状态" << data.powerButtonState;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -1911,11 +1911,11 @@ void PcbaForm::on_getMac_returnPressed() {
     if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
         on_start_scan_clicked();
 }
-void PcbaForm::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void PcbaForm::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";

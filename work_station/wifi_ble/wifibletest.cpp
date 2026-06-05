@@ -1,4 +1,4 @@
-#include "wifibletest.h"
+﻿#include "wifibletest.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -825,7 +825,7 @@ void wifibletest::getWifiMsg(QString data) {
         }
     }
 }
-void wifibletest::initDate() {
+void wifibletest::initData() {
     refresh_base_times = 1;
     refresh_periph_times = 1;
     allow_retry = 1;
@@ -1585,7 +1585,7 @@ void wifibletest::startTask() {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
             case STATE_IDLE:  // 复位一切
-                initDate();
+                initData();
                 waitWork(1000);           //给开机时间
                 at->set(DongleCmd::BleScanConnect, macAddress);  // 开始连接
                 showlog("MAC地址为：" + ui->macInput->text());
@@ -2146,11 +2146,11 @@ void wifibletest::on_getMac_returnPressed() {
     // on_macInput_returnPressed();
 }
 
-void wifibletest::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void wifibletest::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
@@ -2184,7 +2184,7 @@ void wifibletest::processGetMesTestValue() {
     }
 }
 
-void wifibletest::getmacadress(const QByteArray& byte) {
+void wifibletest::getMacAddress(const QByteArray& byte) {
     receivedData = "";
     receivedData = receivedData + QString::fromUtf8(byte);
 
@@ -2253,14 +2253,14 @@ void wifibletest::on_mac_combo_textActivated(const QString& arg1) {
         macAddress = arg1;
         // at->set(DongleCmd::BleScanConnect, macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
-        bandingMacSn(macAddress, snbanding);
-        bandingMacSn_mes(macAddress, snbanding);
+        bindingMacSn(macAddress, snBinding);
+        bindingMacSnMes(macAddress, snBinding);
     }
     ui->snbanding->setFocus();
 }
-void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
-    if (bandingsn == "" || bandingmac == "")
-        bandingresult = false;
+void wifibletest::bindingMacSn(QString bindingMac, QString bindingSn) {
+    if (bindingSn == "" || bindingMac == "")
+        bindingResult = false;
     QString path;
     if (SETTINGS.value("Mes/FACTORY").toString() == "xwd") {
         path = SETTINGS.value("MAC_SN/FilePath", "\\\\10.196.200.51\\sgpub\\LTC\\Q20-OTA\\mac_sn.txt").toString();
@@ -2285,9 +2285,9 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
         while (!in.atEnd()) {
             QString line = in.readLine();         // 逐行读取文件
             QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -2296,7 +2296,7 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);
@@ -2314,18 +2314,18 @@ void wifibletest::bandingMacSn(QString bandingmac, QString bandingsn) {
     // if (file.open(QIODevice::ReadWrite | QIODevice::Append))
     // {                                                    //
     //     QTextStream out(&file);                          // 创建一个文本流对象
-    //     out << bandingsn << "," << bandingmac << '\n';   // 将sn和mac写入文件
+    //     out << bindingSn << "," << bindingMac << '\n';   // 将sn和mac写入文件
     //     file.close();                                    // 关闭文件
     // }
 }
 
-void wifibletest::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
+void wifibletest::bindingMacSnMes(QString bindingMac, QString bindingSn) {
     pack.mechines = 1;  // 1脱1,1号上位机
-    pack.sn = snbanding;
+    pack.sn = snBinding;
 
     pack.result = "PASS";
 
-    pack.itemvalue = QString("|BTMAC:%1|").arg(bandingmac);
+    pack.itemvalue = QString("|BTMAC:%1|").arg(bindingMac);
 
     pack.instruct_num = "076";
 
@@ -2333,7 +2333,7 @@ void wifibletest::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
         emit send_end_testPass(pack);
     }
 
-    if (bandingresult) {
+    if (bindingResult) {
         ui->banding_result->setText("绑定:PASS");
         ui->banding_result->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
                                           "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -2352,10 +2352,10 @@ void wifibletest::on_snbanding_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    snbanding = ui->snbanding->text();
+    snBinding = ui->snbanding->text();
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
-    bandingresult = true;
+    bindingResult = true;
 }
 
 void wifibletest::getTestValue(const int mechines, const QString value) {
@@ -2438,7 +2438,7 @@ void wifibletest::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
 }
 void wifibletest::on_clear_nfc_data_clicked() {
     // TODO: 在此添加控件通知处理程序代码

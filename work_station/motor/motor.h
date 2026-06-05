@@ -1,4 +1,4 @@
-#ifndef MOTOR_H
+﻿#ifndef MOTOR_H
 #define MOTOR_H
 
 #include "Abini.h"
@@ -31,7 +31,7 @@ public:
 private slots:
 
     void refreshBaseData(ProtocolBaseInfoData data) override;
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void refreshMotorCaliMsg(QString msg) override;
     void control_motor_cmd(QString cmd);
     void canGoNextMechine(int x) override;

@@ -1,4 +1,4 @@
-#ifndef PRESSURESENSORFORM_H
+﻿#ifndef PRESSURESENSORFORM_H
 #define PRESSURESENSORFORM_H
 
 #include <WinSock2.h>
@@ -44,9 +44,8 @@ public:
     QCheckBox* getIsFormMes() override { return ui->isformmes; };
     QComboBox* getNfcComboBox() override { return ui->NfcComboBox; };  // nfc的usb口
     void startTask() override;
-
     void show_product(QString name);
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void processGetMesTestValue();
     typedef enum {
         MODEL_ID_INVALID,
@@ -99,7 +98,6 @@ public:
 
     uint8_t CheckNfcData();
     int findNfcDevicePort(QString name);
-
     int total_sensor = 0;  // 传感器数量
     int calib_chan = 0;    // 当前校准通道
     int test_chan = 0;     // 当前测试通道
@@ -119,22 +117,18 @@ signals:
     void send_processInspection_lx(MesPacketData pack);
     void send_testPass_lx(MesPacketData pack);
     void send_getsn_lx(MesPacketData pack);
-
     void send_getTestData(const int, const QString& sn, const QString& wpCode, const QString& testItemName);
     void gonextfocus();
 
     // other
     void operator_instruct(int);
-
     void send_go_next_focus();
     void send_startTest(int data);
     void send_go_next_test(int data);
-
 private:
     QString result = "";
     QString passValue = "通过";
     QString failValue = "失败";
-
     typedef enum {
         STATE_IDLE,
         STATE_WATI_CONNECT,      // 等待连接
@@ -194,7 +188,6 @@ private:
     void F20_fixture(State state, int argument);
     void U7_fixture(State state, int argument);
     void Y20PS_fixture(State state, int argument);
-
     void ui_msg_show(MODEL_ID_E model, State state, int argument);
 
     QTime transTime;
@@ -211,7 +204,6 @@ private:
 
     QString stringsn;
     QString macAddress = "没有mac地址";
-
     QString readProduct = "";
     MODEL_ID_E product_model = MODEL_ID_INVALID;  // 产品型号
 
@@ -229,7 +221,6 @@ private:
     press_calib_data_t LastCali = {{0}};
     uint8_t is_calib_suc = 0;
     bool IsSaveFail = 0;  // 是否校准完成
-
     bool isCaliOk = 0;               // 是否校准完成
     bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
     bool repeat_send_ok = 0;         // 校准结果需要重复发送，确保写入，重复发送完成的标志位
@@ -242,17 +233,14 @@ private:
     bool getaskbarcode = false;
     bool is_get_ready_command = false;
     bool is_get_set_ok_command = false;
-
     bool isStartcali = 0;     // 是否开始校准
     int Amplituderesult = 0;  // 只进行一次
     int Amplitudetimes = 0;
     bool first_start_test = 1;  // 只进行一次
     bool start_calib_channel[3] = {0};
     bool isfirstsavedata = 0;  // 是否开始按键200校准
-
     int brush_before_calib_count = 0;
     int button_before_calib_count = 0;
-
     int counter = 0;
     int data_200_true_count = 0;
     int data_250_true_count = 0;
@@ -273,10 +261,8 @@ private:
 
 public slots:
     void updateGraphs();  // 界面更新槽函数
-
 signals:
     void dataReady();
-
 private:
     QQueue<QPair<uint32_t, QVector<int16_t>>> adcDataQueue;
     QQueue<QPair<uint32_t, QVector<int16_t>>> valueDataQueue;
@@ -287,46 +273,30 @@ private slots:
     void getPressSensorData(ProtocolPressSampleData x) override;
     void refreshAmplitudeData(QString data) override;
     void receive_uart_data(int state);
-
     void send_frame_rate(QString data);
-
     void refreshDongleUartState(int state) override;
     void refreshBleState(int state) override;
-
     void refreshJigUartState(int state) override;
     void on_jigConnectButton_clicked();
-
     void on_jigDisconnectButton_clicked();
-
     void processFixReceivedData(const QByteArray& data);
     void send_start_command(machine_command_id_e command_id, int argument);
-
     void getTestValue(const int mechines, const QString value) override;
-
     void refreshSn(ProtocolSnData data) override;
     void delay_msec(unsigned int msec);
     void refreshBaseData(ProtocolBaseInfoData data) override;
-
     void on_connectButton_clicked();
-    void checkbutton(ProtocolButtonStateData data) override;
+    void checkButton(ProtocolButtonStateData data) override;
     void getPresscalidata(ProtocolPressCalibResultData x) override;
-
     void on_end_clicked();
-
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
-
     void on_button_get_calib_factor_clicked();
     QString ReadNfcDataProcess();
-
     void on_ClearGraph_clicked();
-
     void on_GetButton_clicked();
-
     void on_TestButton1_clicked();
-
     void on_TestButtonNFC_clicked();
-
     void on_disconnectButton_clicked();
 };
 

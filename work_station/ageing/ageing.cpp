@@ -1,4 +1,4 @@
-#include "ageing.h"
+﻿#include "ageing.h"
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>
@@ -174,7 +174,7 @@ void ageing::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
 }
 ageing::~ageing() { delete ui; }
 void ageing::refreshBattaryData(ProtocolBatteryData adc) {
@@ -417,18 +417,18 @@ void ageing::refreshSn(ProtocolSnData data) {
     }
 }
 
-void ageing::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void ageing::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
             emit sendProcessInspection(pack);
         }
     } else {
-        showlog("SN为空"+stringsn);
+        showlog("SN为空"+inputSnText);
     }
 
     if (!ui->isusemes->checkState())  // 离线

@@ -15,6 +15,7 @@ class QFreeWorkBox : public box_base {
 public:
     explicit QFreeWorkBox(QWidget* parent = nullptr);
     ~QFreeWorkBox();
+
     Ui::QFreeWorkBox* ui;
     /** 治具串口调试窗口（test_case 治具通道复用，可能为空）。 */
     Fixture_uart* fixtureUartWidget() const { return Fixture_uart_ui; }

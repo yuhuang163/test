@@ -1,4 +1,4 @@
-#ifndef IMUCALI_H
+﻿#ifndef IMUCALI_H
 #define IMUCALI_H
 
 #include "Abini.h"
@@ -42,7 +42,6 @@ private:
     QString information;
     QString result = "";
     QString passValue = "PASS";
-
     QString product_name;
     QString failValue = "FAIL";
     imu_calibrate* qimuc = nullptr;
@@ -50,10 +49,8 @@ private:
 
     QString stringsn;
     QString macAddress = "没有mac地址";
-
     int upPositionIndex = 0;  //上一个位置的索引
     bool isNeedNewCali = 0;
-
     bool isovertime = 0;             // 是否开始发送校验结果
     bool iscompareovertime = 0;      // 是否开始发送校验结果
     bool isimuCaliOk = 0;            // 是否校准完成
@@ -64,9 +61,7 @@ private:
     bool is_imu_test_ok = 0;         // 是否测试ok
     bool is_old_cali = 0;            // 是否测试ok
     bool is_new_cali = 0;            // 是否测试ok
-
     int is_out_counts = 0;  // 跳过次数
-
     int count123 = 0;
     int count4567 = 0;
     int count89 = 0;
@@ -114,14 +109,11 @@ private:
 private slots:
 
     void get_fix_action(int state);
-
     void print_fixture_log(QString data);
     void refreshBaseData(ProtocolBaseInfoData data) override;
-
     void set_fix_result(int state);
     void getimuData(ProtocolImuSampleData x) override;
     void refreshImuCaliResult(ProtocolImuCalibResultData x) override;
-
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
@@ -135,26 +127,21 @@ private slots:
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
     void on_pushButton_2_clicked();
-
     void on_getMac_returnPressed();
     void refresh_imu_cali_position(int position);
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void on_stopTest_clicked();
 
 signals:
     void send_go_next_test(int data);
-
     void endcali(int data);
-
     void stage1_ok(int data);
     void stage2_ok(int data);
     void stage3_ok(int data);
-
     void fixture_up(int data);
     void fixture_down(int data);
     void fixture_left(int data);
     void fixture_right(int data);
-
     void send_go_next_focus();
     void send_startTest(int data);
 };

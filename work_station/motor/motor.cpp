@@ -1,4 +1,4 @@
-
+﻿
 #include "motor.h"
 
 #include "common_utils.h"
@@ -212,11 +212,11 @@ void motor::refreshSn(ProtocolSnData data) {
     ui->product_sn->setText("存储整机sn:" + stringsn);
 }
 
-void motor::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void motor::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 
@@ -845,7 +845,7 @@ void motor::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 void motor::on_damping_open_clicked() { protocolManager.set(DeviceCmd::MotorDampingState, 1); }

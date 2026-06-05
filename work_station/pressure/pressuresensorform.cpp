@@ -1,4 +1,4 @@
-#include "pressuresensorform.h"
+﻿#include "pressuresensorform.h"
 
 #include <QHBoxLayout>
 #include <QMessageBox>
@@ -528,7 +528,7 @@ void PressureSensorForm::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 void PressureSensorForm::getPresscalidata(ProtocolPressCalibResultData x) {
@@ -850,11 +850,11 @@ void PressureSensorForm::on_getMac_returnPressed() {
     processGetMesTestValue();               // mes获取
 }
 
-void PressureSensorForm::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void PressureSensorForm::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
@@ -1867,7 +1867,7 @@ void PressureSensorForm::getPressSensorData(ProtocolPressSampleData x) {
     isfirstsavedata = 0;
 }
 
-void PressureSensorForm::checkbutton(ProtocolButtonStateData x) {
+void PressureSensorForm::checkButton(ProtocolButtonStateData x) {
     showlog("获取到按键上报");
     qDebug() << "product_model=" << product_model;
     qDebug() << "nsor_v[0].para.f_module[0]" << sensor_v[0]->para.f_module[0];

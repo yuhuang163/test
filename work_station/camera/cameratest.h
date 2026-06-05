@@ -1,4 +1,4 @@
-#ifndef CAMERATEST_H
+﻿#ifndef CAMERATEST_H
 #define CAMERATEST_H
 
 #include <QApplication>
@@ -242,7 +242,7 @@ private slots:
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void on_distribution_network_clicked();
     void on_open_camera_clicked();
     void on_close_camera_clicked();

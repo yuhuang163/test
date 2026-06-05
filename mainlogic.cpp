@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "common_utils.h"
 #include "qlog.h"
 #include "qat.h"
@@ -451,7 +451,7 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
 
     at->parseCmd(dataTemp);  // at回应用
     protocolManager.parseCmd(dataTemp);
-    getmacadress(dataTemp);  // 搜索设备用
+    getMacAddress(dataTemp);  // 搜索设备用
 
     // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
     const QString timestamp = CommonUtils::formatTimestampMs();
@@ -1520,11 +1520,11 @@ void MainWindow::refreshColor4() {
     QString styleSheet = QString("QLineEdit { background-color: rgb(%1, %2, %3); }").arg(r).arg(g).arg(b);
     ui->light4->setStyleSheet(styleSheet);
 }
-void MainWindow::bandingMacSn(QString bandingmac, QString bandingsn) {
+void MainWindow::bindingMacSn(QString bindingMac, QString bindingSn) {
     QFile file("mac_sn.txt");                                   // 创建一个文件对象
     if (file.open(QIODevice::ReadWrite | QIODevice::Append)) {  // 打开文件
         QTextStream out(&file);                                 // 创建一个文本流对象
-        out << bandingsn << "," << bandingmac << '\n';          // 将sn和mac写入文件
+        out << bindingSn << "," << bindingMac << '\n';          // 将sn和mac写入文件
         file.close();                                           // 关闭文件
     }
 }
@@ -2333,7 +2333,7 @@ void MainWindow::scanSerialPorts() {
     updateComboBox(ui->comNameCombo, ports);
 }
 
-void MainWindow::getmacadress(const QByteArray& byte) {
+void MainWindow::getMacAddress(const QByteArray& byte) {
     receivedData += QString::fromUtf8(byte);
     // qDebug() << "内容" << receivedData;
     while (receivedData.contains("\r\n")) {

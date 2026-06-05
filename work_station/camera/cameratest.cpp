@@ -1,4 +1,4 @@
-
+﻿
 #include "cameratest.h"
 
 #include <QColor>
@@ -522,11 +522,11 @@ void cameratest::canGoNextMechine(int x) {
         showlog("摄像头测试失败");
     }
 }
-void cameratest::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void cameratest::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
@@ -853,7 +853,7 @@ void cameratest::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 void cameratest::on_getMac_returnPressed() {
@@ -1021,7 +1021,7 @@ void cameratest::onDongleSerialFrame(const QByteArray& dataTemp) {
     at->parseCmd(dataTemp);
     pb->parseCmd(dataTemp);
     // processTheDatagram(dataTemp);
-    // getmacadress(dataTemp);
+    // getMacAddress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");

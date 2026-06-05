@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 
 #include <QInputDialog>
 #include <QLineEdit>
@@ -727,7 +727,7 @@ void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
         macAddress = arg1;
         at->set(DongleCmd::BleScanConnect, macAddress);  // 发送mac地址
         qDebug() << macAddress;
-        bandingMacSn(macAddress, snbanding);
+        bindingMacSn(macAddress, snBinding);
         if (!ui->is_just_banding->checkState())
             on_motor_cali_clicked();
     }
@@ -742,7 +742,7 @@ void MainWindow::on_snbanding_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    snbanding = ui->snbanding->text();
+    snBinding = ui->snbanding->text();
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
 }
@@ -1703,7 +1703,7 @@ void MainWindow::on_start_scan_clicked() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    snbanding = ui->snbanding->text();
+    snBinding = ui->snbanding->text();
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->mac_combo->clear();
     deviceMap.clear();

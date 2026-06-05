@@ -1,4 +1,4 @@
-
+﻿
 #ifndef SCREENTEST_H
 #define SCREENTEST_H
 
@@ -64,7 +64,7 @@ private slots:
     void refreshBleState(int state) override;
     void refreshSn(ProtocolSnData data) override;
     void refreshDongleUartState(int state) override;
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void canGoNextMechine(int x) override;
     void set_screen_color(int x);
     void processGetMesTestValue();

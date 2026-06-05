@@ -1,4 +1,4 @@
-
+﻿
 #include "screentest.h"
 
 #include "qdebug.h"
@@ -129,11 +129,11 @@ void screentest::canGoNextMechine(int x) {
     }
 }
 
-void screentest::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void screentest::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 

@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -562,7 +562,7 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 
 void QFreeWork::runTestFlowBootstrap() {
     showlog(QStringLiteral("开始测试"));
-    initDate();
+    initData();
     if (expectedTailSnFromMes.trimmed().isEmpty() && ui->getMac && !ui->getMac->text().trimmed().isEmpty()) {
         expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
     }
@@ -1195,7 +1195,7 @@ void QFreeWork::closeTestCasePrompt() {
     box->close();
 }
 
-void QFreeWork::checkbutton(ProtocolButtonStateData data) {
+void QFreeWork::checkButton(ProtocolButtonStateData data) {
     if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
         return;
     }
@@ -1268,7 +1268,7 @@ int QFreeWork::resolvedPlcSwitchTestDoneResetM() const {
     return SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM"), 211).toInt();
 }
 
-void QFreeWork::initDate() {
+void QFreeWork::initData() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
@@ -1424,7 +1424,7 @@ void QFreeWork::on_macInput_returnPressed() {
     } else {
         macAddress = ui->macInput->text();
         if (ui->just_banding->checkState()) {
-            bandingMacSn(macAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
+            bindingMacSn(macAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
             ui->test_result->setText("PASS");
             ui->test_result->setStyleSheet(
                 "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
@@ -1562,7 +1562,7 @@ void QFreeWork::getMac(QString sn_to_search) {
         showlog("找不到mac地址，清空当前输入的sn");
     }
 }
-void QFreeWork::getmacadress(const QByteArray& byte) {
+void QFreeWork::getMacAddress(const QByteArray& byte) {
     receivedData = "";
     receivedData = receivedData + QString::fromUtf8(byte);
 
@@ -1631,13 +1631,13 @@ void QFreeWork::on_mac_combo_textActivated(const QString& arg1) {
         macAddress = arg1;
         // at->set(DongleCmd::BleScanConnect, macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
-        bandingMacSn(macAddress, snbanding);
+        bindingMacSn(macAddress, snBinding);
     }
     ui->snbanding->setFocus();
 }
-void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
-    if (bandingsn == "" || bandingmac == "")
-        bandingresult = false;
+void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
+    if (bindingSn == "" || bindingMac == "")
+        bindingResult = false;
 
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
@@ -1658,9 +1658,9 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         while (!in.atEnd()) {
             QString line = in.readLine();         // 逐行读取文件
             QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -1669,7 +1669,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);
@@ -1683,21 +1683,21 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         showlog("保存mac_sn文件失败");
     }
 
-    // bandingMacSn_mes(bandingmac, bandingsn);
+    // bindingMacSnMes(bindingMac, bindingSn);
 }
 
-void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
-    Q_UNUSED(bandingsn);
+void QFreeWork::bindingMacSnMes(QString bindingMac, QString bindingSn) {
+    Q_UNUSED(bindingSn);
     pack.mechines = 1;  // 1脱1,1号上位机
-    pack.sn = snbanding;
+    pack.sn = snBinding;
     pack.result = "PASS";
-    pack.itemvalue = QString("|BTMAC:%1|").arg(bandingmac);
+    pack.itemvalue = QString("|BTMAC:%1|").arg(bindingMac);
     pack.instruct_num = "076";
     if (ui->isusemes->checkState()) {
         emit send_end_testPass(pack);
     }
 
-    if (bandingresult) {
+    if (bindingResult) {
         ui->banding_result->setText("绑定:PASS");
         ui->banding_result->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
                                           "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -1716,10 +1716,10 @@ void QFreeWork::on_snbanding_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    snbanding = ui->snbanding->text();
+    snBinding = ui->snbanding->text();
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     ui->snbanding->clear();
-    bandingresult = true;
+    bindingResult = true;
 }
 
 void QFreeWork::getTestValue(const int mechines, const QString value) {

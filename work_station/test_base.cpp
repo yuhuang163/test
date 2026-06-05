@@ -1,4 +1,4 @@
-#include "test_base.h"
+﻿#include "test_base.h"
 
 #include "my_set/my_typedef.h"
 
@@ -208,7 +208,7 @@ void test_base::saveDongleUartLog(QString data) {
     Qlog::saveDongleUartLog(m_index, data);
 }
 
-void test_base::getmacadress(const QByteArray& byte) {
+void test_base::getMacAddress(const QByteArray& byte) {
     receivedData += QString::fromUtf8(byte);
     // qDebug() << "内容" << receivedData;
     while (receivedData.contains("\r\n")) {
@@ -241,8 +241,8 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
-    getmacadress(dataTemp);  // 搜索设备用
-    // getmacadress(dataTemp);
+    getMacAddress(dataTemp);  // 搜索设备用
+    // getMacAddress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
     // 获取当前时间
@@ -463,7 +463,7 @@ void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QV
     } else if (reportType == QLatin1String("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
         refreshBattaryData(payload.value<ProtocolBatteryData>());
     } else if (reportType == QLatin1String("ProtocolButtonStateData") && payload.canConvert<ProtocolButtonStateData>()) {
-        checkbutton(payload.value<ProtocolButtonStateData>());
+        checkButton(payload.value<ProtocolButtonStateData>());
     } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
         refreshPeriphData(payload.value<ProtocolPeriphStateData>());
     } else if (reportType == QLatin1String("ProtocolPbDate")) {
@@ -681,7 +681,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
             "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
 
-        bandingresult = false;
+        bindingResult = false;
 
         getMacLineEdit()->setDisabled(0);
         macInputLineEdit()->setDisabled(0);

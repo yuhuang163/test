@@ -1,4 +1,4 @@
-#ifndef AGEING_H
+﻿#ifndef AGEING_H
 #define AGEING_H
 
 #include "Abini.h"
@@ -75,7 +75,7 @@ private slots:
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
     void processGetMesTestValue();
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
 

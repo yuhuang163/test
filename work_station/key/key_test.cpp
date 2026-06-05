@@ -1,4 +1,4 @@
-#include "key_test.h"
+﻿#include "key_test.h"
 
 #include "ui_key_test.h"
 #include <QCoreApplication>
@@ -775,7 +775,7 @@ void key_test::refreshMusicState(ProtocolMusicStateData data) {
 }
 
 
-void key_test::checkbutton(ProtocolButtonStateData x) {
+void key_test::checkButton(ProtocolButtonStateData x) {
     if (refresh_key_times) {
         if (!keyButtonDebounceTimer.isValid()) {
             keyButtonDebounceTimer.start();
@@ -1282,7 +1282,7 @@ void key_test::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
 }
 
 void key_test::on_macInput_returnPressed() {
@@ -1432,11 +1432,11 @@ void key_test::on_jigDisconnectButton_clicked() {
     ui->jigConnectButton->setEnabled(true);
 }
 
-void key_test::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void key_test::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.instruct_num = "079";
             emit sendProcessInspection(pack);
@@ -1473,7 +1473,7 @@ void key_test::startFlowWithMac(const QString& mac) {
     //     openJigSerialPort();
     // }
     // jig->set_cylinder_state(1, getIndex());
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     state = STATE_IDLE;
     isTestContinue = true;
 }
@@ -1790,7 +1790,7 @@ void key_test::on_pushButton_clicked() {
     });
     // sendjigData(STATE_CYLINDER_RESET);
 
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     //     save_brush_log("dataTemp");
 }
 
@@ -1866,7 +1866,7 @@ void key_test::on_pushButton_4_clicked() {
     }
 }
 
-void key_test::bandingMacSn(QString bandingmac, QString bandingsn) {
+void key_test::bindingMacSn(QString bindingMac, QString bindingSn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
@@ -1885,9 +1885,9 @@ void key_test::bandingMacSn(QString bandingmac, QString bandingsn) {
         while (!in.atEnd()) {
             QString line = in.readLine();         // 逐行读取文件
             QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -1896,7 +1896,7 @@ void key_test::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);

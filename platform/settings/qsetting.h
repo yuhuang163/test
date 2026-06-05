@@ -1,4 +1,4 @@
-#ifndef QSETTING_H
+﻿#ifndef QSETTING_H
 #define QSETTING_H
 
 #include <QHash>
@@ -74,7 +74,6 @@ private:
     QString originalStation_;
     bool stationReloading_ = false;
     TestFlowEditor* testFlowEditor_ = nullptr;
-
     int lastSettingsTabIndex_ = 0;
 
 protected:

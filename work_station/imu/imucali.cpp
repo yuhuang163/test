@@ -1,4 +1,4 @@
-#include "imucali.h"
+﻿#include "imucali.h"
 
 #include "qdebug.h"
 #include "qserialportinfo.h"
@@ -244,7 +244,7 @@ void imucali::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
 imucali::~imucali() { delete ui; }
@@ -728,11 +728,11 @@ void imucali::refreshBaseData(ProtocolBaseInfoData data) {
     showlog("LSB改为" + QString::number(nqimuc->LSB));
 }
 
-void imucali::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void imucali::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 

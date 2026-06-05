@@ -1,4 +1,4 @@
-
+﻿
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include <QApplication>
@@ -216,14 +216,13 @@ private:
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
     Ui::MainWindow* ui;
-    QString snbanding;
+    QString snBinding;
     QString macAddress = "没有mac地址";
     bool isimuCaliOk = 0;        // 是否校准完成
     bool is_start_ium_cali = 0;  // 是否开始六轴校准
     void updateMainStyle(QString style);
     QTimer* waittime = new QTimer(this);
     QTimer* noisytimer = nullptr;
-
     QTimer* cameratimer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
     int imu_wait_time = 15000;
@@ -262,7 +261,6 @@ private:
     QStringList otaResults;
     QTimer* bleotatimer = new QTimer(this);
     int currentChunk = 0;
-
 private:
     QNetworkAccessManager* aimanager;
 
@@ -334,12 +332,11 @@ private slots:
     void convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName);
     void refreshImuCaliResult(ProtocolImuCalibResultData x);
     void updateComboBox();
-    void getmacadress(const QByteArray& byte);
+    void getMacAddress(const QByteArray& byte);
     void refreshSn(ProtocolSnData data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
     void getWifiIp(QString data);
-
     void getDongleVer(QString data);
     void getDongleWifi(QString data);
     void stopRecording();
@@ -354,7 +351,7 @@ private slots:
     void refreshImuSampleData(ProtocolImuSampleData data);
     void refreshBattaryData(ProtocolBatteryData adc);
     void refreshWifiStateData(ProtocolWifiStateData data);
-    void bandingMacSn(QString bandingmac, QString bandingsn);
+    void bindingMacSn(QString bindingMac, QString bindingSn);
     void getMac(QString sn_to_search);
     void refreshInternetOtaData(ProtocolInternetOtaData data);
     void refreshWifiDemand(ProtocolWifiDemandData data);
@@ -505,14 +502,12 @@ private slots:
     void on_write_device_sn_clicked();
     void on_write_board_sn_clicked();
     void on_write_device_subpid_clicked();
-
     void on_get_battery_level_clicked();
     void on_up_picture_clicked();
     void on_down_picture_clicked();
     void on_play_picture_clicked();
     void on_open_imu_collect_solve_clicked();
     void on_py_test_clicked();
-
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
     void on_nfc_close_clicked();
@@ -526,131 +521,69 @@ private slots:
     void on_selectPath_clicked();
     void on_ship_bomb_clicked();
     void on_get_noisy_clicked();
-
     void on_stop_noisy_clicked();
-
     void on_getBackLog_clicked();
     void on_write_device_skuid_clicked();
-
     void on_get_device_skuid_clicked();
-
     void on_set_hw_ver_clicked();
-
     // void on_set_battery_clicked();
-
     void on_brush_relocation_clicked();
-
     void on_stopBleOta_clicked();
-
     void on_closeconnect_clicked();
-
     void on_get_now_music_clicked();
-
     void on_send_audio_clicked();
-
     void on_audio_volume_valueChanged(int value);
-
     void on_is_audio_mode_stateChanged(int arg1);
-
     void on_play_speed_returnPressed();
-
     void on_uipasswordInput_returnPressed();
-
     void on_ui_ypos_returnPressed();
-
     void on_get_press_info_clicked();
-
     void on_set_press_info_clicked();
-
     void on_AITestLine_returnPressed();
-
     void on_speakAi_released();
-
     void on_speakAi_pressed();
-
     void on_get_botton_state_clicked();
-
     void on_selectPath_source_clicked();
-
     void on_set_mode_returnPressed();
-
     void on_btn_startRecording_clicked();
-
     void on_btn_stopRecording_clicked();
-
     void on_btn_startUpload_clicked();
-
     void on_btn_stopUpload_clicked();
-
     void on_btn_getSDCardStatus_clicked();
-
     void on_btn_getLDRInfo_clicked();
-
     void on_enterSuctionMode_clicked();
-
     void on_exitSuctionMode_clicked();
-
     void on_readBurningModestatus_clicked();
-
     void on_kTlvKeyWrite_clicked();
-
     void on_kTlvKeyread_clicked();
-
     void on_read_current_charge_clicked();
-
     void on_read_light_sensor_clicked();
-
     void on_set_light_sensor_clicked();
-
     void on_light_repo_start_clicked();
-
     void on_light_repo_stop_clicked();
-
     void on_getCaseDeviceException_clicked();
-
     void on_openCompensationSet_clicked();
-
     void on_closeCompensationSet_clicked();
-
     void on_factory_flag_clicked();
-
     void on_get_trim_data_clicked();
-
     void on_set_trim_data_clicked();
-
     void on_factory_flag_read_clicked();
-
     void on_enter_ble_cali_clicked();
-
     void on_exit_ble_cali_clicked();
-
     void on_enter_ble_test_clicked();
-
     void on_exit_ble_test_clicked();
-
     void on_enter_no_ble_test_clicked();
-
     void on_exit_no_ble_test_clicked();
-
     void on_get_device_mac_clicked();
-
     void on_set_device_mac_clicked();
-
     void on_night_brightness_clicked();
-
     void on_reset_factory_clicked();
-
     void on_get_rssi_device_clicked();
-
     void on_backlight_start_clicked();
-
     void on_backlight_stop_clicked();
-
     void on_get_keysignal_clicked();
-
     void on_get_ble_rssi_device_clicked();
     void on_send_custom_msg_clicked();
-
 signals:
     void send_uart_state(int data);
     void send_ble_state(int data);
