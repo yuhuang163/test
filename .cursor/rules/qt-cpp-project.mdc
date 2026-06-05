@@ -1,4 +1,4 @@
-﻿---
+---
 description: new_product_test Qt/C++ 工程约定与 AI 协作规则
 alwaysApply: true
 ---
@@ -8,7 +8,16 @@ alwaysApply: true
 ## 技术栈
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
-- **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8 with BOM** 保存，避免 MSVC/工具链对无 BOM UTF-8 的误判；已有文件若非任务要求不要随意改编码。
+- **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.qrc` / `.md` / `.ini` 配置片段等** 使用 **UTF-8 with BOM** 保存，避免 MSVC/工具链对无 BOM UTF-8 的误判。已有文件若非任务要求不要随意改编码。
+- **`.pro` 工程文件（硬性例外，Agent 必遵守）**：
+  - **必须 UTF-8 无 BOM**；qmake 遇 BOM 报 `Unexpected UTF-8 BOM`。
+  - **禁止**把「源文件默认 with BOM」套用到 `*.pro`；编辑工具保存后常会偷偷写入 BOM，不能假定「只改了几行就没事」。
+  - **每次**用 Write/StrReplace 等改动 `new_production.pro` 或其它 `*.pro` 后，**同一轮对话内必须**立刻去 BOM 并验证文件头为 ASCII（如 `QT`），再结束任务。示例（PowerShell/Python 均可）：
+    ```bash
+    python -c "p=r'new_production.pro'; b=open(p,'rb').read(); bom=b'\xef\xbb\xbf'; open(p,'wb').write(b[3:] if b.startswith(bom) else b)"
+    python -c "print(open(r'new_production.pro','rb').read(3))"  # 应为 b'QT '，不能是 b'\xef\xbb\xbf'
+    ```
+  - 用户或 Qt Creator 反馈 qmake BOM 报错时，**优先查 `.pro` 是否又被写成 with BOM**，不要只让用户自己排查。
 - 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
 
 ## 代码风格（与仓库一致）

@@ -1,4 +1,4 @@
-#include "qsetting.h"
+﻿#include "qsetting.h"
 
 #include "qsetting_bindings.h"
 #include "qevent.h"
@@ -21,6 +21,10 @@
 #include "ui_qsetting.h"
 #include "test_flow/test_flow_editor.h"
 #include "bydmes.h"
+#include "log_upload_service.h"
+
+#include <QFutureWatcher>
+#include <QtConcurrent>
 
 struct FreeWorkTestCatalogItem {
     int id;
@@ -196,7 +200,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
                                     "电机图像", "按键图像",     "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
-    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
+    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
 
     initTupleEnvironmentCombo();
@@ -1003,6 +1007,17 @@ void qsetting::loadConfig() {
         ui->comboBox_KeyCapValueEndian->setCurrentIndex(
             capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
     }
+
+    if (ui->lineEdit_remoteLogUploadUrl->text().trimmed().isEmpty()) {
+        ui->lineEdit_remoteLogUploadUrl->setText(LogUploadService::defaultUploadUrl());
+    }
+    if (ui->lineEdit_remoteLogDeviceId->text().trimmed().isEmpty()) {
+        ui->lineEdit_remoteLogDeviceId->setText(LogUploadService::defaultDeviceId());
+    }
+    if (ui->lineEdit_remoteLogStation->text().trimmed().isEmpty()) {
+        ui->lineEdit_remoteLogStation->setText(QStringLiteral("DEFAULT"));
+    }
+    ui->label_remoteLogStatus->setText(QString());
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -1115,7 +1130,9 @@ void qsetting::saveConfig() {
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
                                                                            : QStringLiteral("big"));
-    bydmes::loadExternalMesConfig(nullptr);
+    if (ui->comboBox_factory->currentText() == QStringLiteral("byd")) {
+        bydmes::loadExternalMesConfig(nullptr);
+    }
 }
 
 void qsetting::closeEvent(QCloseEvent* event) {
@@ -1370,6 +1387,11 @@ void qsetting::RestoreFacDefaultSetting() {
     ui->lineEdit_mes_operator->hide();
     ui->label_mes_login_station->hide();
     ui->lineEdit_mes_login_station->hide();
+    ui->label_mes_retest->hide();
+    ui->checkBox_mesRetest->hide();
+    ui->label_mes_config_file_path->hide();
+    ui->lineEdit_mes_config_file_path->hide();
+    ui->pushButton_mesConfigFileBrowse->hide();
 
     if (ui->comboBox_factory->currentText() == "wks") {
         ui->label_78->show();
@@ -1410,6 +1432,9 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_login_password->show();
     }
     if (ui->comboBox_factory->currentText() == "byd") {
+        ui->label_mes_config_file_path->show();
+        ui->lineEdit_mes_config_file_path->show();
+        ui->pushButton_mesConfigFileBrowse->show();
         ui->label_78->show();
         ui->lineEdit_mesUrl->show();
         ui->label_79->show();
@@ -1436,6 +1461,25 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_modelName->show();
         ui->label_mac_field->show();
         ui->lineEdit_mac_field->show();
+    }
+    // 华庄：GET /mrs/checkRoute、/mrs/createRoute；工站号、工单(料号)、操作员、是否重测
+    if (ui->comboBox_factory->currentText() == "hz") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_75->show();
+        ui->lineEdit_station->show();
+        ui->label_weikesen_order->show();
+        ui->lineEdit_weikesen_order->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->label_mes_retest->show();
+        ui->checkBox_mesRetest->show();
+        ui->lineEdit_mesUrl->setToolTip(
+            QStringLiteral("华庄 MES 根地址，如 http://10.0.2.5/mrs；程序会自动请求 /checkRoute、/createRoute。"));
+        ui->lineEdit_station->setToolTip(QStringLiteral("华庄 stationNo（Mes/machineNo），站前检查与过站共用。"));
+        ui->lineEdit_weikesen_order->setToolTip(
+            QStringLiteral("华庄 prodNo（Mes/Work_Order）；留空时接口使用 auto。"));
+        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("华庄过站 userNo（Mes/mUserno）。"));
     }
     if (ui->comboBox_factory->currentText() == "无mes厂") {
         ui->label_weikesen_order->show();
@@ -1589,6 +1633,53 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
     if (!path.isEmpty()) {
         ui->lineEdit_mes_config_file_path->setText(path);
     }
+}
+
+void qsetting::on_pushButton_uploadLogs_clicked() {
+    if (!ui->pushButton_uploadLogs->isEnabled()) {
+        return;
+    }
+
+    const QString uploadUrl = ui->lineEdit_remoteLogUploadUrl->text().trimmed();
+    QString deviceId = ui->lineEdit_remoteLogDeviceId->text().trimmed();
+    const QString station = ui->lineEdit_remoteLogStation->text().trimmed();
+
+    if (uploadUrl.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("日志上传"), QStringLiteral("请填写上传地址"));
+        return;
+    }
+    if (deviceId.isEmpty()) {
+        deviceId = LogUploadService::defaultDeviceId();
+        ui->lineEdit_remoteLogDeviceId->setText(deviceId);
+    }
+
+    saveConfig();
+
+    LogUploadService::UploadConfig cfg;
+    cfg.uploadUrl = uploadUrl;
+    cfg.deviceId = deviceId;
+    cfg.station = station.isEmpty() ? QStringLiteral("DEFAULT") : station;
+
+    ui->pushButton_uploadLogs->setEnabled(false);
+    ui->label_remoteLogStatus->setText(QStringLiteral("正在后台打包并上传 所有log，请稍候…"));
+
+    auto* watcher = new QFutureWatcher<QPair<bool, QString>>(this);
+    connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, this, [this, watcher]() {
+        const QPair<bool, QString> result = watcher->result();
+        ui->label_remoteLogStatus->setText(result.second);
+        ui->pushButton_uploadLogs->setEnabled(true);
+        if (result.first) {
+            QMessageBox::information(this, QStringLiteral("日志上传"), result.second);
+        } else {
+            QMessageBox::warning(this, QStringLiteral("日志上传"), result.second);
+        }
+        watcher->deleteLater();
+    });
+    watcher->setFuture(QtConcurrent::run([cfg]() {
+        QString message;
+        const bool ok = LogUploadService::packAndUpload(cfg, &message);
+        return qMakePair(ok, message);
+    }));
 }
 
 void qsetting::initTestFlowEditorUi() {

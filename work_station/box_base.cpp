@@ -1,4 +1,4 @@
-#include "box_base.h"
+﻿#include "box_base.h"
 
 #include <QMessageBox>
 #include <QRegularExpression>
@@ -160,7 +160,7 @@ void box_base::signalAndslot() {
 
         connect(testList[i], SIGNAL(send_go_next_test(int)), this, SLOT(checkAllTest(int)));
         connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(checkAllover(int)));
-        // mes类
+        // mes类；本地 SQLite 入库在 QMesManager::TestPassAll 内与 MES 并行
         connect(testList[i], SIGNAL(send_end_testPass(MesPacketData)), MesManager, SLOT(TestPassAll(MesPacketData)));
         connect(testList[i], SIGNAL(sendProcessInspection(MesPacketData)), MesManager,
                 SLOT(ProcessInspectionAll(MesPacketData)));
@@ -377,6 +377,8 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("亚达明"));
         else if (pack.factory == "byd")
             parent->statusBar()->addPermanentWidget(new QLabel("比亚迪MES"));
+        else if (pack.factory == "hz")
+            parent->statusBar()->addPermanentWidget(new QLabel("华庄MES"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
     } else {

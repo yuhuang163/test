@@ -1,4 +1,4 @@
-QT       += core gui   concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
+QT       += core gui sql concurrent serialport printsupport network multimedia  qml quick widgets quickwidgets
 
 
 QMAKE_PROJECT_DEPTH = 0
@@ -52,6 +52,8 @@ INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
 INCLUDEPATH += platform/test_case
+INCLUDEPATH += platform/test_record
+INCLUDEPATH += platform/log_upload
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -149,6 +151,8 @@ SOURCES += \
     platform/settings/test_flow/test_flow_editor.cpp \
     platform/settings/widgets/test_case_edit_dialog.cpp \
     platform/test_case/test_case.cpp \
+    platform/test_record/test_record_store.cpp \
+    platform/log_upload/log_upload_service.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qvisa/qvisa.cpp \
@@ -254,6 +258,8 @@ HEADERS += \
     platform/settings/test_flow/test_flow_editor.h \
     platform/settings/widgets/test_case_edit_dialog.h \
     platform/test_case/test_case.h \
+    platform/test_record/test_record_store.h \
+    platform/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
