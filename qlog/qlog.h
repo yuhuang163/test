@@ -28,6 +28,8 @@ public:
 #ifdef Q_OS_WIN
     /** main：SetUnhandledExceptionFilter，写入 所有log/*.dmp 与 *_闪退堆栈.log */
     static void installWindowsCrashHandler();
+    /** 启动后写入工站/路径等，会出现在闪退堆栈.log（仅主线程调用一次即可） */
+    static void setCrashReportExtraInfo(const QString& info);
 #endif
 
     /** UI + qDebug；machineIndex 仅用于调试前缀，可为工位号 */

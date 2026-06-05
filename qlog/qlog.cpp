@@ -1,5 +1,9 @@
 #include "qlog.h"
 
+#ifdef Q_OS_WIN
+#    include "qlog_win.h"
+#endif
+
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
@@ -18,7 +22,10 @@
 
 namespace {
 
-constexpr const char* kLogRoot = "所有log";
+/** 日志根目录（须 QStringLiteral，禁止 fromLatin1/裸 char*，否则目录名乱码） */
+inline QString logRootDir() {
+    return QStringLiteral("所有log");
+}
 
 bool appendTextLog(const QString& relativeDir, const QString& fileName, const QString& body,
                    bool prefixTimestampLine = false) {
@@ -42,7 +49,7 @@ bool appendTextLog(const QString& relativeDir, const QString& fileName, const QS
 }
 
 void saveUartRawLogImpl(int txrx, const QByteArray& data, const QString& fileNamePrefix) {
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/治具log");
+    const QString folderName = logRootDir() + QStringLiteral("/治具log");
     if (!CommonUtils::ensureLogDirectory(folderName)) {
         qDebug() << "无法创建目录:" << folderName;
         return;
@@ -118,7 +125,7 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
         QString(context.file).split(QLatin1Char('\\')).last() + QStringLiteral(" line:") +
         QString::number(context.line) + QStringLiteral(" 日志内容：") + msg;
 
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/上位机log");
+    const QString folderName = logRootDir() + QStringLiteral("/上位机log");
     if (!CommonUtils::ensureLogDirectory(folderName)) {
         qDebug() << "无法创建目录:" << folderName;
         return;
@@ -155,27 +162,27 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
 }
 
 void Qlog::saveDongleUartLog(int machineIndex, const QString& data) {
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/dongle的log");
+    const QString folderName = logRootDir() + QStringLiteral("/dongle的log");
     const QString fileName = QStringLiteral("dongle日志_") + QString::number(machineIndex) + QLatin1Char('_') +
                              CommonUtils::dateStampYmd() + QStringLiteral(".log");
     appendTextLog(folderName, fileName, data, false);
 }
 
 void Qlog::saveDongleUartLogMain(const QString& data) {
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/dongle的log");
+    const QString folderName = logRootDir() + QStringLiteral("/dongle的log");
     const QString fileName = QStringLiteral("dongle日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
     appendTextLog(folderName, fileName, data, false);
 }
 
 void Qlog::saveBlackboxLog(const QByteArray& data) {
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/设备黑盒的log");
+    const QString folderName = logRootDir() + QStringLiteral("/设备黑盒的log");
     const QString fileName = QStringLiteral("黑盒日志") + CommonUtils::dateStampYmd() + QStringLiteral(".log");
     const QString body = CommonUtils::formatTimestampMs() + QStringLiteral("\n") + QString::fromUtf8(data);
     appendTextLog(folderName, fileName, body, false);
 }
 
 void Qlog::saveOtaStressLog(const QString& msg) {
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/ota升级压测/");
+    const QString folderName = logRootDir() + QStringLiteral("/ota升级压测/");
     appendTextLog(folderName, QStringLiteral("ota升级log.txt"), msg, false);
 }
 
@@ -216,7 +223,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
 
 void Qlog::save_brush_log(int m_index, const QString& macAddress, const QString& data) {
     Q_UNUSED(macAddress);
-    const QString folderName = QString::fromLatin1(kLogRoot) + QStringLiteral("/设备log");
+    const QString folderName = logRootDir() + QStringLiteral("/设备log");
     const QString fileName = QString::number(m_index) + QStringLiteral(".log");
     const QString body = CommonUtils::formatTimestampMs() + QStringLiteral("\n") + data;
     appendTextLog(folderName, fileName, body, false);
@@ -233,6 +240,12 @@ void Qlog::save_jig_uart_log(int txrx, const QByteArray& data) {
 void Qlog::writeRow(QTextStream& stream, const QStringList& rowData) {
     stream << rowData.join(QStringLiteral(",")) << "\n";
 }
+
+#ifdef Q_OS_WIN
+void Qlog::setCrashReportExtraInfo(const QString& info) {
+    qlogWinSetCrashReportExtraInfoUtf8(info.toUtf8().constData());
+}
+#endif
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(pop)

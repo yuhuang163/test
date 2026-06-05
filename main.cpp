@@ -5,7 +5,9 @@
 #include <stdio.h>
 
 #include <QApplication>
+#include <QDir>
 #include <QFileInfo>
+#include <QSysInfo>
 #include <QMessageBox>
 #include <QTextCodec>
 #include <QTextStream>
@@ -26,6 +28,7 @@
 #include "suction_box.h"
 #include "wifibox.h"
 #include "factory_analyzer.h"
+#include "AbIni.h"
 #include "common_utils.h"
 #include "qlog.h"
 
@@ -83,6 +86,10 @@ int main(int argc, char* argv[]) {
     // 设置使用 UTF-8 编码
     // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     MyApplication a(argc, argv);
+
+    Qlog::setCrashReportExtraInfo(QStringLiteral("station=%1, cwd=%2, host=%3")
+                                      .arg(SETTINGS.value(QStringLiteral("SYSTEM/station")).toString(),
+                                           QDir::currentPath(), QSysInfo::machineHostName()));
 
     Qlog::installQtMessageHandler();
 
