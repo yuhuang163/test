@@ -26,6 +26,12 @@ alwaysApply: true
 - **边界含义**：新建卡控时与同类步骤保持一致（例如 RSSI 现为 **`>` / `<` 非 `>=`**）；若改边界语义须在注释与设置说明里写清。
 - **`sendCommandWithRetry`**：仅表示「等到设备回包」；**`needCaseDone == false`** 的步骤默认不会因协议 FAIL 自动 **`pass = false`**，卡控类步骤应用 **`needCaseDone == true`** 并在回调里写入 **`stepRuntime_.pass`**，或在做不到时用显式预检/单独判定（参见自由工站三元组写入）。
 
+## 编译验证
+
+- 修改 **`.cpp` / `.h` / `.pro` / `.ui`** 等需编译项后，Agent 应在终端执行 **`scripts\build_release.ps1`**（或 `scripts\build_release.bat`）做 **Release 编译**；失败则根据输出中的 `error C` / `LNK` 修复后重跑，直至通过或确认环境缺失。
+- 仅改逻辑未改 `.pro` 时可用 **`-SkipQmake`** 加快增量编译；改了 `.pro` / 新增源文件须完整跑（默认含 qmake）。
+- 完整日志：`build/logs/build_*.log`；可通过环境变量覆盖工具路径：`NEW_PRODUCT_QT_DIR`、`NEW_PRODUCT_JOM`、`NEW_PRODUCT_VCVARS`。
+
 ## 改代码的原则
 
 - **只改与任务直接相关的文件与逻辑**，避免顺带重构、删注释或扩大范围。

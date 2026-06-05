@@ -7,6 +7,13 @@
 
 enum class TestCaseSendAction { Set, Get };
 
+enum class DeviceCmdParamKind { None, Int, UInt, String, JsonMap };
+
+struct DeviceCmdParamSchema {
+    DeviceCmdParamKind kind = DeviceCmdParamKind::None;
+    QString hint;
+};
+
 enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture };
 
 /** 产品蓝牙通信协议（仅 Send/Channel=Product 时有效；与 QProtocolManager::ProtocolType 对应）。 */

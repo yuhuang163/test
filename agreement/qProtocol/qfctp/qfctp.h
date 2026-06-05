@@ -21,7 +21,6 @@ public:
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     bool sendCustomMessage(const QVariantMap &map) override;
 
-
 private:
     using ResponseHandler = void (Qfctp::*)(const uint8_t *mainValue, uint16_t mainLen);
 

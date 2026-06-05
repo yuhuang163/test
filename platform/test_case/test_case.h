@@ -72,33 +72,20 @@ public:
 };
 
 // ---------- 设备指令 ----------
-enum class DeviceCmdParamKind { None, Int, UInt, String, JsonMap };
-
-struct DeviceCmdParamSchema {
-    DeviceCmdParamKind kind = DeviceCmdParamKind::None;
-    QString hint;
-};
-
 class DeviceCmdCatalog {
 public:
-    static QStringList allDeviceCmdNames();
     static QStringList allDeviceCmdNames(TestCaseSendAction action);
-    static QStringList allDeviceCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
-    static bool isCmdSupportedByProtocol(DeviceCmd cmd, TestCaseProductProtocol protocol, TestCaseSendAction action);
     static TestCaseSendAction actionFor(DeviceCmd cmd);
     static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
     static QString deviceCmdUiLabel(const QString& enumName);
-    static QString deviceCmdUiLabel(const QString& enumName, TestCaseProductProtocol protocol);
     static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
     static QString deviceCmdToName(DeviceCmd cmd);
     static bool paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out);
     /** 设置页「指令参数」填写说明（含示例）。 */
     static QString paramUiHint(const QString& deviceCmdName);
-    static QVariant paramFromSettings(const QSettings& settings, const QString& prefix);
-    static void paramToSettings(QSettings& settings, const QString& prefix, const QVariant& value);
     static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value);
     /** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
@@ -107,7 +94,6 @@ public:
 
 class DongleCmdCatalog {
 public:
-    static QStringList allDongleCmdNames();
     static QStringList allDongleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(DongleCmd cmd);
     static bool isCmdForAction(DongleCmd cmd, TestCaseSendAction action);
@@ -143,7 +129,6 @@ enum class FixturePcbaCmd {
 
 class FixturePcbaCmdCatalog {
 public:
-    static QStringList allFixturePcbaCmdNames();
     static QStringList allFixturePcbaCmdNames(TestCaseSendAction action);
     static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
     static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
@@ -175,7 +160,6 @@ public:
 
 class TupleCmdCatalog {
 public:
-    static QStringList allTupleCmdNames();
     static QStringList allTupleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(TupleCmd cmd);
     static bool isCmdForAction(TupleCmd cmd, TestCaseSendAction action);

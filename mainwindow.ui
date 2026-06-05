@@ -4229,7 +4229,7 @@
                   <item>
                    <widget class="QLineEdit" name="OtaTimeInterval">
                     <property name="text">
-                     <string>2</string>
+                     <string>8</string>
                     </property>
                    </widget>
                   </item>
