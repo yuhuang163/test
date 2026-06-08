@@ -162,7 +162,7 @@ SOURCES += \
     platform/log_upload/log_upload_service.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
-    agreement/qcmw/cmw_gprf.cpp \
+    agreement/qcmw/qcmw.cpp \
     agreement/qcmw/cmw_gprf_facade.cpp \
     agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
@@ -186,7 +186,6 @@ SOURCES += \
     work_station/ageing/ageingbox.cpp \
     work_station/camera/camerabox.cpp \
     work_station/camera/cameratest.cpp \
-    work_station/common_class.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
@@ -281,7 +280,7 @@ HEADERS += \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
-    agreement/qcmw/cmw_gprf.h \
+    agreement/qcmw/qcmw.h \
     agreement/qcmw/cmw_gprf_facade.h \
     agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \
@@ -305,7 +304,6 @@ HEADERS += \
     work_station/ageing/ageingbox.h \
     work_station/camera/camerabox.h \
     work_station/camera/cameratest.h \
-    work_station/common_class.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
     agreement/qplc/inovance_h5u_modbus_tcp.h \
