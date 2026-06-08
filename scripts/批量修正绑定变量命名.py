@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""批量修正工站源码中 bandingmac/bandingsn 等绑定相关局部变量拼写。"""
 import re
 from pathlib import Path
 

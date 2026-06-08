@@ -132,7 +132,7 @@ def main() -> int:
         use_bom = False
         mode_label = "UTF-8(no BOM)"
     else:
-        print("用法: convert_to_utf8_bom.py --no-bom|--bom [--dry-run]")
+        print("用法: 转换文本为UTF8编码.py --no-bom|--bom [--dry-run]")
         return 2
 
     stats: dict[str, int] = {}

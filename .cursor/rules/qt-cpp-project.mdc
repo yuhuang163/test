@@ -28,7 +28,7 @@ alwaysApply: true
 
 ## 编译验证
 
-- 修改 **`.cpp` / `.h` / `.pro` / `.ui`** 等需编译项后，Agent 应在终端执行 **`scripts\build_release.ps1`**（或 `scripts\build_release.bat`）做 **Release 编译**；失败则根据输出中的 `error C` / `LNK` 修复后重跑，直至通过或确认环境缺失。
+- 修改 **`.cpp` / `.h` / `.pro` / `.ui`** 等需编译项后，Agent 应在终端执行 **`scripts\编译Release版本.ps1`**（或 `scripts\编译Release版本.bat`）做 **Release 编译**；失败则根据输出中的 `error C` / `LNK` 修复后重跑，直至通过或确认环境缺失。
 - 仅改逻辑未改 `.pro` 时可用 **`-SkipQmake`** 加快增量编译；改了 `.pro` / 新增源文件须完整跑（默认含 qmake）。
 - 完整日志：`build/logs/build_*.log`；可通过环境变量覆盖工具路径：`NEW_PRODUCT_QT_DIR`、`NEW_PRODUCT_JOM`、`NEW_PRODUCT_VCVARS`。
 

@@ -159,7 +159,7 @@
 
 ### 7.2 Diamond 建议
 
-- 定义 **test_case ini v2**（仅 `Gate/Count` + `meta.name`），提供 `scripts/` 批量迁移（可参考 `gen_freework_test_case_ini.py`）。
+- 定义 **test_case ini v2**（仅 `Gate/Count` + `meta.name`），提供 `scripts/` 批量迁移（可参考 `生成自由工站测试用例ini.py`）。
 - 删除 `gate` 单项写入路径（读保留 1 个版本周期）。
 
 ---
