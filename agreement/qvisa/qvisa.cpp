@@ -17,13 +17,78 @@ Qvisa::~Qvisa()
     closeConnection();
 }
 
-void Qvisa::loadCommandSet(VisaDeviceProfile profile)
+QStringList Qvisa::enumerateResources(const QString& expression)
 {
+    QStringList result;
+#ifdef HAVE_NI_VISA
+    ViSession rm = VI_NULL;
+    if (viOpenDefaultRM(&rm) < VI_SUCCESS) {
+        qDebug() << "VISA枚举：打开资源管理器失败";
+        return result;
+    }
+
+    ViFindList findList = VI_NULL;
+    ViUInt32 resourceCount = 0;
+    char buffer[VI_FIND_BUFLEN] = {0};
+    const QByteArray expr = expression.trimmed().isEmpty() ? QByteArray("?*INSTR") : expression.toLocal8Bit();
+    ViStatus status = viFindRsrc(rm, expr.constData(), &findList, &resourceCount, buffer);
+    if (status >= VI_SUCCESS && resourceCount > 0) {
+        result.append(QString::fromLocal8Bit(buffer).trimmed());
+        for (ViUInt32 i = 1; i < resourceCount; ++i) {
+            status = viFindNext(findList, buffer);
+            if (status < VI_SUCCESS) {
+                break;
+            }
+            const QString next = QString::fromLocal8Bit(buffer).trimmed();
+            if (!next.isEmpty()) {
+                result.append(next);
+            }
+        }
+    }
+    if (findList != VI_NULL) {
+        viClose(findList);
+    }
+    viClose(rm);
+#else
+    Q_UNUSED(expression);
+    qDebug() << "VISA枚举：当前构建未启用 HAVE_NI_VISA";
+#endif
+    return result;
+}
+
+bool Qvisa::applyVisaAddress(const QString& address)
+{
+    const QString trimmed = address.trimmed();
+    if (config_.visaAddress != trimmed) {
+        closeConnection();
+    }
+    config_.visaAddress = trimmed;
+    config_.useVisa = !trimmed.isEmpty();
+    return true;
+}
+
+bool Qvisa::prepareSession(VisaDeviceProfile profile, const QString& address)
+{
+    const QString preservedAddress = address.trimmed();
+    loadCommandSet(profile, false);
+    return applyVisaAddress(preservedAddress);
+}
+
+void Qvisa::loadCommandSet(VisaDeviceProfile profile, bool loadAddressFromSettings)
+{
+    const QString preservedAddress = config_.visaAddress;
+    const bool preservedUseVisa = config_.useVisa;
+
     if (profile == VisaDeviceProfile::ProgrammablePower) {
         ProtocolConfig next;
-        next.useVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
-        next.visaAddress =
-            SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("GPIB0::7::INSTR")).toString().trimmed();
+        next.useVisa = loadAddressFromSettings
+                           ? SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()
+                           : preservedUseVisa;
+        next.visaAddress = loadAddressFromSettings
+                               ? SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("GPIB0::7::INSTR"))
+                                     .toString()
+                                     .trimmed()
+                               : preservedAddress;
         next.timeoutMs = SETTINGS.value(QStringLiteral("VisaPower/TimeoutMs"), 3000).toInt();
         next.powerVoltageV = SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble();
         next.powerCurrentA = SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble();
@@ -52,7 +117,9 @@ void Qvisa::loadCommandSet(VisaDeviceProfile profile)
     if (profile == VisaDeviceProfile::RxCmwInstrument) {
         ProtocolConfig next;
         next.useVisa = true;
-        next.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();
+        next.visaAddress = loadAddressFromSettings
+                               ? SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed()
+                               : preservedAddress;
         next.timeoutMs = SETTINGS.value(QStringLiteral("BlePer/CmwTimeoutMs"), 5000).toInt();
         next.commandProfile = VisaDeviceProfile::RxCmwInstrument;
         if (config_.useVisa != next.useVisa || config_.visaAddress != next.visaAddress) {

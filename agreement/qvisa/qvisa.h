@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVariant>
 #include <QVariantMap>
 
@@ -45,6 +46,16 @@ public:
     explicit Qvisa(QObject* parent = nullptr);
     ~Qvisa();
 
+    /** 枚举本机 VISA 资源（需 HAVE_NI_VISA）；expression 默认 ?*INSTR。 */
+    static QStringList enumerateResources(const QString& expression = QStringLiteral("?*INSTR"));
+    /** 运行时覆盖地址（不关 profile）；地址变化时断开已有会话。 */
+    bool applyVisaAddress(const QString& address);
+    /**
+     * 加载 profile 命令模板；地址仅来自 address 参数，不读 BlePer/CmwVisaAddress、VisaPower/VisaAddress。
+     * 供自由工站等「界面指定单路 VISA」场景。
+     */
+    bool prepareSession(VisaDeviceProfile profile, const QString& address);
+
     ProtocolConfig protocolConfig() const;
 
     bool ensureConnected();
@@ -70,7 +81,7 @@ private:
         QString readCurrentCmd;
     };
 
-    void loadCommandSet(VisaDeviceProfile profile);
+    void loadCommandSet(VisaDeviceProfile profile, bool loadAddressFromSettings = true);
     bool writeLine(const QString& cmd);
     bool configurePower(double voltageV, double currentA);
     bool readPowerVoltage();

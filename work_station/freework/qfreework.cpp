@@ -393,6 +393,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     if (product) {
         connect(product, &Qproduct::instrumentStopReceiveSeen, this, &QFreeWork::onProductInstrumentStopReceiveAckForPer);
     }
+    syncVisaUiFromFreeWorkSettings();
+    refreshVisaResourceCombo();
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
     // 隐藏第 2、3 页（待拓展 / 蓝牙绑定）；Qt 5.15+ 标签栏一并隐藏
     // ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_2), false);
@@ -2059,14 +2061,109 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
     });
 }
 
-void QFreeWork::loadWifiBleCmw100Config() {
-    if (visa) {
-        visa->set(VisaCmd::DeviceProfile, static_cast<int>(VisaDeviceProfile::RxCmwInstrument));
+QString QFreeWork::currentVisaAddress() const {
+    if (!ui || !ui->visaAddressCombo) {
+        return QString();
     }
+    return ui->visaAddressCombo->currentText().trimmed();
+}
+
+VisaDeviceProfile QFreeWork::currentVisaDeviceProfileFromUi() const {
+    if (!ui || !ui->visaDeviceRoleCombo) {
+        return VisaDeviceProfile::RxCmwInstrument;
+    }
+    return ui->visaDeviceRoleCombo->currentIndex() == 1 ? VisaDeviceProfile::ProgrammablePower
+                                                      : VisaDeviceProfile::RxCmwInstrument;
+}
+
+void QFreeWork::syncVisaUiFromFreeWorkSettings() {
+    if (!ui || !ui->visaAddressCombo || !ui->visaDeviceRoleCombo) {
+        return;
+    }
+    ui->visaAddressCombo->setEditable(true);
+    const QString savedAddr = SETTINGS.value(QStringLiteral("FreeInstrument/VisaAddress")).toString().trimmed();
+    if (!savedAddr.isEmpty()) {
+        ui->visaAddressCombo->setCurrentText(savedAddr);
+    }
+    const QString role = SETTINGS.value(QStringLiteral("FreeInstrument/VisaDeviceRole"), QStringLiteral("cmw"))
+                             .toString()
+                             .trimmed()
+                             .toLower();
+    ui->visaDeviceRoleCombo->setCurrentIndex(role == QStringLiteral("power") ? 1 : 0);
+}
+
+void QFreeWork::refreshVisaResourceCombo() {
+    if (!ui || !ui->visaAddressCombo) {
+        return;
+    }
+    const QString current = currentVisaAddress();
+    const QStringList resources = Qvisa::enumerateResources();
+    ui->visaAddressCombo->blockSignals(true);
+    ui->visaAddressCombo->clear();
+    for (const QString& resource : resources) {
+        ui->visaAddressCombo->addItem(resource);
+    }
+    if (!current.isEmpty()) {
+        const int idx = ui->visaAddressCombo->findText(current);
+        if (idx >= 0) {
+            ui->visaAddressCombo->setCurrentIndex(idx);
+        } else {
+            ui->visaAddressCombo->setCurrentText(current);
+        }
+    }
+    ui->visaAddressCombo->blockSignals(false);
+#ifdef HAVE_NI_VISA
+    showlog(QStringLiteral("VISA 枚举完成，本机发现 %1 个资源").arg(resources.size()));
+#else
+    showlog(QStringLiteral("VISA 枚举：当前构建未启用 NI-VISA，仅可手输地址"));
+#endif
+}
+
+void QFreeWork::applyVisaFromUi(bool testConnection) {
+    const QString addr = currentVisaAddress();
+    const VisaDeviceProfile profile = currentVisaDeviceProfileFromUi();
+    SETTINGS.setValue(QStringLiteral("FreeInstrument/VisaAddress"), addr);
+    SETTINGS.setValue(QStringLiteral("FreeInstrument/VisaDeviceRole"),
+                      profile == VisaDeviceProfile::ProgrammablePower ? QStringLiteral("power") : QStringLiteral("cmw"));
+    SETTINGS.sync();
+    if (visa) {
+        visa->prepareSession(profile, addr);
+    }
+    const QString roleText = profile == VisaDeviceProfile::ProgrammablePower ? QStringLiteral("程控电源")
+                                                                             : QStringLiteral("CMW射频");
+    showlog(QStringLiteral("已应用 VISA（自由工站界面）：用途=%1，地址=%2")
+                .arg(roleText, addr.isEmpty() ? QStringLiteral("(空)") : addr));
+    if (!testConnection) {
+        return;
+    }
+    if (addr.isEmpty()) {
+        showlog(QStringLiteral("VISA 地址为空，无法测试连接"));
+        return;
+    }
+    if (visa && visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"))) {
+        showlog(QStringLiteral("VISA 已连接: %1").arg(visa->lastQueryResponse().trimmed()));
+        return;
+    }
+    showlog(QStringLiteral("VISA 连接失败: %1").arg(addr));
+}
+
+void QFreeWork::on_visaRefreshButton_clicked() {
+    refreshVisaResourceCombo();
+}
+
+void QFreeWork::on_visaApplyButton_clicked() {
+    applyVisaFromUi(true);
+}
+
+void QFreeWork::applyVisaForCmwBurst() {
+    if (!visa) {
+        return;
+    }
+    visa->prepareSession(VisaDeviceProfile::RxCmwInstrument, currentVisaAddress());
 }
 
 bool QFreeWork::freeWorkCmwVisaWrite(const QString& cmd) {
-    loadWifiBleCmw100Config();
+    applyVisaForCmwBurst();
     const bool trace = freeWorkShouldLogCmwVisaIo();
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] >> %1").arg(cmd));
@@ -2079,7 +2176,7 @@ bool QFreeWork::freeWorkCmwVisaWrite(const QString& cmd) {
 }
 
 bool QFreeWork::freeWorkCmwVisaQuery(const QString& cmd, QString* response) {
-    loadWifiBleCmw100Config();
+    applyVisaForCmwBurst();
     const bool trace = freeWorkShouldLogCmwVisaIo();
     if (trace) {
         showlog(QStringLiteral("[CMW-VISA] >> %1").arg(cmd));
@@ -2350,9 +2447,9 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
     if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool()) {
         return true;
     }
-    loadWifiBleCmw100Config();
-    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
-        showlog(QStringLiteral("%1：已启用并联射频但未配置 BlePer/CmwVisaAddress，跳过 CMW").arg(scenarioLabel));
+    applyVisaForCmwBurst();
+    if (currentVisaAddress().isEmpty()) {
+        showlog(QStringLiteral("%1：已启用并联射频但未配置 VISA 地址，请在界面填写").arg(scenarioLabel));
         return true;
     }
     if (brushProfile < 0 || brushProfile > 5) {
@@ -2373,9 +2470,7 @@ bool QFreeWork::freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scena
     QString idn;
     if (!visa || !visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"))) {
         if (errorMessage) {
-            *errorMessage =
-                QStringLiteral("CMW VISA连接失败（%1）")
-                    .arg(SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed());
+            *errorMessage = QStringLiteral("CMW VISA连接失败（%1）").arg(currentVisaAddress());
         }
         return false;
     }
@@ -2419,18 +2514,16 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
         showlog(QStringLiteral("并联CMW失败：%1").arg(msg));
         return false;
     }
-    loadWifiBleCmw100Config();
-    if (SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed().isEmpty()) {
-        const QString msg = QStringLiteral("跳过：未配置 BlePer/CmwVisaAddress");
+    applyVisaForCmwBurst();
+    if (currentVisaAddress().isEmpty()) {
+        const QString msg = QStringLiteral("跳过：未配置 VISA 地址");
         showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(msg));
         setDetail(msg);
         return true;
     }
-    loadWifiBleCmw100Config();
     QString idn;
     if (!visa || !visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"))) {
-        const QString err = QStringLiteral("CMW VISA连接失败（%1）")
-                                  .arg(SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed());
+        const QString err = QStringLiteral("CMW VISA连接失败（%1）").arg(currentVisaAddress());
         setDetail(err);
         showlog(QStringLiteral("并联CMW %1：%2").arg(brushInstrumentBandLabel(brushProfile)).arg(err));
         return false;

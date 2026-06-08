@@ -165,8 +165,13 @@ private:
     int lastBrushInstrumentProfile_ = -1;
     /** 自上次「开始接收」后是否已在「并联CMW播放*」步成功打过 GPRF；PER 步据此避免重复播放。 */
     bool cmwGprfBurstDoneSinceStartRx_ = false;
-    /** CMW100 VISA 配置，与 Wifi_ble 侧 BlePer/Cmw* 同源。 */
-    void loadWifiBleCmw100Config();
+    /** 自由工站 VISA：地址仅来自界面；并联 CMW 时强制 RxCmwInstrument profile。 */
+    void applyVisaForCmwBurst();
+    QString currentVisaAddress() const;
+    VisaDeviceProfile currentVisaDeviceProfileFromUi() const;
+    void syncVisaUiFromFreeWorkSettings();
+    void refreshVisaResourceCombo();
+    void applyVisaFromUi(bool testConnection);
     bool freeWorkCmwVisaWrite(const QString& cmd);
     bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
     /** 并联 GPRF：`alignedPostTrigHoldMs>=0` 时 TRIG 后固定等待使用该值（与 BrushInstrument/PacketPhaseWaitMs 同源）；若为真且 **`outAlignedWaitDoneByCmw` 输出 true**，表示已在仪器路径内阻塞等满，PER 勿再延时 waitPacketMs。仅当 **未** 开 `BlePer/CmwWaitArbScount` 时才能把「对齐等满」记在 CMW 内。 */
@@ -393,6 +398,8 @@ private slots:
     void on_jigDisconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
+    void on_visaRefreshButton_clicked();
+    void on_visaApplyButton_clicked();
 
     /** 产品仪器停止接收应答（收包数）；逻辑见 qfreework_data.cpp，在构造函数中与 instrumentStopReceiveSeen 连接。 */
     void onProductInstrumentStopReceiveAckForPer(int recvPkts);
