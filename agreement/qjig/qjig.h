@@ -9,6 +9,7 @@
 
 #include "my_set/my_typedef.h"
 #include "qlog.h"
+#include "qprotocol_types.h"
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")
@@ -54,7 +55,13 @@ public:
     bool sendCustomMessage(const QVariantMap& map);
 
 signals:
-    void send_amplitude_data(QString);
+    /** 统一上行数据信封（摆幅仪读数等） */
+    void reportReceived(const ProtocolReport& report);
+
+protected:
+    void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
+        emit reportReceived(ProtocolReport(reportType, payload));
+    }
 
 private:
     Qlog log_;

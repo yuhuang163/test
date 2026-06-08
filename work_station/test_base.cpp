@@ -83,19 +83,13 @@ void test_base::initData() {
     snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
 }
 void test_base::signalAndslot() {
-    // 产测协议上行：统一 reportReceived 入口（sendGetProductResponse 仍为传输 ACK，单独连接）
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
+    connect(at, &Qat::reportReceived, this, &test_base::onDongleAtReport);
+    connect(usb, &Qusb::reportReceived, this, &test_base::onUsbInstrumentReport);
+    connect(jig, &Qjig::reportReceived, this, &test_base::onJigInstrumentReport);
+
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
-
-    connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
-    connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
-    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(refreshWifiMsg(QString)));
-    connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
-    connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(refreshDongleWifi(QString)));
-
-    connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
-    connect(jig, SIGNAL(send_amplitude_data(QString)), this, SLOT(refreshAmplitudeData(QString)));
 
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
     connect(dongleSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
@@ -505,6 +499,50 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
     }
 }
 
+void test_base::onDongleAtReport(const ProtocolReport& report) {
+    const QString& reportType = report.reportType;
+    const QVariant& payload = report.payload;
+    if (reportType == QLatin1String("ProtocolDongleBleStateData")
+        && payload.canConvert<ProtocolDongleBleStateData>()) {
+        refreshBleState(payload.value<ProtocolDongleBleStateData>().connected);
+    } else if (reportType == QLatin1String("ProtocolDongleBleRssiData")
+               && payload.canConvert<ProtocolDongleBleRssiData>()) {
+        refreshBleRssi(payload.value<ProtocolDongleBleRssiData>().rssi);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiMsgData")
+               && payload.canConvert<ProtocolDongleWifiMsgData>()) {
+        refreshWifiMsg(payload.value<ProtocolDongleWifiMsgData>().text);
+    } else if (reportType == QLatin1String("ProtocolDongleVersionData")
+               && payload.canConvert<ProtocolDongleVersionData>()) {
+        refreshDongleVersion(payload.value<ProtocolDongleVersionData>().version);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiSsidData")
+               && payload.canConvert<ProtocolDongleWifiSsidData>()) {
+        refreshDongleWifi(payload.value<ProtocolDongleWifiSsidData>().ssid);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiRssiData")
+               && payload.canConvert<ProtocolDongleWifiRssiData>()) {
+        refreshWifiRssi(payload.value<ProtocolDongleWifiRssiData>().rssi);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiStateData")
+               && payload.canConvert<ProtocolDongleWifiStateData>()) {
+        refreshWifiState(payload.value<ProtocolDongleWifiStateData>().connected);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiIpData")
+               && payload.canConvert<ProtocolDongleWifiIpData>()) {
+        refreshWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
+    }
+}
+
+void test_base::onUsbInstrumentReport(const ProtocolReport& report) {
+    if (report.reportType == QLatin1String("ProtocolAmmeterReadingData")
+        && report.payload.canConvert<ProtocolAmmeterReadingData>()) {
+        refreshAmmeterData(report.payload.value<ProtocolAmmeterReadingData>().value);
+    }
+}
+
+void test_base::onJigInstrumentReport(const ProtocolReport& report) {
+    if (report.reportType == QLatin1String("ProtocolJigAmplitudeData")
+        && report.payload.canConvert<ProtocolJigAmplitudeData>()) {
+        refreshAmplitudeData(report.payload.value<ProtocolJigAmplitudeData>().value);
+    }
+}
+
 void test_base::solveGetBrushResponse(int data) {
     if (!isCommandRetryResponseAccepted(sender())) {
         return;
@@ -792,7 +830,9 @@ void test_base::closeEvent(QCloseEvent*) {
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
     waitWork(50);
 }
-void test_base::getDongleVer(QString data) { showlog("当前dongle的版本为：" + data); }
+void test_base::refreshDongleVersion(QString data) {
+    showlog(QStringLiteral("当前dongle的版本为：") + data);
+}
 void test_base::refreshMesState(int state) {
     if (state)
         showlog("mes登录成功");

@@ -269,6 +269,7 @@ protected:
 
 private slots:
     void onProtocolReport(const ProtocolReport& report);
+    void onDongleAtReport(const ProtocolReport& report);
     void refreshOtaFlowControl(int state);
     void refreshOtaProgress(int progress);
     void refreshPbInfo(const QString& info);

@@ -233,55 +233,66 @@ void Qat::registerCommand() {
     commandList["AT+WIFIIP"] = std::bind(&Qat::SEND_WIFI_IP, this, std::placeholders::_1);
 }
 
-void Qat::SEND_WIFI_DATA(QString p) { sendWifiMsg(p); }
-void Qat::SEND_WIFI_IP(QString p) { sendWifiIp(p); }
+void Qat::SEND_WIFI_DATA(QString p) {
+    emitReport(QStringLiteral("ProtocolDongleWifiMsgData"), QVariant::fromValue(ProtocolDongleWifiMsgData{p}));
+}
 
-void Qat::WIFI_connected(QString p) {Q_UNUSED(p);
+void Qat::SEND_WIFI_IP(QString p) {
+    emitReport(QStringLiteral("ProtocolDongleWifiIpData"), QVariant::fromValue(ProtocolDongleWifiIpData{p}));
+}
+
+void Qat::WIFI_connected(QString p) {
+    Q_UNUSED(p);
     iswifiConnected = true;
-    // qDebug() << "wifi连接成功";
-    emit send_WIFI_state(1);
-}
-void Qat::WIFI_disconnected(QString p) {Q_UNUSED(p);
-    iswifiConnected = false;
-    //  qDebug() << "wifi连接断开";
-    emit send_WIFI_state(0);
+    emitReport(QStringLiteral("ProtocolDongleWifiStateData"), QVariant::fromValue(ProtocolDongleWifiStateData{1}));
 }
 
-void Qat::connected(QString p) {Q_UNUSED(p);
+void Qat::WIFI_disconnected(QString p) {
+    Q_UNUSED(p);
+    iswifiConnected = false;
+    emitReport(QStringLiteral("ProtocolDongleWifiStateData"), QVariant::fromValue(ProtocolDongleWifiStateData{0}));
+}
+
+void Qat::connected(QString p) {
+    Q_UNUSED(p);
     qDebug() << "at蓝牙连接成功";
 
     emit sendGetProductResponse(1);
-    emit send_ble_state(1);
+    emitReport(QStringLiteral("ProtocolDongleBleStateData"), QVariant::fromValue(ProtocolDongleBleStateData{1}));
     isConnected = true;
 }
-void Qat::disconnected(QString p) {Q_UNUSED(p);
-    emit send_ble_state(0);
+
+void Qat::disconnected(QString p) {
+    Q_UNUSED(p);
+    emitReport(QStringLiteral("ProtocolDongleBleStateData"), QVariant::fromValue(ProtocolDongleBleStateData{0}));
     isConnected = false;
     qDebug() << "at蓝牙连接断开";
 }
 
-void Qat::help(QString p) {Q_UNUSED(p); qDebug() << "this is AT help"; }
+void Qat::help(QString p) {
+    Q_UNUSED(p);
+    qDebug() << "this is AT help";
+}
 
 void Qat::dongle_ver(QString p) {
     qDebug() << "dongle版本为= " + p;
-    emit send_dongle_ver(p);
+    emitReport(QStringLiteral("ProtocolDongleVersionData"), QVariant::fromValue(ProtocolDongleVersionData{p}));
 }
+
 void Qat::dongle_wifi(QString p) {
     qDebug() << "dongle的wifi为" + p;
-    emit send_dongle_wifi(p);
+    emitReport(QStringLiteral("ProtocolDongleWifiSsidData"), QVariant::fromValue(ProtocolDongleWifiSsidData{p}));
 }
 
 void Qat::rssi(QString p) {
-    // qDebug() << "rssi = " << p;
-    if (p.at(0) == "-")
-        emit send_rssi(p);
+    if (!p.isEmpty() && p.at(0) == QLatin1Char('-'))
+        emitReport(QStringLiteral("ProtocolDongleBleRssiData"), QVariant::fromValue(ProtocolDongleBleRssiData{p}));
 }
 
 void Qat::wifi_rssi(QString p) {
     iswifiConnected = true;
-    emit send_WIFI_state(1);
-    // qDebug() << "rssi = " << p;
-    emit send_wifi_rssi(p);
+    emitReport(QStringLiteral("ProtocolDongleWifiStateData"), QVariant::fromValue(ProtocolDongleWifiStateData{1}));
+    emitReport(QStringLiteral("ProtocolDongleWifiRssiData"), QVariant::fromValue(ProtocolDongleWifiRssiData{p}));
 }
 
 void Qat::processCmd(QString cmd, QString parameter) {

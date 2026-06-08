@@ -262,6 +262,48 @@ typedef struct {
     uint32_t calibValue = 0;
 } ProtocolLightCalibData;
 
+/** Dongle AT 上行 */
+typedef struct {
+    int connected = 0;
+} ProtocolDongleBleStateData;
+
+typedef struct {
+    QString rssi;
+} ProtocolDongleBleRssiData;
+
+typedef struct {
+    QString text;
+} ProtocolDongleWifiMsgData;
+
+typedef struct {
+    QString version;
+} ProtocolDongleVersionData;
+
+typedef struct {
+    QString ssid;
+} ProtocolDongleWifiSsidData;
+
+typedef struct {
+    QString rssi;
+} ProtocolDongleWifiRssiData;
+
+typedef struct {
+    int connected = 0;
+} ProtocolDongleWifiStateData;
+
+typedef struct {
+    QString ip;
+} ProtocolDongleWifiIpData;
+
+/** USB 电流表 / 治具振幅仪上行 */
+typedef struct {
+    QString value;
+} ProtocolAmmeterReadingData;
+
+typedef struct {
+    QString value;
+} ProtocolJigAmplitudeData;
+
 typedef struct {
     bool done = false;
 } ProtocolFactoryDoneData;
@@ -445,6 +487,16 @@ Q_DECLARE_METATYPE(ProtocolKeyCapData)
 Q_DECLARE_METATYPE(ProtocolChargeCurrentData)
 Q_DECLARE_METATYPE(ProtocolTrimData)
 Q_DECLARE_METATYPE(ProtocolLightCalibData)
+Q_DECLARE_METATYPE(ProtocolDongleBleStateData)
+Q_DECLARE_METATYPE(ProtocolDongleBleRssiData)
+Q_DECLARE_METATYPE(ProtocolDongleWifiMsgData)
+Q_DECLARE_METATYPE(ProtocolDongleVersionData)
+Q_DECLARE_METATYPE(ProtocolDongleWifiSsidData)
+Q_DECLARE_METATYPE(ProtocolDongleWifiRssiData)
+Q_DECLARE_METATYPE(ProtocolDongleWifiStateData)
+Q_DECLARE_METATYPE(ProtocolDongleWifiIpData)
+Q_DECLARE_METATYPE(ProtocolAmmeterReadingData)
+Q_DECLARE_METATYPE(ProtocolJigAmplitudeData)
 Q_DECLARE_METATYPE(ProtocolFactoryDoneData)
 Q_DECLARE_METATYPE(ProtocolRssiData)
 Q_DECLARE_METATYPE(ProtocolMacData)

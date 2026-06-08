@@ -12,6 +12,8 @@
 #include "qlabel.h"
 #include "qpushbutton.h"
 #include "qtablewidget.h"
+#include "qat.h"
+#include "qjig.h"
 #include "qusb.h"
 #include "qvisa.h"
 #include "serial_channel.h"
@@ -195,10 +197,14 @@ public slots:
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString) {}
     virtual void refreshBleRssi(QString) {}
+    virtual void refreshWifiRssi(QString) {}
     virtual void refreshPressCalibData(ProtocolPressCalibResultData) {}
     virtual void refreshDongleWifi(QString) {}
+    virtual void refreshDongleVersion(QString);
+    virtual void refreshWifiIp(QString) {}
     virtual void refreshBleState(int) {}
     virtual void refreshWifiMsg(QString) {}
+    virtual void refreshWifiState(int) {}
     virtual void refreshBaseData(ProtocolBaseInfoData) {}
     virtual void refreshBattaryData(ProtocolBatteryData) {}
     virtual void refreshMusicState(ProtocolMusicStateData) {}
@@ -219,8 +225,14 @@ public slots:
     virtual void processReceivedData(const QByteArray&) {}
 
 protected:
-    /** 协议上行统一分发：reportType 与 GateRegistry 注册名一致，转发到 refresh* 虚槽 */
+    /** 产测协议（Qpb/Qfctp）上行分发 */
     virtual void onProtocolReport(const ProtocolReport& report);
+    /** Dongle AT 上行分发 */
+    virtual void onDongleAtReport(const ProtocolReport& report);
+    /** USB 电流表上行分发 */
+    virtual void onUsbInstrumentReport(const ProtocolReport& report);
+    /** 治具摆幅仪上行分发 */
+    virtual void onJigInstrumentReport(const ProtocolReport& report);
     /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
     void finishCommandRetryWait(bool success, const QString& logMessage);
     void closeEvent(QCloseEvent* event) override;
@@ -236,7 +248,6 @@ private:
     void onCommandRetryTimerTimeout();
 
 private slots:
-    void getDongleVer(QString);
     void refreshMesState(int state);
 
 signals:

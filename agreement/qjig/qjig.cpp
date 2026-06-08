@@ -335,7 +335,8 @@ void Qjig::parseCmd(const QByteArray& byte) {
             // 计算最终结果：摆幅加上误差值后乘以6
             int result = (amplitude + errorValue) * 6;
             qDebug() << "发送结果，摆幅:" << amplitude << "误差值:" << errorValue;
-            emit send_amplitude_data(QString::number(result));
+            emitReport(QStringLiteral("ProtocolJigAmplitudeData"),
+                         QVariant::fromValue(ProtocolJigAmplitudeData{QString::number(result)}));
         }
     }
 }

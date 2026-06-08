@@ -464,7 +464,8 @@ void Qusb::processCmd(QString cmd, QString parameter)
     }
     else
     {
-        emit send_ammeter_data(cmd);   // 发给欣旺达静态电流处理
+        emitReport(QStringLiteral("ProtocolAmmeterReadingData"),
+                   QVariant::fromValue(ProtocolAmmeterReadingData{cmd}));
         qDebug() << "不支持的命令 : " << cmd;
     }
 }
@@ -566,7 +567,8 @@ void Qusb::processModbusRTUData(const QByteArray &response)
     const double current_uA = currentValue * std::pow(10, unitExponent) * 0.000000001;
     qDebug() << ": Current Value = " << current_uA << "A";
 
-    emit send_ammeter_data(QString::number(current_uA));
+    emitReport(QStringLiteral("ProtocolAmmeterReadingData"),
+               QVariant::fromValue(ProtocolAmmeterReadingData{QString::number(current_uA)}));
 }
 
 void Qusb::processlxModbusRTUData(const QByteArray &response)
@@ -598,6 +600,7 @@ void Qusb::processlxModbusRTUData(const QByteArray &response)
     const double current_uA = currentValue;
     qDebug() << "Current Value = " << current_uA << "uA";
 
-    emit send_ammeter_data(QString::number(current_uA));   // 立讯的发送
+    emitReport(QStringLiteral("ProtocolAmmeterReadingData"),
+               QVariant::fromValue(ProtocolAmmeterReadingData{QString::number(current_uA)}));
     data = 0;
 }

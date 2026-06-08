@@ -5,6 +5,8 @@
 #include <functional>
 #include <map>
 
+#include "qprotocol_types.h"
+
 class Qusb : public QSerialPort
 {
     Q_OBJECT
@@ -85,11 +87,17 @@ public:
     bool initializeProgrammablePower();
 
 signals:
-    void send_ammeter_data(QString data);   // 信号声明
+    /** 统一上行数据信封（电流表读数等） */
+    void reportReceived(const ProtocolReport& report);
     /// 程控电源 SCPI 读电压完成（串口异步回包）。valueVolts 单位 V，ok 为数值解析是否成功
     void programmablePowerVoltageRead(double valueVolts, bool ok);
     /// 程控电源 SCPI 读电流完成，valueAmps 单位 A
     void programmablePowerCurrentRead(double valueAmps, bool ok);
+
+protected:
+    void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
+        emit reportReceived(ProtocolReport(reportType, payload));
+    }
 
 private:
     enum class ProgrammablePowerReadPending

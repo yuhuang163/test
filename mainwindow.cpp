@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 
 #include <QInputDialog>
 #include <QLineEdit>
@@ -260,8 +260,7 @@ MainWindow::MainWindow(QWidget* parent) :
                << "存储空间不足";
 
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &MainWindow::onProtocolReport);
-    connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
-    connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
+    connect(at, &Qat::reportReceived, this, &MainWindow::onDongleAtReport);
 
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));
@@ -270,8 +269,6 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(this, SIGNAL(sendBelSourceOtaSpeed(int)), ui->bel_source_ota_speed, SLOT(setValue(int)));
 
 
-    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
-    connect(at, SIGNAL(sendWifiIp(QString)), this, SLOT(getWifiIp(QString)));
 
     connect(this, SIGNAL(send_fault_data_packet(int, const QVector<int>&)), pb,
             SLOT(set_camera_fault_data_packet(int, const QVector<int>&)));
@@ -289,11 +286,6 @@ MainWindow::MainWindow(QWidget* parent) :
 
     connect(this, &MainWindow::send_image_processed, this, &MainWindow::updateImageOnMainThread);
 
-    connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
-    connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
-    connect(at, SIGNAL(send_wifi_rssi(QString)), this, SLOT(refreshWifiRssi(QString)));
-    // connect(at, SIGNAL(send_WIFI_state(int)), this,
-    // SLOT(refreshWifiState(int)));
 
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
@@ -486,6 +478,36 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
     } else if (reportType == QLatin1String("ProtocolButtonStateData")
                && payload.canConvert<ProtocolButtonStateData>()) {
         refreshButtonState(payload.value<ProtocolButtonStateData>());
+    }
+}
+
+void MainWindow::onDongleAtReport(const ProtocolReport& report) {
+    const QString& reportType = report.reportType;
+    const QVariant& payload = report.payload;
+    if (reportType == QLatin1String("ProtocolDongleBleStateData")
+        && payload.canConvert<ProtocolDongleBleStateData>()) {
+        refreshBleState(payload.value<ProtocolDongleBleStateData>().connected);
+    } else if (reportType == QLatin1String("ProtocolDongleBleRssiData")
+               && payload.canConvert<ProtocolDongleBleRssiData>()) {
+        refreshBleRssi(payload.value<ProtocolDongleBleRssiData>().rssi);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiMsgData")
+               && payload.canConvert<ProtocolDongleWifiMsgData>()) {
+        getWifiMsg(payload.value<ProtocolDongleWifiMsgData>().text);
+    } else if (reportType == QLatin1String("ProtocolDongleVersionData")
+               && payload.canConvert<ProtocolDongleVersionData>()) {
+        getDongleVer(payload.value<ProtocolDongleVersionData>().version);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiSsidData")
+               && payload.canConvert<ProtocolDongleWifiSsidData>()) {
+        getDongleWifi(payload.value<ProtocolDongleWifiSsidData>().ssid);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiRssiData")
+               && payload.canConvert<ProtocolDongleWifiRssiData>()) {
+        refreshWifiRssi(payload.value<ProtocolDongleWifiRssiData>().rssi);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiStateData")
+               && payload.canConvert<ProtocolDongleWifiStateData>()) {
+        refreshWifiState(payload.value<ProtocolDongleWifiStateData>().connected);
+    } else if (reportType == QLatin1String("ProtocolDongleWifiIpData")
+               && payload.canConvert<ProtocolDongleWifiIpData>()) {
+        getWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
     }
 }
 

@@ -8,6 +8,8 @@
 #include <QVariant>
 #include <QVariantMap>
 
+#include "qprotocol_types.h"
+
 /** Dongle AT 指令（经 at->set/get 下发） */
 enum class DongleCmd {
     BleScanConnect,      // AT+MAC= 扫描/连接，data: MAC；全 0 表示断开
@@ -42,15 +44,15 @@ public:
 
 signals:
     void command(QString cmd, QString parameter);
+    /** 统一上行数据信封 */
+    void reportReceived(const ProtocolReport& report);
+    /** 传输层 ACK（蓝牙连接成功等），与结构化 report 分离 */
     void sendGetProductResponse(int data);
-    void send_ble_state(int state);
-    void send_rssi(QString state);
-    void send_dongle_ver(QString state);
-    void send_dongle_wifi(QString state);
-    void send_wifi_rssi(QString state);
-    void send_WIFI_state(int state);
-    void sendWifiMsg(QString data);
-    void sendWifiIp(QString data);
+
+protected:
+    void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
+        emit reportReceived(ProtocolReport(reportType, payload));
+    }
 
 private:
     void waitWork(int ms);
