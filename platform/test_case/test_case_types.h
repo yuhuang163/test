@@ -78,6 +78,7 @@ struct TestCaseGate {
 // --- 流程编排 ---
 struct TestFlowItemEntry {
     QString caseName;
+    bool enabled = true;
 };
 
 struct TestCaseHook {

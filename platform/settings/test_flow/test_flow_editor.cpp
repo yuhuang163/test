@@ -75,7 +75,7 @@ bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlo
     if (a.size() != b.size())
         return false;
     for (int i = 0; i < a.size(); ++i) {
-        if (a.at(i).caseName != b.at(i).caseName)
+        if (a.at(i).caseName != b.at(i).caseName || a.at(i).enabled != b.at(i).enabled)
             return false;
     }
     return true;
@@ -726,13 +726,14 @@ void TestFlowEditor::clearBlocks() {
     }
 }
 
-void TestFlowEditor::appendBlock(const QString& caseName) {
+void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
     if (!scroll_ || !flowLayout_)
         return;
     QWidget* container = scroll_->widget();
     if (!container)
         return;
     auto* block = new TestCaseBlock(caseName, container);
+    block->setChecked(enabled);
     connect(block, &TestCaseBlock::editRequested, this, &TestFlowEditor::openEditDialog);
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
@@ -760,6 +761,7 @@ QVector<TestFlowItemEntry> TestFlowEditor::currentFlowEntries() const {
             continue;
         TestFlowItemEntry entry;
         entry.caseName = block->caseName();
+        entry.enabled = block->isChecked();
         entries.append(entry);
     }
     return entries;
@@ -863,7 +865,7 @@ void TestFlowEditor::reloadCurrentStation() {
     }
     const QVector<TestFlowItemEntry> entries = TestCaseStore::loadStationFlowItems(key);
     for (const TestFlowItemEntry& entry : entries)
-        appendBlock(entry.caseName);
+        appendBlock(entry.caseName, entry.enabled);
     if (flowLayout_ && flowLayout_->count() > 0) {
         if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(0)->widget()))
             setSelectedBlock(block);

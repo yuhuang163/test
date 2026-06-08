@@ -16,6 +16,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QSet>
 #include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
@@ -969,8 +970,10 @@ bool TestCaseStore::saveFlowMeta(const TestFlowMeta& meta) {
 
 QStringList TestCaseStore::loadStationItems(const QString& stationKey) {
     QStringList items;
-    for (const TestFlowItemEntry& entry : loadStationFlowItems(stationKey))
-        items.append(entry.caseName);
+    for (const TestFlowItemEntry& entry : loadStationFlowItems(stationKey)) {
+        if (entry.enabled)
+            items.append(entry.caseName);
+    }
     return items;
 }
 
@@ -1005,16 +1008,37 @@ QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& st
     applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(stationKey));
     const QString rawItems = ini.value(QStringLiteral("Items")).toString();
+    const QString rawDisabled = ini.value(QStringLiteral("DisabledItems")).toString();
+    const QString rawEnabled = ini.value(QStringLiteral("ItemEnabled")).toString();
     ini.endGroup();
 
+    QSet<QString> disabledNames;
+    for (const QString& part : rawDisabled.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString name = part.trimmed();
+        if (!name.isEmpty())
+            disabledNames.insert(name);
+    }
+
+    const QStringList enabledParts = rawEnabled.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    const bool useLegacyItemEnabled = disabledNames.isEmpty() && !rawEnabled.trimmed().isEmpty();
+
     QVector<TestFlowItemEntry> entries;
+    int index = 0;
     for (const QString& part : rawItems.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
         const QString name = part.trimmed();
         if (name.isEmpty())
             continue;
         TestFlowItemEntry entry;
         entry.caseName = name;
+        entry.enabled = true;
+        if (disabledNames.contains(name)) {
+            entry.enabled = false;
+        } else if (useLegacyItemEnabled && index < enabledParts.size()) {
+            const QString flag = enabledParts.at(index).trimmed();
+            entry.enabled = !(flag == QLatin1String("0") || flag.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0);
+        }
         entries.append(entry);
+        ++index;
     }
     return entries;
 }
@@ -1027,13 +1051,22 @@ bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVecto
     applyTestCaseIniCodec(ini);
     ini.beginGroup(stationGroup(stationKey));
     QStringList names;
+    QStringList disabledNames;
     for (const TestFlowItemEntry& entry : items) {
         const QString name = entry.caseName.trimmed();
         if (name.isEmpty())
             continue;
         names.append(name);
+        if (!entry.enabled)
+            disabledNames.append(name);
     }
     ini.setValue(QStringLiteral("Items"), names.join(QLatin1Char(',')));
+    if (disabledNames.isEmpty()) {
+        ini.remove(QStringLiteral("DisabledItems"));
+    } else {
+        ini.setValue(QStringLiteral("DisabledItems"), disabledNames.join(QLatin1Char(',')));
+    }
+    ini.remove(QStringLiteral("ItemEnabled"));
     ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlowOnTestFail);
     ini.remove(QStringLiteral("StopOnGateFail"));
     ini.endGroup();

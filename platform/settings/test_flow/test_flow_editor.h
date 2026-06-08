@@ -85,7 +85,7 @@ class TestFlowEditor : public QObject {
     QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
     bool activateStationComboIndex(int index);
     void clearBlocks();
-    void appendBlock(const QString& caseName);
+    void appendBlock(const QString& caseName, bool enabled = true);
     void setSelectedBlock(TestCaseBlock* block);
     QString currentStationKey() const;
     QVector<TestFlowItemEntry> currentFlowEntries() const;

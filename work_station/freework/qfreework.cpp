@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -238,12 +238,19 @@ void QFreeWork::refreshOrderedTestIndexes() {
 
     stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
     const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
-    for (const TestFlowItemEntry& entry : flowItems)
-        orderedTestCaseNames_.append(entry.caseName);
+    for (const TestFlowItemEntry& entry : flowItems) {
+        if (entry.enabled)
+            orderedTestCaseNames_.append(entry.caseName);
+    }
 
     if (orderedTestCaseNames_.isEmpty()) {
-        showlog(QStringLiteral("当前工站未配置测试步骤，请在设置页「测试流程编排」中添加"));
-        qDebug() << "[FreeWork] empty flow, station =" << stationKey;
+        if (!flowItems.isEmpty()) {
+            showlog(QStringLiteral("当前工站流程步骤均已取消勾选，请在设置页「测试流程编排」中重新勾选"));
+            qDebug() << "[FreeWork] all flow items disabled, station =" << stationKey;
+        } else {
+            showlog(QStringLiteral("当前工站未配置测试步骤，请在设置页「测试流程编排」中添加"));
+            qDebug() << "[FreeWork] empty flow, station =" << stationKey;
+        }
     } else {
         qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
     }
