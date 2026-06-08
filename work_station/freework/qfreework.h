@@ -1,4 +1,4 @@
-#ifndef QFREEWORK_H
+﻿#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -173,6 +173,8 @@ class QFreeWork : public test_base {
     void finalizeTestFlowIfComplete();
     bool isCurrentStep(const QString& functionName) const;
     bool isCurrentInstrumentStep(const QString& stepName) const;
+    bool isBydFactory() const;
+    QString resolvedExpectedTailSnText() const;
     QByteArray resolvedTailSnToWrite() const;
 
     // --- 弹窗 / 按键等待 ---

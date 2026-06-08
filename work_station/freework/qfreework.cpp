@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -280,23 +280,27 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     return currentOrderedStepIsDongleBleConnect();
 }
 
-QByteArray QFreeWork::resolvedTailSnToWrite() const {
-    const QByteArray fromMes = expectedTailSnFromMes.trimmed();
-    if (!fromMes.isEmpty()) {
-        return fromMes;
+bool QFreeWork::isBydFactory() const {
+    return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
+}
+
+QString QFreeWork::resolvedExpectedTailSnText() const {
+    if (isBydFactory()) {
+        return QString::fromUtf8(expectedTailSnFromMes.trimmed());
     }
     if (ui && ui->getMac) {
-        return ui->getMac->text().trimmed().toUtf8();
+        return ui->getMac->text().trimmed();
     }
     return {};
+}
+
+QByteArray QFreeWork::resolvedTailSnToWrite() const {
+    return resolvedExpectedTailSnText().toUtf8();
 }
 
 void QFreeWork::runTestFlowBootstrap() {
     showlog(QStringLiteral("开始测试"));
     initData();
-    if (expectedTailSnFromMes.trimmed().isEmpty() && ui->getMac && !ui->getMac->text().trimmed().isEmpty()) {
-        expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
-    }
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
     refreshOrderedTestIndexes();
     waitWork(1000);
@@ -1067,7 +1071,9 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
+    if (isBydFactory()) {
+        expectedTailSnFromMes.clear();
+    }
     showlog("正在查询mac地址");
     processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取
@@ -1376,7 +1382,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        // 自由工站无 writesn/stringsn：写入 SN 走 test_case「写入SN码」/Hook SN_WRITE_TAIL；读回比对用 deviceTailSnFromDevice + ui->getMac
+        // BYD 写入/读回 SN 均用 MES 返回的整机 SN（同 ageing writesn/stringsn）
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);

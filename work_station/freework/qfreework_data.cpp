@@ -163,7 +163,7 @@ void QFreeWork::refreshWifiState(int state) {
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedTailSnFromMesText = expectedTailSnFromMes.trimmed();
+    const QString expectedTailSnFromMesText = resolvedExpectedTailSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);

@@ -222,9 +222,7 @@ void QFreeWork::clearActiveTestCase() {
 void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
     if (gates.size() != 1 || gates.first().field != QStringLiteral("value") || !gates.first().expected.trimmed().isEmpty())
         return;
-    gates[0].expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
-    if (gates[0].expected.isEmpty() && ui && ui->getMac)
-        gates[0].expected = ui->getMac->text().trimmed();
+    gates[0].expected = resolvedExpectedTailSnText();
 }
 
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
