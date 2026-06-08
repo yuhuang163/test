@@ -9,6 +9,7 @@ alwaysApply: true
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
 - **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.qrc` / `.md` / `.ini` 配置片段等** 使用 **UTF-8 with BOM** 保存，避免 MSVC/工具链对无 BOM UTF-8 的误判。已有文件若非任务要求不要随意改编码。
+- **换行**：`.gitattributes` 为 `* -text`，**仓库与工作区均 CRLF 原样入库**（GitLab 上也显示 CRLF）；`*.sh` 保持 LF。批量统一：`python scripts/convert_to_crlf.py`。
 - **`.pro` 工程文件（硬性例外，Agent 必遵守）**：
   - **必须 UTF-8 无 BOM**；qmake 遇 BOM 报 `Unexpected UTF-8 BOM`。
   - **禁止**把「源文件默认 with BOM」套用到 `*.pro`；编辑工具保存后常会偷偷写入 BOM，不能假定「只改了几行就没事」。

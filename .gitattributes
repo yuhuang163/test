@@ -1,14 +1,27 @@
-﻿# Windows 工程：仓库与工作区均按 CRLF 原样存储（不做入库 LF 规范化）。
-# 源码编码：UTF-8 无 BOM（与 QMAKE_CXXFLAGS /utf-8 一致）；.pro 勿带 BOM（见下方说明）。
-# Shell / Git 钩子仍在仓库中保持 LF，避免 #!/bin/sh 带 \r。
+﻿# Windows 工程：仓库与工作区均 CRLF 原样入库（* -text，Git 不做 LF 规范化）。
+# 源码编码：UTF-8；.pro/.pri 勿带 BOM（见 qt-cpp-project 规则）。
+# Shell / Git 钩子保持 LF，避免 #!/bin/sh 带 \r。
 * -text
 
-# Windows 下 *.cmd 使用 CRLF；若编辑器写入 UTF-8 BOM，仍可能破坏首行，需单独注意保存方式。
+*.sh text eol=lf
+.githooks/commit-msg text eol=lf
+
 *.cmd -text
 
-# qmake 不接受 UTF-8 BOM，但换行可用 CRLF
-*.pro -text
-*.pri -text
+# 二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.dll binary
+*.lib binary
+*.exe binary
+*.pyd binary
+*.pb binary
+*.zip binary
+*.7z binary
+*.pdf binary
 
-.githooks/commit-msg text eol=lf
-*.sh text eol=lf
+# 内置 Python 运行时：不做换行/编码转换
+**/Python39/** -text
