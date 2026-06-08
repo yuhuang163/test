@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "common_utils.h"
 #include "qlog.h"
 #include "qat.h"
@@ -3177,11 +3177,11 @@ void MainWindow::onRequestFinished(QNetworkReply* reply) {
     if (!accumulatedContent.isEmpty()) {
         showlog(accumulatedContent);
 
-        // 解析命令
-        QStringList segments = accumulatedContent.split(',');
-        for (const QString& segment : segments) {
-            executor.executeFunctionByName(segment);
-        }
+        // 解析命令（TestFunctionExecutor / common_class 已移除，暂不按名执行 PB 测试项）
+        // QStringList segments = accumulatedContent.split(',');
+        // for (const QString& segment : segments) {
+        //     executor.executeFunctionByName(segment);
+        // }
     }
 
     reply->deleteLater();

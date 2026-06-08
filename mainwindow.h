@@ -1,4 +1,4 @@
-
+﻿
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include <QApplication>
@@ -31,7 +31,6 @@
 #include <algorithm>
 #include <QMessageBox>
 #include "Abini.h"
-#include "common_class.h"
 #include "imu_calibrate.h"
 #include "qaudiorecorder.h"
 #include "qprotocolmanager.h"
@@ -190,7 +189,6 @@ class MainWindow : public QMainWindow {
     Qaiot* qaiot = nullptr;
     Qpb* pb = nullptr;
     Qat* at = nullptr;
-    TestFunctionExecutor executor;
     typedef enum {
         STATE_IDLE,            // 休眠状态
         STATE_WATI_CONNECT,    // 等待连接

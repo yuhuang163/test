@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 
 #include <QInputDialog>
 #include <QLineEdit>
@@ -91,7 +91,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           dongleSerialPort(dongleSerialChannel_->port()),
                                           pb(new Qpb(dongleSerialPort)),
                                           qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
-                                          nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow), executor(pb) {
+                                          nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
