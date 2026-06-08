@@ -391,6 +391,24 @@
             </item>
            </layout>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_mes_retest">
+            <item>
+             <widget class="QLabel" name="label_mes_retest">
+              <property name="text">
+               <string>华庄重测</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_mesRetest">
+              <property name="text">
+               <string>站前检查 retest=true</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </widget>
        </item>
@@ -2949,6 +2967,76 @@
         </item>
        </layout>
       </widget>
+      <widget class="QGroupBox" name="groupBox_logUpload">
+       <property name="geometry">
+        <rect>
+         <x>266</x>
+         <y>190</y>
+         <width>398</width>
+         <height>145</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>日志上传</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_logUpload">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_remoteLogUploadUrl">
+          <property name="text">
+           <string>上传地址</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" colspan="3">
+         <widget class="QLineEdit" name="lineEdit_remoteLogUploadUrl">
+          <property name="text">
+           <string>https://fctp.luteos.com/api/factory-tool/logs/upload</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_remoteLogDeviceId">
+          <property name="text">
+           <string>设备ID</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" colspan="3">
+         <widget class="QLineEdit" name="lineEdit_remoteLogDeviceId"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_remoteLogStation">
+          <property name="text">
+           <string>工站</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="lineEdit_remoteLogStation">
+          <property name="text">
+           <string>DEFAULT</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2" colspan="2">
+         <widget class="QPushButton" name="pushButton_uploadLogs">
+          <property name="text">
+           <string>打包并上传所有log</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0" colspan="4">
+         <widget class="QLabel" name="label_remoteLogStatus">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QGroupBox" name="groupBox_keyConfig">
        <property name="geometry">
         <rect>
@@ -3138,9 +3226,9 @@
       <widget class="QGroupBox" name="groupBox_brushInstrument">
        <property name="geometry">
         <rect>
-         <x>320</x>
-         <y>220</y>
-         <width>304</width>
+         <x>266</x>
+         <y>345</y>
+         <width>398</width>
          <height>207</height>
         </rect>
        </property>

@@ -1,4 +1,6 @@
-#include "mesmanager.h"
+﻿#include "mesmanager.h"
+
+#include "test_record_store.h"
 
 QMesManager::QMesManager() {
     MesSystems.push_back(&BydMes);
@@ -82,6 +84,8 @@ void QMesManager::ProcessInspectionAll(MesPacketData pack) {
 }
 
 void QMesManager::TestPassAll(MesPacketData pack) {
+    // 与 MES 过站同入口写本地库，避免 box_base 信号槽未触发时漏记
+    TestRecordStore::instance().saveOnTestPass(pack);
     for (auto mes : MesSystems) {
         mes->TestPass(pack);
     }

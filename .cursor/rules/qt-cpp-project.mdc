@@ -1,4 +1,4 @@
-﻿---
+---
 description: new_product_test Qt/C++ 工程约定与 AI 协作规则
 alwaysApply: true
 ---
@@ -9,6 +9,7 @@ alwaysApply: true
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
 - **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8（无 BOM）** 保存；工程已配置 `/utf-8` 编译选项，无需 BOM。已有文件若非任务要求不要随意改编码。
+- **换行**：`.gitattributes` 为 `* -text`，**仓库与工作区均 CRLF 原样入库**（GitLab 上也显示 CRLF）；`*.sh` 保持 LF。批量统一：`python scripts/convert_to_crlf.py`。
 - 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
 
 ## 代码风格（与仓库一致）

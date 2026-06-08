@@ -1,4 +1,4 @@
-#include "hzmes.h"
+﻿#include "hzmes.h"
 
 #include <QEventLoop>
 #include <QJsonDocument>
@@ -16,9 +16,30 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-hzmes::hzmes() {
-    url = SETTINGS.value(QStringLiteral("Mes/NET"), QStringLiteral("http://10.0.2.5/mrs")).toString().trimmed();
-    field = SETTINGS.value(QStringLiteral("Mes/FIELD"), QStringLiteral("wifimac")).toString().trimmed();
+namespace {
+
+QString mesIniString(const QString& mesKey, const QString& altKey, const QString& defaultValue)
+{
+    QString v = SETTINGS.value(mesKey).toString().trimmed();
+    if (v.isEmpty() && mesKey != altKey)
+        v = SETTINGS.value(altKey).toString().trimmed();
+    return v.isEmpty() ? defaultValue : v;
+}
+
+}  // namespace
+
+hzmes::hzmes()
+{
+    url = mesIniString(QStringLiteral("Mes/NET"), QStringLiteral("MES/NET"),
+                       QStringLiteral("http://10.0.2.5/mrs"));
+    field = mesIniString(QStringLiteral("Mes/FIELD"), QStringLiteral("MES/FIELD"), QStringLiteral("wifimac"));
+}
+
+void hzmes::reloadMesConfig()
+{
+    url = mesIniString(QStringLiteral("Mes/NET"), QStringLiteral("MES/NET"),
+                       QStringLiteral("http://10.0.2.5/mrs"));
+    field = mesIniString(QStringLiteral("Mes/FIELD"), QStringLiteral("MES/FIELD"), QStringLiteral("wifimac"));
 }
 
 void hzmes::LogIn(MesPacketData pack) {
@@ -29,6 +50,7 @@ void hzmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory != QStringLiteral("hz")) {
         return;
     }
+    reloadMesConfig();
 
     QString baseUrl = url.trimmed();
     while (baseUrl.endsWith(QLatin1Char('/'))) {
@@ -98,6 +120,7 @@ void hzmes::TestPass(MesPacketData pack) {
     if (pack.factory != QStringLiteral("hz")) {
         return;
     }
+    reloadMesConfig();
 
     QString baseUrl = url.trimmed();
     while (baseUrl.endsWith(QLatin1Char('/'))) {
@@ -112,15 +135,17 @@ void hzmes::TestPass(MesPacketData pack) {
         ? QStringLiteral("FAIL")
         : QStringLiteral("PASS");
 
+    // 华庄 testItem：测试项目日志，逗号隔开，可空；工站 itemvalue 用 | 分段
     QString testItem = pack.itemvalue.trimmed();
-    if (testItem.startsWith(QLatin1Char('|'))) {
-        testItem.remove(0, 1);
+    if (!testItem.isEmpty()) {
+        if (testItem.startsWith(QLatin1Char('|'))) {
+            testItem.remove(0, 1);
+        }
+        if (testItem.endsWith(QLatin1Char('|'))) {
+            testItem.chop(1);
+        }
+        testItem.replace(QLatin1Char('|'), QLatin1Char(','));
     }
-    if (testItem.endsWith(QLatin1Char('|'))) {
-        testItem.chop(1);
-    }
-    testItem.replace(QLatin1Char('|'), QLatin1Char(','));
-    testItem.replace(QLatin1Char(':'), QLatin1Char('='));
 
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("pcbSeq"), pack.sn.trimmed());
@@ -169,7 +194,7 @@ void hzmes::TestPass(MesPacketData pack) {
     const bool ok = (msgIdValue.isString() && msgIdValue.toString() == QStringLiteral("0")) || (msgIdValue.isDouble() && msgIdValue.toInt() == 0);
     if (ok) {
         emit operateMesSucess(pack.mechines);
-        qDebug() << QStringLiteral("华庄MES过站成功");
+        qDebug() << QStringLiteral("华庄MES过站数据上报成功，上报测试结果：%1").arg(mesResult);
         return;
     }
 
