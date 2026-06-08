@@ -705,7 +705,7 @@ void wifibletest::refreshSn(ProtocolSnData data) {
     }
 }
 
-void wifibletest::getDongleWifi(QString data) {
+void wifibletest::refreshDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -797,7 +797,7 @@ void wifibletest::refreshAmmeterData(QString data) {
     }
 }
 
-void wifibletest::getWifiMsg(QString data) {
+void wifibletest::refreshWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
     int numPairs = parts.size() / 2;

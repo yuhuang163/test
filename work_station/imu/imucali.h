@@ -112,7 +112,7 @@ private slots:
     void print_fixture_log(QString data);
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void set_fix_result(int state);
-    void getimuData(ProtocolImuSampleData x) override;
+    void refreshImuData(ProtocolImuSampleData x) override;
     void refreshImuCaliResult(ProtocolImuCalibResultData x) override;
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();

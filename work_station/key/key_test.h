@@ -192,7 +192,7 @@ private slots:
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
     void refreshAmmeterData(QString data) override;
-    void checkButton(ProtocolButtonStateData data) override;
+    void refreshButton(ProtocolButtonStateData data) override;
     void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
 
     // MES / 绑定

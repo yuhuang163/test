@@ -765,7 +765,7 @@ void QFreeWork::refreshAmmeterData(QString data) {
     }
 }
 
-void QFreeWork::getWifiMsg(QString data) {
+void QFreeWork::refreshWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
     int numPairs = parts.size() / 2;
@@ -792,4 +792,68 @@ void QFreeWork::getWifiMsg(QString data) {
             }
         }
     }
+}
+void QFreeWork::refreshButton(ProtocolButtonStateData data) {
+    if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
+        return;
+    }
+
+    ++plcKeyBleWaitSeq_;
+
+    const QString actualKeyId = QString::number(data.keyButtonId);
+    const QString expectedKeyId = SETTINGS.value(currentKeyExpectedKey_).toString();
+    const bool idOk = compareVersions(expectedKeyId, actualKeyId);
+
+    if (plcSwitchBlePhase_ == 3 || plcSwitchBlePhase_ == 4) {
+        // 编码器：modeButtonState 为 dir（1左旋/2右旋）。须与旋钮 PLC 步骤的 phase 期望一致。
+        const int expectedDir = (plcSwitchBlePhase_ == 3) ? 1 : 2;
+        const bool dirOk = (data.modeButtonState == expectedDir);
+        const bool pass = idOk && dirOk;
+        const QString rotLabel = (plcSwitchBlePhase_ == 3) ? QStringLiteral("左旋") : QStringLiteral("右旋");
+        closeKeyWaitPrompt();
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        stepRuntime_.done = true;
+        stepRuntime_.pass = pass;
+        const QString plcPart = plcKeyBlePlcOkSummary_;
+        plcKeyBlePlcOkSummary_.clear();
+        const QString keyLine = QStringLiteral("旋钮%1：方向=%2(期望%3) ID:%4 期望ID:%5")
+                                    .arg(rotLabel)
+                                    .arg(data.modeButtonState)
+                                    .arg(expectedDir)
+                                    .arg(actualKeyId, expectedKeyId);
+        stepRuntime_.testData = plcPart.isEmpty() ? keyLine : QStringLiteral("%1；%2").arg(plcPart, keyLine);
+        if (!pass) {
+            TestResult = failValue;
+        }
+        stepRuntime_.ask = expectedKeyId;
+        showlog(QStringLiteral("%1%2：%3上报")
+                    .arg(currentKeyTestName_)
+                    .arg(pass ? QStringLiteral("通过") : QStringLiteral("失败"))
+                    .arg(rotLabel));
+        return;
+    }
+
+    const bool pass = idOk;
+
+    closeKeyWaitPrompt();
+    freeWorkKeyWaiting_ = false;
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    if (plcKeyBlePlcOkSummary_.isEmpty()) {
+        stepRuntime_.testData = QString("按键ID:%1 期望:%2").arg(actualKeyId, expectedKeyId);
+    } else {
+        stepRuntime_.testData =
+            QString("%1；按键ID:%2 期望:%3").arg(plcKeyBlePlcOkSummary_, actualKeyId, expectedKeyId);
+    }
+    plcKeyBlePlcOkSummary_.clear();
+    stepRuntime_.ask = expectedKeyId;
+    if (!pass) {
+        TestResult = failValue;
+    }
+
+    showlog(QString("%1%2：实际按键ID=%3 期望=%4")
+                .arg(currentKeyTestName_)
+                .arg(pass ? "通过" : "失败")
+                .arg(actualKeyId, expectedKeyId));
 }

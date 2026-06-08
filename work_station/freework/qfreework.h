@@ -8,7 +8,8 @@
 #include <QWidget>
 
 #include "Abini.h"
-#include "inovance_h5u_modbus_tcp.h"
+#include "cmw_gprf_facade.h"
+#include "plc_v3_fixture.h"
 #include "qapplication.h"
 #include "qtupleservice.h"
 #include "test_base.h"
@@ -220,48 +221,25 @@ private:
     bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     void resetPlcKeyCapSyncReadState();
 
-    // --- PLC Modbus ---
-    InovanceH5uModbusTcp inovancePlcTcp_;
+    // --- PLC / CMW 协议（agreement 统一入口，工站只调度命令） ---
+    PlcV3Fixture plcFixture_;
+    CmwGprfFacade cmwFacade_;
+    PlcV3RunParams makePlcRunParams(int keyIndex0To6 = 0);
+    CmwGprfRunParams makeCmwRunParams(const QString& scenarioLabel = QString(), int brushProfile = -1);
+    void applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command command, bool finishStepRuntime = true);
+    PlcV3RunResult runPlcV3(PlcV3Command command, int keyIndex0To6 = 0, bool finishStepRuntime = true);
+    CmwGprfRunResult runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel = QString(), int brushProfile = -1,
+                                int alignedPostTrigHoldMs = -1, bool* outRanBurst = nullptr);
     void runPlcModbusConnectTest();
     void runPlcSwitchTestDoneResetM();
     void runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime = true);
     void runPlcV3TouchSwitchFull(bool finishStepRuntime = true);
-    int resolvedPlcMBase() const;
-    int resolvedPlcSwitchForwardM() const;
-    int resolvedPlcSwitchPressM() const;
-    int resolvedPlcConnectVerifyM() const;
-    QString resolvedPlcIpAddress() const;
-    int resolvedPlcPort() const;
-    quint8 resolvedPlcUnitId() const;
-    int resolvedPlcMCoilAddressOffset() const;
-    int resolvedPlcPositionReadyBase() const;
-    int resolvedPlcStepDoneBase() const;
-    int resolvedPlcKeyDoneM() const;
-    int resolvedPlcSwitchTestDoneResetM() const;
-    bool plcReadCoil(int absoluteM, bool* value, QString* errorMessage);
-    bool plcWriteCoil(int absoluteM, bool value, QString* errorMessage);
-    bool plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
-    bool plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
-    bool plcSendStepDone(QString* errorMessage);
-    void syncPlcModbusTraceFromSettings();
-    void maybeShowlogPlcSessionSummary(const QString& stepTag);
+    bool runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile);
 
-    // --- 产品串口 / CMW 仪器 ---
+    // --- 产品串口 / 仪器步骤 ---
     QMetaObject::Connection productInstConn_;
     QString productInstrumentStopWaitStepName_;
     int lastBrushInstrumentProfile_ = -1;
-    bool cmwGprfBurstDoneSinceStartRx_ = false;
-    void loadWifiBleCmw100Config();
-    bool freeWorkCmwVisaWrite(const QString& cmd);
-    bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
-    bool freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile, QString* errorMessage,
-                                                     int alignedPostTrigHoldMs = -1, bool* outAlignedWaitDoneByCmw = nullptr,
-                                                     bool* ranCmwBurst = nullptr);
-    bool freeWorkPrimeInstrumentCmwGprf(QString* errorMessage);
-    bool freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage, int* outElapsedMs = nullptr);
-    bool freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage,
-                                        int postTrigHoldMsOverride = -1);
-    bool runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile);
     void clearProductInstrumentWatch();
     bool ensureProductSerialForInstrumentStep(const QString& stepName);
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
@@ -304,7 +282,7 @@ private slots:
 
     // 协议上行（实现见 qfreework_data.cpp）
     void refreshBleRssi(QString data) override;
-    void getWifiMsg(QString data) override;
+    void refreshWifiMsg(QString data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
@@ -313,13 +291,13 @@ private slots:
     void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
     void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
-    void checkButton(ProtocolButtonStateData data) override;
+    void refreshButton(ProtocolButtonStateData data) override;
     void refreshAmmeterData(QString data) override;
     void refreshWifiState(int state);
     void onProductInstrumentStopReceiveAckForPer(int recvPkts);
 
     // 串口 / WiFi / MES / 绑定（实现见 qfreework.cpp）
-    void getDongleWifi(QString data) override;
+    void refreshDongleWifi(QString data) override;
     void refreshBleState(int state) override;
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;

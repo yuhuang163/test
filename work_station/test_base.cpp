@@ -90,9 +90,9 @@ void test_base::signalAndslot() {
     connect(at, SIGNAL(send_ble_state(int)), this, SLOT(refreshBleState(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
-    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(getWifiMsg(QString)));
+    connect(at, SIGNAL(sendWifiMsg(QString)), this, SLOT(refreshWifiMsg(QString)));
     connect(at, SIGNAL(send_dongle_ver(QString)), this, SLOT(getDongleVer(QString)));
-    connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(getDongleWifi(QString)));
+    connect(at, SIGNAL(send_dongle_wifi(QString)), this, SLOT(refreshDongleWifi(QString)));
 
     connect(usb, SIGNAL(send_ammeter_data(QString)), this, SLOT(refreshAmmeterData(QString)));
     connect(jig, SIGNAL(send_amplitude_data(QString)), this, SLOT(refreshAmplitudeData(QString)));
@@ -463,25 +463,25 @@ void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QV
     } else if (reportType == QLatin1String("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
         refreshBattaryData(payload.value<ProtocolBatteryData>());
     } else if (reportType == QLatin1String("ProtocolButtonStateData") && payload.canConvert<ProtocolButtonStateData>()) {
-        checkButton(payload.value<ProtocolButtonStateData>());
+        refreshButton(payload.value<ProtocolButtonStateData>());
     } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
         refreshPeriphData(payload.value<ProtocolPeriphStateData>());
     } else if (reportType == QLatin1String("ProtocolPbDate")) {
         refreshPbData(payload.toString());
     } else if (reportType == QLatin1String("ProtocolPressCalibResultData")
                && payload.canConvert<ProtocolPressCalibResultData>()) {
-        getPresscalidata(payload.value<ProtocolPressCalibResultData>());
+        refreshPressCalibData(payload.value<ProtocolPressCalibResultData>());
     } else if (reportType == QLatin1String("ProtocolPressSampleData") && payload.canConvert<ProtocolPressSampleData>()) {
-        getPressSensorData(payload.value<ProtocolPressSampleData>());
+        refreshPressSensorData(payload.value<ProtocolPressSampleData>());
     } else if (reportType == QLatin1String("ProtocolBrushControlData")
                && payload.canConvert<ProtocolBrushControlData>()) {
-        checkBrushControlState(payload.value<ProtocolBrushControlData>());
+        refreshBrushControlState(payload.value<ProtocolBrushControlData>());
     } else if (reportType == QLatin1String("ProtocolLedControlData") && payload.canConvert<ProtocolLedControlData>()) {
-        checkLedControlState(payload.value<ProtocolLedControlData>());
+        refreshLedControlState(payload.value<ProtocolLedControlData>());
     } else if (reportType == QLatin1String("ProtocolCameraControlData") && payload.canConvert<ProtocolTypeData>()) {
         refreshCameraControl(payload.value<ProtocolTypeData>());
     } else if (reportType == QLatin1String("ProtocolImuSampleData") && payload.canConvert<ProtocolImuSampleData>()) {
-        getimuData(payload.value<ProtocolImuSampleData>());
+        refreshImuData(payload.value<ProtocolImuSampleData>());
     } else if (reportType == QLatin1String("ProtocolImuCalibResultData")
                && payload.canConvert<ProtocolImuCalibResultData>()) {
         refreshImuCaliResult(payload.value<ProtocolImuCalibResultData>());
@@ -501,7 +501,7 @@ void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QV
     } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
     } else if (reportType == QLatin1String("ProtocolPictureSendOverData") && payload.canConvert<ProtocolResultData>()) {
-        getPictureSendOver(payload.value<ProtocolResultData>());
+        refreshPictureSendOver(payload.value<ProtocolResultData>());
     } else if (reportType == QLatin1String("ProtocolAgingStatusData") && payload.canConvert<ProtocolAgingStatusData>()) {
         refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
     }

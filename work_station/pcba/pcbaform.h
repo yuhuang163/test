@@ -54,11 +54,11 @@ private slots:
 
     void processInspection(QString inputSnText);
     void writeToLogFile(const QByteArray& data, QString currentDate, QString macAddress, int machineNumber);
-    void getimuData(ProtocolImuSampleData x) override;
+    void refreshImuData(ProtocolImuSampleData x) override;
     void get_remain_data(const FixturePacketData packetData);
     void get_remain_data_sleep(const FixturePacketData packetData);
     void on_stopTest_clicked();
-    void getDongleWifi(QString data) override;
+    void refreshDongleWifi(QString data) override;
     void processTestItem(const QString& testItem, int currentValue, int lowValue, int highValue,
                          QList<TestItem>& testItems);
     void processSimpleTestItem(const QString& testItem, int currentValue, int expectedValue,
@@ -66,7 +66,7 @@ private slots:
     void updateTestResultUI();
     void logPacketData(const FixturePacketData& packetData);
     void processReceivedData(const QByteArray& data) override;
-    void getWifiMsg(QString data) override;
+    void refreshWifiMsg(QString data) override;
     void refreshBleRssi(QString data) override;
     void refreshAmmeterData(QString data) override;
     bool deleteFile(const QString& filePath);
@@ -82,9 +82,9 @@ private slots:
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
-    void checkButton(ProtocolButtonStateData data) override;
-    void checkBrushControlState(ProtocolBrushControlData data) override;
-    void checkLedControlState(ProtocolLedControlData data) override;
+    void refreshButton(ProtocolButtonStateData data) override;
+    void refreshBrushControlState(ProtocolBrushControlData data) override;
+    void refreshLedControlState(ProtocolLedControlData data) override;
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
     void on_getMac_returnPressed();

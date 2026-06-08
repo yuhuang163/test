@@ -538,7 +538,7 @@ void imucali::refresh_imu_data_to_csv(QString imutime, QString msg) {
     }
 }
 
-void imucali::getimuData(ProtocolImuSampleData x) {
+void imucali::refreshImuData(ProtocolImuSampleData x) {
     int ret = 0;
     int old_ret = 0;
     int32_t imudata_result = 0;

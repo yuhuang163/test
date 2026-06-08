@@ -383,7 +383,7 @@ cameratest::~cameratest() {
     //
     delete ui;
 }
-void cameratest::getDongleWifi(QString data) {
+void cameratest::refreshDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
     // if (getIndex() == 1) {
     // showlog("自动保持wifi名字" + data);
@@ -1660,7 +1660,7 @@ QByteArray cameratest::reassembleData() {
 
     return completeData;
 }
-void cameratest::getPictureSendOver(ProtocolPictureSendOverData x) {
+void cameratest::refreshPictureSendOver(ProtocolPictureSendOverData x) {
     waitWork(50);  //等待数据彻底处理完毕
     checkMissingPackets();
     qDebug() << "错误个数" + QString::number(faultData.size()) << x.result;

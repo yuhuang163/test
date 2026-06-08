@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""checkbutton → checkButton；processInspection 形参 stringsn → inputSnText。"""
+"""协议虚槽统一 refresh* 命名；processInspection 形参 stringsn → inputSnText。"""
 import re
 from pathlib import Path
 
@@ -27,7 +27,20 @@ def fix_process_inspection_bodies(text: str) -> str:
 def process_file(path: Path) -> bool:
     text = path.read_text(encoding="utf-8-sig")
     orig = text
-    text = text.replace("checkbutton", "checkButton")
+    renames = {
+        "checkbutton": "refreshButton",
+        "checkButton": "refreshButton",
+        "checkLedControlState": "refreshLedControlState",
+        "checkBrushControlState": "refreshBrushControlState",
+        "getPressSensorData": "refreshPressSensorData",
+        "getPresscalidata": "refreshPressCalibData",
+        "getimuData": "refreshImuData",
+        "getPictureSendOver": "refreshPictureSendOver",
+        "getDongleWifi": "refreshDongleWifi",
+        "getWifiMsg": "refreshWifiMsg",
+    }
+    for old, new in renames.items():
+        text = text.replace(old, new)
     text = text.replace("processInspection(QString stringsn)", "processInspection(QString inputSnText)")
     if path.suffix == ".cpp" and "processInspection(QString inputSnText)" in text:
         text = fix_process_inspection_bodies(text)

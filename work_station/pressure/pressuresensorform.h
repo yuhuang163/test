@@ -270,7 +270,7 @@ private:
     QTimer graphUpdateTimer;
 
 private slots:
-    void getPressSensorData(ProtocolPressSampleData x) override;
+    void refreshPressSensorData(ProtocolPressSampleData x) override;
     void refreshAmplitudeData(QString data) override;
     void receive_uart_data(int state);
     void send_frame_rate(QString data);
@@ -286,8 +286,8 @@ private slots:
     void delay_msec(unsigned int msec);
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void on_connectButton_clicked();
-    void checkButton(ProtocolButtonStateData data) override;
-    void getPresscalidata(ProtocolPressCalibResultData x) override;
+    void refreshButton(ProtocolButtonStateData data) override;
+    void refreshPressCalibData(ProtocolPressCalibResultData x) override;
     void on_end_clicked();
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();

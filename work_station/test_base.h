@@ -185,20 +185,20 @@ public slots:
     virtual void getTestValue(const int, const QString) {}
     virtual void canGoNextMechine(int) {}
     virtual void refreshCameraControl(ProtocolCameraControlData) {}
-    virtual void checkLedControlState(ProtocolLedControlData) {}
-    virtual void getPressSensorData(ProtocolPressSampleData) {}
+    virtual void refreshLedControlState(ProtocolLedControlData) {}
+    virtual void refreshPressSensorData(ProtocolPressSampleData) {}
     virtual void refreshAmplitudeData(QString) {}
-    virtual void checkButton(ProtocolButtonStateData) {}
-    virtual void checkBrushControlState(ProtocolBrushControlData) {}
+    virtual void refreshButton(ProtocolButtonStateData) {}
+    virtual void refreshBrushControlState(ProtocolBrushControlData) {}
     virtual void refreshImuCaliResult(ProtocolImuCalibResultData) {}
-    virtual void getimuData(ProtocolImuSampleData) {}
+    virtual void refreshImuData(ProtocolImuSampleData) {}
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString) {}
     virtual void refreshBleRssi(QString) {}
-    virtual void getPresscalidata(ProtocolPressCalibResultData) {}
-    virtual void getDongleWifi(QString) {}
+    virtual void refreshPressCalibData(ProtocolPressCalibResultData) {}
+    virtual void refreshDongleWifi(QString) {}
     virtual void refreshBleState(int) {}
-    virtual void getWifiMsg(QString) {}
+    virtual void refreshWifiMsg(QString) {}
     virtual void refreshBaseData(ProtocolBaseInfoData) {}
     virtual void refreshBattaryData(ProtocolBatteryData) {}
     virtual void refreshMusicState(ProtocolMusicStateData) {}
@@ -209,7 +209,7 @@ public slots:
     virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData) {}
     virtual void refreshKeySignalRead(ProtocolUInt32ValueData) {}
     virtual void refreshTupleData(ProtocolTupleData) {}
-    virtual void getPictureSendOver(ProtocolPictureSendOverData) {}
+    virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
     virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
     virtual void refreshAmmeterData(QString) {}
     virtual void refreshDongleUartState(int) {}

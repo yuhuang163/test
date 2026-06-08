@@ -292,7 +292,7 @@ PcbaForm::PcbaForm(int index, QWidget* parent) : test_base(parent), ui(new Ui::P
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
 }
 
-void PcbaForm::getDongleWifi(QString data) {
+void PcbaForm::refreshDongleWifi(QString data) {
     showlog("获取到了wifi名字" + data);
 
     // 保存密码
@@ -394,7 +394,7 @@ void PcbaForm::refreshAmmeterData(QString data) {
     }
 }
 
-void PcbaForm::getWifiMsg(QString data) {
+void PcbaForm::refreshWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
     int numPairs = parts.size() / 2;
@@ -477,18 +477,18 @@ void PcbaForm::refreshBleRssi(QString data) {
         intblerssi = BLE_RSSI.toInt(&ok);
     }
 }
-void PcbaForm::checkLedControlState(ProtocolLedControlData data) {
+void PcbaForm::refreshLedControlState(ProtocolLedControlData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "收到led控制状态:" << data.switchState;
     isledcontrol = 1;
 }
 
-void PcbaForm::checkBrushControlState(ProtocolBrushControlData data) {
+void PcbaForm::refreshBrushControlState(ProtocolBrushControlData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "收到设备控制状态:" << data.brushStart;
     isbrushcontrol = 1;
 }
-void PcbaForm::checkButton(ProtocolButtonStateData data) {
+void PcbaForm::refreshButton(ProtocolButtonStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "获取到开关按键状态" << data.powerButtonState;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -1024,7 +1024,7 @@ void PcbaForm::logPacketData(const FixturePacketData& packetData) {
     showlog("产品为:" + QString(pack.product));
 }
 
-void PcbaForm::getimuData(ProtocolImuSampleData x) {
+void PcbaForm::refreshImuData(ProtocolImuSampleData x) {
     const int sampleCount = qMin(x.accelValues.size(), x.gyroValues.size()) / 3;
     for (int i = 0; i < sampleCount; i++) {
         const int base = i * 3;

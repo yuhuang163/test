@@ -531,7 +531,7 @@ void PressureSensorForm::getTestValue(const int mechines, const QString value) {
     // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
-void PressureSensorForm::getPresscalidata(ProtocolPressCalibResultData x) {
+void PressureSensorForm::refreshPressCalibData(ProtocolPressCalibResultData x) {
     if (x.brushHeadAdc != 0) {
         showlog("读取到的电机校准系数" + QString::number(x.brushHeadAdc));
         LastCali.calib_factor[MODULE_BTH] = x.brushHeadAdc;
@@ -1852,7 +1852,7 @@ void PressureSensorForm::test_process(FacUploadPresSensor x) {
     }
 }
 
-void PressureSensorForm::getPressSensorData(ProtocolPressSampleData x) {
+void PressureSensorForm::refreshPressSensorData(ProtocolPressSampleData x) {
     if (x.adcValues.size() >= 4 && x.valueValues.size() >= 4) {
         ui->brush_adc->setText("电机adc：" + QString::number(x.adcValues[0]));
         ui->brush_value->setText("电机压力：" + QString::number(x.valueValues[0]));
@@ -1867,7 +1867,7 @@ void PressureSensorForm::getPressSensorData(ProtocolPressSampleData x) {
     isfirstsavedata = 0;
 }
 
-void PressureSensorForm::checkButton(ProtocolButtonStateData x) {
+void PressureSensorForm::refreshButton(ProtocolButtonStateData x) {
     showlog("获取到按键上报");
     qDebug() << "product_model=" << product_model;
     qDebug() << "nsor_v[0].para.f_module[0]" << sensor_v[0]->para.f_module[0];

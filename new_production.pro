@@ -63,6 +63,7 @@ INCLUDEPATH += agreement/qproduct
 INCLUDEPATH += agreement/adb
 INCLUDEPATH += agreement/qtuple
 INCLUDEPATH += agreement/qplc
+INCLUDEPATH += agreement/qcmw
 INCLUDEPATH += agreement/qvisa
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
@@ -157,6 +158,8 @@ SOURCES += \
     platform/test_case/test_case.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
+    agreement/qcmw/cmw_gprf.cpp \
+    agreement/qcmw/cmw_gprf_facade.cpp \
     agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
@@ -187,6 +190,10 @@ SOURCES += \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
     agreement/qplc/inovance_h5u_modbus_tcp.cpp \
+    agreement/qplc/plc_station_config.cpp \
+    agreement/qplc/plc_modbus_session.cpp \
+    agreement/qplc/plc_v3_touch.cpp \
+    agreement/qplc/plc_v3_fixture.cpp \
     work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
     work_station/key/key_test_box.cpp \
@@ -269,6 +276,8 @@ HEADERS += \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
+    agreement/qcmw/cmw_gprf.h \
+    agreement/qcmw/cmw_gprf_facade.h \
     agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \
     tools/factory_analyzer/factory_analyzer.h \
@@ -295,6 +304,10 @@ HEADERS += \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
     agreement/qplc/inovance_h5u_modbus_tcp.h \
+    agreement/qplc/plc_station_config.h \
+    agreement/qplc/plc_modbus_session.h \
+    agreement/qplc/plc_v3_touch.h \
+    agreement/qplc/plc_v3_fixture.h \
     work_station/imu/imubox.h \
     work_station/imu/imucali.h \
     work_station/key/key_test.h \

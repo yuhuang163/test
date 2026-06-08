@@ -223,7 +223,7 @@ private slots:
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
     void onDongleSerialFrame(const QByteArray& data) override;
-    void getPictureSendOver(ProtocolPictureSendOverData x);
+    void refreshPictureSendOver(ProtocolPictureSendOverData x) override;
     void onTimeout();
     void processTheDatagram(QByteArray& datagram);
     void bandSnMacToCsv(const QString& macAddress, const QString& sn);
@@ -231,7 +231,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(ProtocolSnData data) override;
-    void getDongleWifi(QString data) override;
+    void refreshDongleWifi(QString data) override;
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;

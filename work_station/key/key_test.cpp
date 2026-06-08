@@ -775,7 +775,7 @@ void key_test::refreshMusicState(ProtocolMusicStateData data) {
 }
 
 
-void key_test::checkButton(ProtocolButtonStateData x) {
+void key_test::refreshButton(ProtocolButtonStateData x) {
     if (refresh_key_times) {
         if (!keyButtonDebounceTimer.isValid()) {
             keyButtonDebounceTimer.start();

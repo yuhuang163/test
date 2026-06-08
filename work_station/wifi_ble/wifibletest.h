@@ -192,7 +192,7 @@ private slots:
 
     // 协议上行
     void refreshBleRssi(QString data) override;
-    void getWifiMsg(QString data) override;
+    void refreshWifiMsg(QString data) override;
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
@@ -201,7 +201,7 @@ private slots:
     void refreshAmmeterData(QString data) override;
 
     // 串口 / MES / 绑定
-    void getDongleWifi(QString data) override;
+    void refreshDongleWifi(QString data) override;
     void refreshDongleUartState(int state) override;
     void refreshUsbUartState(int state) override;
     void refreshProductUartState(int state) override;
