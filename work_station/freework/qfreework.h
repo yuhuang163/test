@@ -56,22 +56,7 @@ public:
     int resolveFixtureMachineIndex(const QVariant& param) const;
 
 private:
-    // --- 流程状态机（遗留 STATE_*，有序队列主流程见 stepRuntime_） ---
     int teststate = -1;
-    typedef enum {
-        STATE_IDLE = 0,
-        STATE_WATI_CONNECT,
-        STATE_DISABLE_SLEEP_1,
-        STATE_WATI_BASE_INFO,
-        STATE_WATI_WIFI_CONNECT,
-        STATE_WATI_GET_CORRECT_WIFIRSSI,
-        STATE_WATI_GET_CORRECT_BLERSSI,
-        STATE_WATI_CORRECT_BATTARY,
-        STATE_WATI_CORRECT_CURRENT,
-        STATE_SAVE_RESULT
-    } State;
-    State state = STATE_IDLE;
-    State getNextState(State currentState);
 
     // --- 扫描 / 绑定 ---
     QString receivedData = "";
@@ -129,7 +114,6 @@ private:
     QVector<QPair<QString, QString>> freeWorkMesSegments_;
 
     // --- test_case 运行态 ---
-    bool useTestCaseFlow_ = false;
     bool stopFlowOnTestFail_ = true;
     QStringList orderedTestCaseNames_;
     TestCaseDefinition activeTestCase_;
@@ -143,24 +127,12 @@ private:
     };
     TestCaseStepResult testCaseStepResult_;
 
-    // --- 有序测试队列 ---
-    QVector<int> orderedTestIndexes_;
+    // --- 有序测试队列（test_case 编排） ---
     void refreshOrderedTestIndexes();
-    QVector<int> loadIndexesFromConfig();
-    struct NamedFunction {
-        int id = -1;
-        QString name;
-        std::function<void()> function;
-        bool needCaseDone = false;
-        QString mesTag;
-    };
-    void createTestFunctions();
-    std::vector<NamedFunction> testFunctions;
     struct StepRuntime {
         bool started = false;
         bool done = false;
         bool pass = true;
-        int functionId = -1;
         QString testData;
         QString ask = "通过";
         QElapsedTimer caseTimer;
@@ -168,14 +140,11 @@ private:
             started = false;
             done = false;
             pass = true;
-            functionId = -1;
             testData.clear();
             ask = "通过";
             caseTimer.invalidate();
         }
     } stepRuntime_;
-    void executeFunctionByName(const QString functionName);
-    const NamedFunction* currentOrderedNamedFunction() const;
     bool currentOrderedStepIsDongleBleConnect() const;
     bool canRunOrderedTestStepLoop() const;
     void runTestFlowBootstrap();
@@ -209,7 +178,6 @@ private:
                             const QString& enableKey);
     void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                                const QString& enableKey, int keyIndex0To6, bool useCapacitanceRead = false);
-    void startPlcSwitchPlcAndWaitLeftRotate();
     void startPlcSwitchPlcAndWaitRightRotate();
     void closeKeyWaitPrompt();
     void showTestCasePromptForStep(const TestCaseDefinition& def);
@@ -260,7 +228,6 @@ private:
                                        const QVariant& payload, bool& allPass, QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
-    void appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData);
 
 private slots:
     void initData();
@@ -326,10 +293,8 @@ private slots:
     void on_jigDisconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-    void on_get_battery_clicked();
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
-    void on_start_wifible_test_clicked();
     void on_stopTest_clicked();
 
 signals:

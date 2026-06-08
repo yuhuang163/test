@@ -499,24 +499,6 @@
           </item>
          </layout>
         </item>
-        <item row="7" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_22">
-          <item>
-           <widget class="QPushButton" name="get_battery">
-            <property name="text">
-             <string>显示充电情况</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="start_wifible_test">
-            <property name="text">
-             <string>开始wifi蓝牙信号测试</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
         <item row="6" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_8">
           <property name="topMargin">

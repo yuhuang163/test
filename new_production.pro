@@ -186,7 +186,6 @@ SOURCES += \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
-    work_station/freework/testFunction.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
     agreement/qplc/inovance_h5u_modbus_tcp.cpp \

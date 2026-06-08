@@ -47,7 +47,7 @@ public:
                                      bool stopFlowOnTestFail = true);
     static QStringList listStationKeysFromFlow();
 
-    /** 内置工站（与设置页 TestOrder 预设一致，并含 default / FREE_WORK） */
+    /** 内置工站（与测试流程编排页预设一致，并含 default / FREE_WORK） */
     static QVector<TestFlowStationEntry> defaultFlowStationPresets();
     /** 从 总的测试流程.ini [FlowStations] 读取；无记录时写入预设并返回 */
     static QVector<TestFlowStationEntry> loadFlowStationCatalog();
@@ -228,7 +228,7 @@ public:
 
 /** 自由工站 test_case 钩子（幂等）。 */
 void registerFreeWorkTestCaseHooks();
-/** FREEWORK_TEST_LIST 全量钩子（幂等，实现于 qfreework_case_hooks.cpp）。 */
+/** 自由工站目录钩子（幂等，实现于 qfreework_case_hooks.cpp）。 */
 void registerQFreeWorkCatalogTestCaseHooks();
 
 // ---------- 执行 ----------

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""根据 work_station/freework/testFunction.cpp FREEWORK_TEST_LIST 生成 test_case ini。"""
+"""根据脚本内步骤目录生成 test_case/*.ini（原 testFunction.cpp 已移除）。"""
 import os
 
 OUT_DIR = os.path.join(

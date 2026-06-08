@@ -2,8 +2,6 @@
 
 #include "test_case.h"
 
-#include <algorithm>
-#include <functional>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QComboBox>
@@ -13,7 +11,6 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QVector>
-#include <QSet>
 #include <QStringList>
 #include <QFontMetrics>
 #include <QRegularExpression>
@@ -47,21 +44,6 @@ static void pushMesSeg(QVector<QPair<QString, QString>>* out, const QString& key
     out->append(qMakePair(k, sanitizeMesValuePipes(value)));
 }
 
-/** 解析 productKey / deviceName / deviceSecret 各占一条，避免整包塞进一个 value。 */
-static bool tryAppendAliTupleFields(QVector<QPair<QString, QString>>* out, const QString& pkKey, const QString& dnKey, const QString& skKey,
-                                    const QString& blob) {
-    static const QRegularExpression re(
-        QStringLiteral(R"(productKey\s*:\s*(\S+)\s+deviceName\s*:\s*(\S+)\s+deviceSecret\s*:\s*(\S+))"),
-        QRegularExpression::CaseInsensitiveOption);
-    const QRegularExpressionMatch m = re.match(blob.trimmed());
-    if (!m.hasMatch())
-        return false;
-    pushMesSeg(out, pkKey, m.captured(1));
-    pushMesSeg(out, dnKey, m.captured(2));
-    pushMesSeg(out, skKey, m.captured(3));
-    return true;
-}
-
 static void appendOneMesStep(QVector<QPair<QString, QString>>* out, const QString& tag, bool pass, const QString& testData) {
     pushMesSeg(out, tag, freeWorkMesValueEnglish(pass, testData));
 }
@@ -82,11 +64,6 @@ QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segment
         parts << QStringLiteral("SUMMARY:") + v;
     }
     return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
-}
-
-QString orderGroupName(const QString& stationKey) {
-    const QString key = stationKey.trimmed();
-    return key.isEmpty() ? QStringLiteral("TestOrder_default") : QStringLiteral("TestOrder_%1").arg(key);
 }
 
 bool isDongleBleConnectStepName(const QString& name) {
@@ -134,54 +111,6 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
 
 }  // namespace
 
-void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData) {
-    QVector<QPair<QString, QString>>* const out = &freeWorkMesSegments_;
-    const int functionId = nf.id;
-    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    // 默认 MES 键与 testFunction.cpp 中 FREEWORK_TEST_LIST 本行的 mesTag 一致
-    const QString tag = nf.mesTag.isEmpty() ? QStringLiteral("STEP_%1").arg(functionId) : nf.mesTag;
-
-    switch (functionId) {
-    case 62:
-        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("CLOUD_PRODUCT_KEY"), QStringLiteral("CLOUD_DEVICE_NAME"),
-                                                        QStringLiteral("CLOUD_DEVICE_SECRET"), testData))
-            return;
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    case 66:
-        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("READ_PRODUCT_KEY"), QStringLiteral("READ_DEVICE_NAME"),
-                                                        QStringLiteral("READ_DEVICE_SECRET"), testData))
-            return;
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    case 8:
-        pushMesSeg(out, QStringLiteral("BASE_INFO_RESULT"), pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        if (hasData)
-            pushMesSeg(out, QStringLiteral("BASE_INFO_DETAIL"), testData);
-        // refreshBaseData 将 stepRuntime_.testData 置为 "-"，版本单独来自协议回填成员
-        {
-            const QString sv = softwareVersionForReport_.trimmed();
-            if (!sv.isEmpty())
-                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION"), sv);
-            if (SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool())
-                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION_CHECK"),
-                           softwareVersionPassForReport_ ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        }
-        return;
-    case 9: {
-        // 获取电量信息：结果 PASS/FAIL 与百分比分两段，value 全 ASCII
-        pushMesSeg(out, tag, pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        if (hasData) {
-            pushMesSeg(out, QStringLiteral("BATTERY_PERCENT"), testData);
-        }
-        return;
-    }
-    default:
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    }
-}
-
 void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask) {
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
@@ -201,72 +130,6 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
 
 
 
-void QFreeWork::on_get_battery_clicked() {
-    // if (at->getConnected()) {
-    //     protocolManager.get(DeviceCmd::GetBattery);
-    //     showlog("正在获取设备电量");
-    // } else {
-    //     showlog("请等待连接设备后再试");
-    // }
-     startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
-    // runPlcV3TouchKeyFull(0, false);
-
-    // runPlcV3TouchKeyFull(1, false);
-
-
-    // runPlcV3TouchKeyFull(2, false);
-
-}
-void QFreeWork::on_start_wifible_test_clicked()
-{
-
-
-    runPlcV3TouchKeyFull(1, false);
-    // const QString host = resolvedPlcIpAddress();
-    // const int port = resolvedPlcPort();
-    // const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    // QString err;
-    // showlog(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
-    //             .arg(0)
-    //             .arg(getIndex())
-    //             .arg(host)
-    //             .arg(port)
-    //             .arg(resolvedPlcUnitId()));
-    // if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-    //     showlog(QStringLiteral("PLC 连接失败: %1").arg(err));
-    //     return;
-    // }
-
-    // if (!plcSendStepDone(&err)) {
-    //     showlog(QStringLiteral("发送 StepDone 失败: %1").arg(err));
-    //     return;
-    // }
-}
-
-void QFreeWork::on_pushButton_clicked() {
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
-    // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    // ui->macInput->setText("3C:84:27:07:A8:D2");
-    // // // ui->macInput->setText("3c:84:27:29:50:32");
-    // ui->macInput->setText("b4:56:5d:bf:57:9d");
-
-    // on_macInput_returnPressed();
-    // // usb-> getlxMEASure();
-    // // waitWork(1000);
-
-    // showlog("正在获取设备电量");
-    // ui->comNameCombo->setCurrentText("COM134");
-
-    // debugUpdateTupleMacStatus();
-    // applyTupleByMac();
-    // runPlcModbusConnectTest();
-    // startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
-    // startProductInstrumentResetAndWaitAck();
-
-    runPlcModbusConnectTest();
-}
-
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     registerFreeWorkTestCaseHooks();
     registerQFreeWorkCatalogTestCaseHooks();
@@ -277,7 +140,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     updateMainStyle("Ubuntu.qss");
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts();  // 要搜索一下一开始
-    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -313,7 +175,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
-    // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
     ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
@@ -343,16 +204,12 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->jigDisconnectButton->setEnabled(false);
     }
 
-    createTestFunctions();
     refreshOrderedTestIndexes();
     testResultTableInit();
     if (product) {
         connect(product, &Qproduct::instrumentStopReceiveSeen, this, &QFreeWork::onProductInstrumentStopReceiveAckForPer);
     }
     ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
-    // 隐藏第 2、3 页（待拓展 / 蓝牙绑定）；Qt 5.15+ 标签栏一并隐藏
-    // ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_2), false);
-    // ui->tabWidget->setTabVisible(ui->tabWidget->indexOf(ui->tab_3), false);
 }
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
@@ -361,9 +218,9 @@ void QFreeWork::refreshOrderedTestIndexes() {
     setupFreeWorkTabBar(ui->tabWidget);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
-    useTestCaseFlow_ = false;
     orderedTestCaseNames_.clear();
     stopFlowOnTestFail_ = true;
+
     QString stationKey = TestCaseStore::resolveFlowStationKey(
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
     if (TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
@@ -374,105 +231,38 @@ void QFreeWork::refreshOrderedTestIndexes() {
     }
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
-    if (QFile::exists(TestCasePaths::flowIniPath())) {
-        stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
-        const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
-        if (!flowItems.isEmpty()) {
-            for (const TestFlowItemEntry& entry : flowItems)
-                orderedTestCaseNames_.append(entry.caseName);
-            useTestCaseFlow_ = true;
-            qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
-            return;
-        }
+
+    if (!QFile::exists(TestCasePaths::flowIniPath())) {
+        showlog(QStringLiteral("未找到测试流程文件，请在设置页「测试流程编排」中配置"));
+        qDebug() << "[FreeWork] flow ini missing:" << TestCasePaths::flowIniPath();
+        return;
     }
 
-    orderedTestIndexes_.clear();
-    QSet<int> validIds;
-    for (const auto& testFunction : testFunctions) {
-        validIds.insert(testFunction.id);
-    }
-    const QVector<int> indexes = loadIndexesFromConfig();
-    for (int index : indexes) {
-        if (validIds.contains(index) && !orderedTestIndexes_.contains(index)) {
-            orderedTestIndexes_.append(index);
-        }
-    }
-    if (orderedTestIndexes_.isEmpty()) {
-        for (const auto& testFunction : testFunctions) {
-            orderedTestIndexes_.append(testFunction.id);
-        }
-    }
-}
+    stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
+    const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
+    for (const TestFlowItemEntry& entry : flowItems)
+        orderedTestCaseNames_.append(entry.caseName);
 
-QVector<int> QFreeWork::loadIndexesFromConfig() {
-    QVector<int> indexes;
-    const QString selectedStation = SETTINGS.value("TestOrderMeta/SelectedStation").toString().trimmed();
-    qDebug() << "[FreeWork] loadIndexesFromConfig, SelectedStationName =" << selectedStation;
-
-    auto loadFromGroup = [&indexes](const QString& groupPath) {
-        SETTINGS.beginGroup(groupPath);
-        QStringList keys = SETTINGS.childKeys();
-        std::sort(keys.begin(), keys.end(), [](const QString& left, const QString& right) { return left.toInt() < right.toInt(); });
-        for (const QString& key : keys) {
-            indexes.append(SETTINGS.value(key).toInt());
-        }
-        SETTINGS.endGroup();
-    };
-
-    if (!selectedStation.isEmpty()) {
-        loadFromGroup(orderGroupName(selectedStation));
+    if (orderedTestCaseNames_.isEmpty()) {
+        showlog(QStringLiteral("当前工站未配置测试步骤，请在设置页「测试流程编排」中添加"));
+        qDebug() << "[FreeWork] empty flow, station =" << stationKey;
+    } else {
+        qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
     }
-    if (indexes.isEmpty() && !selectedStation.isEmpty()) {
-        loadFromGroup(QString("TestOrder/%1").arg(selectedStation));
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup("TestOrder");
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup(orderGroupName("default"));
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup("TestOrder/default");
-    }
-
-    qDebug() << "[FreeWork] loaded indexes, station =" << selectedStation << ", indexes =" << indexes;
-    return indexes;
-}
-
-// 获取下一个状态的函数
-QFreeWork::State QFreeWork::getNextState(State currentState) {
-    return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
-}
-
-const QFreeWork::NamedFunction* QFreeWork::currentOrderedNamedFunction() const {
-    if (useTestCaseFlow_ || teststate < 0 || teststate >= orderedTestIndexes_.count()) {
-        return nullptr;
-    }
-    const int functionId = orderedTestIndexes_.at(teststate);
-    const auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
-                                 [functionId](const QFreeWork::NamedFunction& item) { return item.id == functionId; });
-    return it == testFunctions.cend() ? nullptr : &*it;
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
-    if (teststate < 0) {
+    if (teststate < 0 || teststate >= orderedTestCaseNames_.count()) {
         return false;
     }
-    if (useTestCaseFlow_) {
-        if (teststate >= orderedTestCaseNames_.count()) {
-            return false;
-        }
-        TestCaseDefinition caseDef;
-        if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
-            return false;
-        }
-        if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
-            return true;
-        }
-        return isDongleBleConnectStepName(caseDef.meta.name);
+    TestCaseDefinition caseDef;
+    if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
+        return false;
     }
-    const NamedFunction* const nf = currentOrderedNamedFunction();
-    return nf != nullptr && isDongleBleConnectStepName(nf->name);
+    if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
+        return true;
+    }
+    return isDongleBleConnectStepName(caseDef.meta.name);
 }
 
 bool QFreeWork::canRunOrderedTestStepLoop() const {
@@ -482,20 +272,14 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (stepRuntime_.started) {
         return true;
     }
-    if (useTestCaseFlow_ && teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
+    if (teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
         TestCaseDefinition caseDef;
         if (TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
             return !TestCaseRunner::stepRequiresProductBle(caseDef);
         }
         return true;
     }
-    if (currentOrderedStepIsDongleBleConnect()) {
-        return true;
-    }
-    const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
-    return nf != nullptr
-           && (nf->name.startsWith(QStringLiteral("产品串口"))
-               || nf->name.startsWith(QStringLiteral("并联CMW")));
+    return currentOrderedStepIsDongleBleConnect();
 }
 
 QByteArray QFreeWork::resolvedTailSnToWrite() const {
@@ -523,47 +307,26 @@ void QFreeWork::runTestFlowBootstrap() {
 }
 
 bool QFreeWork::tickOrderedTestStepLoop() {
-    const int stepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+    const int stepCount = orderedTestCaseNames_.count();
     for (; teststate < stepCount;) {
         TestCaseDefinition caseDef;
-        NamedFunction currentFunction;
         QString functionName;
-        QString caseName;
-        bool needCaseDone = false;
-        bool hasNamedFunction = false;
-
-        if (useTestCaseFlow_) {
-            caseName = orderedTestCaseNames_.at(teststate);
-            if (!TestCaseRunner::loadCase(caseName, caseDef)) {
-                ++teststate;
-                stepRuntime_.reset();
-                clearActiveTestCase();
-                break;
-            }
-            functionName = TestCaseRunner::stepLabel(caseDef);
-            needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
-        } else {
-            const int functionId = orderedTestIndexes_.at(teststate);
-            auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                                   [functionId](const NamedFunction& item) { return item.id == functionId; });
-            if (it == testFunctions.end()) {
-                ++teststate;
-                stepRuntime_.reset();
-                break;
-            }
-            currentFunction = *it;
-            hasNamedFunction = true;
-            functionName = currentFunction.name;
-            needCaseDone = currentFunction.needCaseDone;
+        const QString caseName = orderedTestCaseNames_.at(teststate);
+        if (!TestCaseRunner::loadCase(caseName, caseDef)) {
+            ++teststate;
+            stepRuntime_.reset();
+            clearActiveTestCase();
+            break;
         }
+        functionName = TestCaseRunner::stepLabel(caseDef);
+        const bool needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
 
         if (!stepRuntime_.started) {
             if (!canGoNext) {
                 break;
             }
             stepRuntime_.started = true;
-            stepRuntime_.functionId = hasNamedFunction ? currentFunction.id : -1;
-            stepRuntime_.done = useTestCaseFlow_ ? false : !needCaseDone;
+            stepRuntime_.done = false;
             stepRuntime_.pass = true;
             stepRuntime_.testData = QStringLiteral("-");
             stepRuntime_.ask = QStringLiteral("通过");
@@ -572,12 +335,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             testCasePromptAcknowledged_ = false;
             testCasePromptProgrammaticClose_ = false;
             showlog(QStringLiteral("开始测试内容：") + functionName);
-            if (useTestCaseFlow_) {
-                showTestCasePromptForStep(caseDef);
-                TestCaseRunner::beginStep(this, caseDef);
-            } else {
-                executeFunctionByName(functionName);
-            }
+            showTestCasePromptForStep(caseDef);
+            TestCaseRunner::beginStep(this, caseDef);
             qDebug() << "程序在跑" << teststate << stepCount;
             break;
         }
@@ -595,7 +354,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             showlog(QStringLiteral("步骤失败：%1（超时未响应或协议 FAIL）").arg(functionName));
         }
 
-        if (useTestCaseFlow_ && !caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
+        if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
             const bool productGet = !caseDef.hook.enabled && !dongleBleConnect
                                     && caseDef.send.channel == TestCaseSendChannel::Product
@@ -619,18 +378,6 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             }
         }
 
-        if (!useTestCaseFlow_ && needCaseDone && canGoNext && !stepRuntime_.done && !sendRetryOver
-            && (lastCommandRetryCount > 0
-                || (isDongleBleConnectStepName(functionName) && at->getConnected()))) {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = true;
-            if (isDongleBleConnectStepName(functionName) && at->getConnected()) {
-                stepRuntime_.testData = QStringLiteral("已连接");
-            } else if (stepRuntime_.testData == QLatin1String("-")) {
-                stepRuntime_.testData = QStringLiteral("ok");
-            }
-        }
-
         if (needCaseDone && !stepRuntime_.done) {
             break;
         }
@@ -645,7 +392,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     .arg(functionName)
                     .arg(caseRetryCount)
                     .arg(caseElapsedMs));
-        if (!(useTestCaseFlow_ && testCaseMultiGateTableEmitted_)) {
+        if (!testCaseMultiGateTableEmitted_) {
             TestItem test;
             test.testItem = functionName;
             test.testData = stepRuntime_.testData;
@@ -654,21 +401,17 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             testItems.append(test);
         }
         testCaseMultiGateTableEmitted_ = false;
-        if (useTestCaseFlow_) {
-            appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
-            if (caseDef.timing.delayAfterMs > 0) {
-                waitWork(caseDef.timing.delayAfterMs);
-            }
-            closeTestCasePrompt();
-            closeKeyWaitPrompt();
-            clearActiveTestCase();
-        } else {
-            appendFreeWorkMesForCompletedStep(currentFunction, stepRuntime_.pass, stepRuntime_.testData);
+        appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
+        if (caseDef.timing.delayAfterMs > 0) {
+            waitWork(caseDef.timing.delayAfterMs);
         }
+        closeTestCasePrompt();
+        closeKeyWaitPrompt();
+        clearActiveTestCase();
         testResultTableUpdate(testItems);
 
         ++teststate;
-        if (useTestCaseFlow_ && stopFlowOnTestFail_ && !stepRuntime_.pass) {
+        if (stopFlowOnTestFail_ && !stepRuntime_.pass) {
             showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
             teststate = orderedTestCaseNames_.count();
         }
@@ -680,7 +423,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 }
 
 void QFreeWork::finalizeTestFlowIfComplete() {
-    const int flowStepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+    const int flowStepCount = orderedTestCaseNames_.count();
     if (teststate != flowStepCount || teststate == 0) {
         return;
     }
@@ -1011,82 +754,6 @@ void QFreeWork::armPlcBleKeyWaitTimeout() {
     showlog(currentKeyTestName_ + QStringLiteral("：等待协议上报（超时 %1ms）").arg(bleWaitMs));
 }
 
-void QFreeWork::startPlcSwitchPlcAndWaitLeftRotate() {
-    const QString leftEn = QStringLiteral("ProductInfo/KeyIdLeftRotate_checkBox");
-    if (!SETTINGS.value(leftEn).toBool()) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("左旋按键配置未启用");
-        stepRuntime_.ask = QStringLiteral("请检查配置");
-        TestResult = failValue;
-        showlog(QStringLiteral("PLC+V3旋钮左旋失败：左旋配置未启用"));
-        return;
-    }
-
-    // phase 3：PLC 旋钮整步后仅校验左旋；右旋为测试项 89。
-    plcSwitchBlePhase_ = 3;
-    currentKeyTestName_ = QStringLiteral("PLC+V3旋钮左旋");
-    currentKeyExpectedKey_ = QStringLiteral("ProductInfo/KeyIdLeftRotate");
-    freeWorkKeyWaiting_ = true;
-    stepRuntime_.done = false;
-    stepRuntime_.pass = true;
-    stepRuntime_.testData = QStringLiteral("PLC旋钮整步与等待左旋上报");
-    stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-    plcKeyBlePlcOkSummary_.clear();
-
-    closeKeyWaitPrompt();
-    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, QStringLiteral("PLC旋钮左旋"),
-                                     QStringLiteral("治具将自动完成旋钮动作，请确认设备上报左旋"),
-                                     QMessageBox::NoButton, this);
-    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
-    {
-        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
-        hiddenCloseButton->hide();
-    }
-    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    keyWaitPromptProgrammaticClose_ = false;
-    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
-        keyWaitPrompt_ = nullptr;
-        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
-            ++plcKeyBleWaitSeq_;
-            freeWorkKeyWaiting_ = false;
-            plcSwitchBlePhase_ = 0;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = "用户关闭按键弹窗";
-            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-            plcKeyBlePlcOkSummary_.clear();
-            TestResult = failValue;
-            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
-        }
-        keyWaitPromptProgrammaticClose_ = false;
-    });
-    keyWaitPrompt_->show();
-    showlog(QStringLiteral("PLC+V3旋钮左旋：已等待协议，将执行PLC旋钮整步"));
-
-    runPlcV3TouchSwitchFull(false);
-
-    if (!stepRuntime_.pass) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        plcKeyBlePlcOkSummary_.clear();
-        return;
-    }
-
-    if (stepRuntime_.done) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        return;
-    }
-
-    armPlcBleKeyWaitTimeout();
-    showlog(currentKeyTestName_ + QStringLiteral("：PLC旋钮整步完成，等待左旋上报"));
-}
-
 void QFreeWork::closeKeyWaitPrompt() {
     if (keyWaitPrompt_ != nullptr) {
         keyWaitPromptProgrammaticClose_ = true;
@@ -1125,7 +792,7 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
 
 void QFreeWork::onTestCasePromptAcknowledged() {
     testCasePromptAcknowledged_ = true;
-    if (!useTestCaseFlow_ || !stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
+    if (!stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
         return;
     if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
         return;
@@ -1378,8 +1045,6 @@ void QFreeWork::on_macInput_returnPressed() {
         ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
                                        "10px; padding: 10px; text-align: center; ");
 
-        ui->start_wifible_test->setEnabled(false);
-        // 主状态机流程
         isTestContinue = true;
         teststate = -1;
 
@@ -1387,6 +1052,10 @@ void QFreeWork::on_macInput_returnPressed() {
         ui->getMac->setDisabled(1);
         ui->macInput->setDisabled(1);
     }
+}
+
+void QFreeWork::on_pushButton_clicked() {
+    runPlcModbusConnectTest();
 }
 
 void QFreeWork::on_pushButton_2_clicked() {
@@ -1425,7 +1094,6 @@ void QFreeWork::on_getMac_returnPressed() {
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
 
-// on_macInput_returnPressed();
 }
 
 void QFreeWork::processInspection(QString inputSnText) {
@@ -1727,7 +1395,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        // 自由工站无 writesn/stringsn：写入 SN 用 expectedTailSnFromMes testFunction「写入SN码」）；读回比对用 deviceTailSnFromDevice + ui->getMac
+        // 自由工站无 writesn/stringsn：写入 SN 走 test_case「写入SN码」/Hook SN_WRITE_TAIL；读回比对用 deviceTailSnFromDevice + ui->getMac
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);

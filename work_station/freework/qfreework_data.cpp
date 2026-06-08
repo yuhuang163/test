@@ -14,8 +14,8 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
     }
     const QString stepName = productInstrumentStopWaitStepName_;
     if (!isCurrentInstrumentStep(stepName)) {
-        qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "currentFid=" << stepRuntime_.functionId
-                 << "recvPkts=" << recvPkts << "工位=" << getIndex();
+        qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "recvPkts=" << recvPkts
+                 << "工位=" << getIndex();
         return;
     }
     if (stepRuntime_.done) {
@@ -44,16 +44,7 @@ bool QFreeWork::isCurrentStep(const QString& functionName) const {
     if (!stepRuntime_.started) {
         return false;
     }
-    // test_case 流程无 functionId，用当前激活的 case 名称匹配
-    if (useTestCaseFlow_ && isActiveTestCaseStep(functionName)) {
-        return true;
-    }
-    if (stepRuntime_.functionId < 0) {
-        return false;
-    }
-    auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
-                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-    return it != testFunctions.cend() && it->name == functionName;
+    return isActiveTestCaseStep(functionName);
 }
 
 bool QFreeWork::isCurrentInstrumentStep(const QString& stepName) const {
@@ -168,15 +159,7 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 }
 
 void QFreeWork::refreshWifiState(int state) {
-    if (state) {
-        // ui->WIFIStatusLabel->setText("WIFI连接：<font color='green'>成功</font>");
-        //  showlog("WIFI连接成功");
-        wifistate = 1;
-    } else {
-        //  ui->WIFIStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
-        //  showlog("WIFI连接断开");
-        wifistate = 0;
-    }
+    wifistate = state ? 1 : 0;
 }
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
@@ -206,11 +189,6 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     } else {
         showlog("整机SN校验通过");
     }
-
-    // if (deviceTailSnFromDevice == "")
-    // {
-    //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
-    // }
 }
 
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
