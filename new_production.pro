@@ -158,7 +158,7 @@ SOURCES += \
     platform/test_case/test_case.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
-    agreement/qcmw/cmw_gprf.cpp \
+    agreement/qcmw/qcmw.cpp \
     agreement/qcmw/cmw_gprf_facade.cpp \
     agreement/qvisa/qvisa.cpp \
     agreement/qusb/qusb.cpp \
@@ -274,7 +274,7 @@ HEADERS += \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \
-    agreement/qcmw/cmw_gprf.h \
+    agreement/qcmw/qcmw.h \
     agreement/qcmw/cmw_gprf_facade.h \
     agreement/qvisa/qvisa.h \
     agreement/qusb/qusb.h \

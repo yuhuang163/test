@@ -1,7 +1,7 @@
 #ifndef CMW_GPRF_FACADE_H
 #define CMW_GPRF_FACADE_H
 
-#include "cmw_gprf.h"
+#include "qcmw.h"
 #include "qvisa.h"
 
 #include <functional>
@@ -35,19 +35,66 @@ class CmwGprfFacade {
   public:
     CmwGprfRunResult run(CmwGprfCommand command, const CmwGprfRunParams& params);
     void resetSession();
-    bool burstDoneSinceStartRx() const {
-        return burstDoneSinceStartRx_;
-    }
-    void clearBurstDoneSinceStartRx() {
-        burstDoneSinceStartRx_ = false;
-    }
+    bool burstDoneSinceStartRx() const { return burstDoneSinceStartRx_; }
+    void clearBurstDoneSinceStartRx() { burstDoneSinceStartRx_ = false; }
 
   private:
-    void ensureProtocol(Qvisa* visa, const std::function<void(const QString&)>& log,
-                        const std::function<void(int)>& wait);
+    using LogFn = std::function<void(const QString&)>;
+    using WaitFn = std::function<void(int)>;
 
-    CmwGprfProtocol gprf_;
-    bool protocolReady_ = false;
+    struct Config {
+        bool enableFixedInit = true;
+        int arbCycles = 1000;
+        QString arbRepetition = QStringLiteral("SINGle");
+        double txPowerDbm = -50.0;
+        QString waveformFile;
+        bool queryCurrentArbFile = true;
+        bool checkErrorAfterInit = false;
+        int arbCompleteCycles = 0;
+        int arbPollIntervalMs = 100;
+        int arbTimeoutMs = 10000;
+        bool verboseArbPollLog = false;
+        bool stopAfterScenario = true;
+        bool burstStatOffFirst = true;
+        bool useGuiRfConfig = true;
+        int triggerWaitMs = 1000;
+        bool waitArbScountOnly = false;
+        bool burstPollArbScount = true;
+        bool checkErrorAfterScenario = false;
+
+        static Config fromSettings();
+        int holdMsAfterTrigger(int postTrigHoldMsOverride) const;
+    };
+
+    struct BrushProfile {
+        int profile = 0;
+        int freqMhz = 2402;
+        QString bandLabel = QStringLiteral("2402_BLE1M");
+
+        static BrushProfile fromProfile(int profile);
+        static bool isValid(int profile);
+    };
+
+    void bindSession(Qvisa* visa, const LogFn& log, const WaitFn& wait);
+    QString cmwVisaAddress() const;
+    bool ensureVisaConnected(Qvisa* visa, const LogFn& log, QString* detail);
+    bool primeGprf(QString* errorMessage);
+    bool waitArbComplete(const QString& scenarioLabel, const Config& cfg, const LogFn& log, const WaitFn& wait,
+                         QString* errorMessage, int* outElapsedMs);
+    bool runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabel, const Config& cfg, const LogFn& log,
+                             const WaitFn& wait, QString* errorMessage, int postTrigHoldMsOverride);
+    CmwGprfRunResult runBurstAtProfile(const CmwGprfRunParams& params, const LogFn& log, const WaitFn& wait,
+                                       const QString& burstLabel, bool logWaveformHint);
+
+    bool cmwSet(CmwGprfCmd cmd, const QVariant& data = {});
+    bool cmwGet(CmwGprfCmd cmd, const QVariant& param = {}, QString* response = nullptr);
+    static bool parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent);
+
+    Qcmw cmw_;
+    LogFn log_;
+    WaitFn wait_;
+    bool sessionReady_ = false;
+    bool gprfPrimed_ = false;
     bool burstDoneSinceStartRx_ = false;
 };
 
