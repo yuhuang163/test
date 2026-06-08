@@ -181,7 +181,7 @@ public slots:
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
 
-    // --- 协议上行虚槽（子类 override；默认经 onProtocolReport 分发） ---
+    // --- 协议上行虚槽（子类 override；由 onProtocolReport 按 reportType 分发） ---
     virtual void getTestValue(const int, const QString) {}
     virtual void canGoNextMechine(int) {}
     virtual void refreshCameraControl(ProtocolCameraControlData) {}
@@ -206,8 +206,8 @@ public slots:
     virtual void refreshLcdControl(ProtocolLcdControlData) {}
     virtual void refreshPeriphData(ProtocolPeriphStateData) {}
     virtual void refreshRssiRead(ProtocolRssiData) {}
-    virtual void refreshChargeCurrentRead(ProtocolUInt32ValueData) {}
-    virtual void refreshKeySignalRead(ProtocolUInt32ValueData) {}
+    virtual void refreshChargeCurrentRead(ProtocolChargeCurrentData) {}
+    virtual void refreshKeySignalRead(ProtocolKeyCapData) {}
     virtual void refreshTupleData(ProtocolTupleData) {}
     virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
     virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
@@ -219,9 +219,8 @@ public slots:
     virtual void processReceivedData(const QByteArray&) {}
 
 protected:
-    /** 协议上行统一分发：reportType 与 GateRegistry 注册名一致，默认转发到 legacy refresh* */
+    /** 协议上行统一分发：reportType 与 GateRegistry 注册名一致，转发到 refresh* 虚槽 */
     virtual void onProtocolReport(const ProtocolReport& report);
-    void dispatchLegacyProtocolReport(const QString& reportType, const QVariant& payload);
     /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
     void finishCommandRetryWait(bool success, const QString& logMessage);
     void closeEvent(QCloseEvent* event) override;

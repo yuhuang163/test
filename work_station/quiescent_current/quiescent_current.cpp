@@ -207,12 +207,12 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void quiescent_current::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
+void quiescent_current::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
     if (state != STATE_SLEEP_CURRENT_TEST) {
         return;
     }
 
-    const double currentMa = static_cast<double>(data.value);
+    const double currentMa = static_cast<double>(data.currentMa);
     const double lowCharCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
     const double highCharCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
     const bool pass = currentMa >= lowCharCurrent && currentMa <= highCharCurrent;

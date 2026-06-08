@@ -203,8 +203,8 @@ def rssi_gate():
 def charge_gate():
     return {
         "enabled": True,
-        "report": "ProtocolUInt32ValueData",
-        "field": "value",
+        "report": "ProtocolChargeCurrentData",
+        "field": "currentMa",
         "op": "range",
         "low": 0,
         "high": 0,

@@ -246,9 +246,21 @@ typedef struct {
 } ProtocolDeviceExceptionData;
 
 typedef struct {
-    uint32_t value = 0;
-    int auxId = -1;  // 可选上下文（如按键电容读取的按键编号 KK），无则 -1
-} ProtocolUInt32ValueData;
+    uint32_t capacitance = 0;
+    int keyId = -1;  // 按键编号 KK，无则 -1
+} ProtocolKeyCapData;
+
+typedef struct {
+    uint32_t currentMa = 0;
+} ProtocolChargeCurrentData;
+
+typedef struct {
+    uint32_t trim = 0;
+} ProtocolTrimData;
+
+typedef struct {
+    uint32_t calibValue = 0;
+} ProtocolLightCalibData;
 
 typedef struct {
     bool done = false;
@@ -429,7 +441,10 @@ Q_DECLARE_METATYPE(ProtocolSdInfoData)
 Q_DECLARE_METATYPE(ProtocolTupleData)
 Q_DECLARE_METATYPE(ProtocolAgingStatusData)
 Q_DECLARE_METATYPE(ProtocolDeviceExceptionData)
-Q_DECLARE_METATYPE(ProtocolUInt32ValueData)
+Q_DECLARE_METATYPE(ProtocolKeyCapData)
+Q_DECLARE_METATYPE(ProtocolChargeCurrentData)
+Q_DECLARE_METATYPE(ProtocolTrimData)
+Q_DECLARE_METATYPE(ProtocolLightCalibData)
 Q_DECLARE_METATYPE(ProtocolFactoryDoneData)
 Q_DECLARE_METATYPE(ProtocolRssiData)
 Q_DECLARE_METATYPE(ProtocolMacData)

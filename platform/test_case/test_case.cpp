@@ -753,6 +753,24 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.gate.lowSettingsKey = ini.value(QStringLiteral("Gate/LowSettingsKey")).toString();
     out.gate.highSettingsKey = ini.value(QStringLiteral("Gate/HighSettingsKey")).toString();
 
+    // ProtocolUInt32ValueData 已按业务拆分，兼容旧 ini
+    if (out.gate.reportType == QStringLiteral("ProtocolUInt32ValueData")) {
+        DeviceCmd legacyCmd;
+        if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, legacyCmd)) {
+            if (legacyCmd == DeviceCmd::ChargeCurrentRead) {
+                out.gate.reportType = QStringLiteral("ProtocolChargeCurrentData");
+                if (out.gate.field == QStringLiteral("value"))
+                    out.gate.field = QStringLiteral("currentMa");
+            } else if (legacyCmd == DeviceCmd::KeySignalRead) {
+                out.gate.reportType = QStringLiteral("ProtocolKeyCapData");
+                if (out.gate.field == QStringLiteral("value"))
+                    out.gate.field = QStringLiteral("capacitance");
+                else if (out.gate.field == QStringLiteral("auxId"))
+                    out.gate.field = QStringLiteral("keyId");
+            }
+        }
+    }
+
     out.hook.enabled = ini.value(QStringLiteral("Hook/Enabled"), false).toBool();
     out.hook.hookId = ini.value(QStringLiteral("Hook/HookId")).toString().trimmed();
 
@@ -1945,9 +1963,15 @@ const QVector<GateTypeDescriptor> kTypes = {
      {{QStringLiteral("percent"), QStringLiteral("电量(%)")},
       {QStringLiteral("chargeState"), QStringLiteral("充电状态")},
       {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}}},
-    {QStringLiteral("ProtocolUInt32ValueData"), QStringLiteral("数值(电流/按键电容等)"),
-     {{QStringLiteral("value"), QStringLiteral("数值")},
-      {QStringLiteral("auxId"), QStringLiteral("辅助编号")}}},
+    {QStringLiteral("ProtocolKeyCapData"), QStringLiteral("按键电容"),
+     {{QStringLiteral("capacitance"), QStringLiteral("电容值")},
+      {QStringLiteral("keyId"), QStringLiteral("按键编号")}}},
+    {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"),
+     {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
+    {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"),
+     {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
+    {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"),
+     {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
     {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"),
      {{QStringLiteral("value"), QStringLiteral("序列号文本")}}},
     {QStringLiteral("ProtocolBaseInfoData"), QStringLiteral("基本信息"),
@@ -2018,15 +2042,33 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.voltageMv;
         }
-    } else if (reportType == QLatin1String("ProtocolUInt32ValueData")) {
-        const auto d = payload.value<ProtocolUInt32ValueData>();
-        if (field == QLatin1String("value")) {
+    } else if (reportType == QLatin1String("ProtocolKeyCapData")) {
+        const auto d = payload.value<ProtocolKeyCapData>();
+        if (field == QLatin1String("capacitance")) {
             ok = true;
-            return static_cast<double>(d.value);
+            return static_cast<double>(d.capacitance);
         }
-        if (field == QLatin1String("auxId")) {
+        if (field == QLatin1String("keyId")) {
             ok = true;
-            return d.auxId;
+            return d.keyId;
+        }
+    } else if (reportType == QLatin1String("ProtocolChargeCurrentData")) {
+        const auto d = payload.value<ProtocolChargeCurrentData>();
+        if (field == QLatin1String("currentMa")) {
+            ok = true;
+            return static_cast<double>(d.currentMa);
+        }
+    } else if (reportType == QLatin1String("ProtocolTrimData")) {
+        const auto d = payload.value<ProtocolTrimData>();
+        if (field == QLatin1String("trim")) {
+            ok = true;
+            return static_cast<double>(d.trim);
+        }
+    } else if (reportType == QLatin1String("ProtocolLightCalibData")) {
+        const auto d = payload.value<ProtocolLightCalibData>();
+        if (field == QLatin1String("calibValue")) {
+            ok = true;
+            return static_cast<double>(d.calibValue);
         }
     } else if (reportType == QLatin1String("ProtocolBaseInfoData")) {
         const auto d = payload.value<ProtocolBaseInfoData>();

@@ -193,7 +193,7 @@ private slots:
     void refreshMusicState(ProtocolMusicStateData data) override;
     void refreshAmmeterData(QString data) override;
     void refreshButton(ProtocolButtonStateData data) override;
-    void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
+    void refreshKeySignalRead(ProtocolKeyCapData data) override;
 
     // MES / 绑定
     void getTestValue(const int mechines, const QString value) override;

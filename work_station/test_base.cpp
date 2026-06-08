@@ -452,10 +452,8 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
 }
 
 void test_base::onProtocolReport(const ProtocolReport& report) {
-    dispatchLegacyProtocolReport(report.reportType, report.payload);
-}
-
-void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QVariant& payload) {
+    const QString& reportType = report.reportType;
+    const QVariant& payload = report.payload;
     if (reportType == QLatin1String("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
         refreshBaseData(payload.value<ProtocolBaseInfoData>());
     } else if (reportType == QLatin1String("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
@@ -493,11 +491,11 @@ void test_base::dispatchLegacyProtocolReport(const QString& reportType, const QV
         refreshMusicState(payload.value<ProtocolMusicStateData>());
     } else if (reportType == QLatin1String("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
         refreshRssiRead(payload.value<ProtocolRssiData>());
-    } else if (reportType == QLatin1String("ProtocolUInt32ValueData") && payload.canConvert<ProtocolUInt32ValueData>()) {
-        const auto data = payload.value<ProtocolUInt32ValueData>();
-        // 同一类型对应多个槽，各槽内部有步骤/状态守卫
-        refreshKeySignalRead(data);
-        refreshChargeCurrentRead(data);
+    } else if (reportType == QLatin1String("ProtocolKeyCapData") && payload.canConvert<ProtocolKeyCapData>()) {
+        refreshKeySignalRead(payload.value<ProtocolKeyCapData>());
+    } else if (reportType == QLatin1String("ProtocolChargeCurrentData")
+               && payload.canConvert<ProtocolChargeCurrentData>()) {
+        refreshChargeCurrentRead(payload.value<ProtocolChargeCurrentData>());
     } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
     } else if (reportType == QLatin1String("ProtocolPictureSendOverData") && payload.canConvert<ProtocolResultData>()) {

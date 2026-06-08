@@ -255,8 +255,8 @@ private slots:
     void refreshSn(ProtocolSnData data) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
-    void refreshChargeCurrentRead(ProtocolUInt32ValueData data) override;
-    void refreshKeySignalRead(ProtocolUInt32ValueData data) override;
+    void refreshChargeCurrentRead(ProtocolChargeCurrentData data) override;
+    void refreshKeySignalRead(ProtocolKeyCapData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
     void refreshButton(ProtocolButtonStateData data) override;
     void refreshAmmeterData(QString data) override;

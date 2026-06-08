@@ -409,7 +409,7 @@ void Qfctp::handleRspTrimGet(const uint8_t *mainValue, uint16_t mainLen)
 
         qInfo() << "FCTP Trim读取" << "trim=" << trim << "(" << trimHex << ")" << "raw=" << rawHex;
         emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP Trim读取 trim=%1(%2) raw=%3").arg(QString::number(trim), trimHex, rawHex));
-        emitReport(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(ProtocolUInt32ValueData{trim}));
+        emitReport(QStringLiteral("ProtocolTrimData"), QVariant::fromValue(ProtocolTrimData{trim}));
     }
 }
 
@@ -559,10 +559,10 @@ void Qfctp::handleRspKeySignalRead(const uint8_t *mainValue, uint16_t mainLen)
                                   .arg(keyText, endianTag)
                                   .arg(cap)
                                   .arg(rawHex));
-            ProtocolUInt32ValueData out;
-            out.value = cap;
-            out.auxId = keyId;
-            emitReport(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(out));
+            ProtocolKeyCapData out;
+            out.capacitance = cap;
+            out.keyId = keyId;
+            emitReport(QStringLiteral("ProtocolKeyCapData"), QVariant::fromValue(out));
         } else {
             qWarning() << "FCTP 按键电容读取 key=" << keyText << "长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -578,7 +578,7 @@ void Qfctp::handleRspLightCalibRead(const uint8_t *mainValue, uint16_t mainLen)
                                | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准读取 calib_u32=" << cal << "raw=" << rawHex;
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准读取 value=%1 raw=%2").arg(cal).arg(rawHex));
-            emitReport(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(ProtocolUInt32ValueData{cal}));
+            emitReport(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(ProtocolLightCalibData{cal}));
         } else {
             qWarning() << "FCTP 光感校准读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -628,7 +628,7 @@ void Qfctp::handleRspLightCalibWrite(const uint8_t *mainValue, uint16_t mainLen)
                              | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 光感校准写入应答 value_u32=" << v << "raw=" << rawHex;
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准写入应答 value=%1 raw=%2").arg(v).arg(rawHex));
-            emitReport(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(ProtocolUInt32ValueData{v}));
+            emitReport(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(ProtocolLightCalibData{v}));
         } else {
             qInfo() << "FCTP 光感校准写入应答 len=" << mainLen << "raw=" << rawHex;
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准写入应答 raw=%1").arg(rawHex));
@@ -645,7 +645,8 @@ void Qfctp::handleRspChargeCurrentRead(const uint8_t *mainValue, uint16_t mainLe
             qInfo() << "FCTP 充电电流值 current_mA=" << chargeCurrentMa;
             const QString rawHex = QByteArray(reinterpret_cast<const char *>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 充电电流读取 current_mA=%1 raw=%2").arg(chargeCurrentMa).arg(rawHex));
-            emitReport(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(ProtocolUInt32ValueData{chargeCurrentMa}));
+            emitReport(QStringLiteral("ProtocolChargeCurrentData"),
+                        QVariant::fromValue(ProtocolChargeCurrentData{chargeCurrentMa}));
         } else {
             qWarning() << "FCTP ChargeCurrentGet 长度异常 len=" << mainLen;
         }

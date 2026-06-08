@@ -316,26 +316,26 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     }
 }
 
-void QFreeWork::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+void QFreeWork::refreshKeySignalRead(ProtocolKeyCapData data) {
     // 治具下压期间同步轮询：由 pollKeyCapDuringPress 等待本槽结束
     if (plcKeyCapSyncReadPending_) {
         plcKeyCapSyncReadPending_ = false;
         plcKeyCapSyncReadOk_ = true;
-        plcKeyCapSyncReadValue_ = data.value;
-        plcKeyCapSyncReadAuxId_ = data.auxId;
+        plcKeyCapSyncReadValue_ = data.capacitance;
+        plcKeyCapSyncReadAuxId_ = data.keyId;
         return;
     }
 }
 
-void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
-    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(data)))
+void QFreeWork::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolChargeCurrentData"), QVariant::fromValue(data)))
         return;
 
     if (!isCurrentStep("读取充电电流")) {
         return;
     }
 
-    const double currentMa = static_cast<double>(data.value);
+    const double currentMa = static_cast<double>(data.currentMa);
     const QString value = QString::number(currentMa, 'f', 0) + "ma";
     const QString ask = QString("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
     const bool pass = (currentMa >= LowCurrent && currentMa <= HighCurrent);

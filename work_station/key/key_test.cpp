@@ -268,13 +268,13 @@ void key_test::recordCurrentKeyButtonResult(int keyButtonId) {
     showlog(QStringLiteral("%1错按：%2").arg(stepName, keyErrorDetail));
 }
 
-void key_test::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+void key_test::refreshKeySignalRead(ProtocolKeyCapData data) {
     // PLC 下压期间同步读取 KeyCap，pollKeyCapDuringPress 会等待这个槽写回结果。
     if (plcKeyCapSyncReadPending_) {
         plcKeyCapSyncReadPending_ = false;
         plcKeyCapSyncReadOk_ = true;
-        plcKeyCapSyncReadValue_ = data.value;
-        plcKeyCapSyncReadAuxId_ = data.auxId;
+        plcKeyCapSyncReadValue_ = data.capacitance;
+        plcKeyCapSyncReadAuxId_ = data.keyId;
     }
 }
 
