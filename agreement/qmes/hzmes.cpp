@@ -13,22 +13,19 @@
 #include "qeventloop.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-hzmes::hzmes()
-{
+hzmes::hzmes() {
     url = SETTINGS.value(QStringLiteral("Mes/NET"), QStringLiteral("http://10.0.2.5/mrs")).toString().trimmed();
     field = SETTINGS.value(QStringLiteral("Mes/FIELD"), QStringLiteral("wifimac")).toString().trimmed();
 }
 
-void hzmes::LogIn(MesPacketData pack)
-{
+void hzmes::LogIn(MesPacketData pack) {
     Q_UNUSED(pack);
 }
 
-void hzmes::ProcessInspection(MesPacketData pack)
-{
+void hzmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory != QStringLiteral("hz")) {
         return;
     }
@@ -80,8 +77,7 @@ void hzmes::ProcessInspection(MesPacketData pack)
 
     const QJsonObject obj = doc.object();
     const QJsonValue msgIdValue = obj.value(QStringLiteral("msgId"));
-    const bool ok = (msgIdValue.isString() && msgIdValue.toString() == QStringLiteral("0"))
-                    || (msgIdValue.isDouble() && msgIdValue.toInt() == 0);
+    const bool ok = (msgIdValue.isString() && msgIdValue.toString() == QStringLiteral("0")) || (msgIdValue.isDouble() && msgIdValue.toInt() == 0);
     if (ok) {
         emit operateMesSucess(pack.mechines);
         qDebug() << QStringLiteral("华庄MES站前检查成功");
@@ -93,14 +89,12 @@ void hzmes::ProcessInspection(MesPacketData pack)
                          QStringLiteral("站前检查失败：") + (msgStr.isEmpty() ? response : msgStr));
 }
 
-void hzmes::GetTestData(MesPacketData pack)
-{
+void hzmes::GetTestData(MesPacketData pack) {
     // MAC 由各工站扫 SN 后 parseMacFromSn 本地解析，不再请求 getField
     Q_UNUSED(pack);
 }
 
-void hzmes::TestPass(MesPacketData pack)
-{
+void hzmes::TestPass(MesPacketData pack) {
     if (pack.factory != QStringLiteral("hz")) {
         return;
     }
@@ -114,10 +108,9 @@ void hzmes::TestPass(MesPacketData pack)
     }
 
     const QString prodNo = pack.lotName.trimmed().isEmpty() ? QStringLiteral("auto") : pack.lotName.trimmed();
-    const QString mesResult = (pack.result.compare(QStringLiteral("NG"), Qt::CaseInsensitive) == 0
-                               || pack.result.compare(QStringLiteral("FAIL"), Qt::CaseInsensitive) == 0)
-                                  ? QStringLiteral("FAIL")
-                                  : QStringLiteral("PASS");
+    const QString mesResult = (pack.result.compare(QStringLiteral("NG"), Qt::CaseInsensitive) == 0 || pack.result.compare(QStringLiteral("FAIL"), Qt::CaseInsensitive) == 0)
+        ? QStringLiteral("FAIL")
+        : QStringLiteral("PASS");
 
     QString testItem = pack.itemvalue.trimmed();
     if (testItem.startsWith(QLatin1Char('|'))) {
@@ -173,8 +166,7 @@ void hzmes::TestPass(MesPacketData pack)
 
     const QJsonObject obj = doc.object();
     const QJsonValue msgIdValue = obj.value(QStringLiteral("msgId"));
-    const bool ok = (msgIdValue.isString() && msgIdValue.toString() == QStringLiteral("0"))
-                    || (msgIdValue.isDouble() && msgIdValue.toInt() == 0);
+    const bool ok = (msgIdValue.isString() && msgIdValue.toString() == QStringLiteral("0")) || (msgIdValue.isDouble() && msgIdValue.toInt() == 0);
     if (ok) {
         emit operateMesSucess(pack.mechines);
         qDebug() << QStringLiteral("华庄MES过站成功");

@@ -23,6 +23,6 @@ int rowCount();
 const Row* findByCmd(DongleCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
-}  // namespace DongleCmdManifest
+} // namespace DongleCmdManifest
 
-#endif  // PLATFORM_DONGLE_CMD_MANIFEST_H
+#endif // PLATFORM_DONGLE_CMD_MANIFEST_H

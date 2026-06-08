@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -28,12 +28,29 @@ class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
 
-public:
+  public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
     void startTask() override;
 
     Ui::QFreeWork* ui;
+
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QLineEdit* getMacLineEdit() override { return ui->getMac; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
 
     // --- test_case 对外接口 ---
     bool useTestCaseFlow(const QString& stationKey = QString()) const;
@@ -44,8 +61,12 @@ public:
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
-    QString activeTestCaseStepTestData() const { return stepRuntime_.testData; }
-    const TestCaseDefinition& activeTestCase() const { return activeTestCase_; }
+    QString activeTestCaseStepTestData() const {
+        return stepRuntime_.testData;
+    }
+    const TestCaseDefinition& activeTestCase() const {
+        return activeTestCase_;
+    }
     QString currentMacAddress() const;
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
@@ -55,7 +76,7 @@ public:
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
 
-private:
+  private:
     int teststate = -1;
 
     // --- 扫描 / 绑定 ---
@@ -229,23 +250,8 @@ private:
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
 
-private slots:
+  private slots:
     void initData();
-
-    // test_base 控件桥接
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
-    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
-    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
-    QCheckBox* getIsUseMes() override { return ui->isusemes; }
-    QCheckBox* getIsFormMes() override { return ui->isformmes; }
-    QLineEdit* getMacLineEdit() override { return ui->getMac; }
-    QLineEdit* macInputLineEdit() override { return ui->macInput; }
-    QPlainTextEdit* logEdit() override { return ui->log; }
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
-    QTableWidget* testResultTable() override { return ui->testResultTable; }
-    QLabel* getMesStateQlabel() override { return ui->mes_state; }
-    QPushButton* getEndTestButton() override { return ui->stopTest; }
 
     // 协议上行（实现见 qfreework_data.cpp）
     void refreshBleRssi(QString data) override;
@@ -297,10 +303,10 @@ private slots:
     void on_pushButton_2_clicked();
     void on_stopTest_clicked();
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // QFREEWORK_H
+#endif // QFREEWORK_H

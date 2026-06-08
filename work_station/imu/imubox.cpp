@@ -9,7 +9,7 @@
 #include "ui_imubox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
@@ -20,7 +20,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     ShowData(this);
 
     for (int i = 0; i < testList.size(); i++) {
-        FixTureStates.push_back(0);  // 添加0到vector中
+        FixTureStates.push_back(0); // 添加0到vector中
         stage1States.push_back(0);
         stage2States.push_back(0);
         stage3States.push_back(0);
@@ -45,7 +45,7 @@ imubox::imubox(QWidget* parent) : box_base(parent), ui(new Ui::imubox) {
     }
 
     ui->statusbar->addPermanentWidget(new QLabel(IMU_VER + QString(__DATE__) + " " + QString(__TIME__)));
-    ui->statusbar->setStyleSheet("QLabel { color: red; }");  // 将文本颜色设置为红色
+    ui->statusbar->setStyleSheet("QLabel { color: red; }"); // 将文本颜色设置为红色
 
     QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
     connect(Fixture_connectl_act, &QAction::triggered, [=]() {
@@ -148,7 +148,7 @@ void imubox::startTest() {
         if (pack.factory == "xwd") {
             set_cylinder_state(STATE_BRUSH_RIGHT);
         } else {
-            set_cylinder_state(STATE_BRUSH_LEFT);  //可能是给华勤的
+            set_cylinder_state(STATE_BRUSH_LEFT); //可能是给华勤的
         }
 
         waitWork(1500);
@@ -165,7 +165,7 @@ imubox::~imubox() {
     delete ui;
 }
 void imubox::resetall() {
-    if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) {  //表示p20p回车开始
+    if (SETTINGS.value("SYSTEM/IMULastEnterStartTest").toBool()) { //表示p20p回车开始
         qDebug() << "触发resetall";
         startTest();
     }

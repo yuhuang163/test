@@ -7,7 +7,7 @@
 #include "qdatetime.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -26,7 +26,7 @@ bool isPrintableAtLine(const QString& line) {
     }
     return true;
 }
-}  // namespace
+} // namespace
 
 Qat::Qat(QSerialPort* parent) : QObject(parent), serialPort(parent) {
     if (!serialPort) {
@@ -40,7 +40,9 @@ Qat::Qat(QSerialPort* parent) : QObject(parent), serialPort(parent) {
 
 void Qat::parseCmd(const QByteArray& byte) {
     int cangonext = 0;
-    foreach (char c, byte) { dataQueue.push_back((uint8_t)c); }
+    foreach (char c, byte) {
+        dataQueue.push_back((uint8_t)c);
+    }
 
     // QString data = byte;
     // if (data.contains("deviceName")) {
@@ -51,74 +53,75 @@ void Qat::parseCmd(const QByteArray& byte) {
         char c = dataQueue.dequeue();
 
         switch (state) {
-            case STATE_IDLE:
+        case STATE_IDLE:
 
-                if (c == 'A') {
-                    cmd += c;
-                    state = STATE_RECEIVING_T;
+            if (c == 'A') {
+                cmd += c;
+                state = STATE_RECEIVING_T;
+            }
+            break;
+
+        case STATE_RECEIVING_T:
+            if (c == 'T') {
+                cmd += c;
+                state = STATE_RECEIVING_COMMAND;
+            } else {
+                cmd.clear();
+                state = STATE_IDLE;
+            }
+            break;
+
+        case STATE_RECEIVING_COMMAND:
+            if (c == '\r') {
+                cangonext = 1;
+            } else if (cangonext && c == '\n') {
+                cangonext = 0;
+                const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
+                if (isPrintableAtLine(atLine)) {
+                    qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                    // qDebug() << "发射13"<<cmd;
+                    emit command(cmd, parameter);
                 }
-                break;
-
-            case STATE_RECEIVING_T:
-                if (c == 'T') {
-                    cmd += c;
-                    state = STATE_RECEIVING_COMMAND;
-                } else {
+                // qDebug() << "发射1"<<cmd;
+                cmd.clear();
+                parameter.clear();
+                // qDebug() << "发射23"<<cmd;
+                state = STATE_IDLE;
+            } else if (c == '=') {
+                state = STATE_RECEIVING_PARAMETER;
+            } else {
+                cmd += c;
+                if (cmd.size() > 1024) {
                     cmd.clear();
                     state = STATE_IDLE;
                 }
-                break;
+            }
+            break;
 
-            case STATE_RECEIVING_COMMAND:
-                if (c == '\r') {
-                    cangonext = 1;
-                } else if (cangonext && c == '\n') {
-                    cangonext = 0;
-                    const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
-                    if (isPrintableAtLine(atLine)) {
-                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
-                        // qDebug() << "发射13"<<cmd;
-                        emit command(cmd, parameter);
-                    }
-                    // qDebug() << "发射1"<<cmd;
-                    cmd.clear();
+        case STATE_RECEIVING_PARAMETER:
+            if (c == '\r') {
+                cangonext = 1;
+            } else if (cangonext && c == '\n') {
+                cangonext = 0;
+                const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
+                if (isPrintableAtLine(atLine)) {
+                    qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                    emit command(cmd, parameter);
+                }
+                cmd.clear();
+                parameter.clear();
+                state = STATE_IDLE;
+            } else {
+                parameter += c;
+                if (parameter.size() > 1024) {
                     parameter.clear();
-                    // qDebug() << "发射23"<<cmd;
                     state = STATE_IDLE;
-                } else if (c == '=') {
-                    state = STATE_RECEIVING_PARAMETER;
-                } else {
-                    cmd += c;
-                    if (cmd.size() > 1024) {
-                        cmd.clear();
-                        state = STATE_IDLE;
-                    }
                 }
-                break;
+            }
+            break;
 
-            case STATE_RECEIVING_PARAMETER:
-                if (c == '\r') {
-                    cangonext = 1;
-                } else if (cangonext && c == '\n') {
-                    cangonext = 0;
-                    const QString atLine = parameter.isEmpty() ? cmd + "\r\n" : cmd + "=" + parameter + "\r\n";
-                    if (isPrintableAtLine(atLine)) {
-                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
-                        emit command(cmd, parameter);
-                    }
-                    cmd.clear();
-                    parameter.clear();
-                    state = STATE_IDLE;
-                } else {
-                    parameter += c;
-                    if (parameter.size() > 1024) {
-                        parameter.clear();
-                        state = STATE_IDLE;
-                    }
-                }
-                break;
-
-            default: break;
+        default:
+            break;
         }
     }
 }

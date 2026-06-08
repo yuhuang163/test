@@ -14,7 +14,7 @@ class Qaiot;
 
 class QProtocolManager : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit QProtocolManager(QObject* parent = nullptr);
 
     enum class ProtocolType {
@@ -62,13 +62,13 @@ public:
     bool isQfctpProtocolActive() const;
     bool isQaiotProtocolActive() const;
 
-signals:
+  signals:
     /** 统一上行数据信封（与 qProtocol::reportReceived 对齐） */
     void reportReceived(const ProtocolReport& report);
     /** 传输层 ACK，与结构化 report 分离 */
     void sendGetProductResponse(int data);
 
-private:
+  private:
     void syncActivePointer();
     void bindProtocolUpstream(qProtocol* protocol);
     void unbindProtocolUpstream(qProtocol* protocol);
@@ -80,4 +80,4 @@ private:
     qProtocol* active_ = nullptr;
 };
 
-#endif  // QPROTOCOLMANAGER_H
+#endif // QPROTOCOLMANAGER_H

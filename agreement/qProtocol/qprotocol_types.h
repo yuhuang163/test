@@ -40,10 +40,10 @@ typedef struct {
 typedef struct {
     int is_have_data;
     int file_size;
-    int version_code;  // 版本号
-    int version_type;  // 文件类型  201固件  202资源  303音频 304主题 305音乐文件
-    QByteArray url;    //
-    QByteArray md5;    //
+    int version_code; // 版本号
+    int version_type; // 文件类型  201固件  202资源  303音频 304主题 305音乐文件
+    QByteArray url;   //
+    QByteArray md5;   //
 } local_ota_data;
 
 typedef enum {
@@ -72,10 +72,10 @@ typedef struct {
 
 enum class ProtocolSnType {
     Unknown = 0,
-    BoardSn,//板子sn
-    TailSn,//整机sn
-    SubPid,//app颜色id
-    SkuId,//产品id
+    BoardSn, //板子sn
+    TailSn,  //整机sn
+    SubPid,  //app颜色id
+    SkuId,   //产品id
 };
 
 typedef struct {
@@ -247,7 +247,7 @@ typedef struct {
 
 typedef struct {
     uint32_t capacitance = 0;
-    int keyId = -1;  // 按键编号 KK，无则 -1
+    int keyId = -1; // 按键编号 KK，无则 -1
 } ProtocolKeyCapData;
 
 typedef struct {
@@ -346,105 +346,105 @@ typedef struct {
 
 enum class DeviceCmd {
     // set commands
-    PressSensorTemp,        // 【预留】枚举保留，当前 Qpb/Qfctp 均未在 switch 中实现
-    UartReceive,            // 【上层常用】Qpb 未单独 case 时走 default；Qfctp 未实现（发告警）
-    RgbColor,               // 【Qpb】RGB 灯效（FacLedControl，set_rgb_color）
-    MotorCali,              // 【Qpb】电机校准流程控制（int，set_motor_cali）
-    MotorDampingState,      // 【Qpb】电机阻尼状态（int，set_motor_damping_state）
-    MotorTestState,         // 【Qpb】电机测试状态（int，set_motor_test_state）
-    MotorCaliState,         // 【Qpb】电机校准状态（int，set_motor_cali_state）
-    FacResult,              // 【统一入口】产测结果/完成标识；Qpb: set_fac_result(int)，Qfctp: FactoryDoneWrite(done)
-    ScreenColor,            // 【Qpb】屏幕纯色/显示测试（int，set_screen_color）
-    LedColor,               // 【Qpb】LED 颜色两参数（QVariantList{区/路, 色值}，set_led_color）
-    ShipMode,               // 【Qpb】船运模式（int，set_ship_mode）；【Qfctp】复用枚举名→关机 TLV（与 Qpb 语义不同）
-    MotorAdcSwitch,         // 【Qpb】电机 ADC 采样开关（int，set_motor_adc_switch）
-    MotorParam,             // 【Qpb】电机运行参数（QVariantList{频率 uint, 占空比 float}，set_motor_param）
-    MotorState,             // 【Qpb】电机工作状态（int，set_motor_state）
-    MotorCaliResultParam,   // 【Qpb】电机校准结果参数（uint，set_motor_cali_result_param）
-    WifiConnect,            // 【Qpb】连 WiFi（WifiConnectPayload / QVariantMap{name,password} / WifiInfo，set_connect_wifi）
-    Music,                  // 【Qpb】音乐控制/曲目数据（QByteArray，set_music）
-    BurningMode,            // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp 均兼容
-    BrushRecord,            // 【Qpb】使用记录写入（FacSetBrushRecord，set_brush_record）
-    BrushTime,              // 【Qpb】使用计时相关（int，set_brush_time）
-    Sleep,                  // 【主入口】休眠/待机控制；Qpb 走 set_sleeep，Qfctp 映射待机 TLV
-    ForbidSleep,            // 【Qpb】禁止休眠开关（FacSwitch，set_forbid_sleep）
-    CameraState,            // 【Qpb】摄像头总开关/状态（int，set_camera_state）
-    ScreenCameraState,      // 【Qpb】屏侧相机状态（int，set_screen_camera_state）
-    CameraLightState,       // 【Qpb】相机补光状态（int，set_camera_light_state）
-    CameraSupportState,     // 【Qpb】相机能力/支持项状态（int，set_camera_support_state）
-    CameraExposureTime,     // 【Qpb】曝光时间（uint，set_camera_exposure_time）
-    DevReset,               // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）
-    BrushReset,             // 【Qpb】使用相关复位（无参，set_brush_reset）
-    PressCaliResult,        // 【Qpb】压力标定结果下发（press_calib_data_t，set_press_cali_result）；get 见 GetPressCaliResult
-    ImuCaliResult,          // 【Qpb】IMU 标定结果下发（ImuCalData，set_imu_cali_result）；get 见 GetImuCaliResult
-    NewImuCaliResult,       // 【Qpb】新 IMU 校准结果下发（NewImuCalData，set_new_imu_cali_result）
-    DeviceMode,             // 【Qpb】设备运行模式（int，set_device_mode）
-    BrushControl,           // 【Qpb】电机/动作控制（int，set_brush_control）
-    FacMode,                // 【Qpb】工厂模式开关（int，set_fac_mode）；【Qfctp】非 0 进入产测模式（sendFactoryTestMode）
-    Sn,                     // 【主入口】SN/三元组写统一入口；Qpb 兼容 set_sn，Qfctp 内部映射 TLV 写入
-    SoftVersionRead,        // 【Qfctp】读软件版本（getCaseFwVersionRead）；产测 test_case「读取版本号」
-    BaseInfo,               // 【Qpb】基础信息读写（get/set）；FCTP 请用 SoftVersionRead
-    CameraPictureState,     // 【Qpb】相机拍照/成像状态（int，set_camera_picture_state）
-    LocalOta,               // 【Qpb】本地 OTA（载荷 LocalOtaPayload）
-    StartOtaApp,            // 【Qpb】通过 App 通道启动 OTA（RotasFileStatusReq，走 set_start_ota_app）
-    IAmApp,                 // 【Qpb】向设备声明「当前连接端是 App」（无参，set_i_am_app）
-    ConfigNetworkApp,       // 【Qpb】配网：把 WiFi 信息下发给设备上的配网 App（WifiInfo，set_config_network_app）
-    WifiDisconnect,         // 【Qpb】通知设备断开当前 WiFi（无参，set_wifi_disconnect）
-    StartMultiBleOtaApp,    // 【Qpb】双路 BLE OTA：同时下发两路 RotasFileStatusReq（StartMultiBleOtaPayload 或 QVariantList）
-    PressCollect,           // 【Qpb】压力传感器产测采集开关（FacSwitch，set_press_collect_param）
-    ImuCollect,             // 【Qpb】IMU 产测采集开关（FacSwitch，set_imu_collect_param）
-    CameraFaultDataPacket,  // 【预留】当前 Qpb/Qfctp 均未在 switch 中实现
-    ServoMotorInfo,         // 【Qpb】舵机信息查询触发/下发（无参 set，set_servo_motor_info）
-    MicControl,             // 【Qpb】麦克风开关或增益类控制（int，set_mic_control）
-    UploadRecordData,       // 【Qpb】上传记录类数据控制（int，set_upload_record_data）
-    NewWifiConnect,         // 【Qpb】新协议连 WiFi（NewWifiConnectPayload 或 QVariantList{name,pwd,ip,port}，set_new_connect_wifi）
-    SevorMotorParam,        // 【Qpb】扫振电机参数（SevorMotorParamPayload 或 QVariantList 4 元组，set_sevor_motor_param）
-    SuctionMode,            // 【兼容别名】Qfctp 吸力测试入口（保留兼容）
-    BtSignalMode,           // 【兼容别名】Qfctp 蓝牙信令入口（保留兼容）
-    BtNoSignalMode,         // 【兼容别名】Qfctp 蓝牙非信令入口（保留兼容）
-    BtFreqMode,             // 【兼容别名】Qfctp 蓝牙校频入口（保留兼容）
-    WriteKey,               // 【兼容别名】Qfctp 写密钥入口（建议优先走 Sn 主入口）
-    TrimSet,                // 【Qfctp】写 trim（QVariantMap，setCaseTrimSet）
-    MacWrite,               // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
-    NightLightSet,          // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）
-    LedTest,                // 【Qfctp】显示测试 LED（QVariantMap，setCaseLedTest）
-    FactoryReset,           // 【Qfctp】恢复出厂（无参，setCaseFactoryReset）
+    PressSensorTemp,       // 【预留】枚举保留，当前 Qpb/Qfctp 均未在 switch 中实现
+    UartReceive,           // 【上层常用】Qpb 未单独 case 时走 default；Qfctp 未实现（发告警）
+    RgbColor,              // 【Qpb】RGB 灯效（FacLedControl，set_rgb_color）
+    MotorCali,             // 【Qpb】电机校准流程控制（int，set_motor_cali）
+    MotorDampingState,     // 【Qpb】电机阻尼状态（int，set_motor_damping_state）
+    MotorTestState,        // 【Qpb】电机测试状态（int，set_motor_test_state）
+    MotorCaliState,        // 【Qpb】电机校准状态（int，set_motor_cali_state）
+    FacResult,             // 【统一入口】产测结果/完成标识；Qpb: set_fac_result(int)，Qfctp: FactoryDoneWrite(done)
+    ScreenColor,           // 【Qpb】屏幕纯色/显示测试（int，set_screen_color）
+    LedColor,              // 【Qpb】LED 颜色两参数（QVariantList{区/路, 色值}，set_led_color）
+    ShipMode,              // 【Qpb】船运模式（int，set_ship_mode）；【Qfctp】复用枚举名→关机 TLV（与 Qpb 语义不同）
+    MotorAdcSwitch,        // 【Qpb】电机 ADC 采样开关（int，set_motor_adc_switch）
+    MotorParam,            // 【Qpb】电机运行参数（QVariantList{频率 uint, 占空比 float}，set_motor_param）
+    MotorState,            // 【Qpb】电机工作状态（int，set_motor_state）
+    MotorCaliResultParam,  // 【Qpb】电机校准结果参数（uint，set_motor_cali_result_param）
+    WifiConnect,           // 【Qpb】连 WiFi（WifiConnectPayload / QVariantMap{name,password} / WifiInfo，set_connect_wifi）
+    Music,                 // 【Qpb】音乐控制/曲目数据（QByteArray，set_music）
+    BurningMode,           // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp 均兼容
+    BrushRecord,           // 【Qpb】使用记录写入（FacSetBrushRecord，set_brush_record）
+    BrushTime,             // 【Qpb】使用计时相关（int，set_brush_time）
+    Sleep,                 // 【主入口】休眠/待机控制；Qpb 走 set_sleeep，Qfctp 映射待机 TLV
+    ForbidSleep,           // 【Qpb】禁止休眠开关（FacSwitch，set_forbid_sleep）
+    CameraState,           // 【Qpb】摄像头总开关/状态（int，set_camera_state）
+    ScreenCameraState,     // 【Qpb】屏侧相机状态（int，set_screen_camera_state）
+    CameraLightState,      // 【Qpb】相机补光状态（int，set_camera_light_state）
+    CameraSupportState,    // 【Qpb】相机能力/支持项状态（int，set_camera_support_state）
+    CameraExposureTime,    // 【Qpb】曝光时间（uint，set_camera_exposure_time）
+    DevReset,              // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）
+    BrushReset,            // 【Qpb】使用相关复位（无参，set_brush_reset）
+    PressCaliResult,       // 【Qpb】压力标定结果下发（press_calib_data_t，set_press_cali_result）；get 见 GetPressCaliResult
+    ImuCaliResult,         // 【Qpb】IMU 标定结果下发（ImuCalData，set_imu_cali_result）；get 见 GetImuCaliResult
+    NewImuCaliResult,      // 【Qpb】新 IMU 校准结果下发（NewImuCalData，set_new_imu_cali_result）
+    DeviceMode,            // 【Qpb】设备运行模式（int，set_device_mode）
+    BrushControl,          // 【Qpb】电机/动作控制（int，set_brush_control）
+    FacMode,               // 【Qpb】工厂模式开关（int，set_fac_mode）；【Qfctp】非 0 进入产测模式（sendFactoryTestMode）
+    Sn,                    // 【主入口】SN/三元组写统一入口；Qpb 兼容 set_sn，Qfctp 内部映射 TLV 写入
+    SoftVersionRead,       // 【Qfctp】读软件版本（getCaseFwVersionRead）；产测 test_case「读取版本号」
+    BaseInfo,              // 【Qpb】基础信息读写（get/set）；FCTP 请用 SoftVersionRead
+    CameraPictureState,    // 【Qpb】相机拍照/成像状态（int，set_camera_picture_state）
+    LocalOta,              // 【Qpb】本地 OTA（载荷 LocalOtaPayload）
+    StartOtaApp,           // 【Qpb】通过 App 通道启动 OTA（RotasFileStatusReq，走 set_start_ota_app）
+    IAmApp,                // 【Qpb】向设备声明「当前连接端是 App」（无参，set_i_am_app）
+    ConfigNetworkApp,      // 【Qpb】配网：把 WiFi 信息下发给设备上的配网 App（WifiInfo，set_config_network_app）
+    WifiDisconnect,        // 【Qpb】通知设备断开当前 WiFi（无参，set_wifi_disconnect）
+    StartMultiBleOtaApp,   // 【Qpb】双路 BLE OTA：同时下发两路 RotasFileStatusReq（StartMultiBleOtaPayload 或 QVariantList）
+    PressCollect,          // 【Qpb】压力传感器产测采集开关（FacSwitch，set_press_collect_param）
+    ImuCollect,            // 【Qpb】IMU 产测采集开关（FacSwitch，set_imu_collect_param）
+    CameraFaultDataPacket, // 【预留】当前 Qpb/Qfctp 均未在 switch 中实现
+    ServoMotorInfo,        // 【Qpb】舵机信息查询触发/下发（无参 set，set_servo_motor_info）
+    MicControl,            // 【Qpb】麦克风开关或增益类控制（int，set_mic_control）
+    UploadRecordData,      // 【Qpb】上传记录类数据控制（int，set_upload_record_data）
+    NewWifiConnect,        // 【Qpb】新协议连 WiFi（NewWifiConnectPayload 或 QVariantList{name,pwd,ip,port}，set_new_connect_wifi）
+    SevorMotorParam,       // 【Qpb】扫振电机参数（SevorMotorParamPayload 或 QVariantList 4 元组，set_sevor_motor_param）
+    SuctionMode,           // 【兼容别名】Qfctp 吸力测试入口（保留兼容）
+    BtSignalMode,          // 【兼容别名】Qfctp 蓝牙信令入口（保留兼容）
+    BtNoSignalMode,        // 【兼容别名】Qfctp 蓝牙非信令入口（保留兼容）
+    BtFreqMode,            // 【兼容别名】Qfctp 蓝牙校频入口（保留兼容）
+    WriteKey,              // 【兼容别名】Qfctp 写密钥入口（建议优先走 Sn 主入口）
+    TrimSet,               // 【Qfctp】写 trim（QVariantMap，setCaseTrimSet）
+    MacWrite,              // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
+    NightLightSet,         // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）
+    LedTest,               // 【Qfctp】显示测试 LED（QVariantMap，setCaseLedTest）
+    FactoryReset,          // 【Qfctp】恢复出厂（无参，setCaseFactoryReset）
 
-    LcdBacklight,           // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
-    LightReportControl,     // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
-    LightCalibWrite,        // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
-    CompensationSet,        // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
+    LcdBacklight,       // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
+    LightReportControl, // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
+    LightCalibWrite,    // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
+    CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
 
     // get commands
-    NowMusicInfo,           // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
-    SdCardInfo,             // 【Qpb】SD 卡信息（无参，get_sd_card_info）
-    LightSensorInfo,        // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
-    GetBattery,             // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV（getCaseBatteryRead）
-    ButtonState,            // 【Qpb】按键状态（param.toInt() 为按键索引/掩码，get_button_state）
-    GetPressCaliResult,     // 【Qpb】读压力标定结果（无参，get_press_cali_result）
-    GetImuCaliResult,       // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
-    DeviceInfo,             // 【主入口】设备信息查询（Qpb）
+    NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
+    SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）
+    LightSensorInfo,    // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
+    GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV（getCaseBatteryRead）
+    ButtonState,        // 【Qpb】按键状态（param.toInt() 为按键索引/掩码，get_button_state）
+    GetPressCaliResult, // 【Qpb】读压力标定结果（无参，get_press_cali_result）
+    GetImuCaliResult,   // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
+    DeviceInfo,         // 【主入口】设备信息查询（Qpb）
 
-    TupleRead,            // 【主入口】Qfctp 兼容映射三元组读取
+    TupleRead, // 【主入口】Qfctp 兼容映射三元组读取
 
-    PeriphState,            // 【主入口】外设状态读取；Qfctp 映射 sensor 状态 TLV
-    ConnectInfo,            // 【Qpb】连接信息（无参，get_connect_info）
-    WifiInfo,               // 【Qpb】WiFi 信息（无参，get_wifi_info）
-    GetServoMotorInfo,      // 【Qpb】读舵机信息（无参，get_servo_motor_info）
-    BurshBacklog,           // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
-    TrimRead,               // 【Qfctp】读 trim（无参，getCaseTrimRead）
-    MacRead,                // 【Qfctp】读 MAC（无参，getCaseMacRead）
-    RssiRead,               // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
-    KeySignalRead,          // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）
-    LightCalibRead,         // 【Qfctp】读光感校准（param 为 QVariantMap，含 index，getCaseLightCalibRead）
-    ChargeCurrentRead,      // 【Qfctp】读充电电流（无参，getCaseChargeCurrentRead）
-    AgingStatusRead,        // 【兼容别名】Qfctp 老化状态查询（保留兼容）
-    FactoryDoneRead,        // 【兼容别名】Qfctp 产测标识读取（保留兼容）
-    DeviceExceptionRead,    // 【Qfctp】读设备异常状态（独立入口）
+    PeriphState,         // 【主入口】外设状态读取；Qfctp 映射 sensor 状态 TLV
+    ConnectInfo,         // 【Qpb】连接信息（无参，get_connect_info）
+    WifiInfo,            // 【Qpb】WiFi 信息（无参，get_wifi_info）
+    GetServoMotorInfo,   // 【Qpb】读舵机信息（无参，get_servo_motor_info）
+    BurshBacklog,        // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
+    TrimRead,            // 【Qfctp】读 trim（无参，getCaseTrimRead）
+    MacRead,             // 【Qfctp】读 MAC（无参，getCaseMacRead）
+    RssiRead,            // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
+    KeySignalRead,       // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）
+    LightCalibRead,      // 【Qfctp】读光感校准（param 为 QVariantMap，含 index，getCaseLightCalibRead）
+    ChargeCurrentRead,   // 【Qfctp】读充电电流（无参，getCaseChargeCurrentRead）
+    AgingStatusRead,     // 【兼容别名】Qfctp 老化状态查询（保留兼容）
+    FactoryDoneRead,     // 【兼容别名】Qfctp 产测标识读取（保留兼容）
+    DeviceExceptionRead, // 【Qfctp】读设备异常状态（独立入口）
 };
 
 class IDevice {
-public:
+  public:
     virtual ~IDevice() = default;
 
     virtual void set(DeviceCmd cmd, const QVariant& data = {}) = 0;
@@ -457,7 +457,8 @@ struct ProtocolReport {
     QVariant payload;
 
     ProtocolReport() = default;
-    ProtocolReport(const QString& type, const QVariant& data = {}) : reportType(type), payload(data) {}
+    ProtocolReport(const QString& type, const QVariant& data = {}) : reportType(type), payload(data) {
+    }
 };
 Q_DECLARE_METATYPE(ProtocolReport)
 
@@ -502,4 +503,4 @@ Q_DECLARE_METATYPE(ProtocolRssiData)
 Q_DECLARE_METATYPE(ProtocolMacData)
 Q_DECLARE_METATYPE(ProtocolAckData)
 
-#endif  // QPB_TYPES_H
+#endif // QPB_TYPES_H

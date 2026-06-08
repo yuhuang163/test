@@ -1,4 +1,4 @@
-﻿#ifndef TEST_BASE_H
+#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 #include <functional>
@@ -47,33 +47,68 @@ class Qaiot;
 class test_base : public QWidget {
     Q_OBJECT
 
-public:
+  public:
     explicit test_base(QWidget* parent = nullptr);
 
     // --- 工站虚接口 ---
-    virtual void startTest() {}
-    virtual void overTask() {}
+    virtual void startTest() {
+    }
+    virtual void overTask() {
+    }
     virtual void startTask() = 0;
-    virtual void endTask() {}
-    virtual void useMes() {}
+    virtual void endTask() {
+    }
+    virtual void useMes() {
+    }
 
     // --- test_base 控件桥接（子类 override） ---
-    virtual QCheckBox* getIsUseMes() { return nullptr; }
-    virtual QCheckBox* getIsFormMes() { return nullptr; }
-    virtual QComboBox* getComNameCombo() { return nullptr; }
-    virtual QComboBox* getUsbcomNameCombo() { return nullptr; }
-    virtual QComboBox* getJigcomNameCombo() { return nullptr; }
-    virtual QComboBox* getProductcomNameCombo() { return nullptr; }
-    virtual QComboBox* getNfcComboBox() { return nullptr; }
-    virtual QLineEdit* getMotorCaliParam() { return nullptr; }
-    virtual QLineEdit* getMacLineEdit() { return nullptr; }
-    virtual QLineEdit* macInputLineEdit() { return nullptr; }
-    virtual QPlainTextEdit* logEdit() { return nullptr; }
-    virtual QPlainTextEdit* msgEdit() { return nullptr; }
-    virtual QTableWidget* testResultTable() { return nullptr; }
-    virtual QPushButton* getEndTestButton() { return nullptr; }
-    virtual QLabel* getMesStateQlabel() { return nullptr; }
-    virtual void updateComboBox() {}
+    virtual QCheckBox* getIsUseMes() {
+        return nullptr;
+    }
+    virtual QCheckBox* getIsFormMes() {
+        return nullptr;
+    }
+    virtual QComboBox* getComNameCombo() {
+        return nullptr;
+    }
+    virtual QComboBox* getUsbcomNameCombo() {
+        return nullptr;
+    }
+    virtual QComboBox* getJigcomNameCombo() {
+        return nullptr;
+    }
+    virtual QComboBox* getProductcomNameCombo() {
+        return nullptr;
+    }
+    virtual QComboBox* getNfcComboBox() {
+        return nullptr;
+    }
+    virtual QLineEdit* getMotorCaliParam() {
+        return nullptr;
+    }
+    virtual QLineEdit* getMacLineEdit() {
+        return nullptr;
+    }
+    virtual QLineEdit* macInputLineEdit() {
+        return nullptr;
+    }
+    virtual QPlainTextEdit* logEdit() {
+        return nullptr;
+    }
+    virtual QPlainTextEdit* msgEdit() {
+        return nullptr;
+    }
+    virtual QTableWidget* testResultTable() {
+        return nullptr;
+    }
+    virtual QPushButton* getEndTestButton() {
+        return nullptr;
+    }
+    virtual QLabel* getMesStateQlabel() {
+        return nullptr;
+    }
+    virtual void updateComboBox() {
+    }
 
     // --- 串口波特率 ---
     int jigBaudRate = 115200;
@@ -86,7 +121,9 @@ public:
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
-    void setCommandWaitSource(CommandWaitSource source) { commandWaitSource_ = source; }
+    void setCommandWaitSource(CommandWaitSource source) {
+        commandWaitSource_ = source;
+    }
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
@@ -151,14 +188,16 @@ public:
     bool bindingResult = false;
     int m_index = 0;
 
-public slots:
+  public slots:
     QString getValueBySN(const QString& sn);
     bool compareVersions(const QString& versionList, const QString& versionToCompare);
     void set_independent_state(STATE_INDEPENDENT_E newState) {
         qDebug() << "机器" << getIndex() << "independent_state状态被设置" << newState;
         independent_state = newState;
     }
-    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; }
+    STATE_INDEPENDENT_E get_independent_state(void) {
+        return independent_state;
+    }
     void solveGetBrushResponse(int data);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);
@@ -184,47 +223,84 @@ public slots:
     void updateHIDComboBox(QComboBox* comboBox);
 
     // --- 协议上行虚槽（子类 override；由 onProtocolReport 按 reportType 分发） ---
-    virtual void getTestValue(const int, const QString) {}
-    virtual void canGoNextMechine(int) {}
-    virtual void refreshCameraControl(ProtocolCameraControlData) {}
-    virtual void refreshLedControlState(ProtocolLedControlData) {}
-    virtual void refreshPressSensorData(ProtocolPressSampleData) {}
-    virtual void refreshAmplitudeData(QString) {}
-    virtual void refreshButton(ProtocolButtonStateData) {}
-    virtual void refreshBrushControlState(ProtocolBrushControlData) {}
-    virtual void refreshImuCaliResult(ProtocolImuCalibResultData) {}
-    virtual void refreshImuData(ProtocolImuSampleData) {}
+    virtual void getTestValue(const int, const QString) {
+    }
+    virtual void canGoNextMechine(int) {
+    }
+    virtual void refreshCameraControl(ProtocolCameraControlData) {
+    }
+    virtual void refreshLedControlState(ProtocolLedControlData) {
+    }
+    virtual void refreshPressSensorData(ProtocolPressSampleData) {
+    }
+    virtual void refreshAmplitudeData(QString) {
+    }
+    virtual void refreshButton(ProtocolButtonStateData) {
+    }
+    virtual void refreshBrushControlState(ProtocolBrushControlData) {
+    }
+    virtual void refreshImuCaliResult(ProtocolImuCalibResultData) {
+    }
+    virtual void refreshImuData(ProtocolImuSampleData) {
+    }
     virtual void refreshPbData(QString);
-    virtual void refreshMotorCaliMsg(QString) {}
-    virtual void refreshBleRssi(QString) {}
-    virtual void refreshWifiRssi(QString) {}
-    virtual void refreshPressCalibData(ProtocolPressCalibResultData) {}
-    virtual void refreshDongleWifi(QString) {}
+    virtual void refreshMotorCaliMsg(QString) {
+    }
+    virtual void refreshBleRssi(QString) {
+    }
+    virtual void refreshWifiRssi(QString) {
+    }
+    virtual void refreshPressCalibData(ProtocolPressCalibResultData) {
+    }
+    virtual void refreshDongleWifi(QString) {
+    }
     virtual void refreshDongleVersion(QString);
-    virtual void refreshWifiIp(QString) {}
-    virtual void refreshBleState(int) {}
-    virtual void refreshWifiMsg(QString) {}
-    virtual void refreshWifiState(int) {}
-    virtual void refreshBaseData(ProtocolBaseInfoData) {}
-    virtual void refreshBattaryData(ProtocolBatteryData) {}
-    virtual void refreshMusicState(ProtocolMusicStateData) {}
-    virtual void refreshSn(ProtocolSnData) {}
-    virtual void refreshLcdControl(ProtocolLcdControlData) {}
-    virtual void refreshPeriphData(ProtocolPeriphStateData) {}
-    virtual void refreshRssiRead(ProtocolRssiData) {}
-    virtual void refreshChargeCurrentRead(ProtocolChargeCurrentData) {}
-    virtual void refreshKeySignalRead(ProtocolKeyCapData) {}
-    virtual void refreshTupleData(ProtocolTupleData) {}
-    virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
-    virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
-    virtual void refreshAmmeterData(QString) {}
-    virtual void refreshDongleUartState(int) {}
-    virtual void refreshUsbUartState(int) {}
-    virtual void refreshJigUartState(int) {}
-    virtual void refreshProductUartState(int) {}
-    virtual void processReceivedData(const QByteArray&) {}
+    virtual void refreshWifiIp(QString) {
+    }
+    virtual void refreshBleState(int) {
+    }
+    virtual void refreshWifiMsg(QString) {
+    }
+    virtual void refreshWifiState(int) {
+    }
+    virtual void refreshBaseData(ProtocolBaseInfoData) {
+    }
+    virtual void refreshBattaryData(ProtocolBatteryData) {
+    }
+    virtual void refreshMusicState(ProtocolMusicStateData) {
+    }
+    virtual void refreshSn(ProtocolSnData) {
+    }
+    virtual void refreshLcdControl(ProtocolLcdControlData) {
+    }
+    virtual void refreshPeriphData(ProtocolPeriphStateData) {
+    }
+    virtual void refreshRssiRead(ProtocolRssiData) {
+    }
+    virtual void refreshChargeCurrentRead(ProtocolChargeCurrentData) {
+    }
+    virtual void refreshKeySignalRead(ProtocolKeyCapData) {
+    }
+    virtual void refreshTupleData(ProtocolTupleData) {
+    }
+    virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {
+    }
+    virtual void refreshAgingStatus(ProtocolAgingStatusData) {
+    }
+    virtual void refreshAmmeterData(QString) {
+    }
+    virtual void refreshDongleUartState(int) {
+    }
+    virtual void refreshUsbUartState(int) {
+    }
+    virtual void refreshJigUartState(int) {
+    }
+    virtual void refreshProductUartState(int) {
+    }
+    virtual void processReceivedData(const QByteArray&) {
+    }
 
-protected:
+  protected:
     /** 产测协议（Qpb/Qfctp）上行分发 */
     virtual void onProtocolReport(const ProtocolReport& report);
     /** Dongle AT 上行分发 */
@@ -238,7 +314,7 @@ protected:
     void closeEvent(QCloseEvent* event) override;
     void resetVisaBackend();
 
-private:
+  private:
     QString receivedData = "";
     STATE_INDEPENDENT_E independent_state = STATE_INVALID;
     void initData();
@@ -247,22 +323,22 @@ private:
     bool isCommandRetryResponseAccepted(const QObject* source) const;
     void onCommandRetryTimerTimeout();
 
-private slots:
+  private slots:
     void refreshMesState(int state);
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
     void send_dongle_serialPort_state(int);
-    void refreshUsbSerialPortState(int);
-    void refreshJigSerialPortState(int);
-    void refreshProductSerialPortState(int);
-    void sendProcessInspection(MesPacketData);
-    void send_end_testPass(MesPacketData);
-    void getMesTestValue(MesPacketData);
+    void send_usb_serialPort_state(int);
+    void send_jig_serialPort_state(int);
+    void send_product_serialPort_state(int);
+    void send_process_inspection(MesPacketData);
+    void send_end_test_pass(MesPacketData);
+    void send_mes_test_value(MesPacketData);
     void send_kill_test(int data);
     void send_end_test(int data);
 };
 
-#endif  // TEST_BASE_H
+#endif // TEST_BASE_H

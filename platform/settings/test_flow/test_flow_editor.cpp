@@ -35,7 +35,7 @@
 #include <QVBoxLayout>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -81,7 +81,7 @@ bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlo
     return true;
 }
 
-}  // namespace
+} // namespace
 
 // ---------- TestCaseBlock ----------
 
@@ -184,10 +184,10 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     menu.exec(event->globalPos());
 }
 
-
 // ---------- TestFlowEditor ----------
 
-TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {}
+TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {
+}
 
 void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                             QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
@@ -293,14 +293,12 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                 if (names.isEmpty())
                     return;
 
-                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QLatin1Char('、'))
-                                                                + QStringLiteral(" 等 %1 项").arg(names.count())
+                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QLatin1Char('、')) + QStringLiteral(" 等 %1 项").arg(names.count())
                                                           : names.join(QLatin1Char('、'));
                 if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
                                           QStringLiteral("将永久删除 test_case 下以下功能块 ini：\n%1\n\n"
                                                          "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
-                                              .arg(preview))
-                    != QMessageBox::Yes) {
+                                              .arg(preview)) != QMessageBox::Yes) {
                     return;
                 }
 
@@ -694,8 +692,7 @@ void TestFlowEditor::promptRemoveCurrentFlowStation() {
     if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
                               QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\n"
                                              "不会删除 test_case 下的功能块 ini。")
-                                  .arg(label))
-        != QMessageBox::Yes) {
+                                  .arg(label)) != QMessageBox::Yes) {
         return;
     }
     QString err;
@@ -824,8 +821,7 @@ bool TestFlowEditor::hasUnsavedChanges() const {
         return false;
     if (!flowEntriesEqual(currentFlowEntries(), savedEntriesSnapshot_))
         return true;
-    if (stopFlowOnTestFailCheck_
-        && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
+    if (stopFlowOnTestFailCheck_ && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
         return true;
     }
     return false;

@@ -4,12 +4,11 @@
 #include <QObject>
 #include <QMutex>
 
-class AppInit : public QObject
-{
+class AppInit : public QObject {
     Q_OBJECT
-public:
-    explicit AppInit(QObject *parent = 0);
-    static AppInit *Instance() {
+  public:
+    explicit AppInit(QObject* parent = 0);
+    static AppInit* Instance() {
         static QMutex mutex;
         if (!self) {
             QMutexLocker locker(&mutex);
@@ -22,15 +21,15 @@ public:
 
     void start();
 
-protected:
-    bool eventFilter(QObject *obj, QEvent *evt);
+  protected:
+    bool eventFilter(QObject* obj, QEvent* evt);
 
-private:
-    static AppInit *self;
+  private:
+    static AppInit* self;
 
-signals:
+  signals:
 
-public slots:
+  public slots:
 };
 
 #endif // APPINIT_H

@@ -5,16 +5,14 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-QString plcBoolText(bool on)
-{
+QString plcBoolText(bool on) {
     return on ? QStringLiteral("开启") : QStringLiteral("关闭");
 }
 
-PlcStationConfig PlcStationConfig::fromSettings(int stationIndex)
-{
+PlcStationConfig PlcStationConfig::fromSettings(int stationIndex) {
     PlcStationConfig cfg;
     const int st = qMax(1, stationIndex);
     cfg.stationIndex = st;
@@ -26,7 +24,7 @@ PlcStationConfig PlcStationConfig::fromSettings(int stationIndex)
                    .toInt();
     cfg.unitId = quint8(SETTINGS.value(QStringLiteral("PLC/UnitId_Station%1").arg(st),
                                        SETTINGS.value(QStringLiteral("PLC/UnitId"), 1))
-                          .toUInt());
+                            .toUInt());
     cfg.mCoilAddressOffset =
         SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset_Station%1").arg(st),
                        SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset"), 0))
@@ -47,8 +45,8 @@ PlcStationConfig PlcStationConfig::fromSettings(int stationIndex)
     } else {
         const int globalForward = SETTINGS.value(QStringLiteral("PLC/SwitchForwardM"), -1).toInt();
         cfg.switchForwardM = globalForward >= 0
-                                   ? globalForward
-                                   : cfg.mBase + SETTINGS.value(QStringLiteral("PLC/SwitchForwardOffset"), 12).toInt();
+            ? globalForward
+            : cfg.mBase + SETTINGS.value(QStringLiteral("PLC/SwitchForwardOffset"), 12).toInt();
     }
 
     const int perPress = SETTINGS.value(QStringLiteral("PLC/SwitchPressM_Station%1").arg(st), -1).toInt();
@@ -96,8 +94,8 @@ PlcStationConfig PlcStationConfig::fromSettings(int stationIndex)
     } else {
         const int globalKeyDone = SETTINGS.value(QStringLiteral("PLC/KeyDoneM"), -1).toInt();
         cfg.keyDoneM = globalKeyDone >= 0
-                           ? globalKeyDone
-                           : cfg.mBase + SETTINGS.value(QStringLiteral("PLC/KeyDoneOffsetFromMBase"), 10).toInt();
+            ? globalKeyDone
+            : cfg.mBase + SETTINGS.value(QStringLiteral("PLC/KeyDoneOffsetFromMBase"), 10).toInt();
     }
 
     const int perReset = SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM_Station%1").arg(st), -1).toInt();

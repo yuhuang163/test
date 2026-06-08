@@ -1,7 +1,7 @@
 #include "qlog.h"
 
 #ifdef Q_OS_WIN
-#    include "qlog_win.h"
+#include "qlog_win.h"
 #endif
 
 #include <QDateTime>
@@ -17,7 +17,7 @@
 #include "common_utils.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -79,7 +79,7 @@ void saveUartRawLogImpl(int txrx, const QByteArray& data, const QString& fileNam
     logFile.close();
 }
 
-}  // namespace
+} // namespace
 
 void qlogQtMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
     Qlog::handleQtMessage(type, context, msg);
@@ -102,21 +102,21 @@ void Qlog::showlog(const QString& msg, int machineIndex, QPlainTextEdit* msgEdit
 void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
     QString text;
     switch (type) {
-        case QtInfoMsg:
-            text = QStringLiteral("[Info]");
-            break;
-        case QtDebugMsg:
-            text = QStringLiteral("[Debug]");
-            break;
-        case QtWarningMsg:
-            text = QStringLiteral("[Warning]");
-            break;
-        case QtCriticalMsg:
-            text = QStringLiteral("[Critical]");
-            break;
-        case QtFatalMsg:
-            text = QStringLiteral("[Fatal]");
-            break;
+    case QtInfoMsg:
+        text = QStringLiteral("[Info]");
+        break;
+    case QtDebugMsg:
+        text = QStringLiteral("[Debug]");
+        break;
+    case QtWarningMsg:
+        text = QStringLiteral("[Warning]");
+        break;
+    case QtCriticalMsg:
+        text = QStringLiteral("[Critical]");
+        break;
+    case QtFatalMsg:
+        text = QStringLiteral("[Fatal]");
+        break;
     }
 
     const QString currentDate = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz ddd"));
@@ -142,7 +142,7 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
 
     const QString hostName = QSysInfo::machineHostName();
     const QString fileName = hostName + QStringLiteral("_上位机日志_") + fileNumber + QLatin1Char('_') +
-                             CommonUtils::formatDateIso() + QStringLiteral(".txt");
+        CommonUtils::formatDateIso() + QStringLiteral(".txt");
     const QString filePath = CommonUtils::joinPath(folderName, fileName);
 
     QFile file(filePath);
@@ -164,7 +164,7 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
 void Qlog::saveDongleUartLog(int machineIndex, const QString& data) {
     const QString folderName = logRootDir() + QStringLiteral("/dongle的log");
     const QString fileName = QStringLiteral("dongle日志_") + QString::number(machineIndex) + QLatin1Char('_') +
-                             CommonUtils::dateStampYmd() + QStringLiteral(".log");
+        CommonUtils::dateStampYmd() + QStringLiteral(".log");
     appendTextLog(folderName, fileName, data, false);
 }
 
@@ -197,9 +197,9 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         QTextStream stream(&file);
-        const QStringList headers = {QStringLiteral("sn"),     QStringLiteral("上位机版本"),
+        const QStringList headers = {QStringLiteral("sn"), QStringLiteral("上位机版本"),
                                      QStringLiteral("mac地址"), QStringLiteral("时间戳"),
-                                     QStringLiteral("测试项"),  QStringLiteral("测试数据"),
+                                     QStringLiteral("测试项"), QStringLiteral("测试数据"),
                                      QStringLiteral("测试结果"), QStringLiteral("测试要求")};
         const QString timestamp = CommonUtils::dateTimeStamp();
 
@@ -248,5 +248,5 @@ void Qlog::setCrashReportExtraInfo(const QString& info) {
 #endif
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif

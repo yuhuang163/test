@@ -1,4 +1,4 @@
-﻿#include "device_cmd_manifest.h"
+#include "device_cmd_manifest.h"
 
 namespace {
 
@@ -129,7 +129,7 @@ const Row kRows[] = {
     {DeviceCmd::DeviceExceptionRead, "DeviceExceptionRead", u8"设备异常", DeviceCmdParamKind::None, nullptr, kGet},
 };
 
-}  // namespace
+} // namespace
 
 namespace DeviceCmdManifest {
 
@@ -158,4 +158,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-}  // namespace DeviceCmdManifest
+} // namespace DeviceCmdManifest

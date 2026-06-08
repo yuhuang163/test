@@ -21,7 +21,7 @@
 #include <QWidget>
 
 #ifdef quc
-#if (QT_VERSION < QT_VERSION_CHECK(5,7,0))
+#if (QT_VERSION < QT_VERSION_CHECK(5, 7, 0))
 #include <QtDesigner/QDesignerExportWidget>
 #else
 #include <QtUiPlugin/QDesignerExportWidget>
@@ -62,124 +62,124 @@ class SliderBar : public QWidget
     Q_PROPERTY(bool horizontal READ getHorizontal WRITE setHorizontal)
     Q_PROPERTY(bool flat READ getFlat WRITE setFlat)
 
-public:
+  public:
     enum BarStyle {
-        BarStyle_Rect = 0,              //圆角矩形
-        BarStyle_Line_Top = 1,          //上边线条
-        BarStyle_Line_Right = 2,        //右边线条
-        BarStyle_Line_Bottom = 3,       //下边线条
-        BarStyle_Line_Left = 4          //左边线条
+        BarStyle_Rect = 0,        //圆角矩形
+        BarStyle_Line_Top = 1,    //上边线条
+        BarStyle_Line_Right = 2,  //右边线条
+        BarStyle_Line_Bottom = 3, //下边线条
+        BarStyle_Line_Left = 4    //左边线条
     };
 
-    explicit SliderBar(QWidget *parent = 0);
+    explicit SliderBar(QWidget* parent = 0);
     ~SliderBar();
 
-protected:
-    void resizeEvent(QResizeEvent *);
-    void mousePressEvent(QMouseEvent *);
-    void keyPressEvent(QKeyEvent *);
-    void paintEvent(QPaintEvent *);
-    void drawBg(QPainter *painter);
-    void drawBar(QPainter *painter);
-    void drawText(QPainter *painter);
+  protected:
+    void resizeEvent(QResizeEvent*);
+    void mousePressEvent(QMouseEvent*);
+    void keyPressEvent(QKeyEvent*);
+    void paintEvent(QPaintEvent*);
+    void drawBg(QPainter* painter);
+    void drawBar(QPainter* painter);
+    void drawText(QPainter* painter);
 
-private:
-    QColor bgColorStart;            //导航条主背景渐变开始颜色
-    QColor bgColorEnd;              //导航条主背景渐变结束颜色
+  private:
+    QColor bgColorStart; //导航条主背景渐变开始颜色
+    QColor bgColorEnd;   //导航条主背景渐变结束颜色
 
-    QColor barColorStart;           //导航条当前条目渐变开始颜色
-    QColor barColorEnd;             //导航条当前条目渐变结束颜色
+    QColor barColorStart; //导航条当前条目渐变开始颜色
+    QColor barColorEnd;   //导航条当前条目渐变结束颜色
 
-    QColor textNormalColor;         //文字正常颜色
-    QColor textSelectColor;         //文字选中颜色
+    QColor textNormalColor; //文字正常颜色
+    QColor textSelectColor; //文字选中颜色
 
-    QColor old_bgColorEnd;          //用于扁平化切换
-    QColor old_barColorEnd;         //用于扁平化切换
+    QColor old_bgColorEnd;  //用于扁平化切换
+    QColor old_barColorEnd; //用于扁平化切换
 
-    QString items;                  //所有条目文字信息
-    int currentIndex;               //当前选中条目索引
-    QString currentItem;            //当前选中条目文字
+    QString items;       //所有条目文字信息
+    int currentIndex;    //当前选中条目索引
+    QString currentItem; //当前选中条目文字
 
-    int bgRadius;                   //背景圆角半径
-    int barRadius;                  //选中条目背景圆角半径
-    int space;                      //条目元素之间的间距
+    int bgRadius;  //背景圆角半径
+    int barRadius; //选中条目背景圆角半径
+    int space;     //条目元素之间的间距
 
-    int lineWidth;                  //线条宽度
-    QColor lineColor;               //线条颜色
+    int lineWidth;    //线条宽度
+    QColor lineColor; //线条颜色
 
-    BarStyle barStyle;              //选中元素样式
+    BarStyle barStyle; //选中元素样式
 
-    bool keyMove;                   //是否支持按键移动
-    bool horizontal;                //是否横向显示
-    bool flat;                      //是否扁平化
+    bool keyMove;    //是否支持按键移动
+    bool horizontal; //是否横向显示
+    bool flat;       //是否扁平化
 
     //元素集合,成对出现,元素的名字,矩形区域范围
-    QVector<QPair<QString, QRectF> > listItem;
+    QVector<QPair<QString, QRectF>> listItem;
 
-    QRectF barRect, targetRect;     //选中区域和目标区域的矩形
-    double barLen, targetLen;       //选中区域和目标区域的长度
+    QRectF barRect, targetRect; //选中区域和目标区域的矩形
+    double barLen, targetLen;   //选中区域和目标区域的长度
 
-    double initLen;                 //导航条的长度
-    int step;                       //每次移动的步长
-    int initStep(int distance);     //计算步长
+    double initLen;             //导航条的长度
+    int step;                   //每次移动的步长
+    int initStep(int distance); //计算步长
 
-    bool isForward;                 //是否往前移动
-    bool isVirgin;                  //是否首次处理
-    QTimer *timer;                  //滑动绘制定时器
+    bool isForward; //是否往前移动
+    bool isVirgin;  //是否首次处理
+    QTimer* timer;  //滑动绘制定时器
 
-private slots:
+  private slots:
     void slide();
 
-public:
-    QColor getBgColorStart()        const;
-    QColor getBgColorEnd()          const;
+  public:
+    QColor getBgColorStart() const;
+    QColor getBgColorEnd() const;
 
-    QColor getBarColorStart()       const;
-    QColor getBarColorEnd()         const;
+    QColor getBarColorStart() const;
+    QColor getBarColorEnd() const;
 
-    QColor getTextNormalColor()     const;
-    QColor getTextSelectColor()     const;
+    QColor getTextNormalColor() const;
+    QColor getTextSelectColor() const;
 
-    QString getItems()              const;
-    int getCurrentIndex()           const;
-    QString getCurrentItem()        const;
+    QString getItems() const;
+    int getCurrentIndex() const;
+    QString getCurrentItem() const;
 
-    int getBgRadius()               const;
-    int getBarRadius()              const;
-    int getSpace()                  const;
+    int getBgRadius() const;
+    int getBarRadius() const;
+    int getSpace() const;
 
-    int getLineWidth()              const;
-    QColor getLineColor()           const;
+    int getLineWidth() const;
+    QColor getLineColor() const;
 
-    BarStyle getBarStyle()          const;
+    BarStyle getBarStyle() const;
 
-    bool getKeyMove()               const;
-    bool getHorizontal()            const;
-    bool getFlat()                  const;
+    bool getKeyMove() const;
+    bool getHorizontal() const;
+    bool getFlat() const;
 
-    QSize sizeHint()                const;
-    QSize minimumSizeHint()         const;
+    QSize sizeHint() const;
+    QSize minimumSizeHint() const;
 
-public Q_SLOTS:
+  public Q_SLOTS:
     //删除所有条目
     void clearItem();
 
     //设置导航条主背景渐变色
-    void setBgColorStart(const QColor &bgColorStart);
-    void setBgColorEnd(const QColor &bgColorEnd);
+    void setBgColorStart(const QColor& bgColorStart);
+    void setBgColorEnd(const QColor& bgColorEnd);
 
     //设置当前条目选中背景渐变色
-    void setBarColorStart(const QColor &barColorStart);
-    void setBarColorEnd(const QColor &barColorEnd);
+    void setBarColorStart(const QColor& barColorStart);
+    void setBarColorEnd(const QColor& barColorEnd);
 
     //设置文字颜色
-    void setTextNormalColor(const QColor &textNormalColor);
-    void setTextSelectColor(const QColor &textSelectColor);
+    void setTextNormalColor(const QColor& textNormalColor);
+    void setTextSelectColor(const QColor& textSelectColor);
 
     //设置子项元素及当前索引及值
-    void setItems(const QString &items);
+    void setItems(const QString& items);
     void setCurrentIndex(int index);
-    void setCurrentItem(const QString &item);
+    void setCurrentItem(const QString& item);
 
     //设置边框圆角
     void setBgRadius(int bgRadius);
@@ -190,7 +190,7 @@ public Q_SLOTS:
     //设置线条宽度
     void setLineWidth(int lineWidth);
     //设置线条颜色
-    void setLineColor(const QColor &lineColor);
+    void setLineColor(const QColor& lineColor);
 
     //设置选中元素样式
     void setBarStyle(BarStyle barStyle);
@@ -213,13 +213,13 @@ public Q_SLOTS:
     //移动到指定索引条目
     void moveTo(int index);
     //移动到指定文字条目
-    void moveTo(const QString &item);
+    void moveTo(const QString& item);
     //移动到指定坐标位置条目
-    void moveTo(const QPointF &point);
+    void moveTo(const QPointF& point);
 
-Q_SIGNALS:
+  Q_SIGNALS:
     //当前条目改变信号,index为当前条目索引索引 item为当前条目文字
-    void currentItemChanged(int index, const QString &item);
+    void currentItemChanged(int index, const QString& item);
 };
 
 #endif // SLIDERBAR_H

@@ -4,8 +4,7 @@
 #include "qtimer.h"
 #include "qdebug.h"
 
-SliderBar::SliderBar(QWidget *parent) :	QWidget(parent)
-{
+SliderBar::SliderBar(QWidget* parent) : QWidget(parent) {
     bgColorStart = QColor(121, 121, 121);
     bgColorEnd = QColor(78, 78, 78);
     old_bgColorEnd = bgColorEnd;
@@ -45,15 +44,13 @@ SliderBar::SliderBar(QWidget *parent) :	QWidget(parent)
     connect(timer, SIGNAL(timeout()), this, SLOT(slide()));
 }
 
-SliderBar::~SliderBar()
-{
+SliderBar::~SliderBar() {
     if (timer->isActive()) {
         timer->stop();
     }
 }
 
-void SliderBar::resizeEvent(QResizeEvent *)
-{
+void SliderBar::resizeEvent(QResizeEvent*) {
     int index = 0;
     int count = listItem.count();
 
@@ -76,13 +73,11 @@ void SliderBar::resizeEvent(QResizeEvent *)
     moveTo(index);
 }
 
-void SliderBar::mousePressEvent(QMouseEvent *e)
-{
+void SliderBar::mousePressEvent(QMouseEvent* e) {
     moveTo(e->pos());
 }
 
-void SliderBar::keyPressEvent(QKeyEvent *keyEvent)
-{
+void SliderBar::keyPressEvent(QKeyEvent* keyEvent) {
     if (!keyMove) {
         return;
     }
@@ -94,8 +89,7 @@ void SliderBar::keyPressEvent(QKeyEvent *keyEvent)
     }
 }
 
-void SliderBar::paintEvent(QPaintEvent *)
-{
+void SliderBar::paintEvent(QPaintEvent*) {
     //绘制准备工作,启用反锯齿
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
@@ -108,8 +102,7 @@ void SliderBar::paintEvent(QPaintEvent *)
     drawText(&painter);
 }
 
-void SliderBar::drawBg(QPainter *painter)
-{
+void SliderBar::drawBg(QPainter* painter) {
     painter->save();
     painter->setPen(Qt::NoPen);
     QLinearGradient bgGradient(QPoint(0, 0), QPoint(0, height()));
@@ -120,8 +113,7 @@ void SliderBar::drawBg(QPainter *painter)
     painter->restore();
 }
 
-void SliderBar::drawBar(QPainter *painter)
-{
+void SliderBar::drawBar(QPainter* painter) {
     painter->save();
     QPen pen = painter->pen();
 
@@ -162,8 +154,7 @@ void SliderBar::drawBar(QPainter *painter)
     painter->restore();
 }
 
-void SliderBar::drawText(QPainter *painter)
-{
+void SliderBar::drawText(QPainter* painter) {
     painter->save();
 
     QFont textFont;
@@ -185,9 +176,9 @@ void SliderBar::drawText(QPainter *painter)
     }
 
     if (horizontal) {
-        textLen  = painter->fontMetrics().width(longText);
+        textLen = painter->fontMetrics().width(longText);
     } else {
-        textLen  = painter->fontMetrics().height();
+        textLen = painter->fontMetrics().height();
     }
 
     //逐个绘制元素队列中的文字及文字背景
@@ -225,8 +216,7 @@ void SliderBar::drawText(QPainter *painter)
     painter->restore();
 }
 
-int SliderBar::initStep(int distance)
-{
+int SliderBar::initStep(int distance) {
     int n = 1;
 
     while (1) {
@@ -240,8 +230,7 @@ int SliderBar::initStep(int distance)
     return n * 1.4;
 }
 
-void SliderBar::slide()
-{
+void SliderBar::slide() {
     if (step > 1) {
         step--;
     }
@@ -277,122 +266,99 @@ void SliderBar::slide()
     update();
 }
 
-QColor SliderBar::getBgColorStart() const
-{
+QColor SliderBar::getBgColorStart() const {
     return this->bgColorStart;
 }
 
-QColor SliderBar::getBgColorEnd() const
-{
+QColor SliderBar::getBgColorEnd() const {
     return this->bgColorEnd;
 }
 
-QColor SliderBar::getBarColorStart() const
-{
+QColor SliderBar::getBarColorStart() const {
     return this->barColorStart;
 }
 
-QColor SliderBar::getBarColorEnd() const
-{
+QColor SliderBar::getBarColorEnd() const {
     return this->barColorEnd;
 }
 
-QColor SliderBar::getTextNormalColor() const
-{
+QColor SliderBar::getTextNormalColor() const {
     return this->textNormalColor;
 }
 
-QColor SliderBar::getTextSelectColor() const
-{
+QColor SliderBar::getTextSelectColor() const {
     return this->textSelectColor;
 }
 
-QString SliderBar::getItems() const
-{
+QString SliderBar::getItems() const {
     return this->items;
 }
 
-int SliderBar::getCurrentIndex() const
-{
+int SliderBar::getCurrentIndex() const {
     return this->currentIndex;
 }
 
-QString SliderBar::getCurrentItem() const
-{
+QString SliderBar::getCurrentItem() const {
     return this->currentItem;
 }
 
-int SliderBar::getBgRadius() const
-{
+int SliderBar::getBgRadius() const {
     return this->bgRadius;
 }
 
-int SliderBar::getBarRadius() const
-{
+int SliderBar::getBarRadius() const {
     return this->barRadius;
 }
 
-int SliderBar::getSpace() const
-{
+int SliderBar::getSpace() const {
     return this->space;
 }
 
-int SliderBar::getLineWidth() const
-{
+int SliderBar::getLineWidth() const {
     return this->lineWidth;
 }
 
-QColor SliderBar::getLineColor() const
-{
+QColor SliderBar::getLineColor() const {
     return this->lineColor;
 }
 
-SliderBar::BarStyle SliderBar::getBarStyle() const
-{
+SliderBar::BarStyle SliderBar::getBarStyle() const {
     return this->barStyle;
 }
 
-bool SliderBar::getKeyMove() const
-{
+bool SliderBar::getKeyMove() const {
     return this->keyMove;
 }
 
-bool SliderBar::getHorizontal() const
-{
+bool SliderBar::getHorizontal() const {
     return this->horizontal;
 }
 
-bool SliderBar::getFlat() const
-{
+bool SliderBar::getFlat() const {
     return this->flat;
 }
 
-QSize SliderBar::sizeHint() const
-{
+QSize SliderBar::sizeHint() const {
     return QSize(500, 30);
 }
 
-QSize SliderBar::minimumSizeHint() const
-{
+QSize SliderBar::minimumSizeHint() const {
     return QSize(30, 30);
 }
 
-void SliderBar::clearItem()
-{
+void SliderBar::clearItem() {
     listItem.clear();
     update();
 }
 
-void SliderBar::setBgColorStart(const QColor &bgColorStart)
-{
+void SliderBar::setBgColorStart(const QColor& bgColorStart) {
     if (this->bgColorStart != bgColorStart) {
         this->bgColorStart = bgColorStart;
         update();
     }
 }
 
-void SliderBar::setBgColorEnd(const QColor &bgColorEnd)
-{
+void SliderBar::setBgColorEnd(const QColor& bgColorEnd) {
     if (this->bgColorEnd != bgColorEnd) {
         this->bgColorEnd = bgColorEnd;
         this->old_bgColorEnd = bgColorEnd;
@@ -400,16 +366,14 @@ void SliderBar::setBgColorEnd(const QColor &bgColorEnd)
     }
 }
 
-void SliderBar::setBarColorStart(const QColor &barColorStart)
-{
+void SliderBar::setBarColorStart(const QColor& barColorStart) {
     if (this->barColorStart != barColorStart) {
         this->barColorStart = barColorStart;
         update();
     }
 }
 
-void SliderBar::setBarColorEnd(const QColor &barColorEnd)
-{
+void SliderBar::setBarColorEnd(const QColor& barColorEnd) {
     if (this->barColorEnd != barColorEnd) {
         this->barColorEnd = barColorEnd;
         this->old_barColorEnd = barColorEnd;
@@ -417,24 +381,21 @@ void SliderBar::setBarColorEnd(const QColor &barColorEnd)
     }
 }
 
-void SliderBar::setTextNormalColor(const QColor &textNormalColor)
-{
+void SliderBar::setTextNormalColor(const QColor& textNormalColor) {
     if (this->textNormalColor != textNormalColor) {
         this->textNormalColor = textNormalColor;
         update();
     }
 }
 
-void SliderBar::setTextSelectColor(const QColor &textSelectColor)
-{
+void SliderBar::setTextSelectColor(const QColor& textSelectColor) {
     if (this->textSelectColor != textSelectColor) {
         this->textSelectColor = textSelectColor;
         update();
     }
 }
 
-void SliderBar::setItems(const QString &items)
-{
+void SliderBar::setItems(const QString& items) {
     this->items = items;
     this->listItem.clear();
 
@@ -446,66 +407,57 @@ void SliderBar::setItems(const QString &items)
     update();
 }
 
-void SliderBar::setCurrentIndex(int index)
-{
+void SliderBar::setCurrentIndex(int index) {
     moveTo(index);
 }
 
-void SliderBar::setCurrentItem(const QString &item)
-{
+void SliderBar::setCurrentItem(const QString& item) {
     moveTo(item);
 }
 
-void SliderBar::setBgRadius(int bgRadius)
-{
+void SliderBar::setBgRadius(int bgRadius) {
     if (this->bgRadius != bgRadius) {
         this->bgRadius = bgRadius;
         update();
     }
 }
 
-void SliderBar::setBarRadius(int barRadius)
-{
+void SliderBar::setBarRadius(int barRadius) {
     if (this->barRadius != barRadius) {
         this->barRadius = barRadius;
         update();
     }
 }
 
-void SliderBar::setSpace(int space)
-{
+void SliderBar::setSpace(int space) {
     if (this->space != space) {
         this->space = space;
         update();
     }
 }
 
-void SliderBar::setLineWidth(int lineWidth)
-{
+void SliderBar::setLineWidth(int lineWidth) {
     if (this->lineWidth != lineWidth) {
         this->lineWidth = lineWidth;
         update();
     }
 }
 
-void SliderBar::setLineColor(const QColor &lineColor)
-{
+void SliderBar::setLineColor(const QColor& lineColor) {
     if (this->lineColor != lineColor) {
         this->lineColor = lineColor;
         update();
     }
 }
 
-void SliderBar::setBarStyle(SliderBar::BarStyle barStyle)
-{
+void SliderBar::setBarStyle(SliderBar::BarStyle barStyle) {
     if (this->barStyle != barStyle) {
         this->barStyle = barStyle;
         update();
     }
 }
 
-void SliderBar::setKeyMove(bool keyMove)
-{
+void SliderBar::setKeyMove(bool keyMove) {
     if (this->keyMove != keyMove) {
         this->keyMove = keyMove;
 
@@ -517,16 +469,14 @@ void SliderBar::setKeyMove(bool keyMove)
     }
 }
 
-void SliderBar::setHorizontal(bool horizontal)
-{
+void SliderBar::setHorizontal(bool horizontal) {
     if (this->horizontal != horizontal) {
         this->horizontal = horizontal;
         update();
     }
 }
 
-void SliderBar::setFlat(bool flat)
-{
+void SliderBar::setFlat(bool flat) {
     if (this->flat != flat) {
         //扁平后将初始颜色赋值给结束颜色达到扁平的效果,如果取消扁平则再次恢复原有的颜色
         if (flat) {
@@ -542,8 +492,7 @@ void SliderBar::setFlat(bool flat)
     }
 }
 
-void SliderBar::moveFirst()
-{
+void SliderBar::moveFirst() {
     int index = 0;
 
     if (currentIndex != index) {
@@ -551,8 +500,7 @@ void SliderBar::moveFirst()
     }
 }
 
-void SliderBar::moveLast()
-{
+void SliderBar::moveLast() {
     int index = listItem.count() - 1;
 
     if (currentIndex != index) {
@@ -560,24 +508,21 @@ void SliderBar::moveLast()
     }
 }
 
-void SliderBar::movePrevious()
-{
+void SliderBar::movePrevious() {
     if (currentIndex > 0) {
         currentIndex--;
         moveTo(currentIndex);
     }
 }
 
-void SliderBar::moveNext()
-{
+void SliderBar::moveNext() {
     if (currentIndex < listItem.count() - 1) {
         currentIndex++;
         moveTo(currentIndex);
     }
 }
 
-void SliderBar::moveTo(int index)
-{
+void SliderBar::moveTo(int index) {
     if (listItem.count() > index) {
         QRectF rec = listItem.at(index).second;
         QPoint pos = QPoint(rec.x(), rec.y());
@@ -585,8 +530,7 @@ void SliderBar::moveTo(int index)
     }
 }
 
-void SliderBar::moveTo(const QString &item)
-{
+void SliderBar::moveTo(const QString& item) {
     int count = listItem.count();
 
     for (int i = 0; i < count; i++) {
@@ -597,8 +541,7 @@ void SliderBar::moveTo(const QString &item)
     }
 }
 
-void SliderBar::moveTo(const QPointF &point)
-{
+void SliderBar::moveTo(const QPointF& point) {
     int count = listItem.count();
 
     for (int i = 0; i < count; i++) {

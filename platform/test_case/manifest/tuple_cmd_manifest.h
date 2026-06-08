@@ -23,6 +23,6 @@ int rowCount();
 const Row* findByCmd(TupleCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
-}  // namespace TupleCmdManifest
+} // namespace TupleCmdManifest
 
-#endif  // PLATFORM_TUPLE_CMD_MANIFEST_H
+#endif // PLATFORM_TUPLE_CMD_MANIFEST_H

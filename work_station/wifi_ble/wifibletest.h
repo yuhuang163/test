@@ -1,4 +1,4 @@
-﻿#ifndef WIFIBLETEST_H
+#ifndef WIFIBLETEST_H
 #define WIFIBLETEST_H
 
 #include <QList>
@@ -17,14 +17,31 @@ class wifibletest;
 class wifibletest : public test_base {
     Q_OBJECT
 
-public:
+  public:
     explicit wifibletest(int index, QWidget* parent = nullptr);
     ~wifibletest();
     void startTask() override;
 
     Ui::wifibletest* ui;
 
-private:
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
+    QComboBox* getNfcComboBox() override { return ui->NfcComboBox; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QLineEdit* getMacLineEdit() override { return ui->getMac; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
+  private:
     // --- 流程状态机 ---
     typedef enum {
         STATE_IDLE = 0,
@@ -171,24 +188,9 @@ private:
     void appendTupleTestResult(const QString& item, const QString& data, const QString& result, const QString& ask = QStringLiteral("通过"));
     void finishTupleFailure(const QString& item, const QString& data, const QString& ask = QStringLiteral("通过"));
 
-private slots:
+  private slots:
     int findNfcDevicePort(QString name);
     void initData();
-
-    // test_base 控件桥接
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
-    QCheckBox* getIsUseMes() override { return ui->isusemes; }
-    QCheckBox* getIsFormMes() override { return ui->isformmes; }
-    QComboBox* getNfcComboBox() override { return ui->NfcComboBox; }
-    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
-    QLineEdit* getMacLineEdit() override { return ui->getMac; }
-    QLineEdit* macInputLineEdit() override { return ui->macInput; }
-    QPlainTextEdit* logEdit() override { return ui->log; }
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
-    QTableWidget* testResultTable() override { return ui->testResultTable; }
-    QLabel* getMesStateQlabel() override { return ui->mes_state; }
-    QPushButton* getEndTestButton() override { return ui->stopTest; }
 
     // 协议上行
     void refreshBleRssi(QString data) override;
@@ -238,10 +240,10 @@ private slots:
     void on_nfc_encode_clicked();
     void on_nfcComFresh_clicked();
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // WIFIBLETEST_H
+#endif // WIFIBLETEST_H

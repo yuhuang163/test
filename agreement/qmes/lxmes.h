@@ -5,10 +5,10 @@
 #include "qmes.h"
 class lxmes : public Qmes {
     Q_OBJECT
-public:
+  public:
     lxmes();
     QString url = "";
-    QString field = "";  // 字段
+    QString field = ""; // 字段
     void LogIn(MesPacketData pack) override;
     void ProcessInspection(MesPacketData pack) override;
     void TestPass(MesPacketData pack) override;
@@ -21,4 +21,4 @@ public:
     //     void send_lxmes_testvalue(const int mechines, QString resultMsg);   // 信号声明
 };
 
-#endif  // LXMES_H
+#endif // LXMES_H

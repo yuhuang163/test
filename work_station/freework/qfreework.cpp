@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -97,19 +97,19 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     const int minTabWidth = maxTextWidth + hPad;
     // updateMainStyle 之后覆盖全局 QTabBar 规则
     bar->setStyleSheet(QStringLiteral(
-                             "QTabBar::tab {"
-                             "  min-width: %1px;"
-                             "  padding: 6px 16px;"
-                             "  font-size: 14px;"
-                             "}"
-                             "QTabBar::tab:selected {"
-                             "  font-weight: bold;"
-                             "}")
-                             .arg(minTabWidth));
+                           "QTabBar::tab {"
+                           "  min-width: %1px;"
+                           "  padding: 6px 16px;"
+                           "  font-size: 14px;"
+                           "}"
+                           "QTabBar::tab:selected {"
+                           "  font-weight: bold;"
+                           "}")
+                           .arg(minTabWidth));
     bar->updateGeometry();
 }
 
-}  // namespace
+} // namespace
 
 void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask) {
     stepRuntime_.done = true;
@@ -125,10 +125,8 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
-
-
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     registerFreeWorkTestCaseHooks();
@@ -139,7 +137,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     setupFreeWorkTabBar(ui->tabWidget);
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -209,7 +207,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     if (product) {
         connect(product, &Qproduct::instrumentStopReceiveSeen, this, &QFreeWork::onProductInstrumentStopReceiveAckForPer);
     }
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
@@ -356,9 +354,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
-            const bool productGet = !caseDef.hook.enabled && !dongleBleConnect
-                                    && caseDef.send.channel == TestCaseSendChannel::Product
-                                    && caseDef.send.action == TestCaseSendAction::Get;
+            const bool productGet = !caseDef.hook.enabled && !dongleBleConnect && caseDef.send.channel == TestCaseSendChannel::Product && caseDef.send.action == TestCaseSendAction::Get;
             if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
@@ -366,8 +362,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     if (stepRuntime_.testData == QLatin1String("-"))
                         stepRuntime_.testData = QStringLiteral("ok");
                 }
-            } else if ((caseDef.hook.enabled || dongleBleConnect)
-                       && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
+            } else if ((caseDef.hook.enabled || dongleBleConnect) && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 if (dongleBleConnect && at->getConnected()) {
@@ -441,7 +436,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.sn = ui->getMac->text();
         pack.instruct_num = QStringLiteral("079");
         if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
+            emit send_end_test_pass(pack);
         }
     } else {
         ui->test_result->setText(QStringLiteral("PASS"));
@@ -453,7 +448,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.sn = ui->getMac->text();
         pack.instruct_num = QStringLiteral("079");
         if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
+            emit send_end_test_pass(pack);
         }
     }
 
@@ -659,11 +654,7 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
                                .arg(configuredKeyId)
                                .arg(capAsk);
         plcKeyCapPollMode_ = true;
-        showlog(testName + QStringLiteral("：治具下压期间读取电容 KK=%1（配置ID=%2 减1），卡控%3，读%4次")
-                    .arg(currentKeyCapRequestKk_)
-                    .arg(configuredKeyId)
-                    .arg(capAsk)
-                    .arg(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt()));
+        showlog(testName + QStringLiteral("：治具下压期间读取电容 KK=%1（配置ID=%2 减1），卡控%3，读%4次").arg(currentKeyCapRequestKk_).arg(configuredKeyId).arg(capAsk).arg(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt()));
     } else {
         showlog(testName + QStringLiteral("：已等待协议按键，将执行PLC整步"));
     }
@@ -744,7 +735,7 @@ void QFreeWork::armPlcBleKeyWaitTimeout() {
         QString tail = QStringLiteral("等待设备按键上报超时");
         if (ph == 3) {
             tail = QStringLiteral("等待左旋上报超时");
-           } else if (ph == 4) {
+        } else if (ph == 4) {
             tail = QStringLiteral("等待右旋上报超时");
         }
         stepRuntime_.testData = plcPart.isEmpty() ? tail : plcPart + QStringLiteral("；") + tail;
@@ -811,7 +802,6 @@ void QFreeWork::closeTestCasePrompt() {
     box->close();
 }
 
-
 void QFreeWork::initData() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -866,8 +856,7 @@ void QFreeWork::initData() {
     TestTime.start();
 }
 
-PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6)
-{
+PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6) {
     PlcV3RunParams params;
     params.stationIndex = getIndex();
     params.keyIndex0To6 = keyIndex0To6;
@@ -876,8 +865,7 @@ PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6)
     return params;
 }
 
-CmwGprfRunParams QFreeWork::makeCmwRunParams(const QString& scenarioLabel, int brushProfile)
-{
+CmwGprfRunParams QFreeWork::makeCmwRunParams(const QString& scenarioLabel, int brushProfile) {
     CmwGprfRunParams params;
     params.visa = visa;
     params.scenarioLabel = scenarioLabel;
@@ -887,8 +875,7 @@ CmwGprfRunParams QFreeWork::makeCmwRunParams(const QString& scenarioLabel, int b
     return params;
 }
 
-void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command command, bool finishStepRuntime)
-{
+void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command command, bool finishStepRuntime) {
     if (!result.ok) {
         stepRuntime_.pass = false;
         stepRuntime_.testData = result.summary;
@@ -910,8 +897,8 @@ void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command co
         } else if (stepRuntime_.done) {
             if (!result.summary.isEmpty()) {
                 stepRuntime_.testData = stepRuntime_.testData.isEmpty()
-                                            ? result.summary
-                                            : QStringLiteral("%1；%2").arg(result.summary, stepRuntime_.testData);
+                    ? result.summary
+                    : QStringLiteral("%1；%2").arg(result.summary, stepRuntime_.testData);
             }
             plcKeyBlePlcOkSummary_.clear();
         } else {
@@ -929,8 +916,7 @@ void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command co
     stepRuntime_.done = true;
 }
 
-PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool finishStepRuntime)
-{
+PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool finishStepRuntime) {
     Q_UNUSED(finishStepRuntime);
     PlcV3RunParams params = makePlcRunParams(keyIndex0To6);
     if (command == PlcV3Command::TouchKey && plcKeyCapPollMode_) {
@@ -942,8 +928,7 @@ PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool 
 }
 
 CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel, int brushProfile,
-                                       int alignedPostTrigHoldMs, bool* outRanBurst)
-{
+                                       int alignedPostTrigHoldMs, bool* outRanBurst) {
     CmwGprfRunParams params = makeCmwRunParams(scenarioLabel, brushProfile);
     params.alignedPostTrigHoldMs = alignedPostTrigHoldMs;
     params.outRanBurst = outRanBurst;
@@ -960,21 +945,18 @@ void QFreeWork::runPlcModbusConnectTest() {
     applyPlcStepResult(result, PlcV3Command::ModbusConnectTest);
 }
 
-void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime)
-{
+void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchKey, keyIndex0To6, finishStepRuntime);
     applyPlcStepResult(result, PlcV3Command::TouchKey, finishStepRuntime);
 }
 
-void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime)
-{
+void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
     Q_UNUSED(finishStepRuntime);
     const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchSwitch);
     applyPlcStepResult(result, PlcV3Command::TouchSwitch, finishStepRuntime);
 }
 
-bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile)
-{
+bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile) {
     const CmwGprfRunResult result =
         runCmwGprf(CmwGprfCommand::ParallelBurstForProfile, QString(), brushProfile);
     if (detail) {
@@ -1028,7 +1010,7 @@ void QFreeWork::on_macInput_returnPressed() {
     } else {
         macAddress = ui->macInput->text();
         if (ui->just_banding->checkState()) {
-            bindingMacSn(macAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
+            bindingMacSn(macAddress, ui->getMac->text()); //获取测试数据不要绑定测试mac——sn
             ui->test_result->setText("PASS");
             ui->test_result->setStyleSheet(
                 "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
@@ -1059,7 +1041,7 @@ void QFreeWork::on_pushButton_clicked() {
 }
 
 void QFreeWork::on_pushButton_2_clicked() {
-    at->set(DongleCmd::BleLog, 1);  // 日志开
+    at->set(DongleCmd::BleLog, 1); // 日志开
 }
 
 void QFreeWork::on_getMac_returnPressed() {
@@ -1087,13 +1069,12 @@ void QFreeWork::on_getMac_returnPressed() {
     }
     expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
     showlog("正在查询mac地址");
-    processGetMesTestValue();     // mes获取
+    processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取
     if (ui->isusemes->checkState()) {
         processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-
 }
 
 void QFreeWork::processInspection(QString inputSnText) {
@@ -1106,13 +1087,13 @@ void QFreeWork::processInspection(QString inputSnText) {
 
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -1134,20 +1115,20 @@ void QFreeWork::processGetMesTestValue() {
 
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 void QFreeWork::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+    QFile file("mac_sn.txt");             // 创建一个文件对象
+    if (file.open(QIODevice::ReadOnly)) { // 打开文件
         QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
+        while (!in.atEnd()) {                     // 逐行读取文件
+            QString line = in.readLine();         // 读取一行
+            QStringList fields = line.split(","); // 将行按照逗号分隔成两个字段
             if (fields.count() >= 2) {
-                QString sn = fields.at(0);   // 第一个字段是sn
-                QString mac = fields.at(1);  // 第二个字段是mac
-                if (sn == sn_to_search) {    // 检查是否是待检索的sn
+                QString sn = fields.at(0);  // 第一个字段是sn
+                QString mac = fields.at(1); // 第二个字段是mac
+                if (sn == sn_to_search) {   // 检查是否是待检索的sn
                     {
                         ui->macInput->setText(mac);
                         on_macInput_returnPressed();
@@ -1160,7 +1141,7 @@ void QFreeWork::getMac(QString sn_to_search) {
             }
         }
 
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
     }
     if (!ui->isformmes->isChecked() && ui->macInput->text().isEmpty()) {
         ui->getMac->clear();
@@ -1254,15 +1235,15 @@ void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
 
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
-    QFile file(path);  // 创建一个文件对象
+    QFile file(path); // 创建一个文件对象
 
-    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {  //
-        QTextStream in(&file);                                // 创建一个文本流对象
-        QStringList lines;                                    // 用于存储文件中的每一行数据
-        bool found = false;                                   // 标记是否找到了相同的SN
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) { //
+        QTextStream in(&file);                               // 创建一个文本流对象
+        QStringList lines;                                   // 用于存储文件中的每一行数据
+        bool found = false;                                  // 标记是否找到了相同的SN
         while (!in.atEnd()) {
-            QString line = in.readLine();         // 逐行读取文件
-            QStringList parts = line.split(",");  // 以逗号分隔每行数据
+            QString line = in.readLine();        // 逐行读取文件
+            QStringList parts = line.split(","); // 以逗号分隔每行数据
             if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
                 lines << (bindingSn + "," + bindingMac);
@@ -1282,7 +1263,7 @@ void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
         for (const QString& line : lines) {
             out << line << '\n';
         }
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
         showlog("保存mac_sn文件成功");
     } else {
         showlog("保存mac_sn文件失败");
@@ -1293,13 +1274,13 @@ void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
 
 void QFreeWork::bindingMacSnMes(QString bindingMac, QString bindingSn) {
     Q_UNUSED(bindingSn);
-    pack.mechines = 1;  // 1脱1,1号上位机
+    pack.mechines = 1; // 1脱1,1号上位机
     pack.sn = snBinding;
     pack.result = "PASS";
     pack.itemvalue = QString("|BTMAC:%1|").arg(bindingMac);
     pack.instruct_num = "076";
     if (ui->isusemes->checkState()) {
-        emit send_end_testPass(pack);
+        emit send_end_test_pass(pack);
     }
 
     if (bindingResult) {
@@ -1322,7 +1303,7 @@ void QFreeWork::on_snbanding_returnPressed() {
         on_connectButton_clicked();
     }
     snBinding = ui->snbanding->text();
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
     ui->snbanding->clear();
     bindingResult = true;
 }
@@ -1492,19 +1473,19 @@ bool QFreeWork::ensureProductSerialForInstrumentStep(const QString& stepName) {
 
 QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
     switch (profile) {
-        case 1:
-            return Qproduct::buildStartReceiveCmd2440Ble1M();
-        case 2:
-            return Qproduct::buildStartReceiveCmd2480Ble1M();
-        case 3:
-            return Qproduct::buildStartReceiveCmd2402Ble2M();
-        case 4:
-            return Qproduct::buildStartReceiveCmd2440Ble2M();
-        case 5:
-            return Qproduct::buildStartReceiveCmd2480Ble2M();
-        case 0:
-        default:
-            return Qproduct::buildStartReceiveCmd2402Ble1M();
+    case 1:
+        return Qproduct::buildStartReceiveCmd2440Ble1M();
+    case 2:
+        return Qproduct::buildStartReceiveCmd2480Ble1M();
+    case 3:
+        return Qproduct::buildStartReceiveCmd2402Ble2M();
+    case 4:
+        return Qproduct::buildStartReceiveCmd2440Ble2M();
+    case 5:
+        return Qproduct::buildStartReceiveCmd2480Ble2M();
+    case 0:
+    default:
+        return Qproduct::buildStartReceiveCmd2402Ble1M();
     }
 }
 
@@ -1733,11 +1714,7 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
 
         bestCap = qMax(bestCap, plcKeyCapSyncReadValue_);
         sampleTexts.append(QString::number(plcKeyCapSyncReadValue_));
-        showlog(currentKeyTestName_ + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4")
-                    .arg(i + 1)
-                    .arg(readCount)
-                    .arg(kk)
-                    .arg(plcKeyCapSyncReadValue_));
+        showlog(currentKeyTestName_ + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4").arg(i + 1).arg(readCount).arg(kk).arg(plcKeyCapSyncReadValue_));
 
         if (i + 1 < readCount && intervalMs > 0) {
             QThread::msleep(static_cast<unsigned long>(intervalMs));
@@ -1774,10 +1751,7 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
             *errOut = QStringLiteral("电容卡控失败，最大=%1 允许%2").arg(bestCap).arg(capAsk);
         }
         TestResult = failValue;
-        showlog(currentKeyTestName_ + QStringLiteral("卡控失败，采样[%1] 最大=%2 允许%3")
-                    .arg(sampleTexts.join(QLatin1Char(',')))
-                    .arg(bestCap)
-                    .arg(capAsk));
+        showlog(currentKeyTestName_ + QStringLiteral("卡控失败，采样[%1] 最大=%2 允许%3").arg(sampleTexts.join(QLatin1Char(','))).arg(bestCap).arg(capAsk));
         return false;
     }
 

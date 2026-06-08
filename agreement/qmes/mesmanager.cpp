@@ -51,10 +51,18 @@ QMesManager::QMesManager() {
     connect(&YdmMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
 }
 
-void QMesManager::handleMesState(int state) { emit MesState(state); }
-void QMesManager::handleMesSucess(const int mechines) { emit MesSucess(mechines); }
-void QMesManager::handleMesError(const int mechines, QString resultMsg) { emit MesError(mechines, resultMsg); }
-void QMesManager::handleMesTestvalue(const int mechines, QString resultMsg) { emit MesTestvalue(mechines, resultMsg); }
+void QMesManager::handleMesState(int state) {
+    emit MesState(state);
+}
+void QMesManager::handleMesSucess(const int mechines) {
+    emit MesSucess(mechines);
+}
+void QMesManager::handleMesError(const int mechines, QString resultMsg) {
+    emit MesError(mechines, resultMsg);
+}
+void QMesManager::handleMesTestvalue(const int mechines, QString resultMsg) {
+    emit MesTestvalue(mechines, resultMsg);
+}
 
 void QMesManager::loginAll(MesPacketData pack) {
     for (auto mes : MesSystems) {

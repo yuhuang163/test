@@ -1,6 +1,7 @@
 #include "common_class.h"
 
-common_class::common_class() {}
+common_class::common_class() {
+}
 
 TestFunctionExecutor::TestFunctionExecutor(Qpb* pb) : pb(pb) {
     protocolManager.bindQpb(pb);
@@ -15,7 +16,7 @@ void TestFunctionExecutor::executeFunctionByName(const QString& functionName) {
         if (namedFunction.name == functionName) {
             // 执行找到的函数对象
             namedFunction.function();
-            return;  // 执行完成后直接返回
+            return; // 执行完成后直接返回
         }
     }
 
@@ -108,8 +109,8 @@ void TestFunctionExecutor::createTestFunctions() {
         {"设置本地OTA",
          [&]() {
              local_ota_data x[2] = {/* params */};
-            sendCommandWithRetry(
-                    [&]() { protocolManager.set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); });
+             sendCommandWithRetry(
+                 [&]() { protocolManager.set(DeviceCmd::LocalOta, QVariant::fromValue(LocalOtaPayload{x[0], x[1]})); });
          }},
         {"启动OTA应用",
          [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFileStatusReq{/* params */})); }); }},
@@ -118,9 +119,9 @@ void TestFunctionExecutor::createTestFunctions() {
         {"断开WiFi", [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::WifiDisconnect); }); }},
         {"设置新的WiFi连接",
          [&]() {
-            sendCommandWithRetry([&]() {
-                protocolManager.set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{QByteArray("SSID"), QByteArray("password"), QString("192.168.1.1"), QString("8080")}));
-            });
+             sendCommandWithRetry([&]() {
+                 protocolManager.set(DeviceCmd::NewWifiConnect, QVariant::fromValue(NewWifiConnectPayload{QByteArray("SSID"), QByteArray("password"), QString("192.168.1.1"), QString("8080")}));
+             });
          }},
         {"设置压力采集参数",
          [&]() { sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::PressCollect, static_cast<int>(FacSwitch_START)); }); }},
@@ -135,7 +136,9 @@ void TestFunctionExecutor::createTestFunctions() {
     };
 }
 
-void TestFunctionExecutor::solveGetBrushResponse(int data) { getRespone = data; }
+void TestFunctionExecutor::solveGetBrushResponse(int data) {
+    getRespone = data;
+}
 
 int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
@@ -143,7 +146,7 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
     sendRetryOver = false;
     if (commandFunc != nullptr) {
         qDebug() << "发送pb初始指令";
-        commandFunc();  // 重新发送指令
+        commandFunc(); // 重新发送指令
     }
 
     // 启动定时器
@@ -153,13 +156,13 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
         qDebug() << "retryCount=" << retryCount
                  << QString("sendCommandWithRetry定时器触发时间: %1, timer 地址: %2")
                         .arg(currentTime)
-                        .arg(reinterpret_cast<quintptr>(timer), 0, 16);  // 以16进制显示地址
+                        .arg(reinterpret_cast<quintptr>(timer), 0, 16); // 以16进制显示地址
 
-        if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 20) {  // 如果还有重试次数
+        if (!getRespone) {         // 根据传递进来的条件判断是否未收到响应
+            if (retryCount < 20) { // 如果还有重试次数
                 if (commandFunc != nullptr && !(retryCount % 5)) {
                     qDebug() << "重新发送指令";
-                    commandFunc();  // 重新发送指令
+                    commandFunc(); // 重新发送指令
                 }
                 retryCount++;
             } else {
@@ -167,13 +170,13 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
                 getRespone = 0;
                 retryCount = 0;
                 sendRetryOver = 1;
-                timer->stop();  // 达到最大重试次数，停止定时器
+                timer->stop(); // 达到最大重试次数，停止定时器
 
                 qDebug() << "达到最大重试次数，停止定时器";
                 delete timer;
                 return 0;
             }
-        } else {  // 如果收到响应
+        } else { // 如果收到响应
             disconnect(timer, &QTimer::timeout, this, nullptr);
             timer->stop();
             delete timer;
@@ -188,10 +191,6 @@ int TestFunctionExecutor::sendCommandWithRetry(std::function<void()> commandFunc
         return 0;
     });
 
-    timer->start(300);  // 启动定时器
+    timer->start(300); // 启动定时器
     return 0;
 }
-
-
-
-

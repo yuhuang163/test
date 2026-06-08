@@ -8,4 +8,4 @@ void loadQSettingTableBindings(QWidget* root);
 void saveQSettingTableBindings(QWidget* root);
 void applyQSettingTableBindingTooltips(QWidget* root);
 
-#endif  // QSETTING_BINDINGS_H
+#endif // QSETTING_BINDINGS_H

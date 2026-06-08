@@ -11,7 +11,12 @@
 
 namespace {
 
-enum class K : uint8_t { Le, Cb, Pair, Ci, Ct, Tip };
+enum class K : uint8_t { Le,
+                         Cb,
+                         Pair,
+                         Ci,
+                         Ct,
+                         Tip };
 
 struct Row {
     K kind;
@@ -414,7 +419,7 @@ void saveRow(QWidget* root, const Row& r) {
     }
 }
 
-}  // namespace
+} // namespace
 
 void applyQSettingTableBindingTooltips(QWidget* root) {
     if (!root) {

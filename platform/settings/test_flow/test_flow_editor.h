@@ -27,20 +27,22 @@ class TestCaseEditDialog;
 class TestCaseBlock : public QCheckBox {
     Q_OBJECT
 
-public:
+  public:
     explicit TestCaseBlock(const QString& caseName, QWidget* parent = nullptr);
 
     QString caseName() const;
     void setCaseName(const QString& name);
-    bool isBlank() const { return caseName_.isEmpty(); }
+    bool isBlank() const {
+        return caseName_.isEmpty();
+    }
     void setSelected(bool selected);
 
-signals:
+  signals:
     void editRequested(TestCaseBlock* block);
     void removeFromFlowRequested(TestCaseBlock* block);
     void blockSelected(TestCaseBlock* block);
 
-protected:
+  protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
@@ -48,7 +50,7 @@ protected:
     void dropEvent(QDropEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
 
-private:
+  private:
     void performDrag();
     void updateBlockStyle();
 
@@ -60,7 +62,7 @@ private:
 class TestFlowEditor : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit TestFlowEditor(QObject* parent = nullptr);
 
     void bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
@@ -73,7 +75,7 @@ public:
     /** 有未保存改动时弹窗：保存 / 不保存 / 取消。返回 true 表示可离开。 */
     bool confirmDiscardOrSaveOnLeave();
 
-private:
+  private:
     void refreshStationCombo(const QString& selectKey = QString());
     void promptAddFlowStation();
     void promptRenameCurrentFlowStation();
@@ -112,4 +114,4 @@ private:
     QHash<TestCaseBlock*, QPointer<TestCaseEditDialog>> openEditDialogs_;
 };
 
-#endif  // TEST_FLOW_EDITOR_H
+#endif // TEST_FLOW_EDITOR_H

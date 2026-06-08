@@ -88,8 +88,7 @@ QString bydMesCurlyServiceParam(const QJsonObject& param) {
 }
 
 QString bydMesBuildServiceParam(const QString& method, const QJsonObject& param) {
-    if (method.compare(QLatin1String("TestDataCollect2MainChild"), Qt::CaseInsensitive) == 0
-        || method.compare(QLatin1String("AddSfcKey"), Qt::CaseInsensitive) == 0) {
+    if (method.compare(QLatin1String("TestDataCollect2MainChild"), Qt::CaseInsensitive) == 0 || method.compare(QLatin1String("AddSfcKey"), Qt::CaseInsensitive) == 0) {
         return QString::fromUtf8(QJsonDocument(param).toJson(QJsonDocument::Compact));
     }
     // 勿用方括号 []：现场 MES 对 Start/Complete 等会异常或回显 param，响应无法按 JSON 解析
@@ -156,8 +155,7 @@ QTextCodec* bydMesPickIniFileCodec(const QString& filePath) {
     QTextCodec* fromBom = QTextCodec::codecForUtfText(sample);
     if (fromBom != nullptr) {
         const QString codecName = QString::fromLatin1(fromBom->name()).toUpper();
-        if (codecName.contains(QLatin1String("UTF-8")) || codecName.contains(QLatin1String("UTF-16"))
-            || codecName.contains(QLatin1String("UTF-32"))) {
+        if (codecName.contains(QLatin1String("UTF-8")) || codecName.contains(QLatin1String("UTF-16")) || codecName.contains(QLatin1String("UTF-32"))) {
             return fromBom;
         }
     }
@@ -213,7 +211,7 @@ bool bydMesJsonStringFieldEmpty(const QJsonObject& o, const QString& key) {
     return o.value(key).toString().trimmed().isEmpty();
 }
 
-}  // namespace
+} // namespace
 
 // =============================================================================
 // ④ 外部配置文件读取
@@ -307,10 +305,9 @@ QString bydmes::settingsValue(const QString& key, const QString& fallback) const
         }
     }
     qWarning() << QStringLiteral("[BYD MES 外部配置] 外部文件未读到参数「%1」（路径：%2），将使用占位/空值")
-                        .arg(key, iniPathCopy);
+                      .arg(key, iniPathCopy);
     return fallback;
 }
-
 
 // =============================================================================
 // ⑤ 测试数据上报参数组包）
@@ -337,7 +334,7 @@ QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString
         item[QStringLiteral("TEST_RESULT")] = testDataItem.result;
         item[QStringLiteral("ERROR_CODE")] = (pack.error == QStringLiteral("NULL")) ? QString() : pack.error;
         item[QStringLiteral("PN")] = pack.sn;
-        item[QStringLiteral("REMARK")] = pack.remark.isEmpty() ? QString("备注信息"):pack.remark;
+        item[QStringLiteral("REMARK")] = pack.remark.isEmpty() ? QString("备注信息") : pack.remark;
         item[QStringLiteral("TEXT")] = QString("备注");
         list.append(item);
         qDebug() << "BYD MES TestDataList item:" << item;
@@ -483,8 +480,7 @@ bool bydmes::emitIfMissingLoginClientOrNet(const MesPacketData& pack, const QJso
                              QStringLiteral("BYD MES %1：未配置 NET/JSONURL，无法请求 MES（详见日志）").arg(sceneLabel));
         return true;
     }
-    if (bydMesJsonStringFieldEmpty(param, QStringLiteral("LOGIN_ID"))
-        || bydMesJsonStringFieldEmpty(param, QStringLiteral("CLIENT_ID"))) {
+    if (bydMesJsonStringFieldEmpty(param, QStringLiteral("LOGIN_ID")) || bydMesJsonStringFieldEmpty(param, QStringLiteral("CLIENT_ID"))) {
         qWarning().noquote() << QStringLiteral("[BYD MES] %1：LoginID 或 CLIENT_ID 在外部 mes_config 中未配置或为空").arg(sceneLabel);
         emit operateMesError(pack.mechines,
                              QStringLiteral("BYD MES %1：未配置 LoginID 或 CLIENT_ID（详见日志）").arg(sceneLabel));
@@ -612,9 +608,7 @@ void bydmes::GetTestData(MesPacketData pack) {
         if (emitIfMissingLoginClientOrNet(pack, param, method)) {
             return;
         }
-        if (bydMesJsonStringFieldEmpty(param, QStringLiteral("DATA_NAME"))
-            || bydMesJsonStringFieldEmpty(param, QStringLiteral("STATION_NAME"))
-            || bydMesJsonStringFieldEmpty(param, QStringLiteral("SHOPORDER"))) {
+        if (bydMesJsonStringFieldEmpty(param, QStringLiteral("DATA_NAME")) || bydMesJsonStringFieldEmpty(param, QStringLiteral("STATION_NAME")) || bydMesJsonStringFieldEmpty(param, QStringLiteral("SHOPORDER"))) {
             emit operateMesError(pack.mechines,
                                  QStringLiteral("BYD MES AddSfcKey：DATA_NAME/STATION_NAME/SHOPORDER 参数缺失"));
             return;
@@ -705,9 +699,7 @@ void bydmes::TestPass(MesPacketData pack) {
     }
 
     const QString normalizedResult = pack.result.trimmed().toUpper();
-    const bool isFailResult = normalizedResult == "FAIL"
-                              || normalizedResult == "NG"
-                              || pack.result.trimmed() == QStringLiteral("失败");
+    const bool isFailResult = normalizedResult == "FAIL" || normalizedResult == "NG" || pack.result.trimmed() == QStringLiteral("失败");
     QString responseText;
     QString errorMessage;
     QString networkError;

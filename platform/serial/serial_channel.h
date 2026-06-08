@@ -13,7 +13,7 @@ class QComboBox;
 class SerialChannel : public QObject {
     Q_OBJECT
 
-public:
+  public:
     enum class RtsDtrMode {
         None,
         Enable,
@@ -50,18 +50,18 @@ public:
     static QStringList availablePortNames();
     static void updateComboBoxPorts(QComboBox* comboBox);
 
-signals:
+  signals:
     void opened();
     void closed();
     void frameReceived(const QByteArray& data);
     void errorOccurred(QSerialPort::SerialPortError error, const QString& message);
 
-private slots:
+  private slots:
     void onReadyRead();
     void onReadTimer();
     void onPortError(QSerialPort::SerialPortError error);
 
-private:
+  private:
     void applyLineSettings();
     void applyRtsDtr();
 
@@ -71,4 +71,4 @@ private:
     OpenParams params_;
 };
 
-#endif  // PLATFORM_SERIAL_CHANNEL_H
+#endif // PLATFORM_SERIAL_CHANNEL_H

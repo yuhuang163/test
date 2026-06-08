@@ -44,7 +44,7 @@ const QHash<QString, DongleCmd> kLegacyNameMap = {
     {QStringLiteral("DongleGetGmac"), DongleCmd::GetGmac},
 };
 
-}  // namespace
+} // namespace
 
 namespace DongleCmdManifest {
 
@@ -76,4 +76,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-}  // namespace DongleCmdManifest
+} // namespace DongleCmdManifest

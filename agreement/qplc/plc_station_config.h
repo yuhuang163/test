@@ -25,4 +25,4 @@ struct PlcStationConfig {
 
 QString plcBoolText(bool on);
 
-#endif  // PLC_STATION_CONFIG_H
+#endif // PLC_STATION_CONFIG_H

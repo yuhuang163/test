@@ -2,22 +2,18 @@
 #include "ui_uidemo6.h"
 #include "quiwidget.h"
 
-UIDemo6::UIDemo6(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::UIDemo6)
-{
+UIDemo6::UIDemo6(QWidget* parent) : QDialog(parent),
+                                    ui(new Ui::UIDemo6) {
     ui->setupUi(this);
     this->initForm();
     QUIWidget::setFormInCenter(this);
 }
 
-UIDemo6::~UIDemo6()
-{
+UIDemo6::~UIDemo6() {
     delete ui;
 }
 
-void UIDemo6::initForm()
-{
+void UIDemo6::initForm() {
     this->max = false;
     this->location = this->geometry();
     this->setProperty("form", true);
@@ -40,8 +36,8 @@ void UIDemo6::initForm()
     ui->btnSpeedTest->setProperty("icoName", "speedtest");
     ui->btnWebsiteTest->setProperty("icoName", "websitetest");
 
-    QList<QToolButton *> btns = ui->widgetLeft->findChildren<QToolButton *>();
-    foreach (QToolButton *btn, btns) {
+    QList<QToolButton*> btns = ui->widgetLeft->findChildren<QToolButton*>();
+    foreach (QToolButton* btn, btns) {
         btn->setMaximumHeight(80);
         btn->setCheckable(true);
         connect(btn, SIGNAL(clicked(bool)), this, SLOT(buttonClick()));
@@ -50,13 +46,12 @@ void UIDemo6::initForm()
     ui->btnInfoExtend->click();
 }
 
-void UIDemo6::buttonClick()
-{
-    QToolButton *b = (QToolButton *)sender();
-    QString text = b->text();    
+void UIDemo6::buttonClick() {
+    QToolButton* b = (QToolButton*)sender();
+    QString text = b->text();
 
-    QList<QToolButton *> btns = ui->widgetLeft->findChildren<QToolButton *>();
-    foreach (QToolButton *btn, btns) {
+    QList<QToolButton*> btns = ui->widgetLeft->findChildren<QToolButton*>();
+    foreach (QToolButton* btn, btns) {
         QString icoName = btn->property("icoName").toString();
         if (btn != b) {
             btn->setChecked(false);
@@ -70,13 +65,11 @@ void UIDemo6::buttonClick()
     ui->label->setText(text);
 }
 
-void UIDemo6::on_btnMenu_Min_clicked()
-{
+void UIDemo6::on_btnMenu_Min_clicked() {
     showMinimized();
 }
 
-void UIDemo6::on_btnMenu_Max_clicked()
-{
+void UIDemo6::on_btnMenu_Max_clicked() {
     if (max) {
         this->setGeometry(location);
         this->setProperty("canMove", true);
@@ -89,7 +82,6 @@ void UIDemo6::on_btnMenu_Max_clicked()
     max = !max;
 }
 
-void UIDemo6::on_btnMenu_Close_clicked()
-{
+void UIDemo6::on_btnMenu_Close_clicked() {
     close();
 }

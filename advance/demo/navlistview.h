@@ -26,63 +26,60 @@
 
 class NavListView;
 
-class NavDelegate : public QStyledItemDelegate
-{
+class NavDelegate : public QStyledItemDelegate {
     Q_OBJECT
-public:
-    NavDelegate(QObject *parent);
+  public:
+    NavDelegate(QObject* parent);
     ~NavDelegate();
 
-protected:
-    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const ;
-    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+  protected:
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const;
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
 
-private:
-    NavListView *nav;
+  private:
+    NavListView* nav;
     QFont iconFont;
 };
 
-
-class NavModel : public QAbstractListModel
-{
+class NavModel : public QAbstractListModel {
     Q_OBJECT
-public:
-    NavModel(QObject *parent);
+  public:
+    NavModel(QObject* parent);
     ~NavModel();
 
-public:
+  public:
     struct TreeNode {
         QString label;
         int level;
         bool collapse;
         bool theLast;
         QString info;
-        std::list<TreeNode *> children;
+        std::list<TreeNode*> children;
     };
 
     struct ListNode {
         QString label;
-        TreeNode *treeNode;
+        TreeNode* treeNode;
     };
 
-protected:
-    int rowCount(const QModelIndex &parent) const;
-    QVariant data(const QModelIndex &index, int role) const;
+  protected:
+    int rowCount(const QModelIndex& parent) const;
+    QVariant data(const QModelIndex& index, int role) const;
 
-private:
-    std::vector<TreeNode *> treeNode;
+  private:
+    std::vector<TreeNode*> treeNode;
     std::vector<ListNode> listNode;
 
-public slots:    
-    void setData(const QStringList &listItem);
-    void collapse(const QModelIndex &index);
+  public slots:
+    void setData(const QStringList& listItem);
+    void collapse(const QModelIndex& index);
 
-private:
+  private:
     void refreshList();
 };
 
 #ifdef quc
-#if (QT_VERSION < QT_VERSION_CHECK(5,7,0))
+#if (QT_VERSION < QT_VERSION_CHECK(5, 7, 0))
 #include <QtDesigner/QDesignerExportWidget>
 #else
 #include <QtUiPlugin/QDesignerExportWidget>
@@ -111,54 +108,54 @@ class NavListView : public QListView
     Q_PROPERTY(QColor colorTextSelected READ getColorTextSelected WRITE setColorTextSelected)
     Q_PROPERTY(QColor colorTextHover READ getColorTextHover WRITE setColorTextHover)
 
-public:
+  public:
     enum IcoStyle {
-        IcoStyle_Cross = 0,     //十字形状
-        IcoStyle_Triangle = 1   //三角形状
+        IcoStyle_Cross = 0,   //十字形状
+        IcoStyle_Triangle = 1 //三角形状
     };
 
-    NavListView(QWidget *parent = 0);
+    NavListView(QWidget* parent = 0);
     ~NavListView();
 
-private:
-    NavModel *model;
-    NavDelegate *delegate;
+  private:
+    NavModel* model;
+    NavDelegate* delegate;
 
-    bool infoVisible;               //是否显示提示信息
-    bool lineVisible;               //是否显示分割线条
-    bool icoColorBg;                //伸缩图片是否使用颜色
-    IcoStyle icoStyle;              //图标样式
+    bool infoVisible;  //是否显示提示信息
+    bool lineVisible;  //是否显示分割线条
+    bool icoColorBg;   //伸缩图片是否使用颜色
+    IcoStyle icoStyle; //图标样式
 
-    QColor colorLine;               //线条颜色
-    QColor colorBgNormal;           //正常背景色
-    QColor colorBgSelected;         //选中背景色
-    QColor colorBgHover;            //悬停背景色
+    QColor colorLine;       //线条颜色
+    QColor colorBgNormal;   //正常背景色
+    QColor colorBgSelected; //选中背景色
+    QColor colorBgHover;    //悬停背景色
 
-    QColor colorTextNormal;         //正常文字颜色
-    QColor colorTextSelected;       //选中文字颜色
-    QColor colorTextHover;          //悬停文字颜色
+    QColor colorTextNormal;   //正常文字颜色
+    QColor colorTextSelected; //选中文字颜色
+    QColor colorTextHover;    //悬停文字颜色
 
-public:
-    bool getInfoVisible()           const;
-    bool getLineVisible()           const;
-    bool getIcoColorBg()            const;
-    IcoStyle getIcoStyle()          const;
+  public:
+    bool getInfoVisible() const;
+    bool getLineVisible() const;
+    bool getIcoColorBg() const;
+    IcoStyle getIcoStyle() const;
 
-    QColor getColorLine()           const;
-    QColor getColorBgNormal()       const;
-    QColor getColorBgSelected()     const;
-    QColor getColorBgHover()        const;
+    QColor getColorLine() const;
+    QColor getColorBgNormal() const;
+    QColor getColorBgSelected() const;
+    QColor getColorBgHover() const;
 
-    QColor getColorTextNormal()     const;
-    QColor getColorTextSelected()   const;
-    QColor getColorTextHover()      const;
+    QColor getColorTextNormal() const;
+    QColor getColorTextSelected() const;
+    QColor getColorTextHover() const;
 
-    QSize sizeHint()                const;
-    QSize minimumSizeHint()         const;
+    QSize sizeHint() const;
+    QSize minimumSizeHint() const;
 
-public Q_SLOTS:    
+  public Q_SLOTS:
     //设置数据集合
-    void setData(const QStringList &listItem);
+    void setData(const QStringList& listItem);
 
     //设置是否显示提示信息
     void setInfoVisible(bool infoVisible);
@@ -173,15 +170,15 @@ public Q_SLOTS:
     void setIcoStyle(IcoStyle icoStyle);
 
     //设置各种前景色背景色选中色
-    void setColorLine(const QColor &colorLine);
+    void setColorLine(const QColor& colorLine);
 
-    void setColorBgNormal(const QColor &colorBgNormal);
-    void setColorBgSelected(const QColor &colorBgSelected);
-    void setColorBgHover(const QColor &colorBgHover);
+    void setColorBgNormal(const QColor& colorBgNormal);
+    void setColorBgSelected(const QColor& colorBgSelected);
+    void setColorBgHover(const QColor& colorBgHover);
 
-    void setColorTextNormal(const QColor &colorTextNormal);
-    void setColorTextSelected(const QColor &colorTextSelected);
-    void setColorTextHover(const QColor &colorTextHover);
+    void setColorTextNormal(const QColor& colorTextNormal);
+    void setColorTextSelected(const QColor& colorTextSelected);
+    void setColorTextHover(const QColor& colorTextHover);
 };
 
 #endif // NAVLISTVIEW_H

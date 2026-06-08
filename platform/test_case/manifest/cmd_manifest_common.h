@@ -28,6 +28,6 @@ inline TestCaseSendAction defaultSendAction(uint8_t rowFlags) {
     return TestCaseSendAction::Set;
 }
 
-}  // namespace TestCaseCmdManifest
+} // namespace TestCaseCmdManifest
 
-#endif  // PLATFORM_CMD_MANIFEST_COMMON_H
+#endif // PLATFORM_CMD_MANIFEST_COMMON_H

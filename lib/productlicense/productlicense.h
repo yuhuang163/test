@@ -9,11 +9,11 @@ struct LicensePair {
 };
 
 class ProductLicense {
-public:
+  public:
     LicensePair getNextOtaDevice();
     void loadOtaDeviceKeys(const QString& filePath);
-    void printOtaDeviceKeys();                    // 调试用
-    QList<QMap<QString, QString>> otaDeviceList;  // 存储 OTA 设备密钥信息
+    void printOtaDeviceKeys();                   // 调试用
+    QList<QMap<QString, QString>> otaDeviceList; // 存储 OTA 设备密钥信息
     int otaDeviceIndex = 0;
     int counter = 0;
     int testcounter = 0;
@@ -36,7 +36,7 @@ public:
         return Testinstance;
     }
 
-private:
+  private:
     ProductLicense();
     ProductLicense(const ProductLicense&) = delete;
     ProductLicense& operator=(const ProductLicense&) = delete;
@@ -47,4 +47,4 @@ private:
     int usaprocountermax;
 };
 
-#endif  // PRODUCTLICENSE_H
+#endif // PRODUCTLICENSE_H

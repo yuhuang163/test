@@ -9,19 +9,18 @@
 #include "ui_imucali.h"
 #include <vector>
 
-namespace Ui
-{
-    class imubox;
+namespace Ui {
+class imubox;
 }
 
-class imubox : public box_base
-{
+class imubox : public box_base {
     Q_OBJECT
-public:
-    explicit imubox(QWidget *parent = nullptr);
+  public:
+    explicit imubox(QWidget* parent = nullptr);
     ~imubox();
-private:
-    Ui::imubox *ui;
+
+  private:
+    Ui::imubox* ui;
 
     std::vector<int> stage1States;
     std::vector<int> stage2States;
@@ -31,17 +30,16 @@ private:
     std::vector<int> fixtureDownStates;
     std::vector<int> fixtureUpStates;
 
-    Fixture_uart *Fixture_uart_ui = NULL;   // 设备控制窗口
+    Fixture_uart* Fixture_uart_ui = NULL; // 设备控制窗口
 
-    int mehineState[12]={0};//从0开始
+    int mehineState[12] = {0}; //从0开始
 
-
-signals:
+  signals:
     void send_fixture_log(QString data);
 
-private slots:
+  private slots:
     void set_cylinder_state(imuFixtureState state);
-    void checkAllover(int testNumber)override;
+    void checkAllover(int testNumber) override;
     void check_all_over_stage1(int testNumber);
     void check_all_over_stage2(int testNumber);
     void check_all_over_stage3(int testNumber);
@@ -49,10 +47,9 @@ private slots:
     void check_all_over_fixture_down(int testNumber);
     void check_all_over_fixture_right(int testNumber);
     void check_all_over_fixture_up(int testNumber);
-    void resetall()override;
+    void resetall() override;
     void set_vector_state(int state);
     void startTest();
-
 };
 
-#endif   // IMUBOX_H
+#endif // IMUBOX_H

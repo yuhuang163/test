@@ -23,6 +23,6 @@ int rowCount();
 const Row* findByCmd(FixturePcbaCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
-}  // namespace FixturePcbaCmdManifest
+} // namespace FixturePcbaCmdManifest
 
-#endif  // PLATFORM_FIXTURE_PCBA_CMD_MANIFEST_H
+#endif // PLATFORM_FIXTURE_PCBA_CMD_MANIFEST_H

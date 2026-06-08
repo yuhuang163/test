@@ -1,4 +1,4 @@
-﻿#ifndef MOTOR_H
+#ifndef MOTOR_H
 #define MOTOR_H
 
 #include "Abini.h"
@@ -6,29 +6,33 @@
 #include "ui_motor.h"
 
 namespace Ui {
-    class motor;
+class motor;
 }
 
 class motor : public test_base {
     Q_OBJECT
-public:
+  public:
     explicit motor(int index, QWidget* parent = nullptr);
     ~motor();
     Ui::motor* ui;
     void startTask() override;
     void startTest_task();
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-    QCheckBox* getIsUseMes() override { return ui->isusemes; };
-    QCheckBox* getIsFormMes() override { return ui->isformmes; };
-    QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
-    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
-    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
 
-private slots:
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QLineEdit* getMacLineEdit() override { return ui->getMac; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
+  private slots:
 
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void processInspection(QString inputSnText);
@@ -53,13 +57,13 @@ private slots:
     void on_end_cali_clicked();
     void on_stopTest_clicked();
 
-private:
+  private:
     typedef enum {
-        STATE_IDLE,          // 休眠状态
-        STATE_WATI_CONNECT,  // 等待连接
-        STATE_GETBASEDATA,   // 获取基本信息
+        STATE_IDLE,         // 休眠状态
+        STATE_WATI_CONNECT, // 等待连接
+        STATE_GETBASEDATA,  // 获取基本信息
         STATE_WATI_CORRECT_BATTARY,
-        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
+        STATE_DISABLE_SLEEP_1, // 进入禁止休眠
         STATE_SN_CHECK,
         UNLOCK_DAMPING,
         MOTOR_CALI1,
@@ -69,7 +73,7 @@ private:
         STOP_MOTOR_CALI,
         MOTOR_TESTING,
         MOTOR_WAIT_TESTING,
-        STATE_SAVE_RESULT  // 保存结果在本地
+        STATE_SAVE_RESULT // 保存结果在本地
     } State;
     QElapsedTimer TestTime;
     State state = STATE_IDLE;
@@ -83,12 +87,12 @@ private:
     QString stringsn;
     QString totalresult = "";
     QString macAddress = "没有mac地址";
-    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
+    QMap<QString, QMap<QString, QString>> deviceMap; // 存储设备信息
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // MOTOR_H
+#endif // MOTOR_H

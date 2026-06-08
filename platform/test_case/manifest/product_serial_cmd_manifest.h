@@ -22,6 +22,6 @@ int rowCount();
 const Row* findByCmd(ProductSerialCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
-}  // namespace ProductSerialCmdManifest
+} // namespace ProductSerialCmdManifest
 
-#endif  // PLATFORM_PRODUCT_SERIAL_CMD_MANIFEST_H
+#endif // PLATFORM_PRODUCT_SERIAL_CMD_MANIFEST_H

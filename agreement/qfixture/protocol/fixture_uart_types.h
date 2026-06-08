@@ -5,7 +5,7 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 // 压感等工站：气缸/继电器 0x55 短帧（见 FixturePressUartProtocol::buildFixtureStateCommand）
@@ -121,7 +121,7 @@ typedef struct FixturePacketData {
 Q_DECLARE_METATYPE(FixturePacketData)
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif
 
-#endif  // FIXTURE_UART_TYPES_H
+#endif // FIXTURE_UART_TYPES_H

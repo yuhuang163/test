@@ -7,20 +7,17 @@
 
 #include "qprotocol_types.h"
 
-class Qusb : public QSerialPort
-{
+class Qusb : public QSerialPort {
     Q_OBJECT
-public:
-    enum class ProtocolType
-    {
+  public:
+    enum class ProtocolType {
         Auto,
         Scpi,
         HqModbus,
         LxModbus
     };
 
-    enum class PowerAction
-    {
+    enum class PowerAction {
         ConfigurePowerSupply,
         ReadMeasurement,
         ReadsuctionData,
@@ -32,20 +29,18 @@ public:
         InitializeDevice
     };
 
-    enum class UsbCmd
-    {
-        PowerActionCmd,          // set/get: Qusb::PowerAction(int)
-        ProtocolConfigCmd,       // set: QVariantMap
-        SendScpiLine,            // set: QString
-        ConfigureProgrammablePower, // set: QVariantMap{voltage:double,current:double}
-        ProgrammablePowerOutput, // set: bool
+    enum class UsbCmd {
+        PowerActionCmd,                  // set/get: Qusb::PowerAction(int)
+        ProtocolConfigCmd,               // set: QVariantMap
+        SendScpiLine,                    // set: QString
+        ConfigureProgrammablePower,      // set: QVariantMap{voltage:double,current:double}
+        ProgrammablePowerOutput,         // set: bool
         ReadProgrammablePowerVoltageCmd, // get
         ReadProgrammablePowerCurrentCmd, // get
         InitializeProgrammablePowerCmd   // set/get
     };
 
-    struct ProtocolConfig
-    {
+    struct ProtocolConfig {
         ProtocolType protocol = ProtocolType::Auto;
         int luxshareMachineId = 1;
         QString scpiCurrentType = "CURRent";
@@ -61,10 +56,10 @@ public:
         QString scpiReadCurrentCmd = "MEASure:CURRent:DC? 500e-3";
     };
 
-    explicit Qusb(QSerialPort *parent = nullptr);
+    explicit Qusb(QSerialPort* parent = nullptr);
     ~Qusb();
 
-    void setProtocolConfig(const ProtocolConfig &config);
+    void setProtocolConfig(const ProtocolConfig& config);
     ProtocolConfig protocolConfig() const;
     bool sendPowerInstruction(PowerAction action);
 
@@ -73,10 +68,10 @@ public:
     void getMEASure(QString mac);
     void gethqMEASure();
     void getlxMEASure(int mechine);
-    void processlxModbusRTUData(const QByteArray &data);
+    void processlxModbusRTUData(const QByteArray& data);
     void sethqMEASure();
     void getCONF(QString mac);
-    void parseCmd(const QByteArray &byte);
+    void parseCmd(const QByteArray& byte);
     void set(UsbCmd cmd, const QVariant& data = {});
     void get(UsbCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
@@ -86,7 +81,7 @@ public:
     bool readProgrammablePowerCurrent();
     bool initializeProgrammablePower();
 
-signals:
+  signals:
     /** 统一上行数据信封（电流表读数等） */
     void reportReceived(const ProtocolReport& report);
     /// 程控电源 SCPI 读电压完成（串口异步回包）。valueVolts 单位 V，ok 为数值解析是否成功
@@ -94,29 +89,28 @@ signals:
     /// 程控电源 SCPI 读电流完成，valueAmps 单位 A
     void programmablePowerCurrentRead(double valueAmps, bool ok);
 
-protected:
+  protected:
     void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
         emit reportReceived(ProtocolReport(reportType, payload));
     }
 
-private:
-    enum class ProgrammablePowerReadPending
-    {
+  private:
+    enum class ProgrammablePowerReadPending {
         None,
         Voltage,
         Current
     };
     void emitProgrammablePowerReadIfPending(const QString& scpiLine);
-    ProtocolType resolveProtocolForInput(const QByteArray &input) const;
+    ProtocolType resolveProtocolForInput(const QByteArray& input) const;
     ProtocolType resolveProtocolForOutput() const;
     bool handleScpiAction(PowerAction action);
     bool handleHqAction(PowerAction action);
     bool handleLxAction(PowerAction action);
-    void processScpiData(const QByteArray &byte);
-    void processModbusRTUData(const QByteArray &data);
+    void processScpiData(const QByteArray& byte);
+    void processModbusRTUData(const QByteArray& data);
     QString cmd, parameter;
-    QSerialPort *serialPort;
-    int sssss=255;
+    QSerialPort* serialPort;
+    int sssss = 255;
     typedef std::function<void(QString)> callback;
     std::map<QString, callback> commandList;
     void registerCommand();
@@ -125,8 +119,8 @@ private:
     ProtocolConfig protocolConfig_;
     ProgrammablePowerReadPending pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
 
-private slots:
+  private slots:
     void processCmd(QString cmd, QString parameter);
 };
 
-#endif   // QUSB_H
+#endif // QUSB_H

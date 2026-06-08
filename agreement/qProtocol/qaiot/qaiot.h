@@ -13,7 +13,7 @@
 
 class Qaiot : public qProtocol {
     Q_OBJECT
-public:
+  public:
     explicit Qaiot(QSerialPort* parent = nullptr);
 
     void parseCmd(const QByteArray& byte) override;
@@ -21,7 +21,7 @@ public:
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     bool sendCustomMessage(const QVariantMap& map) override;
 
-private:
+  private:
     struct TlvNode {
         quint8 rawType = 0;
         quint8 type = 0;
@@ -50,4 +50,4 @@ private:
     QSerialPort* serialPort = nullptr;
 };
 
-#endif  // QAIOT_H
+#endif // QAIOT_H

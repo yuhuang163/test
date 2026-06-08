@@ -1,4 +1,4 @@
-﻿#include "ageing.h"
+#include "ageing.h"
 
 #include <QGraphicsPixmapItem>
 #include <QRegularExpression>
@@ -6,7 +6,7 @@
 #include "ui_ageing.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 void ageing::on_pushButton_clicked() {
     // ui->macInput->setText("3C:84:27:07:A8:D2");
@@ -19,24 +19,22 @@ void ageing::on_pushButton_clicked() {
     //     m["seconds"] = 3600;  // 统一上层入参，协议层做兼容
     //     protocolManager.set(DeviceCmd::BurningMode, m);
     // });
-//     const QString entered = ui->getMac->text().trimmed();
+    //     const QString entered = ui->getMac->text().trimmed();
     MesPacketData p = pack;
-//     p.factory = QStringLiteral("byd");
-//     p.mechines = getIndex();
-//     p.sn = entered;
-//     p.itemvalue = entered;
-//     p.instruct_num = QStringLiteral("079");
-//     showlog(QStringLiteral("MES：getMesTestValue → 按过程码请求 SN"));
-//     emit getMesTestValue(p);
+    //     p.factory = QStringLiteral("byd");
+    //     p.mechines = getIndex();
+    //     p.sn = entered;
+    //     p.itemvalue = entered;
+    //     p.instruct_num = QStringLiteral("079");
+    //     showlog(QStringLiteral("MES：send_mes_test_value → 按过程码请求 SN"));
+    //     emit send_mes_test_value(p);
     p.result = "PASS";
     // p.result = "FAIL";
-    p.itemvalue = QStringLiteral("|write_sn:stringsn")
-        + QStringLiteral("|BATTARY:100:::100:%")
-        + QStringLiteral("|AGE_TEST:PASS");
+    p.itemvalue = QStringLiteral("|write_sn:stringsn") + QStringLiteral("|BATTARY:100:::100:%") + QStringLiteral("|AGE_TEST:PASS");
     p.mechines = getIndex();
     p.sn = ui->getMac->text();
     p.instruct_num = "083";
-    emit send_end_testPass(p);
+    emit send_end_test_pass(p);
 }
 ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::ageing) {
     m_index = index;
@@ -44,7 +42,7 @@ ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::agein
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     upperComputerVer = AGE_VER;
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -59,7 +57,7 @@ ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::agein
     showlog("action=" + pack.action);
     showlog("model=" + pack.model);
     testResultTableInit();
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 
 void ageing::refreshPeriphData(ProtocolPeriphStateData data) {
@@ -176,15 +174,27 @@ void ageing::getTestValue(const int mechines, const QString value) {
 
     // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试
 }
-ageing::~ageing() { delete ui; }
+ageing::~ageing() {
+    delete ui;
+}
 void ageing::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
     switch (adc.chargeState) {
-        case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
-        case 2: chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>"; break;
-        case 3: chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>"; break;
-        case 4: chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>"; break;
-        default: chargeStateStr = "充电状态为：<span style='color:red'>未知</span>"; break;
+    case 1:
+        chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
+        break;
+    case 2:
+        chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
+        break;
+    case 3:
+        chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
+        break;
+    case 4:
+        chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
+        break;
+    default:
+        chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
+        break;
     }
     ui->battary_state->setText(chargeStateStr);
     battary = adc.percent;
@@ -194,28 +204,28 @@ void ageing::refreshBattaryData(ProtocolBatteryData adc) {
     ui->battary_value->setText(batteryPercentStr);
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-                                "V</span>";
+        QString::number(adc.voltageMv / 1000.0, 'f', 3) +
+        "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
     voltage = adc.voltageMv / 1000.0;
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
     // QRegularExpressionMatch match = regex.match(chargeStateStr);
     // chargestate = match.captured(2);
     if (battary >= standbattary) {
-        is_battary_test = 1;  // 正常
+        is_battary_test = 1; // 正常
         pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%:PASS").arg(battary).arg(standbattary);
     }
     if (battary < standbattary)
-        is_battary_test = 2;  // 低电量
-        pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%:FAIL").arg(battary).arg(standbattary);
-        pack.error=("当前电量过低");
-        pack.remark=("当前电量过低，为" + QString::number(battary) + "%");
+        is_battary_test = 2; // 低电量
+    pack.itemvalue += QStringLiteral("|BATTARY:%1:100:100:%2:%:FAIL").arg(battary).arg(standbattary);
+    pack.error = ("当前电量过低");
+    pack.remark = ("当前电量过低，为" + QString::number(battary) + "%");
 }
 
 void ageing::refreshBleState(int state) {
     if (state) {
         ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-          showlog("蓝牙连接成功");
+        showlog("蓝牙连接成功");
         protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
         showlog("已发送禁止休眠");
     } else {
@@ -278,7 +288,7 @@ void ageing::on_macInput_returnPressed() {
     }
 }
 
-void ageing:: on_enterBurningMode_clicked() {
+void ageing::on_enterBurningMode_clicked() {
     if (at->getConnected()) {
         const QString currentText = ui->burningModeCombo->currentText();
         int mode = 0;
@@ -313,8 +323,8 @@ void ageing::on_exitBurningMode_clicked() {
         QVariantMap m;
         m["mode"] = 1;
         m["switch"] = static_cast<int>(FacSwitch_CLOSE);
-            protocolManager.set(DeviceCmd::BurningMode, m);
-            // showlog("已退出老化模式");
+        protocolManager.set(DeviceCmd::BurningMode, m);
+        // showlog("已退出老化模式");
     } else {
         // showlog("请等待连接设备后再试");
     }
@@ -381,8 +391,8 @@ void ageing::refreshSn(ProtocolSnData data) {
             testItems.append(test);
             testResultTableUpdate(testItems);
             pack.itemvalue += QStringLiteral("|write_sn:FAIL").arg(brushstringsn);
-            pack.error="SN比对失败";
-            pack.remark=("SN比对失败，读取的sn为" + brushstringsn + "，写入的sn为" + stringsn);
+            pack.error = "SN比对失败";
+            pack.remark = ("SN比对失败，读取的sn为" + brushstringsn + "，写入的sn为" + stringsn);
             snCompareOk = 2;
         }
     }
@@ -425,13 +435,13 @@ void ageing::processInspection(QString inputSnText) {
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
-        showlog("SN为空"+inputSnText);
+        showlog("SN为空" + inputSnText);
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -442,205 +452,205 @@ void ageing::processInspection(QString inputSnText) {
 void ageing::startTask() {
     if (isTestContinue) {
         // ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
-        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);  // 转换为浮动数
-   
+        ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0); // 转换为浮动数
+
         switch (state) {
-            case STATE_IDLE:   // 复位
-                is_battary_test = 0;
-                showlog("开始测试");
-                protocolManager.resetAllPb();
-                at->resetConnected();
-                // ui->tail_sn->setText("存储的尾盖sn:");
-                // ui->brush_subpid->setText("存储的subpid:");
-                snCompareOk = 0;
-                result = "";
-                TestTime.start();
-                flash_state = 0;
-                refresh_periph_times = 1;
-                subpidCompareOk = 0;
-                waitWork(1000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
-                state = STATE_DISABLE_SLEEP_1;
-                break;
+        case STATE_IDLE: // 复位
+            is_battary_test = 0;
+            showlog("开始测试");
+            protocolManager.resetAllPb();
+            at->resetConnected();
+            // ui->tail_sn->setText("存储的尾盖sn:");
+            // ui->brush_subpid->setText("存储的subpid:");
+            snCompareOk = 0;
+            result = "";
+            TestTime.start();
+            flash_state = 0;
+            refresh_periph_times = 1;
+            subpidCompareOk = 0;
+            waitWork(1000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
+            state = STATE_DISABLE_SLEEP_1;
+            break;
 
-            case STATE_DISABLE_SLEEP_1:
-                if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
-                    showlog("已进入工厂模式");
-                    appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
-                    testResultTableUpdate(testItems);
-                    state = STATE_WATI_CONNECT;
-                }
-                break;
-
-            case STATE_WATI_CONNECT:
-                if (canGoNext) {
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, writesn})); });
-                    showlog(QString::number(canGoNext));
-                    showlog("sn写入内容为：" + stringsn);
-                    appendStationResult(testItems, "sn写入", "0.0000", passValue);
-                    testResultTableUpdate(testItems);
-                    state = STATE_WAIT_BANDING;
-                }
-                break;
-
-            case STATE_WAIT_BANDING:
-                if (canGoNext) {
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
-                    state = STATE_WAIT_CORRECT_BANDING;
-                }
-                break;
-
-            case STATE_WAIT_CORRECT_BANDING:
-
-                if (canGoNext) {
-                    if (snCompareOk == 1) {
-                        state = STATE_GETBATTERY;
-                        showlog("sn已比对成功");
-                        appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        protocolManager.get(DeviceCmd::GetBattery);
-                    } else if (snCompareOk == 2) {
-                        showlog("sn已比对失败"); pack.error="SP03011";
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                }
-                break;
-
-            case STATE_GETBATTERY: {
-                waitWork(100);
-                if (is_battary_test != 0) {
-
-                    if (is_battary_test == 1) {
-                        showlog("电量正常" + QString::number(battary) + "%");
-                        TestItem test;
-                        test.testItem = "当前电量";
-                        test.testData = QString::number(battary) + "%";
-                        // 管道段须为「NAME:VALUE」单冒号，避免「BATTARY:|80%」被拆成三段导致 BYD TEST_DATA_LIST 解析异常
-        
-                        test.testResult = "通过";
-                        test.ask = "通过";
-                        testItems.append(test);
-                        testResultTableUpdate(testItems);
-                        // protocolManager.get(DeviceCmd::PeriphState);
-                        state = STATE_AGE;
-                    }
-
-                    if (is_battary_test == 2) {
-                        showlog("当前电量低，为" + QString::number(battary) + "%");
-                        pack.error=("当前电量低，为" + QString::number(battary) + "%");
-                        TestItem test;
-                        test.testItem = "当前电量";
-                        test.testData = QString::number(battary);
-                        test.testResult = "失败";
-                        test.ask = "通过";
-                        testItems.append(test);
-                        testResultTableUpdate(testItems);
-
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                } else {
-                    showlog("正在重发获取电量信息");
-                    protocolManager.get(DeviceCmd::GetBattery);
-                }
-                break;
+        case STATE_DISABLE_SLEEP_1:
+            if (at->getConnected()) {
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::FacMode, 1); });
+                showlog("已进入工厂模式");
+                appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
+                testResultTableUpdate(testItems);
+                state = STATE_WATI_CONNECT;
             }
-            
-            case STATE_AGE:
-                if (canGoNext) {
-                    // waitWork(100);
-                    sendCommandWithRetry([&]() {
+            break;
+
+        case STATE_WATI_CONNECT:
+            if (canGoNext) {
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, writesn})); });
+                showlog(QString::number(canGoNext));
+                showlog("sn写入内容为：" + stringsn);
+                appendStationResult(testItems, "sn写入", "0.0000", passValue);
+                testResultTableUpdate(testItems);
+                state = STATE_WAIT_BANDING;
+            }
+            break;
+
+        case STATE_WAIT_BANDING:
+            if (canGoNext) {
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                state = STATE_WAIT_CORRECT_BANDING;
+            }
+            break;
+
+        case STATE_WAIT_CORRECT_BANDING:
+
+            if (canGoNext) {
+                if (snCompareOk == 1) {
+                    state = STATE_GETBATTERY;
+                    showlog("sn已比对成功");
+                    appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
+                    testResultTableUpdate(testItems);
+                    protocolManager.get(DeviceCmd::GetBattery);
+                } else if (snCompareOk == 2) {
+                    showlog("sn已比对失败");
+                    pack.error = "SP03011";
+                    result = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
+            }
+            break;
+
+        case STATE_GETBATTERY: {
+            waitWork(100);
+            if (is_battary_test != 0) {
+
+                if (is_battary_test == 1) {
+                    showlog("电量正常" + QString::number(battary) + "%");
+                    TestItem test;
+                    test.testItem = "当前电量";
+                    test.testData = QString::number(battary) + "%";
+                    // 管道段须为「NAME:VALUE」单冒号，避免「BATTARY:|80%」被拆成三段导致 BYD TEST_DATA_LIST 解析异常
+
+                    test.testResult = "通过";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+                    // protocolManager.get(DeviceCmd::PeriphState);
+                    state = STATE_AGE;
+                }
+
+                if (is_battary_test == 2) {
+                    showlog("当前电量低，为" + QString::number(battary) + "%");
+                    pack.error = ("当前电量低，为" + QString::number(battary) + "%");
+                    TestItem test;
+                    test.testItem = "当前电量";
+                    test.testData = QString::number(battary);
+                    test.testResult = "失败";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+
+                    result = failValue;
+                    state = STATE_SAVE_RESULT;
+                }
+            } else {
+                showlog("正在重发获取电量信息");
+                protocolManager.get(DeviceCmd::GetBattery);
+            }
+            break;
+        }
+
+        case STATE_AGE:
+            if (canGoNext) {
+                // waitWork(100);
+                sendCommandWithRetry([&]() {
                     QVariantMap m;
                     m["mode"] = 1;
                     m["seconds"] = 14400;
                     // m["switch"] = static_cast<int>(FacSwitch_OPEN);
                     // showlog(QString::number(m["switch"]));
                     protocolManager.set(DeviceCmd::BurningMode, m);
-                    });
-                    showlog("已发送进入老化");
-                    ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
-                    state = STATE_AGE_CHECK;
-                }
-                break;
+                });
+                showlog("已发送进入老化");
+                ui->flash_state->setText("Flash State:<font color='green'>正常</font>");
+                state = STATE_AGE_CHECK;
+            }
+            break;
 
-            case STATE_AGE_CHECK:
+        case STATE_AGE_CHECK:
             if (canGoNext) {
                 result = passValue;
                 state = STATE_SAVE_RESULT;
             }
             break;
 
-            case STATE_SAVE_RESULT: {
-                if (result == passValue) {
-                    QString mesresult = "PASS";
-                    pack.result = mesresult;
-                    pack.mechines = getIndex();
-                    pack.sn = ui->getMac->text();
-                    pack.instruct_num = "083";
-                    if (ui->isusemes->checkState()) {
-                        pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                        emit send_end_testPass(pack);
-                        appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((result == failValue)) {
-                    pack.result = "FAIL";
-                    pack.mechines = getIndex();
-                    pack.sn = ui->getMac->text();
-                    pack.instruct_num = "083";
-                    
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                        appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                    }
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
+        case STATE_SAVE_RESULT: {
+            if (result == passValue) {
+                QString mesresult = "PASS";
+                pack.result = mesresult;
+                pack.mechines = getIndex();
+                pack.sn = ui->getMac->text();
+                pack.instruct_num = "083";
+                if (ui->isusemes->checkState()) {
                     pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                    emit send_end_testPass(pack);
-                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
+                    emit send_end_test_pass(pack);
+                    appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                     testResultTableUpdate(testItems);
                 }
 
-                ui->getMac->clear();
-                ui->macInput->clear();
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((result == failValue)) {
+                pack.result = "FAIL";
+                pack.mechines = getIndex();
+                pack.sn = ui->getMac->text();
+                pack.instruct_num = "083";
 
-                TestItem test;
-                test.testItem = "老化测试";
-                test.testData = "已进入";
-                test.testResult = "通过";
-                test.ask = "通过";
-                testItems.append(test);
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
+                    testResultTableUpdate(testItems);
+                }
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+                pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
+                emit send_end_test_pass(pack);
+                appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                 testResultTableUpdate(testItems);
+            }
 
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
-                emit send_end_test(getIndex());
-                
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                waitWork(150);
-                isTestContinue = false;
-                on_disconnectButton_clicked();
-                showlog(QString::number(isTestContinue));
-                showlog("测试结束");
-            } break;
-            case STATE_PROCESS_INSPECTION: break;
+            ui->getMac->clear();
+            ui->macInput->clear();
+
+            TestItem test;
+            test.testItem = "老化测试";
+            test.testData = "已进入";
+            test.testResult = "通过";
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            emit send_end_test(getIndex());
+
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            waitWork(150);
+            isTestContinue = false;
+            on_disconnectButton_clicked();
+            showlog(QString::number(isTestContinue));
+            showlog("测试结束");
+        } break;
+        case STATE_PROCESS_INSPECTION:
+            break;
         }
         QCoreApplication::processEvents();
-        }
     }
-
-
+}
 
 void ageing::on_getMac_returnPressed() {
     testResultTableInit();
@@ -684,7 +694,7 @@ void ageing::on_getMac_returnPressed() {
     //     ui->getMac->setFocus();
     //     return;
     // }
-    emit send_startTest(getIndex());
+    emit send_start_test(getIndex());
     // ui->macInput->setText(parsedMac);
     // showlog("SN解析MAC成功: " + parsedMac);
     appendStationResult(testItems, "主板条码", "0.0000", passValue);
@@ -697,7 +707,6 @@ void ageing::on_getMac_returnPressed() {
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
     // on_macInput_returnPressed();
-
 }
 
 void ageing::show_product(QString name) {
@@ -737,7 +746,7 @@ void ageing::show_product(QString name) {
 
     // 调整 QGraphicsView 的视图设置
     ui->graphicsView->setSceneRect(scaledPixmap.rect());
-    ui->graphicsView->fitInView(scaledPixmap.rect(), Qt::KeepAspectRatio);  // 确保视图中的图像按比例适应
+    ui->graphicsView->fitInView(scaledPixmap.rect(), Qt::KeepAspectRatio); // 确保视图中的图像按比例适应
 }
 
 void ageing::processGetMesTestValue() {
@@ -752,7 +761,7 @@ void ageing::processGetMesTestValue() {
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 
@@ -786,6 +795,3 @@ void ageing::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-
-

@@ -27,7 +27,7 @@ enum class DongleCmd {
 
 class Qat : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit Qat(QSerialPort* parent = nullptr);
 
     void parseCmd(const QByteArray& byte);
@@ -35,31 +35,46 @@ public:
     void get(DongleCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
 
-    bool getConnected() { return isConnected; }
-    void resetConnected() { isConnected = false; }
-    void setConnected() { isConnected = true; }
-    bool getwifiConnected() { return iswifiConnected; }
-    void resetwifiConnected() { iswifiConnected = false; }
-    void setwifiConnected() { iswifiConnected = true; }
+    bool getConnected() {
+        return isConnected;
+    }
+    void resetConnected() {
+        isConnected = false;
+    }
+    void setConnected() {
+        isConnected = true;
+    }
+    bool getwifiConnected() {
+        return iswifiConnected;
+    }
+    void resetwifiConnected() {
+        iswifiConnected = false;
+    }
+    void setwifiConnected() {
+        iswifiConnected = true;
+    }
 
-signals:
+  signals:
     void command(QString cmd, QString parameter);
     /** 统一上行数据信封 */
     void reportReceived(const ProtocolReport& report);
     /** 传输层 ACK（蓝牙连接成功等），与结构化 report 分离 */
     void sendGetProductResponse(int data);
 
-protected:
+  protected:
     void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
         emit reportReceived(ProtocolReport(reportType, payload));
     }
 
-private:
+  private:
     void waitWork(int ms);
     void sendAtLine(const QString& line);
     void registerCommand();
 
-    typedef enum { STATE_IDLE, STATE_RECEIVING_T, STATE_RECEIVING_COMMAND, STATE_RECEIVING_PARAMETER } State;
+    typedef enum { STATE_IDLE,
+                   STATE_RECEIVING_T,
+                   STATE_RECEIVING_COMMAND,
+                   STATE_RECEIVING_PARAMETER } State;
     State state = STATE_IDLE;
     QString cmd, parameter;
     QSerialPort* serialPort = nullptr;
@@ -81,8 +96,8 @@ private:
     bool isConnected = false;
     bool iswifiConnected = false;
 
-private slots:
+  private slots:
     void processCmd(QString cmd, QString parameter);
 };
 
-#endif  // QAT_H
+#endif // QAT_H

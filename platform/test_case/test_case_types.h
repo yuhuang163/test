@@ -6,18 +6,28 @@
 #include <QVector>
 
 // --- 发送通道 / 协议 ---
-enum class TestCaseSendAction { Set, Get };
+enum class TestCaseSendAction { Set,
+                                Get };
 
-enum class DeviceCmdParamKind { None, Int, UInt, String, JsonMap };
+enum class DeviceCmdParamKind { None,
+                                Int,
+                                UInt,
+                                String,
+                                JsonMap };
 
 struct DeviceCmdParamSchema {
     DeviceCmdParamKind kind = DeviceCmdParamKind::None;
     QString hint;
 };
 
-enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture };
+enum class TestCaseSendChannel { Product,
+                                 ProductSerial,
+                                 Dongle,
+                                 Cloud,
+                                 Fixture };
 
-enum class TestCaseProductProtocol { Qfctp, Qpb };
+enum class TestCaseProductProtocol { Qfctp,
+                                     Qpb };
 
 enum class TestCaseFixtureProtocol { Pcba };
 
@@ -46,7 +56,11 @@ struct TestCaseTiming {
 };
 
 // --- 卡控 ---
-enum class TestCaseGateOp { Range, Gt, Lt, Eq, CompareVersions };
+enum class TestCaseGateOp { Range,
+                            Gt,
+                            Lt,
+                            Eq,
+                            CompareVersions };
 
 struct TestCaseGate {
     bool enabled = false;
@@ -91,4 +105,4 @@ struct TestFlowStationEntry {
     QString displayName;
 };
 
-#endif  // PLATFORM_TEST_CASE_TYPES_H
+#endif // PLATFORM_TEST_CASE_TYPES_H

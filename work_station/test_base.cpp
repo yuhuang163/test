@@ -1,4 +1,4 @@
-﻿#include "test_base.h"
+#include "test_base.h"
 
 #include "my_set/my_typedef.h"
 
@@ -26,28 +26,27 @@
 #pragma comment(lib, "ole32.lib")
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-test_base::test_base(QWidget* parent) :
-    QWidget(parent),
-    log(new Qlog),
-    dongleSerialChannel_(new SerialChannel(this)),
-    usbSerialChannel_(new SerialChannel(this)),
-    jigSerialChannel_(new SerialChannel(this)),
-    productSerialChannel_(new SerialChannel(this)),
-    dongleSerialPort(dongleSerialChannel_->port()),
-    pb(new Qpb(dongleSerialPort)),
-    qfctp(new Qfctp(dongleSerialPort)),
-    qaiot(new Qaiot(dongleSerialPort)),
-    at(new Qat(dongleSerialPort)),
-    usbSerialPort(usbSerialChannel_->port()),
-    usb(new Qusb(usbSerialPort)),
-    visa(new Qvisa(this)),
-    jigSerialPort(jigSerialChannel_->port()),
-    jig(new Qjig(jigSerialPort)),
-    productSerialPort(productSerialChannel_->port()),
-    product(new Qproduct(productSerialPort, this)) {
+test_base::test_base(QWidget* parent) : QWidget(parent),
+                                        log(new Qlog),
+                                        dongleSerialChannel_(new SerialChannel(this)),
+                                        usbSerialChannel_(new SerialChannel(this)),
+                                        jigSerialChannel_(new SerialChannel(this)),
+                                        productSerialChannel_(new SerialChannel(this)),
+                                        dongleSerialPort(dongleSerialChannel_->port()),
+                                        pb(new Qpb(dongleSerialPort)),
+                                        qfctp(new Qfctp(dongleSerialPort)),
+                                        qaiot(new Qaiot(dongleSerialPort)),
+                                        at(new Qat(dongleSerialPort)),
+                                        usbSerialPort(usbSerialChannel_->port()),
+                                        usb(new Qusb(usbSerialPort)),
+                                        visa(new Qvisa(this)),
+                                        jigSerialPort(jigSerialChannel_->port()),
+                                        jig(new Qjig(jigSerialPort)),
+                                        productSerialPort(productSerialChannel_->port()),
+                                        product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
@@ -62,7 +61,7 @@ test_base::test_base(QWidget* parent) :
                     QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
 
     signalAndslot();
-    scanSerialPortsTimer->start(1000);  // 每秒刷新一次
+    scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
 }
 void test_base::initData() {
@@ -110,10 +109,9 @@ void test_base::signalAndslot() {
     connect(productSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleProductSerialPortError);
 
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
-    connect(this, SIGNAL(refreshUsbSerialPortState(int)), this, SLOT(refreshUsbUartState(int)));
-    connect(this, SIGNAL(refreshJigSerialPortState(int)), this, SLOT(refreshJigUartState(int)));
-    connect(this, SIGNAL(refreshProductSerialPortState(int)), this, SLOT(refreshProductUartState(int)));
-
+    connect(this, SIGNAL(send_usb_serialPort_state(int)), this, SLOT(refreshUsbUartState(int)));
+    connect(this, SIGNAL(send_jig_serialPort_state(int)), this, SLOT(refreshJigUartState(int)));
+    connect(this, SIGNAL(send_product_serialPort_state(int)), this, SLOT(refreshProductUartState(int)));
 }
 
 void test_base::resetVisaBackend() {
@@ -151,11 +149,11 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
 
     QTextStream stream(&output);
     QString line;
-    QStringList newDevices;  // 存储新的设备列表
+    QStringList newDevices; // 存储新的设备列表
     int k = 100;
     while (stream.readLineInto(&line)) {
         if (line.contains("DeviceID"))
-            continue;  // 跳过标题行
+            continue; // 跳过标题行
         QStringList parts = line.split(QRegExp("\\s{2,}"), Qt::SkipEmptyParts);
         if (parts.size() >= 2) {
             QString device = parts[1].trimmed();
@@ -181,7 +179,7 @@ void test_base::updateHIDComboBox(QComboBox* comboBox) {
         if (!newDevices.contains(currentItem)) {
             comboBox->removeItem(i);
             currentItems.remove(currentItem);
-            --i;  // 因为移除了一个项，所以要调整索引
+            --i; // 因为移除了一个项，所以要调整索引
         }
     }
 
@@ -208,7 +206,7 @@ void test_base::getMacAddress(const QByteArray& byte) {
     while (receivedData.contains("\r\n")) {
         int index = receivedData.indexOf("\r\n");
         QString line = receivedData.left(index);
-        receivedData = receivedData.mid(index + 2);  // 删除处理过的数据
+        receivedData = receivedData.mid(index + 2); // 删除处理过的数据
         QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),"
                                  "\\s*deviceRssi(?:\\s*:(.*))?");
         QRegularExpressionMatch match = regex.match(line);
@@ -235,7 +233,7 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
-    getMacAddress(dataTemp);  // 搜索设备用
+    getMacAddress(dataTemp); // 搜索设备用
     // getMacAddress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
@@ -307,12 +305,12 @@ void test_base::openUsbSerialPort() {
     params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
 
     if (usbSerialChannel_->open(params))
-        emit refreshUsbSerialPortState(1);
+        emit send_usb_serialPort_state(1);
 }
 
 void test_base::closeUsbSerialPort() {
     usbSerialChannel_->close();
-    emit refreshUsbSerialPortState(0);
+    emit send_usb_serialPort_state(0);
 }
 
 void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
@@ -335,12 +333,12 @@ void test_base::openJigSerialPort() {
     params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
 
     if (jigSerialChannel_->open(params))
-        emit refreshJigSerialPortState(1);
+        emit send_jig_serialPort_state(1);
 }
 
 void test_base::closeJigSerialPort() {
     jigSerialChannel_->close();
-    emit refreshJigSerialPortState(0);
+    emit send_jig_serialPort_state(0);
 }
 
 void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
@@ -371,23 +369,27 @@ void test_base::openProductSerialPort() {
     params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
 
     if (productSerialChannel_->open(params))
-        emit refreshProductSerialPortState(1);
+        emit send_product_serialPort_state(1);
 }
 
 void test_base::closeProductSerialPort() {
     productSerialChannel_->close();
     if (product)
         product->clearProductSerialRxAccum();
-    emit refreshProductSerialPortState(0);
+    emit send_product_serialPort_state(0);
 }
 
-void test_base::refreshPbData(QString data) { msgEdit()->appendPlainText(data); }
+void test_base::refreshPbData(QString data) {
+    msgEdit()->appendPlainText(data);
+}
 
 void test_base::showlog(QString msg) {
     Qlog::showlog(msg, m_index, msgEdit());
 }
 
-int test_base::getIndex() const { return m_index; }
+int test_base::getIndex() const {
+    return m_index;
+}
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
@@ -448,53 +450,49 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
 void test_base::onProtocolReport(const ProtocolReport& report) {
     const QString& reportType = report.reportType;
     const QVariant& payload = report.payload;
-    if (reportType == QLatin1String("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
+    if (reportType == "ProtocolBaseInfoData" && payload.canConvert<ProtocolBaseInfoData>()) {
         refreshBaseData(payload.value<ProtocolBaseInfoData>());
-    } else if (reportType == QLatin1String("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
+    } else if (reportType == "ProtocolSnData" && payload.canConvert<ProtocolSnData>()) {
         refreshSn(payload.value<ProtocolSnData>());
-    } else if (reportType == QLatin1String("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
+    } else if (reportType == "ProtocolBatteryData" && payload.canConvert<ProtocolBatteryData>()) {
         refreshBattaryData(payload.value<ProtocolBatteryData>());
-    } else if (reportType == QLatin1String("ProtocolButtonStateData") && payload.canConvert<ProtocolButtonStateData>()) {
+    } else if (reportType == "ProtocolButtonStateData" && payload.canConvert<ProtocolButtonStateData>()) {
         refreshButton(payload.value<ProtocolButtonStateData>());
-    } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
+    } else if (reportType == "ProtocolPeriphStateData" && payload.canConvert<ProtocolPeriphStateData>()) {
         refreshPeriphData(payload.value<ProtocolPeriphStateData>());
-    } else if (reportType == QLatin1String("ProtocolPbDate")) {
+    } else if (reportType == "ProtocolPbDate") {
         refreshPbData(payload.toString());
-    } else if (reportType == QLatin1String("ProtocolPressCalibResultData")
-               && payload.canConvert<ProtocolPressCalibResultData>()) {
+    } else if (reportType == "ProtocolPressCalibResultData" && payload.canConvert<ProtocolPressCalibResultData>()) {
         refreshPressCalibData(payload.value<ProtocolPressCalibResultData>());
-    } else if (reportType == QLatin1String("ProtocolPressSampleData") && payload.canConvert<ProtocolPressSampleData>()) {
+    } else if (reportType == "ProtocolPressSampleData" && payload.canConvert<ProtocolPressSampleData>()) {
         refreshPressSensorData(payload.value<ProtocolPressSampleData>());
-    } else if (reportType == QLatin1String("ProtocolBrushControlData")
-               && payload.canConvert<ProtocolBrushControlData>()) {
+    } else if (reportType == "ProtocolBrushControlData" && payload.canConvert<ProtocolBrushControlData>()) {
         refreshBrushControlState(payload.value<ProtocolBrushControlData>());
-    } else if (reportType == QLatin1String("ProtocolLedControlData") && payload.canConvert<ProtocolLedControlData>()) {
+    } else if (reportType == "ProtocolLedControlData" && payload.canConvert<ProtocolLedControlData>()) {
         refreshLedControlState(payload.value<ProtocolLedControlData>());
-    } else if (reportType == QLatin1String("ProtocolCameraControlData") && payload.canConvert<ProtocolTypeData>()) {
+    } else if (reportType == "ProtocolCameraControlData" && payload.canConvert<ProtocolTypeData>()) {
         refreshCameraControl(payload.value<ProtocolTypeData>());
-    } else if (reportType == QLatin1String("ProtocolImuSampleData") && payload.canConvert<ProtocolImuSampleData>()) {
+    } else if (reportType == "ProtocolImuSampleData" && payload.canConvert<ProtocolImuSampleData>()) {
         refreshImuData(payload.value<ProtocolImuSampleData>());
-    } else if (reportType == QLatin1String("ProtocolImuCalibResultData")
-               && payload.canConvert<ProtocolImuCalibResultData>()) {
+    } else if (reportType == "ProtocolImuCalibResultData" && payload.canConvert<ProtocolImuCalibResultData>()) {
         refreshImuCaliResult(payload.value<ProtocolImuCalibResultData>());
-    } else if (reportType == QLatin1String("ProtocolMotorCaliMsg")) {
+    } else if (reportType == "ProtocolMotorCaliMsg") {
         refreshMotorCaliMsg(payload.toString());
-    } else if (reportType == QLatin1String("ProtocolLcdControlData") && payload.canConvert<ProtocolTypeData>()) {
+    } else if (reportType == "ProtocolLcdControlData" && payload.canConvert<ProtocolTypeData>()) {
         refreshLcdControl(payload.value<ProtocolTypeData>());
-    } else if (reportType == QLatin1String("ProtocolMusicStateData") && payload.canConvert<ProtocolMusicStateData>()) {
+    } else if (reportType == "ProtocolMusicStateData" && payload.canConvert<ProtocolMusicStateData>()) {
         refreshMusicState(payload.value<ProtocolMusicStateData>());
-    } else if (reportType == QLatin1String("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
+    } else if (reportType == "ProtocolRssiData" && payload.canConvert<ProtocolRssiData>()) {
         refreshRssiRead(payload.value<ProtocolRssiData>());
-    } else if (reportType == QLatin1String("ProtocolKeyCapData") && payload.canConvert<ProtocolKeyCapData>()) {
+    } else if (reportType == "ProtocolKeyCapData" && payload.canConvert<ProtocolKeyCapData>()) {
         refreshKeySignalRead(payload.value<ProtocolKeyCapData>());
-    } else if (reportType == QLatin1String("ProtocolChargeCurrentData")
-               && payload.canConvert<ProtocolChargeCurrentData>()) {
+    } else if (reportType == "ProtocolChargeCurrentData" && payload.canConvert<ProtocolChargeCurrentData>()) {
         refreshChargeCurrentRead(payload.value<ProtocolChargeCurrentData>());
-    } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
+    } else if (reportType == "ProtocolTupleData" && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
-    } else if (reportType == QLatin1String("ProtocolPictureSendOverData") && payload.canConvert<ProtocolResultData>()) {
+    } else if (reportType == "ProtocolPictureSendOverData" && payload.canConvert<ProtocolResultData>()) {
         refreshPictureSendOver(payload.value<ProtocolResultData>());
-    } else if (reportType == QLatin1String("ProtocolAgingStatusData") && payload.canConvert<ProtocolAgingStatusData>()) {
+    } else if (reportType == "ProtocolAgingStatusData" && payload.canConvert<ProtocolAgingStatusData>()) {
         refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
     }
 }
@@ -502,43 +500,33 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
 void test_base::onDongleAtReport(const ProtocolReport& report) {
     const QString& reportType = report.reportType;
     const QVariant& payload = report.payload;
-    if (reportType == QLatin1String("ProtocolDongleBleStateData")
-        && payload.canConvert<ProtocolDongleBleStateData>()) {
+    if (reportType == "ProtocolDongleBleStateData" && payload.canConvert<ProtocolDongleBleStateData>()) {
         refreshBleState(payload.value<ProtocolDongleBleStateData>().connected);
-    } else if (reportType == QLatin1String("ProtocolDongleBleRssiData")
-               && payload.canConvert<ProtocolDongleBleRssiData>()) {
+    } else if (reportType == "ProtocolDongleBleRssiData" && payload.canConvert<ProtocolDongleBleRssiData>()) {
         refreshBleRssi(payload.value<ProtocolDongleBleRssiData>().rssi);
-    } else if (reportType == QLatin1String("ProtocolDongleWifiMsgData")
-               && payload.canConvert<ProtocolDongleWifiMsgData>()) {
+    } else if (reportType == "ProtocolDongleWifiMsgData" && payload.canConvert<ProtocolDongleWifiMsgData>()) {
         refreshWifiMsg(payload.value<ProtocolDongleWifiMsgData>().text);
-    } else if (reportType == QLatin1String("ProtocolDongleVersionData")
-               && payload.canConvert<ProtocolDongleVersionData>()) {
+    } else if (reportType == "ProtocolDongleVersionData" && payload.canConvert<ProtocolDongleVersionData>()) {
         refreshDongleVersion(payload.value<ProtocolDongleVersionData>().version);
-    } else if (reportType == QLatin1String("ProtocolDongleWifiSsidData")
-               && payload.canConvert<ProtocolDongleWifiSsidData>()) {
+    } else if (reportType == "ProtocolDongleWifiSsidData" && payload.canConvert<ProtocolDongleWifiSsidData>()) {
         refreshDongleWifi(payload.value<ProtocolDongleWifiSsidData>().ssid);
-    } else if (reportType == QLatin1String("ProtocolDongleWifiRssiData")
-               && payload.canConvert<ProtocolDongleWifiRssiData>()) {
+    } else if (reportType == "ProtocolDongleWifiRssiData" && payload.canConvert<ProtocolDongleWifiRssiData>()) {
         refreshWifiRssi(payload.value<ProtocolDongleWifiRssiData>().rssi);
-    } else if (reportType == QLatin1String("ProtocolDongleWifiStateData")
-               && payload.canConvert<ProtocolDongleWifiStateData>()) {
+    } else if (reportType == "ProtocolDongleWifiStateData" && payload.canConvert<ProtocolDongleWifiStateData>()) {
         refreshWifiState(payload.value<ProtocolDongleWifiStateData>().connected);
-    } else if (reportType == QLatin1String("ProtocolDongleWifiIpData")
-               && payload.canConvert<ProtocolDongleWifiIpData>()) {
+    } else if (reportType == "ProtocolDongleWifiIpData" && payload.canConvert<ProtocolDongleWifiIpData>()) {
         refreshWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
     }
 }
 
 void test_base::onUsbInstrumentReport(const ProtocolReport& report) {
-    if (report.reportType == QLatin1String("ProtocolAmmeterReadingData")
-        && report.payload.canConvert<ProtocolAmmeterReadingData>()) {
+    if (report.reportType == "ProtocolAmmeterReadingData" && report.payload.canConvert<ProtocolAmmeterReadingData>()) {
         refreshAmmeterData(report.payload.value<ProtocolAmmeterReadingData>().value);
     }
 }
 
 void test_base::onJigInstrumentReport(const ProtocolReport& report) {
-    if (report.reportType == QLatin1String("ProtocolJigAmplitudeData")
-        && report.payload.canConvert<ProtocolJigAmplitudeData>()) {
+    if (report.reportType == "ProtocolJigAmplitudeData" && report.payload.canConvert<ProtocolJigAmplitudeData>()) {
         refreshAmplitudeData(report.payload.value<ProtocolJigAmplitudeData>().value);
     }
 }
@@ -736,9 +724,9 @@ void test_base::testResultTableInit() {
     }
     testResultTable()->clear();
     // 初始化表格
-    testResultTable()->setColumnCount(4);  // 三列，分别为Mac地址、SN码和时间戳
+    testResultTable()->setColumnCount(4); // 三列，分别为Mac地址、SN码和时间戳
 
-    testResultTable()->setRowCount(0);  // 初始行数为0，因为还没有数据
+    testResultTable()->setRowCount(0); // 初始行数为0，因为还没有数据
 
     // 设置表格标题
     QStringList headers;
@@ -796,15 +784,15 @@ void test_base::getMac(QString sn_to_search) {
 
         // 在需要的地方使用这个变量创建 QFile 对象
         QFile file(fileName);
-        if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+        if (file.open(QIODevice::ReadOnly)) { // 打开文件
             QTextStream in(&file);
-            while (!in.atEnd()) {                      // 逐行读取文件
-                QString line = in.readLine();          // 读取一行
-                QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-                if (fields.count() >= 2) {             // 至少需要两个字段
-                    QString sn = fields.at(0);         // 第一个字段是sn
-                    QString mac = fields.at(1);        // 第二个字段是mac
-                    if (sn == sn_to_search) {          // 检查是否是待检索的sn
+            while (!in.atEnd()) {                     // 逐行读取文件
+                QString line = in.readLine();         // 读取一行
+                QStringList fields = line.split(","); // 将行按照逗号分隔成两个字段
+                if (fields.count() >= 2) {            // 至少需要两个字段
+                    QString sn = fields.at(0);        // 第一个字段是sn
+                    QString mac = fields.at(1);       // 第二个字段是mac
+                    if (sn == sn_to_search) {         // 检查是否是待检索的sn
                         showlog("这是从文件获取的mac地址");
                         macInputLineEdit()->setText(mac);
                         macInputLineEdit()->returnPressed();
@@ -816,7 +804,7 @@ void test_base::getMac(QString sn_to_search) {
                     showlog("存在没有逗号分开的" + QString::number(fields.count()) + line);
                 }
             }
-            file.close();  // 关闭文件
+            file.close(); // 关闭文件
         }
         if (!getIsFormMes()->isChecked() && macInputLineEdit()->text().isEmpty()) {
             getMacLineEdit()->clear();
@@ -827,7 +815,7 @@ void test_base::getMac(QString sn_to_search) {
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
     isTestContinue = 0;
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
     waitWork(50);
 }
 void test_base::refreshDongleVersion(QString data) {
@@ -856,21 +844,21 @@ QString test_base::getValueBySN(const QString& sn) {
     QString fileName = "sn_subpid.txt";
     // 在需要的地方使用这个变量创建 QFile 对象
     QFile file(fileName);
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+    if (file.open(QIODevice::ReadOnly)) { // 打开文件
         QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
-            if (fields.count() >= 2) {             // 至少需要两个字段
-                QString filesn = fields.at(0);     // 第一个字段是sn
-                QString subpid = fields.at(1);     // 第二个字段是subpid
-                if (filesn == truncatedSN) {       // 检查是否是待检索的sn
+        while (!in.atEnd()) {                     // 逐行读取文件
+            QString line = in.readLine();         // 读取一行
+            QStringList fields = line.split(","); // 将行按照逗号分隔成两个字段
+            if (fields.count() >= 2) {            // 至少需要两个字段
+                QString filesn = fields.at(0);    // 第一个字段是sn
+                QString subpid = fields.at(1);    // 第二个字段是subpid
+                if (filesn == truncatedSN) {      // 检查是否是待检索的sn
                     showlog("文件匹配到的subpid：" + subpid);
                     return subpid;
                 }
             }
         }
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
     }
 
     return "SUBPID_ERRO";

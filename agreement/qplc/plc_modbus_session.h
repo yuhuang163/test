@@ -8,15 +8,19 @@
 
 /** 基于 InovanceH5uModbusTcp 的 PLC 线圈读写与会话辅助。 */
 class PlcModbusSession {
-public:
+  public:
     using LogFn = std::function<void(const QString& line)>;
     using IsContinueFn = std::function<bool()>;
 
     PlcModbusSession(InovanceH5uModbusTcp* tcp, const PlcStationConfig& cfg, LogFn log = {},
                      IsContinueFn isContinue = {});
 
-    InovanceH5uModbusTcp* tcp() const { return tcp_; }
-    const PlcStationConfig& config() const { return cfg_; }
+    InovanceH5uModbusTcp* tcp() const {
+        return tcp_;
+    }
+    const PlcStationConfig& config() const {
+        return cfg_;
+    }
 
     bool connectPlc(QString* errorMessage);
     void disconnect();
@@ -30,7 +34,7 @@ public:
     void logSessionSummary(const QString& stepTag) const;
     void logLine(const QString& line) const;
 
-private:
+  private:
     int requestTimeoutMs() const;
 
     InovanceH5uModbusTcp* tcp_;
@@ -39,4 +43,4 @@ private:
     IsContinueFn isContinue_;
 };
 
-#endif  // PLC_MODBUS_SESSION_H
+#endif // PLC_MODBUS_SESSION_H

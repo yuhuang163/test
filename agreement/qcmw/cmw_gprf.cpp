@@ -6,28 +6,24 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 CmwGprfProtocol::CmwGprfProtocol()
-    : write_([](const QString&) { return false; }), query_([](const QString&, QString*) { return false; })
-{
+    : write_([](const QString&) { return false; }), query_([](const QString&, QString*) { return false; }) {
 }
 
 CmwGprfProtocol::CmwGprfProtocol(WriteFn write, QueryFn query, LogFn log, WaitFn wait)
-    : write_(std::move(write)), query_(std::move(query)), log_(std::move(log)), wait_(std::move(wait))
-{
+    : write_(std::move(write)), query_(std::move(query)), log_(std::move(log)), wait_(std::move(wait)) {
 }
 
-void CmwGprfProtocol::logLine(const QString& line) const
-{
+void CmwGprfProtocol::logLine(const QString& line) const {
     if (log_) {
         log_(line);
     }
 }
 
-QString CmwGprfProtocol::arbFileWriteCommand(const QString& rawPath)
-{
+QString CmwGprfProtocol::arbFileWriteCommand(const QString& rawPath) {
     const QString p = rawPath.trimmed();
     if (p.startsWith(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE"), Qt::CaseInsensitive)) {
         return p;
@@ -42,43 +38,40 @@ QString CmwGprfProtocol::arbFileWriteCommand(const QString& rawPath)
     return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE '%1'").arg(inner);
 }
 
-int CmwGprfProtocol::brushProfileToMHz(int profile)
-{
+int CmwGprfProtocol::brushProfileToMHz(int profile) {
     switch (profile) {
-        case 1:
-        case 4:
-            return 2440;
-        case 2:
-        case 5:
-            return 2480;
-        case 0:
-        case 3:
-        default:
-            return 2402;
+    case 1:
+    case 4:
+        return 2440;
+    case 2:
+    case 5:
+        return 2480;
+    case 0:
+    case 3:
+    default:
+        return 2402;
     }
 }
 
-QString CmwGprfProtocol::brushBandLabel(int profile)
-{
+QString CmwGprfProtocol::brushBandLabel(int profile) {
     switch (profile) {
-        case 1:
-            return QStringLiteral("2440_BLE1M");
-        case 2:
-            return QStringLiteral("2480_BLE1M");
-        case 3:
-            return QStringLiteral("2402_BLE2M");
-        case 4:
-            return QStringLiteral("2440_BLE2M");
-        case 5:
-            return QStringLiteral("2480_BLE2M");
-        case 0:
-        default:
-            return QStringLiteral("2402_BLE1M");
+    case 1:
+        return QStringLiteral("2440_BLE1M");
+    case 2:
+        return QStringLiteral("2480_BLE1M");
+    case 3:
+        return QStringLiteral("2402_BLE2M");
+    case 4:
+        return QStringLiteral("2440_BLE2M");
+    case 5:
+        return QStringLiteral("2480_BLE2M");
+    case 0:
+    default:
+        return QStringLiteral("2402_BLE1M");
     }
 }
 
-bool CmwGprfProtocol::parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent)
-{
+bool CmwGprfProtocol::parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent) {
     const QString clean = response.trimmed().remove(QLatin1Char('"'));
     const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (parts.size() < 3) {
@@ -105,8 +98,7 @@ bool CmwGprfProtocol::parseArbScount(const QString& response, double* countTime,
     return true;
 }
 
-bool CmwGprfProtocol::primeGprf(QString* errorMessage)
-{
+bool CmwGprfProtocol::primeGprf(QString* errorMessage) {
     if (!SETTINGS.value(QStringLiteral("BlePer/CmwEnableFixedInit"), true).toBool()) {
         gprfPrimed_ = true;
         return true;
@@ -117,7 +109,8 @@ bool CmwGprfProtocol::primeGprf(QString* errorMessage)
     write_(QStringLiteral("*CLS"));
     const int cycles =
         SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
-                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt())
+            .toInt();
     const QString repetition =
         SETTINGS.value(QStringLiteral("BlePer/CmwArbRepetition"), QStringLiteral("SINGle")).toString();
     const double level = SETTINGS.value(QStringLiteral("BlePer/CmwTxPowerDbm"), -50.0).toDouble();
@@ -158,10 +151,10 @@ bool CmwGprfProtocol::primeGprf(QString* errorMessage)
     return true;
 }
 
-bool CmwGprfProtocol::waitArbComplete(const QString& scenarioLabel, QString* errorMessage, int* outElapsedMs)
-{
+bool CmwGprfProtocol::waitArbComplete(const QString& scenarioLabel, QString* errorMessage, int* outElapsedMs) {
     const int cyclesSetting = SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
-                                              SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+                                             SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt())
+                                  .toInt();
     const int targetCycles =
         SETTINGS.value(QStringLiteral("BlePer/CmwArbCompleteCycles"), qMax(0, cyclesSetting - 1)).toInt();
     const int pollIntervalMs =
@@ -231,8 +224,7 @@ bool CmwGprfProtocol::waitArbComplete(const QString& scenarioLabel, QString* err
 }
 
 bool CmwGprfProtocol::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage,
-                                          int postTrigHoldMsOverride)
-{
+                                          int postTrigHoldMsOverride) {
     const QString wfPathLog = SETTINGS.value(QStringLiteral("BlePer/CmwWaveformFile")).toString().trimmed();
     if (wfPathLog.isEmpty()) {
         logLine(QStringLiteral("[%1] CMW 单次 GPRF：BlePer/CmwWaveformFile 未配置").arg(scenarioLabel));
@@ -242,7 +234,8 @@ bool CmwGprfProtocol::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLa
 
     const int cycles =
         SETTINGS.value(QStringLiteral("BlePer/CmwArbCycles"),
-                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt()).toInt();
+                       SETTINGS.value(QStringLiteral("BlePer/TxCount"), 1000).toInt())
+            .toInt();
     const auto stopCmwGen = [&]() {
         if (!SETTINGS.value(QStringLiteral("BlePer/CmwStopAfterScenario"), true).toBool()) {
             return;
@@ -309,7 +302,7 @@ bool CmwGprfProtocol::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLa
             const int padMs = holdMs - arbElapsedMs;
             if (postTrigHoldMsOverride >= 0) {
                 logLine(QStringLiteral(
-                             "%1：ARB:SCOunt? 已达设定周期后再补足积包 %2ms（总≥配置的积包毫秒 %3）")
+                            "%1：ARB:SCOunt? 已达设定周期后再补足积包 %2ms（总≥配置的积包毫秒 %3）")
                             .arg(scenarioLabel)
                             .arg(padMs)
                             .arg(holdMs));

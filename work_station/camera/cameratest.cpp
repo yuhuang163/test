@@ -1,4 +1,4 @@
-﻿
+
 #include "cameratest.h"
 
 #include <QColor>
@@ -9,7 +9,7 @@
 #include "ui_cameratest.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 void cameratest::on_pushButton_clicked() {
@@ -63,23 +63,23 @@ void cameratest::on_pushButton_clicked() {
     // int Rect2_Width = SETTINGS.value("CAMERA/Rect2_Width", 52).toInt();
     // int Rect2_Height = SETTINGS.value("CAMERA/Rect2_Height", 34).toInt();
 
-    QPen pen(Qt::red);                                              // 创建一个红色的画笔
-    painter.setPen(pen);                                            // 设置画笔颜色
-    painter.drawImage(0, 0, image);                                 // 在 pixmap 上绘制图片
-    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);  // 绘制第一个矩形
+    QPen pen(Qt::red);                                             // 创建一个红色的画笔
+    painter.setPen(pen);                                           // 设置画笔颜色
+    painter.drawImage(0, 0, image);                                // 在 pixmap 上绘制图片
+    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height); // 绘制第一个矩形
     // painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);   // 绘制第二个矩形
 
-    viewercamrea->updateImage();  // 更新视图
+    viewercamrea->updateImage(); // 更新视图
 }
 cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new Ui::cameratest) {
     m_index = index;
     pack.mechines = getIndex();
-    dongleOutTime = 5;  // 太快会死锁
+    dongleOutTime = 5; // 太快会死锁
     upperComputerVer = CAMERA_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
-    scanSerialPorts();  // 要搜索 一下一开始
+    scanSerialPorts(); // 要搜索 一下一开始
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -111,12 +111,12 @@ cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new U
     connect(this, &cameratest::send_image_processed, this, &cameratest::start_offset_test);
 
     viewercamrea = new ImageViewer("image_markings.png", this);
-    ui->verticalLayout->addWidget(viewercamrea);  // 将 ImageViewer 添加到布局中
-    viewercamrea->show();                         // 显示 ImageViewer
+    ui->verticalLayout->addWidget(viewercamrea); // 将 ImageViewer 添加到布局中
+    viewercamrea->show();                        // 显示 ImageViewer
 
     viewercamrea_py = new ImageViewer("image_markings.png", this);
-    ui->verticalLayout_py->addWidget(viewercamrea_py);  // 将 ImageViewer 添加到布局中
-    viewercamrea_py->show();                            // 显示 ImageViewer
+    ui->verticalLayout_py->addWidget(viewercamrea_py); // 将 ImageViewer 添加到布局中
+    viewercamrea_py->show();                           // 显示 ImageViewer
 
     dongleRingBuf = new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
     cameraRingBuf = new RingBuf(&p_cameraRingBuffer, camera_ring_buf, 1, sizeof(camera_ring_buf));
@@ -138,7 +138,7 @@ cameratest::cameratest(int index, QWidget* parent) : test_base(parent), ui(new U
 
     udpSocket = new QUdpSocket(this);
 
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 void cameratest::write_camera_data(uint8_t* p_data, int data_len) {
     int surpluse_space = 0;
@@ -211,8 +211,8 @@ int cameratest::ext_ble_find_next_picture_frame(QByteArray& picturedata) {
 void cameratest::printSquareData(uint8_t* data, int data_size) {
     if (data_size < 36000)
         return;
-    const int dimension = 32;          // 每行的列数
-    const int totalItems = data_size;  // 数据总量
+    const int dimension = 32;         // 每行的列数
+    const int totalItems = data_size; // 数据总量
     for (int i = 0; i < totalItems; i += dimension) {
         QString row;
         for (int j = 0; j < dimension && (i + j) < totalItems; ++j) {
@@ -530,13 +530,13 @@ void cameratest::processInspection(QString inputSnText) {
             pack.mechines = getIndex();
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -550,9 +550,9 @@ void cameratest::onTimeout() {
     // showlog("再次获取图片");
     protocolManager.set(DeviceCmd::CameraPictureState, 1);
     std::memset(dongle_ring_buffer, 0,
-                sizeof(dongle_ring_buffer));  // 将数组全部初始化为零
+                sizeof(dongle_ring_buffer)); // 将数组全部初始化为零
     std::memset(camera_ring_buf, 0,
-                sizeof(camera_ring_buf));  // 将数组全部初始化为零
+                sizeof(camera_ring_buf)); // 将数组全部初始化为零
     showlog("图片数据包大小=" + QString::number(cameradatasize));
     cameradatasize = 0;
 }
@@ -602,173 +602,181 @@ void cameratest::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE:  // 复位一切
+        case STATE_IDLE: // 复位一切
 
-                showlog("开始测试");
-                pb->reset_all_pb();
-                refresh_times = 1;
-                at->resetConnected();
-                displayRectangles = false;
-                refreshBleState(0);
-                ui->product_sn->setText("存储整机sn:");
-                stringsn = "";
-                cameraSendTimer->stop();
-                result = passValue;
-                is_canGoNext = 0;
-                is_camera_control = 0;
-                picutre_offset_times = 0;
-                can_start_dirty_test = 0;
-                TestTime.start();
-                waitWork(1000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
+            showlog("开始测试");
+            pb->reset_all_pb();
+            refresh_times = 1;
+            at->resetConnected();
+            displayRectangles = false;
+            refreshBleState(0);
+            ui->product_sn->setText("存储整机sn:");
+            stringsn = "";
+            cameraSendTimer->stop();
+            result = passValue;
+            is_canGoNext = 0;
+            is_camera_control = 0;
+            picutre_offset_times = 0;
+            can_start_dirty_test = 0;
+            TestTime.start();
+            waitWork(1000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
 
-                state = STATE_WATI_CONNECT;
-                break;
-            case STATE_WATI_CONNECT:
-                if (at->getConnected()) {
-                    qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
-                    waitWork(WAITTIME);
-                    showlog("蓝牙连接成功");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
-                    bandSnMacToCsv(macAddress, sn);
-                    state = STATE_WATI_BASE_INFO;
-                }
-                break;
+            state = STATE_WATI_CONNECT;
+            break;
+        case STATE_WATI_CONNECT:
+            if (at->getConnected()) {
+                qDebug() << getIndex() << "蓝牙状态" << at->getConnected();
+                waitWork(WAITTIME);
+                showlog("蓝牙连接成功");
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
+                bandSnMacToCsv(macAddress, sn);
+                state = STATE_WATI_BASE_INFO;
+            }
+            break;
 
-            case STATE_WATI_BASE_INFO:
+        case STATE_WATI_BASE_INFO:
 
-                if (canGoNext) {
-                    showlog("已获取到设备信息");
-                    protocolManager.set(DeviceCmd::CameraState, 0);
-                    state = STATE_DISABLE_SLEEP_1;
-                }
+            if (canGoNext) {
+                showlog("已获取到设备信息");
+                protocolManager.set(DeviceCmd::CameraState, 0);
+                state = STATE_DISABLE_SLEEP_1;
+            }
 
-                break;
-            case STATE_DISABLE_SLEEP_1:
-                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
-                    showlog("已进入禁止休眠模式");
-                    if (SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool()) {
-                        // 设置定时器的超时时间为6000毫秒（6秒）
-                        cameraSendTimer->setInterval(CameraGetTime);
-                        // 启动定时器
-                        cameraSendTimer->start();
-                        dataNumber = 0;
-                        packetMap.clear();
-                        faultData.clear();
-                        ui->log->appendPlainText("开始发送开摄像头");
-                        protocolManager.set(DeviceCmd::CameraPictureState, 1);
-                        std::memset(dongle_ring_buffer, 0,
-                                    sizeof(dongle_ring_buffer));  // 将数组全部初始化为零
-                        std::memset(camera_ring_buf, 0,
-                                    sizeof(camera_ring_buf));  // 将数组全部初始化为零
+            break;
+        case STATE_DISABLE_SLEEP_1:
+            if (pb->getState(Qpb::PbStateType::DisableSleep)) {
+                showlog("已进入禁止休眠模式");
+                if (SETTINGS.value("SYSTEM/BluetoothImageTransfer").toBool()) {
+                    // 设置定时器的超时时间为6000毫秒（6秒）
+                    cameraSendTimer->setInterval(CameraGetTime);
+                    // 启动定时器
+                    cameraSendTimer->start();
+                    dataNumber = 0;
+                    packetMap.clear();
+                    faultData.clear();
+                    ui->log->appendPlainText("开始发送开摄像头");
+                    protocolManager.set(DeviceCmd::CameraPictureState, 1);
+                    std::memset(dongle_ring_buffer, 0,
+                                sizeof(dongle_ring_buffer)); // 将数组全部初始化为零
+                    std::memset(camera_ring_buf, 0,
+                                sizeof(camera_ring_buf)); // 将数组全部初始化为零
 
-                        state = CAMERA_TEST;
-
-                        showlog("等待显示照片");
-                    } else {
-                        on_distribution_network_clicked();
-                        state = STATE_NET_SET;
-                    }
-                } else {
-                    waitWork(500);
-                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-                    showlog("已发送禁止休眠");
-                }
-                break;
-
-            case STATE_NET_SET:
-                waitWork(500);
-                if (pb->getState(Qpb::PbStateType::WifiSet)) {
-                    showlog("已配网成功");
-                    //  waitWork(5000);
-                    showlog("现在打开摄像头");
-                    protocolManager.set(DeviceCmd::CameraState, 1);
-                    showlog("锁定曝光时间");
-                    on_exposure_time_edit_returnPressed();
-                    // protocolManager.set(DeviceCmd::CameraLightState, 1);
                     state = CAMERA_TEST;
+
                     showlog("等待显示照片");
                 } else {
-                    waitWork(500);
                     on_distribution_network_clicked();
-                    showlog("已重新发送配网");
+                    state = STATE_NET_SET;
                 }
-                break;
-
-            case CAMERA_TEST:
-                is_camera_control = 1;
-                if (is_camera_control && is_canGoNext) {
-                    showlog("摄像头测试通过");
-                    is_canGoNext = 0;
-                    is_camera_control = 0;
-                    state = STATE_SAVE_RESULT;
-                }
-                break;
-
-            case STATE_SAVE_RESULT:
-                showlog("开始保存结果" + QString::number(getIndex()));
-                switch (getIndex()) {
-                    case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
-                    case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
-                    case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_OUT); break;
-                    default: break;
-                }
-
-                if (result == passValue) {
-                    QString mesresult = "PASS";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|CAMERA_TEST:PASS|");
-                    pack.sn = ui->getMac->text();
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((result == failValue)) {
-                    QString mesresult = "NG";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|CAMERA_TEST:NG|");
-                    pack.sn = ui->getMac->text();
-
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
-                }
-                deinit_distribution_network();
-                protocolManager.set(DeviceCmd::CameraState, 0);
-                protocolManager.set(DeviceCmd::CameraLightState, 0);
-
-                stringsn = "";
-                ui->macInput->clear();
-                ui->getMac->clear();
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
-                // ui->jxl_normal->setDisabled(0);
-                // ui->jxl_abnormal->setDisabled(0);
-                // waitWork(WAITTIME);
-                protocolManager.set(DeviceCmd::DevReset);  //重启彻底断网，别发了
+            } else {
                 waitWork(500);
-                emit send_end_test(getIndex());
-                if (pack.factory == "lx" && m_index == 1)
-                    ui->getMac->setFocus();
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                waitWork(150);
-                on_disconnectButton_clicked();
-                showlog("测试结束");
-                isTestContinue = false;
-                state = STATE_IDLE;
-                break;
+                protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+                showlog("已发送禁止休眠");
+            }
+            break;
 
-            case STATE_PROCESS_INSPECTION: break;
+        case STATE_NET_SET:
+            waitWork(500);
+            if (pb->getState(Qpb::PbStateType::WifiSet)) {
+                showlog("已配网成功");
+                //  waitWork(5000);
+                showlog("现在打开摄像头");
+                protocolManager.set(DeviceCmd::CameraState, 1);
+                showlog("锁定曝光时间");
+                on_exposure_time_edit_returnPressed();
+                // protocolManager.set(DeviceCmd::CameraLightState, 1);
+                state = CAMERA_TEST;
+                showlog("等待显示照片");
+            } else {
+                waitWork(500);
+                on_distribution_network_clicked();
+                showlog("已重新发送配网");
+            }
+            break;
+
+        case CAMERA_TEST:
+            is_camera_control = 1;
+            if (is_camera_control && is_canGoNext) {
+                showlog("摄像头测试通过");
+                is_canGoNext = 0;
+                is_camera_control = 0;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
+
+        case STATE_SAVE_RESULT:
+            showlog("开始保存结果" + QString::number(getIndex()));
+            switch (getIndex()) {
+            case 1:
+                emit send_set_camera_action(STATE_THOROUGHFARE1_OUT);
+                break;
+            case 2:
+                emit send_set_camera_action(STATE_THOROUGHFARE2_OUT);
+                break;
+            case 3:
+                emit send_set_camera_action(STATE_THOROUGHFARE3_OUT);
+                break;
+            default:
+                break;
+            }
+
+            if (result == passValue) {
+                QString mesresult = "PASS";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|CAMERA_TEST:PASS|");
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((result == failValue)) {
+                QString mesresult = "NG";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|CAMERA_TEST:NG|");
+                pack.sn = ui->getMac->text();
+
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+            deinit_distribution_network();
+            protocolManager.set(DeviceCmd::CameraState, 0);
+            protocolManager.set(DeviceCmd::CameraLightState, 0);
+
+            stringsn = "";
+            ui->macInput->clear();
+            ui->getMac->clear();
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            // ui->jxl_normal->setDisabled(0);
+            // ui->jxl_abnormal->setDisabled(0);
+            // waitWork(WAITTIME);
+            protocolManager.set(DeviceCmd::DevReset); //重启彻底断网，别发了
+            waitWork(500);
+            emit send_end_test(getIndex());
+            if (pack.factory == "lx" && m_index == 1)
+                ui->getMac->setFocus();
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            waitWork(150);
+            on_disconnectButton_clicked();
+            showlog("测试结束");
+            isTestContinue = false;
+            state = STATE_IDLE;
+            break;
+
+        case STATE_PROCESS_INSPECTION:
+            break;
         }
 
         //  QCoreApplication::processEvents();
@@ -885,13 +893,13 @@ void cameratest::on_getMac_returnPressed() {
     }
     sn = ui->getMac->text().toUtf8();
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());  // 文件获取
+    getMac(ui->getMac->text()); // 文件获取
     if (ui->isusemes->checkState()) {
         processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
 
-    processGetMesTestValue();  // mes获取
+    processGetMesTestValue(); // mes获取
 }
 void cameratest::processGetMesTestValue() {
     if (pack.factory == "hz") {
@@ -905,16 +913,24 @@ void cameratest::processGetMesTestValue() {
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
-void cameratest::on_close_camera_clicked() { protocolManager.set(DeviceCmd::CameraState, 0); }
+void cameratest::on_close_camera_clicked() {
+    protocolManager.set(DeviceCmd::CameraState, 0);
+}
 
-void cameratest::on_open_camera_clicked() { protocolManager.set(DeviceCmd::CameraState, 1); }
+void cameratest::on_open_camera_clicked() {
+    protocolManager.set(DeviceCmd::CameraState, 1);
+}
 
-void cameratest::on_open_camear_light_clicked() { protocolManager.set(DeviceCmd::CameraLightState, 1); }
+void cameratest::on_open_camear_light_clicked() {
+    protocolManager.set(DeviceCmd::CameraLightState, 1);
+}
 
-void cameratest::on_close_camear_light_clicked() { protocolManager.set(DeviceCmd::CameraLightState, 0); }
+void cameratest::on_close_camear_light_clicked() {
+    protocolManager.set(DeviceCmd::CameraLightState, 0);
+}
 void cameratest::on_distribution_network_clicked() {
     // 获取IP地址
     QString ipString = "0.0.0.0";
@@ -974,12 +990,12 @@ void cameratest::on_distribution_network_clicked() {
 void cameratest::deinit_distribution_network() {
     if (udpSocket->state() == QAbstractSocket::BoundState) {
         qDebug() << "Unbinding UDP socket";
-        udpSocket->abort();  // 关闭 UDP 连接
+        udpSocket->abort(); // 关闭 UDP 连接
     }
     if (udpSocket->isOpen()) {
         udpSocket->close();
     }
-    disconnect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));  // 断开 readyRead 信号
+    disconnect(udpSocket, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams())); // 断开 readyRead 信号
 
     showlog("UDP 连接已关闭");
     QString wifiName = "test_over";
@@ -997,7 +1013,7 @@ void cameratest::on_save_photo_clicked() {
             QFileDialog::getSaveFileName(this, tr("Save File"), "/home", tr("Images (*.png *.xpm *.jpg)"));
 
         if (!fileName.isEmpty()) {
-            pix.save(fileName);  // 保存为用户选择的文件
+            pix.save(fileName); // 保存为用户选择的文件
         }
     } else {
         qDebug() << "Pixmap is empty!";
@@ -1150,15 +1166,15 @@ void cameratest::processTheDatagram(QByteArray& datagram) {
     // int Rect2_Width = SETTINGS.value("CAMERA/Rect2_Width", 52).toInt();
     // int Rect2_Height = SETTINGS.value("CAMERA/Rect2_Height", 34).toInt();
 
-    QPen pen(Qt::red);                                              // 创建一个红色的画笔
-    painter.setPen(pen);                                            // 设置画笔颜色
-    painter.drawImage(0, 0, image);                                 // 在 pixmap 上绘制图片
-    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);  // 绘制第一个矩形
+    QPen pen(Qt::red);                                             // 创建一个红色的画笔
+    painter.setPen(pen);                                           // 设置画笔颜色
+    painter.drawImage(0, 0, image);                                // 在 pixmap 上绘制图片
+    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height); // 绘制第一个矩形
     // painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);   // 绘制第二个矩形
-    viewercamrea->updateImage();  // 更新视图
+    viewercamrea->updateImage(); // 更新视图
 }
 void cameratest::updateImageOnMainThread() {
-    processTheDatagram(pictureByteArray);  // 显示图片
+    processTheDatagram(pictureByteArray); // 显示图片
 }
 void cameratest::start_dirty_test() {
     if (can_start_dirty_test) {
@@ -1226,7 +1242,7 @@ void cameratest::on_DirtyTestButton_clicked() {
         arguments << "--model"
                   << "./code/q30_model_250114.onnx"
                   << "--img" << filePath;
-    } else {  //给木星
+    } else { //给木星
         scriptPath = "./code/onnx_inference_camera_stain.py";
         arguments << "--model"
                   << "./code/infer_camera_stain_240911_320_model.onnx"
@@ -1396,11 +1412,18 @@ void cameratest::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
     switch (getIndex()) {
-        case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_OUT); break;
-        case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_OUT); break;
-        case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_OUT); break;
+    case 1:
+        emit send_set_camera_action(STATE_THOROUGHFARE1_OUT);
+        break;
+    case 2:
+        emit send_set_camera_action(STATE_THOROUGHFARE2_OUT);
+        break;
+    case 3:
+        emit send_set_camera_action(STATE_THOROUGHFARE3_OUT);
+        break;
 
-        default: break;
+    default:
+        break;
     }
 }
 
@@ -1461,7 +1484,7 @@ void cameratest::on_OffsetTest_clicked() {
                   << "./code/q30_model_250114.onnx"
                   << "--img" << filePath << "--x1_s" << QString::number(Rect1_X) << "--y1_s" << QString::number(Rect1_Y)
                   << "--w_s" << QString::number(Rect1_Width) << "--h_s" << QString::number(Rect1_Height);
-    } else {  //给木星
+    } else { //给木星
         arguments << "--model"
                   << "./code/infer_240725_320_model.onnx"
                   << "--img" << filePath << "--x1_s" << QString::number(Rect1_X) << "--y1_s" << QString::number(Rect1_Y)
@@ -1558,7 +1581,7 @@ void cameratest::on_OffsetTest_clicked() {
     }
 
     QImage image;
-    image.load(filePath);  // 加载图像文件
+    image.load(filePath); // 加载图像文件
     QPainter painter(&viewercamrea_py->pixmap);
 
     int Rect2_X = x1;
@@ -1566,15 +1589,15 @@ void cameratest::on_OffsetTest_clicked() {
     int Rect2_Width = w;
     int Rect2_Height = h;
 
-    QPen pen(Qt::red);    // 创建一个红色的画笔
-    painter.setPen(pen);  // 设置画笔颜色
+    QPen pen(Qt::red);   // 创建一个红色的画笔
+    painter.setPen(pen); // 设置画笔颜色
 
-    painter.drawImage(0, 0, image);  // 在 pixmap 上绘制图片
+    painter.drawImage(0, 0, image); // 在 pixmap 上绘制图片
 
-    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height);  // 绘制第一个矩形
-    painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height);  // 绘制第二个矩形
-    viewercamrea_py->updateImage();                                 // 更新视图
-    painter.end();                                                  // 明确结束绘图操作
+    painter.drawRect(Rect1_X, Rect1_Y, Rect1_Width, Rect1_Height); // 绘制第一个矩形
+    painter.drawRect(Rect2_X, Rect2_Y, Rect2_Width, Rect2_Height); // 绘制第二个矩形
+    viewercamrea_py->updateImage();                                // 更新视图
+    painter.end();                                                 // 明确结束绘图操作
     if (!viewercamrea_py->pixmap.isNull()) {
         // 获取当前日期时间
         QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1604,11 +1627,18 @@ void cameratest::on_OffsetTest_clicked() {
 
     if (flag == 1) {
         switch (getIndex()) {
-            case 1: emit send_set_camera_action(STATE_THOROUGHFARE1_IN); break;
-            case 2: emit send_set_camera_action(STATE_THOROUGHFARE2_IN); break;
-            case 3: emit send_set_camera_action(STATE_THOROUGHFARE3_IN); break;
+        case 1:
+            emit send_set_camera_action(STATE_THOROUGHFARE1_IN);
+            break;
+        case 2:
+            emit send_set_camera_action(STATE_THOROUGHFARE2_IN);
+            break;
+        case 3:
+            emit send_set_camera_action(STATE_THOROUGHFARE3_IN);
+            break;
 
-            default: break;
+        default:
+            break;
         }
 
         if (SETTINGS.value("SYSTEM/SimplePcbaTest").toBool())
@@ -1622,7 +1652,7 @@ void cameratest::on_OffsetTest_clicked() {
 // 添加数据包到容器
 void cameratest::addPacket(const QByteArray& packet) {
     int seqNumber = static_cast<uchar>(packet[0]);
-    packetMap.insert(seqNumber, packet.mid(1));  // 存储去掉序号的数据部分
+    packetMap.insert(seqNumber, packet.mid(1)); // 存储去掉序号的数据部分
     qDebug() << "添加包:" << seqNumber;
 }
 
@@ -1650,7 +1680,7 @@ QByteArray cameratest::reassembleData() {
     // 将 QList 转换为 QVector
     QVector<int> keysVector(keysList.begin(), keysList.end());
 
-    std::sort(keysVector.begin(), keysVector.end());  // 按序号排序
+    std::sort(keysVector.begin(), keysVector.end()); // 按序号排序
 
     QByteArray completeData;
 
@@ -1661,7 +1691,7 @@ QByteArray cameratest::reassembleData() {
     return completeData;
 }
 void cameratest::refreshPictureSendOver(ProtocolPictureSendOverData x) {
-    waitWork(50);  //等待数据彻底处理完毕
+    waitWork(50); //等待数据彻底处理完毕
     checkMissingPackets();
     qDebug() << "错误个数" + QString::number(faultData.size()) << x.result;
     //   showlog("错误个数"+QString::number(faultData.size()));
@@ -1709,7 +1739,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
             arguments << "--model"
                       << "./code/q30_model_250114.onnx"
                       << "--img" << filePath;
-        } else {  //给木星
+        } else { //给木星
             scriptPath = "./code/blur_detect_out.py";
             arguments << "--img" << filePath;
         }
@@ -1765,7 +1795,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
                 TestItem test;
                 test.testItem = "解析力测试";
                 test.testData = "中间清晰度:" + QString::number(mid_clearness) +
-                                "边缘清晰度:" + QString::number(boundary_clearness);
+                    "边缘清晰度:" + QString::number(boundary_clearness);
                 test.testResult = "通过";
                 test.ask = "通过";
                 testItems.append(test);
@@ -1780,7 +1810,7 @@ void cameratest::on_ResolutionTestButton_clicked() {
                 TestItem test;
                 test.testItem = "解析力测试";
                 test.testData = "中间清晰度:" + QString::number(mid_clearness) +
-                                "边缘清晰度:" + QString::number(boundary_clearness);
+                    "边缘清晰度:" + QString::number(boundary_clearness);
                 ;
                 test.testResult = "失败";
                 test.ask = "通过";
@@ -1849,7 +1879,3 @@ void cameratest::on_ResolutionTestButton_clicked() {
             on_OffsetTest_clicked();
     }
 }
-
-
-
-

@@ -1,4 +1,4 @@
-﻿#ifndef QSETTING_H
+#ifndef QSETTING_H
 #define QSETTING_H
 
 #include <QWidget>
@@ -15,11 +15,11 @@ class TestFlowEditor;
 class qsetting : public QWidget {
     Q_OBJECT
 
-public:
+  public:
     explicit qsetting(QWidget* parent = nullptr);
     ~qsetting();
 
-private:
+  private:
     Ui::qsetting* ui;
     QButtonGroup* StationGroup = new QButtonGroup(this);
     void loadConfig();
@@ -35,10 +35,10 @@ private:
     TestFlowEditor* testFlowEditor_ = nullptr;
     int lastSettingsTabIndex_ = 0;
 
-protected:
+  protected:
     virtual void closeEvent(QCloseEvent*);
 
-private slots:
+  private slots:
     void RestoreProductDefaultSetting();
     void RestoreFacDefaultSetting();
     void on_comboBox_productName_textActivated(const QString& arg1);
@@ -47,4 +47,4 @@ private slots:
     void on_pushButton_mesConfigFileBrowse_clicked();
 };
 
-#endif  // QSETTING_H
+#endif // QSETTING_H

@@ -19,7 +19,7 @@ struct TestItem {
 
 /** 上位机日志统一入口：文件落盘、UI 文本框、Qt 消息与崩溃记录 */
 class Qlog {
-public:
+  public:
     Qlog() = default;
 
     /** main：安装 qInstallMessageHandler → 所有log/上位机log */
@@ -52,4 +52,4 @@ public:
     static void handleQtMessage(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 };
 
-#endif  // QLOG_H
+#endif // QLOG_H

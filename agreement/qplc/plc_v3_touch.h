@@ -1,4 +1,4 @@
-﻿#ifndef PLC_V3_TOUCH_H
+#ifndef PLC_V3_TOUCH_H
 #define PLC_V3_TOUCH_H
 
 #include "plc_modbus_session.h"
@@ -17,9 +17,9 @@ struct PlcV3TouchResult {
 
 /** V3 治具单键整步（Modbus 握手 + 可选电容读取）。 */
 PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6,
-                                const PlcV3TouchKeyOptions& options = {});
+                                  const PlcV3TouchKeyOptions& options = {});
 
 /** V3 治具旋钮整步（前推 + 按压 Modbus 握手）。 */
 PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session);
 
-#endif  // PLC_V3_TOUCH_H
+#endif // PLC_V3_TOUCH_H

@@ -29,12 +29,12 @@ struct PlcV3RunResult {
 };
 
 class PlcV3Fixture {
-public:
+  public:
     PlcV3RunResult run(PlcV3Command command, const PlcV3RunParams& params);
     void disconnect();
 
-private:
+  private:
     InovanceH5uModbusTcp tcp_;
 };
 
-#endif  // PLC_V3_FIXTURE_H
+#endif // PLC_V3_FIXTURE_H

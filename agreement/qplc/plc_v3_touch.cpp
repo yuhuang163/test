@@ -1,4 +1,4 @@
-﻿#include "plc_v3_touch.h"
+#include "plc_v3_touch.h"
 
 #include "Abini.h"
 
@@ -6,11 +6,10 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, const PlcV3TouchKeyOptions& options)
-{
+PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, const PlcV3TouchKeyOptions& options) {
     PlcV3TouchResult result;
     const PlcStationConfig& cfg = session.config();
     const int offset = cfg.mCoilAddressOffset;
@@ -22,11 +21,11 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
 
     QString err;
     session.logLine(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
-                    .arg(keyIndex0To6)
-                    .arg(cfg.stationIndex)
-                    .arg(cfg.ipAddress)
-                    .arg(cfg.port)
-                    .arg(cfg.unitId));
+                        .arg(keyIndex0To6)
+                        .arg(cfg.stationIndex)
+                        .arg(cfg.ipAddress)
+                        .arg(cfg.port)
+                        .arg(cfg.unitId));
     if (!session.connectPlc(&err)) {
         result.summary = QStringLiteral("PLC 连接失败: %1").arg(err);
         return result;
@@ -40,10 +39,10 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     const bool waitKeyReset = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool();
     const int posSettle = SETTINGS.value(QStringLiteral("PLC/PositionSettleMs"), 500).toInt();
     const int actionSettle = SETTINGS.value(QStringLiteral("PLC/KeyActionSettleMs"),
-                                             SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
+                                            SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
                                  .toInt();
     const int releaseSettle = SETTINGS.value(QStringLiteral("PLC/KeyReleaseSettleMs"),
-                                               SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
+                                             SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
                                   .toInt();
     const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
                                           SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
@@ -80,19 +79,19 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     };
 
     session.logLine(QStringLiteral("PLC按键整步开始: 键Index=%1 KeyM=M%2(addr=%3) PosReady=M%4(addr=%5) "
-                               "StepDone=M%6(addr=%7) KeyDone=M%8(addr=%9) 握手=%10 等KeyDone=%11 完成后释放=%12")
-                    .arg(keyIndex0To6)
-                    .arg(keyM)
-                    .arg(keyM + offset)
-                    .arg(posReadyM)
-                    .arg(posReadyM + offset)
-                    .arg(stepDoneM)
-                    .arg(stepDoneM + offset)
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(plcBoolText(useHandshake))
-                    .arg(plcBoolText(waitKeyDone))
-                    .arg(plcBoolText(releaseAfter)));
+                                   "StepDone=M%6(addr=%7) KeyDone=M%8(addr=%9) 握手=%10 等KeyDone=%11 完成后释放=%12")
+                        .arg(keyIndex0To6)
+                        .arg(keyM)
+                        .arg(keyM + offset)
+                        .arg(posReadyM)
+                        .arg(posReadyM + offset)
+                        .arg(stepDoneM)
+                        .arg(stepDoneM + offset)
+                        .arg(keyDoneM)
+                        .arg(keyDoneM + offset)
+                        .arg(plcBoolText(useHandshake))
+                        .arg(plcBoolText(waitKeyDone))
+                        .arg(plcBoolText(releaseAfter)));
 
     if (ensureKeyIdle) {
         bool kd = false;
@@ -137,10 +136,10 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
 
     if (useHandshake) {
         session.logLine(QStringLiteral("PLC等待位置到位哈哈: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                        .arg(posReadyM)
-                        .arg(posReadyM + offset)
-                        .arg(posTimeout)
-                        .arg(posPoll));
+                            .arg(posReadyM)
+                            .arg(posReadyM + offset)
+                            .arg(posTimeout)
+                            .arg(posPoll));
         if (!session.waitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
             fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
             return result;
@@ -173,10 +172,10 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     bool sawKeyDone = false;
     if (waitKeyDone) {
         session.logLine(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                        .arg(keyDoneM)
-                        .arg(keyDoneM + offset)
-                        .arg(keyDoneTimeout)
-                        .arg(keyDonePoll));
+                            .arg(keyDoneM)
+                            .arg(keyDoneM + offset)
+                            .arg(keyDoneTimeout)
+                            .arg(keyDonePoll));
         if (!session.waitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
             return result;
@@ -201,10 +200,10 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
 
     if (sawKeyDone && waitKeyReset) {
         session.logLine(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
-                        .arg(keyDoneM)
-                        .arg(keyDoneM + offset)
-                        .arg(keyResetTimeout)
-                        .arg(keyDonePoll));
+                            .arg(keyDoneM)
+                            .arg(keyDoneM + offset)
+                            .arg(keyResetTimeout)
+                            .arg(keyDonePoll));
         if (!session.waitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
             return result;
@@ -232,18 +231,17 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     return result;
 }
 
-PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
-{
+PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session) {
     PlcV3TouchResult result;
     const PlcStationConfig& cfg = session.config();
     const int offset = cfg.mCoilAddressOffset;
 
     QString err;
     session.logLine(QStringLiteral("PLC旋钮整步连接: 工位=%1 IP=%2 Port=%3 UnitId=%4")
-                    .arg(cfg.stationIndex)
-                    .arg(cfg.ipAddress)
-                    .arg(cfg.port)
-                    .arg(cfg.unitId));
+                        .arg(cfg.stationIndex)
+                        .arg(cfg.ipAddress)
+                        .arg(cfg.port)
+                        .arg(cfg.unitId));
     if (!session.connectPlc(&err)) {
         result.summary = QStringLiteral("PLC 连接失败: %1").arg(err);
         return result;
@@ -257,10 +255,10 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
     const bool waitKeyReset = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool();
     const int posSettle = SETTINGS.value(QStringLiteral("PLC/PositionSettleMs"), 500).toInt();
     const int actionSettle = SETTINGS.value(QStringLiteral("PLC/KeyActionSettleMs"),
-                                             SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
+                                            SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
                                  .toInt();
     const int releaseSettle = SETTINGS.value(QStringLiteral("PLC/KeyReleaseSettleMs"),
-                                               SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
+                                             SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
                                   .toInt();
     const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
                                           SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
@@ -284,20 +282,20 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
     };
 
     session.logLine(QStringLiteral("PLC旋钮整步开始: Forward=M%1(addr=%2) Press=M%3(addr=%4) PosReady=M%5(addr=%6) "
-                               "StepDone=M%7(addr=%8) KeyDone=M%9(addr=%10) 握手=%11 等KeyDone=%12 完成后释放=%13")
-                    .arg(forwardM)
-                    .arg(forwardM + offset)
-                    .arg(pressM)
-                    .arg(pressM + offset)
-                    .arg(posReadyM)
-                    .arg(posReadyM + offset)
-                    .arg(stepDoneM)
-                    .arg(stepDoneM + offset)
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(plcBoolText(useHandshake))
-                    .arg(plcBoolText(waitKeyDone))
-                    .arg(plcBoolText(releaseAfter)));
+                                   "StepDone=M%7(addr=%8) KeyDone=M%9(addr=%10) 握手=%11 等KeyDone=%12 完成后释放=%13")
+                        .arg(forwardM)
+                        .arg(forwardM + offset)
+                        .arg(pressM)
+                        .arg(pressM + offset)
+                        .arg(posReadyM)
+                        .arg(posReadyM + offset)
+                        .arg(stepDoneM)
+                        .arg(stepDoneM + offset)
+                        .arg(keyDoneM)
+                        .arg(keyDoneM + offset)
+                        .arg(plcBoolText(useHandshake))
+                        .arg(plcBoolText(waitKeyDone))
+                        .arg(plcBoolText(releaseAfter)));
 
     if (ensureKeyIdle) {
         bool kd = false;
@@ -350,10 +348,10 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
 
     if (useHandshake) {
         session.logLine(QStringLiteral("PLC等待位置到位: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                        .arg(posReadyM)
-                        .arg(posReadyM + offset)
-                        .arg(posTimeout)
-                        .arg(posPoll));
+                            .arg(posReadyM)
+                            .arg(posReadyM + offset)
+                            .arg(posTimeout)
+                            .arg(posPoll));
         if (!session.waitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
             fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
             return result;
@@ -377,10 +375,10 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
     bool sawKeyDone = false;
     if (waitKeyDone) {
         session.logLine(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                        .arg(keyDoneM)
-                        .arg(keyDoneM + offset)
-                        .arg(keyDoneTimeout)
-                        .arg(keyDonePoll));
+                            .arg(keyDoneM)
+                            .arg(keyDoneM + offset)
+                            .arg(keyDoneTimeout)
+                            .arg(keyDonePoll));
         if (!session.waitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
             return result;
@@ -413,10 +411,10 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session)
 
     if (sawKeyDone && waitKeyReset) {
         session.logLine(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
-                        .arg(keyDoneM)
-                        .arg(keyDoneM + offset)
-                        .arg(keyResetTimeout)
-                        .arg(keyDonePoll));
+                            .arg(keyDoneM)
+                            .arg(keyDoneM + offset)
+                            .arg(keyResetTimeout)
+                            .arg(keyDonePoll));
         if (!session.waitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
             fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
             return result;

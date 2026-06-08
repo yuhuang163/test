@@ -13,7 +13,7 @@
 #include "qlibrary.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 QString getLocalIPAddress() {
@@ -72,7 +72,7 @@ void ydmmes::ProcessInspection(MesPacketData pack) {
         qDebug() << internalJsonString;
         // 输出请求内容到日志
         QString logMsg =
-            QString("发送网络请求，URL：%1，参数：%2").arg(url).arg(urlEncodedString);  //（如 %7B 代表 {，%22 代表 "）
+            QString("发送网络请求，URL：%1，参数：%2").arg(url).arg(urlEncodedString); //（如 %7B 代表 {，%22 代表 "）
         qDebug() << logMsg;
 
         QNetworkAccessManager manager;
@@ -106,7 +106,7 @@ void ydmmes::ProcessInspection(MesPacketData pack) {
             // 提取 XML 中的 JSON 部分
             QRegExp regex("<string[^>]*>(.*)</string>");
             if (regex.indexIn(response) != -1) {
-                QString jsonString = regex.cap(1);  // 提取出 JSON 字符串部分
+                QString jsonString = regex.cap(1); // 提取出 JSON 字符串部分
 
                 // 解析提取出来的 JSON 字符串
                 QJsonDocument responseDoc = QJsonDocument::fromJson(jsonString.toUtf8());
@@ -114,7 +114,7 @@ void ydmmes::ProcessInspection(MesPacketData pack) {
 
                 if (!responseDoc.isNull() && responseDoc.isObject()) {
                     QJsonObject responseObject = responseDoc.object();
-                    QString errorCode = responseObject.value("status").toString();  // 使用 toString() 方法
+                    QString errorCode = responseObject.value("status").toString(); // 使用 toString() 方法
 
                     if (errorCode == "OK") {
                         emit operateMesSucess(pack.mechines);
@@ -194,8 +194,8 @@ void ydmmes::TestPass(MesPacketData pack) {
         QJsonObject dataObject;
         dataObject["SN"] = pack.sn;
         dataObject["SnType"] = "SN";
-        dataObject["ModelNo"] = pack.model;  // 机种"P20 Pro"
-        dataObject["WO"] = pack.lotName;     //工单
+        dataObject["ModelNo"] = pack.model; // 机种"P20 Pro"
+        dataObject["WO"] = pack.lotName;    //工单
         dataObject["PassLive"] = "MO";
         dataObject["TerminalNo"] = pack.machineNo;
         dataObject["CheckRoute"] = "Y";
@@ -203,9 +203,9 @@ void ydmmes::TestPass(MesPacketData pack) {
         dataObject["QtyOk"] = "1";
         dataObject["QtyNg"] = "0";
         dataObject["FixtureNo"] = "ICT001";
-        dataObject["StartTime"] = "2024-12-10 16:50:01";  // 根据实际情况启用
-        dataObject["EndTime"] = "2024-12-10 16:50:01";    // 根据实际情况启用
-        dataObject["ElapseTime"] = 64;                    // 根据实际情况启用
+        dataObject["StartTime"] = "2024-12-10 16:50:01"; // 根据实际情况启用
+        dataObject["EndTime"] = "2024-12-10 16:50:01";   // 根据实际情况启用
+        dataObject["ElapseTime"] = 64;                   // 根据实际情况启用
         dataObject["TestResult"] = pack.result;
         dataObject["Result"] = pack.result;
         dataObject["Detail"] = transformString(pack.itemvalue);
@@ -220,13 +220,13 @@ void ydmmes::TestPass(MesPacketData pack) {
 
         // 构建 URL 编码的字符串
         QUrlQuery query;
-        query.addQueryItem("sMesUser", "YDM");  // 客户代码
+        query.addQueryItem("sMesUser", "YDM"); // 客户代码
         query.addQueryItem("sLanguage", "S");
         query.addQueryItem("sFactoryNo", "0");
         query.addQueryItem("sInterfaceType", "TIMS_DATA_COLLECT");
         query.addQueryItem("sJson", internalJsonString);
         query.addQueryItem("sUserNo", "SA");
-        query.addQueryItem("sClientIp", "127.0.0.0");  // getLocalIPAddress()
+        query.addQueryItem("sClientIp", "127.0.0.0"); // getLocalIPAddress()
 
         QString urlEncodedString = query.toString(QUrl::FullyEncoded);
         qDebug() << internalJsonString;
@@ -264,7 +264,7 @@ void ydmmes::TestPass(MesPacketData pack) {
             // 提取 XML 中的 JSON 部分
             QRegExp regex("<string[^>]*>(.*)</string>");
             if (regex.indexIn(response) != -1) {
-                QString jsonString = regex.cap(1);  // 提取出 JSON 字符串部分
+                QString jsonString = regex.cap(1); // 提取出 JSON 字符串部分
 
                 // 解析提取出来的 JSON 字符串
                 QJsonDocument responseDoc = QJsonDocument::fromJson(jsonString.toUtf8());
@@ -296,5 +296,9 @@ void ydmmes::TestPass(MesPacketData pack) {
     }
 }
 
-void ydmmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
-void ydmmes::GetTestData(MesPacketData pack) {Q_UNUSED(pack);}
+void ydmmes::LogIn(MesPacketData pack) {
+    Q_UNUSED(pack);
+}
+void ydmmes::GetTestData(MesPacketData pack) {
+    Q_UNUSED(pack);
+}

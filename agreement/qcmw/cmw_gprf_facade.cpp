@@ -3,43 +3,37 @@
 #include "Abini.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
 
-void noopLog(const QString&)
-{
+void noopLog(const QString&) {
 }
 
-void noopWait(int)
-{
+void noopWait(int) {
 }
 
-bool cmwVisaTraceEnabled()
-{
+bool cmwVisaTraceEnabled() {
     return SETTINGS.value(QStringLiteral("BlePer/CmwVisaTrace"), true).toBool();
 }
 
-void ensureRxCmwProfile(Qvisa* visa)
-{
+void ensureRxCmwProfile(Qvisa* visa) {
     if (visa) {
         visa->set(VisaCmd::DeviceProfile, static_cast<int>(VisaDeviceProfile::RxCmwInstrument));
     }
 }
 
-}  // namespace
+} // namespace
 
-void CmwGprfFacade::resetSession()
-{
+void CmwGprfFacade::resetSession() {
     burstDoneSinceStartRx_ = false;
     protocolReady_ = false;
     gprf_.resetPrimed();
 }
 
 void CmwGprfFacade::ensureProtocol(Qvisa* visa, const std::function<void(const QString&)>& log,
-                                   const std::function<void(int)>& wait)
-{
+                                   const std::function<void(int)>& wait) {
     if (protocolReady_) {
         return;
     }
@@ -79,8 +73,7 @@ void CmwGprfFacade::ensureProtocol(Qvisa* visa, const std::function<void(const Q
     protocolReady_ = true;
 }
 
-CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunParams& params)
-{
+CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunParams& params) {
     CmwGprfRunResult result;
     const auto log = params.log ? params.log : noopLog;
 
@@ -117,8 +110,8 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
         }
         if (burstDoneSinceStartRx_) {
             log(QStringLiteral(
-                     "%1：本收包周期内「并联CMW播放*MHz」已发过射频，PER 内跳过重复 GPRF（仅发停止接收；无并联播放步时可开 "
-                     "FreeInstrument/BleBrushCmwOnStopPer）")
+                    "%1：本收包周期内「并联CMW播放*MHz」已发过射频，PER 内跳过重复 GPRF（仅发停止接收；无并联播放步时可开 "
+                    "FreeInstrument/BleBrushCmwOnStopPer）")
                     .arg(params.scenarioLabel));
             if (params.outRanBurst) {
                 *params.outRanBurst = true;
@@ -156,8 +149,7 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
         if (params.outRanBurst) {
             *params.outRanBurst = true;
         }
-        if (params.outAlignedWaitDoneByCmw && params.alignedPostTrigHoldMs >= 0
-            && !SETTINGS.value(QStringLiteral("BlePer/CmwWaitArbScount"), false).toBool()) {
+        if (params.outAlignedWaitDoneByCmw && params.alignedPostTrigHoldMs >= 0 && !SETTINGS.value(QStringLiteral("BlePer/CmwWaitArbScount"), false).toBool()) {
             *params.outAlignedWaitDoneByCmw = true;
         }
         return result;

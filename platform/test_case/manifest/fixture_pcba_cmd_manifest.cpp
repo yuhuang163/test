@@ -23,7 +23,7 @@ const Row kRows[] = {
      u8"等待治具短包「请求休眠」（55 xx 05 CC AA）", kGet},
 };
 
-}  // namespace
+} // namespace
 
 namespace FixturePcbaCmdManifest {
 
@@ -52,4 +52,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-}  // namespace FixturePcbaCmdManifest
+} // namespace FixturePcbaCmdManifest

@@ -113,7 +113,7 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     const QString expectedSoftwareVersion = softwareVersion.trimmed();
     const QStringList expectedSoftwareVersions = expectedSoftwareVersion.split("=", QString::SkipEmptyParts);
     softwareVersionPassForReport_ = !isSoftwareTest || expectedSoftwareVersions.contains(actualSoftwareVersion) ||
-                                    expectedSoftwareVersion == actualSoftwareVersion;
+        expectedSoftwareVersion == actualSoftwareVersion;
     qDebug() << "[Tuple] software version report, actual =" << actualSoftwareVersion
              << "expected =" << expectedSoftwareVersion
              << "pass =" << softwareVersionPassForReport_;
@@ -137,7 +137,6 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
 }
 
 void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
-
 
     // 电量测试为异步判定：在电池回调里显式回填当前步骤。
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(adc)))
@@ -399,7 +398,7 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit getMesTestValue(p);
+    emit send_mes_test_value(p);
 }
 
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
@@ -463,8 +462,7 @@ void QFreeWork::applyTupleByMac() {
 
     stepRuntime_.done = true;
     stepRuntime_.ask = "获取成功";
-    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac")
-        && sku.isEmpty()) {
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac") && sku.isEmpty()) {
         stepRuntime_.pass = false;
         stepRuntime_.testData = QStringLiteral("SKU未配置");
         TestResult = failValue;
@@ -495,9 +493,9 @@ void QFreeWork::applyTupleByMac() {
     tupleData_ = service.lastApplyResult();
     stepRuntime_.pass = tupleData_.success;
     stepRuntime_.testData = tupleData_.success
-                                 ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
-                                       .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
-                                 : tupleData_.error;
+        ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+              .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
+        : tupleData_.error;
     if (!tupleData_.success) {
         TestResult = failValue;
         showlog("三元组获取失败：" + tupleData_.error);
@@ -636,9 +634,7 @@ void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
 bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data) {
     if (!testCaseStepActive_)
         return false;
-    if (activeTestCase_.send.channel != TestCaseSendChannel::Product
-        || activeTestCase_.send.action != TestCaseSendAction::Get
-        || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
+    if (activeTestCase_.send.channel != TestCaseSendChannel::Product || activeTestCase_.send.action != TestCaseSendAction::Get || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
         return false;
 
     const QString testData =

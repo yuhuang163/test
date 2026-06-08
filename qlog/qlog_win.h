@@ -11,6 +11,6 @@ LONG WINAPI QlogApplicationCrashHandler(EXCEPTION_POINTERS* exceptionPointers);
 /** 由 Qlog::setCrashReportExtraInfo 调用，崩溃时只读 */
 void qlogWinSetCrashReportExtraInfoUtf8(const char* utf8);
 
-#endif  // Q_OS_WIN
+#endif // Q_OS_WIN
 
-#endif  // QLOG_WIN_H
+#endif // QLOG_WIN_H

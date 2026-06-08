@@ -22,7 +22,7 @@
 #include "my_set/my_typedef.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -92,9 +92,9 @@ bool runTupleCurl(const QStringList& args, QByteArray* response, QString* error,
     }
 
     const bool ok = curl.exitStatus() == QProcess::NormalExit &&
-                    curl.exitCode() == 0 &&
-                    status >= 200 &&
-                    status < 300;
+        curl.exitCode() == 0 &&
+        status >= 200 &&
+        status < 300;
     if (!ok && error) {
         *error = QString("curl exit=%1 httpStatus=%2 %3 %4")
                      .arg(curl.exitCode())
@@ -129,7 +129,7 @@ bool requestPostByCurl(const QUrl& url, const QByteArray& authHeader, const QByt
     return runTupleCurl(curlArgs, response, error, httpStatus);
 }
 
-}  // namespace
+} // namespace
 
 static const QHash<QString, QString>& tupleInspectionOpLabels() {
     // 源文件为 UTF-8 时，用 QString::fromUtf8 显式按 UTF-8 解码字面量（与工程内其它中文用法一致）
@@ -254,7 +254,7 @@ TupleApplyResult tupleFromMap(const QVariantMap& m) {
     return t;
 }
 
-}  // namespace
+} // namespace
 
 QString QTupleService::tupleCmdToName(TupleCmd cmd) {
     switch (cmd) {
@@ -380,8 +380,8 @@ bool QTupleService::sendCustomMessage(const QVariantMap& map) {
     QByteArray response;
     QString error;
     const bool ok = method == QStringLiteral("POST")
-                        ? requestPost(path, body, &response, &error)
-                        : requestGet(path, query, &response, &error);
+        ? requestPost(path, body, &response, &error)
+        : requestGet(path, query, &response, &error);
     if (!ok) {
         lastError_ = error;
         return false;
@@ -518,13 +518,13 @@ bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, QSt
 }
 
 bool QTupleService::reportWriteRecordImpl(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
-                                      const QString& btRssi, bool btRssiPass,
-                                      const QString& bleRssi, bool bleRssiPass,
-                                      const QString& softwareVersion, bool softwareVersionPass, QString* error) {
+                                          const QString& btRssi, bool btRssiPass,
+                                          const QString& bleRssi, bool bleRssiPass,
+                                          const QString& softwareVersion, bool softwareVersionPass, QString* error) {
     const bool pass = result == "OK" || result == "通过" || result == "true";
     const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
     const QString reportTime = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
-    const QString sn =  productSn.trimmed();
+    const QString sn = productSn.trimmed();
     // 载荷：productKey + deviceName + 脱敏后的 deviceSecret（与 R_MO_TUPLE 拼接习惯一致，避免明文密钥）
     const QString tupleValue = tuple.productKey + tuple.deviceName + maskDeviceSecretTail3(tuple.deviceSecret);
     const QString zhTuple = QString::fromUtf8("读三元组");
@@ -652,11 +652,7 @@ bool QTupleService::requestGet(const QString& path, const QString& query, QByteA
         }
         if (error) {
             *error =
-                reply->errorString()
-                + QStringLiteral(" ")
-                + QString::fromUtf8(body).trimmed()
-                + QStringLiteral(" | curl备选失败: ")
-                + curlErr;
+                reply->errorString() + QStringLiteral(" ") + QString::fromUtf8(body).trimmed() + QStringLiteral(" | curl备选失败: ") + curlErr;
         }
         reply->deleteLater();
         return false;
@@ -734,11 +730,7 @@ bool QTupleService::requestPost(const QString& path, const QByteArray& body, QBy
         }
         if (error) {
             *error =
-                reply->errorString()
-                + QStringLiteral(" ")
-                + QString::fromUtf8(responseBody).trimmed()
-                + QStringLiteral(" | curl备选失败: ")
-                + curlErr;
+                reply->errorString() + QStringLiteral(" ") + QString::fromUtf8(responseBody).trimmed() + QStringLiteral(" | curl备选失败: ") + curlErr;
         }
         reply->deleteLater();
         return false;

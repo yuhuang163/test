@@ -13,7 +13,7 @@
 #include "qlibrary.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 lxmes::lxmes() {
     url = SETTINGS.value("Mes/NET", "http://10.16.204.138/Bobcat_CWS_TEST/sfc_response.aspx?").toString();
@@ -126,7 +126,9 @@ void lxmes::AgeTimeCheck(MesPacketData pack) {
         reply->deleteLater();
     }
 }
-void lxmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
+void lxmes::LogIn(MesPacketData pack) {
+    Q_UNUSED(pack);
+}
 
 // sn和上位机号获取mac
 void lxmes::GetTestData(MesPacketData pack) {
@@ -167,7 +169,7 @@ void lxmes::GetTestData(MesPacketData pack) {
                 if (lines.size() > 1) {
                     qDebug() << lines.size();
                     if (lines[1].startsWith(field + "=") && lines[1].length() >= 7) {
-                        QString macID = lines[1].mid(field.length() + 1);  // 获取MAC ID
+                        QString macID = lines[1].mid(field.length() + 1); // 获取MAC ID
                         if (!macID.isEmpty()) {
                             qDebug() << "绑定记录BT_MAC=" << macID;
                             emit sendMesTestvalue(pack.mechines, macID);
@@ -223,9 +225,9 @@ void lxmes::TestPass(MesPacketData pack) {
                                .arg(pack.model)
                                .arg(pack.test_station)
                                .arg(pack.machineNo)
-                               .arg(pack.error)  // error_code
-                               .arg("")          // failure_message
-                               .arg("0")         // 测试模式
+                               .arg(pack.error) // error_code
+                               .arg("")         // failure_message
+                               .arg("0")        // 测试模式
                                .arg(pack.sn)
                                .arg(pack.itemvalue);
 

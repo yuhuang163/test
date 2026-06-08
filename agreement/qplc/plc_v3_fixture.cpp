@@ -10,31 +10,27 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
 
-void noopLog(const QString&)
-{
+void noopLog(const QString&) {
 }
 
-PlcModbusSession makeSession(InovanceH5uModbusTcp* tcp, const PlcV3RunParams& params)
-{
+PlcModbusSession makeSession(InovanceH5uModbusTcp* tcp, const PlcV3RunParams& params) {
     const auto log = params.log ? params.log : noopLog;
     const auto isContinue = params.isTestContinue ? params.isTestContinue : []() { return true; };
     return PlcModbusSession(tcp, PlcStationConfig::fromSettings(params.stationIndex), log, isContinue);
 }
 
-}  // namespace
+} // namespace
 
-void PlcV3Fixture::disconnect()
-{
+void PlcV3Fixture::disconnect() {
     tcp_.disconnect();
 }
 
-PlcV3RunResult PlcV3Fixture::run(PlcV3Command command, const PlcV3RunParams& params)
-{
+PlcV3RunResult PlcV3Fixture::run(PlcV3Command command, const PlcV3RunParams& params) {
     PlcV3RunResult result;
     const auto log = params.log ? params.log : noopLog;
     PlcModbusSession session = makeSession(&tcp_, params);

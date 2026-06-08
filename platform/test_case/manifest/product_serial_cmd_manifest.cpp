@@ -26,7 +26,7 @@ const Row kRows[] = {
      u8"停止接收并统计 PER；可与前序「开始接收」及并联 CMW 配置配合", kSet},
 };
 
-}  // namespace
+} // namespace
 
 namespace ProductSerialCmdManifest {
 
@@ -55,4 +55,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-}  // namespace ProductSerialCmdManifest
+} // namespace ProductSerialCmdManifest

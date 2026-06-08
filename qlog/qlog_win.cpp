@@ -13,7 +13,7 @@
 #include <string>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -51,7 +51,7 @@ std::string formatHex64(DWORD64 v) {
 
 /** UTF-8 闪退文本日志（带 BOM） */
 class Utf8CrashLogFile {
-public:
+  public:
     bool open(const std::wstring& path) {
         handle_ = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
                               FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -80,54 +80,54 @@ public:
         }
     }
 
-private:
+  private:
     HANDLE handle_ = INVALID_HANDLE_VALUE;
 };
 
 const char* exceptionCodeName(DWORD code) {
     switch (code) {
-        case EXCEPTION_ACCESS_VIOLATION:
-            return "EXCEPTION_ACCESS_VIOLATION (0xC0000005)";
-        case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-            return "EXCEPTION_ARRAY_BOUNDS_EXCEEDED";
-        case EXCEPTION_BREAKPOINT:
-            return "EXCEPTION_BREAKPOINT";
-        case EXCEPTION_DATATYPE_MISALIGNMENT:
-            return "EXCEPTION_DATATYPE_MISALIGNMENT";
-        case EXCEPTION_FLT_DENORMAL_OPERAND:
-            return "EXCEPTION_FLT_DENORMAL_OPERAND";
-        case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-            return "EXCEPTION_FLT_DIVIDE_BY_ZERO";
-        case EXCEPTION_FLT_INEXACT_RESULT:
-            return "EXCEPTION_FLT_INEXACT_RESULT";
-        case EXCEPTION_FLT_INVALID_OPERATION:
-            return "EXCEPTION_FLT_INVALID_OPERATION";
-        case EXCEPTION_FLT_OVERFLOW:
-            return "EXCEPTION_FLT_OVERFLOW";
-        case EXCEPTION_FLT_STACK_CHECK:
-            return "EXCEPTION_FLT_STACK_CHECK";
-        case EXCEPTION_FLT_UNDERFLOW:
-            return "EXCEPTION_FLT_UNDERFLOW";
-        case EXCEPTION_ILLEGAL_INSTRUCTION:
-            return "EXCEPTION_ILLEGAL_INSTRUCTION";
-        case EXCEPTION_IN_PAGE_ERROR:
-            return "EXCEPTION_IN_PAGE_ERROR";
-        case EXCEPTION_INT_DIVIDE_BY_ZERO:
-            return "EXCEPTION_INT_DIVIDE_BY_ZERO";
-        case EXCEPTION_INT_OVERFLOW:
-            return "EXCEPTION_INT_OVERFLOW";
-        case EXCEPTION_INVALID_DISPOSITION:
-            return "EXCEPTION_INVALID_DISPOSITION";
-        case EXCEPTION_NONCONTINUABLE_EXCEPTION:
-            return "EXCEPTION_NONCONTINUABLE_EXCEPTION";
-        case EXCEPTION_PRIV_INSTRUCTION:
-            return "EXCEPTION_PRIV_INSTRUCTION";
-        case EXCEPTION_SINGLE_STEP:
-            return "EXCEPTION_SINGLE_STEP";
-        case EXCEPTION_STACK_OVERFLOW:
-            return "EXCEPTION_STACK_OVERFLOW";
-        default:
-            return "UNKNOWN_EXCEPTION";
+    case EXCEPTION_ACCESS_VIOLATION:
+        return "EXCEPTION_ACCESS_VIOLATION (0xC0000005)";
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+        return "EXCEPTION_ARRAY_BOUNDS_EXCEEDED";
+    case EXCEPTION_BREAKPOINT:
+        return "EXCEPTION_BREAKPOINT";
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+        return "EXCEPTION_DATATYPE_MISALIGNMENT";
+    case EXCEPTION_FLT_DENORMAL_OPERAND:
+        return "EXCEPTION_FLT_DENORMAL_OPERAND";
+    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+        return "EXCEPTION_FLT_DIVIDE_BY_ZERO";
+    case EXCEPTION_FLT_INEXACT_RESULT:
+        return "EXCEPTION_FLT_INEXACT_RESULT";
+    case EXCEPTION_FLT_INVALID_OPERATION:
+        return "EXCEPTION_FLT_INVALID_OPERATION";
+    case EXCEPTION_FLT_OVERFLOW:
+        return "EXCEPTION_FLT_OVERFLOW";
+    case EXCEPTION_FLT_STACK_CHECK:
+        return "EXCEPTION_FLT_STACK_CHECK";
+    case EXCEPTION_FLT_UNDERFLOW:
+        return "EXCEPTION_FLT_UNDERFLOW";
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+        return "EXCEPTION_ILLEGAL_INSTRUCTION";
+    case EXCEPTION_IN_PAGE_ERROR:
+        return "EXCEPTION_IN_PAGE_ERROR";
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+        return "EXCEPTION_INT_DIVIDE_BY_ZERO";
+    case EXCEPTION_INT_OVERFLOW:
+        return "EXCEPTION_INT_OVERFLOW";
+    case EXCEPTION_INVALID_DISPOSITION:
+        return "EXCEPTION_INVALID_DISPOSITION";
+    case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+        return "EXCEPTION_NONCONTINUABLE_EXCEPTION";
+    case EXCEPTION_PRIV_INSTRUCTION:
+        return "EXCEPTION_PRIV_INSTRUCTION";
+    case EXCEPTION_SINGLE_STEP:
+        return "EXCEPTION_SINGLE_STEP";
+    case EXCEPTION_STACK_OVERFLOW:
+        return "EXCEPTION_STACK_OVERFLOW";
+    default:
+        return "UNKNOWN_EXCEPTION";
     }
 }
 
@@ -148,7 +148,9 @@ void writeExceptionSummary(Utf8CrashLogFile& log, EXCEPTION_POINTERS* ep) {
     if (rec->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && rec->NumberParameters >= 2) {
         const ULONG_PTR op = rec->ExceptionInformation[0];
         const ULONG_PTR addr = rec->ExceptionInformation[1];
-        const char* opText = (op == 0) ? "读" : (op == 1) ? "写" : (op == 8) ? "DEP执行" : "未知操作";
+        const char* opText = (op == 0) ? "读" : (op == 1) ? "写"
+            : (op == 8)                                   ? "DEP执行"
+                                                          : "未知操作";
         sprintf_s(line, "【访问违例】%s 目标地址=%s", opText, formatHex64(addr).c_str());
         log.writeLine(line);
     }
@@ -279,7 +281,7 @@ void writeEnvironment(Utf8CrashLogFile& log) {
     }
 }
 
-}  // namespace
+} // namespace
 
 void qlogWinSetCrashReportExtraInfoUtf8(const char* utf8) {
     g_crashExtraUtf8 = (utf8 != nullptr) ? utf8 : "";
@@ -337,7 +339,7 @@ void Qlog::installWindowsCrashHandler() {
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif
 
-#endif  // Q_OS_WIN
+#endif // Q_OS_WIN

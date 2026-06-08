@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""从 git 导出的 touch_key/touch_switch 合并为 plc_v3_touch，输出 UTF-8 BOM。"""
+"""从 git 导出的 touch_key/touch_switch 合并为 plc_v3_touch，输出 UTF-8（无 BOM）。"""
 import subprocess
 import sys
 from pathlib import Path

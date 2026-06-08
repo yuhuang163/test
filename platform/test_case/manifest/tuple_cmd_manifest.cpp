@@ -25,7 +25,7 @@ const Row kRows[] = {
      u8"无需参数；使用内存中已获取的三元组与测试结果", kSet},
 };
 
-}  // namespace
+} // namespace
 
 namespace TupleCmdManifest {
 
@@ -54,4 +54,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-}  // namespace TupleCmdManifest
+} // namespace TupleCmdManifest

@@ -32,13 +32,17 @@ struct CmwGprfRunResult {
 };
 
 class CmwGprfFacade {
-public:
+  public:
     CmwGprfRunResult run(CmwGprfCommand command, const CmwGprfRunParams& params);
     void resetSession();
-    bool burstDoneSinceStartRx() const { return burstDoneSinceStartRx_; }
-    void clearBurstDoneSinceStartRx() { burstDoneSinceStartRx_ = false; }
+    bool burstDoneSinceStartRx() const {
+        return burstDoneSinceStartRx_;
+    }
+    void clearBurstDoneSinceStartRx() {
+        burstDoneSinceStartRx_ = false;
+    }
 
-private:
+  private:
     void ensureProtocol(Qvisa* visa, const std::function<void(const QString&)>& log,
                         const std::function<void(int)>& wait);
 
@@ -47,4 +51,4 @@ private:
     bool burstDoneSinceStartRx_ = false;
 };
 
-#endif  // CMW_GPRF_FACADE_H
+#endif // CMW_GPRF_FACADE_H

@@ -12,36 +12,36 @@
 #include "qprotocol_types.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 class Qjig : public QSerialPort {
     Q_OBJECT
-public:
+  public:
     enum class JigCmd {
-        SendState,         // data: int(jigState)
-        SetCylinderState,  // data: QVariantMap{state:int, mechine:int}
-        SetRelayState,     // data: int
-        GetAmplitude       // get
+        SendState,        // data: int(jigState)
+        SetCylinderState, // data: QVariantMap{state:int, mechine:int}
+        SetRelayState,    // data: int
+        GetAmplitude      // get
     };
 
     explicit Qjig(QSerialPort* parent = nullptr);
     QSerialPort* serialPort;
     typedef enum {
-        STATE_CYLINDER_OPEN,  // 开启气缸1
+        STATE_CYLINDER_OPEN, // 开启气缸1
         STATE_RELAY_OPEN,
         STATE_RELAY_RESET,
-        STATE_RELAY1_OPEN,     // 继电器1吸合
-        STATE_RELAY1_RESET,    // 继电器1复位
-        STATE_RELAY2_OPEN,     // 继电器1吸合
-        STATE_RELAY2_RESET,    // 继电器1复位
-        STATE_CYLINDER_RESET,  // 气缸1复位
-        STATE_RELAY4_OPEN,     // 继电器4吸合
-        STATE_RELAY4_RESET,    // 继电器4复位
+        STATE_RELAY1_OPEN,    // 继电器1吸合
+        STATE_RELAY1_RESET,   // 继电器1复位
+        STATE_RELAY2_OPEN,    // 继电器1吸合
+        STATE_RELAY2_RESET,   // 继电器1复位
+        STATE_CYLINDER_RESET, // 气缸1复位
+        STATE_RELAY4_OPEN,    // 继电器4吸合
+        STATE_RELAY4_RESET,   // 继电器4复位
         STATE_RESET_ALL,
         STATE_PEN_PRESS,
-        STATE_TRAY_MIDDLE,  //进去
-        STATE_TRAY_REAR,  //下一个工站
-        STATE_FRONT,      //出来原位
+        STATE_TRAY_MIDDLE, //进去
+        STATE_TRAY_REAR,   //下一个工站
+        STATE_FRONT,       //出来原位
 
     } jigState;
     void sendjigData(jigState fixstate);
@@ -54,17 +54,17 @@ public:
     void get(JigCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
 
-signals:
+  signals:
     /** 统一上行数据信封（摆幅仪读数等） */
     void reportReceived(const ProtocolReport& report);
 
-protected:
+  protected:
     void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
         emit reportReceived(ProtocolReport(reportType, payload));
     }
 
-private:
+  private:
     Qlog log_;
 };
 
-#endif  // QJIG_H
+#endif // QJIG_H

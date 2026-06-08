@@ -14,23 +14,21 @@
 #include <memory>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
 
 bool isRuntimeMachineIndexPlaceholder(const QString& text) {
     const QString s = text.trimmed();
-    return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}")
-           || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}")
-           || s == QStringLiteral("{index}");
+    return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}") || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}") || s == QStringLiteral("{index}");
 }
 
 int fixtureMachineIndexFromParam(const QVariant& param) {
     if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
         const QStringList keys = {QStringLiteral("MachineIndex"), QStringLiteral("machineIndex"),
-                                  QStringLiteral("int"),         QStringLiteral("value")};
+                                  QStringLiteral("int"), QStringLiteral("value")};
         for (const QString& key : keys) {
             if (!map.contains(key))
                 continue;
@@ -64,17 +62,11 @@ enum class TuplePlaceholderKind {
 
 TuplePlaceholderKind tuplePlaceholderKind(const QString& text) {
     const QString s = text.trimmed();
-    if (s.compare(QStringLiteral("$TUPLE_PRODUCT_KEY"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_PRODUCT_KEY}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$PRODUCT_KEY"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_PRODUCT_KEY"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_PRODUCT_KEY}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$PRODUCT_KEY"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::ProductKey;
-    if (s.compare(QStringLiteral("$TUPLE_DEVICE_NAME"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_DEVICE_NAME}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$DEVICE_NAME"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_NAME"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_DEVICE_NAME}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$DEVICE_NAME"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::DeviceName;
-    if (s.compare(QStringLiteral("$TUPLE_DEVICE_SECRET"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_DEVICE_SECRET}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$DEVICE_SECRET"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_SECRET"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_DEVICE_SECRET}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$DEVICE_SECRET"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::DeviceSecret;
     return TuplePlaceholderKind::None;
 }
@@ -99,12 +91,11 @@ bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
     return false;
 }
 
-}  // namespace
+} // namespace
 
 int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
     const QVariant resolved = resolveTestCaseSendParamTree(param);
-    if (resolved.userType() == QMetaType::QString
-        && isRuntimeMachineIndexPlaceholder(resolved.toString())) {
+    if (resolved.userType() == QMetaType::QString && isRuntimeMachineIndexPlaceholder(resolved.toString())) {
         return qBound(1, getIndex(), 15);
     }
     int idx = fixtureMachineIndexFromParam(resolved);
@@ -153,7 +144,7 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
         return true;
 
     const QString stepName = def.meta.displayName.trimmed().isEmpty() ? def.meta.name.trimmed()
-                                                                       : def.meta.displayName.trimmed();
+                                                                      : def.meta.displayName.trimmed();
     if (failTupleWriteIfNoValidField(stepName, tupleData_.success, QStringLiteral("云端三元组未获取成功")))
         return false;
 
@@ -229,8 +220,7 @@ void QFreeWork::clearActiveTestCase() {
 }
 
 void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
-    if (gates.size() != 1 || gates.first().field != QStringLiteral("value")
-        || !gates.first().expected.trimmed().isEmpty())
+    if (gates.size() != 1 || gates.first().field != QStringLiteral("value") || !gates.first().expected.trimmed().isEmpty())
         return;
     gates[0].expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
     if (gates[0].expected.isEmpty() && ui && ui->getMac)
@@ -282,8 +272,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         return false;
 
     if (reportType == QStringLiteral("ProtocolSnData")) {
-        if (activeTestCase_.send.deviceCmd != QStringLiteral("Sn")
-            || activeTestCase_.send.action != TestCaseSendAction::Get)
+        if (activeTestCase_.send.deviceCmd != QStringLiteral("Sn") || activeTestCase_.send.action != TestCaseSendAction::Get)
             return false;
         if (!payload.canConvert<ProtocolSnData>()) {
             markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
@@ -355,8 +344,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected()
-        && !TestCaseRunner::stepRequiresProductBle(def)) {
+    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
         ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
         if (!TestCaseRunner::stepWaitsForPromptAck(def))
             ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
@@ -523,8 +511,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
             return;
         stopWaitTimer();
         const QVariant payload = QVariant::fromValue(pack);
-        if (def.gate.enabled
-            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
+        if (def.gate.enabled && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
             return;
         const QString detail =
             QStringLiteral("机号=%1 静态=%2uA 工作=%3mA")

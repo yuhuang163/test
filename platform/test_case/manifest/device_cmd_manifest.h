@@ -29,6 +29,6 @@ int rowCount();
 const Row* findByCmd(DeviceCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
-}  // namespace DeviceCmdManifest
+} // namespace DeviceCmdManifest
 
-#endif  // PLATFORM_DEVICE_CMD_MANIFEST_H
+#endif // PLATFORM_DEVICE_CMD_MANIFEST_H

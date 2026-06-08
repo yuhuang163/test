@@ -5,20 +5,19 @@
 #include <functional>
 #include "qprocesschannel.h"
 
-class Qshell : public QObject
-{
+class Qshell : public QObject {
     Q_OBJECT
-public:
-    explicit Qshell(QObject *parent = nullptr);
+  public:
+    explicit Qshell(QObject* parent = nullptr);
     ~Qshell();
 
-    bool start();   // 启动 cmd / powershell
+    bool start(); // 启动 cmd / powershell
     void stop();
 
-    void sendCommand(const QString &cmd,
-                     std::function<void(const QString &, qint64)> callback,
+    void sendCommand(const QString& cmd,
+                     std::function<void(const QString&, qint64)> callback,
                      qint64 timeoutMs = 3000);
 
-private:
+  private:
     QProcessChannel* channel_ = nullptr;
 };

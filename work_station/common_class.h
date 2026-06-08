@@ -20,23 +20,23 @@ struct NamedFunction {
 };
 
 class common_class {
-public:
+  public:
     common_class();
 };
 
 class TestFunctionExecutor : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit TestFunctionExecutor(Qpb* pb);
     void executeFunctionByName(const QString& functionName);
     void createTestFunctions();
     int sendCommandWithRetry(std::function<void()> commandFunc);
 
-public slots:
+  public slots:
     void solveGetBrushResponse(int data);
 
-private:
+  private:
     Qpb* pb = nullptr;
     QProtocolManager protocolManager;
     bool getRespone = false;
@@ -45,4 +45,4 @@ private:
     std::vector<NamedFunction> testFunctions;
 };
 
-#endif  // COMMON_CLASS_H
+#endif // COMMON_CLASS_H

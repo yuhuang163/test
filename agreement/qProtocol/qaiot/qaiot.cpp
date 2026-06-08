@@ -1,10 +1,10 @@
-﻿#include "qaiot.h"
+#include "qaiot.h"
 
 #include <QDebug>
 #include <QStringList>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -23,9 +23,10 @@ bool toByteValue(const QVariant& v, quint8* out) {
     }
     return true;
 }
-}  // namespace
+} // namespace
 
-Qaiot::Qaiot(QSerialPort* parent) : qProtocol(parent), serialPort(parent) {}
+Qaiot::Qaiot(QSerialPort* parent) : qProtocol(parent), serialPort(parent) {
+}
 
 void Qaiot::parseCmd(const QByteArray& byte) {
     if (byte.size() < 2) {

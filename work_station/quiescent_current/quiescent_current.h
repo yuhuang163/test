@@ -1,4 +1,4 @@
-﻿#ifndef QUIESCENT_CURRENT_H
+#ifndef QUIESCENT_CURRENT_H
 #define QUIESCENT_CURRENT_H
 
 #include "Abini.h"
@@ -7,7 +7,7 @@
 #include "ui_quiescent_current.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace Ui {
@@ -17,16 +17,34 @@ class quiescent_current;
 class quiescent_current : public test_base {
     Q_OBJECT
 
-public:
+  public:
     explicit quiescent_current(int index, QWidget* parent = nullptr);
     ~quiescent_current();
     void startTask() override;
     void disconnect_dongle();
 
     Ui::quiescent_current* ui;
+
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QComboBox* getUsbcomNameCombo() override { return nullptr; }
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLineEdit* getMacLineEdit() override { return ui->snInput; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
     ImuDataT orgData;
 
-private:
+  private:
     void applyCurrentProtocolConfig();
     void syncVisaPowerUiFromSettings();
     bool setProgrammablePowerOutput(bool enable);
@@ -104,23 +122,8 @@ private:
     void bindingMacSn(QString bindingMac, QString bindingSn);
     void startFlowWithMac(const QString& mac);
 
-private slots:
+  private slots:
     void processReceivedData(const QByteArray& data) override;
-
-    // test_base 控件桥接
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
-    QCheckBox* getIsUseMes() override { return ui->isusemes; }
-    QCheckBox* getIsFormMes() override { return ui->isformmes; }
-    QComboBox* getUsbcomNameCombo() override { return nullptr; }
-    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
-    QTableWidget* testResultTable() override { return ui->testResultTable; }
-    QLineEdit* getMacLineEdit() override { return ui->snInput; }
-    QLineEdit* macInputLineEdit() override { return ui->macInput; }
-    QPlainTextEdit* logEdit() override { return ui->log; }
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
-    QLabel* getMesStateQlabel() override { return ui->mes_state; }
-    QPushButton* getEndTestButton() override { return ui->stopTest; }
 
     // 协议上行
     void refreshDongleUartState(int state) override;
@@ -154,10 +157,10 @@ private slots:
     void on_visa_test_clicked();
     void on_currentAmmeterVisaApplyButton_clicked();
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // QUIESCENT_CURRENT_H
+#endif // QUIESCENT_CURRENT_H

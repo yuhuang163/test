@@ -5,7 +5,7 @@
 #include "AbIni.h"
 #include "qdebug.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 ndt_sensor_cali::ndt_sensor_cali() {
@@ -84,12 +84,14 @@ unsigned char ndt_sensor_cali::Noise_CalProc(short* adc, short* noisePeak, short
     return ret;
 }
 
-void ndt_sensor_cali::sensor_cali_set(uint8_t stat)  // 开关
+void ndt_sensor_cali::sensor_cali_set(uint8_t stat) // 开关
 {
     gu8CaliReset = stat;
 }
 
-void ndt_sensor_cali::sensor_test_status_set(TEST_STATUS_E t_status) { test_status = t_status; }
+void ndt_sensor_cali::sensor_test_status_set(TEST_STATUS_E t_status) {
+    test_status = t_status;
+}
 
 struct CalibConfig {
     int channel_num;
@@ -144,7 +146,7 @@ const std::unordered_map<CAL_CHANNEL_E, CalibConfig> calib_table = {
 void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
     auto it = calib_table.find(machine);
     if (it == calib_table.end())
-        return;  // 无匹配机型，直接返回
+        return; // 无匹配机型，直接返回
 
     const CalibConfig& config = it->second;
 
@@ -158,7 +160,7 @@ void ndt_sensor_cali::Sensor_cali_Init(CAL_CHANNEL_E machine) {
     // para.upper_limit = config.upper_limit;
 
     if (!config.ui_msg_tip.empty()) {
-        size_t count = std::min(config.ui_msg_tip.size(), size_t(3));  // 防止数组越界
+        size_t count = std::min(config.ui_msg_tip.size(), size_t(3)); // 防止数组越界
         for (size_t i = 0; i < count; ++i) {
             ui_msg_tip[i] = QString::fromStdString(config.ui_msg_tip[i]);
         }
@@ -188,7 +190,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_v2(short* adc, unsigned short
     u32 cal_temp = 0;
     // qDebug() << "adc[CH0]:" << adc[CH0];
     // qDebug() << "adc[CH1]:" << adc[CH1];
-    if (cycles++ <= CAL_SELF_CHECKING_TIME)  // 200帧用于噪声判断
+    if (cycles++ <= CAL_SELF_CHECKING_TIME) // 200帧用于噪声判断
     {
         Self_Checking_Proces(adc, err);
         calProcessFlag = cal_self_checking_flag;
@@ -223,14 +225,14 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_v2(short* adc, unsigned short
             calProcessFlag = cal_ch0_press_flag;
         }
 
-        if (diffMaxFlag[CH0] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {  //大于180
+        if (diffMaxFlag[CH0] > CAL_SIGNAL_TIME - SMOOTH_COUNT) { //大于180
             diffDataSum[CH0] += diffData[CH0];
             // qDebug() << " diffDataSum[CH1]" << diffDataSum[CH1];
             // qDebug() << "diffData[CH1]:" << diffData[CH1];
             diffDataSum[CH1] += diffData[CH1];
             qDebug() << " diffDataSum[CH1]" << diffDataSum[CH1];
             // printf("diffData:%d\r\n",diffData[CH0]);
-            if (diffMaxFlag[CH0] == CAL_SIGNAL_TIME) {  //等于200
+            if (diffMaxFlag[CH0] == CAL_SIGNAL_TIME) { //等于200
 
                 if (diffDataSum[CH0] < 20)
                     diffDataSum[CH0] = 20;
@@ -279,7 +281,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_v2(short* adc, unsigned short
         calProcessFlag = cal_finally_flag;
 
         if (singleFlag[CH0] == 0) {
-            err[CH0] = err[CH0] | 0x08;  // 0000 1000
+            err[CH0] = err[CH0] | 0x08; // 0000 1000
             QString errorMessage =
                 QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH0).arg(diffMaxFlag[CH0]);
             send_press_cali_msg(errorMessage);
@@ -306,11 +308,11 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
     short diffData[CHANNEL_MAX] = {0};
     unsigned int cal_temp = 0;
     // qDebug() << "cycles=" << cycles;
-    if (cycles++ <= CAL_SELF_CHECKING_TIME)  // 200帧用于噪声判断
+    if (cycles++ <= CAL_SELF_CHECKING_TIME) // 200帧用于噪声判断
     {
         Self_Checking_Proces(adc, err);
         calProcessFlag = cal_self_checking_flag;
-        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT) {  // 180
+        if (cycles > CAL_SELF_CHECKING_TIME - SMOOTH_COUNT) { // 180
             adcHeadSum[CH0] += adc[CH0];
             if (CAL_CHANNEL_NUM == 2) {
                 adcHeadSum[CH1] += adc[CH1];
@@ -324,9 +326,9 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
             // printf("adcHead %d %d\r\n",adcHead[CH0],adcHead[CH1]);
         }
     } else if (cycles <= (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME) &&
-               cycles > CAL_SELF_CHECKING_TIME) {  // 200到800之间
+               cycles > CAL_SELF_CHECKING_TIME) { // 200到800之间
         diffData[CH0] = adc[CH0] - adcHead[CH0];
-        if (diffData[CH0] > CAL_SIGNAL_CH0)  // 如果有超过200adc
+        if (diffData[CH0] > CAL_SIGNAL_CH0) // 如果有超过200adc
         {
             diffMaxFlag[CH0]++;
         } else {
@@ -354,7 +356,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
     if (CAL_CHANNEL_NUM == 2) {
         if (cycles < (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME) &&
             cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME)) {
-            diffData[CH1] = adc[CH1] - adcHead[CH1];  //正常值减去平均值,差异值大于标准才可以通过
+            diffData[CH1] = adc[CH1] - adcHead[CH1]; //正常值减去平均值,差异值大于标准才可以通过
             if (diffData[CH1] > CAL_SIGNAL_CH1) {
                 diffMaxFlag[CH1]++;
             } else {
@@ -366,7 +368,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
                 calProcessFlag = cal_ch1_press_flag;
             }
 
-            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT) {  //大于180
+            if (diffMaxFlag[CH1] > CAL_SIGNAL_TIME - SMOOTH_COUNT) { //大于180
                 diffDataSum[CH1] += diffData[CH1];
                 // printf("diffData:%d\r\n",diffData[CH1]);
                 if (diffMaxFlag[CH1] == CAL_SIGNAL_TIME) {
@@ -382,7 +384,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
         if (cycles > (CAL_SELF_CHECKING_TIME + CAL_CH0_USE_TIME + CAL_CH1_USE_TIME)) {
             calProcessFlag = cal_finally_flag;
             if (singleFlag[CH0] == 0) {
-                err[CH0] = err[CH0] | 0x08;  // 0000 1000
+                err[CH0] = err[CH0] | 0x08; // 0000 1000
                 QString errorMessage =
                     QString("错误：差异值累积数量达不到要求的 %1 目前为%2").arg(CAL_SIGNAL_CH0).arg(diffMaxFlag[CH0]);
                 send_press_cali_msg(errorMessage);
@@ -416,7 +418,7 @@ CAL_FLAG_STATE ndt_sensor_cali::Calibration_Proces_ndt(short* adc, unsigned shor
 */
 unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) {
     if (gu8CaliReset) {
-        if (count > 0)  // 有数据
+        if (count > 0) // 有数据
         {
             gSensorPressAdc[0] = adc[0];
             if (CAL_CHANNEL_NUM == 2) {
@@ -455,7 +457,7 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
                             rawDataFactor[0] = 0;
                             qDebug() << "发生错误：CH0_err =" << err[CH0];
                             qDebug() << "发生错误：CH1_err =" << err[CH1];
-                            gs32SensorFlag = cal_finally_flag;  // 失败
+                            gs32SensorFlag = cal_finally_flag; // 失败
                         }
                         gu8CaliReset = 0;
                     }
@@ -478,7 +480,7 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
                             gSensorPressAdc[0] = err[0];
                             rawDataFactor[0] = 0;
                             qDebug() << "发生错误：err =" << err[0];
-                            gs32SensorFlag = cal_finally_flag;  // 失败
+                            gs32SensorFlag = cal_finally_flag; // 失败
                         }
                         gu8CaliReset = 0;
                     } else {
@@ -501,7 +503,7 @@ unsigned short* ndt_sensor_cali::ndt_sensor_cali_process(int count, short* adc) 
                         rawDataFactor[0] = 0;
                         rawDataFactor[1] = 0;
                         qDebug() << "发生错误: err =" << err[0] << err[1];
-                        gs32SensorFlag = cal_finally_flag;  // 失败
+                        gs32SensorFlag = cal_finally_flag; // 失败
                     }
 
                     gu8CaliReset = 0;
@@ -524,7 +526,7 @@ unsigned char ndt_sensor_cali::Self_Checking_Proces(short* adc, short* err) {
 
     for (ch = 0; ch < CAL_CHANNEL_NUM; ch++) {
         if (adc[ch] < OFFSET_ADC_NEGATIVE || adc[ch] > OFFSET_ADC_POSITIVE) {
-            err[ch] = err[ch] | 0x01;  // 0000 0001
+            err[ch] = err[ch] | 0x01; // 0000 0001
 
             QString errorMessage =
                 QString("错误：adc值不在范围 [%1, %2]").arg(OFFSET_ADC_NEGATIVE).arg(OFFSET_ADC_POSITIVE);

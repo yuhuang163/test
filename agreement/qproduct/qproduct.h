@@ -17,7 +17,7 @@ class QSerialPort;
  */
 class Qproduct : public QObject {
     Q_OBJECT
-public:
+  public:
     enum class ProductCmd {
         WriteRaw,           // set: QByteArray
         WriteHex,           // set: QString
@@ -36,7 +36,9 @@ public:
 
     explicit Qproduct(QSerialPort* port, QObject* parent = nullptr);
 
-    QSerialPort* serialPort() const { return port_; }
+    QSerialPort* serialPort() const {
+        return port_;
+    }
 
     /** 无空格十六进制字符串转二进制，如 "01030C00"。非法字符返回空。 */
     static QByteArray hexToBytes(const QString& hexNoSpaces);
@@ -51,24 +53,48 @@ public:
     void set(ProductCmd cmd, const QVariant& data = {});
     void get(ProductCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
-    const QByteArray& productSerialRxAccum() const { return productSerialRxAccum_; }
+    const QByteArray& productSerialRxAccum() const {
+        return productSerialRxAccum_;
+    }
     void clearProductSerialRxAccum();
 
     // ---- docs/测试.md 固定帧 ----
-    static QByteArray cmdReset() { return QByteArray::fromHex("01030C00"); }
-    static QByteArray cmdStopReceive() { return QByteArray::fromHex("011F2000"); }
-    static QByteArray ackReset() { return QByteArray::fromHex("040E0405030C00"); }
-    static QByteArray ackStartReceive() { return QByteArray::fromHex("040E0405332000"); }
+    static QByteArray cmdReset() {
+        return QByteArray::fromHex("01030C00");
+    }
+    static QByteArray cmdStopReceive() {
+        return QByteArray::fromHex("011F2000");
+    }
+    static QByteArray ackReset() {
+        return QByteArray::fromHex("040E0405030C00");
+    }
+    static QByteArray ackStartReceive() {
+        return QByteArray::fromHex("040E0405332000");
+    }
     /** 停止接收响应前缀（后接 2 字节小端收包数）。 */
-    static QByteArray prefixStopReceive() { return QByteArray::fromHex("040E06051F2000"); }
+    static QByteArray prefixStopReceive() {
+        return QByteArray::fromHex("040E06051F2000");
+    }
 
     /** 按文档「开始接收」固定帧（与 cmdReset 等同为头内 fromHex）。 */
-    static QByteArray buildStartReceiveCmd2402Ble1M() { return QByteArray::fromHex("01332003000100"); }
-    static QByteArray buildStartReceiveCmd2440Ble1M() { return QByteArray::fromHex("01332003130100"); }
-    static QByteArray buildStartReceiveCmd2480Ble1M() { return QByteArray::fromHex("01332003270100"); }
-    static QByteArray buildStartReceiveCmd2402Ble2M() { return QByteArray::fromHex("01332003000200"); }
-    static QByteArray buildStartReceiveCmd2440Ble2M() { return QByteArray::fromHex("01332003130200"); }
-    static QByteArray buildStartReceiveCmd2480Ble2M() { return QByteArray::fromHex("01332003270200"); }
+    static QByteArray buildStartReceiveCmd2402Ble1M() {
+        return QByteArray::fromHex("01332003000100");
+    }
+    static QByteArray buildStartReceiveCmd2440Ble1M() {
+        return QByteArray::fromHex("01332003130100");
+    }
+    static QByteArray buildStartReceiveCmd2480Ble1M() {
+        return QByteArray::fromHex("01332003270100");
+    }
+    static QByteArray buildStartReceiveCmd2402Ble2M() {
+        return QByteArray::fromHex("01332003000200");
+    }
+    static QByteArray buildStartReceiveCmd2440Ble2M() {
+        return QByteArray::fromHex("01332003130200");
+    }
+    static QByteArray buildStartReceiveCmd2480Ble2M() {
+        return QByteArray::fromHex("01332003270200");
+    }
 
     static bool responseContainsPrefix(const QByteArray& rx, const QByteArray& prefix);
     /** 从停止接收应答中解析小端 16 位收包数；未找到前缀返回 -1。 */
@@ -76,7 +102,7 @@ public:
     /** PER = (仪器发包数 - 实际收包数) / 仪器发包数 */
     static double computePer(int instrumentSendCount, int receivedCount);
 
-signals:
+  signals:
     /** 累积数据中首次出现复位应答（040E0405030C00）时发一次，下次需先 clearProductSerialRxAccum */
     void instrumentAckResetSeen();
     /** 首次出现「开始接收」应答（040E0405332000） */
@@ -84,7 +110,7 @@ signals:
     /** 首次形成完整「停止接收」应答（含 2 字节小端收包数） */
     void instrumentStopReceiveSeen(int receivedPacketCountLe);
 
-private:
+  private:
     void scanRxForInstrumentEvents();
 
     QSerialPort* port_ = nullptr;
@@ -94,4 +120,4 @@ private:
     bool emittedStopReceive_ = false;
 };
 
-#endif  // QPRODUCT_H
+#endif // QPRODUCT_H

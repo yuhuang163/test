@@ -1,4 +1,4 @@
-﻿#ifndef KEY_TEST_H
+#ifndef KEY_TEST_H
 #define KEY_TEST_H
 
 #include "Abini.h"
@@ -8,7 +8,7 @@
 #include "ui_key_test.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace Ui {
@@ -20,16 +20,34 @@ class QMessageBox;
 class key_test : public test_base {
     Q_OBJECT
 
-public:
+  public:
     explicit key_test(int index, QWidget* parent = nullptr);
     ~key_test();
     void startTask() override;
     void disconnect_dongle();
 
     Ui::key_test* ui;
+
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLineEdit* getMacLineEdit() override { return ui->snInput; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
     ImuDataT orgData;
 
-private:
+  private:
     // --- 协议 / 界面 ---
     void applyKeyProtocolConfig();
     Qusb::ProtocolType keyProtocolType = Qusb::ProtocolType::Scpi;
@@ -163,23 +181,8 @@ private:
     bool plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage);
     bool plcSendStepDone(QString* errorMessage);
 
-private slots:
+  private slots:
     void processReceivedData(const QByteArray& data) override;
-
-    // test_base 控件桥接
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
-    QCheckBox* getIsUseMes() override { return ui->isusemes; }
-    QCheckBox* getIsFormMes() override { return ui->isformmes; }
-    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
-    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
-    QTableWidget* testResultTable() override { return ui->testResultTable; }
-    QLineEdit* getMacLineEdit() override { return ui->snInput; }
-    QLineEdit* macInputLineEdit() override { return ui->macInput; }
-    QPlainTextEdit* logEdit() override { return ui->log; }
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
-    QLabel* getMesStateQlabel() override { return ui->mes_state; }
-    QPushButton* getEndTestButton() override { return ui->stopTest; }
 
     // 协议上行
     void refreshDongleUartState(int state) override;
@@ -217,10 +220,10 @@ private slots:
     void on_stopTest_clicked();
     void onKeyWaitPromptDestroyed();
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // KEY_TEST_H
+#endif // KEY_TEST_H

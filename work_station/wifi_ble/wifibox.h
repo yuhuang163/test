@@ -10,11 +10,11 @@ class wifibox;
 class wifibox : public box_base {
     Q_OBJECT
 
-public:
+  public:
     explicit wifibox(QWidget* parent = nullptr);
     ~wifibox();
 
     Ui::wifibox* ui;
 };
 
-#endif  // WIFIBOX_H
+#endif // WIFIBOX_H

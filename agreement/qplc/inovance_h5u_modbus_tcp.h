@@ -10,11 +10,13 @@
  * M0~M7999 对应线圈地址 0~7999 的常见映射一致；可通过 mCoilAddressOffset 平移）。
  */
 class InovanceH5uModbusTcp {
-public:
+  public:
     InovanceH5uModbusTcp() = default;
 
     void disconnect();
-    bool isConnected() const { return socket_.state() == QAbstractSocket::ConnectedState; }
+    bool isConnected() const {
+        return socket_.state() == QAbstractSocket::ConnectedState;
+    }
 
     /** 建立 Modbus TCP 连接；unitId 为从站号，常见为 1。 */
     bool connectPlc(const QString& host, quint16 port, quint8 unitId, int timeoutMs, QString* errorMessage);
@@ -25,13 +27,13 @@ public:
 
     /** 读连续线圈；起始为逻辑 M 编号。 */
     bool readMCoils(int mStartNumber, int quantity, int mCoilAddressOffset, quint8 unitId, int requestTimeoutMs,
-                     QVector<bool>* out, QString* errorMessage);
+                    QVector<bool>* out, QString* errorMessage);
 
     /** 为 true 时 qDebug 输出 ADU/PDU 摘要（由 PLC/ModbusTrace 或环境变量 PLC_MODBUS_TRACE=1 打开）。 */
     // void setTraceEnabled(bool on) { traceEnabled_ = on; }
     // bool traceEnabled() const { return traceEnabled_; }
 
-private:
+  private:
     bool transact(const QByteArray& pdu, QByteArray* responsePdu, QString* errorMessage, int requestTimeoutMs,
                   quint8 unitId);
 

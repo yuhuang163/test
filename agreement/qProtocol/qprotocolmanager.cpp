@@ -7,11 +7,11 @@
 #include "qfctp/qfctp.h"
 #include "qaiot/qaiot.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-
-QProtocolManager::QProtocolManager(QObject* parent) : QObject(parent) {}
+QProtocolManager::QProtocolManager(QObject* parent) : QObject(parent) {
+}
 
 QProtocolManager::ProtocolType QProtocolManager::currentProtocolType() const {
     return currentType_;
@@ -40,10 +40,14 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
 
 std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolType type) {
     switch (type) {
-        case ProtocolType::Qpb: return "qpb";
-        case ProtocolType::Qfctp: return "qfctp";
-        case ProtocolType::Qaiot: return "qaiot";
-        default: return "unknown";
+    case ProtocolType::Qpb:
+        return "qpb";
+    case ProtocolType::Qfctp:
+        return "qfctp";
+    case ProtocolType::Qaiot:
+        return "qaiot";
+    default:
+        return "unknown";
     }
 }
 
@@ -252,17 +256,17 @@ bool QProtocolManager::isQaiotProtocolActive() const {
 
 void QProtocolManager::syncActivePointer() {
     switch (currentType_) {
-        case ProtocolType::Qpb:
-            active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
-            break;
-        case ProtocolType::Qfctp:
-            active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
-            break;
-        case ProtocolType::Qaiot:
-            active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
-            break;
-        default:
-            active_ = nullptr;
-            break;
+    case ProtocolType::Qpb:
+        active_ = qpb_ ? static_cast<qProtocol*>(qpb_) : nullptr;
+        break;
+    case ProtocolType::Qfctp:
+        active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
+        break;
+    case ProtocolType::Qaiot:
+        active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
+        break;
+    default:
+        active_ = nullptr;
+        break;
     }
 }

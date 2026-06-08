@@ -6,7 +6,7 @@
 #include "Abini.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -22,20 +22,20 @@ struct ext_uart_phy_layer_t {
     uint8_t magic;
     uint8_t machine;
     uint8_t length;
-    uint16_t staticCurrent;       // 静态电流 uA
-    uint16_t workingCurrent;      // 工作电流 mA
+    uint16_t staticCurrent;  // 静态电流 uA
+    uint16_t workingCurrent; // 工作电流 mA
     uint8_t overVoltageLight;
     uint8_t button1;
     uint8_t button2;
-    uint16_t chargingCurrent;     // 充电电流 mA
-    uint8_t music_state;          // 旧版字节 12：音频状态
-    uint16_t musicCurrent;        // 旧:13~14 音频电流；新:12~13 音频 IC mA（见 parse）
-    uint16_t standbyCurrentUa;    // 字节 14~15：待机电流 uA
-    uint16_t pumpVoltageMv;       // 新:16~17 泵电压 mV
-    uint16_t mcuVoltageMv;        // 新:18~19 MCU 电压 mV
-    uint16_t batteryVoltageMv;    // 新:20~21 电池电压 mV
-    uint8_t fixerro;              // 旧版字节 17：治具错误码
-    uint8_t trailer;              // 包尾 0xAA（新:22，旧:18）
+    uint16_t chargingCurrent;  // 充电电流 mA
+    uint8_t music_state;       // 旧版字节 12：音频状态
+    uint16_t musicCurrent;     // 旧:13~14 音频电流；新:12~13 音频 IC mA（见 parse）
+    uint16_t standbyCurrentUa; // 字节 14~15：待机电流 uA
+    uint16_t pumpVoltageMv;    // 新:16~17 泵电压 mV
+    uint16_t mcuVoltageMv;     // 新:18~19 MCU 电压 mV
+    uint16_t batteryVoltageMv; // 新:20~21 电池电压 mV
+    uint8_t fixerro;           // 旧版字节 17：治具错误码
+    uint8_t trailer;           // 包尾 0xAA（新:22，旧:18）
 };
 #pragma pack(pop)
 
@@ -46,8 +46,7 @@ constexpr int kPcbaFullFrameLenWithFixerro = 0x18;
 constexpr int kFixPhyLayerFramePeekSize = kPcbaFullFrameLenWithFixerro;
 
 uint16_t readBe16(const QByteArray& buf, int hiIndex) {
-    return static_cast<uint16_t>((static_cast<uint8_t>(buf.at(hiIndex)) << 8)
-                                 | static_cast<uint8_t>(buf.at(hiIndex + 1)));
+    return static_cast<uint16_t>((static_cast<uint8_t>(buf.at(hiIndex)) << 8) | static_cast<uint8_t>(buf.at(hiIndex + 1)));
 }
 
 void parseFixturePacketCommonHead(const QByteArray& receivebuf, FixturePacketData& datapack) {
@@ -75,8 +74,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
         qDebug() << QStringLiteral("治具包 length 过短：%1").arg(declaredLen);
         return false;
     }
-    if (static_cast<uchar>(receivebuf.at(0)) != 0x55
-        || static_cast<uchar>(receivebuf.at(declaredLen - 1)) != 0xAA) {
+    if (static_cast<uchar>(receivebuf.at(0)) != 0x55 || static_cast<uchar>(receivebuf.at(declaredLen - 1)) != 0xAA) {
         qDebug() << QStringLiteral("治具包头尾格式错误 length=%1").arg(declaredLen);
         return false;
     }
@@ -114,7 +112,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
     return true;
 }
 
-constexpr int kPcbaMachineSlotMax = 0x0F;  // 机位 1..15（0x01..0x0F）
+constexpr int kPcbaMachineSlotMax = 0x0F; // 机位 1..15（0x01..0x0F）
 
 QByteArray buildPcbaMachineCommand(uint8_t opcode, int machineIndex) {
     if (machineIndex < 1 || machineIndex > kPcbaMachineSlotMax)
@@ -126,11 +124,12 @@ QByteArray buildPcbaMachineCommand(uint8_t opcode, int machineIndex) {
     return frame;
 }
 
-}  // namespace
+} // namespace
 
 FixturePcbaUartProtocol::FixturePcbaUartProtocol(RingBuf* ringBuf, usmile_ring_buffer_t* ring, uint8_t* frameBuf,
                                                  int frameBufSize)
-    : ringBuf_(ringBuf), ring_(ring), frameBuf_(frameBuf), frameBufSize_(frameBufSize) {}
+    : ringBuf_(ringBuf), ring_(ring), frameBuf_(frameBuf), frameBufSize_(frameBufSize) {
+}
 
 int FixturePcbaUartProtocol::findNextFrame() {
     int i = 0;
@@ -209,7 +208,7 @@ void FixturePcbaUartProtocol::pollFrames(const std::function<void(const FixtureP
 }
 
 void FixturePcbaUartProtocol::dispatchShortFrame(const QByteArray& data,
-                                               const std::function<void(const FixturePcbaUartEvent&)>& handler) {
+                                                 const std::function<void(const FixturePcbaUartEvent&)>& handler) {
     if (data.size() == 5 && static_cast<uchar>(data.at(3)) == 0xCC) {
         FixturePcbaUartEvent ev;
         ev.type = FixturePcbaUartEvent::Type::ShortSleep;
@@ -292,5 +291,5 @@ QByteArray FixturePcbaUartProtocol::buildWhiteModeCommand(int machineIndex) {
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif

@@ -1,4 +1,4 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qsetting_bindings.h"
 #include "qevent.h"
@@ -74,7 +74,7 @@ QString tupleBaseUrlForKey(const QString& key) {
     return {};
 }
 
-}
+} // namespace
 
 qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->setupUi(this);
@@ -82,7 +82,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     // 假设你已经定义了 QButtonGroup* StationGroup;
     // 假设 StationGroup 已经被定义并初始化
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonDebug"), 0);
-    StationGroup->addButton(findChild<QRadioButton*>("radioButtonStaticCurrent"), 1);  // 更新为静态电流
+    StationGroup->addButton(findChild<QRadioButton*>("radioButtonStaticCurrent"), 1); // 更新为静态电流
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonMotorCalibration"), 2);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonImuCalibration"), 3);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonScreenTest"), 4);
@@ -105,8 +105,8 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     QStringList individualMode = {"无效选项", "单独电机", "单独按键", "都校准"};
     ui->comboBox_individualMode->addItems(individualMode);
 
-    QStringList displayImageType = {"无效选项", "关闭所有图像", "ADC图像",     "压力值图像",
-                                    "电机图像", "按键图像",     "显示全部图像"};
+    QStringList displayImageType = {"无效选项", "关闭所有图像", "ADC图像", "压力值图像",
+                                    "电机图像", "按键图像", "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
     QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "无mes厂"};
@@ -135,8 +135,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     initSettingTooltips();
     initTestFlowEditorUi();
     RestoreFacDefaultSetting();
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
-
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 
     ui->groupBox_SubPIDSettings->hide();
 }
@@ -200,7 +199,7 @@ void qsetting::on_comboBox_tupleEnvironment_currentIndexChanged(int index) {
 void qsetting::readSubPIDAndFilter() {
     SETTINGS.beginGroup("SUBPID");
     // 读取 [SUBPID] 部分的所有键值对
-    QStringList subPIDKeys = SETTINGS.childKeys();  // 获取所有键
+    QStringList subPIDKeys = SETTINGS.childKeys(); // 获取所有键
     SETTINGS.endGroup();
     // 用于存储不同值的变量
     QString subPID_00;
@@ -215,7 +214,7 @@ void qsetting::readSubPIDAndFilter() {
         // 根据值分类，将键名加到相应的变量中
         if (value == "00") {
             if (!subPID_00.isEmpty()) {
-                subPID_00 += "=";  // 如果不是第一个键，添加 "=" 连接符
+                subPID_00 += "="; // 如果不是第一个键，添加 "=" 连接符
             }
             subPID_00 += key;
         } else if (value == "01") {
@@ -250,7 +249,7 @@ void qsetting::readSubPIDAndFilter() {
 }
 void qsetting::loadConfig() {
     // 假设 SETTINGS 是一个 QSettings 实例
-    QString station = SETTINGS.value("SYSTEM/station").toString();  // 读取 station 的值
+    QString station = SETTINGS.value("SYSTEM/station").toString(); // 读取 station 的值
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
     QVariant windowSize(availableSize / 4 * 3);
     this->resize(SETTINGS.value("Window/SettingSize", windowSize).toSize());
@@ -396,19 +395,18 @@ void qsetting::saveSubPIDAndFilter() {
 void qsetting::saveConfig() {
     SETTINGS.setValue("Window/SettingSize", this->size());
     // 假设 SETTINGS 是一个 QSettings 实例
-    SETTINGS.setValue("SYSTEM/station", ui->radioButtonImuCalibration->isChecked()   ? "IMU_CALI" :
-                                        ui->radioButtonMotorCalibration->isChecked() ? "MOTOR_TEST" :
-                                        ui->radioButtonStaticCurrent->isChecked()    ? "QUIESCENT_CURRENT" :
-                                        ui->radioButtonScreenTest->isChecked()       ? "SCREEN_TEST" :
-                                        ui->radioButtonCameraTest->isChecked()       ? "CAMERA_TEST" :
-                                        ui->radioButtonSignalTest->isChecked()       ? "WIFIBLE_TEST" :
-                                        ui->radioButtonAgingTest->isChecked()        ? "AGE_TEST" :
-                                        ui->radioButtonPressTest->isChecked()        ? "PRESS_TEST" :
-                                        ui->radioButtonBoardFactoryTest->isChecked() ? "PCBA_TEST" :
-                                        ui->radioButtonKeyTest->isChecked()          ? "KEY_TEST" :
-                                        ui->radioButtonSuctionTest->isChecked()      ? "SUCTION_TEST" :
-                                        ui->radioButtonFreeWorkstation->isChecked()  ? "FREE_WORK" :
-                                                                                       "MAIN_TEST");
+    SETTINGS.setValue("SYSTEM/station", ui->radioButtonImuCalibration->isChecked() ? "IMU_CALI" : ui->radioButtonMotorCalibration->isChecked() ? "MOTOR_TEST"
+                          : ui->radioButtonStaticCurrent->isChecked()                                                                          ? "QUIESCENT_CURRENT"
+                          : ui->radioButtonScreenTest->isChecked()                                                                             ? "SCREEN_TEST"
+                          : ui->radioButtonCameraTest->isChecked()                                                                             ? "CAMERA_TEST"
+                          : ui->radioButtonSignalTest->isChecked()                                                                             ? "WIFIBLE_TEST"
+                          : ui->radioButtonAgingTest->isChecked()                                                                              ? "AGE_TEST"
+                          : ui->radioButtonPressTest->isChecked()                                                                              ? "PRESS_TEST"
+                          : ui->radioButtonBoardFactoryTest->isChecked()                                                                       ? "PCBA_TEST"
+                          : ui->radioButtonKeyTest->isChecked()                                                                                ? "KEY_TEST"
+                          : ui->radioButtonSuctionTest->isChecked()                                                                            ? "SUCTION_TEST"
+                          : ui->radioButtonFreeWorkstation->isChecked()                                                                        ? "FREE_WORK"
+                                                                                                                                               : "MAIN_TEST");
 
     saveQSettingTableBindings(this);
     saveSubPIDAndFilter();
@@ -442,7 +440,7 @@ void qsetting::saveConfig() {
 
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
-                                                                           : QStringLiteral("big"));
+                                                                          : QStringLiteral("big"));
     bydmes::loadExternalMesConfig(nullptr);
 }
 
@@ -465,7 +463,7 @@ void qsetting::closeEvent(QCloseEvent* event) {
 }
 
 void qsetting::RestoreProductDefaultSetting() {
-    ui->checkBox_PressIndependent->setChecked(true);  //默认所有产品都直接开始
+    ui->checkBox_PressIndependent->setChecked(true); //默认所有产品都直接开始
     ui->checkBox_NeedWriteSkuid->setChecked(false);
     ui->checkBox_NeedWriteSubpid->setChecked(false);
     ui->checkBox_BluetoothImageTransfer->setChecked(false);
@@ -813,7 +811,7 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
         startDir = QCoreApplication::applicationDirPath();
     }
     const QString path = QFileDialog::getOpenFileName(this, "选择MES配置文件", startDir,
-                                                    "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
+                                                      "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
     if (!path.isEmpty()) {
         ui->lineEdit_mes_config_file_path->setText(path);
     }

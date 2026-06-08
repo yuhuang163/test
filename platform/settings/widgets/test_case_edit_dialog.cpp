@@ -16,7 +16,7 @@
 #include <algorithm>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -24,9 +24,7 @@ namespace {
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString) {
         const QString s = param.toString().trimmed();
-        return s.isEmpty() || s.compare(QStringLiteral("$INDEX"), Qt::CaseInsensitive) == 0
-               || s.compare(QStringLiteral("${INDEX}"), Qt::CaseInsensitive) == 0
-               || s.compare(QStringLiteral("$SLOT"), Qt::CaseInsensitive) == 0;
+        return s.isEmpty() || s.compare(QStringLiteral("$INDEX"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${INDEX}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$SLOT"), Qt::CaseInsensitive) == 0;
     }
     return !param.isValid() || param.toInt() == 0;
 }
@@ -103,8 +101,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     } else if (channel == TestCaseSendChannel::ProductSerial) {
         items.reserve(ProductSerialCmdCatalog::allProductSerialCmdNames().size());
         for (const QString& name : ProductSerialCmdCatalog::allProductSerialCmdNames()) {
-            if (ProductSerialCmd cmd; ProductSerialCmdCatalog::productSerialCmdFromName(name, cmd)
-                && ProductSerialCmdCatalog::isCmdForAction(cmd, action))
+            if (ProductSerialCmd cmd; ProductSerialCmdCatalog::productSerialCmdFromName(name, cmd) && ProductSerialCmdCatalog::isCmdForAction(cmd, action))
                 items.append({ProductSerialCmdCatalog::productSerialCmdUiLabel(name), name});
         }
     } else if (channel == TestCaseSendChannel::Fixture) {
@@ -129,8 +126,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             }
         }
         if (!found) {
-            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing)
-                                  + QStringLiteral("（未登记）");
+            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing) + QStringLiteral("（未登记）");
             items.prepend({label, keepCmdIfMissing});
         }
     }
@@ -162,7 +158,11 @@ QString sendChannelComboData(TestCaseSendChannel channel) {
     return QStringLiteral("Product");
 }
 
-enum class SendCmdParamKind { None, Int, UInt, JsonMap, String };
+enum class SendCmdParamKind { None,
+                              Int,
+                              UInt,
+                              JsonMap,
+                              String };
 
 struct SendCmdParamUi {
     bool valid = false;
@@ -494,7 +494,7 @@ void fillHookCombo(QComboBox* box) {
         box->addItem(item.first, item.second);
 }
 
-}  // namespace
+} // namespace
 
 TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(new Ui::TestCaseEditDialog) {
     ui->setupUi(this);
@@ -552,13 +552,11 @@ TestCaseEditDialog::~TestCaseEditDialog() {
 }
 
 bool TestCaseEditDialog::isFixturePcbaMultiGateMode() const {
-    return ui->checkBox_gateEnabled->isChecked()
-           && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolFixturePcbaData");
+    return ui->checkBox_gateEnabled->isChecked() && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolFixturePcbaData");
 }
 
 bool TestCaseEditDialog::isPeriphMultiGateMode() const {
-    return ui->checkBox_gateEnabled->isChecked()
-           && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolPeriphStateData");
+    return ui->checkBox_gateEnabled->isChecked() && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolPeriphStateData");
 }
 
 bool TestCaseEditDialog::isMultiGateTableMode() const {
@@ -688,8 +686,7 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
                 g.expected = QString::number(static_cast<int>(g.low));
             // 默认 range 0~0 且无期望值视为未启用该行
-            const bool unusedDefault = (g.op == TestCaseGateOp::Range && g.expected.isEmpty()
-                                        && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
+            const bool unusedDefault = (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
             if (unusedDefault)
                 continue;
             gates.append(g);
@@ -773,8 +770,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     const QString protoIni = channel == TestCaseSendChannel::Fixture
-                                 ? FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol)
-                                 : DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
+        ? FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol)
+        : DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
     const int protoIdx = comboIndexByData(ui->comboBox_productProtocol, protoIni);
     if (protoIdx >= 0)
         ui->comboBox_productProtocol->setCurrentIndex(protoIdx);
@@ -791,8 +788,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
 
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel);
     QVariant paramForUi = def.send.param;
-    if (channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
-        && isFixtureMachineIndexPlaceholder(def.send.param))
+    if (channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && isFixtureMachineIndexPlaceholder(def.send.param))
         paramForUi = 0;
     applySendParamToUi(uiSchema, paramForUi, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
                        ui->stackedWidget_param, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
@@ -815,11 +811,11 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     if (fieldIdx >= 0)
         ui->comboBox_gateField->setCurrentIndex(fieldIdx);
 
-    const QString opKey = def.gate.op == TestCaseGateOp::Gt              ? QStringLiteral("gt")
-                          : def.gate.op == TestCaseGateOp::Lt            ? QStringLiteral("lt")
-                          : def.gate.op == TestCaseGateOp::Eq            ? QStringLiteral("eq")
-                          : def.gate.op == TestCaseGateOp::CompareVersions ? QStringLiteral("compareVersions")
-                                                                           : QStringLiteral("range");
+    const QString opKey = def.gate.op == TestCaseGateOp::Gt ? QStringLiteral("gt")
+        : def.gate.op == TestCaseGateOp::Lt                 ? QStringLiteral("lt")
+        : def.gate.op == TestCaseGateOp::Eq                 ? QStringLiteral("eq")
+        : def.gate.op == TestCaseGateOp::CompareVersions    ? QStringLiteral("compareVersions")
+                                                            : QStringLiteral("range");
     const int opIdx = comboIndexByData(ui->comboBox_gateOp, opKey);
     if (opIdx >= 0)
         ui->comboBox_gateOp->setCurrentIndex(opIdx);
@@ -827,14 +823,10 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
     ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
     ui->lineEdit_gateExpected->setText(def.gate.expected);
-    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-         || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData"))
-        && !def.gates.isEmpty()) {
+    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData") || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")) && !def.gates.isEmpty()) {
         rebuildMultiGateTable();
         writeMultiGatesToTable(def.gates);
-    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData"))
-               && def.gate.enabled) {
+    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData") || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")) && def.gate.enabled) {
         rebuildMultiGateTable();
         writeMultiGatesToTable({def.gate});
     }
@@ -867,8 +859,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel);
     def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
-    if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
-        && ui->spinBox_intParam->value() == 0)
+    if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && ui->spinBox_intParam->value() == 0)
         def.send.param = QStringLiteral("$INDEX");
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
@@ -889,11 +880,11 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     } else {
         def.gate.field = comboData(ui->comboBox_gateField);
         const QString op = comboData(ui->comboBox_gateOp);
-        def.gate.op = op == QLatin1String("gt")              ? TestCaseGateOp::Gt
-                      : op == QLatin1String("lt")            ? TestCaseGateOp::Lt
-                      : op == QLatin1String("eq")            ? TestCaseGateOp::Eq
-                      : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
-                                                               : TestCaseGateOp::Range;
+        def.gate.op = op == QLatin1String("gt")      ? TestCaseGateOp::Gt
+            : op == QLatin1String("lt")              ? TestCaseGateOp::Lt
+            : op == QLatin1String("eq")              ? TestCaseGateOp::Eq
+            : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
+                                                     : TestCaseGateOp::Range;
         def.gate.low = ui->lineEdit_gateLow->text().toDouble();
         def.gate.high = ui->lineEdit_gateHigh->text().toDouble();
         def.gate.expected = ui->lineEdit_gateExpected->text();
@@ -977,8 +968,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         } else {
             ui->spinBox_intParam->setSpecialValueText(QString());
         }
-    }
-    else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String)
+    } else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String)
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
     else
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);

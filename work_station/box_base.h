@@ -14,7 +14,7 @@
 class box_base : public QMainWindow {
     Q_OBJECT
 
-public:
+  public:
     explicit box_base(QWidget* parent = nullptr);
     ~box_base();
 
@@ -54,22 +54,24 @@ public:
     MesPacketData pack;
     std::vector<int> FixTureStates;
 
-public slots:
+  public slots:
     virtual void checkAllover(int);
-    virtual void checkAllTest(int) {}
-    virtual void resetall() {}
+    virtual void checkAllTest(int) {
+    }
+    virtual void resetall() {
+    }
     void checkAndUpdateFile();
     void startAllReturnPressed();
     void setting_ui();
 
-private slots:
+  private slots:
     void reset_vector(int i);
     void loginMes();
     void initData();
     void saveCustom();
     void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
 
-private:
+  private:
     QMesManager* MesManager = new QMesManager();
     QNetworkAccessManager* updatamanager = nullptr;
     int formRow = 1;
@@ -77,12 +79,12 @@ private:
     bool isTestContinue = true;
     qsetting* qsetting_ui = nullptr;
 
-protected:
+  protected:
     void closeEvent(QCloseEvent* event) override;
 
-signals:
+  signals:
     void go_screen_next(int);
     void sendBoxLog(QString);
 };
 
-#endif  // BOX_BASE_H
+#endif // BOX_BASE_H

@@ -14,13 +14,13 @@ class TestCaseEditDialog;
 class TestCaseEditDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     explicit TestCaseEditDialog(QWidget* parent = nullptr);
     ~TestCaseEditDialog() override;
     void setDefinition(const TestCaseDefinition& def, const QString& storageKey = QString());
     TestCaseDefinition definition() const;
 
-private slots:
+  private slots:
     void onSendChannelChanged(int index);
     void onProductProtocolChanged(int index);
     void onSendActionChanged(int index);
@@ -38,7 +38,7 @@ private slots:
     void updatePromptFieldsEnabled();
     void updateHookFieldsEnabled();
 
-private:
+  private:
     bool saveValidated();
     void refreshDeviceCmdCombo();
     void updateProductProtocolRowVisible();
@@ -51,4 +51,4 @@ private:
     QString originalCaseName_;
 };
 
-#endif  // TEST_CASE_EDIT_DIALOG_H
+#endif // TEST_CASE_EDIT_DIALOG_H

@@ -1,4 +1,4 @@
-﻿
+
 #include "motor.h"
 
 #include "common_utils.h"
@@ -13,7 +13,7 @@
 #include "ui_motor.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 void motor::on_pushButton_2_clicked() {
     // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
@@ -31,7 +31,7 @@ motor::motor(int index, QWidget* parent) : test_base(parent), ui(new Ui::motor) 
     upperComputerVer = MOTOR_VER;
 
     ui->setupUi(this);
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -50,7 +50,7 @@ motor::motor(int index, QWidget* parent) : test_base(parent), ui(new Ui::motor) 
     showlog("machineNo=" + pack.machineNo);
 
     testResultTableInit();
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 
 void motor::refreshMotorCaliMsg(QString msg) {
@@ -110,7 +110,7 @@ void motor::control_motor_cmd(QString cmd) {
 
     // 如果可执行文件有参数，可以在这里设置
     QStringList arguments;
-    arguments << cmd;  // 例如，添加参数"arg1"和"arg2"
+    arguments << cmd; // 例如，添加参数"arg1"和"arg2"
 
     // 启动外部可执行文件
     process.start(program, arguments);
@@ -127,9 +127,13 @@ void motor::control_motor_cmd(QString cmd) {
     qDebug() << getIndex() << "Error:" << error;
 }
 
-motor::~motor() { delete ui; }
+motor::~motor() {
+    delete ui;
+}
 
-void motor::refreshPbData(QString data) { showlog(data); }
+void motor::refreshPbData(QString data) {
+    showlog(data);
+}
 void motor::refreshDongleUartState(int state) {
     if (state)
         showlog("dongle串口连接成功");
@@ -168,36 +172,36 @@ void motor::on_connectButton_clicked() {
 }
 
 void motor::on_motor_cali_clicked() {
-    static int caliStep = 1;  // 用于跟踪当前运行的校准步骤
+    static int caliStep = 1; // 用于跟踪当前运行的校准步骤
 
     switch (caliStep) {
-        case 1:
-            protocolManager.set(DeviceCmd::MotorCali, 1);
-            showlog("Running set_motor_cali(1)");
-            break;
+    case 1:
+        protocolManager.set(DeviceCmd::MotorCali, 1);
+        showlog("Running set_motor_cali(1)");
+        break;
 
-        case 2:
-            protocolManager.set(DeviceCmd::MotorCali, 2);
-            showlog("Running set_motor_cali(2)");
-            break;
+    case 2:
+        protocolManager.set(DeviceCmd::MotorCali, 2);
+        showlog("Running set_motor_cali(2)");
+        break;
 
-        case 3:
-            protocolManager.set(DeviceCmd::MotorCali, 3);
-            showlog("Running set_motor_cali(3)");
-            break;
+    case 3:
+        protocolManager.set(DeviceCmd::MotorCali, 3);
+        showlog("Running set_motor_cali(3)");
+        break;
 
-        case 4:
-            protocolManager.set(DeviceCmd::MotorDampingState, 1);
-            showlog("Running set_motor_damping_state(1)");
-            break;
+    case 4:
+        protocolManager.set(DeviceCmd::MotorDampingState, 1);
+        showlog("Running set_motor_damping_state(1)");
+        break;
 
-        case 5:
-            protocolManager.set(DeviceCmd::MotorDampingState, 0);
-            showlog("Running set_motor_damping_state(0)");
-            break;
+    case 5:
+        protocolManager.set(DeviceCmd::MotorDampingState, 0);
+        showlog("Running set_motor_damping_state(0)");
+        break;
     }
 
-    caliStep++;  // 增加步骤计数
+    caliStep++; // 增加步骤计数
 
     // 如果步骤计数超过了最大步骤数，重置为第一步
     if (caliStep > 5) {
@@ -223,13 +227,13 @@ void motor::processInspection(QString inputSnText) {
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
 
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -347,11 +351,21 @@ void motor::refreshBaseData(ProtocolBaseInfoData data) {
 void motor::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
     switch (adc.chargeState) {
-        case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
-        case 2: chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>"; break;
-        case 3: chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>"; break;
-        case 4: chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>"; break;
-        default: chargeStateStr = "充电状态为：<span style='color:red'>未知</span>"; break;
+    case 1:
+        chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
+        break;
+    case 2:
+        chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
+        break;
+    case 3:
+        chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
+        break;
+    case 4:
+        chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
+        break;
+    default:
+        chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
+        break;
     }
     ui->battary_state->setText(chargeStateStr);
 
@@ -362,8 +376,8 @@ void motor::refreshBattaryData(ProtocolBatteryData adc) {
 
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-                                "V</span>";
+        QString::number(adc.voltageMv / 1000.0, 'f', 3) +
+        "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
 
     // QRegularExpression regex("<span style='color:(.*?)'>(.*?)</span>");
@@ -418,253 +432,253 @@ void motor::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE:  // 复位一切
-                refreshMotorCaliMsg("开始测试");
-                // showlog("开始测试");
-                pb->reset_all_pb();
+        case STATE_IDLE: // 复位一切
+            refreshMotorCaliMsg("开始测试");
+            // showlog("开始测试");
+            pb->reset_all_pb();
 
-                at->resetConnected();
-                is_canGoNext = 0;
-                refreshBleState(0);
-                ui->product_sn->setText("存储整机sn:");
-                stringsn = "";
-                result = passValue;
-                TestTime.start();
-                waitWork(1000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
-                is_battary_test = 0;
+            at->resetConnected();
+            is_canGoNext = 0;
+            refreshBleState(0);
+            ui->product_sn->setText("存储整机sn:");
+            stringsn = "";
+            result = passValue;
+            TestTime.start();
+            waitWork(1000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
+            is_battary_test = 0;
 
-                state = STATE_WATI_CONNECT;
-                break;
-            case STATE_WATI_CONNECT:
-                if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
-                    state = STATE_GETBASEDATA;
-                }
+            state = STATE_WATI_CONNECT;
+            break;
+        case STATE_WATI_CONNECT:
+            if (at->getConnected()) {
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
+                state = STATE_GETBASEDATA;
+            }
 
-                break;
-            case STATE_GETBASEDATA:
-                if (canGoNext) {
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
-                    state = STATE_WATI_CORRECT_BATTARY;
-                }
-                break;
+            break;
+        case STATE_GETBASEDATA:
+            if (canGoNext) {
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
+                state = STATE_WATI_CORRECT_BATTARY;
+            }
+            break;
 
-            case STATE_WATI_CORRECT_BATTARY:  // 设置禁止休眠
-                if (is_battary_test) {
-                    showlog("已成功完成电量测试");
-                    state = STATE_DISABLE_SLEEP_1;
-                }
+        case STATE_WATI_CORRECT_BATTARY: // 设置禁止休眠
+            if (is_battary_test) {
+                showlog("已成功完成电量测试");
+                state = STATE_DISABLE_SLEEP_1;
+            }
 
-                break;
+            break;
 
-            case STATE_DISABLE_SLEEP_1:
-                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
-                    showlog("已进入禁止休眠模式");
-                    protocolManager.set(DeviceCmd::MotorTestState, 0);
-                    waitWork(100);
-                    protocolManager.set(DeviceCmd::MotorCaliState, 1);
-                    waitWork(100);
-                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
-                    waitWork(100);
-                    refreshMotorCaliMsg("解除阻尼");
-                    // showlog("解除阻尼");
-                    // #ifdef LXSET
-                    //                      waitWork(1000);
-                    //                      control_motor_cmd("/c:-90");
-                    //                         waitWork(1000);
-                    // #endif
+        case STATE_DISABLE_SLEEP_1:
+            if (pb->getState(Qpb::PbStateType::DisableSleep)) {
+                showlog("已进入禁止休眠模式");
+                protocolManager.set(DeviceCmd::MotorTestState, 0);
+                waitWork(100);
+                protocolManager.set(DeviceCmd::MotorCaliState, 1);
+                waitWork(100);
+                protocolManager.set(DeviceCmd::MotorDampingState, 0);
+                waitWork(100);
+                refreshMotorCaliMsg("解除阻尼");
+                // showlog("解除阻尼");
+                // #ifdef LXSET
+                //                      waitWork(1000);
+                //                      control_motor_cmd("/c:-90");
+                //                         waitWork(1000);
+                // #endif
 
-                    state = UNLOCK_DAMPING;
+                state = UNLOCK_DAMPING;
 
-                    // protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
-                    // showlog("已发送sn绑定");
-                    // state = STATE_SN_CHECK;
-                } else {
-                    waitWork(500);
-                    showlog("正在重发进入禁止休眠");
-                    protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-                }
-                break;
-
-                //         case STATE_SN_CHECK:
-                //             if (pb->get_is_banding_ok()) {
-                //                 showlog("sn已成功绑定保存");
-                //                 stringsn = ui->getMac->text();
-                //                 showlog(stringsn);
-
-                //             } else {
-                //                 waitWork(500);
-                //                 protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
-                //                 showlog("重发sn绑定");
-                //             }
-                //             break;
-
-            case UNLOCK_DAMPING:
-
-                if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
-                    refreshMotorCaliMsg("正在进行霍尔校准");
-                    // showlog("正在进行霍尔校准");
-
-                    protocolManager.set(DeviceCmd::MotorCali, 1);
-                    waitWork(WAITTIME);
-                    state = MOTOR_CALI1;
-                } else {
-                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
-                    showlog("重发解除阻尼");
-                    waitWork(500);
-                }
-
-            case MOTOR_CALI1:
-                if (pb->getState(Qpb::PbStateType::HallCali) == 1) {
-                    refreshMotorCaliMsg("霍尔校准完成");
-                    qDebug() << getIndex() << "发射霍尔校准完成";
-                    emit send_go_next_test(getIndex());
-
-                    state = MOTOR_WAIT_CALI1;
-                }
-                if (pb->getState(Qpb::PbStateType::HallCali) == 2) {
-                    refreshMotorCaliMsg("霍尔校准失败");
-                    pack.error = "SP03004";
-                    result = failValue;
-                    state = STATE_SAVE_RESULT;
-                }
-                break;
-            case MOTOR_WAIT_CALI1:
-                if (is_canGoNext) {
-                    is_canGoNext = 0;
-                    waitWork(WAITTIME);
-                    protocolManager.set(DeviceCmd::MotorCali, 2);
-                    waitWork(WAITTIME);
-                    showlog("正在进行零点校准");
-                    state = MOTOR_CALI2;
-                }
-
-                break;
-            case MOTOR_CALI2:
-                if (pb->getState(Qpb::PbStateType::ZeroCali) == 1) {
-                    refreshMotorCaliMsg("零点校准完成");
-                    // showlog("零点校准完成");
-                    if (pack.factory == "lx") {
-                        qDebug() << getIndex() << "发射零点校准完成";
-                        emit send_go_next_test(getIndex());
-                        state = MOTOR_WAIT_CALI2;
-                        break;
-                    }
-
-                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
-                    state = STOP_MOTOR_CALI;
-                }
-                if (pb->getState(Qpb::PbStateType::ZeroCali) == 2) {
-                    pack.error = "SP03005";
-                    result = failValue;
-                    state = STATE_SAVE_RESULT;
-                }
-                break;
-
-            case MOTOR_WAIT_CALI2:
-                if (is_canGoNext) {
-                    is_canGoNext = 0;
-                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
-                    state = STOP_MOTOR_CALI;
-                }
-                break;
-
-            case STOP_MOTOR_CALI:
-                qDebug() << "当前状态是" << state;
-                if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
-                    refreshMotorCaliMsg("正在进行电机测试");
-                    // showlog("正在进行电机测试");
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
-                    //  protocolManager.set(DeviceCmd::MotorTestState, 1);
-
-                    state = MOTOR_TESTING;
-                } else {
-                    protocolManager.set(DeviceCmd::MotorCaliState, 0);
-                    refreshMotorCaliMsg("重发关闭校准流程");
-                    waitWork(500);
-                }
-                 break;
-            case MOTOR_TESTING:
-                if (pb->getState(Qpb::PbStateType::MotorTestState)) {
-
-                    qDebug() << getIndex() << "发射电机测试完成";
-                    emit send_go_next_test(getIndex());
-                    state = MOTOR_WAIT_TESTING;
-                } else {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
-                    refreshMotorCaliMsg("重发电机测试");
-                    waitWork(500);
-                }
-                break;
-
-            case MOTOR_WAIT_TESTING:
-                if (is_canGoNext) {
-                    is_canGoNext = 0;
-                    state = STATE_SAVE_RESULT;
-                }
-                break;
-
-            case STATE_SAVE_RESULT:
-
-                if (result == passValue) {
-                    QString mesresult = "PASS";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|MOTOR_TEST:PASS|");
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((result == failValue)) {
-                    QString mesresult = "NG";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|MOTOR_TEST:NG|");
-                    pack.sn = ui->getMac->text();
-
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
-                }
-
-                TestItem test;
-                test.testItem = "电机校准";
-                test.testData = "";
-                test.testResult = result;
-                test.ask = "通过";
-                testItems.append(test);
-
-                testResultTableUpdate(testItems);
-
-                sn = "";
-                stringsn = "";
-                ui->macInput->clear();
-                ui->getMac->clear();
-                ui->getMac->setFocus();
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
-                waitWork(WAITTIME);
-                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
+                // protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                // showlog("已发送sn绑定");
+                // state = STATE_SN_CHECK;
+            } else {
                 waitWork(500);
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                waitWork(50);
-                on_disconnectButton_clicked();
-                // showlog("测试结束");
-                refreshMotorCaliMsg("测试结束");
-                isTestContinue = false;
-                emit send_end_test(getIndex());
+                showlog("正在重发进入禁止休眠");
+                protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
+            }
+            break;
 
-                state = STATE_IDLE;
-                break;
+            //         case STATE_SN_CHECK:
+            //             if (pb->get_is_banding_ok()) {
+            //                 showlog("sn已成功绑定保存");
+            //                 stringsn = ui->getMac->text();
+            //                 showlog(stringsn);
+
+            //             } else {
+            //                 waitWork(500);
+            //                 protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+            //                 showlog("重发sn绑定");
+            //             }
+            //             break;
+
+        case UNLOCK_DAMPING:
+
+            if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
+                refreshMotorCaliMsg("正在进行霍尔校准");
+                // showlog("正在进行霍尔校准");
+
+                protocolManager.set(DeviceCmd::MotorCali, 1);
+                waitWork(WAITTIME);
+                state = MOTOR_CALI1;
+            } else {
+                protocolManager.set(DeviceCmd::MotorDampingState, 0);
+                showlog("重发解除阻尼");
+                waitWork(500);
+            }
+
+        case MOTOR_CALI1:
+            if (pb->getState(Qpb::PbStateType::HallCali) == 1) {
+                refreshMotorCaliMsg("霍尔校准完成");
+                qDebug() << getIndex() << "发射霍尔校准完成";
+                emit send_go_next_test(getIndex());
+
+                state = MOTOR_WAIT_CALI1;
+            }
+            if (pb->getState(Qpb::PbStateType::HallCali) == 2) {
+                refreshMotorCaliMsg("霍尔校准失败");
+                pack.error = "SP03004";
+                result = failValue;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
+        case MOTOR_WAIT_CALI1:
+            if (is_canGoNext) {
+                is_canGoNext = 0;
+                waitWork(WAITTIME);
+                protocolManager.set(DeviceCmd::MotorCali, 2);
+                waitWork(WAITTIME);
+                showlog("正在进行零点校准");
+                state = MOTOR_CALI2;
+            }
+
+            break;
+        case MOTOR_CALI2:
+            if (pb->getState(Qpb::PbStateType::ZeroCali) == 1) {
+                refreshMotorCaliMsg("零点校准完成");
+                // showlog("零点校准完成");
+                if (pack.factory == "lx") {
+                    qDebug() << getIndex() << "发射零点校准完成";
+                    emit send_go_next_test(getIndex());
+                    state = MOTOR_WAIT_CALI2;
+                    break;
+                }
+
+                protocolManager.set(DeviceCmd::MotorCaliState, 0);
+                state = STOP_MOTOR_CALI;
+            }
+            if (pb->getState(Qpb::PbStateType::ZeroCali) == 2) {
+                pack.error = "SP03005";
+                result = failValue;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
+
+        case MOTOR_WAIT_CALI2:
+            if (is_canGoNext) {
+                is_canGoNext = 0;
+                protocolManager.set(DeviceCmd::MotorCaliState, 0);
+                state = STOP_MOTOR_CALI;
+            }
+            break;
+
+        case STOP_MOTOR_CALI:
+            qDebug() << "当前状态是" << state;
+            if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
+                refreshMotorCaliMsg("正在进行电机测试");
+                // showlog("正在进行电机测试");
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                //  protocolManager.set(DeviceCmd::MotorTestState, 1);
+
+                state = MOTOR_TESTING;
+            } else {
+                protocolManager.set(DeviceCmd::MotorCaliState, 0);
+                refreshMotorCaliMsg("重发关闭校准流程");
+                waitWork(500);
+            }
+            break;
+        case MOTOR_TESTING:
+            if (pb->getState(Qpb::PbStateType::MotorTestState)) {
+
+                qDebug() << getIndex() << "发射电机测试完成";
+                emit send_go_next_test(getIndex());
+                state = MOTOR_WAIT_TESTING;
+            } else {
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                refreshMotorCaliMsg("重发电机测试");
+                waitWork(500);
+            }
+            break;
+
+        case MOTOR_WAIT_TESTING:
+            if (is_canGoNext) {
+                is_canGoNext = 0;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
+
+        case STATE_SAVE_RESULT:
+
+            if (result == passValue) {
+                QString mesresult = "PASS";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|MOTOR_TEST:PASS|");
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((result == failValue)) {
+                QString mesresult = "NG";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|MOTOR_TEST:NG|");
+                pack.sn = ui->getMac->text();
+
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+
+            TestItem test;
+            test.testItem = "电机校准";
+            test.testData = "";
+            test.testResult = result;
+            test.ask = "通过";
+            testItems.append(test);
+
+            testResultTableUpdate(testItems);
+
+            sn = "";
+            stringsn = "";
+            ui->macInput->clear();
+            ui->getMac->clear();
+            ui->getMac->setFocus();
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            waitWork(WAITTIME);
+            protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
+            waitWork(500);
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            waitWork(50);
+            on_disconnectButton_clicked();
+            // showlog("测试结束");
+            refreshMotorCaliMsg("测试结束");
+            isTestContinue = false;
+            emit send_end_test(getIndex());
+
+            state = STATE_IDLE;
+            break;
         }
     }
 }
@@ -672,112 +686,112 @@ void motor::startTask() {
 void motor::startTest_task() {
     if (is_motor_test_continue) {
         switch (test_state) {
-            case STATE_IDLE:  // 复位一切
-                showlog("开始电机测试");
-                pb->reset_all_pb();
-                at->resetConnected();
-                refreshBleState(0);
-                ui->product_sn->setText("存储整机sn:");
-                stringsn = "";
-                test_result = passValue;
-                test_state = STATE_WATI_CONNECT;
-                break;
-            case STATE_WATI_CONNECT:
-                if (at->getConnected()) {
-                    test_state = STATE_DISABLE_SLEEP_1;
-                }
-                break;
+        case STATE_IDLE: // 复位一切
+            showlog("开始电机测试");
+            pb->reset_all_pb();
+            at->resetConnected();
+            refreshBleState(0);
+            ui->product_sn->setText("存储整机sn:");
+            stringsn = "";
+            test_result = passValue;
+            test_state = STATE_WATI_CONNECT;
+            break;
+        case STATE_WATI_CONNECT:
+            if (at->getConnected()) {
+                test_state = STATE_DISABLE_SLEEP_1;
+            }
+            break;
 
-            case STATE_DISABLE_SLEEP_1:
-                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
-                    showlog("已进入禁止休眠模式");
-                    waitWork(WAITTIME);
-                    protocolManager.set(DeviceCmd::MotorTestState, 0);
-                    waitWork(WAITTIME);
-                    protocolManager.set(DeviceCmd::MotorDampingState, 0);
-                    waitWork(WAITTIME);
-                    showlog("解除阻尼");
-                    QMessageBox::warning(NULL, "警告", " 请把电机置于非0位\t\r\n");
-                    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
-                    waitWork(WAITTIME);
-                    showlog("打开阻尼");
-                    protocolManager.set(DeviceCmd::MotorDampingState, 1);
-                    test_state = MOTOR_TESTING;
-                    showlog("正在查询SN");
-                }
-                break;
-
-            case MOTOR_TESTING:
-                if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
-                    QMessageBox::StandardButton reply;
-                    reply =
-                        QMessageBox::question(this, "电机测试", "设备是否成功复位", QMessageBox::Yes | QMessageBox::No);
-                    if (reply == QMessageBox::No) {
-                        test_result = failValue;
-                    }
-                    test_state = STATE_SAVE_RESULT;
-                }
-
-                break;
-
-            case STATE_SAVE_RESULT:
-
-                if (test_result == passValue) {
-                    QString mesresult = "PASS";
-                    QString itemvalue = QString("|MOTOR_TEST:PASS|");
-                    pack.result = mesresult;
-
-                    pack.itemvalue = itemvalue;
-
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((test_result == failValue)) {
-                    QString mesresult = "NG";
-                    QString itemvalue = QString("|MOTOR_TEST:NG|");
-                    pack.result = mesresult;
-
-                    pack.itemvalue = itemvalue;
-
-                    pack.sn = ui->getMac->text();
-
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
-                }
-                TestItem test;
-                test.testItem = "电机测试";
-                test.testData = "";
-                test.testResult = result;
-                test.ask = "通过";
-                testItems.append(test);
-
-                testResultTableUpdate(testItems);
-
-                sn = "";
-                stringsn = "";
-                ui->macInput->clear();
-                ui->getMac->clear();
-                ui->getMac->setFocus();
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
+        case STATE_DISABLE_SLEEP_1:
+            if (pb->getState(Qpb::PbStateType::DisableSleep)) {
+                showlog("已进入禁止休眠模式");
                 waitWork(WAITTIME);
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                waitWork(50);
-                on_disconnectButton_clicked();
-                showlog("测试结束");
-                is_motor_test_continue = false;
-                test_state = STATE_IDLE;
-                break;
+                protocolManager.set(DeviceCmd::MotorTestState, 0);
+                waitWork(WAITTIME);
+                protocolManager.set(DeviceCmd::MotorDampingState, 0);
+                waitWork(WAITTIME);
+                showlog("解除阻尼");
+                QMessageBox::warning(NULL, "警告", " 请把电机置于非0位\t\r\n");
+                protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
+                waitWork(WAITTIME);
+                showlog("打开阻尼");
+                protocolManager.set(DeviceCmd::MotorDampingState, 1);
+                test_state = MOTOR_TESTING;
+                showlog("正在查询SN");
+            }
+            break;
+
+        case MOTOR_TESTING:
+            if (pb->getState(Qpb::PbStateType::DampingState) == 1) {
+                QMessageBox::StandardButton reply;
+                reply =
+                    QMessageBox::question(this, "电机测试", "设备是否成功复位", QMessageBox::Yes | QMessageBox::No);
+                if (reply == QMessageBox::No) {
+                    test_result = failValue;
+                }
+                test_state = STATE_SAVE_RESULT;
+            }
+
+            break;
+
+        case STATE_SAVE_RESULT:
+
+            if (test_result == passValue) {
+                QString mesresult = "PASS";
+                QString itemvalue = QString("|MOTOR_TEST:PASS|");
+                pack.result = mesresult;
+
+                pack.itemvalue = itemvalue;
+
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((test_result == failValue)) {
+                QString mesresult = "NG";
+                QString itemvalue = QString("|MOTOR_TEST:NG|");
+                pack.result = mesresult;
+
+                pack.itemvalue = itemvalue;
+
+                pack.sn = ui->getMac->text();
+
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+            TestItem test;
+            test.testItem = "电机测试";
+            test.testData = "";
+            test.testResult = result;
+            test.ask = "通过";
+            testItems.append(test);
+
+            testResultTableUpdate(testItems);
+
+            sn = "";
+            stringsn = "";
+            ui->macInput->clear();
+            ui->getMac->clear();
+            ui->getMac->setFocus();
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            waitWork(WAITTIME);
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            waitWork(50);
+            on_disconnectButton_clicked();
+            showlog("测试结束");
+            is_motor_test_continue = false;
+            test_state = STATE_IDLE;
+            break;
         }
     }
 }
@@ -848,9 +862,13 @@ void motor::getTestValue(const int mechines, const QString value) {
     // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
-void motor::on_damping_open_clicked() { protocolManager.set(DeviceCmd::MotorDampingState, 1); }
+void motor::on_damping_open_clicked() {
+    protocolManager.set(DeviceCmd::MotorDampingState, 1);
+}
 
-void motor::on_damping_close_clicked() { protocolManager.set(DeviceCmd::MotorDampingState, 0); }
+void motor::on_damping_close_clicked() {
+    protocolManager.set(DeviceCmd::MotorDampingState, 0);
+}
 
 void motor::on_getMac_returnPressed() {
     testResultTableInit();
@@ -884,9 +902,9 @@ void motor::on_getMac_returnPressed() {
 
     showlog("正在查询mac地址");
     sn = ui->getMac->text().toUtf8();
-    getMac(ui->getMac->text());  // 文件获取
+    getMac(ui->getMac->text()); // 文件获取
     processInspection(ui->getMac->text());
-    processGetMesTestValue();  // mes获取
+    processGetMesTestValue(); // mes获取
 }
 void motor::processGetMesTestValue() {
     if (pack.factory == "hz") {
@@ -903,7 +921,7 @@ void motor::processGetMesTestValue() {
         pack.mechines = getIndex();
         pack.instruct_num = "079";
 
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 void motor::on_macInput_returnPressed() {
@@ -955,7 +973,3 @@ void motor::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-
-
-

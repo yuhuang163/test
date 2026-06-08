@@ -25,11 +25,11 @@ QString flowIniFileName();
 bool ensureRootDir();
 bool isValidCaseFileName(const QString& name, QString* errorOut = nullptr);
 bool isReservedCaseName(const QString& name);
-}  // namespace TestCasePaths
+} // namespace TestCasePaths
 
 // ---------- 存储 ----------
 class TestCaseStore {
-public:
+  public:
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
@@ -67,13 +67,13 @@ public:
 
 // ---------- 校验 ----------
 class TestCaseValidator {
-public:
+  public:
     static bool validateCase(const TestCaseDefinition& def, QStringList& errors);
 };
 
 // ---------- 设备指令 ----------
 class DeviceCmdCatalog {
-public:
+  public:
     static QStringList allDeviceCmdNames(TestCaseSendAction action);
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
@@ -93,7 +93,7 @@ public:
 };
 
 class DongleCmdCatalog {
-public:
+  public:
     static QStringList allDongleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(DongleCmd cmd);
     static bool isCmdForAction(DongleCmd cmd, TestCaseSendAction action);
@@ -128,7 +128,7 @@ enum class FixturePcbaCmd {
 };
 
 class FixturePcbaCmdCatalog {
-public:
+  public:
     static QStringList allFixturePcbaCmdNames(TestCaseSendAction action);
     static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
     static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
@@ -145,7 +145,7 @@ public:
 };
 
 class ProductSerialCmdCatalog {
-public:
+  public:
     static QStringList allProductSerialCmdNames();
     static TestCaseSendAction actionFor(ProductSerialCmd cmd);
     static bool isCmdForAction(ProductSerialCmd cmd, TestCaseSendAction action);
@@ -159,7 +159,7 @@ public:
 };
 
 class TupleCmdCatalog {
-public:
+  public:
     static QStringList allTupleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(TupleCmd cmd);
     static bool isCmdForAction(TupleCmd cmd, TestCaseSendAction action);
@@ -191,7 +191,7 @@ struct GateStepDisplay {
 };
 
 class GateRegistry {
-public:
+  public:
     static QStringList reportTypes();
     static QVector<GateTypeDescriptor> allTypeDescriptors();
     static bool descriptorFor(const QString& reportType, GateTypeDescriptor& out);
@@ -219,7 +219,7 @@ public:
 using TestCaseHookFn = std::function<void(QFreeWork*)>;
 
 class TestCaseHookRegistry {
-public:
+  public:
     static void registerHook(const QString& hookId, TestCaseHookFn fn);
     static bool contains(const QString& hookId);
     static QStringList hookIds();
@@ -233,7 +233,7 @@ void registerQFreeWorkCatalogTestCaseHooks();
 
 // ---------- 执行 ----------
 class TestCaseRunner {
-public:
+  public:
     static QStringList loadFlowForStation(const QString& stationKey);
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
@@ -249,4 +249,4 @@ public:
     static int commandTimeoutMs(const TestCaseDefinition& def);
 };
 
-#endif  // PLATFORM_TEST_CASE_H
+#endif // PLATFORM_TEST_CASE_H

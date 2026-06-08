@@ -3,23 +3,19 @@
 #include "navlistview.h"
 #include "quiwidget.h"
 
-UIDemo5::UIDemo5(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::UIDemo5)
-{
+UIDemo5::UIDemo5(QWidget* parent) : QDialog(parent),
+                                    ui(new Ui::UIDemo5) {
     ui->setupUi(this);
     this->initForm();
     QUIWidget::setFormInCenter(this);
     QTimer::singleShot(100, this, SLOT(initIndex()));
 }
 
-UIDemo5::~UIDemo5()
-{
+UIDemo5::~UIDemo5() {
     delete ui;
 }
 
-void UIDemo5::initForm()
-{
+void UIDemo5::initForm() {
     this->max = false;
     this->location = this->geometry();
     this->setProperty("form", true);
@@ -38,7 +34,7 @@ void UIDemo5::initForm()
     qss.append("QWidget#widgetTop{background:#FFFFFF;}");
     qss.append("QWidget#widgetMain{background:#F1F3F6;}");
     qss.append("QLabel#label{color:#202020;font:50pt;}");
-    qss.append("QListView#listView{background:rgb(52,73,94);border-width:0px;}");    
+    qss.append("QListView#listView{background:rgb(52,73,94);border-width:0px;}");
     this->setStyleSheet(qss.join(""));
 
     QStringList listItem;
@@ -85,18 +81,15 @@ void UIDemo5::initForm()
     ui->widgetNavTop->setTextSelectColor(QColor(250, 250, 250));
 }
 
-void UIDemo5::initIndex()
-{
-    ui->widgetNavTop->setCurrentIndex(0);    
+void UIDemo5::initIndex() {
+    ui->widgetNavTop->setCurrentIndex(0);
 }
 
-void UIDemo5::on_btnMenu_Min_clicked()
-{
+void UIDemo5::on_btnMenu_Min_clicked() {
     showMinimized();
 }
 
-void UIDemo5::on_btnMenu_Max_clicked()
-{
+void UIDemo5::on_btnMenu_Max_clicked() {
     if (max) {
         this->setGeometry(location);
         this->setProperty("canMove", true);
@@ -109,12 +102,10 @@ void UIDemo5::on_btnMenu_Max_clicked()
     max = !max;
 }
 
-void UIDemo5::on_btnMenu_Close_clicked()
-{
+void UIDemo5::on_btnMenu_Close_clicked() {
     close();
 }
 
-void UIDemo5::on_listView_pressed(const QModelIndex &index)
-{
+void UIDemo5::on_listView_pressed(const QModelIndex& index) {
     ui->label->setText(index.data().toString());
 }

@@ -6,43 +6,37 @@
 #include "qprotocol_types.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
 
 /** FREE_INSTR_CMW_GPRF_* HookId → brush profile 0～5；兼容旧 Profile0～5 与新区段命名。 */
 int freeInstrCmwGprfHookProfile(const QString& hookId) {
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P0")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P0") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"))
         return 0;
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P1")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P1") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"))
         return 1;
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P2")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P2") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"))
         return 2;
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P3")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P3") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"))
         return 3;
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P4")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P4") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"))
         return 4;
-    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P5")
-        || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"))
+    if (hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_P5") || hookId == QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"))
         return 5;
     return -1;
 }
 
-}  // namespace
+} // namespace
 
 /** 友元类静态成员可访问 QFreeWork 私有接口；lambda 不行，故用 dispatch。 */
 class QFreeWorkTestCaseHookRegistrar {
-public:
+  public:
     static void registerAll();
     static void dispatch(QFreeWork* fw, const QString& hookId);
 
-private:
+  private:
     static void registerHook(const QString& hookId);
 };
 
@@ -173,8 +167,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
                                   QStringLiteral("ProductInfo/KeyIdPower_checkBox"), 6, false);
         return;
     }
-    if (hookId == QStringLiteral("PROD_INST_RESET_ACK")
-        || hookId.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
+    if (hookId == QStringLiteral("PROD_INST_RESET_ACK") || hookId.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
         fw->startProductInstrumentResetAndWaitAck(QString());
         return;
     }
@@ -213,8 +206,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             return;
         }
     }
-    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER")
-        || hookId.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
+    if (hookId == QStringLiteral("PROD_INST_STOP_RX_PER") || hookId.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
         fw->startProductInstrumentStopReceiveAndPer(QString());
         return;
     }

@@ -26,7 +26,7 @@
 #include "protocol/fixture_pcba_uart_protocol.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 // ===================== TestCasePaths =====================
@@ -95,7 +95,7 @@ bool isValidCaseFileName(const QString& name, QString* errorOut) {
     return true;
 }
 
-}  // namespace TestCasePaths
+} // namespace TestCasePaths
 
 // ===================== TestCaseStore（内部） =====================
 
@@ -204,8 +204,7 @@ void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, con
     const QString newGroup = stationGroup(newKey);
 
     ini.beginGroup(oldGroup);
-    const bool hadData = ini.contains(QStringLiteral("Items")) || ini.contains(QStringLiteral("StopFlowOnTestFail"))
-                         || ini.contains(QStringLiteral("StopOnGateFail"));
+    const bool hadData = ini.contains(QStringLiteral("Items")) || ini.contains(QStringLiteral("StopFlowOnTestFail")) || ini.contains(QStringLiteral("StopOnGateFail"));
     const QVariant items = ini.value(QStringLiteral("Items"));
     const QVariant stopFlow = ini.value(QStringLiteral("StopFlowOnTestFail"));
     const QVariant stopGate = ini.value(QStringLiteral("StopOnGateFail"));
@@ -256,7 +255,7 @@ bool normalizeFlowStationCatalogKeys(QVector<TestFlowStationEntry>& catalog) {
     return changed;
 }
 
-}  // namespace
+} // namespace
 
 QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
     return builtinFlowStationPresets();
@@ -482,7 +481,7 @@ bool TestCaseStore::renameFlowStation(const QString& stationKey, const QString& 
     if (!presetKeyForName.isEmpty() && presetKeyForName.compare(k, Qt::CaseInsensitive) != 0) {
         if (errorOut) {
             *errorOut = QStringLiteral("名称与工站「%1」冲突")
-                              .arg(lookupPresetDisplayName(presetKeyForName));
+                            .arg(lookupPresetDisplayName(presetKeyForName));
         }
         return false;
     }
@@ -606,8 +605,7 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
         if (!out.gates.isEmpty())
             return;
     }
-    if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field)
-        && reportType == QStringLiteral("ProtocolPeriphStateData")) {
+    if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field) && reportType == QStringLiteral("ProtocolPeriphStateData")) {
         for (const QString& f : GateRegistry::fieldsFor(reportType)) {
             TestCaseGate g = out.gate;
             g.field = f;
@@ -641,7 +639,7 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
     }
 }
 
-}  // namespace
+} // namespace
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     Q_UNUSED(errorOut);
@@ -665,13 +663,12 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
 
     const QString action = ini.value(QStringLiteral("Send/Action"), QStringLiteral("Set")).toString();
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
-                                                                                       : TestCaseSendAction::Set;
+                                                                                     : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
     const QString protocolIni = ini.value(QStringLiteral("Send/Protocol")).toString();
     out.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
     out.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
-    if (out.send.productProtocol == TestCaseProductProtocol::Qfctp
-        && out.send.deviceCmd.compare(QStringLiteral("BaseInfo"), Qt::CaseInsensitive) == 0) {
+    if (out.send.productProtocol == TestCaseProductProtocol::Qfctp && out.send.deviceCmd.compare(QStringLiteral("BaseInfo"), Qt::CaseInsensitive) == 0) {
         out.send.deviceCmd = QStringLiteral("SoftVersionRead");
     }
     const QString channelIni = ini.value(QStringLiteral("Send/Channel")).toString().trimmed();
@@ -806,8 +803,7 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         } else {
             QString serialCmd;
             const QString hid = out.hook.hookId;
-            if (hid == QStringLiteral("PROD_INST_RESET_ACK")
-                || hid.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
+            if (hid == QStringLiteral("PROD_INST_RESET_ACK") || hid.startsWith(QStringLiteral("PROD_INST_RESET_ACK_"))) {
                 serialCmd = QStringLiteral("InstrumentReset");
             } else if (hid == QStringLiteral("PROD_INST_START_RX_2402_1M")) {
                 serialCmd = QStringLiteral("StartRx2402Ble1M");
@@ -821,8 +817,7 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
                 serialCmd = QStringLiteral("StartRx2440Ble2M");
             } else if (hid == QStringLiteral("PROD_INST_START_RX_2480_2M")) {
                 serialCmd = QStringLiteral("StartRx2480Ble2M");
-            } else if (hid == QStringLiteral("PROD_INST_STOP_RX_PER")
-                       || hid.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
+            } else if (hid == QStringLiteral("PROD_INST_STOP_RX_PER") || hid.startsWith(QStringLiteral("PROD_INST_STOP_RX_PER_"))) {
                 serialCmd = QStringLiteral("StopRxAndPer");
             }
             if (!serialCmd.isEmpty()) {
@@ -839,15 +834,11 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     }
 
     // 基本信息软件版本：旧 ini 误用 range + soft_version，改为版本比对（期望写在 case ini 的 Gate/Expected）
-    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData")
-        && out.gate.field == QStringLiteral("soft_version") && out.gate.op == TestCaseGateOp::Range) {
+    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData") && out.gate.field == QStringLiteral("soft_version") && out.gate.op == TestCaseGateOp::Range) {
         out.gate.op = TestCaseGateOp::CompareVersions;
     }
     // 旧配置从全局设置读版本：清空，改由 case ini Gate/Expected 配置
-    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData")
-        && out.gate.field == QStringLiteral("soft_version")
-        && out.gate.expectedSettingsKey == QStringLiteral("ProductInfo/Software_Version")
-        && out.gate.expected.trimmed().isEmpty()) {
+    if (out.gate.enabled && out.gate.reportType == QStringLiteral("ProtocolBaseInfoData") && out.gate.field == QStringLiteral("soft_version") && out.gate.expectedSettingsKey == QStringLiteral("ProductInfo/Software_Version") && out.gate.expected.trimmed().isEmpty()) {
         out.gate.expectedSettingsKey.clear();
     }
 
@@ -870,8 +861,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     ini.setValue(QStringLiteral("Meta/PromptEnabled"), def.meta.promptEnabled);
     ini.setValue(QStringLiteral("Meta/PromptText"), def.meta.promptText);
 
-    ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get")
-                                                                                          : QStringLiteral("Set"));
+    ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get") : QStringLiteral("Set"));
     QString channelStr = QStringLiteral("Product");
     if (def.send.channel == TestCaseSendChannel::Dongle)
         channelStr = QStringLiteral("Dongle");
@@ -1004,7 +994,7 @@ bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, boo
     if (ini.contains(QStringLiteral("StopFlowOnTestFail")))
         result = ini.value(QStringLiteral("StopFlowOnTestFail"), defaultValue).toBool();
     else if (ini.contains(QStringLiteral("StopOnGateFail")))
-        result = true;  // 兼容旧 per-case 列表
+        result = true; // 兼容旧 per-case 列表
     ini.endGroup();
     return result;
 }
@@ -1154,8 +1144,7 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                     errors.append(QStringLiteral("分项「%1」须填写期望值")
                                       .arg(GateRegistry::fieldDisplayName(def.gate.reportType, g.field)));
             }
-        } else if (!GateRegistry::isAllFieldsGateField(def.gate.field)
-                 && !GateRegistry::fieldsFor(def.gate.reportType).contains(def.gate.field)) {
+        } else if (!GateRegistry::isAllFieldsGateField(def.gate.field) && !GateRegistry::fieldsFor(def.gate.reportType).contains(def.gate.field)) {
             errors.append(QStringLiteral("判定项目未登记，请联系工程师"));
         }
     }
@@ -1183,8 +1172,11 @@ QString cmdPickerDisplayLabel(QString label) {
     if (label.startsWith(QStringLiteral("Dongle "), Qt::CaseInsensitive))
         label = label.mid(7).trimmed();
     static const QStringList prefixes = {
-        QStringLiteral("设置"), QStringLiteral("写入"), QStringLiteral("读取"),
-        QStringLiteral("获取"), QStringLiteral("上报"),
+        QStringLiteral("设置"),
+        QStringLiteral("写入"),
+        QStringLiteral("读取"),
+        QStringLiteral("获取"),
+        QStringLiteral("上报"),
     };
     for (const QString& prefix : prefixes) {
         if (label.startsWith(prefix)) {
@@ -1278,7 +1270,7 @@ QVariantMap jsonMapWithLegacyInt(const QSettings& settings) {
     return map;
 }
 
-}  // namespace
+} // namespace
 
 QStringList DeviceCmdCatalog::allDeviceCmdNames(TestCaseSendAction action) {
     QStringList names;
@@ -1294,8 +1286,7 @@ QStringList DeviceCmdCatalog::allDeviceCmdNames(TestCaseSendAction action) {
 
 TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& text) {
     const QString t = text.trimmed();
-    if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0
-        || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
+    if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qpb;
     return TestCaseProductProtocol::Qfctp;
 }
@@ -1447,8 +1438,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
             payload.sn = snBytes;
             return QVariant::fromValue(payload);
         }
-        if (map.contains(QStringLiteral("which_sn")) || map.contains(QStringLiteral("which"))
-            || map.contains(QStringLiteral("type")))
+        if (map.contains(QStringLiteral("which_sn")) || map.contains(QStringLiteral("which")) || map.contains(QStringLiteral("type")))
             return whichFromMap();
         return jsonMapIntValue(map, 0);
     }
@@ -1624,8 +1614,7 @@ QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames(TestCaseSendAction act
 }
 
 TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QString& text) {
-    if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0
-        || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
+    if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
 }
@@ -1713,8 +1702,7 @@ bool FixturePcbaCmdCatalog::paramFromIniGroup(const QSettings& settings, Fixture
         }
         if (machine.userType() == QMetaType::QString) {
             const QString s = machine.toString().trimmed();
-            if (s.compare(QStringLiteral("$INDEX"), Qt::CaseInsensitive) == 0
-                || s.compare(QStringLiteral("$SLOT"), Qt::CaseInsensitive) == 0 || s.isEmpty()) {
+            if (s.compare(QStringLiteral("$INDEX"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$SLOT"), Qt::CaseInsensitive) == 0 || s.isEmpty()) {
                 out = QStringLiteral("$INDEX");
                 break;
             }
@@ -1818,20 +1806,20 @@ QString ProductSerialCmdCatalog::paramUiHint(const QString& enumName) {
 
 int ProductSerialCmdCatalog::brushProfileForCmd(ProductSerialCmd cmd) {
     switch (cmd) {
-        case ProductSerialCmd::StartRx2402Ble1M:
-            return 0;
-        case ProductSerialCmd::StartRx2440Ble1M:
-            return 1;
-        case ProductSerialCmd::StartRx2480Ble1M:
-            return 2;
-        case ProductSerialCmd::StartRx2402Ble2M:
-            return 3;
-        case ProductSerialCmd::StartRx2440Ble2M:
-            return 4;
-        case ProductSerialCmd::StartRx2480Ble2M:
-            return 5;
-        default:
-            return -1;
+    case ProductSerialCmd::StartRx2402Ble1M:
+        return 0;
+    case ProductSerialCmd::StartRx2440Ble1M:
+        return 1;
+    case ProductSerialCmd::StartRx2480Ble1M:
+        return 2;
+    case ProductSerialCmd::StartRx2402Ble2M:
+        return 3;
+    case ProductSerialCmd::StartRx2440Ble2M:
+        return 4;
+    case ProductSerialCmd::StartRx2480Ble2M:
+        return 5;
+    default:
+        return -1;
     }
 }
 
@@ -1957,67 +1945,21 @@ void TupleCmdCatalog::paramToIniGroup(QSettings& settings, TupleCmd cmd, const Q
 namespace {
 
 const QVector<GateTypeDescriptor> kTypes = {
-    {QStringLiteral("ProtocolRssiData"), QStringLiteral("蓝牙信号强度"),
-     {{QStringLiteral("dbm"), QStringLiteral("信号强度(分贝)")}}},
-    {QStringLiteral("ProtocolBatteryData"), QStringLiteral("电量"),
-     {{QStringLiteral("percent"), QStringLiteral("电量(%)")},
-      {QStringLiteral("chargeState"), QStringLiteral("充电状态")},
-      {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}}},
-    {QStringLiteral("ProtocolKeyCapData"), QStringLiteral("按键电容"),
-     {{QStringLiteral("capacitance"), QStringLiteral("电容值")},
-      {QStringLiteral("keyId"), QStringLiteral("按键编号")}}},
-    {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"),
-     {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
-    {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"),
-     {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
-    {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"),
-     {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
-    {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"),
-     {{QStringLiteral("value"), QStringLiteral("序列号文本")}}},
-    {QStringLiteral("ProtocolBaseInfoData"), QStringLiteral("基本信息"),
-     {{QStringLiteral("soft_version"), QStringLiteral("软件版本")},
-      {QStringLiteral("res_version"), QStringLiteral("资源版本")},
-      {QStringLiteral("product_name"), QStringLiteral("产品名称")},
-      {QStringLiteral("hw_version"), QStringLiteral("硬件版本")},
-      {QStringLiteral("algo_version"), QStringLiteral("算法版本")},
-      {QStringLiteral("ageing_state"), QStringLiteral("老化状态")}}},
-    {QStringLiteral("ProtocolPeriphStateData"), QStringLiteral("外设状态"),
-     {{QStringLiteral("press0_state"), QStringLiteral("压感0状态")},
-      {QStringLiteral("press1_state"), QStringLiteral("压感1状态")},
-      {QStringLiteral("battery_ic_state"), QStringLiteral("电池IC状态")},
-      {QStringLiteral("touch_ic_state"), QStringLiteral("触摸IC状态")},
-      {QStringLiteral("led_ic_state"), QStringLiteral("LED IC状态")},
-      {QStringLiteral("pd_ic_state"), QStringLiteral("PD IC状态")}}},
-    {QStringLiteral("ProtocolTupleData"), QStringLiteral("设备三元组"),
-     {{QStringLiteral("productId"), QStringLiteral("产品密钥")},
-      {QStringLiteral("deviceId"), QStringLiteral("设备名")},
-      {QStringLiteral("key"), QStringLiteral("设备密钥")}}},
-    {QStringLiteral("ProtocolButtonStateData"), QStringLiteral("按键状态"),
-     {{QStringLiteral("modeButtonState"), QStringLiteral("模式键状态")},
-      {QStringLiteral("powerButtonState"), QStringLiteral("电源键状态")},
-      {QStringLiteral("keyButtonId"), QStringLiteral("按键编号")}}},
-    {QStringLiteral("ProtocolAgingStatusData"), QStringLiteral("老化状态上报"),
-     {{QStringLiteral("status"), QStringLiteral("状态码")},
-      {QStringLiteral("loops"), QStringLiteral("循环次数")},
-      {QStringLiteral("seconds"), QStringLiteral("秒数")}}},
-    {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"),
-     {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
-    {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"),
-     {{QStringLiteral("result"), QStringLiteral("结果码")}}},
-    {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"),
-     {{QStringLiteral("machineNumber"), QStringLiteral("机号")},
-      {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")},
-      {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")},
-      {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")},
-      {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")},
-      {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")},
-      {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")},
-      {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")},
-      {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")},
-      {QStringLiteral("button1"), QStringLiteral("按键1")},
-      {QStringLiteral("button2"), QStringLiteral("按键2")},
-      {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")},
-      {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
+    {QStringLiteral("ProtocolRssiData"), QStringLiteral("蓝牙信号强度"), {{QStringLiteral("dbm"), QStringLiteral("信号强度(分贝)")}}},
+    {QStringLiteral("ProtocolBatteryData"), QStringLiteral("电量"), {{QStringLiteral("percent"), QStringLiteral("电量(%)")}, {QStringLiteral("chargeState"), QStringLiteral("充电状态")}, {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}}},
+    {QStringLiteral("ProtocolKeyCapData"), QStringLiteral("按键电容"), {{QStringLiteral("capacitance"), QStringLiteral("电容值")}, {QStringLiteral("keyId"), QStringLiteral("按键编号")}}},
+    {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
+    {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
+    {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
+    {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"), {{QStringLiteral("value"), QStringLiteral("序列号文本")}}},
+    {QStringLiteral("ProtocolBaseInfoData"), QStringLiteral("基本信息"), {{QStringLiteral("soft_version"), QStringLiteral("软件版本")}, {QStringLiteral("res_version"), QStringLiteral("资源版本")}, {QStringLiteral("product_name"), QStringLiteral("产品名称")}, {QStringLiteral("hw_version"), QStringLiteral("硬件版本")}, {QStringLiteral("algo_version"), QStringLiteral("算法版本")}, {QStringLiteral("ageing_state"), QStringLiteral("老化状态")}}},
+    {QStringLiteral("ProtocolPeriphStateData"), QStringLiteral("外设状态"), {{QStringLiteral("press0_state"), QStringLiteral("压感0状态")}, {QStringLiteral("press1_state"), QStringLiteral("压感1状态")}, {QStringLiteral("battery_ic_state"), QStringLiteral("电池IC状态")}, {QStringLiteral("touch_ic_state"), QStringLiteral("触摸IC状态")}, {QStringLiteral("led_ic_state"), QStringLiteral("LED IC状态")}, {QStringLiteral("pd_ic_state"), QStringLiteral("PD IC状态")}}},
+    {QStringLiteral("ProtocolTupleData"), QStringLiteral("设备三元组"), {{QStringLiteral("productId"), QStringLiteral("产品密钥")}, {QStringLiteral("deviceId"), QStringLiteral("设备名")}, {QStringLiteral("key"), QStringLiteral("设备密钥")}}},
+    {QStringLiteral("ProtocolButtonStateData"), QStringLiteral("按键状态"), {{QStringLiteral("modeButtonState"), QStringLiteral("模式键状态")}, {QStringLiteral("powerButtonState"), QStringLiteral("电源键状态")}, {QStringLiteral("keyButtonId"), QStringLiteral("按键编号")}}},
+    {QStringLiteral("ProtocolAgingStatusData"), QStringLiteral("老化状态上报"), {{QStringLiteral("status"), QStringLiteral("状态码")}, {QStringLiteral("loops"), QStringLiteral("循环次数")}, {QStringLiteral("seconds"), QStringLiteral("秒数")}}},
+    {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
+    {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
+    {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2254,7 +2196,7 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
     return {};
 }
 
-}  // namespace
+} // namespace
 
 QStringList GateRegistry::reportTypes() {
     QStringList list;
@@ -2353,9 +2295,7 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             detailOut = QStringLiteral("当前=%1, case 未配置 Gate/Expected").arg(actual);
             return true;
         }
-        if (reportType == QLatin1String("ProtocolBaseInfoData") && gate.field == QLatin1String("soft_version")
-            && gate.expected.isEmpty() && !gate.expectedSettingsKey.isEmpty()
-            && !SETTINGS.value(QStringLiteral("ProductInfo/SoftwareVersion_checkBox"), true).toBool()) {
+        if (reportType == QLatin1String("ProtocolBaseInfoData") && gate.field == QLatin1String("soft_version") && gate.expected.isEmpty() && !gate.expectedSettingsKey.isEmpty() && !SETTINGS.value(QStringLiteral("ProductInfo/SoftwareVersion_checkBox"), true).toBool()) {
             passOut = true;
             detailOut = QStringLiteral("当前=%1, 未启用软件版本校验").arg(actual);
             return true;
@@ -2374,8 +2314,7 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                 expected = SETTINGS.value(gate.expectedSettingsKey).toString().trimmed();
             if (expected.isEmpty()) {
                 passOut = false;
-                detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(
-                    actual.isEmpty() ? QStringLiteral("-") : actual);
+                detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
             } else {
                 passOut = (actual == expected);
                 detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
@@ -2530,7 +2469,7 @@ QString primaryFieldTestData(const TestCaseGate& primaryGate, const QString& rep
     return {};
 }
 
-}  // namespace
+} // namespace
 
 GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate, const QVector<TestCaseGate>& allGates,
                                                 const QString& reportType, const QVariant& payload,
@@ -2558,7 +2497,7 @@ QHash<QString, TestCaseHookFn>& hooks() {
     static QHash<QString, TestCaseHookFn> table;
     return table;
 }
-}  // namespace
+} // namespace
 
 void TestCaseHookRegistry::registerHook(const QString& hookId, TestCaseHookFn fn) {
     if (hookId.trimmed().isEmpty() || !fn)
@@ -2627,8 +2566,7 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
 bool TestCaseRunner::isDongleBleConnectStep(const TestCaseDefinition& def) {
     if (def.send.channel != TestCaseSendChannel::Dongle || def.send.action != TestCaseSendAction::Set)
         return false;
-    return def.send.deviceCmd == QStringLiteral("BleScanConnect")
-           || def.send.deviceCmd == QStringLiteral("BleDirectConnect");
+    return def.send.deviceCmd == QStringLiteral("BleScanConnect") || def.send.deviceCmd == QStringLiteral("BleDirectConnect");
 }
 
 bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {

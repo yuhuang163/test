@@ -11,11 +11,10 @@
 #include "ui_fixture_uart.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-Fixture_uart::Fixture_uart(QWidget* parent) :
-    QWidget(parent), ui(new Ui::Fixture_uart), fixtureSerialPort(new QSerialPort(this)) {
+Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixture_uart), fixtureSerialPort(new QSerialPort(this)) {
     // 串口解析在 QtConcurrent 线程 emit，跨线程 QueuedConnection 须注册自定义类型
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
@@ -73,7 +72,9 @@ void Fixture_uart::refresh_Fixtureuart_state(int state) {
     }
 }
 
-void Fixture_uart::on_FixtureconnectButton_clicked() { openFixtureSerialPort(); }
+void Fixture_uart::on_FixtureconnectButton_clicked() {
+    openFixtureSerialPort();
+}
 
 void Fixture_uart::on_FixturedisconnectButton_clicked() {
     closeFixtureSerialPort();
@@ -182,17 +183,17 @@ void Fixture_uart::solve_frame(void) {
     }
     pcbaProtocol_->pollFrames([this](const FixturePcbaUartEvent& ev) {
         switch (ev.type) {
-            case FixturePcbaUartEvent::Type::ShortSleep:
-                emit send_data_to_mechine_sleep(ev.packet);
-                break;
-            case FixturePcbaUartEvent::Type::ShortStart:
-                emit send_data_to_mechine_start();
-                break;
-            case FixturePcbaUartEvent::Type::FullPacket:
-                emit send_data_to_mechine(ev.packet);
-                break;
-            default:
-                break;
+        case FixturePcbaUartEvent::Type::ShortSleep:
+            emit send_data_to_mechine_sleep(ev.packet);
+            break;
+        case FixturePcbaUartEvent::Type::ShortStart:
+            emit send_data_to_mechine_start();
+            break;
+        case FixturePcbaUartEvent::Type::FullPacket:
+            emit send_data_to_mechine(ev.packet);
+            break;
+        default:
+            break;
         }
     });
 }
@@ -271,7 +272,9 @@ void Fixture_uart::FixturehandleError(QSerialPort::SerialPortError error) {
     }
 }
 
-void Fixture_uart::FixtureCommandInit(void) { pressProtocol_.initCommands(); }
+void Fixture_uart::FixtureCommandInit(void) {
+    pressProtocol_.initCommands();
+}
 
 void Fixture_uart::delay_msec(unsigned int msec) {
     QEventLoop loop;
@@ -309,5 +312,5 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif

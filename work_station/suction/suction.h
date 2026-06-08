@@ -1,4 +1,4 @@
-﻿#ifndef SUCTION_H
+#ifndef SUCTION_H
 #define SUCTION_H
 
 #include <QVector>
@@ -9,7 +9,7 @@
 #include "ui_suction.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace Ui {
@@ -19,16 +19,34 @@ class suction;
 class suction : public test_base {
     Q_OBJECT
 
-public:
+  public:
     explicit suction(int index, QWidget* parent = nullptr);
     ~suction();
     void startTask() override;
     void disconnect_dongle();
 
     Ui::suction* ui;
+
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
+    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
+    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLineEdit* getMacLineEdit() override { return ui->snInput; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
     ImuDataT orgData;
 
-private:
+  private:
     void applySuctionProtocolConfig();
     bool setExternalProgrammablePowerOutput(bool enable);
 
@@ -124,24 +142,9 @@ private:
     void refreshProgrammablePowerVoltage(double valueVolts, bool ok);
     void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
 
-private slots:
+  private slots:
     void processReceivedData(const QByteArray& data) override;
     void onUsbSerialFrame(const QByteArray& data) override;
-
-    // test_base 控件桥接
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
-    QCheckBox* getIsUseMes() override { return ui->isusemes; }
-    QCheckBox* getIsFormMes() override { return ui->isformmes; }
-    QComboBox* getUsbcomNameCombo() override { return ui->usbcomNameCombo; }
-    QComboBox* getJigcomNameCombo() override { return ui->jigComNameCombo; }
-    QComboBox* getProductcomNameCombo() override { return ui->productComNameCombo; }
-    QTableWidget* testResultTable() override { return ui->testResultTable; }
-    QLineEdit* getMacLineEdit() override { return ui->snInput; }
-    QLineEdit* macInputLineEdit() override { return ui->macInput; }
-    QPlainTextEdit* logEdit() override { return ui->log; }
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
-    QLabel* getMesStateQlabel() override { return ui->mes_state; }
-    QPushButton* getEndTestButton() override { return ui->stopTest; }
 
     // 协议上行
     void refreshDongleUartState(int state) override;
@@ -181,10 +184,10 @@ private slots:
     void on_start_formes_clicked();
     void on_testdata_formes_clicked();
 
-signals:
+  signals:
     void send_go_next_focus();
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_go_next_test(int data);
 };
 
-#endif  // SUCTION_H
+#endif // SUCTION_H

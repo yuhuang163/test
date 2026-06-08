@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""将仓库内文本源码统一为 UTF-8（可选 with BOM / 无 BOM）。仅改写需要变更的文件。"""
+"""将仓库内文本源码统一为 UTF-8（默认无 BOM；项目规范见 .cursor/rules/qt-cpp-project.mdc）。仅改写需要变更的文件。"""
 from __future__ import annotations
 
 import os
