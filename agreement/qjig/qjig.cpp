@@ -8,28 +8,29 @@
 #include <QStringList>
 #include <QVector>
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-Qjig::Qjig(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {}
+Qjig::Qjig(QSerialPort* parent) : QSerialPort(parent), serialPort(parent) {
+}
 
 void Qjig::set(JigCmd cmd, const QVariant& data) {
     switch (cmd) {
-        case JigCmd::SendState:
-            sendjigData(static_cast<jigState>(data.toInt()));
-            return;
-        case JigCmd::SetCylinderState: {
-            const QVariantMap m = data.toMap();
-            set_cylinder_state(m.value(QStringLiteral("state")).toInt(),
-                               m.value(QStringLiteral("mechine")).toInt());
-            return;
-        }
-        case JigCmd::SetRelayState:
-            set_relay_state(data.toInt());
-            return;
-        case JigCmd::GetAmplitude:
-            get_amplitude();
-            return;
+    case JigCmd::SendState:
+        sendjigData(static_cast<jigState>(data.toInt()));
+        return;
+    case JigCmd::SetCylinderState: {
+        const QVariantMap m = data.toMap();
+        set_cylinder_state(m.value(QStringLiteral("state")).toInt(),
+                           m.value(QStringLiteral("mechine")).toInt());
+        return;
+    }
+    case JigCmd::SetRelayState:
+        set_relay_state(data.toInt());
+        return;
+    case JigCmd::GetAmplitude:
+        get_amplitude();
+        return;
     }
 }
 
@@ -158,114 +159,114 @@ void Qjig::sendjigData(jigState fixstate) {
         QByteArray dataToSend;
 
         switch (fixstate) {
-            case STATE_CYLINDER_OPEN:
+        case STATE_CYLINDER_OPEN:
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("ctl_down\r\n");
-                } else {
-                    // dataToSend = QByteArray::fromHex("5501050001");  //不希望夹手
-                }
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("ctl_down\r\n");
+            } else {
+                // dataToSend = QByteArray::fromHex("5501050001");  //不希望夹手
+            }
 
-                break;
+            break;
 
-            case STATE_CYLINDER_RESET:
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("ctl_up\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501050000");
-                }
+        case STATE_CYLINDER_RESET:
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("ctl_up\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501050000");
+            }
 
-                break;
-            case STATE_RELAY1_OPEN:
+            break;
+        case STATE_RELAY1_OPEN:
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen1_down\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501010001");
-                }
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen1_down\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501010001");
+            }
 
-                break;
+            break;
 
-            case STATE_RELAY_RESET:
+        case STATE_RELAY_RESET:
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen_up\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501010000");
-                }
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen_up\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501010000");
+            }
 
-                break;
-            case STATE_RELAY_OPEN:
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen_down\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501020001");
-                }
+            break;
+        case STATE_RELAY_OPEN:
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen_down\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501020001");
+            }
 
-                break;
+            break;
 
-            case STATE_RELAY1_RESET:
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen1_up\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501010000");
-                }
+        case STATE_RELAY1_RESET:
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen1_up\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501010000");
+            }
 
-                break;
-            case STATE_RELAY2_OPEN:
+            break;
+        case STATE_RELAY2_OPEN:
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen2_down\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501020001");
-                }
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen2_down\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501020001");
+            }
 
-                break;
+            break;
 
-            case STATE_RELAY2_RESET:
+        case STATE_RELAY2_RESET:
 
-                if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
-                    dataToSend = QByteArray("pen2_up\r\n");
-                } else {
-                    dataToSend = QByteArray::fromHex("5501020000");
-                }
+            if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
+                SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
+                dataToSend = QByteArray("pen2_up\r\n");
+            } else {
+                dataToSend = QByteArray::fromHex("5501020000");
+            }
 
-                break;
+            break;
 
-            case STATE_RELAY4_OPEN:
-                dataToSend = QByteArray::fromHex("5501040001");  // 继电器4吸合
-                break;
-            case STATE_RELAY4_RESET:
-                dataToSend = QByteArray::fromHex("5501040000");  // 继电器4复位
-                break;
-            case STATE_PEN_PRESS:
-                dataToSend = QByteArray("pen_press\r\n");
-                // serialPort->write(QByteArray("pen_press\r\n"));  // 笔形气缸同时按下500ms并弹起复位
-                break;
-            case STATE_RESET_ALL:
-                dataToSend = QByteArray("reset\r\n");
-                // serialPort->write(QByteArray("reset\r\n"));  // 气缸退出，状态复位
-                break;
-            case STATE_TRAY_MIDDLE:  //进去
-                dataToSend = QByteArray("tray_middle\r\n");
-                // serialPort->write(QByteArray("tray_middle\r\n"));
-                break;
-            case STATE_TRAY_REAR:  //下一个工站
-                dataToSend = QByteArray("tray_rear\r\n");
-                //  serialPort->write(QByteArray("tray_rear\r\n"));
-                break;
-            case STATE_FRONT:  //出来原位
-                dataToSend = QByteArray("tray_front\r\n");
-                //  serialPort->write(QByteArray("tray_front\r\n"));
-                break;
+        case STATE_RELAY4_OPEN:
+            dataToSend = QByteArray::fromHex("5501040001"); // 继电器4吸合
+            break;
+        case STATE_RELAY4_RESET:
+            dataToSend = QByteArray::fromHex("5501040000"); // 继电器4复位
+            break;
+        case STATE_PEN_PRESS:
+            dataToSend = QByteArray("pen_press\r\n");
+            // serialPort->write(QByteArray("pen_press\r\n"));  // 笔形气缸同时按下500ms并弹起复位
+            break;
+        case STATE_RESET_ALL:
+            dataToSend = QByteArray("reset\r\n");
+            // serialPort->write(QByteArray("reset\r\n"));  // 气缸退出，状态复位
+            break;
+        case STATE_TRAY_MIDDLE: //进去
+            dataToSend = QByteArray("tray_middle\r\n");
+            // serialPort->write(QByteArray("tray_middle\r\n"));
+            break;
+        case STATE_TRAY_REAR: //下一个工站
+            dataToSend = QByteArray("tray_rear\r\n");
+            //  serialPort->write(QByteArray("tray_rear\r\n"));
+            break;
+        case STATE_FRONT: //出来原位
+            dataToSend = QByteArray("tray_front\r\n");
+            //  serialPort->write(QByteArray("tray_front\r\n"));
+            break;
         }
 
         if (!dataToSend.isEmpty()) {
@@ -282,8 +283,8 @@ void Qjig::parseCmd(const QByteArray& byte) {
     qDebug().noquote() << "JIG RX:" << QString::fromLatin1(byte.toHex(' ').toUpper());
     qDebug() << "byte" << byte;
 
-    QList<int> allValues;    // 存储所有行的数值
-    bool foundData = false;  // 标记是否找到数据行
+    QList<int> allValues;   // 存储所有行的数值
+    bool foundData = false; // 标记是否找到数据行
 
     // 将数据按行分割
     QList<QByteArray> lines = byte.split('\n');
@@ -294,11 +295,11 @@ void Qjig::parseCmd(const QByteArray& byte) {
         qDebug() << "line" << line;
 
         // 检查是否是数据行
-        QByteArray searchPattern = QByteArray::fromHex("CAFDBEDD");  // "数据"的GBK编码
+        QByteArray searchPattern = QByteArray::fromHex("CAFDBEDD"); // "数据"的GBK编码
         if (line.contains(searchPattern)) {
             foundData = true;
             // 解析数据行，提取数值
-            QByteArray colon = QByteArray::fromHex("A3BA");  // 中文冒号的GBK编码
+            QByteArray colon = QByteArray::fromHex("A3BA"); // 中文冒号的GBK编码
             int colonPos = line.indexOf(colon);
             if (colonPos != -1) {
                 QByteArray valuePart = line.mid(colonPos + colon.length());
@@ -335,7 +336,8 @@ void Qjig::parseCmd(const QByteArray& byte) {
             // 计算最终结果：摆幅加上误差值后乘以6
             int result = (amplitude + errorValue) * 6;
             qDebug() << "发送结果，摆幅:" << amplitude << "误差值:" << errorValue;
-            emit send_amplitude_data(QString::number(result));
+            emitReport(QStringLiteral("ProtocolJigAmplitudeData"),
+                       QVariant::fromValue(ProtocolJigAmplitudeData{QString::number(result)}));
         }
     }
 }

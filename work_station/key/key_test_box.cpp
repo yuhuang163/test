@@ -4,7 +4,7 @@
 #include "ui_key_test_box.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 key_test_box::key_test_box(QWidget* parent) : box_base(parent), ui(new Ui::key_test_box) {
@@ -29,7 +29,9 @@ key_test_box::key_test_box(QWidget* parent) : box_base(parent), ui(new Ui::key_t
     //  });
 }
 
-key_test_box::~key_test_box() { delete ui; }
+key_test_box::~key_test_box() {
+    delete ui;
+}
 
 void key_test_box::checkAllover(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;

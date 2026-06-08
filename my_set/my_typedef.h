@@ -80,13 +80,15 @@ inline bool settingsUseLocalGroup(const QString& groupPath) {
  * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini（与原单文件语义一致）。
  */
 class SettingsManager {
-public:
+  public:
     static SettingsManager& instance() {
         static SettingsManager self;
         return self;
     }
 
-    QVariant value(const QString& key) const { return value(key, QVariant()); }
+    QVariant value(const QString& key) const {
+        return value(key, QVariant());
+    }
 
     QVariant value(const QString& key, const QVariant& defaultValue) const {
         const QString full = fullKey(key);
@@ -124,7 +126,9 @@ public:
         localIni().sync();
     }
 
-    void beginGroup(const QString& prefix) { groups_.append(prefix); }
+    void beginGroup(const QString& prefix) {
+        groups_.append(prefix);
+    }
 
     void endGroup() {
         if (!groups_.isEmpty())
@@ -178,7 +182,7 @@ public:
         leave(store);
     }
 
-private:
+  private:
     SettingsManager() = default;
 
     mutable QStringList groups_;
@@ -221,34 +225,34 @@ private:
 #define SETTINGS SettingsManager::instance()
 
 typedef struct MesPacketData {
-    QString factory;         //工厂
-    QString userNo;          //登陆的用户名
-    QString password;        //密码
-    QString machineNo;       //工站
-    QString Employee_ID;     //员工工号
-    QString action;          //动作
-    int mechines;            //上位机机号
-    QString line;            //线体
-    QString sn;              // sn
-    QString result;          //结果
-    QString itemvalue;       //测试项
-    QString maxValue;        // 上限
-    QString minValue;        // 下限
-    QString standardValue;   // 标准值
-    QString unit;            // 单位
-    QString testTime;        // 开测/分项 TEST_TIME；空则 bydmes 用当前时间
-    QString remark;          // 备注
-    QString model;           //机种
-    int is_hq_send_mac = 0;  //区分是否发送mac
-    QString test_station;    //制程名称
-    QString error;           //错误
-    QString instruct_num;    //指令标识
-    QString product;         //产品名字
-    QString lotName;         //工单号码
-    QString mac;             // mac地址
-    int elapseTime = 1;      //测试耗时（默认 1，单位由 MES 接口定义）
-    int testCount = 1;       //测试次数（默认 1）
-    int iskeydata = 0;  // GetTestData 入口分流：0=常规取数，1=BYD AddSfcKey
+    QString factory;        //工厂
+    QString userNo;         //登陆的用户名
+    QString password;       //密码
+    QString machineNo;      //工站
+    QString Employee_ID;    //员工工号
+    QString action;         //动作
+    int mechines;           //上位机机号
+    QString line;           //线体
+    QString sn;             // sn
+    QString result;         //结果
+    QString itemvalue;      //测试项
+    QString maxValue;       // 上限
+    QString minValue;       // 下限
+    QString standardValue;  // 标准值
+    QString unit;           // 单位
+    QString testTime;       // 开测/分项 TEST_TIME；空则 bydmes 用当前时间
+    QString remark;         // 备注
+    QString model;          //机种
+    int is_hq_send_mac = 0; //区分是否发送mac
+    QString test_station;   //制程名称
+    QString error;          //错误
+    QString instruct_num;   //指令标识
+    QString product;        //产品名字
+    QString lotName;        //工单号码
+    QString mac;            // mac地址
+    int elapseTime = 1;     //测试耗时（默认 1，单位由 MES 接口定义）
+    int testCount = 1;      //测试次数（默认 1）
+    int iskeydata = 0;      // GetTestData 入口分流：0=常规取数，1=BYD AddSfcKey
 
 } MesPacketData;
 
@@ -288,4 +292,4 @@ inline bool applyWidgetStyleSheet(QWidget* widget, const QString& style = QStrin
     return false;
 }
 
-#endif  // MY_TYPEDEF_H
+#endif // MY_TYPEDEF_H

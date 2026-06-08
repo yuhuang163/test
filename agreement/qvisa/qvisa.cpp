@@ -4,21 +4,18 @@
 #include "Abini.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
-Qvisa::Qvisa(QObject* parent) : QObject(parent)
-{
+Qvisa::Qvisa(QObject* parent) : QObject(parent) {
     config_.commandProfile = VisaDeviceProfile::DefaultPower;
 }
 
-Qvisa::~Qvisa()
-{
+Qvisa::~Qvisa() {
     closeConnection();
 }
 
-void Qvisa::loadCommandSet(VisaDeviceProfile profile)
-{
+void Qvisa::loadCommandSet(VisaDeviceProfile profile) {
     if (profile == VisaDeviceProfile::ProgrammablePower) {
         ProtocolConfig next;
         next.useVisa = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
@@ -61,13 +58,17 @@ void Qvisa::loadCommandSet(VisaDeviceProfile profile)
         config_ = next;
 
         commandSet_.setVoltageCmd = SETTINGS.value(QStringLiteral("BlePer/CmwCmdStateOffOpc"),
-                                                   QStringLiteral("SOURce:GPRF:GEN:STATe OFF;*OPC?")).toString();
+                                                   QStringLiteral("SOURce:GPRF:GEN:STATe OFF;*OPC?"))
+                                        .toString();
         commandSet_.setCurrentCmd = SETTINGS.value(QStringLiteral("BlePer/CmwCmdListOff"),
-                                                   QStringLiteral("SOURce:GPRF:GEN:LIST OFF")).toString();
+                                                   QStringLiteral("SOURce:GPRF:GEN:LIST OFF"))
+                                        .toString();
         commandSet_.outputOnCmd = SETTINGS.value(QStringLiteral("BlePer/CmwCmdBbModeArb"),
-                                                 QStringLiteral("SOURce:GPRF:GEN:BBMode ARB")).toString();
+                                                 QStringLiteral("SOURce:GPRF:GEN:BBMode ARB"))
+                                      .toString();
         commandSet_.outputOffCmd = SETTINGS.value(QStringLiteral("BlePer/CmwCmdStateOnOpc"),
-                                                  QStringLiteral("SOURce:GPRF:GEN:STATe ON;*OPC?")).toString();
+                                                  QStringLiteral("SOURce:GPRF:GEN:STATe ON;*OPC?"))
+                                       .toString();
         commandSet_.readVoltageCmd =
             SETTINGS.value(QStringLiteral("BlePer/CmwCmdSystemError"), QStringLiteral("SYSTem:ERRor?")).toString();
         commandSet_.readCurrentCmd =
@@ -89,13 +90,11 @@ void Qvisa::loadCommandSet(VisaDeviceProfile profile)
             .toString();
 }
 
-Qvisa::ProtocolConfig Qvisa::protocolConfig() const
-{
+Qvisa::ProtocolConfig Qvisa::protocolConfig() const {
     return config_;
 }
 
-bool Qvisa::ensureConnected()
-{
+bool Qvisa::ensureConnected() {
 #ifdef HAVE_NI_VISA
     if (visaInst_ != VI_NULL) {
         return true;
@@ -131,8 +130,7 @@ bool Qvisa::ensureConnected()
 #endif
 }
 
-void Qvisa::closeConnection()
-{
+void Qvisa::closeConnection() {
 #ifdef HAVE_NI_VISA
     if (visaInst_ != VI_NULL) {
         viClose(visaInst_);
@@ -145,8 +143,7 @@ void Qvisa::closeConnection()
 #endif
 }
 
-bool Qvisa::writeLine(const QString& cmd)
-{
+bool Qvisa::writeLine(const QString& cmd) {
     if (!ensureConnected()) {
         return false;
     }
@@ -170,15 +167,13 @@ bool Qvisa::writeLine(const QString& cmd)
 #endif
 }
 
-bool Qvisa::configurePower(double voltageV, double currentA)
-{
+bool Qvisa::configurePower(double voltageV, double currentA) {
     const bool vOk = writeLine(commandSet_.setVoltageCmd.arg(QString::number(voltageV, 'f', 3)));
     const bool cOk = writeLine(commandSet_.setCurrentCmd.arg(QString::number(currentA, 'f', 3)));
     return vOk && cOk;
 }
 
-bool Qvisa::readPowerVoltage()
-{
+bool Qvisa::readPowerVoltage() {
     lastQueryResponse_.clear();
     if (!ensureConnected()) {
         emit programmablePowerVoltageRead(0.0, false);
@@ -207,8 +202,7 @@ bool Qvisa::readPowerVoltage()
 #endif
 }
 
-bool Qvisa::readPowerCurrent()
-{
+bool Qvisa::readPowerCurrent() {
     lastQueryResponse_.clear();
     if (!ensureConnected()) {
         emit programmablePowerCurrentRead(0.0, false);
@@ -237,21 +231,18 @@ bool Qvisa::readPowerCurrent()
 #endif
 }
 
-bool Qvisa::setPowerOutput(bool enable)
-{
+bool Qvisa::setPowerOutput(bool enable) {
     return writeLine(enable ? commandSet_.outputOnCmd : commandSet_.outputOffCmd);
 }
 
-bool Qvisa::initializePower(double voltageV, double currentA)
-{
+bool Qvisa::initializePower(double voltageV, double currentA) {
     if (!writeLine(QStringLiteral("*RST"))) {
         return false;
     }
     return configurePower(voltageV, currentA);
 }
 
-bool Qvisa::set(VisaCmd cmd, const QVariant& data)
-{
+bool Qvisa::set(VisaCmd cmd, const QVariant& data) {
     const QVariantMap m = data.toMap();
     switch (cmd) {
     case VisaCmd::DeviceProfile:
@@ -315,8 +306,7 @@ bool Qvisa::set(VisaCmd cmd, const QVariant& data)
     return false;
 }
 
-bool Qvisa::get(VisaCmd cmd, const QVariant& param)
-{
+bool Qvisa::get(VisaCmd cmd, const QVariant& param) {
     switch (cmd) {
     case VisaCmd::DeviceProfile:
     case VisaCmd::ConfigurePowerSupply:
@@ -364,8 +354,7 @@ bool Qvisa::get(VisaCmd cmd, const QVariant& param)
     return false;
 }
 
-bool Qvisa::sendCustomMessage(const QVariantMap& map)
-{
+bool Qvisa::sendCustomMessage(const QVariantMap& map) {
     if (map.contains(QStringLiteral("line"))) {
         return set(VisaCmd::WriteLine, map.value(QStringLiteral("line")));
     }

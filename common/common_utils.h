@@ -10,7 +10,7 @@
 
 /** 工程公共工具：字节序/十六进制/CRC、时间、文件、字符串 */
 class CommonUtils {
-public:
+  public:
     // --- 字节 ---
     static void appendLe16(QByteArray* buffer, quint16 value);
     static void appendLe32(QByteArray* buffer, quint32 value);
@@ -51,4 +51,4 @@ public:
     static QString formatList(const QStringList& items, const QString& separator = QStringLiteral(", "));
 };
 
-#endif  // COMMON_UTILS_H
+#endif // COMMON_UTILS_H

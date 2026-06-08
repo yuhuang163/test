@@ -2,20 +2,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #if _MSC_VER >= 1600
-    #pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
-us_block_complex *us_block_complex_alloc(const size_t n)
-{
-    us_block_complex *b;
+us_block_complex* us_block_complex_alloc(const size_t n) {
+    us_block_complex* b;
 
-    b = (us_block_complex *)malloc(sizeof(us_block_complex));
+    b = (us_block_complex*)malloc(sizeof(us_block_complex));
 
-    if (b == 0)
-    {
+    if (b == 0) {
         printf("failed to allocate space for block struct");
     }
 
-    b->data = (float *)malloc(n * sizeof(float));
+    b->data = (float*)malloc(n * sizeof(float));
 
     if (b->data == 0 && n > 0) /* malloc may return NULL when n == 0 */
     {
@@ -27,18 +25,16 @@ us_block_complex *us_block_complex_alloc(const size_t n)
     return b;
 }
 
-us_block_float *us_block_float_alloc(const size_t n)
-{
-    us_block_float *b;
+us_block_float* us_block_float_alloc(const size_t n) {
+    us_block_float* b;
 
-    b = (us_block_float *)malloc(sizeof(us_block_float));
+    b = (us_block_float*)malloc(sizeof(us_block_float));
 
-    if (b == 0)
-    {
+    if (b == 0) {
         printf("failed to allocate space for block struct");
     }
 
-    b->data = (float *)malloc(n * sizeof(float));
+    b->data = (float*)malloc(n * sizeof(float));
 
     if (b->data == 0 && n > 0) /* malloc may return NULL when n == 0 */
     {
@@ -50,21 +46,18 @@ us_block_float *us_block_float_alloc(const size_t n)
     return b;
 }
 
-us_matrix_float *us_matrix_float_alloc(const size_t n1, const size_t n2)
-{
-    us_block_float *block;
-    us_matrix_float *m;
-    m = (us_matrix_float *)malloc(sizeof(us_matrix_float));
+us_matrix_float* us_matrix_float_alloc(const size_t n1, const size_t n2) {
+    us_block_float* block;
+    us_matrix_float* m;
+    m = (us_matrix_float*)malloc(sizeof(us_matrix_float));
 
-    if (m == 0)
-    {
+    if (m == 0) {
         printf("failed to allocate space for matrix struct");
     }
 
     /* FIXME: n1*n2 could overflow for large dimensions */
     block = us_block_float_alloc(n1 * n2);
-    if (block == 0)
-    {
+    if (block == 0) {
         printf("failed to allocate space for block");
     }
 
@@ -78,12 +71,10 @@ us_matrix_float *us_matrix_float_alloc(const size_t n1, const size_t n2)
     return m;
 }
 
-us_vector_float_view us_vector_subvector(us_vector *v, size_t offset, size_t n)
-{
+us_vector_float_view us_vector_subvector(us_vector* v, size_t offset, size_t n) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
-    if (offset + (n > 0 ? n - 1 : 0) >= v->size)
-    {
+    if (offset + (n > 0 ? n - 1 : 0) >= v->size) {
         printf("view would extend past end of vector");
     }
 
@@ -101,23 +92,20 @@ us_vector_float_view us_vector_subvector(us_vector *v, size_t offset, size_t n)
     }
 }
 
-us_matrix_complex *us_matrix_complex_alloc(const size_t n1, const size_t n2)
-{
-    us_block_float *block;
-    us_matrix_complex *m;
+us_matrix_complex* us_matrix_complex_alloc(const size_t n1, const size_t n2) {
+    us_block_float* block;
+    us_matrix_complex* m;
 
-    m = (us_matrix_complex *)malloc(sizeof(us_matrix_complex));
+    m = (us_matrix_complex*)malloc(sizeof(us_matrix_complex));
 
-    if (m == 0)
-    {
+    if (m == 0) {
         printf("failed to allocate space for matrix struct");
     }
 
     /* FIXME: n1*n2 could overflow for large dimensions */
     block = us_block_float_alloc(n1 * n2);
 
-    if (block == 0)
-    {
+    if (block == 0) {
         printf("failed to allocate space for block");
     }
 
@@ -130,22 +118,19 @@ us_matrix_complex *us_matrix_complex_alloc(const size_t n1, const size_t n2)
     return m;
 }
 
-us_vector_complex *us_vector_complex_alloc(const size_t n)
-{
-    us_block_float *block;
-    us_vector_complex *v;
+us_vector_complex* us_vector_complex_alloc(const size_t n) {
+    us_block_float* block;
+    us_vector_complex* v;
 
-    v = (us_vector_complex *)malloc(sizeof(us_vector_complex));
+    v = (us_vector_complex*)malloc(sizeof(us_vector_complex));
 
-    if (v == 0)
-    {
+    if (v == 0) {
         printf("failed to allocate space for vector struct");
     }
 
     block = us_block_float_alloc(n);
 
-    if (block == 0)
-    {
+    if (block == 0) {
         free(v);
         printf("failed to allocate space for block");
     }
@@ -159,22 +144,19 @@ us_vector_complex *us_vector_complex_alloc(const size_t n)
     return v;
 }
 
-us_vector *us_vector_float_alloc(const size_t n)
-{
-    us_block_float *block;
-    us_vector *v;
+us_vector* us_vector_float_alloc(const size_t n) {
+    us_block_float* block;
+    us_vector* v;
 
-    v = (us_vector *)malloc(sizeof(us_vector));
+    v = (us_vector*)malloc(sizeof(us_vector));
 
-    if (v == 0)
-    {
+    if (v == 0) {
         printf("failed to allocate space for vector struct");
     }
 
     block = us_block_float_alloc(n);
 
-    if (block == 0)
-    {
+    if (block == 0) {
         free(v);
 
         printf("failed to allocate space for block");
@@ -189,26 +171,22 @@ us_vector *us_vector_float_alloc(const size_t n)
     return v;
 }
 
-us_permutation *us_permutation_alloc(const size_t n)
-{
-    us_permutation *p;
+us_permutation* us_permutation_alloc(const size_t n) {
+    us_permutation* p;
 
-    if (n == 0)
-    {
+    if (n == 0) {
         printf("permutation length n must be positive integer");
     }
 
-    p = (us_permutation *)malloc(sizeof(us_permutation));
+    p = (us_permutation*)malloc(sizeof(us_permutation));
 
-    if (p == 0)
-    {
+    if (p == 0) {
         printf("failed to allocate space for permutation struct");
     }
 
-    p->data = (size_t *)malloc(n * sizeof(size_t));
+    p->data = (size_t*)malloc(n * sizeof(size_t));
 
-    if (p->data == 0)
-    {
+    if (p->data == 0) {
         free(p); /* exception in constructor, avoid memory leak */
 
         printf("failed to allocate space for permutation data");
@@ -219,20 +197,17 @@ us_permutation *us_permutation_alloc(const size_t n)
     return p;
 }
 
-void us_block_free(us_block_float *b)
-{
+void us_block_free(us_block_float* b) {
     RETURN_IF_NULL(b);
     free(b->data);
     free(b);
 }
 
-void us_matrix_free(us_matrix_float *m)
-{
+void us_matrix_free(us_matrix_float* m) {
     // printf("start matrix free\n");
     // size_t memalloced = xPortGetFreeHeapSize();
     RETURN_IF_NULL(m);
-    if (m->owner)
-    {
+    if (m->owner) {
         us_block_free(m->block);
     }
     // printf("matrix free: after free block before free matrix %d\n",xPortGetFreeHeapSize());
@@ -242,46 +217,36 @@ void us_matrix_free(us_matrix_float *m)
     // printf("matrix free: %d freed\n",memalloced - xPortGetFreeHeapSize()); //+32
 }
 
-void us_vector_float_free(us_vector *v)
-{
+void us_vector_float_free(us_vector* v) {
     RETURN_IF_NULL(v);
 
-    if (v->owner)
-    {
+    if (v->owner) {
         us_block_free(v->block);
     }
     free(v);
 }
 
-void us_vector_complex_free(us_vector_complex *v)
-{
+void us_vector_complex_free(us_vector_complex* v) {
     RETURN_IF_NULL(v);
 
-    if (v->owner)
-    {
+    if (v->owner) {
         us_block_free(v->block);
     }
     free(v);
 }
 
-void us_permutation_free(us_permutation *p)
-{
+void us_permutation_free(us_permutation* p) {
     RETURN_IF_NULL(p);
     free(p->data);
     free(p);
 }
 
-void us_matrix_float_set(us_matrix_float *m, const size_t i, const size_t j, const float x)
-{
+void us_matrix_float_set(us_matrix_float* m, const size_t i, const size_t j, const float x) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(1))
-    {
-        if (i > m->size1)
-        {
+    if (GSL_RANGE_COND(1)) {
+        if (i > m->size1) {
             printf("first index out of range");
-        }
-        else if (j > m->size2)
-        {
+        } else if (j > m->size2) {
             printf("second index out of range");
         }
     }
@@ -289,17 +254,12 @@ void us_matrix_float_set(us_matrix_float *m, const size_t i, const size_t j, con
     m->data[i * m->tda + j] = x;
 }
 
-float us_matrix_float_get(const us_matrix_float *m, const size_t i, const size_t j)
-{
+float us_matrix_float_get(const us_matrix_float* m, const size_t i, const size_t j) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(1))
-    {
-        if (i > m->size1)
-        {
+    if (GSL_RANGE_COND(1)) {
+        if (i > m->size1) {
             printf("first index out of range");
-        }
-        else if (j > m->size2)
-        {
+        } else if (j > m->size2) {
             printf("second index out of range");
         }
     }
@@ -307,50 +267,39 @@ float us_matrix_float_get(const us_matrix_float *m, const size_t i, const size_t
     return m->data[i * m->tda + j];
 }
 
-void us_vector_float_set(us_vector_float *v, const size_t i, float x)
-{
+void us_vector_float_set(us_vector_float* v, const size_t i, float x) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(i >= v->size))
-    {
+    if (GSL_RANGE_COND(i >= v->size)) {
         printf("index out of range");
     }
 #endif
     v->data[i * v->stride] = x;
 }
 
-float us_vector_float_get(const us_vector_float *v, const size_t i)
-{
+float us_vector_float_get(const us_vector_float* v, const size_t i) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(i >= v->size))
-    {
+    if (GSL_RANGE_COND(i >= v->size)) {
         printf("index out of range");
     }
 #endif
     return v->data[i * v->stride];
 }
 
-float *us_vector_float_ptr(us_vector_float *v, const size_t i)
-{
-    return (float *)(v->data + i * v->stride);
+float* us_vector_float_ptr(us_vector_float* v, const size_t i) {
+    return (float*)(v->data + i * v->stride);
 }
 
-int us_matrix_add(us_matrix_float *a, const us_matrix_float *b)
-{
+int us_matrix_add(us_matrix_float* a, const us_matrix_float* b) {
     const size_t M = a->size1;
     const size_t N = a->size2;
-    if (b->size1 != M || b->size2 != N)
-    {
+    if (b->size1 != M || b->size2 != N) {
         printf("matrices must have same dimensions");
-    }
-    else
-    {
+    } else {
         const size_t tda_a = a->tda;
         const size_t tda_b = b->tda;
         size_t i, j;
-        for (i = 0; i < M; i++)
-        {
-            for (j = 0; j < N; j++)
-            {
+        for (i = 0; i < M; i++) {
+            for (j = 0; j < N; j++) {
                 a->data[i * tda_a + j] += b->data[i * tda_b + j];
             }
         }
@@ -362,9 +311,8 @@ int us_matrix_add(us_matrix_float *a, const us_matrix_float *b)
 // single precision, general matrix-matrix multiplication
 void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
                  const enum CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
-                 const float alpha, const float *A, const int lda, const float *B, const int ldb,
-                 const float beta, float *C, const int ldc)
-{
+                 const float alpha, const float* A, const int lda, const float* B, const int ldb,
+                 const float beta, float* C, const int ldc) {
     int i, j, k;
     int n1, n2;
     int ldf, ldg;
@@ -376,8 +324,7 @@ void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     if (alpha == 0.0 && beta == 1.0)
         return;
 
-    if (Order == CblasRowMajor)
-    {
+    if (Order == CblasRowMajor) {
         n1 = M;
         n2 = N;
         F = A;
@@ -386,9 +333,7 @@ void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
         G = B;
         ldg = ldb;
         TransG = (TransB == CblasConjTrans) ? CblasTrans : TransB;
-    }
-    else
-    {
+    } else {
         n1 = N;
         n2 = M;
         F = B;
@@ -400,22 +345,15 @@ void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     }
 
     /* form  y := beta*y */
-    if (beta == 0.0)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    if (beta == 0.0) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 C[ldc * i + j] = 0.0;
             }
         }
-    }
-    else if (beta != 1.0)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    } else if (beta != 1.0) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 C[ldc * i + j] *= beta;
             }
         }
@@ -424,84 +362,60 @@ void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     if (alpha == 0.0)
         return;
 
-    if (TransF == CblasNoTrans && TransG == CblasNoTrans)
-    {
+    if (TransF == CblasNoTrans && TransG == CblasNoTrans) {
         /* form  C := alpha*A*B + C */
 
-        for (k = 0; k < K; k++)
-        {
-            for (i = 0; i < n1; i++)
-            {
+        for (k = 0; k < K; k++) {
+            for (i = 0; i < n1; i++) {
                 const float temp = alpha * F[ldf * i + k];
-                if (temp != 0.0)
-                {
-                    for (j = 0; j < n2; j++)
-                    {
+                if (temp != 0.0) {
+                    for (j = 0; j < n2; j++) {
                         C[ldc * i + j] += temp * G[ldg * k + j];
                     }
                 }
             }
         }
-    }
-    else if (TransF == CblasNoTrans && TransG == CblasTrans)
-    {
+    } else if (TransF == CblasNoTrans && TransG == CblasTrans) {
         /* form  C := alpha*A*B' + C */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
-                for (k = 0; k < K; k++)
-                {
+                for (k = 0; k < K; k++) {
                     temp += F[ldf * i + k] * G[ldg * j + k];
                 }
                 C[ldc * i + j] += alpha * temp;
             }
         }
-    }
-    else if (TransF == CblasTrans && TransG == CblasNoTrans)
-    {
-        for (k = 0; k < K; k++)
-        {
-            for (i = 0; i < n1; i++)
-            {
+    } else if (TransF == CblasTrans && TransG == CblasNoTrans) {
+        for (k = 0; k < K; k++) {
+            for (i = 0; i < n1; i++) {
                 const float temp = alpha * F[ldf * k + i];
-                if (temp != 0.0)
-                {
-                    for (j = 0; j < n2; j++)
-                    {
+                if (temp != 0.0) {
+                    for (j = 0; j < n2; j++) {
                         C[ldc * i + j] += temp * G[ldg * k + j];
                     }
                 }
             }
         }
-    }
-    else if (TransF == CblasTrans && TransG == CblasTrans)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    } else if (TransF == CblasTrans && TransG == CblasTrans) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
-                for (k = 0; k < K; k++)
-                {
+                for (k = 0; k < K; k++) {
                     temp += F[ldf * k + i] * G[ldg * j + k];
                 }
                 C[ldc * i + j] += alpha * temp;
             }
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
 int us_blas_sgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alpha,
-                  const us_matrix_float *A, const us_matrix_float *B, float beta,
-                  us_matrix_float *C)
-{
+                  const us_matrix_float* A, const us_matrix_float* B, float beta,
+                  us_matrix_float* C) {
     const size_t M = C->size1;
     const size_t N = C->size2;
     const size_t MA = (TransA == CblasNoTrans) ? A->size1 : A->size2;
@@ -514,22 +428,19 @@ int us_blas_sgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alph
         cblas_sgemm(CblasRowMajor, TransA, TransB, M, N, NA, alpha, A->data, A->tda, B->data,
                     B->tda, beta, C->data, C->tda);
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-us_vector_float_view us_vector_view_array(const float *base, size_t n)
-{
+us_vector_float_view us_vector_view_array(const float* base, size_t n) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
     {
         us_vector v = NULL_VECTOR;
 
-        v.data = (float *)base;
+        v.data = (float*)base;
         v.size = n;
         v.stride = 1;
         v.block = 0;
@@ -540,14 +451,13 @@ us_vector_float_view us_vector_view_array(const float *base, size_t n)
     }
 }
 
-us_matrix_float_view us_matrix_view_array(const float *array, const size_t n1, const size_t n2)
-{
+us_matrix_float_view us_matrix_view_array(const float* array, const size_t n1, const size_t n2) {
     us_matrix_float_view view = NULL_MATRIX_VIEW;
 
     {
         us_matrix m = NULL_MATRIX;
 
-        m.data = (float *)array;
+        m.data = (float*)array;
         m.size1 = n1;
         m.size2 = n2;
         m.tda = n2;
@@ -559,8 +469,7 @@ us_matrix_float_view us_matrix_view_array(const float *array, const size_t n1, c
     }
 }
 
-void us_eigen_francis_free(us_eigen_francis_workspace *w)
-{
+void us_eigen_francis_free(us_eigen_francis_workspace* w) {
     RETURN_IF_NULL(w);
 
     // if(w->H)
@@ -572,8 +481,7 @@ void us_eigen_francis_free(us_eigen_francis_workspace *w)
     free(w);
 } /* us_eigen_francis_free() */
 
-void us_eigen_nonsymm_free(us_eigen_nonsymm_workspace *w)
-{
+void us_eigen_nonsymm_free(us_eigen_nonsymm_workspace* w) {
     RETURN_IF_NULL(w);
 
     if (w->tau)
@@ -585,25 +493,21 @@ void us_eigen_nonsymm_free(us_eigen_nonsymm_workspace *w)
     free(w);
 } /* us_eigen_nonsymm_free() */
 
-void us_eigen_francis_T(const int compute_t, us_eigen_francis_workspace *w)
-{
+void us_eigen_francis_T(const int compute_t, us_eigen_francis_workspace* w) {
     w->compute_t = compute_t;
 }
 
-void us_eigen_nonsymm_params(const int compute_t, const int balance, us_eigen_nonsymm_workspace *w)
-{
+void us_eigen_nonsymm_params(const int compute_t, const int balance, us_eigen_nonsymm_workspace* w) {
     us_eigen_francis_T(compute_t, w->francis_workspace_p);
     w->do_balance = balance;
 } /* us_eigen_nonsymm_params() */
 
-us_eigen_francis_workspace *us_eigen_francis_alloc(void)
-{
-    us_eigen_francis_workspace *w;
+us_eigen_francis_workspace* us_eigen_francis_alloc(void) {
+    us_eigen_francis_workspace* w;
 
-    w = (us_eigen_francis_workspace *)malloc(sizeof(us_eigen_francis_workspace));
+    w = (us_eigen_francis_workspace*)malloc(sizeof(us_eigen_francis_workspace));
 
-    if (w == 0)
-    {
+    if (w == 0) {
         printf("failed to allocate space for workspace");
     }
 
@@ -635,61 +539,51 @@ us_eigen_francis_workspace *us_eigen_francis_alloc(void)
     return (w);
 } /* us_eigen_francis_alloc() */
 
-us_eigen_nonsymm_workspace *us_eigen_nonsymm_alloc(const size_t n)
-{
-    us_eigen_nonsymm_workspace *w;
+us_eigen_nonsymm_workspace* us_eigen_nonsymm_alloc(const size_t n) {
+    us_eigen_nonsymm_workspace* w;
 
-    if (n == 0)
-    {
+    if (n == 0) {
         printf("matrix dimension must be positive integer");
     }
 
-    w = (us_eigen_nonsymm_workspace *)malloc(sizeof(us_eigen_nonsymm_workspace));
+    w = (us_eigen_nonsymm_workspace*)malloc(sizeof(us_eigen_nonsymm_workspace));
 
-    if (w == 0)
-    {
+    if (w == 0) {
         printf("failed to allocate space for workspace");
     }
 
     w->size = n;
     w->Z = us_matrix_float_alloc(n, n);
     // init Z
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
             us_matrix_float_set(w->Z, i, j, 0);
         }
     }
     w->do_balance = 0;
     w->diag = us_vector_float_alloc(n);
     // init diag
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         us_vector_float_set(w->diag, i, 0);
     }
-    if (w->diag == 0)
-    {
+    if (w->diag == 0) {
         us_eigen_nonsymm_free(w);
         printf("failed to allocate space for balancing vector");
     }
 
     w->tau = us_vector_float_alloc(n);
     // init tau
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         us_vector_float_set(w->tau, i, 0);
     }
 
-    if (w->tau == 0)
-    {
+    if (w->tau == 0) {
         us_eigen_nonsymm_free(w);
         printf("failed to allocate space for hessenberg coefficients");
     }
 
     w->francis_workspace_p = us_eigen_francis_alloc();
-    if (w->francis_workspace_p == 0)
-    {
+    if (w->francis_workspace_p == 0) {
         us_eigen_nonsymm_free(w);
         printf("failed to allocate space for francis workspace");
     }
@@ -697,22 +591,19 @@ us_eigen_nonsymm_workspace *us_eigen_nonsymm_alloc(const size_t n)
     return (w);
 } /* us_eigen_nonsymm_alloc() */
 
-void us_vector_set_all(us_vector *v, float x)
-{
-    ATOMIC *const data = v->data;
+void us_vector_set_all(us_vector* v, float x) {
+    ATOMIC* const data = v->data;
     const size_t n = v->size;
     const size_t stride = v->stride;
 
     size_t i;
 
-    for (i = 0; i < n; i++)
-    {
-        *(float *)(data + MULTIPLICITY * i * stride) = x;
+    for (i = 0; i < n; i++) {
+        *(float*)(data + MULTIPLICITY * i * stride) = x;
     }
 }
 
-us_vector_float_view us_matrix_column(us_matrix *m, const size_t j)
-{
+us_vector_float_view us_matrix_column(us_matrix* m, const size_t j) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
     {
@@ -729,12 +620,10 @@ us_vector_float_view us_matrix_column(us_matrix *m, const size_t j)
     }
 }
 
-us_vector_complex_view us_matrix_complex_column(us_matrix_complex *m, const size_t j)
-{
+us_vector_complex_view us_matrix_complex_column(us_matrix_complex* m, const size_t j) {
     us_vector_complex_view view = NULL_VECTOR_VIEW;
 
-    if (j >= m->size2)
-    {
+    if (j >= m->size2) {
         printf("column index is out of range");
     }
 
@@ -752,16 +641,12 @@ us_vector_complex_view us_matrix_complex_column(us_matrix_complex *m, const size
     }
 }
 
-int us_linalg_balance_matrix(us_matrix *A, us_vector *D)
-{
+int us_linalg_balance_matrix(us_matrix* A, us_vector* D) {
     const size_t N = A->size1;
 
-    if (N != D->size)
-    {
+    if (N != D->size) {
         printf("vector must match matrix size");
-    }
-    else
-    {
+    } else {
         float row_norm, col_norm;
         int not_converged;
         us_vector_float_view v;
@@ -771,29 +656,24 @@ int us_linalg_balance_matrix(us_matrix *A, us_vector *D)
 
         not_converged = 1;
 
-        while (not_converged)
-        {
+        while (not_converged) {
             size_t i, j;
             float g, f, s;
 
             not_converged = 0;
 
-            for (i = 0; i < N; ++i)
-            {
+            for (i = 0; i < N; ++i) {
                 row_norm = 0.0;
                 col_norm = 0.0;
 
-                for (j = 0; j < N; ++j)
-                {
-                    if (j != i)
-                    {
+                for (j = 0; j < N; ++j) {
+                    if (j != i) {
                         col_norm += fabs(us_matrix_float_get(A, j, i));
                         row_norm += fabs(us_matrix_float_get(A, i, j));
                     }
                 }
 
-                if ((col_norm == 0.0) || (row_norm == 0.0))
-                {
+                if ((col_norm == 0.0) || (row_norm == 0.0)) {
                     continue;
                 }
 
@@ -805,22 +685,19 @@ int us_linalg_balance_matrix(us_matrix *A, us_vector *D)
                  * find the integer power of the machine radix which
                  * comes closest to balancing the matrix
                  */
-                while (col_norm < g)
-                {
+                while (col_norm < g) {
                     f *= FLOAT_RADIX;
                     col_norm *= FLOAT_RADIX_SQ;
                 }
 
                 g = row_norm * FLOAT_RADIX;
 
-                while (col_norm > g)
-                {
+                while (col_norm > g) {
                     f /= FLOAT_RADIX;
                     col_norm /= FLOAT_RADIX_SQ;
                 }
 
-                if ((row_norm + col_norm) < 0.95 * s * f)
-                {
+                if ((row_norm + col_norm) < 0.95 * s * f) {
                     not_converged = 1;
 
                     g = 1.0 / f;
@@ -846,41 +723,32 @@ int us_linalg_balance_matrix(us_matrix *A, us_vector *D)
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 } /* us_linalg_balance_matrix() */
 
-float cblas_dnrm2(const int N, const float *X, const int incX)
-{
+float cblas_dnrm2(const int N, const float* X, const int incX) {
 #define BASE float
     BASE scale = 0.0;
     BASE ssq = 1.0;
     int i;
     int ix = 0;
 
-    if (N <= 0 || incX <= 0)
-    {
+    if (N <= 0 || incX <= 0) {
         return 0;
-    }
-    else if (N == 1)
-    {
+    } else if (N == 1) {
         return fabs(X[0]);
     }
 
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         const BASE x = X[ix];
 
-        if (x != 0.0)
-        {
+        if (x != 0.0) {
             const BASE ax = fabs(x);
 
-            if (scale < ax)
-            {
+            if (scale < ax) {
                 ssq = 1.0 + ssq * (scale / ax) * (scale / ax);
                 scale = ax;
-            }
-            else
-            {
+            } else {
                 ssq += (ax / scale) * (ax / scale);
             }
         }
@@ -892,32 +760,26 @@ float cblas_dnrm2(const int N, const float *X, const int incX)
 #undef BASE
 }
 
-float us_blas_dnrm2(const us_vector *X)
-{
+float us_blas_dnrm2(const us_vector* X) {
     return cblas_dnrm2(INT(X->size), X->data, INT(X->stride));
 }
 
-float us_linalg_householder_transform(us_vector *v)
-{
+float us_linalg_householder_transform(us_vector* v) {
     /* replace v[0:n-1] with a householder vector (v[0:n-1]) and
        coefficient tau that annihilate v[1:n-1] */
 
     const size_t n = v->size;
 
-    if (n == 1)
-    {
+    if (n == 1) {
         return 0.0; /* tau = 0 */
-    }
-    else
-    {
+    } else {
         float alpha, beta, tau;
 
         us_vector_float_view x = us_vector_subvector(v, 1, n - 1);
 
         float xnorm = us_blas_dnrm2(&x.vector);
 
-        if (xnorm == 0)
-        {
+        if (xnorm == 0) {
             return 0.0; /* tau = 0 */
         }
 
@@ -928,13 +790,10 @@ float us_linalg_householder_transform(us_vector *v)
         {
             float s = (alpha - beta);
 
-            if (fabs(s) > GSL_FLT_MIN)
-            {
+            if (fabs(s) > GSL_FLT_MIN) {
                 us_blas_dscal(1.0 / s, &x.vector);
                 us_vector_float_set(v, 0, beta);
-            }
-            else
-            {
+            } else {
                 us_blas_dscal(GSL_FLT_EPSILON / s, &x.vector);
                 us_blas_dscal(1.0 / GSL_FLT_EPSILON, &x.vector);
                 us_vector_float_set(v, 0, beta);
@@ -945,41 +804,33 @@ float us_linalg_householder_transform(us_vector *v)
     }
 }
 
-void cblas_daxpy(const int N, const float alpha, const float *X, const int incX, float *Y,
-                 const int incY)
-{
+void cblas_daxpy(const int N, const float alpha, const float* X, const int incX, float* Y,
+                 const int incY) {
 #define BASE float
     int i;
 
-    if (alpha == 0.0)
-    {
+    if (alpha == 0.0) {
         return;
     }
 
-    if (incX == 1 && incY == 1)
-    {
+    if (incX == 1 && incY == 1) {
         const int m = N % 4;
 
-        for (i = 0; i < m; i++)
-        {
+        for (i = 0; i < m; i++) {
             Y[i] += alpha * X[i];
         }
 
-        for (i = m; i + 3 < N; i += 4)
-        {
+        for (i = m; i + 3 < N; i += 4) {
             Y[i] += alpha * X[i];
             Y[i + 1] += alpha * X[i + 1];
             Y[i + 2] += alpha * X[i + 2];
             Y[i + 3] += alpha * X[i + 3];
         }
-    }
-    else
-    {
+    } else {
         int ix = OFFSET(N, incX);
         int iy = OFFSET(N, incY);
 
-        for (i = 0; i < N; i++)
-        {
+        for (i = 0; i < N; i++) {
             Y[iy] += alpha * X[ix];
             ix += incX;
             iy += incY;
@@ -988,26 +839,20 @@ void cblas_daxpy(const int N, const float alpha, const float *X, const int incX,
 #undef BASE
 }
 
-int us_blas_daxpy(float alpha, const us_vector *X, us_vector *Y)
-{
-    if (X->size == Y->size)
-    {
+int us_blas_daxpy(float alpha, const us_vector* X, us_vector* Y) {
+    if (X->size == Y->size) {
         cblas_daxpy(INT(X->size), alpha, X->data, INT(X->stride), Y->data, INT(Y->stride));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
-{
+int us_linalg_householder_hm(float tau, const us_vector* v, us_matrix* A) {
     /* applies a householder transformation v,tau to matrix m */
 
-    if (tau == 0.0)
-    {
+    if (tau == 0.0) {
         return GSL_SUCCESS;
     }
 
@@ -1017,8 +862,7 @@ int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
         us_matrix_view A1 = us_matrix_submatrix(A, 1, 0, A->size1 - 1, A->size2);
         size_t j;
 
-        for (j = 0; j < A->size2; j++)
-        {
+        for (j = 0; j < A->size2; j++) {
             float wj = 0.0;
             us_vector_view A1j = us_matrix_column(&A1.matrix, j);
             us_blas_ddot(&A1j.vector, &v1.vector, &wj);
@@ -1036,8 +880,7 @@ int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
     {
         size_t i, j;
 
-        for (j = 0; j < A->size2; j++)
-        {
+        for (j = 0; j < A->size2; j++) {
             /* Compute wj = Akj vk */
 
             float wj = us_matrix_float_get(A, 0, j);
@@ -1057,8 +900,7 @@ int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
 
             /* i = 1 .. M-1 */
 
-            for (i = 1; i < A->size1; i++)
-            {
+            for (i = 1; i < A->size1; i++) {
                 float Aij = us_matrix_float_get(A, i, j);
                 float vi = us_vector_float_get(v, i);
                 us_matrix_float_set(A, i, j, Aij - tau * vi * wj);
@@ -1070,15 +912,14 @@ int us_linalg_householder_hm(float tau, const us_vector *v, us_matrix *A)
     return GSL_SUCCESS;
 }
 
-int us_linalg_householder_mh(float tau, const us_vector *v, us_matrix *A)
-{
+int us_linalg_householder_mh(float tau, const us_vector* v, us_matrix* A) {
     /* applies a householder transformation v,tau to matrix m from the
        right hand side in order to zero out rows */
 
     if (tau == 0)
         return GSL_SUCCESS;
 
-        /* A = A - tau w v' */
+    /* A = A - tau w v' */
 
 #ifdef USE_BLAS
     {
@@ -1086,8 +927,7 @@ int us_linalg_householder_mh(float tau, const us_vector *v, us_matrix *A)
         us_matrix_view A1 = us_matrix_submatrix(A, 0, 1, A->size1, A->size2 - 1);
         size_t i;
 
-        for (i = 0; i < A->size1; i++)
-        {
+        for (i = 0; i < A->size1; i++) {
             float wi = 0.0;
             us_vector_view A1i = us_matrix_row(&A1.matrix, i);
             us_blas_ddot(&A1i.vector, &v1.vector, &wi);
@@ -1105,8 +945,7 @@ int us_linalg_householder_mh(float tau, const us_vector *v, us_matrix *A)
     {
         size_t i, j;
 
-        for (i = 0; i < A->size1; i++)
-        {
+        for (i = 0; i < A->size1; i++) {
             float wi = us_matrix_float_get(A, i, 0);
 
             for (j = 1; j < A->size2; j++) /* note, computed for v(0) = 1 above */
@@ -1123,8 +962,7 @@ int us_linalg_householder_mh(float tau, const us_vector *v, us_matrix *A)
 
             /* j = 1 .. N-1 */
 
-            for (j = 1; j < A->size2; j++)
-            {
+            for (j = 1; j < A->size2; j++) {
                 float vj = us_vector_float_get(v, j);
                 float Aij = us_matrix_float_get(A, i, j);
                 us_matrix_float_set(A, i, j, Aij - tau * wi * vj);
@@ -1136,33 +974,24 @@ int us_linalg_householder_mh(float tau, const us_vector *v, us_matrix *A)
     return GSL_SUCCESS;
 }
 
-int us_linalg_hessenberg_decomp(us_matrix *A, us_vector *tau)
-{
+int us_linalg_hessenberg_decomp(us_matrix* A, us_vector* tau) {
     const size_t N = A->size1;
 
-    if (N != A->size2)
-    {
+    if (N != A->size2) {
         printf("Hessenberg reduction requires square matrix");
-    }
-    else if (N != tau->size)
-    {
+    } else if (N != tau->size) {
         printf("tau vector must match matrix size");
-    }
-    else if (N < 3)
-    {
+    } else if (N < 3) {
         /* nothing to do */
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         size_t i;               /* looping */
         us_vector_float_view c, /* matrix column */
             hv;                 /* householder vector */
         us_matrix_float_view m;
         float tau_i; /* beta in algorithm 7.4.2 */
 
-        for (i = 0; i < N - 2; ++i)
-        {
+        for (i = 0; i < N - 2; ++i) {
             /*
              * make a copy of A(i + 1:n, i) and store it in the section
              * of 'tau' that we haven't stored coefficients in yet
@@ -1199,13 +1028,12 @@ int us_linalg_hessenberg_decomp(us_matrix *A, us_vector *tau)
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 } /* us_linalg_hessenberg_decomp() */
 
-void us_matrix_set_identity(us_matrix *m)
-{
+void us_matrix_set_identity(us_matrix* m) {
     size_t i, j;
-    ATOMIC *const data = m->data;
+    ATOMIC* const data = m->data;
     const size_t p = m->size1;
     const size_t q = m->size2;
     const size_t tda = m->tda;
@@ -1213,47 +1041,35 @@ void us_matrix_set_identity(us_matrix *m)
     const char zero = 0;
     const char one = 1;
 
-    for (i = 0; i < p; i++)
-    {
-        for (j = 0; j < q; j++)
-        {
-            *(char *)(data + MULTIPLICITY * (i * tda + j)) = ((i == j) ? one : zero);
+    for (i = 0; i < p; i++) {
+        for (j = 0; j < q; j++) {
+            *(char*)(data + MULTIPLICITY * (i * tda + j)) = ((i == j) ? one : zero);
         }
     }
 }
 
-int us_linalg_hessenberg_unpack_accum(us_matrix *H, us_vector *tau, us_matrix *V)
-{
+int us_linalg_hessenberg_unpack_accum(us_matrix* H, us_vector* tau, us_matrix* V) {
     const size_t N = H->size1;
 
-    if (N != H->size2)
-    {
+    if (N != H->size2) {
         printf("Hessenberg reduction requires square matrix");
-    }
-    else if (N != tau->size)
-    {
+    } else if (N != tau->size) {
         printf("tau vector must match matrix size");
-    }
-    else if (N != V->size2)
-    {
+    } else if (N != V->size2) {
         printf("V matrix has wrong dimension");
-    }
-    else
-    {
+    } else {
         size_t j;               /* looping */
         float tau_j;            /* householder coefficient */
         us_vector_float_view c, /* matrix column */
             hv;                 /* householder vector */
         us_matrix_float_view m;
 
-        if (N < 3)
-        {
+        if (N < 3) {
             /* nothing to do */
             return GSL_SUCCESS;
         }
 
-        for (j = 0; j < (N - 2); ++j)
-        {
+        for (j = 0; j < (N - 2); ++j) {
             c = us_matrix_column(H, j);
 
             tau_j = us_vector_float_get(tau, j);
@@ -1282,11 +1098,10 @@ int us_linalg_hessenberg_unpack_accum(us_matrix *H, us_vector *tau, us_matrix *V
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 } /* us_linalg_hessenberg_unpack_accum() */
 
-int us_linalg_hessenberg_unpack(us_matrix *H, us_vector *tau, us_matrix *U)
-{
+int us_linalg_hessenberg_unpack(us_matrix* H, us_vector* tau, us_matrix* U) {
     int s;
 
     us_matrix_set_identity(U);
@@ -1296,19 +1111,16 @@ int us_linalg_hessenberg_unpack(us_matrix *H, us_vector *tau, us_matrix *U)
     return s;
 } /* us_linalg_hessenberg_unpack() */
 
-static inline size_t francis_search_subdiag_small_elements(us_matrix *A)
-{
+static inline size_t francis_search_subdiag_small_elements(us_matrix* A) {
     const size_t N = A->size1;
     size_t i;
     float dpel = us_matrix_float_get(A, N - 2, N - 2);
 
-    for (i = N - 1; i > 0; --i)
-    {
+    for (i = N - 1; i > 0; --i) {
         float sel = us_matrix_float_get(A, i, i - 1);
         float del = us_matrix_float_get(A, i, i);
 
-        if ((sel == 0.0) || (fabs(sel) < GSL_FLT_EPSILON * (fabs(del) + fabs(dpel))))
-        {
+        if ((sel == 0.0) || (fabs(sel) < GSL_FLT_EPSILON * (fabs(del) + fabs(dpel)))) {
             us_matrix_float_set(A, i, i - 1, 0.0);
             return (i);
         }
@@ -1319,8 +1131,7 @@ static inline size_t francis_search_subdiag_small_elements(us_matrix *A)
     return (0);
 } /* francis_search_subdiag_small_elements() */
 
-static size_t francis_get_submatrix(us_matrix *A, us_matrix *B)
-{
+static size_t francis_get_submatrix(us_matrix* A, us_matrix* B) {
     size_t diff;
     float ratio;
     size_t top;
@@ -1334,8 +1145,7 @@ static size_t francis_get_submatrix(us_matrix *A, us_matrix *B)
     return top;
 } /* francis_get_submatrix() */
 
-static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
-{
+static inline int francis_qrstep(us_matrix* H, us_eigen_francis_workspace* w) {
     const size_t N = H->size1;
     size_t i; /* looping */
     us_matrix_float_view m;
@@ -1354,8 +1164,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
     v2 = us_vector_view_array(dat, 2);
     v3 = us_vector_view_array(dat, 3);
 
-    if ((w->n_iter % 10) == 0)
-    {
+    if ((w->n_iter % 10) == 0) {
         /*
          * exceptional shifts: we have gone 10 iterations
          * without finding a new eigenvalue, try a new choice of shifts.
@@ -1365,9 +1174,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
         h_nn = us_matrix_float_get(H, N - 1, N - 1) + GSL_FRANCIS_COEFF1 * s;
         h_nm1nm1 = h_nn;
         h_cross = GSL_FRANCIS_COEFF2 * s * s;
-    }
-    else
-    {
+    } else {
         /*
          * normal shifts - compute Rayleigh quotient and use
          * Wilkinson shift if possible
@@ -1379,20 +1186,16 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
 
         disc = 0.5 * (h_nm1nm1 - h_nn);
         disc = disc * disc + h_cross;
-        if (disc > 0.0)
-        {
+        if (disc > 0.0) {
             float ave;
 
             /* real roots - use Wilkinson's shift twice */
             disc = sqrt(disc);
             ave = 0.5 * (h_nm1nm1 + h_nn);
-            if (fabs(h_nm1nm1) - fabs(h_nn) > 0.0)
-            {
+            if (fabs(h_nm1nm1) - fabs(h_nn) > 0.0) {
                 h_nm1nm1 = h_nm1nm1 * h_nn - h_cross;
                 h_nn = h_nm1nm1 / (disc * GSL_SIGN(ave) + ave);
-            }
-            else
-            {
+            } else {
                 h_nn = disc * GSL_SIGN(ave) + ave;
             }
 
@@ -1417,16 +1220,14 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
     dat[2] = us_matrix_float_get(H, 2, 1);
 
     scale = fabs(dat[0]) + fabs(dat[1]) + fabs(dat[2]);
-    if (scale != 0.0)
-    {
+    if (scale != 0.0) {
         /* scale to prevent overflow or underflow */
         dat[0] /= scale;
         dat[1] /= scale;
         dat[2] /= scale;
     }
 
-    if (w->Zf || w->compute_t)
-    {
+    if (w->Zf || w->compute_t) {
         /*
          * get absolute indices of this (sub)matrix relative to the
          * original Hessenberg matrix
@@ -1434,20 +1235,17 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
         top = francis_get_submatrix(w->H, H);
     }
 
-    for (i = 0; i < N - 2; ++i)
-    {
+    for (i = 0; i < N - 2; ++i) {
         tau_i = us_linalg_householder_transform(&v3.vector);
 
-        if (tau_i != 0.0)
-        {
+        if (tau_i != 0.0) {
             /* q = max(1, i - 1) */
             q = (1 > ((int)i - 1)) ? 0 : (i - 1);
 
             /* r = min(i + 3, N - 1) */
             r = ((i + 3) < (N - 1)) ? (i + 3) : (N - 1);
 
-            if (w->compute_t)
-            {
+            if (w->compute_t) {
                 /*
                  * We are computing the Schur form T, so we
                  * need to transform the whole matrix H
@@ -1464,9 +1262,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
                 /* apply right householder matrix (I - tau_i v v') to H */
                 m = us_matrix_submatrix(w->H, 0, top + i, top + r + 1, 3);
                 us_linalg_householder_mh(tau_i, &v3.vector, &m.matrix);
-            }
-            else
-            {
+            } else {
                 /*
                  * We are not computing the Schur form T, so we
                  * only need to transform the active block
@@ -1481,8 +1277,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
                 us_linalg_householder_mh(tau_i, &v3.vector, &m.matrix);
             }
 
-            if (w->Zf)
-            {
+            if (w->Zf) {
                 /* accumulate the similarity transformation into Z */
                 m = us_matrix_submatrix(w->Zf, 0, top + i, w->size, 3);
                 us_linalg_householder_mh(tau_i, &v3.vector, &m.matrix);
@@ -1491,14 +1286,12 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
 
         dat[0] = us_matrix_float_get(H, i + 1, i);
         dat[1] = us_matrix_float_get(H, i + 2, i);
-        if (i < (N - 3))
-        {
+        if (i < (N - 3)) {
             dat[2] = us_matrix_float_get(H, i + 3, i);
         }
 
         scale = fabs(dat[0]) + fabs(dat[1]) + fabs(dat[2]);
-        if (scale != 0.0)
-        {
+        if (scale != 0.0) {
             /* scale to prevent overflow or underflow */
             dat[0] /= scale;
             dat[1] /= scale;
@@ -1507,8 +1300,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
     } /* for (i = 0; i < N - 2; ++i) */
 
     scale = fabs(dat[0]) + fabs(dat[1]);
-    if (scale != 0.0)
-    {
+    if (scale != 0.0) {
         /* scale to prevent overflow or underflow */
         dat[0] /= scale;
         dat[1] /= scale;
@@ -1516,16 +1308,13 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
 
     tau_i = us_linalg_householder_transform(&v2.vector);
 
-    if (w->compute_t)
-    {
+    if (w->compute_t) {
         m = us_matrix_submatrix(w->H, top + N - 2, top + N - 3, 2, w->size - top - N + 3);
         us_linalg_householder_hm(tau_i, &v2.vector, &m.matrix);
 
         m = us_matrix_submatrix(w->H, 0, top + N - 2, top + N, 2);
         us_linalg_householder_mh(tau_i, &v2.vector, &m.matrix);
-    }
-    else
-    {
+    } else {
         m = us_matrix_submatrix(H, N - 2, N - 3, 2, 3);
         us_linalg_householder_hm(tau_i, &v2.vector, &m.matrix);
 
@@ -1533,8 +1322,7 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
         us_linalg_householder_mh(tau_i, &v2.vector, &m.matrix);
     }
 
-    if (w->Zf)
-    {
+    if (w->Zf) {
         /* accumulate transformation into Z */
         m = us_matrix_submatrix(w->Zf, 0, top + N - 2, w->size, 2);
         us_linalg_householder_mh(tau_i, &v2.vector, &m.matrix);
@@ -1543,27 +1331,23 @@ static inline int francis_qrstep(us_matrix *H, us_eigen_francis_workspace *w)
     return GSL_SUCCESS;
 } /* francis_qrstep() */
 
-void us_vector_complex_set(us_vector_complex *v, const size_t i, us_complex z)
-{
+void us_vector_complex_set(us_vector_complex* v, const size_t i, us_complex z) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(i >= v->size))
-    {
+    if (GSL_RANGE_COND(i >= v->size)) {
         printf("index out of range");
     }
 #endif
     *GSL_COMPLEX_AT(v, i) = z;
 }
 
-void cblas_drot(const int N, float *X, const int incX, float *Y, const int incY, const float c,
-                const float s)
-{
+void cblas_drot(const int N, float* X, const int incX, float* Y, const int incY, const float c,
+                const float s) {
 #define BASE float
 
     int i;
     int ix = OFFSET(N, incX);
     int iy = OFFSET(N, incY);
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         const BASE x = X[ix];
         const BASE y = Y[iy];
         X[ix] = c * x + s * y;
@@ -1575,47 +1359,36 @@ void cblas_drot(const int N, float *X, const int incX, float *Y, const int incY,
 #undef BASE
 }
 
-int us_blas_drot(us_vector *X, us_vector *Y, const float c, const float s)
-{
-    if (X->size == Y->size)
-    {
+int us_blas_drot(us_vector* X, us_vector* Y, const float c, const float s) {
+    if (X->size == Y->size) {
         cblas_drot(INT(X->size), X->data, INT(X->stride), Y->data, INT(Y->stride), c, s);
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-int us_isnan(const float x)
-{
+int us_isnan(const float x) {
     int status = (x != x);
     return status;
 }
 
-int us_finite(const float x)
-{
+int us_finite(const float x) {
     const float y = x - x;
     int status = (y == y);
     return status;
 }
 
-int us_isinf(const float x)
-{
-    if (!us_finite(x) && !us_isnan(x))
-    {
+int us_isinf(const float x) {
+    if (!us_finite(x) && !us_isnan(x)) {
         return (x > 0 ? +1 : -1);
-    }
-    else
-    {
+    } else {
         return 0;
     }
 }
 
-float us_hypot(const float x, const float y)
-{
+float us_hypot(const float x, const float y) {
     float xabs = fabs(x);
     float yabs = fabs(y);
     float min, max;
@@ -1623,24 +1396,19 @@ float us_hypot(const float x, const float y)
     /* Follow the optional behavior of the ISO C standard and return
        +Inf when any of the argument is +-Inf, even if the other is NaN.
        http://pubs.opengroup.org/onlinepubs/009695399/functions/hypot.html */
-    if (us_isinf(x) || us_isinf(y))
-    {
+    if (us_isinf(x) || us_isinf(y)) {
         return GSL_POSINF;
     }
 
-    if (xabs < yabs)
-    {
+    if (xabs < yabs) {
         min = xabs;
         max = yabs;
-    }
-    else
-    {
+    } else {
         min = yabs;
         max = xabs;
     }
 
-    if (min == 0)
-    {
+    if (min == 0) {
         return max;
     }
 
@@ -1650,8 +1418,7 @@ float us_hypot(const float x, const float y)
     }
 }
 
-static void francis_standard_form(us_matrix *A, float *cs, float *sn)
-{
+static void francis_standard_form(us_matrix* A, float* cs, float* sn) {
     float a, b, c, d; /* input matrix values */
     float tmp;
     float p, z;
@@ -1666,17 +1433,14 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
     c = us_matrix_float_get(A, 1, 0);
     d = us_matrix_float_get(A, 1, 1);
 
-    if (c == 0.0)
-    {
+    if (c == 0.0) {
         /*
          * matrix is already upper triangular - set rotation matrix
          * to the identity
          */
         *cs = 1.0;
         *sn = 0.0;
-    }
-    else if (b == 0.0)
-    {
+    } else if (b == 0.0) {
         /* swap rows and columns to make it upper triangular */
 
         *cs = 0.0;
@@ -1687,15 +1451,11 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
         a = tmp;
         b = -c;
         c = 0.0;
-    }
-    else if (((a - d) == 0.0) && (GSL_SIGN(b) != GSL_SIGN(c)))
-    {
+    } else if (((a - d) == 0.0) && (GSL_SIGN(b) != GSL_SIGN(c))) {
         /* the matrix has complex eigenvalues with a == d */
         *cs = 1.0;
         *sn = 0.0;
-    }
-    else
-    {
+    } else {
         tmp = a - d;
         p = 0.5 * tmp;
         bcmax = GSL_MAX(fabs(b), fabs(c));
@@ -1703,8 +1463,7 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
         scale = GSL_MAX(fabs(p), bcmax);
         z = (p / scale) * p + (bcmax / scale) * bcmis;
 
-        if (z >= 4.0 * GSL_FLT_EPSILON)
-        {
+        if (z >= 4.0 * GSL_FLT_EPSILON) {
             /* real eigenvalues, compute a and d */
 
             z = p + GSL_SIGN(p) * fabs(sqrt(scale) * sqrt(z));
@@ -1718,9 +1477,7 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
             *sn = c / tau;
             b -= c;
             c = 0.0;
-        }
-        else
-        {
+        } else {
             /*
              * complex eigenvalues, or real (almost) equal eigenvalues -
              * make diagonal elements equal
@@ -1752,12 +1509,9 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
             tmp = 0.5 * (a + d);
             a = d = tmp;
 
-            if (c != 0.0)
-            {
-                if (b != 0.0)
-                {
-                    if (GSL_SIGN(b) == GSL_SIGN(c))
-                    {
+            if (c != 0.0) {
+                if (b != 0.0) {
+                    if (GSL_SIGN(b) == GSL_SIGN(c)) {
                         /*
                          * real eigenvalues: reduce to upper triangular
                          * form
@@ -1777,9 +1531,7 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
                         *sn = (*cs) * sn1 + (*sn) * cs1;
                         *cs = tmp;
                     }
-                }
-                else
-                {
+                } else {
                     b = -c;
                     c = 0.0;
                     tmp = *cs;
@@ -1798,9 +1550,8 @@ static void francis_standard_form(us_matrix *A, float *cs, float *sn)
     us_matrix_float_set(A, 1, 1, d);
 } /* francis_standard_form() */
 
-static void francis_schur_standardize(us_matrix *A, us_complex *eval1, us_complex *eval2,
-                                      us_eigen_francis_workspace *w)
-{
+static void francis_schur_standardize(us_matrix* A, us_complex* eval1, us_complex* eval2,
+                                      us_eigen_francis_workspace* w) {
     const size_t N = w->size;
     float cs, sn;
     size_t top;
@@ -1818,24 +1569,19 @@ static void francis_schur_standardize(us_matrix *A, us_complex *eval1, us_comple
 
     GSL_SET_REAL(eval1, us_matrix_float_get(A, 0, 0));
     GSL_SET_REAL(eval2, us_matrix_float_get(A, 1, 1));
-    if (us_matrix_float_get(A, 1, 0) == 0.0)
-    {
+    if (us_matrix_float_get(A, 1, 0) == 0.0) {
         GSL_SET_IMAG(eval1, 0.0);
         GSL_SET_IMAG(eval2, 0.0);
-    }
-    else
-    {
+    } else {
         float tmp = sqrt(fabs(us_matrix_float_get(A, 0, 1)) * fabs(us_matrix_float_get(A, 1, 0)));
         GSL_SET_IMAG(eval1, tmp);
         GSL_SET_IMAG(eval2, -tmp);
     }
 
-    if (w->compute_t)
-    {
+    if (w->compute_t) {
         us_vector_float_view xv, yv;
 
-        if (top < (N - 2))
-        {
+        if (top < (N - 2)) {
             /* transform the 2 rows of T_{23} */
 
             xv = us_matrix_subrow(w->H, top, top + 2, N - top - 2);
@@ -1843,8 +1589,7 @@ static void francis_schur_standardize(us_matrix *A, us_complex *eval1, us_comple
             us_blas_drot(&xv.vector, &yv.vector, cs, sn);
         }
 
-        if (top > 0)
-        {
+        if (top > 0) {
             /* transform the 2 columns of T_{12} */
 
             xv = us_matrix_subcolumn(w->H, top, 0, top);
@@ -1853,8 +1598,7 @@ static void francis_schur_standardize(us_matrix *A, us_complex *eval1, us_comple
         }
     } /* if (w->compute_t) */
 
-    if (w->Zf)
-    {
+    if (w->Zf) {
         us_vector_float_view xv, yv;
 
         /*
@@ -1878,8 +1622,8 @@ static void francis_schur_standardize(us_matrix *A, us_complex *eval1, us_comple
 } /* francis_schur_standardize() */
 
 static inline void
-francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
-                     us_eigen_francis_workspace *w)   // 优化点：找到正实特征值可以停
+francis_schur_decomp(us_matrix* H, us_vector_complex* eval,
+                     us_eigen_francis_workspace* w) // 优化点：找到正实特征值可以停
 {
     us_matrix_float_view m; /* active matrix we are working on */
     size_t N;               /* size of matrix */
@@ -1890,8 +1634,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
     N = H->size1;
     m = us_matrix_submatrix(H, 0, 0, N, N);
 
-    while ((N > 2) && ((w->n_iter)++ < w->max_iterations))
-    {
+    while ((N > 2) && ((w->n_iter)++ < w->max_iterations)) {
         /*
           Search for a small subdiagonal element starting from the bottom
           of a matrix A. A small element is one that satisfies:
@@ -1901,8 +1644,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
         */
         q = francis_search_subdiag_small_elements(&m.matrix);
 
-        if (q == 0)
-        {
+        if (q == 0) {
             /*
              * no small subdiagonal element found - perform a QR
              * sweep on the active reduced hessenberg matrix
@@ -1916,8 +1658,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
          * have converged or the matrix has split into two smaller matrices
          */
 
-        if (q == (N - 1))
-        {
+        if (q == (N - 1)) {
             /*
              * the last subdiagonal element of the matrix is 0 -
              * m_{NN} is a real eigenvalue
@@ -1928,9 +1669,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
             w->n_iter = 0;
             --N;
             m = us_matrix_submatrix(&m.matrix, 0, 0, N, N);
-        }
-        else if (q == (N - 2))
-        {
+        } else if (q == (N - 2)) {
             us_matrix_float_view v;
 
             /*
@@ -1948,9 +1687,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
 
             N -= 2;
             m = us_matrix_submatrix(&m.matrix, 0, 0, N, N);
-        }
-        else if (q == 1)
-        {
+        } else if (q == 1) {
             /* the first matrix element is an eigenvalue */
             GSL_SET_COMPLEX(&lambda1, us_matrix_float_get(&m.matrix, 0, 0), 0.0);
             us_vector_complex_set(eval, w->n_evals, lambda1);
@@ -1959,9 +1696,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
 
             --N;
             m = us_matrix_submatrix(&m.matrix, 1, 1, N, N);
-        }
-        else if (q == 2)
-        {
+        } else if (q == 2) {
             us_matrix_float_view v;
 
             /* the upper left 2-by-2 block is an eigenvalue system */
@@ -1976,9 +1711,7 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
 
             N -= 2;
             m = us_matrix_submatrix(&m.matrix, 2, 2, N, N);
-        }
-        else
-        {
+        } else {
             us_matrix_float_view v;
 
             /*
@@ -2001,15 +1734,12 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
     }
     /* handle special cases of N = 1 or 2 */
 
-    if (N == 1)
-    {
+    if (N == 1) {
         GSL_SET_COMPLEX(&lambda1, us_matrix_float_get(&m.matrix, 0, 0), 0.0);
         us_vector_complex_set(eval, w->n_evals, lambda1);
         w->n_evals += 1;
         w->n_iter = 0;
-    }
-    else if (N == 2)
-    {
+    } else if (N == 2) {
         francis_schur_standardize(&m.matrix, &lambda1, &lambda2, w);
         us_vector_complex_set(eval, w->n_evals, lambda1);
         us_vector_complex_set(eval, w->n_evals + 1, lambda2);
@@ -2019,19 +1749,13 @@ francis_schur_decomp(us_matrix *H, us_vector_complex *eval,
 
 } /* francis_schur_decomp() */
 
-int us_eigen_francis(us_matrix *H, us_vector_complex *eval, us_eigen_francis_workspace *w)
-{
+int us_eigen_francis(us_matrix* H, us_vector_complex* eval, us_eigen_francis_workspace* w) {
     /* check matrix and vector sizes */
-    if (H->size1 != H->size2)
-    {
+    if (H->size1 != H->size2) {
         printf("matrix must be square to compute eigenvalues");
-    }
-    else if (eval->size != H->size1)
-    {
+    } else if (eval->size != H->size1) {
         printf("eigenvalue vector must match matrix size");
-    }
-    else
-    {
+    } else {
         const size_t N = H->size1;
         int j;
         /*
@@ -2057,8 +1781,7 @@ int us_eigen_francis(us_matrix *H, us_vector_complex *eval, us_eigen_francis_wor
          * zero out the first two subdiagonals (below the main subdiagonal)
          * needed as scratch space by the QR sweep routine
          */
-        for (j = 0; j < (int)N - 3; ++j)
-        {
+        for (j = 0; j < (int)N - 3; ++j) {
             us_matrix_float_set(H, (size_t)j + 2, (size_t)j, 0.0);
             us_matrix_float_set(H, (size_t)j + 3, (size_t)j, 0.0);
         }
@@ -2072,74 +1795,59 @@ int us_eigen_francis(us_matrix *H, us_vector_complex *eval, us_eigen_francis_wor
          */
         francis_schur_decomp(H, eval, w);
 
-        if (w->n_evals != N)
-        {
+        if (w->n_evals != N) {
             printf("maximum iterations reached without finding all eigenvalues\n");
             return GSL_FAILED;
         }
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 } /* us_eigen_francis() */
 
-us_matrix *us_eigen_francis_Z(us_matrix *H, us_vector_complex *eval, us_matrix *Z,
-                              us_eigen_francis_workspace *w, int *s)
-{
+us_matrix* us_eigen_francis_Z(us_matrix* H, us_vector_complex* eval, us_matrix* Z,
+                              us_eigen_francis_workspace* w, int* s) {
     /* set internal Z pointer so we know to accumulate transformations */
     w->Zf = Z;
     *s = us_eigen_francis(H, eval, w);
-    w->Zf = NULL;   // xuyaoma?
+    w->Zf = NULL; // xuyaoma?
     // us_matrix_free(w->Zf);
     return Z;
 } /* us_eigen_francis_Z() */
 
-int us_eigen_nonsymm(us_matrix *A, us_vector_complex *eval, us_eigen_nonsymm_workspace *w)
-{
+int us_eigen_nonsymm(us_matrix* A, us_vector_complex* eval, us_eigen_nonsymm_workspace* w) {
     const size_t N = A->size1;
 
     /* check matrix and vector sizes */
-    if (N != A->size2)
-    {
+    if (N != A->size2) {
         printf("matrix must be square to compute eigenvalues");
-    }
-    else if (eval->size != N)
-    {
+    } else if (eval->size != N) {
         printf("eigenvalue vector must match matrix size");
-    }
-    else
-    {
+    } else {
         int s = 0;
-        us_linalg_hessenberg_decomp(A, w->tau);   // A已经是H和v的组合体了
+        us_linalg_hessenberg_decomp(A, w->tau); // A已经是H和v的组合体了
         // w->Z初始化为单位阵
-        for (int i = 0; i < N; i++)
-        {
-            for (int j = 0; j < N; j++)
-            {
-                if (i == j)
-                {
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                if (i == j) {
                     us_matrix_float_set(w->Z, i, j, 1);
-                }
-                else
-                {
+                } else {
                     us_matrix_float_set(w->Z, i, j, 0);
                 }
             }
         }
 
-        us_linalg_hessenberg_unpack(A, w->tau, w->Z);   // 计算U，存在w->Z里
+        us_linalg_hessenberg_unpack(A, w->tau, w->Z); // 计算U，存在w->Z里
         w->Z = us_eigen_francis_Z(A, eval, w->Z, w->francis_workspace_p, &s);
         w->n_evals = w->francis_workspace_p->n_evals;
         return s;
     }
-     return -1;
+    return -1;
 } /* us_eigen_nonsymm() */
 
-us_complex us_vector_complex_get(const us_vector_complex *v, const size_t i)
-{
+us_complex us_vector_complex_get(const us_vector_complex* v, const size_t i) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(i >= v->size))
-    {
+    if (GSL_RANGE_COND(i >= v->size)) {
         us_complex zero = {{0, 0}};
         printf("index out of range\n");
     }
@@ -2147,12 +1855,10 @@ us_complex us_vector_complex_get(const us_vector_complex *v, const size_t i)
     return *GSL_COMPLEX_AT(v, i);
 }
 
-int us_permute_inverse(const size_t *p, float *data, const size_t stride, const size_t n)
-{
+int us_permute_inverse(const size_t* p, float* data, const size_t stride, const size_t n) {
     size_t i, k, pk;
 
-    for (i = 0; i < n; i++)
-    {
+    for (i = 0; i < n; i++) {
         k = p[i];
 
         while (k > i)
@@ -2177,10 +1883,8 @@ int us_permute_inverse(const size_t *p, float *data, const size_t stride, const 
             for (a = 0; a < 1; a++)
                 t[a] = data[k * stride * 1 + a];
 
-            while (pk != i)
-            {
-                for (a = 0; a < 1; a++)
-                {
+            while (pk != i) {
+                for (a = 0; a < 1; a++) {
                     float r1 = data[pk * stride * MULTIPLICITY + a];
                     data[pk * stride * MULTIPLICITY + a] = t[a];
                     t[a] = r1;
@@ -2198,15 +1902,13 @@ int us_permute_inverse(const size_t *p, float *data, const size_t stride, const 
     return GSL_SUCCESS;
 }
 
-void cblas_scopy(const int N, const float *X, const int incX, float *Y, const int incY)
-{
+void cblas_scopy(const int N, const float* X, const int incX, float* Y, const int incY) {
 #define BASE float
     int i;
     int ix = OFFSET(N, incX);
     int iy = OFFSET(N, incY);
 
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         Y[iy] = X[ix];
         ix += incX;
         iy += incY;
@@ -2214,35 +1916,28 @@ void cblas_scopy(const int N, const float *X, const int incX, float *Y, const in
 #undef BASE
 }
 
-int us_blas_scopy(const us_vector_float *X, us_vector_float *Y)
-{
-    if (X->size == Y->size)
-    {
+int us_blas_scopy(const us_vector_float* X, us_vector_float* Y) {
+    if (X->size == Y->size) {
         cblas_scopy(INT(X->size), X->data, INT(X->stride), Y->data, INT(Y->stride));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-int us_matrix_memcpy(us_matrix_float *dest, const us_matrix_float *src)
-{
+int us_matrix_memcpy(us_matrix_float* dest, const us_matrix_float* src) {
     const size_t src_size1 = src->size1;
     const size_t src_size2 = src->size2;
     const size_t dest_size1 = dest->size1;
     const size_t dest_size2 = dest->size2;
     size_t i;
 
-    if (src_size1 != dest_size1 || src_size2 != dest_size2)
-    {
+    if (src_size1 != dest_size1 || src_size2 != dest_size2) {
         printf("matrix sizes are different");
     }
-    for (i = 0; i < src_size1; ++i)
-    {
-        us_vector_float_view sv = us_matrix_row((us_matrix *)src, i);
+    for (i = 0; i < src_size1; ++i) {
+        us_vector_float_view sv = us_matrix_row((us_matrix*)src, i);
         us_vector_float_view dv = us_matrix_row(dest, i);
 
         us_blas_scopy(&sv.vector, &dv.vector);
@@ -2251,13 +1946,11 @@ int us_matrix_memcpy(us_matrix_float *dest, const us_matrix_float *src)
     return GSL_SUCCESS;
 }
 
-int us_vector_float_memcpy(us_vector *dest, const us_vector *src)
-{
+int us_vector_float_memcpy(us_vector* dest, const us_vector* src) {
     const size_t src_size = src->size;
     const size_t dest_size = dest->size;
 
-    if (src_size != dest_size)
-    {
+    if (src_size != dest_size) {
         printf("vector lengths are not equal");
     }
 
@@ -2284,12 +1977,10 @@ int us_vector_float_memcpy(us_vector *dest, const us_vector *src)
         const size_t dest_stride = dest->stride;
         size_t j;
 
-        for (j = 0; j < src_size; j++)
-        {
+        for (j = 0; j < src_size; j++) {
             size_t k;
 
-            for (k = 0; k < MULTIPLICITY; k++)
-            {
+            for (k = 0; k < MULTIPLICITY; k++) {
                 dest->data[MULTIPLICITY * dest_stride * j + k] =
                     src->data[MULTIPLICITY * src_stride * j + k];
             }
@@ -2301,26 +1992,18 @@ int us_vector_float_memcpy(us_vector *dest, const us_vector *src)
     return GSL_SUCCESS;
 }
 
-us_matrix_float_view us_matrix_submatrix(us_matrix *m, const size_t i, const size_t j,
-                                         const size_t n1, const size_t n2)
-{
+us_matrix_float_view us_matrix_submatrix(us_matrix* m, const size_t i, const size_t j,
+                                         const size_t n1, const size_t n2) {
     us_matrix_float_view view = NULL_MATRIX_VIEW;
 
-    if (i >= m->size1)
-    {
+    if (i >= m->size1) {
         printf("row index is out of range");
-    }
-    else if (j >= m->size2)
-    {
+    } else if (j >= m->size2) {
         printf("column index is out of range");
-    }
-    else if (i + n1 > m->size1)
-    {
+    } else if (i + n1 > m->size1) {
         printf("first dimension overflows, raw:%zu, target:%zu\n", m->size1, i + n1);
         return view;
-    }
-    else if (j + n2 > m->size2)
-    {
+    } else if (j + n2 > m->size2) {
         printf("second dimension overflows matrix");
     }
 
@@ -2339,21 +2022,15 @@ us_matrix_float_view us_matrix_submatrix(us_matrix *m, const size_t i, const siz
     }
 }
 
-us_vector_float_view us_matrix_subcolumn(us_matrix *m, const size_t j, const size_t offset,
-                                         const size_t n)
-{
+us_vector_float_view us_matrix_subcolumn(us_matrix* m, const size_t j, const size_t offset,
+                                         const size_t n) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
-    if (j >= m->size2)
-    {
+    if (j >= m->size2) {
         printf("column index is out of range");
-    }
-    else if (n == 0)
-    {
+    } else if (n == 0) {
         printf("vector length n must be positive integer");
-    }
-    else if (offset + n > m->size1)
-    {
+    } else if (offset + n > m->size1) {
         printf("dimension n overflows matrix");
     }
 
@@ -2371,21 +2048,15 @@ us_vector_float_view us_matrix_subcolumn(us_matrix *m, const size_t j, const siz
     }
 }
 
-us_vector_float_view us_matrix_subrow(us_matrix *m, const size_t i, const size_t offset,
-                                      const size_t n)
-{
+us_vector_float_view us_matrix_subrow(us_matrix* m, const size_t i, const size_t offset,
+                                      const size_t n) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
-    if (i >= m->size1)
-    {
+    if (i >= m->size1) {
         printf("row index is out of range");
-    }
-    else if (n == 0)
-    {
+    } else if (n == 0) {
         printf("vector length n must be positive integer");
-    }
-    else if (offset + n > m->size2)
-    {
+    } else if (offset + n > m->size2) {
         printf("dimension n overflows matrix");
     }
 
@@ -2403,22 +2074,18 @@ us_vector_float_view us_matrix_subrow(us_matrix *m, const size_t i, const size_t
     }
 }
 
-int cblas_idamax(const int N, const float *X, const int incX)
-{
+int cblas_idamax(const int N, const float* X, const int incX) {
     float max = 0.0;
     int ix = 0;
     int i;
     int result = 0;
 
-    if (incX <= 0)
-    {
+    if (incX <= 0) {
         return 0;
     }
 
-    for (i = 0; i < N; i++)
-    {
-        if (fabs(X[ix]) > max)
-        {
+    for (i = 0; i < N; i++) {
+        if (fabs(X[ix]) > max) {
             max = fabs(X[ix]);
             result = i;
         }
@@ -2427,17 +2094,14 @@ int cblas_idamax(const int N, const float *X, const int incX)
     return result;
 }
 
-int us_blas_idamax(const us_vector *X)
-{
+int us_blas_idamax(const us_vector* X) {
     return cblas_idamax(INT(X->size), X->data, INT(X->stride));
 }
 
-us_vector_float_view us_matrix_row(us_matrix *m, const size_t i)
-{
+us_vector_float_view us_matrix_row(us_matrix* m, const size_t i) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
-    if (i >= m->size1)
-    {
+    if (i >= m->size1) {
         printf("row index is out of range");
     }
 
@@ -2455,13 +2119,11 @@ us_vector_float_view us_matrix_row(us_matrix *m, const size_t i)
     }
 }
 
-void cblas_dswap(const int N, float *X, const int incX, float *Y, const int incY)
-{
+void cblas_dswap(const int N, float* X, const int incX, float* Y, const int incY) {
     int i;
     int ix = OFFSET(N, incX);
     int iy = OFFSET(N, incY);
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         const float tmp = X[ix];
         X[ix] = Y[iy];
         Y[iy] = tmp;
@@ -2470,137 +2132,105 @@ void cblas_dswap(const int N, float *X, const int incX, float *Y, const int incY
     }
 }
 
-int us_blas_dswap(us_vector *X, us_vector *Y)
-{
-    if (X->size == Y->size)
-    {
+int us_blas_dswap(us_vector* X, us_vector* Y) {
+    if (X->size == Y->size) {
         cblas_dswap(INT(X->size), X->data, INT(X->stride), Y->data, INT(Y->stride));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     };
-     return -1;
+    return -1;
 }
 
-void cblas_dscal(const int N, const float alpha, float *X, const int incX)
-{
+void cblas_dscal(const int N, const float alpha, float* X, const int incX) {
     int i;
     int ix = 0;
 
-    if (incX <= 0)
-    {
+    if (incX <= 0) {
         return;
     }
 
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         X[ix] *= alpha;
         ix += incX;
     }
 }
 
-void us_blas_dscal(float alpha, us_vector *X)
-{
+void us_blas_dscal(float alpha, us_vector* X) {
     cblas_dscal(INT(X->size), alpha, X->data, INT(X->stride));
 }
 
 void cblas_dger(const enum CBLAS_ORDER order, const int M, const int N, const float alpha,
-                const float *X, const int incX, const float *Y, const int incY, float *A,
-                const int lda)
-{
+                const float* X, const int incX, const float* Y, const int incY, float* A,
+                const int lda) {
     int i, j;
     // CHECK_ARGS10(SD_GER,order,M,N,alpha,X,incX,Y,incY,A,lda);
 
-    if (order == CblasRowMajor)
-    {
+    if (order == CblasRowMajor) {
         int ix = OFFSET(M, incX);
-        for (i = 0; i < M; i++)
-        {
+        for (i = 0; i < M; i++) {
             const float tmp = alpha * X[ix];
             int jy = OFFSET(N, incY);
-            for (j = 0; j < N; j++)
-            {
+            for (j = 0; j < N; j++) {
                 A[lda * i + j] += Y[jy] * tmp;
                 jy += incY;
             }
             ix += incX;
         }
-    }
-    else if (order == CblasColMajor)
-    {
+    } else if (order == CblasColMajor) {
         int jy = OFFSET(N, incY);
-        for (j = 0; j < N; j++)
-        {
+        for (j = 0; j < N; j++) {
             const float tmp = alpha * Y[jy];
             int ix = OFFSET(M, incX);
-            for (i = 0; i < M; i++)
-            {
+            for (i = 0; i < M; i++) {
                 A[i + lda * j] += X[ix] * tmp;
                 ix += incX;
             }
             jy += incY;
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
-int us_blas_dger(float alpha, const us_vector *X, const us_vector *Y, us_matrix *A)
-{
+int us_blas_dger(float alpha, const us_vector* X, const us_vector* Y, us_matrix* A) {
     const size_t M = A->size1;
     const size_t N = A->size2;
 
-    if (X->size == M && Y->size == N)
-    {
+    if (X->size == M && Y->size == N) {
         cblas_dger(CblasRowMajor, INT(M), INT(N), alpha, X->data, INT(X->stride), Y->data,
                    INT(Y->stride), A->data, INT(A->tda));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-float *us_matrix_ptr(us_matrix *m, const size_t i, const size_t j)
-{
+float* us_matrix_ptr(us_matrix* m, const size_t i, const size_t j) {
 #if GSL_RANGE_CHECK
-    if (GSL_RANGE_COND(1))
-    {
-        if (i >= m->size1)
-        {
+    if (GSL_RANGE_COND(1)) {
+        if (i >= m->size1) {
             printf("first index out of range");
-        }
-        else if (j >= m->size2)
-        {
+        } else if (j >= m->size2) {
             printf("second index out of range");
         }
     }
 #endif
-    return (float *)(m->data + (i * m->tda + j));
+    return (float*)(m->data + (i * m->tda + j));
 }
 
-static int LU_decomp_L2(us_matrix *A, us_vector *ipiv)
-{
+static int LU_decomp_L2(us_matrix* A, us_vector* ipiv) {
     const size_t M = A->size1;
     const size_t N = A->size2;
     const size_t minMN = GSL_MIN(M, N);
 
-    if (ipiv->size != minMN)
-    {
+    if (ipiv->size != minMN) {
         printf("ipiv length must equal MIN(M,N)");
-    }
-    else
-    {
+    } else {
         size_t i, j;
 
-        for (j = 0; j < minMN; ++j)
-        {
+        for (j = 0; j < minMN; ++j) {
             /* find maximum in the j-th column */
             us_vector_float_view v = us_matrix_subcolumn(A, j, j, M - j);
             size_t j_pivot = j + us_blas_idamax(&v.vector);
@@ -2608,35 +2238,28 @@ static int LU_decomp_L2(us_matrix *A, us_vector *ipiv)
 
             us_vector_float_set(ipiv, j, j_pivot);
 
-            if (j_pivot != j)
-            {
+            if (j_pivot != j) {
                 /* swap rows j and j_pivot */
                 v1 = us_matrix_row(A, j);
                 v2 = us_matrix_row(A, j_pivot);
                 us_blas_dswap(&v1.vector, &v2.vector);
             }
 
-            if (j < M - 1)
-            {
+            if (j < M - 1) {
                 float Ajj = us_matrix_float_get(A, j, j);
 
-                if (fabs(Ajj) >= GSL_FLT_MIN)
-                {
+                if (fabs(Ajj) >= GSL_FLT_MIN) {
                     v1 = us_matrix_subcolumn(A, j, j + 1, M - j - 1);
                     us_blas_dscal(1.0 / Ajj, &v1.vector);
-                }
-                else
-                {
-                    for (i = 1; i < M - j; ++i)
-                    {
-                        float *ptr = us_matrix_ptr(A, j + i, j);
+                } else {
+                    for (i = 1; i < M - j; ++i) {
+                        float* ptr = us_matrix_ptr(A, j + i, j);
                         *ptr /= Ajj;
                     }
                 }
             }
 
-            if (j < minMN - 1)
-            {
+            if (j < minMN - 1) {
                 us_matrix_float_view A22 =
                     us_matrix_submatrix(A, j + 1, j + 1, M - j - 1, N - j - 1);
                 v1 = us_matrix_subcolumn(A, j, j + 1, M - j - 1);
@@ -2648,15 +2271,13 @@ static int LU_decomp_L2(us_matrix *A, us_vector *ipiv)
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 }
 
-us_vector_float_view us_vector_float_subvector(us_vector *v, size_t offset, size_t n)
-{
+us_vector_float_view us_vector_float_subvector(us_vector* v, size_t offset, size_t n) {
     us_vector_float_view view = NULL_VECTOR_VIEW;
 
-    if (offset + (n > 0 ? n - 1 : 0) >= v->size)
-    {
+    if (offset + (n > 0 ? n - 1 : 0) >= v->size) {
         printf("view would extend past end of vector");
     }
 
@@ -2674,22 +2295,16 @@ us_vector_float_view us_vector_float_subvector(us_vector *v, size_t offset, size
     }
 }
 
-static int apply_pivots(us_matrix *A, const us_vector *ipiv)
-{
-    if (A->size1 < ipiv->size)
-    {
+static int apply_pivots(us_matrix* A, const us_vector* ipiv) {
+    if (A->size1 < ipiv->size) {
         printf("matrix does not match pivot vector");
-    }
-    else
-    {
+    } else {
         size_t i;
 
-        for (i = 0; i < ipiv->size; ++i)
-        {
+        for (i = 0; i < ipiv->size; ++i) {
             size_t pi = us_vector_float_get(ipiv, i);
 
-            if (i != pi)
-            {
+            if (i != pi) {
                 /* swap rows i and pi */
                 us_vector_float_view v1 = us_matrix_row(A, i);
                 us_vector_float_view v2 = us_matrix_row(A, pi);
@@ -2699,14 +2314,13 @@ static int apply_pivots(us_matrix *A, const us_vector *ipiv)
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 }
 
 void cblas_dtrsm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
                  const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE TransA,
                  const enum CBLAS_DIAG Diag, const int M, const int N, const float alpha,
-                 const float *A, const int lda, float *B, const int ldb)
-{
+                 const float* A, const int lda, float* B, const int ldb) {
     int i, j, k;
     int n1, n2;
 
@@ -2715,16 +2329,13 @@ void cblas_dtrsm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
 
     // CHECK_ARGS12(TRSM,Order,Side,Uplo,TransA,Diag,M,N,alpha,A,lda,B,ldb);
 
-    if (Order == CblasRowMajor)
-    {
+    if (Order == CblasRowMajor) {
         n1 = M;
         n2 = N;
         side = Side;
         uplo = Uplo;
         trans = (TransA == CblasConjTrans) ? CblasTrans : TransA;
-    }
-    else
-    {
+    } else {
         n1 = N;
         n2 = M;
         side = (Side == CblasLeft) ? CblasRight : CblasLeft;
@@ -2732,327 +2343,244 @@ void cblas_dtrsm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
         trans = (TransA == CblasConjTrans) ? CblasTrans : TransA;
     }
 
-    if (side == CblasLeft && uplo == CblasUpper && trans == CblasNoTrans)
-    {
+    if (side == CblasLeft && uplo == CblasUpper && trans == CblasNoTrans) {
         /* form  B := alpha * inv(TriU(A)) *B */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = n1; i > 0 && i--;)
-        {
-            if (nonunit)
-            {
+        for (i = n1; i > 0 && i--;) {
+            if (nonunit) {
                 float Aii = A[lda * i + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] /= Aii;
                 }
             }
 
-            for (k = 0; k < i; k++)
-            {
+            for (k = 0; k < i; k++) {
                 const float Aki = A[k * lda + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * k + j] -= Aki * B[ldb * i + j];
                 }
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasUpper && trans == CblasTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasUpper && trans == CblasTrans) {
         /* form  B := alpha * inv(TriU(A))' *B */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            if (nonunit)
-            {
+        for (i = 0; i < n1; i++) {
+            if (nonunit) {
                 float Aii = A[lda * i + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] /= Aii;
                 }
             }
 
-            for (k = i + 1; k < n1; k++)
-            {
+            for (k = i + 1; k < n1; k++) {
                 const float Aik = A[i * lda + k];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * k + j] -= Aik * B[ldb * i + j];
                 }
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasLower && trans == CblasNoTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasLower && trans == CblasNoTrans) {
         /* form  B := alpha * inv(TriL(A))*B */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            if (nonunit)
-            {
+        for (i = 0; i < n1; i++) {
+            if (nonunit) {
                 float Aii = A[lda * i + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] /= Aii;
                 }
             }
 
-            for (k = i + 1; k < n1; k++)
-            {
+            for (k = i + 1; k < n1; k++) {
                 const float Aki = A[k * lda + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * k + j] -= Aki * B[ldb * i + j];
                 }
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasLower && trans == CblasTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasLower && trans == CblasTrans) {
         /* form  B := alpha * TriL(A)' *B */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = n1; i > 0 && i--;)
-        {
-            if (nonunit)
-            {
+        for (i = n1; i > 0 && i--;) {
+            if (nonunit) {
                 float Aii = A[lda * i + i];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] /= Aii;
                 }
             }
 
-            for (k = 0; k < i; k++)
-            {
+            for (k = 0; k < i; k++) {
                 const float Aik = A[i * lda + k];
-                for (j = 0; j < n2; j++)
-                {
+                for (j = 0; j < n2; j++) {
                     B[ldb * k + j] -= Aik * B[ldb * i + j];
                 }
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasUpper && trans == CblasNoTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasUpper && trans == CblasNoTrans) {
         /* form  B := alpha * B * inv(TriU(A)) */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
-                if (nonunit)
-                {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
+                if (nonunit) {
                     float Ajj = A[lda * j + j];
                     B[ldb * i + j] /= Ajj;
                 }
 
                 {
                     float Bij = B[ldb * i + j];
-                    for (k = j + 1; k < n2; k++)
-                    {
+                    for (k = j + 1; k < n2; k++) {
                         B[ldb * i + k] -= A[j * lda + k] * Bij;
                     }
                 }
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasUpper && trans == CblasTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasUpper && trans == CblasTrans) {
         /* form  B := alpha * B * inv(TriU(A))' */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = n2; j > 0 && j--;)
-            {
-                if (nonunit)
-                {
+        for (i = 0; i < n1; i++) {
+            for (j = n2; j > 0 && j--;) {
+                if (nonunit) {
                     float Ajj = A[lda * j + j];
                     B[ldb * i + j] /= Ajj;
                 }
 
                 {
                     float Bij = B[ldb * i + j];
-                    for (k = 0; k < j; k++)
-                    {
+                    for (k = 0; k < j; k++) {
                         B[ldb * i + k] -= A[k * lda + j] * Bij;
                     }
                 }
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasLower && trans == CblasNoTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasLower && trans == CblasNoTrans) {
         /* form  B := alpha * B * inv(TriL(A)) */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = n2; j > 0 && j--;)
-            {
-                if (nonunit)
-                {
+        for (i = 0; i < n1; i++) {
+            for (j = n2; j > 0 && j--;) {
+                if (nonunit) {
                     float Ajj = A[lda * j + j];
                     B[ldb * i + j] /= Ajj;
                 }
 
                 {
                     float Bij = B[ldb * i + j];
-                    for (k = 0; k < j; k++)
-                    {
+                    for (k = 0; k < j; k++) {
                         B[ldb * i + k] -= A[j * lda + k] * Bij;
                     }
                 }
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasLower && trans == CblasTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasLower && trans == CblasTrans) {
         /* form  B := alpha * B * inv(TriL(A))' */
 
-        if (alpha != 1.0)
-        {
-            for (i = 0; i < n1; i++)
-            {
-                for (j = 0; j < n2; j++)
-                {
+        if (alpha != 1.0) {
+            for (i = 0; i < n1; i++) {
+                for (j = 0; j < n2; j++) {
                     B[ldb * i + j] *= alpha;
                 }
             }
         }
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
-                if (nonunit)
-                {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
+                if (nonunit) {
                     float Ajj = A[lda * j + j];
                     B[ldb * i + j] /= Ajj;
                 }
 
                 {
                     float Bij = B[ldb * i + j];
-                    for (k = j + 1; k < n2; k++)
-                    {
+                    for (k = j + 1; k < n2; k++) {
                         B[ldb * i + k] -= A[k * lda + j] * Bij;
                     }
                 }
             }
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
 int us_blas_dtrsm(CBLAS_SIDE_t Side, CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA, CBLAS_DIAG_t Diag,
-                  float alpha, const us_matrix *A, us_matrix *B)
-{
+                  float alpha, const us_matrix* A, us_matrix* B) {
     const size_t M = B->size1;
     const size_t N = B->size2;
     const size_t MA = A->size1;
     const size_t NA = A->size2;
 
-    if (MA != NA)
-    {
+    if (MA != NA) {
         printf("matrix A must be square");
     }
 
-    if ((Side == CblasLeft && M == MA) || (Side == CblasRight && N == MA))
-    {
+    if ((Side == CblasLeft && M == MA) || (Side == CblasRight && N == MA)) {
         cblas_dtrsm(CblasRowMajor, Side, Uplo, TransA, Diag, INT(M), INT(N), alpha, A->data,
                     INT(A->tda), B->data, INT(B->tda));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
 void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
                  const enum CBLAS_TRANSPOSE TransB, const int M, const int N, const int K,
-                 const float alpha, const float *A, const int lda, const float *B, const int ldb,
-                 const float beta, float *C, const int ldc)
-{
+                 const float alpha, const float* A, const int lda, const float* B, const int ldb,
+                 const float beta, float* C, const int ldc) {
     int i, j, k;
     int n1, n2;
     int ldf, ldg;
@@ -3064,8 +2592,7 @@ void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     if (alpha == 0.0 && beta == 1.0)
         return;
 
-    if (Order == CblasRowMajor)
-    {
+    if (Order == CblasRowMajor) {
         n1 = M;
         n2 = N;
         F = A;
@@ -3074,9 +2601,7 @@ void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
         G = B;
         ldg = ldb;
         TransG = (TransB == CblasConjTrans) ? CblasTrans : TransB;
-    }
-    else
-    {
+    } else {
         n1 = N;
         n2 = M;
         F = B;
@@ -3088,22 +2613,15 @@ void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     }
 
     /* form  y := beta*y */
-    if (beta == 0.0)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    if (beta == 0.0) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 C[ldc * i + j] = 0.0;
             }
         }
-    }
-    else if (beta != 1.0)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    } else if (beta != 1.0) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 C[ldc * i + j] *= beta;
             }
         }
@@ -3112,83 +2630,59 @@ void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA
     if (alpha == 0.0)
         return;
 
-    if (TransF == CblasNoTrans && TransG == CblasNoTrans)
-    {
+    if (TransF == CblasNoTrans && TransG == CblasNoTrans) {
         /* form  C := alpha*A*B + C */
 
-        for (k = 0; k < K; k++)
-        {
-            for (i = 0; i < n1; i++)
-            {
+        for (k = 0; k < K; k++) {
+            for (i = 0; i < n1; i++) {
                 const float temp = alpha * F[ldf * i + k];
-                if (temp != 0.0)
-                {
-                    for (j = 0; j < n2; j++)
-                    {
+                if (temp != 0.0) {
+                    for (j = 0; j < n2; j++) {
                         C[ldc * i + j] += temp * G[ldg * k + j];
                     }
                 }
             }
         }
-    }
-    else if (TransF == CblasNoTrans && TransG == CblasTrans)
-    {
+    } else if (TransF == CblasNoTrans && TransG == CblasTrans) {
         /* form  C := alpha*A*B' + C */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
-                for (k = 0; k < K; k++)
-                {
+                for (k = 0; k < K; k++) {
                     temp += F[ldf * i + k] * G[ldg * j + k];
                 }
                 C[ldc * i + j] += alpha * temp;
             }
         }
-    }
-    else if (TransF == CblasTrans && TransG == CblasNoTrans)
-    {
-        for (k = 0; k < K; k++)
-        {
-            for (i = 0; i < n1; i++)
-            {
+    } else if (TransF == CblasTrans && TransG == CblasNoTrans) {
+        for (k = 0; k < K; k++) {
+            for (i = 0; i < n1; i++) {
                 const float temp = alpha * F[ldf * k + i];
-                if (temp != 0.0)
-                {
-                    for (j = 0; j < n2; j++)
-                    {
+                if (temp != 0.0) {
+                    for (j = 0; j < n2; j++) {
                         C[ldc * i + j] += temp * G[ldg * k + j];
                     }
                 }
             }
         }
-    }
-    else if (TransF == CblasTrans && TransG == CblasTrans)
-    {
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+    } else if (TransF == CblasTrans && TransG == CblasTrans) {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
-                for (k = 0; k < K; k++)
-                {
+                for (k = 0; k < K; k++) {
                     temp += F[ldf * k + i] * G[ldg * j + k];
                 }
                 C[ldc * i + j] += alpha * temp;
             }
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
 int us_blas_dgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alpha,
-                  const us_matrix *A, const us_matrix *B, float beta, us_matrix *C)
-{
+                  const us_matrix* A, const us_matrix* B, float beta, us_matrix* C) {
     const size_t M = C->size1;
     const size_t N = C->size2;
     const size_t MA = (TransA == CblasNoTrans) ? A->size1 : A->size2;
@@ -3201,34 +2695,24 @@ int us_blas_dgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alph
         cblas_dgemm(CblasRowMajor, TransA, TransB, INT(M), INT(N), INT(NA), alpha, A->data,
                     INT(A->tda), B->data, INT(B->tda), beta, C->data, INT(C->tda));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-static int LU_decomp_L3(us_matrix *A, us_vector *ipiv)
-{
+static int LU_decomp_L3(us_matrix* A, us_vector* ipiv) {
     const size_t M = A->size1;
     const size_t N = A->size2;
 
-    if (M < N)
-    {
+    if (M < N) {
         printf("matrix must have M >= N");
-    }
-    else if (ipiv->size != GSL_MIN(M, N))
-    {
+    } else if (ipiv->size != GSL_MIN(M, N)) {
         printf("ipiv length must equal MIN(M,N)");
-    }
-    else if (N <= CROSSOVER_LU)
-    {
+    } else if (N <= CROSSOVER_LU) {
         /* use Level 2 algorithm */
         return LU_decomp_L2(A, ipiv);
-    }
-    else
-    {
+    } else {
         /*
          * partition matrix:
          *
@@ -3285,51 +2769,43 @@ static int LU_decomp_L3(us_matrix *A, us_vector *ipiv)
         apply_pivots(&A21.matrix, &ipiv2.vector);
 
         /* shift pivots */
-        for (i = 0; i < N2; ++i)
-        {
-            float *ptr = us_vector_float_ptr(&ipiv2.vector, i);
+        for (i = 0; i < N2; ++i) {
+            float* ptr = us_vector_float_ptr(&ipiv2.vector, i);
             *ptr += N1;
         }
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 }
 
-void permutation_init(us_permutation *p)
-{
+void permutation_init(us_permutation* p) {
     const size_t n = p->size;
     size_t i;
 
-    for (i = 0; i < n; i++)
-    {
+    for (i = 0; i < n; i++) {
         p->data[i] = i;
     }
 }
 
-int us_linalg_LU_decomp(us_matrix *A, us_permutation *p, int *signum)
-{
+int us_linalg_LU_decomp(us_matrix* A, us_permutation* p, int* signum) {
     const size_t M = A->size1;
 
-    if (p->size != M)
-    {
+    if (p->size != M) {
         printf("permutation length must match matrix size1\n");
-    }
-    else
-    {
+    } else {
         int status;
         const size_t N = A->size2;
         const size_t minMN = GSL_MIN(M, N);
-        us_vector_float *ipiv =
-            us_vector_float_alloc(minMN);   // 这里可以是int，它就存个行列号，待优化
+        us_vector_float* ipiv =
+            us_vector_float_alloc(minMN); // 这里可以是int，它就存个行列号，待优化
         us_matrix_float_view AL = us_matrix_submatrix(A, 0, 0, M, minMN);
         size_t i;
 
         status = LU_decomp_L3(&AL.matrix, ipiv);
 
         /* process remaining right matrix */
-        if (M < N)
-        {
+        if (M < N) {
             us_matrix_float_view AR = us_matrix_submatrix(A, 0, M, M, N - M);
 
             /* apply pivots to AR */
@@ -3345,12 +2821,10 @@ int us_linalg_LU_decomp(us_matrix *A, us_permutation *p, int *signum)
         permutation_init(p);
         *signum = 1;
 
-        for (i = 0; i < minMN; ++i)
-        {
+        for (i = 0; i < minMN; ++i) {
             unsigned int pivi = us_vector_float_get(ipiv, i);
 
-            if (p->data[pivi] != p->data[i])
-            {
+            if (p->data[pivi] != p->data[i]) {
                 size_t tmp = p->data[pivi];
                 p->data[pivi] = p->data[i];
                 p->data[i] = tmp;
@@ -3361,15 +2835,13 @@ int us_linalg_LU_decomp(us_matrix *A, us_permutation *p, int *signum)
         us_vector_float_free(ipiv);
         return status;
     }
-     return -1;
+    return -1;
 }
 
-static int triangular_singular(const us_matrix *T)
-{
+static int triangular_singular(const us_matrix* T) {
     size_t i;
 
-    for (i = 0; i < T->size1; ++i)
-    {
+    for (i = 0; i < T->size1; ++i) {
         float Tii = us_matrix_float_get(T, i, i);
         if (Tii == 0.0)
             return GSL_ESING;
@@ -3380,8 +2852,7 @@ static int triangular_singular(const us_matrix *T)
 
 void cblas_dtrmv(const enum CBLAS_ORDER order, const enum CBLAS_UPLO Uplo,
                  const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_DIAG Diag, const int N,
-                 const float *A, const int lda, float *X, const int incX)
-{
+                 const float* A, const int lda, float* X, const int incX) {
     int i, j;
 
     const int nonunit = (Diag == CblasNonUnit);
@@ -3390,130 +2861,97 @@ void cblas_dtrmv(const enum CBLAS_ORDER order, const enum CBLAS_UPLO Uplo,
     // CHECK_ARGS9(TRMV,order,Uplo,TransA,Diag,N,A,lda,X,incX);
 
     if ((order == CblasRowMajor && Trans == CblasNoTrans && Uplo == CblasUpper) ||
-        (order == CblasColMajor && Trans == CblasTrans && Uplo == CblasLower))
-    {
+        (order == CblasColMajor && Trans == CblasTrans && Uplo == CblasLower)) {
         /* form  x := A*x */
 
         int ix = OFFSET(N, incX);
-        for (i = 0; i < N; i++)
-        {
+        for (i = 0; i < N; i++) {
             float temp = 0.0;
             const int j_min = i + 1;
             const int j_max = N;
             int jx = OFFSET(N, incX) + j_min * incX;
-            for (j = j_min; j < j_max; j++)
-            {
+            for (j = j_min; j < j_max; j++) {
                 temp += X[jx] * A[lda * i + j];
                 jx += incX;
             }
-            if (nonunit)
-            {
+            if (nonunit) {
                 X[ix] = temp + X[ix] * A[lda * i + i];
-            }
-            else
-            {
+            } else {
                 X[ix] += temp;
             }
             ix += incX;
         }
-    }
-    else if ((order == CblasRowMajor && Trans == CblasNoTrans && Uplo == CblasLower) ||
-             (order == CblasColMajor && Trans == CblasTrans && Uplo == CblasUpper))
-    {
+    } else if ((order == CblasRowMajor && Trans == CblasNoTrans && Uplo == CblasLower) ||
+               (order == CblasColMajor && Trans == CblasTrans && Uplo == CblasUpper)) {
         int ix = OFFSET(N, incX) + (N - 1) * incX;
-        for (i = N; i > 0 && i--;)
-        {
+        for (i = N; i > 0 && i--;) {
             float temp = 0.0;
             const int j_min = 0;
             const int j_max = i;
             int jx = OFFSET(N, incX) + j_min * incX;
-            for (j = j_min; j < j_max; j++)
-            {
+            for (j = j_min; j < j_max; j++) {
                 temp += X[jx] * A[lda * i + j];
                 jx += incX;
             }
-            if (nonunit)
-            {
+            if (nonunit) {
                 X[ix] = temp + X[ix] * A[lda * i + i];
-            }
-            else
-            {
+            } else {
                 X[ix] += temp;
             }
             ix -= incX;
         }
-    }
-    else if ((order == CblasRowMajor && Trans == CblasTrans && Uplo == CblasUpper) ||
-             (order == CblasColMajor && Trans == CblasNoTrans && Uplo == CblasLower))
-    {
+    } else if ((order == CblasRowMajor && Trans == CblasTrans && Uplo == CblasUpper) ||
+               (order == CblasColMajor && Trans == CblasNoTrans && Uplo == CblasLower)) {
         /* form  x := A'*x */
         int ix = OFFSET(N, incX) + (N - 1) * incX;
-        for (i = N; i > 0 && i--;)
-        {
+        for (i = N; i > 0 && i--;) {
             float temp = 0.0;
             const int j_min = 0;
             const int j_max = i;
             int jx = OFFSET(N, incX) + j_min * incX;
-            for (j = j_min; j < j_max; j++)
-            {
+            for (j = j_min; j < j_max; j++) {
                 temp += X[jx] * A[lda * j + i];
                 jx += incX;
             }
-            if (nonunit)
-            {
+            if (nonunit) {
                 X[ix] = temp + X[ix] * A[lda * i + i];
-            }
-            else
-            {
+            } else {
                 X[ix] += temp;
             }
             ix -= incX;
         }
-    }
-    else if ((order == CblasRowMajor && Trans == CblasTrans && Uplo == CblasLower) ||
-             (order == CblasColMajor && Trans == CblasNoTrans && Uplo == CblasUpper))
-    {
+    } else if ((order == CblasRowMajor && Trans == CblasTrans && Uplo == CblasLower) ||
+               (order == CblasColMajor && Trans == CblasNoTrans && Uplo == CblasUpper)) {
         int ix = OFFSET(N, incX);
-        for (i = 0; i < N; i++)
-        {
+        for (i = 0; i < N; i++) {
             float temp = 0.0;
             const int j_min = i + 1;
             const int j_max = N;
             int jx = OFFSET(N, incX) + (i + 1) * incX;
-            for (j = j_min; j < j_max; j++)
-            {
+            for (j = j_min; j < j_max; j++) {
                 temp += X[jx] * A[lda * j + i];
                 jx += incX;
             }
-            if (nonunit)
-            {
+            if (nonunit) {
                 X[ix] = temp + X[ix] * A[lda * i + i];
-            }
-            else
-            {
+            } else {
                 X[ix] += temp;
             }
             ix += incX;
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
 int us_blas_dtrmv(CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA, CBLAS_DIAG_t Diag,
-                  const us_matrix *A, us_vector *X)
-{
+                  const us_matrix* A, us_vector* X) {
     const size_t M = A->size1;
     const size_t N = A->size2;
 
-    if (M != N)
-    {
+    if (M != N) {
         printf("matrix must be square");
-    }
-    else if (N != X->size)
-    {
+    } else if (N != X->size) {
         printf("invalid length");
     }
 
@@ -3522,39 +2960,29 @@ int us_blas_dtrmv(CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA, CBLAS_DIAG_t Diag
     return GSL_SUCCESS;
 }
 
-static int triangular_inverse_L2(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
-{
+static int triangular_inverse_L2(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix* T) {
     const size_t N = T->size1;
 
-    if (N != T->size2)
-    {
+    if (N != T->size2) {
         printf("matrix must be square");
-    }
-    else
-    {
+    } else {
         us_matrix_float_view m;
         us_vector_float_view v;
         size_t i;
 
-        if (Uplo == CblasUpper)
-        {
-            for (i = 0; i < N; ++i)
-            {
+        if (Uplo == CblasUpper) {
+            for (i = 0; i < N; ++i) {
                 float aii;
 
-                if (Diag == CblasNonUnit)
-                {
-                    float *Tii = us_matrix_ptr(T, i, i);
+                if (Diag == CblasNonUnit) {
+                    float* Tii = us_matrix_ptr(T, i, i);
                     *Tii = 1.0 / *Tii;
                     aii = -(*Tii);
-                }
-                else
-                {
+                } else {
                     aii = -1.0;
                 }
 
-                if (i > 0)
-                {
+                if (i > 0) {
                     m = us_matrix_submatrix(T, 0, 0, i, i);
                     v = us_matrix_subcolumn(T, i, 0, i);
 
@@ -3563,27 +2991,20 @@ static int triangular_inverse_L2(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
                     us_blas_dscal(aii, &v.vector);
                 }
             } /* for (i = 0; i < N; ++i) */
-        }
-        else
-        {
-            for (i = 0; i < N; ++i)
-            {
+        } else {
+            for (i = 0; i < N; ++i) {
                 float ajj;
                 size_t j = N - i - 1;
 
-                if (Diag == CblasNonUnit)
-                {
-                    float *Tjj = us_matrix_ptr(T, j, j);
+                if (Diag == CblasNonUnit) {
+                    float* Tjj = us_matrix_ptr(T, j, j);
                     *Tjj = 1.0 / *Tjj;
                     ajj = -(*Tjj);
-                }
-                else
-                {
+                } else {
                     ajj = -1.0;
                 }
 
-                if (j < N - 1)
-                {
+                if (j < N - 1) {
                     m = us_matrix_submatrix(T, j + 1, j + 1, N - j - 1, N - j - 1);
                     v = us_matrix_subcolumn(T, j, j + 1, N - j - 1);
 
@@ -3596,14 +3017,13 @@ static int triangular_inverse_L2(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
 
         return GSL_SUCCESS;
     }
-     return -1;
+    return -1;
 }
 
 void cblas_dtrmm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
                  const enum CBLAS_UPLO Uplo, const enum CBLAS_TRANSPOSE TransA,
                  const enum CBLAS_DIAG Diag, const int M, const int N, const float alpha,
-                 const float *A, const int lda, float *B, const int ldb)
-{
+                 const float* A, const int lda, float* B, const int ldb) {
     int i, j, k;
     int n1, n2;
 
@@ -3612,16 +3032,13 @@ void cblas_dtrmm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
 
     // CHECK_ARGS12(TRMM,Order,Side,Uplo,TransA,Diag,M,N,alpha,A,lda,B,ldb);
 
-    if (Order == CblasRowMajor)
-    {
+    if (Order == CblasRowMajor) {
         n1 = M;
         n2 = N;
         side = Side;
         uplo = Uplo;
         trans = (TransA == CblasConjTrans) ? CblasTrans : TransA;
-    }
-    else
-    {
+    } else {
         n1 = N;
         n2 = M;
         side = (Side == CblasLeft) ? CblasRight : CblasLeft;
@@ -3629,277 +3046,201 @@ void cblas_dtrmm(const enum CBLAS_ORDER Order, const enum CBLAS_SIDE Side,
         trans = (TransA == CblasConjTrans) ? CblasTrans : TransA;
     }
 
-    if (side == CblasLeft && uplo == CblasUpper && trans == CblasNoTrans)
-    {
+    if (side == CblasLeft && uplo == CblasUpper && trans == CblasNoTrans) {
         /* form  B := alpha * TriU(A)*B */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp = A[i * lda + i] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp = B[i * ldb + j];
                 }
 
-                for (k = i + 1; k < n1; k++)
-                {
+                for (k = i + 1; k < n1; k++) {
                     temp += A[lda * i + k] * B[k * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasUpper && trans == CblasTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasUpper && trans == CblasTrans) {
         /* form  B := alpha * (TriU(A))' *B */
 
-        for (i = n1; i > 0 && i--;)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = n1; i > 0 && i--;) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                for (k = 0; k < i; k++)
-                {
+                for (k = 0; k < i; k++) {
                     temp += A[lda * k + i] * B[k * ldb + j];
                 }
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp += A[i * lda + i] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp += B[i * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasLower && trans == CblasNoTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasLower && trans == CblasNoTrans) {
         /* form  B := alpha * TriL(A)*B */
 
-        for (i = n1; i > 0 && i--;)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = n1; i > 0 && i--;) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                for (k = 0; k < i; k++)
-                {
+                for (k = 0; k < i; k++) {
                     temp += A[lda * i + k] * B[k * ldb + j];
                 }
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp += A[i * lda + i] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp += B[i * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasLeft && uplo == CblasLower && trans == CblasTrans)
-    {
+    } else if (side == CblasLeft && uplo == CblasLower && trans == CblasTrans) {
         /* form  B := alpha * TriL(A)' *B */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp = A[i * lda + i] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp = B[i * ldb + j];
                 }
 
-                for (k = i + 1; k < n1; k++)
-                {
+                for (k = i + 1; k < n1; k++) {
                     temp += A[lda * k + i] * B[k * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasUpper && trans == CblasNoTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasUpper && trans == CblasNoTrans) {
         /* form  B := alpha * B * TriU(A) */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = n2; j > 0 && j--;)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = n2; j > 0 && j--;) {
                 float temp = 0.0;
 
-                for (k = 0; k < j; k++)
-                {
+                for (k = 0; k < j; k++) {
                     temp += A[lda * k + j] * B[i * ldb + k];
                 }
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp += A[j * lda + j] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp += B[i * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasUpper && trans == CblasTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasUpper && trans == CblasTrans) {
         /* form  B := alpha * B * (TriU(A))' */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp = A[j * lda + j] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp = B[i * ldb + j];
                 }
 
-                for (k = j + 1; k < n2; k++)
-                {
+                for (k = j + 1; k < n2; k++) {
                     temp += A[lda * j + k] * B[i * ldb + k];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasLower && trans == CblasNoTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasLower && trans == CblasNoTrans) {
         /* form  B := alpha *B * TriL(A) */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = 0; j < n2; j++)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = 0; j < n2; j++) {
                 float temp = 0.0;
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp = A[j * lda + j] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp = B[i * ldb + j];
                 }
 
-                for (k = j + 1; k < n2; k++)
-                {
+                for (k = j + 1; k < n2; k++) {
                     temp += A[lda * k + j] * B[i * ldb + k];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else if (side == CblasRight && uplo == CblasLower && trans == CblasTrans)
-    {
+    } else if (side == CblasRight && uplo == CblasLower && trans == CblasTrans) {
         /* form  B := alpha * B * TriL(A)' */
 
-        for (i = 0; i < n1; i++)
-        {
-            for (j = n2; j > 0 && j--;)
-            {
+        for (i = 0; i < n1; i++) {
+            for (j = n2; j > 0 && j--;) {
                 float temp = 0.0;
 
-                for (k = 0; k < j; k++)
-                {
+                for (k = 0; k < j; k++) {
                     temp += A[lda * j + k] * B[i * ldb + k];
                 }
 
-                if (nonunit)
-                {
+                if (nonunit) {
                     temp += A[j * lda + j] * B[i * ldb + j];
-                }
-                else
-                {
+                } else {
                     temp += B[i * ldb + j];
                 }
 
                 B[ldb * i + j] = alpha * temp;
             }
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
 int us_blas_dtrmm(CBLAS_SIDE_t Side, CBLAS_UPLO_t Uplo, CBLAS_TRANSPOSE_t TransA, CBLAS_DIAG_t Diag,
-                  float alpha, const us_matrix *A, us_matrix *B)
-{
+                  float alpha, const us_matrix* A, us_matrix* B) {
     const size_t M = B->size1;
     const size_t N = B->size2;
     const size_t MA = A->size1;
     const size_t NA = A->size2;
 
-    if (MA != NA)
-    {
+    if (MA != NA) {
         printf("matrix A must be square");
     }
 
-    if ((Side == CblasLeft && M == MA) || (Side == CblasRight && N == MA))
-    {
+    if ((Side == CblasLeft && M == MA) || (Side == CblasRight && N == MA)) {
         cblas_dtrmm(CblasRowMajor, Side, Uplo, TransA, Diag, INT(M), INT(N), alpha, A->data,
                     INT(A->tda), B->data, INT(B->tda));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
     }
-     return -1;
+    return -1;
 }
 
-static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
-{
+static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix* T) {
     const size_t N = T->size1;
 
-    if (N != T->size2)
-    {
+    if (N != T->size2) {
         printf("matrix must be square");
-    }
-    else if (N <= CROSSOVER_INVTRI)
-    {
+    } else if (N <= CROSSOVER_INVTRI) {
         /* use Level 2 BLAS code */
         return triangular_inverse_L2(Uplo, Diag, T);
-    }
-    else
-    {
+    } else {
         /*
          * partition matrix:
          *
@@ -3921,16 +3262,13 @@ static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
         if (status)
             return status;
 
-        if (Uplo == CblasLower)
-        {
+        if (Uplo == CblasLower) {
             /* T21 = - T21 * T11 */
             us_blas_dtrmm(CblasRight, Uplo, CblasNoTrans, Diag, -1.0, &T11.matrix, &T21.matrix);
 
             /* T21 = T22 * T21^{-1} */
             us_blas_dtrsm(CblasLeft, Uplo, CblasNoTrans, Diag, 1.0, &T22.matrix, &T21.matrix);
-        }
-        else
-        {
+        } else {
             /* T12 = - T11 * T12 */
             us_blas_dtrmm(CblasLeft, Uplo, CblasNoTrans, Diag, -1.0, &T11.matrix, &T12.matrix);
 
@@ -3944,19 +3282,16 @@ static int triangular_inverse_L3(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix
             return status;
 
         return GSL_SUCCESS;
-    } return -1;
+    }
+    return -1;
 }
 
-int us_linalg_tri_invert(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
-{
+int us_linalg_tri_invert(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix* T) {
     const size_t N = T->size1;
 
-    if (N != T->size2)
-    {
+    if (N != T->size2) {
         printf("matrix must be square");
-    }
-    else
-    {
+    } else {
         int status;
 
         status = triangular_singular(T);
@@ -3964,13 +3299,13 @@ int us_linalg_tri_invert(CBLAS_UPLO_t Uplo, CBLAS_DIAG_t Diag, us_matrix *T)
             return status;
 
         return triangular_inverse_L3(Uplo, Diag, T);
-    } return -1;
+    }
+    return -1;
 }
 
 void cblas_dgemv(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE TransA, const int M,
-                 const int N, const float alpha, const float *A, const int lda, const float *X,
-                 const int incX, const float beta, float *Y, const int incY)
-{
+                 const int N, const float alpha, const float* A, const int lda, const float* X,
+                 const int incX, const float beta, float* Y, const int incY) {
     int i, j;
     int lenX, lenY;
 
@@ -3984,32 +3319,24 @@ void cblas_dgemv(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE TransA
     if (alpha == 0.0 && beta == 1.0)
         return;
 
-    if (Trans == CblasNoTrans)
-    {
+    if (Trans == CblasNoTrans) {
         lenX = N;
         lenY = M;
-    }
-    else
-    {
+    } else {
         lenX = M;
         lenY = N;
     }
 
     /* form  y := beta*y */
-    if (beta == 0.0)
-    {
+    if (beta == 0.0) {
         int iy = OFFSET(lenY, incY);
-        for (i = 0; i < lenY; i++)
-        {
+        for (i = 0; i < lenY; i++) {
             Y[iy] = 0.0;
             iy += incY;
         }
-    }
-    else if (beta != 1.0)
-    {
+    } else if (beta != 1.0) {
         int iy = OFFSET(lenY, incY);
-        for (i = 0; i < lenY; i++)
-        {
+        for (i = 0; i < lenY; i++) {
             Y[iy] *= beta;
             iy += incY;
         }
@@ -4019,81 +3346,66 @@ void cblas_dgemv(const enum CBLAS_ORDER order, const enum CBLAS_TRANSPOSE TransA
         return;
 
     if ((order == CblasRowMajor && Trans == CblasNoTrans) ||
-        (order == CblasColMajor && Trans == CblasTrans))
-    {
+        (order == CblasColMajor && Trans == CblasTrans)) {
         /* form  y := alpha*A*x + y */
         int iy = OFFSET(lenY, incY);
-        for (i = 0; i < lenY; i++)
-        {
+        for (i = 0; i < lenY; i++) {
             float temp = 0.0;
             int ix = OFFSET(lenX, incX);
-            for (j = 0; j < lenX; j++)
-            {
+            for (j = 0; j < lenX; j++) {
                 temp += X[ix] * A[lda * i + j];
                 ix += incX;
             }
             Y[iy] += alpha * temp;
             iy += incY;
         }
-    }
-    else if ((order == CblasRowMajor && Trans == CblasTrans) ||
-             (order == CblasColMajor && Trans == CblasNoTrans))
-    {
+    } else if ((order == CblasRowMajor && Trans == CblasTrans) ||
+               (order == CblasColMajor && Trans == CblasNoTrans)) {
         /* form  y := alpha*A'*x + y */
         int ix = OFFSET(lenX, incX);
-        for (j = 0; j < lenX; j++)
-        {
+        for (j = 0; j < lenX; j++) {
             const float temp = alpha * X[ix];
-            if (temp != 0.0)
-            {
+            if (temp != 0.0) {
                 int iy = OFFSET(lenY, incY);
-                for (i = 0; i < lenY; i++)
-                {
+                for (i = 0; i < lenY; i++) {
                     Y[iy] += temp * A[lda * j + i];
                     iy += incY;
                 }
             }
             ix += incX;
         }
-    }
-    else
-    {
+    } else {
         printf("unrecognized operation");
     }
 }
 
-int us_blas_dgemv(CBLAS_TRANSPOSE_t TransA, float alpha, const us_matrix *A, const us_vector *X,
-                  float beta, us_vector *Y)
-{
+int us_blas_dgemv(CBLAS_TRANSPOSE_t TransA, float alpha, const us_matrix* A, const us_vector* X,
+                  float beta, us_vector* Y) {
     const size_t M = A->size1;
     const size_t N = A->size2;
 
     if ((TransA == CblasNoTrans && N == X->size && M == Y->size) ||
-        (TransA == CblasTrans && M == X->size && N == Y->size))
-    {
+        (TransA == CblasTrans && M == X->size && N == Y->size)) {
         cblas_dgemv(CblasRowMajor, TransA, INT(M), INT(N), alpha, A->data, INT(A->tda), X->data,
                     INT(X->stride), beta, Y->data, INT(Y->stride));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
-    } return -1;
+    }
+    return -1;
 }
 
-float cblas_ddot(const int N, const float *X, const int incX, const float *Y, const int incY)
-{
+float cblas_ddot(const int N, const float* X, const int incX, const float* Y, const int incY) {
 #define INIT_VAL 0.0
 #define ACC_TYPE float
-#define BASE     float
+#define BASE float
 
     ACC_TYPE r = INIT_VAL;
     int i;
     int ix = OFFSET(N, incX);
     int iy = OFFSET(N, incY);
 
-    for (i = 0; i < N; i++)
-    {
+    for (i = 0; i < N; i++) {
         r += X[ix] * Y[iy];
         ix += incX;
         iy += incY;
@@ -4106,46 +3418,36 @@ float cblas_ddot(const int N, const float *X, const int incX, const float *Y, co
 #undef INIT_VAL
 }
 
-int us_blas_ddot(const us_vector *X, const us_vector *Y, float *result)
-{
-    if (X->size == Y->size)
-    {
+int us_blas_ddot(const us_vector* X, const us_vector* Y, float* result) {
+    if (X->size == Y->size) {
         *result = cblas_ddot(INT(X->size), X->data, INT(X->stride), Y->data, INT(Y->stride));
         return GSL_SUCCESS;
-    }
-    else
-    {
+    } else {
         printf("invalid length");
-    } return -1;
+    }
+    return -1;
 }
 
-static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix *A)
-{
+static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix* A) {
     const size_t N = A->size1;
 
-    if (N != A->size2)
-    {
+    if (N != A->size2) {
         printf("matrix must be square");
-    }
-    else
-    {
+    } else {
         size_t i;
 
         /* quick return */
         if (N == 1)
             return GSL_SUCCESS;
 
-        if (Uplo == CblasUpper)
-        {
+        if (Uplo == CblasUpper) {
             /* compute U * L and store in A */
 
-            for (i = 0; i < N; ++i)
-            {
-                float *Aii = us_matrix_ptr(A, i, i);
+            for (i = 0; i < N; ++i) {
+                float* Aii = us_matrix_ptr(A, i, i);
                 float Uii = *Aii;
 
-                if (i < N - 1)
-                {
+                if (i < N - 1) {
                     us_vector_float_view lb = us_matrix_subcolumn(A, i, i + 1, N - i - 1);
                     us_vector_float_view ur = us_matrix_subrow(A, i, i + 1, N - i - 1);
                     float tmp;
@@ -4153,8 +3455,7 @@ static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix *A)
                     us_blas_ddot(&lb.vector, &ur.vector, &tmp);
                     *Aii += tmp;
 
-                    if (i > 0)
-                    {
+                    if (i > 0) {
                         us_matrix_float_view U_TR = us_matrix_submatrix(A, 0, i + 1, i, N - i - 1);
                         us_matrix_float_view L_BL = us_matrix_submatrix(A, i + 1, 0, N - i - 1, i);
                         us_vector_float_view ut = us_matrix_subcolumn(A, i, 0, i);
@@ -4163,36 +3464,27 @@ static int triangular_mult_L2(CBLAS_UPLO_t Uplo, us_matrix *A)
                         us_blas_dgemv(CblasTrans, 1.0, &L_BL.matrix, &ur.vector, Uii, &ll.vector);
                         us_blas_dgemv(CblasNoTrans, 1.0, &U_TR.matrix, &lb.vector, 1.0, &ut.vector);
                     }
-                }
-                else
-                {
+                } else {
                     us_vector_float_view v = us_matrix_subrow(A, N - 1, 0, N - 1);
                     us_blas_dscal(Uii, &v.vector);
                 }
             }
-        }
-        else
-        {
+        } else {
         }
 
         return GSL_SUCCESS;
-    } return -1;
+    }
+    return -1;
 }
 
-static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix *A)
-{
+static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix* A) {
     const size_t N = A->size1;
 
-    if (N != A->size2)
-    {
+    if (N != A->size2) {
         printf("matrix must be square");
-    }
-    else if (N <= CROSSOVER_TRIMULT)
-    {
+    } else if (N <= CROSSOVER_TRIMULT) {
         return triangular_mult_L2(Uplo, A);
-    }
-    else
-    {
+    } else {
         /* partition matrix:
          *
          * A11 A12
@@ -4213,11 +3505,8 @@ static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix *A)
         if (status)
             return status;
 
-        if (Uplo == CblasLower)
-        {
-        }
-        else
-        {
+        if (Uplo == CblasLower) {
+        } else {
             /* form U * L */
 
             /* A11 += A12 A21 */
@@ -4239,18 +3528,16 @@ static int triangular_mult_L3(CBLAS_UPLO_t Uplo, us_matrix *A)
             return status;
 
         return GSL_SUCCESS;
-    } return -1;
+    }
+    return -1;
 }
 
-int us_linalg_tri_UL(us_matrix *LU)
-{
+int us_linalg_tri_UL(us_matrix* LU) {
     return triangular_mult_L3(CblasUpper, LU);
 }
 
-int us_permute_vector_inverse(const us_permutation *p, us_vector *v)
-{
-    if (v->size != p->size)
-    {
+int us_permute_vector_inverse(const us_permutation* p, us_vector* v) {
+    if (v->size != p->size) {
         printf("vector and permutation must be the same length");
     }
 
@@ -4259,12 +3546,10 @@ int us_permute_vector_inverse(const us_permutation *p, us_vector *v)
     return GSL_SUCCESS;
 }
 
-static int singular(const us_matrix *LU)
-{
+static int singular(const us_matrix* LU) {
     size_t i, n = LU->size1;
 
-    for (i = 0; i < n; i++)
-    {
+    for (i = 0; i < n; i++) {
         double u = us_matrix_float_get(LU, i, i);
         if (u == 0)
             return 1;
@@ -4273,22 +3558,14 @@ static int singular(const us_matrix *LU)
     return 0;
 }
 
-int us_linalg_LU_invx(us_matrix *LU, const us_permutation *p)
-{
-    if (LU->size1 != LU->size2)
-    {
+int us_linalg_LU_invx(us_matrix* LU, const us_permutation* p) {
+    if (LU->size1 != LU->size2) {
         printf("LU matrix must be square");
-    }
-    else if (LU->size1 != p->size)
-    {
+    } else if (LU->size1 != p->size) {
         printf("permutation length must match matrix size");
-    }
-    else if (singular(LU))
-    {
+    } else if (singular(LU)) {
         printf("matrix is fking singular!!!\n");
-    }
-    else
-    {
+    } else {
         int status;
         const size_t N = LU->size1;
         size_t i;
@@ -4309,33 +3586,26 @@ int us_linalg_LU_invx(us_matrix *LU, const us_permutation *p)
             return status;
 
         /* apply permutation to columns of A^{-1} */
-        for (i = 0; i < N; ++i)
-        {
+        for (i = 0; i < N; ++i) {
             us_vector_float_view v = us_matrix_row(LU, i);
             us_permute_vector_inverse(p, &v.vector);
         }
 
         return GSL_SUCCESS;
-    } return -1;
+    }
+    return -1;
 }
 
-int us_linalg_LU_invert(const us_matrix *LU, const us_permutation *p, us_matrix *inverse)
-{
-    if (LU->size1 != LU->size2)
-    {
+int us_linalg_LU_invert(const us_matrix* LU, const us_permutation* p, us_matrix* inverse) {
+    if (LU->size1 != LU->size2) {
         printf("LU matrix must be square");
-    }
-    else if (LU->size1 != p->size)
-    {
+    } else if (LU->size1 != p->size) {
         printf("permutation length must match matrix size");
-    }
-    else if (inverse->size1 != LU->size1 || inverse->size2 != LU->size2)
-    {
+    } else if (inverse->size1 != LU->size1 || inverse->size2 != LU->size2) {
         printf("inverse matrix must match LU matrix dimensions");
-    }
-    else
-    {
+    } else {
         us_matrix_memcpy(inverse, LU);
         return us_linalg_LU_invx(inverse, p);
-    } return -1;
+    }
+    return -1;
 }

@@ -13,9 +13,11 @@
 
 class box_base : public QMainWindow {
     Q_OBJECT
-public:
+
+  public:
     explicit box_base(QWidget* parent = nullptr);
     ~box_base();
+
     template <class WidgetType>
     void CreatWindow(QMainWindow* parent) {
         const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
@@ -26,13 +28,10 @@ public:
         formRow = SETTINGS.value("User/formRow", "1").toInt();
 
         QVBoxLayout* vlayout = new QVBoxLayout(parent->centralWidget());
-
-        // 创建一个列表以存储所有的 WidgetType 对象
         for (int i = 0; i < formRow; i++) {
             QHBoxLayout* hlayout = new QHBoxLayout(parent);
             for (int j = 0; j < formColumn; j++) {
-                int index = i * formColumn + j;  // 计算索引值
-                // 使用 WidgetType 类型定义对象类型，并调用构造函数
+                const int index = i * formColumn + j;
                 WidgetType* currentWidget = new WidgetType(index + 1, parent);
                 hlayout->addWidget(currentWidget);
                 testList.append(currentWidget);
@@ -40,7 +39,6 @@ public:
             vlayout->addLayout(hlayout);
         }
         testList[0]->getMacLineEdit()->setFocus();
-
         qDebug() << "当前为1拖" << formColumn * formRow;
         qDebug() << "testList.size" << testList.size();
     }
@@ -48,42 +46,45 @@ public:
     bool checkStateReady(std::vector<int> States);
     void ShowData(QMainWindow* parent);
     void TotallyTask();
-    QList<test_base*> testList;
     void signalAndslot();
     void recoverCustom();
     void waitWork(int ms);
+
+    QList<test_base*> testList;
     MesPacketData pack;
     std::vector<int> FixTureStates;
 
-public slots:
+  public slots:
     virtual void checkAllover(int);
-    virtual void checkAllTest(int){};
-    virtual void resetall(){};
+    virtual void checkAllTest(int) {
+    }
+    virtual void resetall() {
+    }
     void checkAndUpdateFile();
     void startAllReturnPressed();
     void setting_ui();
-private slots:
+
+  private slots:
     void reset_vector(int i);
     void loginMes();
     void initData();
     void saveCustom();
     void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
 
-private:
+  private:
     QMesManager* MesManager = new QMesManager();
-    QNetworkAccessManager* updatamanager;
-    int formRow = 1;     // 记录总共是几行几列的窗口
-    int formColumn = 1;  // 记录总共是几行几列的窗口
+    QNetworkAccessManager* updatamanager = nullptr;
+    int formRow = 1;
+    int formColumn = 1;
     bool isTestContinue = true;
-    qsetting* qsetting_ui = NULL;
+    qsetting* qsetting_ui = nullptr;
 
-protected:
+  protected:
     void closeEvent(QCloseEvent* event) override;
 
-signals:
+  signals:
     void go_screen_next(int);
-
     void sendBoxLog(QString);
 };
 
-#endif  // BOX_BASE_H
+#endif // BOX_BASE_H

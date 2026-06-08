@@ -1,0 +1,21 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 0
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+SortIncludes: false
+IncludeBlocks: Preserve
+PointerAlignment: Left
+ReflowComments: false
+AlignOperands: false
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+BinPackParameters: true
+BinPackArguments: true
+...

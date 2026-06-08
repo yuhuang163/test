@@ -50,10 +50,8 @@
 #include "root_ble_ota.h"
 #include "serial_channel.h"
 
-
-
 extern "C" {
-#include "md5.h"  // 引入 tiny-AES-c 的头文件
+#include "md5.h" // 引入 tiny-AES-c 的头文件
 }
 #include "camerabox.h"
 #include "usmile_ring_buffer.h"
@@ -61,33 +59,33 @@ Q_DECLARE_METATYPE(FacErrorCode)
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
-    class MainWindow;
+class MainWindow;
 }
 
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
-public:
+  public:
     /*摄像头传图部分*/
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;
     int dataNumber = 0;
 #define CRC16(data, len) crc16_compute((const uint8_t*)(data), len, NULL)
-#define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC  // 0xAAAAAAAAAAAAAAAA
+#define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC // 0xAAAAAAAAAAAAAAAA
 
-#define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
+#define UART_PHY_LAYER_HEAD_SIZE 9 // 头大小
 #define UART_PHY_LAYER_LENGTH 1
 #define UART_PHY_LAYER_HEADER_ADN_LEN (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_LENGTH)
 
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
+#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct) // 头大小
 #define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
 
     typedef enum {
-        PHY_CHANNEL_INVALID = 0,  //无效值
-        PHY_CHANNEL_CAMREA,       //摄像头通道
-        PHY_CHANNEL_LOG,          // LOG数据通道
+        PHY_CHANNEL_INVALID = 0, //无效值
+        PHY_CHANNEL_CAMREA,      //摄像头通道
+        PHY_CHANNEL_LOG,         // LOG数据通道
 
     } ext_ble_phy_channel_e;
 
@@ -99,14 +97,14 @@ public:
         int height;
         int format;
         int reserved;
-        int data_crc16;                        // 图像帧校验
-        uint32_t data_size;                    // 图像帧长度
-        uint8_t exposure_time_max;             // 最大曝光时间
-        uint8_t exposure_time_mini;            // 最小曝光时间
-        uint8_t exposure_time;                 // 设置曝光时间
-        uint8_t exposure_time_rate_of_change;  // 最大曝光时间变化
-        uint8_t brightness_target;             // 目标亮度 范围：0~255
-        uint8_t data[0];                       // 图像帧内容.
+        int data_crc16;                       // 图像帧校验
+        uint32_t data_size;                   // 图像帧长度
+        uint8_t exposure_time_max;            // 最大曝光时间
+        uint8_t exposure_time_mini;           // 最小曝光时间
+        uint8_t exposure_time;                // 设置曝光时间
+        uint8_t exposure_time_rate_of_change; // 最大曝光时间变化
+        uint8_t brightness_target;            // 目标亮度 范围：0~255
+        uint8_t data[0];                      // 图像帧内容.
         // 20 12 00 00 00 00 00 00 b4000000 c8000000 00000000 a5a5a5a5 53040000
         // data_size开始 :a08c0000 78 01 3c 05 78
     } ext_picture_layer_t;
@@ -121,12 +119,12 @@ public:
 #pragma pack()
     ImageViewer* viewercamrea;
     QMutex mutex;
-    usmile_ring_buffer_t p_dongleRingBuffer;  // 串口的队列指针
-    usmile_ring_buffer_t p_cameraRingBuffer;  // 摄像头的队列指针
-    uint8_t dongle_ring_buffer[100 * 1024];   // 串口队列池
-    uint8_t frame_buf[2 * 1024];              // 队列池
-    uint8_t camera_ring_buf[100 * 1024];      // 摄像头队列池
-    uint8_t frame_picture_buf[50 * 1024];     // 照片队列池
+    usmile_ring_buffer_t p_dongleRingBuffer; // 串口的队列指针
+    usmile_ring_buffer_t p_cameraRingBuffer; // 摄像头的队列指针
+    uint8_t dongle_ring_buffer[100 * 1024];  // 串口队列池
+    uint8_t frame_buf[2 * 1024];             // 队列池
+    uint8_t camera_ring_buf[100 * 1024];     // 摄像头队列池
+    uint8_t frame_picture_buf[50 * 1024];    // 照片队列池
     int ext_ble_find_next_frame(void);
     int ext_ble_find_next_picture_frame(QByteArray& picturedata);
     void write_camera_data(uint8_t* p_data, int data_len);
@@ -141,7 +139,7 @@ public:
     ImuDataT orgData;
     QNetworkAccessManager* updatamanager;
 
-private:
+  private:
     int totalBleSendData = 0;
     int stopBleOta = 0;
     bool rootBleOtaActive_ = false;
@@ -164,7 +162,7 @@ private:
     QAudioRecorder* audioRecorder;
     QString generateOutputFilePath();
     void save_motor_to_csv(QString SN, QString Mac, QString csvresult);
-    QMap<QString, QMap<QString, QString>> deviceMap;  // 存储设备信息
+    QMap<QString, QMap<QString, QString>> deviceMap; // 存储设备信息
     QString WIFI_RSSI;
     QString BLE_RSSI;
     int HighRssi;
@@ -176,7 +174,7 @@ private:
     QLabel* bleStatusLabel = nullptr;
     QLabel* WifiStatusLabel = nullptr;
     SerialChannel* dongleSerialChannel_ = nullptr;
-    QSerialPort* dongleSerialPort;  // dongle硬件层（指向 dongleSerialChannel_ 内部端口）
+    QSerialPort* dongleSerialPort; // dongle硬件层（指向 dongleSerialChannel_ 内部端口）
     QLabel* uartStatusLabel = nullptr;
     QLabel* frame_rate = nullptr;
     QLabel* macLabel = nullptr;
@@ -190,19 +188,19 @@ private:
     QProtocolManager protocolManager;
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
-    Qpb* pb= nullptr;
-    Qat* at= nullptr;
+    Qpb* pb = nullptr;
+    Qat* at = nullptr;
     TestFunctionExecutor executor;
     typedef enum {
-        STATE_IDLE,             // 休眠状态
-        STATE_WATI_CONNECT,     // 等待连接
-        STATE_DISABLE_SLEEP_1,  // 进入禁止休眠
+        STATE_IDLE,            // 休眠状态
+        STATE_WATI_CONNECT,    // 等待连接
+        STATE_DISABLE_SLEEP_1, // 进入禁止休眠
         MOTOR_CALI1,
         MOTOR_CALI2,
         MOTOR_CALI_DATA_SET,
         MOTOR_TESTING,
         CAMERA_TEST,
-        STATE_SAVE_RESULT  // 保存结果在本地
+        STATE_SAVE_RESULT // 保存结果在本地
     } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
     qsetting* qsetting_ui = NULL;
@@ -216,21 +214,20 @@ private:
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
     Ui::MainWindow* ui;
-    QString snbanding;
+    QString snBinding;
     QString macAddress = "没有mac地址";
-    bool isimuCaliOk = 0;        // 是否校准完成
-    bool is_start_ium_cali = 0;  // 是否开始六轴校准
+    bool isimuCaliOk = 0;       // 是否校准完成
+    bool is_start_ium_cali = 0; // 是否开始六轴校准
     void updateMainStyle(QString style);
     QTimer* waittime = new QTimer(this);
     QTimer* noisytimer = nullptr;
-
     QTimer* cameratimer = new QTimer(this);
     QTimer* scanSerialPortsTimer = new QTimer(this);
     int imu_wait_time = 15000;
     int music_time = 30000;
-    bool isovertime = 0;             // 是否开始发送校验结果
-    bool isfirstsavedata = 0;        // 是否开始按键200校准
-    bool isStartSendCaliResult = 0;  // 是否开始发送校验结果
+    bool isovertime = 0;            // 是否开始发送校验结果
+    bool isfirstsavedata = 0;       // 是否开始按键200校准
+    bool isStartSendCaliResult = 0; // 是否开始发送校验结果
     bool isWifiOtaContinue = true;
     int otaTesttimes = 1;
     int wifiotaFaiTimes = 0;
@@ -252,19 +249,32 @@ private:
     // QTextToSpeech* tts;
     QString result = "";
     bool otaFinish = false;
+    /** OTA 压测循环：由 onProtocolReport 回填进度/结果 */
+    bool otaStressListen_ = false;
+    bool otaStressFinish_ = false;
+    bool otaStressRefresh_ = false;
+    bool otaStressResult_ = false;
+    bool otaStressIsStart_ = false;
+    QTime otaStressTotalTime_;
     QStringList otaResults;
     QTimer* bleotatimer = new QTimer(this);
     int currentChunk = 0;
 
-private:
+  private:
     QNetworkAccessManager* aimanager;
 
-protected:
+  protected:
     void closeEvent(QCloseEvent*) override;
 
-private slots:
-    void solve_photosensitive_info(ProtocolPhotosensitiveData x);
-    void solve_sd_info(ProtocolSdInfoData x);
+  private slots:
+    void onProtocolReport(const ProtocolReport& report);
+    void onDongleAtReport(const ProtocolReport& report);
+    void refreshOtaFlowControl(int state);
+    void refreshOtaProgress(int progress);
+    void refreshPbInfo(const QString& info);
+    void refreshOtaResult(int result);
+    void refreshPhotosensitiveData(ProtocolPhotosensitiveData data);
+    void refreshSdInfo(ProtocolSdInfoData data);
     void appendAndSaveWifiOtaLog(const QString& msg);
     void sendAifile(QString file_id);
     void renameAndProcessFolders(const QString& directoryPath);
@@ -278,7 +288,6 @@ private slots:
     void setting_ui();
     void saveblackbox(QString data);
     void sendNoisyData();
-    void setBleOtaState(int);
     void checkAndUpdateFile();
     void deleteFile(const QString& remoteUrl);
     void provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator);
@@ -311,7 +320,7 @@ private slots:
     void waitWork(int ms);
     void sendBrushData(bool is_random);
     void sendRecord();
-    void getPictureSendOver(ProtocolPictureSendOverData x);
+    void refreshPictureSendOver(ProtocolPictureSendOverData data);
     void updateImageOnMainThread();
     void refreshLogData(QString data);
     void saveToCsv(const QString& filename, const ProtocolImuSampleData& x);
@@ -323,12 +332,11 @@ private slots:
     void convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName);
     void refreshImuCaliResult(ProtocolImuCalibResultData x);
     void updateComboBox();
-    void getmacadress(const QByteArray& byte);
+    void getMacAddress(const QByteArray& byte);
     void refreshSn(ProtocolSnData data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
     void getWifiIp(QString data);
-
     void getDongleVer(QString data);
     void getDongleWifi(QString data);
     void stopRecording();
@@ -340,18 +348,18 @@ private slots:
     void refreshBleRssi(QString data);
     void refreshWifiRssi(QString data);
     void refreshBleState(int state);
-    void getimuData(ProtocolImuSampleData x);
+    void refreshImuSampleData(ProtocolImuSampleData data);
     void refreshBattaryData(ProtocolBatteryData adc);
-    void updateWifi(ProtocolWifiStateData wifi);
-    void bandingMacSn(QString bandingmac, QString bandingsn);
+    void refreshWifiStateData(ProtocolWifiStateData data);
+    void bindingMacSn(QString bindingMac, QString bindingSn);
     void getMac(QString sn_to_search);
-    void updateLocalOtaResult(ProtocolInternetOtaData x);
-    void refreshWifiDemand(ProtocolWifiDemandData);
+    void refreshInternetOtaData(ProtocolInternetOtaData data);
+    void refreshWifiDemand(ProtocolWifiDemandData data);
     void otaSourceSet(int state);
     void otaFwSet(int state);
     void refreshPbData(QString data);
-    void getPressSensorData(ProtocolPressSampleData x);
-    void getServoMotorInfoMsg(ProtocolServoMotorInfoData data);
+    void refreshPressSampleData(ProtocolPressSampleData x);
+    void refreshServoMotorInfo(ProtocolServoMotorInfoData data);
     void convertCsvToXls(const QString& csvFilename, const QString& xlsFilename);
     void savePressDataToLocalFolder(const ProtocolPressSampleData& x, bool appHeader);
     void readPendingDatagrams();
@@ -368,10 +376,10 @@ private slots:
     QString getMotorFaultCodeString(FacMotorFaultCode faultCode);
     QString getCaliMarkString(CaliMark caliMark);
     void refreshMusicState(ProtocolMusicStateData data);
-    void getPresscalidata(ProtocolPressCalibResultData x);
+    void refreshPressCalibResult(ProtocolPressCalibResultData data);
     void scanIpPorts();
-    void checkbutton(ProtocolButtonStateData data);
-private slots:
+    void refreshButtonState(ProtocolButtonStateData data);
+  private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
     void on_getperipheralButton_clicked();
@@ -494,14 +502,12 @@ private slots:
     void on_write_device_sn_clicked();
     void on_write_board_sn_clicked();
     void on_write_device_subpid_clicked();
-
     void on_get_battery_level_clicked();
     void on_up_picture_clicked();
     void on_down_picture_clicked();
     void on_play_picture_clicked();
     void on_open_imu_collect_solve_clicked();
     void on_py_test_clicked();
-
     void on_close_imu_collect_solve_clicked();
     void on_transfer_xls_clicked();
     void on_nfc_close_clicked();
@@ -515,132 +521,70 @@ private slots:
     void on_selectPath_clicked();
     void on_ship_bomb_clicked();
     void on_get_noisy_clicked();
-
     void on_stop_noisy_clicked();
-
     void on_getBackLog_clicked();
     void on_write_device_skuid_clicked();
-
     void on_get_device_skuid_clicked();
-
     void on_set_hw_ver_clicked();
-
     // void on_set_battery_clicked();
-
     void on_brush_relocation_clicked();
-
     void on_stopBleOta_clicked();
-
     void on_closeconnect_clicked();
-
     void on_get_now_music_clicked();
-
     void on_send_audio_clicked();
-
     void on_audio_volume_valueChanged(int value);
-
     void on_is_audio_mode_stateChanged(int arg1);
-
     void on_play_speed_returnPressed();
-
     void on_uipasswordInput_returnPressed();
-
     void on_ui_ypos_returnPressed();
-
     void on_get_press_info_clicked();
-
     void on_set_press_info_clicked();
-
     void on_AITestLine_returnPressed();
-
     void on_speakAi_released();
-
     void on_speakAi_pressed();
-
     void on_get_botton_state_clicked();
-
     void on_selectPath_source_clicked();
-
     void on_set_mode_returnPressed();
-
     void on_btn_startRecording_clicked();
-
     void on_btn_stopRecording_clicked();
-
     void on_btn_startUpload_clicked();
-
     void on_btn_stopUpload_clicked();
-
     void on_btn_getSDCardStatus_clicked();
-
     void on_btn_getLDRInfo_clicked();
-
     void on_enterSuctionMode_clicked();
-
     void on_exitSuctionMode_clicked();
-
     void on_readBurningModestatus_clicked();
-
     void on_kTlvKeyWrite_clicked();
-
     void on_kTlvKeyread_clicked();
-
     void on_read_current_charge_clicked();
-
     void on_read_light_sensor_clicked();
-
     void on_set_light_sensor_clicked();
-
     void on_light_repo_start_clicked();
-
     void on_light_repo_stop_clicked();
-
     void on_getCaseDeviceException_clicked();
-
     void on_openCompensationSet_clicked();
-
     void on_closeCompensationSet_clicked();
-
     void on_factory_flag_clicked();
-
     void on_get_trim_data_clicked();
-
     void on_set_trim_data_clicked();
-
     void on_factory_flag_read_clicked();
-
     void on_enter_ble_cali_clicked();
-
     void on_exit_ble_cali_clicked();
-
     void on_enter_ble_test_clicked();
-
     void on_exit_ble_test_clicked();
-
     void on_enter_no_ble_test_clicked();
-
     void on_exit_no_ble_test_clicked();
-
     void on_get_device_mac_clicked();
-
     void on_set_device_mac_clicked();
-
     void on_night_brightness_clicked();
-
     void on_reset_factory_clicked();
-
     void on_get_rssi_device_clicked();
-
     void on_backlight_start_clicked();
-
     void on_backlight_stop_clicked();
-
     void on_get_keysignal_clicked();
-
     void on_get_ble_rssi_device_clicked();
     void on_send_custom_msg_clicked();
-
-signals:
+  signals:
     void send_uart_state(int data);
     void send_ble_state(int data);
     void send_mac(QString data);
@@ -655,4 +599,4 @@ signals:
     void sendBelSourceOtaSpeed(int);
 };
 
-#endif  // MAINWINDOW_H
+#endif // MAINWINDOW_H

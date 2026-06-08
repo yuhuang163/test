@@ -31,6 +31,6 @@ bool validateRtuFrame(const QByteArray& frame, quint8* outByteCount = nullptr);
 // 读线圈响应 PDU（仅功能码+字节数+数据，不含 TCP/RTU 头尾）
 bool parseReadCoilsPdu(const QByteArray& pdu, int quantity, QVector<bool>* out, QString* errorMessage = nullptr);
 
-}  // namespace QModbusPdu
+} // namespace QModbusPdu
 
-#endif  // QMODBUS_PDU_H
+#endif // QMODBUS_PDU_H

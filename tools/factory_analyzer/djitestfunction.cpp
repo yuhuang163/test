@@ -7,7 +7,7 @@ void factory_analyzer::executeFunctionByName(const QString functionName) {
         if (namedFunction.name == functionName) {
             // 执行找到的函数对象
             namedFunction.function();
-            return;  // 执行完成后直接返回
+            return; // 执行完成后直接返回
         }
     }
 
@@ -16,25 +16,23 @@ void factory_analyzer::executeFunctionByName(const QString functionName) {
 }
 void factory_analyzer::createTestFunctions() {
     testFunctions = {
-    
 
-{"检查sd卡有没有拔掉", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_sd_unset.sh",2000)); }},
-{"读取整机sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh device RD",2000)); }},
-{"读取核心板sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh board RD",2000)); }},
-{"高通控制机器红灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh red",2000)); }},
-{"高通控制机器绿灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh green",2000)); }},
-{"测试rtc走时功能", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rtc_good.sh",20000)); }},
-{"读取ufs固件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_version.sh",2000)); }},
-{"高通温度检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_ntc.sh",2000)); }},
-{"电源按键检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_button_good.sh power_key",2000)); }},
-{"读取硬件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_hw_ver.sh",2000)); }},
-{"pmic寄存器检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_pmic_regs.sh",2000)); }},
-{"rtc中断检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_wakealarm_interrupts.sh",8000)); }},
-{"ufs跌落值写入", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh write 1",2000)); }},
-{"ufs跌落值读取", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh read 1",2000)); }},
+        {"检查sd卡有没有拔掉", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_sd_unset.sh", 2000)); }},
+        {"读取整机sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh device RD", 2000)); }},
+        {"读取核心板sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh board RD", 2000)); }},
+        {"高通控制机器红灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh red", 2000)); }},
+        {"高通控制机器绿灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh green", 2000)); }},
+        {"测试rtc走时功能", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rtc_good.sh", 20000)); }},
+        {"读取ufs固件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_version.sh", 2000)); }},
+        {"高通温度检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_ntc.sh", 2000)); }},
+        {"电源按键检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_button_good.sh power_key", 2000)); }},
+        {"读取硬件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_hw_ver.sh", 2000)); }},
+        {"pmic寄存器检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_pmic_regs.sh", 2000)); }},
+        {"rtc中断检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_wakealarm_interrupts.sh", 8000)); }},
+        {"ufs跌落值写入", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh write 1", 2000)); }},
+        {"ufs跌落值读取", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh read 1", 2000)); }},
 
-
-                     };
+    };
 }
 int factory_analyzer::sendCommandWithRetry(std::function<void()> commandFunc) {
     static int retryCount = 0;
@@ -42,9 +40,9 @@ int factory_analyzer::sendCommandWithRetry(std::function<void()> commandFunc) {
     sendRetryOver = false;
     if (commandFunc != nullptr) {
         // showlog("发送pb初始指令");
-        commandFunc();  // 重新发送指令
+        commandFunc(); // 重新发送指令
     }
-sendCommand_test_result=true;
+    sendCommand_test_result = true;
     // 启动定时器
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [=]() {
@@ -54,11 +52,11 @@ sendCommand_test_result=true;
         //                 .arg(currentTime)
         //                 .arg(reinterpret_cast<quintptr>(timer), 0, 16);  // 以16进制显示地址
 
-        if (!getRespone) {          // 根据传递进来的条件判断是否未收到响应
-            if (retryCount < 20) {  // 如果还有重试次数
+        if (!getRespone) {         // 根据传递进来的条件判断是否未收到响应
+            if (retryCount < 20) { // 如果还有重试次数
                 if (commandFunc != nullptr && !(retryCount % 5)) {
                     showlog("重新发送指令测试" + QString::number(retryCount));
-                    commandFunc();  // 重新发送指令
+                    commandFunc(); // 重新发送指令
                 }
                 retryCount++;
             } else {
@@ -66,13 +64,13 @@ sendCommand_test_result=true;
                 getRespone = 0;
                 retryCount = 0;
                 sendRetryOver = 1;
-                timer->stop();  // 达到最大重试次数，停止定时器
-                sendCommand_test_result=false;
+                timer->stop(); // 达到最大重试次数，停止定时器
+                sendCommand_test_result = false;
                 showlog("达到最大重试次数，停止定时器");
                 delete timer;
                 return 0;
             }
-        } else {  // 如果收到响应
+        } else { // 如果收到响应
             disconnect(timer, &QTimer::timeout, this, nullptr);
             timer->stop();
             delete timer;
@@ -86,7 +84,7 @@ sendCommand_test_result=true;
         return 0;
     });
 
-    timer->start(300);  // 启动定时器
+    timer->start(300); // 启动定时器
     return 0;
 }
 void factory_analyzer::testResultTableInit() {
@@ -98,9 +96,9 @@ void factory_analyzer::testResultTableInit() {
     }
     testResultTable()->clear();
     // 初始化表格
-    testResultTable()->setColumnCount(4);  // 三列，分别为Mac地址、SN码和时间戳
+    testResultTable()->setColumnCount(4); // 三列，分别为Mac地址、SN码和时间戳
 
-    testResultTable()->setRowCount(0);  // 初始行数为0，因为还没有数据
+    testResultTable()->setRowCount(0); // 初始行数为0，因为还没有数据
 
     // 设置表格标题
     QStringList headers;
@@ -113,13 +111,13 @@ void factory_analyzer::testResultTableInit() {
     testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 }
 void factory_analyzer::reorderCheckBoxes() {
-    QVector<int> indexes = loadIndexesFromConfig();  // 从配置文件加载测试顺序
+    QVector<int> indexes = loadIndexesFromConfig(); // 从配置文件加载测试顺序
 
     for (int index : indexes) {
-        DraggableCheckBox* checkBox = getCanUseCheckBoxByIndex(index);  // 根据索引获取对应的复选框
+        DraggableCheckBox* checkBox = getCanUseCheckBoxByIndex(index); // 根据索引获取对应的复选框
         if (checkBox) {
-            canUselayout->removeWidget(checkBox);  // 从原布局移除复选框
-            conFiglayout->addWidget(checkBox);     // 将复选框添加到目标布局
+            canUselayout->removeWidget(checkBox); // 从原布局移除复选框
+            conFiglayout->addWidget(checkBox);    // 将复选框添加到目标布局
         }
     }
 
@@ -128,11 +126,11 @@ void factory_analyzer::reorderCheckBoxes() {
 QVector<int> factory_analyzer::loadIndexesFromConfig() {
     QVector<int> indexes;
 
-    SETTINGS.beginGroup("TestOrder");         // 打开 "TestOrder" 分组
-    QStringList keys = SETTINGS.childKeys();  // 获取分组中的所有键
+    SETTINGS.beginGroup("TestOrder");        // 打开 "TestOrder" 分组
+    QStringList keys = SETTINGS.childKeys(); // 获取分组中的所有键
 
     for (const QString& key : keys) {
-        indexes.append(SETTINGS.value(key).toInt());  // 读取每个键的值并转换为整数
+        indexes.append(SETTINGS.value(key).toInt()); // 读取每个键的值并转换为整数
     }
     SETTINGS.endGroup();
 
@@ -151,12 +149,12 @@ DraggableCheckBox* factory_analyzer::getCanUseCheckBoxByIndex(int index) {
 
         if (checkBox && checkBox->getIndex() == index) {
             qDebug() << "拿起的索引为" << index;
-            return checkBox;  // 返回匹配的复选框
+            return checkBox; // 返回匹配的复选框
         }
     }
 
     qDebug() << "CanUse源复选框不存在" << index << canUselayout->count();
-    return nullptr;  // 如果没有找到匹配的复选框，返回空指针
+    return nullptr; // 如果没有找到匹配的复选框，返回空指针
 }
 DraggableCheckBox* factory_analyzer::getCheckBoxByIndex(int index) {
     if (!conFiglayout) {
@@ -170,12 +168,12 @@ DraggableCheckBox* factory_analyzer::getCheckBoxByIndex(int index) {
 
         if (checkBox && checkBox->getIndex() == index) {
             qDebug() << "拿起的索引为" << index;
-            return checkBox;  // 返回匹配的复选框
+            return checkBox; // 返回匹配的复选框
         }
     }
 
     qDebug() << "源复选框不存在" << conFiglayout->count();
-    return nullptr;  // 如果没有找到匹配的复选框，返回空指针
+    return nullptr; // 如果没有找到匹配的复选框，返回空指针
 }
 
 int factory_analyzer::getIndexAt(const QPoint& pos) {
@@ -185,7 +183,7 @@ int factory_analyzer::getIndexAt(const QPoint& pos) {
         // 获取当前子项的控件
         QWidget* widget = conFiglayout->itemAt(i)->widget();
         if (!widget)
-            continue;  // 跳过空的子项
+            continue; // 跳过空的子项
 
         // 创建新的 QRect
         QRect newconfigArea(widget->mapToGlobal(QPoint(0, 0)).x(), widget->mapToGlobal(QPoint(0, 0)).y(),
@@ -198,31 +196,31 @@ int factory_analyzer::getIndexAt(const QPoint& pos) {
         // 如果位置在扩大后的范围内，则认为匹配到了该子项
         if (expandedRect.contains(pos)) {
             qDebug() << "匹配到的是这个" << i;
-            return i;  // 返回该子项的位置索引
+            return i; // 返回该子项的位置索引
         }
     }
 
     qDebug() << "这个位置无匹配内容";
-    return -1;  // 如果没有找到匹配的位置，返回-1
+    return -1; // 如果没有找到匹配的位置，返回-1
 }
 void factory_analyzer::showTestIndexes() {
-    qDebug() << "当前测试顺序为";                      // 更新复选框的索引
-    for (int i = 0; i < conFiglayout->count(); ++i) {  // 遍历布局中的所有子项
+    qDebug() << "当前测试顺序为";                     // 更新复选框的索引
+    for (int i = 0; i < conFiglayout->count(); ++i) { // 遍历布局中的所有子项
         DraggableCheckBox* checkBox =
-            qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(i)->widget());  // 获取复选框
-        if (checkBox) {                                                           // 如果复选框存在
-            qDebug() << checkBox->getIndex();                                     // 更新复选框的索引
-            testIndexes.append(checkBox->getIndex());                             // 将索引添加到容器中
+            qobject_cast<DraggableCheckBox*>(conFiglayout->itemAt(i)->widget()); // 获取复选框
+        if (checkBox) {                                                          // 如果复选框存在
+            qDebug() << checkBox->getIndex();                                    // 更新复选框的索引
+            testIndexes.append(checkBox->getIndex());                            // 将索引添加到容器中
         }
     }
     // 将索引列表保存到文件中
     saveIndexesToConfig(testIndexes);
 }
 void factory_analyzer::saveIndexesToConfig(const QVector<int>& indexes) {
-    SETTINGS.beginGroup("TestOrder");  // 创建一个分组
-    SETTINGS.remove("");               // 清空当前组的所有项，以免覆盖
+    SETTINGS.beginGroup("TestOrder"); // 创建一个分组
+    SETTINGS.remove("");              // 清空当前组的所有项，以免覆盖
     for (int i = 0; i < indexes.size(); ++i) {
-        SETTINGS.setValue(QString::number(i), indexes[i]);  // 将每个索引存入配置文件
+        SETTINGS.setValue(QString::number(i), indexes[i]); // 将每个索引存入配置文件
     }
     SETTINGS.endGroup();
 }
@@ -234,16 +232,14 @@ factory_analyzer::State factory_analyzer::getNextState(State currentState) {
 void factory_analyzer::dragEnterEvent(QDragEnterEvent* event) {
     if (event->mimeData()->hasUrls())
         event->acceptProposedAction();
-    else if (event->mimeData()->hasText()) {  // 如果拖动的数据有文本
+    else if (event->mimeData()->hasText()) { // 如果拖动的数据有文本
         // qDebug() << "拖动数据有文本Enter";
-        event->acceptProposedAction();  // 接受拖动操作
+        event->acceptProposedAction(); // 接受拖动操作
         // qDebug() << "拖动数据有文本Enter";
-    }else{
-           event->ignore();
+    } else {
+        event->ignore();
     }
-
 }
-
 
 void factory_analyzer::moveToLayout(QLayout* fromLayout, QLayout* toLayout, QWidget* widget) {
     if (fromLayout)
@@ -263,7 +259,7 @@ void factory_analyzer::paintEvent(QPaintEvent* event) {
     //                        canUserRow;  // checkBoxes[0]->height() + ROW_SPACING;
 
     singleCheckBoxWidth =
-        (canUseLayoutArea.width() - 2 * MARGIN + COLUMN_SPACING) / canUserCol;  // checkBoxes[0]->width() +
+        (canUseLayoutArea.width() - 2 * MARGIN + COLUMN_SPACING) / canUserCol; // checkBoxes[0]->width() +
     // COLUMN_SPACING; 绘制矩形在拖动位置
     if (!dragPos.isNull()) {
         painter.fillRect(
@@ -274,7 +270,7 @@ void factory_analyzer::paintEvent(QPaintEvent* event) {
 void factory_analyzer::dropEvent(QDropEvent* event) {
     QList<QUrl> urls = event->mimeData()->urls();
     if (ui->label->geometry().contains(event->pos())) {
-        for (const QUrl &url : urls) {
+        for (const QUrl& url : urls) {
             QString filePath = url.toLocalFile();
             qDebug() << "拖到 Label 上的文件:" << filePath;
 
@@ -283,7 +279,7 @@ void factory_analyzer::dropEvent(QDropEvent* event) {
         }
     }
     if (ui->label_1->geometry().contains(event->pos())) {
-        for (const QUrl &url : urls) {
+        for (const QUrl& url : urls) {
             QString filePath = url.toLocalFile();
             qDebug() << "拖到 label_1 上的文件:" << filePath;
 
@@ -295,14 +291,14 @@ void factory_analyzer::dropEvent(QDropEvent* event) {
     QPoint mouseGlobalPos = mapToGlobal(event->pos());
     qDebug() << "鼠标全局位置:" << mouseGlobalPos;
 
-    const QMimeData* mimeData = event->mimeData();  // 获取拖动的数据
+    const QMimeData* mimeData = event->mimeData(); // 获取拖动的数据
     if (!mimeData->hasText())
-        return;  // 如果没有文本数据，直接返回
+        return; // 如果没有文本数据，直接返回
 
     int sourceIndex = mimeData->text().toInt();
     DraggableCheckBox* sourceCheckBox = getCheckBoxByIndex(sourceIndex);
     if (!sourceCheckBox)
-        sourceCheckBox = getCanUseCheckBoxByIndex(sourceIndex);  // 尝试获取can_use中的复选框
+        sourceCheckBox = getCanUseCheckBoxByIndex(sourceIndex); // 尝试获取can_use中的复选框
 
     if (!conFiglayout || !canUselayout || !sourceCheckBox)
         return;
@@ -322,7 +318,7 @@ void factory_analyzer::dropEvent(QDropEvent* event) {
         qDebug() << "在config区域放置复选框";
         moveToLayout(canUselayout, conFiglayout, sourceCheckBox);
 
-        int destIndex = getIndexAt(mouseGlobalPos);  // 位置第几个
+        int destIndex = getIndexAt(mouseGlobalPos); // 位置第几个
         if (destIndex >= 0 && destIndex != conFiglayout->indexOf(sourceCheckBox)) {
             qDebug() << "在config区域调整" << destIndex;
             conFiglayout->removeWidget(sourceCheckBox);
@@ -340,11 +336,11 @@ void factory_analyzer::dropEvent(QDropEvent* event) {
             return;
         }
         moveToGrid(canUselayout, sourceCheckBox, row, col);
-        int destIndex = getIndexAt(mouseGlobalPos);  // 位置第几个
+        int destIndex = getIndexAt(mouseGlobalPos); // 位置第几个
         if (destIndex >= 0 && destIndex != canUselayout->indexOf(sourceCheckBox)) {
             qDebug() << "在can_use区域调整" << destIndex;
-            canUselayout->removeWidget(sourceCheckBox);         // 从布局中移除控件
-            canUselayout->addWidget(sourceCheckBox, row, col);  // 在指定行和列添加控件
+            canUselayout->removeWidget(sourceCheckBox);        // 从布局中移除控件
+            canUselayout->addWidget(sourceCheckBox, row, col); // 在指定行和列添加控件
         }
         event->acceptProposedAction();
     } else {
@@ -355,14 +351,13 @@ void factory_analyzer::dropEvent(QDropEvent* event) {
     dragPos = QPoint();
 }
 void factory_analyzer::dragMoveEvent(QDragMoveEvent* event) {
-    if (event->mimeData()->hasText()) {  // 如果拖动的数据有文本
-        dragPos = event->pos();//这个是相对于我qt的坐标
+    if (event->mimeData()->hasText()) { // 如果拖动的数据有文本
+        dragPos = event->pos();         //这个是相对于我qt的坐标
         update();
-        event->acceptProposedAction();  // 接受拖动操作
+        event->acceptProposedAction(); // 接受拖动操作
         // qDebug() << "界面全局坐标"<<dragPos;
     }
 }
-
 
 void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
                                              const QRect& area,
@@ -393,7 +388,7 @@ void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
     int hSpacing = layout->horizontalSpacing();
     int vSpacing = layout->verticalSpacing();
 
-    int cellW = (layoutRect.width()  + hSpacing) / cols;
+    int cellW = (layoutRect.width() + hSpacing) / cols;
     int cellH = (layoutRect.height() + vSpacing) / rows;
 
     // 5️⃣ 转成 layout 内坐标
@@ -418,7 +413,6 @@ void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
         << "cell=" << cellW << "x" << cellH
         << "row/col=" << row << col;
 }
-
 
 // void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
 //                                              const QRect& area,
@@ -453,8 +447,6 @@ void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
 //         << "\n  final row/col =" << row << "," << col;
 // }
 
-
-
 void factory_analyzer::moveToGrid(QGridLayout* layout, QWidget* widget, int row, int col) {
     if (!layout)
         return;
@@ -462,6 +454,3 @@ void factory_analyzer::moveToGrid(QGridLayout* layout, QWidget* widget, int row,
         layout->removeWidget(widget);
     layout->addWidget(widget, row, col);
 }
-
-
-

@@ -6,7 +6,7 @@
 #include "Abini.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -22,20 +22,20 @@ struct ext_uart_phy_layer_t {
     uint8_t magic;
     uint8_t machine;
     uint8_t length;
-    uint16_t staticCurrent;       // 静态电流 uA
-    uint16_t workingCurrent;      // 工作电流 mA
+    uint16_t staticCurrent;  // 静态电流 uA
+    uint16_t workingCurrent; // 工作电流 mA
     uint8_t overVoltageLight;
     uint8_t button1;
     uint8_t button2;
-    uint16_t chargingCurrent;     // 充电电流 mA
-    uint8_t music_state;          // 旧版字节 12：音频状态
-    uint16_t musicCurrent;        // 旧:13~14 音频电流；新:12~13 音频 IC mA（见 parse）
-    uint16_t shipCurrent;         // 旧:船运 uA；新:14~15 待机 uA
-    uint16_t pumpVoltageMv;       // 新:16~17 泵电压 mV
-    uint16_t mcuVoltageMv;        // 新:18~19 MCU 电压 mV
-    uint16_t batteryVoltageMv;    // 新:20~21 电池电压 mV
-    uint8_t fixerro;              // 旧版字节 17：治具错误码
-    uint8_t trailer;              // 包尾 0xAA（新:22，旧:18）
+    uint16_t chargingCurrent;  // 充电电流 mA
+    uint8_t music_state;       // 旧版字节 12：音频状态
+    uint16_t musicCurrent;     // 旧:13~14 音频电流；新:12~13 音频 IC mA（见 parse）
+    uint16_t standbyCurrentUa; // 字节 14~15：待机电流 uA
+    uint16_t pumpVoltageMv;    // 新:16~17 泵电压 mV
+    uint16_t mcuVoltageMv;     // 新:18~19 MCU 电压 mV
+    uint16_t batteryVoltageMv; // 新:20~21 电池电压 mV
+    uint8_t fixerro;           // 旧版字节 17：治具错误码
+    uint8_t trailer;           // 包尾 0xAA（新:22，旧:18）
 };
 #pragma pack(pop)
 
@@ -46,8 +46,7 @@ constexpr int kPcbaFullFrameLenWithFixerro = 0x18;
 constexpr int kFixPhyLayerFramePeekSize = kPcbaFullFrameLenWithFixerro;
 
 uint16_t readBe16(const QByteArray& buf, int hiIndex) {
-    return static_cast<uint16_t>((static_cast<uint8_t>(buf.at(hiIndex)) << 8)
-                                 | static_cast<uint8_t>(buf.at(hiIndex + 1)));
+    return static_cast<uint16_t>((static_cast<uint8_t>(buf.at(hiIndex)) << 8) | static_cast<uint8_t>(buf.at(hiIndex + 1)));
 }
 
 void parseFixturePacketCommonHead(const QByteArray& receivebuf, FixturePacketData& datapack) {
@@ -75,8 +74,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
         qDebug() << QStringLiteral("治具包 length 过短：%1").arg(declaredLen);
         return false;
     }
-    if (static_cast<uchar>(receivebuf.at(0)) != 0x55
-        || static_cast<uchar>(receivebuf.at(declaredLen - 1)) != 0xAA) {
+    if (static_cast<uchar>(receivebuf.at(0)) != 0x55 || static_cast<uchar>(receivebuf.at(declaredLen - 1)) != 0xAA) {
         qDebug() << QStringLiteral("治具包头尾格式错误 length=%1").arg(declaredLen);
         return false;
     }
@@ -84,7 +82,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
     parseFixturePacketCommonHead(receivebuf, datapack);
     datapack.music_state = 0;
     datapack.musicCurrent = 0;
-    datapack.shipCurrent = 0;
+    datapack.standbyCurrentUa = 0;
     datapack.pumpVoltageMv = 0;
     datapack.mcuVoltageMv = 0;
     datapack.batteryVoltageMv = 0;
@@ -92,7 +90,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
 
     if (declaredLen >= kPcbaFullFrameLenV2) {
         datapack.musicCurrent = readBe16(receivebuf, 12);
-        datapack.shipCurrent = readBe16(receivebuf, 14);
+        datapack.standbyCurrentUa = readBe16(receivebuf, 14);
         datapack.pumpVoltageMv = readBe16(receivebuf, 16);
         datapack.mcuVoltageMv = readBe16(receivebuf, 18);
         datapack.batteryVoltageMv = readBe16(receivebuf, 20);
@@ -108,13 +106,13 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
         datapack.music_state = static_cast<uchar>(receivebuf.at(12));
     }
     if (SETTINGS.value("SYSTEM/TestShippingCurrent").toBool() && declaredLen > 14)
-        datapack.shipCurrent = readBe16(receivebuf, 14);
+        datapack.standbyCurrentUa = readBe16(receivebuf, 14);
     if (declaredLen >= 18)
         datapack.fixerro = static_cast<uint8_t>(receivebuf.at(17));
     return true;
 }
 
-constexpr int kPcbaMachineSlotMax = 0x0F;  // 机位 1..15（0x01..0x0F）
+constexpr int kPcbaMachineSlotMax = 0x0F; // 机位 1..15（0x01..0x0F）
 
 QByteArray buildPcbaMachineCommand(uint8_t opcode, int machineIndex) {
     if (machineIndex < 1 || machineIndex > kPcbaMachineSlotMax)
@@ -126,11 +124,12 @@ QByteArray buildPcbaMachineCommand(uint8_t opcode, int machineIndex) {
     return frame;
 }
 
-}  // namespace
+} // namespace
 
 FixturePcbaUartProtocol::FixturePcbaUartProtocol(RingBuf* ringBuf, usmile_ring_buffer_t* ring, uint8_t* frameBuf,
                                                  int frameBufSize)
-    : ringBuf_(ringBuf), ring_(ring), frameBuf_(frameBuf), frameBufSize_(frameBufSize) {}
+    : ringBuf_(ringBuf), ring_(ring), frameBuf_(frameBuf), frameBufSize_(frameBufSize) {
+}
 
 int FixturePcbaUartProtocol::findNextFrame() {
     int i = 0;
@@ -209,7 +208,7 @@ void FixturePcbaUartProtocol::pollFrames(const std::function<void(const FixtureP
 }
 
 void FixturePcbaUartProtocol::dispatchShortFrame(const QByteArray& data,
-                                               const std::function<void(const FixturePcbaUartEvent&)>& handler) {
+                                                 const std::function<void(const FixturePcbaUartEvent&)>& handler) {
     if (data.size() == 5 && static_cast<uchar>(data.at(3)) == 0xCC) {
         FixturePcbaUartEvent ev;
         ev.type = FixturePcbaUartEvent::Type::ShortSleep;
@@ -260,14 +259,14 @@ FixturePcbaUartEvent FixturePcbaUartProtocol::parseFullFrame(const QByteArray& d
     qDebug() << "充电电流:" << datapack.chargingCurrent << "mA";
     if (extended) {
         qDebug() << "音频IC电流:" << datapack.musicCurrent << "mA";
-        qDebug() << "待机电流:" << datapack.shipCurrent << "uA";
+        qDebug() << "待机电流:" << datapack.standbyCurrentUa << "uA";
         qDebug() << "泵电压:" << datapack.pumpVoltageMv << "mV";
         qDebug() << "MCU电压:" << datapack.mcuVoltageMv << "mV";
         qDebug() << "电池电压:" << datapack.batteryVoltageMv << "mV";
         qDebug() << "治具错误码:" << datapack.fixerro;
     } else {
         qDebug() << "治具错误码:" << datapack.fixerro;
-        qDebug() << "船运电流:" << datapack.shipCurrent << "uA";
+        qDebug() << "待机电流:" << datapack.standbyCurrentUa << "uA";
         if (SETTINGS.value("SYSTEM/TestAudioCurrent").toBool())
             qDebug() << "音频电流:" << datapack.musicCurrent << "mA";
         else
@@ -292,5 +291,5 @@ QByteArray FixturePcbaUartProtocol::buildWhiteModeCommand(int machineIndex) {
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif

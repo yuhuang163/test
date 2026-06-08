@@ -5,7 +5,7 @@
 #include <QDebug>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -111,7 +111,7 @@ QString pduContext(quint8 unitId, int requestTimeoutMs, const QByteArray& pdu) {
         .arg(requestTimeoutMs)
         .arg(pduHexPreview(pdu));
 }
-}  // namespace
+} // namespace
 
 void InovanceH5uModbusTcp::disconnect() {
     socket_.disconnectFromHost();
@@ -121,7 +121,7 @@ void InovanceH5uModbusTcp::disconnect() {
 }
 
 bool InovanceH5uModbusTcp::connectPlc(const QString& host, quint16 port, quint8 unitId, int timeoutMs,
-                                       QString* errorMessage) {
+                                      QString* errorMessage) {
     disconnect();
     socket_.connectToHost(host, port);
     const bool ok = socket_.waitForConnected(timeoutMs);
@@ -156,7 +156,7 @@ quint16 InovanceH5uModbusTcp::nextTransactionId() {
 QByteArray InovanceH5uModbusTcp::buildAdu(quint16 transactionId, quint8 unitId, const QByteArray& pdu) {
     QByteArray adu;
     QModbusPdu::appendUint16Be(adu, transactionId);
-    QModbusPdu::appendUint16Be(adu, 0);  // Protocol ID Modbus
+    QModbusPdu::appendUint16Be(adu, 0); // Protocol ID Modbus
     const quint16 following = quint16(1 + pdu.size());
     QModbusPdu::appendUint16Be(adu, following);
     adu.append(char(unitId));
@@ -210,7 +210,7 @@ bool InovanceH5uModbusTcp::parseResponse(const QByteArray& fullAdu, quint16 expe
 }
 
 bool InovanceH5uModbusTcp::transact(const QByteArray& pdu, QByteArray* responsePdu, QString* errorMessage,
-                                     int requestTimeoutMs, quint8 unitId) {
+                                    int requestTimeoutMs, quint8 unitId) {
     if (!isConnected()) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("PLC 未连接: %1 %2")
@@ -303,7 +303,7 @@ bool InovanceH5uModbusTcp::transact(const QByteArray& pdu, QByteArray* responseP
 }
 
 bool InovanceH5uModbusTcp::writeMCoil(int mNumber, bool value, int mCoilAddressOffset, quint8 unitId,
-                                     int requestTimeoutMs, QString* errorMessage) {
+                                      int requestTimeoutMs, QString* errorMessage) {
     const qint64 addr64 = qint64(mNumber) + qint64(mCoilAddressOffset);
     if (addr64 < 0 || addr64 > 0xFFFF) {
         if (errorMessage) {
@@ -375,7 +375,7 @@ bool InovanceH5uModbusTcp::writeMCoil(int mNumber, bool value, int mCoilAddressO
 }
 
 bool InovanceH5uModbusTcp::readMCoils(int mStartNumber, int quantity, int mCoilAddressOffset, quint8 unitId,
-                                     int requestTimeoutMs, QVector<bool>* out, QString* errorMessage) {
+                                      int requestTimeoutMs, QVector<bool>* out, QString* errorMessage) {
     out->clear();
     if (quantity <= 0 || quantity > 2000) {
         if (errorMessage) {

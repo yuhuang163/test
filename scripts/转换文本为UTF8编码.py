@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""将仓库内文本源码统一为 UTF-8（可选 with BOM / 无 BOM）。仅改写需要变更的文件。"""
+"""将仓库内文本源码统一为 UTF-8（默认无 BOM；项目规范见 .cursor/rules/qt-cpp-project.mdc）。仅改写需要变更的文件。"""
 from __future__ import annotations
 
 import os
@@ -132,7 +132,7 @@ def main() -> int:
         use_bom = False
         mode_label = "UTF-8(no BOM)"
     else:
-        print("用法: convert_to_utf8_bom.py --no-bom|--bom [--dry-run]")
+        print("用法: 转换文本为UTF8编码.py --no-bom|--bom [--dry-run]")
         return 2
 
     stats: dict[str, int] = {}

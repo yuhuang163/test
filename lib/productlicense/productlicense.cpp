@@ -307,8 +307,7 @@ const static LicensePair usaprolicense[] = {
     {"RasGSJYMEnQ", "jeFmR5iWR6QAo8sMqiMy", "oG4TMQ6KkrP85aRZeojsQlgR8Jcbc9vM"},
     {"RasGSJYMEnQ", "3fdubM5POm878qKAaEk7", "xODsbbZc17aukt31ie5ubaprF29mrYlU"},
     {"RasGSJYMEnQ", "omZXMsu7a3gaDvmYaEqh", "dZa1eIzDotlVr9eTh407g0YYrkdcSQZf"},
-    {"RasGSJYMEnQ", "xtH6TKqqE185KeXWlqZF", "86uEePiewoc3QGFKaIbbb8FX4lZajZty"}
-};
+    {"RasGSJYMEnQ", "xtH6TKqqE185KeXWlqZF", "86uEePiewoc3QGFKaIbbb8FX4lZajZty"}};
 const static LicensePair usalicense[] = {
     // 北美测试版本
 
@@ -415,14 +414,14 @@ const static LicensePair usalicense[] = {
 
 };
 
-LicensePair ProductLicense::getLicense() {  //生产
+LicensePair ProductLicense::getLicense() { //生产
     counter++;
     if (counter >= max) {
         counter = 0;
     }
     return license[counter];
 }
-LicensePair ProductLicense::getTestLicense() {  //测试
+LicensePair ProductLicense::getTestLicense() { //测试
     testcounter++;
     if (testcounter >= testmax) {
         testcounter = 0;
@@ -533,8 +532,8 @@ void ProductLicense::loadOtaDeviceKeys(const QString& filePath) {
     }
 
     QTextStream in(&otaFile);
-    QString otaHeader = in.readLine();           // 读取标题行
-    QStringList otaKeys = otaHeader.split(",");  // 根据实际 CSV 格式修改分隔符
+    QString otaHeader = in.readLine();          // 读取标题行
+    QStringList otaKeys = otaHeader.split(","); // 根据实际 CSV 格式修改分隔符
 
     while (!in.atEnd()) {
         QString otaLine = in.readLine();
@@ -561,21 +560,21 @@ void ProductLicense::printOtaDeviceKeys() {
 LicensePair ProductLicense::getNextOtaDevice() {
     QMap<QString, QString> otaDevice;
 
-    LicensePair licensePair;  // 创建一个 LicensePair 对象
+    LicensePair licensePair; // 创建一个 LicensePair 对象
 
     if (otaDeviceList.isEmpty()) {
-        return licensePair;  // 返回一个空的 LicensePair
+        return licensePair; // 返回一个空的 LicensePair
     }
 
     otaDevice = otaDeviceList[otaDeviceIndex];
 
     // 将 QMap 中的数据赋值给 LicensePair 对象
-    licensePair.product_name = otaDevice["ProductKey"];     // 假设 ProductKey 对应 product_name
-    licensePair.device_key = otaDevice["DeviceName"];       // 假设 DeviceName 对应 device_key
-    licensePair.device_secret = otaDevice["DeviceSecret"];  // 假设 DeviceSecret 对应 device_secret
+    licensePair.product_name = otaDevice["ProductKey"];    // 假设 ProductKey 对应 product_name
+    licensePair.device_key = otaDevice["DeviceName"];      // 假设 DeviceName 对应 device_key
+    licensePair.device_secret = otaDevice["DeviceSecret"]; // 假设 DeviceSecret 对应 device_secret
 
     // 递增索引，并在超出范围时重置为 0
     otaDeviceIndex = (otaDeviceIndex + 1) % otaDeviceList.size();
 
-    return licensePair;  // 返回 LicensePair 对象
+    return licensePair; // 返回 LicensePair 对象
 }

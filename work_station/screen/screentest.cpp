@@ -5,7 +5,7 @@
 #include "qserialportinfo.h"
 #include "ui_screentest.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 void screentest::on_pushButton_clicked() {
     ui->macInput->setText("f4:12:fa:c5:51:c6");
@@ -21,7 +21,7 @@ screentest::screentest(int index, QWidget* parent) : test_base(parent), ui(new U
     ui->setupUi(this);
 
     updateMainStyle("Ubuntu.qss");
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -37,7 +37,7 @@ screentest::screentest(int index, QWidget* parent) : test_base(parent), ui(new U
     showlog("action=" + pack.action);
     showlog("machineNo=" + pack.machineNo);
     testResultTableInit();
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 
 void screentest::refreshLcdControl(ProtocolLcdControlData style) {
@@ -45,7 +45,9 @@ void screentest::refreshLcdControl(ProtocolLcdControlData style) {
     is_lcd_control = 1;
 }
 
-screentest::~screentest() { delete ui; }
+screentest::~screentest() {
+    delete ui;
+}
 
 void screentest::on_disconnectButton_clicked() {
     ui->comNameCombo->setEnabled(true);
@@ -129,24 +131,24 @@ void screentest::canGoNextMechine(int x) {
     }
 }
 
-void screentest::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void screentest::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
 
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -220,211 +222,210 @@ void screentest::refreshSn(ProtocolSnData data) {
         }
     }
 }
-void screentest::startTask()
-{
+void screentest::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE:  // 复位一切
-                showlog("开始测试");
-                pb->reset_all_pb();
-                at->resetConnected();
-                refreshBleState(0);
-                ui->product_sn->setText("存储整机sn:");
-                stringsn = "";
-                result = passValue;
-                is_canGoNext = 0;
-                is_lcd_control = 0;
-                TestTime.start();
-                waitWork(1000);                     //给开机时间保险
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
-                snCompareOk = 0;
-                subpidCompareOk = 0;
-                state = STATE_WATI_CONNECT;
-                break;
-            case STATE_WATI_CONNECT:
-                if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
-                    showlog("已发送禁止休眠");
-                    state = STATE_WATI_DISABLE_SLEEP;
-                }
-                break;
-            case STATE_WATI_DISABLE_SLEEP:
-                if (canGoNext) {
-                    stringsn = ui->getMac->text();
-                    showlog("开始获取sn");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
-                    state = STATE_WAIT_CORRECT_BANDING;
-                }
-                break;
+        case STATE_IDLE: // 复位一切
+            showlog("开始测试");
+            pb->reset_all_pb();
+            at->resetConnected();
+            refreshBleState(0);
+            ui->product_sn->setText("存储整机sn:");
+            stringsn = "";
+            result = passValue;
+            is_canGoNext = 0;
+            is_lcd_control = 0;
+            TestTime.start();
+            waitWork(1000);                                           //给开机时间保险
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
+            snCompareOk = 0;
+            subpidCompareOk = 0;
+            state = STATE_WATI_CONNECT;
+            break;
+        case STATE_WATI_CONNECT:
+            if (at->getConnected()) {
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
+                showlog("已发送禁止休眠");
+                state = STATE_WATI_DISABLE_SLEEP;
+            }
+            break;
+        case STATE_WATI_DISABLE_SLEEP:
+            if (canGoNext) {
+                stringsn = ui->getMac->text();
+                showlog("开始获取sn");
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN)); });
+                state = STATE_WAIT_CORRECT_BANDING;
+            }
+            break;
 
-            case STATE_WAIT_CORRECT_BANDING:
-                if (canGoNext) {
-                    if (snCompareOk == 1) {
-                        TestItem test;
-                        test.testItem = "sn比对";
-                        test.testData = QString::number(snCompareOk);
-                        test.testResult = "通过";
-                        test.ask = "1";
-                        testItems.append(test);
-                        testResultTableUpdate(testItems);
-                        showlog("sn已比对成功");
+        case STATE_WAIT_CORRECT_BANDING:
+            if (canGoNext) {
+                if (snCompareOk == 1) {
+                    TestItem test;
+                    test.testItem = "sn比对";
+                    test.testData = QString::number(snCompareOk);
+                    test.testResult = "通过";
+                    test.ask = "1";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+                    showlog("sn已比对成功");
 
-                        if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
-                            showlog("已发送subpid");
-                            sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
-                            state = STATE_WAIT_BANDING_SUBPID;
-                        } else {
-                            state = STATE_DISABLE_SLEEP_1;
-                        }
-
-                    } else if (snCompareOk == 2) {
-                        TestItem test;
-                        test.testItem = "sn比对";
-                        test.testData = QString::number(snCompareOk);
-                        test.testResult = "失败";
-                        test.ask = "1";
-                        testItems.append(test);
-
-                        testResultTableUpdate(testItems);
-
-                        showlog("sn比对失败");
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
-                    }
-                }
-                break;
-            case STATE_WAIT_BANDING_SUBPID:  // 设置设备采集
-                if (canGoNext) {
-                    showlog("已绑定成功SUBPID");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); });
-
-                    state = STATE_WAIT_CORRECT_BANDING_SUBPID;
-                }
-                break;
-            case STATE_WAIT_CORRECT_BANDING_SUBPID:  // 设置设备采集
-
-                if (canGoNext) {
-                    if (subpidCompareOk == 1) {
+                    if (SETTINGS.value("SYSTEM/NeedWriteSubpid").toBool()) {
+                        showlog("已发送subpid");
+                        sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, writesubpid})); });
+                        state = STATE_WAIT_BANDING_SUBPID;
+                    } else {
                         state = STATE_DISABLE_SLEEP_1;
-                        showlog("subpid已比对成功");
-                    } else if (subpidCompareOk == 2) {
-                        showlog("subpid已比对失败");
-                        result = failValue;
-                        state = STATE_SAVE_RESULT;
                     }
-                }
-                break;
 
-            case STATE_DISABLE_SLEEP_1:
-                if (pb->getState(Qpb::PbStateType::DisableSleep)) {
-                    showlog("已进入禁止休眠模式");
-                    set_screen_color(0);
-                    showlog("--------------当前是红色");
-                    emit send_go_next_test(getIndex());
-                    state = STATE_COLOR1;
-                }
-                break;
+                } else if (snCompareOk == 2) {
+                    TestItem test;
+                    test.testItem = "sn比对";
+                    test.testData = QString::number(snCompareOk);
+                    test.testResult = "失败";
+                    test.ask = "1";
+                    testItems.append(test);
 
-            case STATE_COLOR1:
-                if (is_lcd_control && is_canGoNext) {
-                    is_canGoNext = 0;
-                    is_lcd_control = 0;
-                    set_screen_color(1);
-                    showlog("--------------当前是绿色");
-                    emit send_go_next_test(getIndex());
-                    state = STATE_COLOR2;
-                }
-                break;
-            case STATE_COLOR2:
-                if (is_lcd_control && is_canGoNext) {
-                    is_canGoNext = 0;
-                    is_lcd_control = 0;
-                    set_screen_color(2);
-                    showlog("--------------当前是蓝色");
-                    emit send_go_next_test(getIndex());
-                    state = STATE_COLOR3;
-                }
-                break;
-            case STATE_COLOR3:
-                if (is_lcd_control && is_canGoNext) {
-                    is_canGoNext = 0;
-                    is_lcd_control = 0;
-                    set_screen_color(3);
-                    showlog("--------------当前是白色");
-                    emit send_go_next_test(getIndex());
-                    state = STATE_COLOR4;
-                }
-                break;
-            case STATE_COLOR4:
-                if (is_lcd_control && is_canGoNext) {
-                    is_canGoNext = 0;
-                    is_lcd_control = 0;
-                    set_screen_color(4);
-                    showlog("--------------当前是黑色");
-                    emit send_go_next_test(getIndex());
-                    state = STATE_COLOR5;
-                }
-                break;
-            case STATE_COLOR5:
-                if (is_lcd_control && is_canGoNext) {
-                    is_canGoNext = 0;
-                    is_lcd_control = 0;
+                    testResultTableUpdate(testItems);
+
+                    showlog("sn比对失败");
+                    result = failValue;
                     state = STATE_SAVE_RESULT;
                 }
-                break;
+            }
+            break;
+        case STATE_WAIT_BANDING_SUBPID: // 设置设备采集
+            if (canGoNext) {
+                showlog("已绑定成功SUBPID");
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_SUB_PID)); });
 
-            case STATE_SAVE_RESULT:
+                state = STATE_WAIT_CORRECT_BANDING_SUBPID;
+            }
+            break;
+        case STATE_WAIT_CORRECT_BANDING_SUBPID: // 设置设备采集
 
-                if (result == passValue) {
-                    QString mesresult = "PASS";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|SCREEN_TEST:PASS|");
-                    pack.sn = ui->getMac->text();
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((result == failValue)) {
-                    QString mesresult = "NG";
-                    pack.result = mesresult;
-                    pack.itemvalue = QString("|SCREEN_TEST:NG|");
-                    pack.sn = ui->getMac->text();
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
+            if (canGoNext) {
+                if (subpidCompareOk == 1) {
+                    state = STATE_DISABLE_SLEEP_1;
+                    showlog("subpid已比对成功");
+                } else if (subpidCompareOk == 2) {
+                    showlog("subpid已比对失败");
+                    result = failValue;
+                    state = STATE_SAVE_RESULT;
                 }
-                TestItem test;
-                test.testItem = "屏幕测试";
-                test.testData = "";
-                test.testResult = result;
-                test.ask = "通过";
-                testItems.append(test);
-                testResultTableUpdate(testItems);
-                stringsn = "";
-                ui->getMac->clear();
-                ui->macInput->clear();
-                protocolManager.set(DeviceCmd::DevReset);
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                waitWork(50);
-                on_disconnectButton_clicked();
-                showlog("测试结束");
-                isTestContinue = false;
-                emit send_end_test(getIndex());
+            }
+            break;
 
-                state = STATE_IDLE;
-                break;
+        case STATE_DISABLE_SLEEP_1:
+            if (pb->getState(Qpb::PbStateType::DisableSleep)) {
+                showlog("已进入禁止休眠模式");
+                set_screen_color(0);
+                showlog("--------------当前是红色");
+                emit send_go_next_test(getIndex());
+                state = STATE_COLOR1;
+            }
+            break;
+
+        case STATE_COLOR1:
+            if (is_lcd_control && is_canGoNext) {
+                is_canGoNext = 0;
+                is_lcd_control = 0;
+                set_screen_color(1);
+                showlog("--------------当前是绿色");
+                emit send_go_next_test(getIndex());
+                state = STATE_COLOR2;
+            }
+            break;
+        case STATE_COLOR2:
+            if (is_lcd_control && is_canGoNext) {
+                is_canGoNext = 0;
+                is_lcd_control = 0;
+                set_screen_color(2);
+                showlog("--------------当前是蓝色");
+                emit send_go_next_test(getIndex());
+                state = STATE_COLOR3;
+            }
+            break;
+        case STATE_COLOR3:
+            if (is_lcd_control && is_canGoNext) {
+                is_canGoNext = 0;
+                is_lcd_control = 0;
+                set_screen_color(3);
+                showlog("--------------当前是白色");
+                emit send_go_next_test(getIndex());
+                state = STATE_COLOR4;
+            }
+            break;
+        case STATE_COLOR4:
+            if (is_lcd_control && is_canGoNext) {
+                is_canGoNext = 0;
+                is_lcd_control = 0;
+                set_screen_color(4);
+                showlog("--------------当前是黑色");
+                emit send_go_next_test(getIndex());
+                state = STATE_COLOR5;
+            }
+            break;
+        case STATE_COLOR5:
+            if (is_lcd_control && is_canGoNext) {
+                is_canGoNext = 0;
+                is_lcd_control = 0;
+                state = STATE_SAVE_RESULT;
+            }
+            break;
+
+        case STATE_SAVE_RESULT:
+
+            if (result == passValue) {
+                QString mesresult = "PASS";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|SCREEN_TEST:PASS|");
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((result == failValue)) {
+                QString mesresult = "NG";
+                pack.result = mesresult;
+                pack.itemvalue = QString("|SCREEN_TEST:NG|");
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+            TestItem test;
+            test.testItem = "屏幕测试";
+            test.testData = "";
+            test.testResult = result;
+            test.ask = "通过";
+            testItems.append(test);
+            testResultTableUpdate(testItems);
+            stringsn = "";
+            ui->getMac->clear();
+            ui->macInput->clear();
+            protocolManager.set(DeviceCmd::DevReset);
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            waitWork(50);
+            on_disconnectButton_clicked();
+            showlog("测试结束");
+            isTestContinue = false;
+            emit send_end_test(getIndex());
+
+            state = STATE_IDLE;
+            break;
         }
 
         //  QCoreApplication::processEvents();
@@ -550,9 +551,9 @@ void screentest::on_getMac_returnPressed() {
     }
     stringsubpid = writesubpid;
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());             // 文件获取
-    processInspection(ui->getMac->text());  // 站前检测
-    processGetMesTestValue();               // mes获取
+    getMac(ui->getMac->text());            // 文件获取
+    processInspection(ui->getMac->text()); // 站前检测
+    processGetMesTestValue();              // mes获取
 }
 
 void screentest::processGetMesTestValue() {
@@ -570,7 +571,7 @@ void screentest::processGetMesTestValue() {
         pack.mechines = getIndex();
         pack.instruct_num = "079";
 
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 
@@ -585,6 +586,3 @@ void screentest::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-
-

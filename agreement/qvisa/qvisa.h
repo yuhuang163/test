@@ -12,27 +12,27 @@
 
 /** VISA 设备类型：工站 set(DeviceProfile) 后从 SETTINGS 加载，不发 SCPI */
 enum class VisaDeviceProfile {
-    DefaultPower = 0,  // 未加载，须先 set(DeviceProfile)
+    DefaultPower = 0, // 未加载，须先 set(DeviceProfile)
     ProgrammablePower,
     RxCmwInstrument,
 };
 
 /** VISA 指令（工站经 visa->set/get 下发） */
 enum class VisaCmd {
-    DeviceProfile,          // set: int(VisaDeviceProfile)，从 SETTINGS 加载连接项与命令模板
-    ConfigurePowerSupply,   // set: QVariantMap{voltage?,current?}
-    ReadVoltage,            // get
-    ReadCurrent,            // get
-    PowerOutputOn,          // set
-    PowerOutputOff,         // set
-    InitializePower,        // set: QVariantMap{voltage?,current?}
-    WriteLine,              // set: QString SCPI
-    QueryLine,              // get: QString SCPI，应答见 lastQueryResponse()
+    DeviceProfile,        // set: int(VisaDeviceProfile)，从 SETTINGS 加载连接项与命令模板
+    ConfigurePowerSupply, // set: QVariantMap{voltage?,current?}
+    ReadVoltage,          // get
+    ReadCurrent,          // get
+    PowerOutputOn,        // set
+    PowerOutputOff,       // set
+    InitializePower,      // set: QVariantMap{voltage?,current?}
+    WriteLine,            // set: QString SCPI
+    QueryLine,            // get: QString SCPI，应答见 lastQueryResponse()
 };
 
 class Qvisa : public QObject {
     Q_OBJECT
-public:
+  public:
     struct ProtocolConfig {
         bool useVisa;
         QString visaAddress;
@@ -54,13 +54,15 @@ public:
     bool get(VisaCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
 
-    QString lastQueryResponse() const { return lastQueryResponse_; }
+    QString lastQueryResponse() const {
+        return lastQueryResponse_;
+    }
 
-signals:
+  signals:
     void programmablePowerVoltageRead(double valueVolts, bool ok);
     void programmablePowerCurrentRead(double valueAmps, bool ok);
 
-private:
+  private:
     struct CommandSet {
         QString setVoltageCmd;
         QString setCurrentCmd;
@@ -87,4 +89,4 @@ private:
 #endif
 };
 
-#endif  // QVISA_H
+#endif // QVISA_H

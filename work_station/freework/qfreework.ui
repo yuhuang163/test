@@ -23,6 +23,9 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
+      <property name="usesScrollButtons">
+       <bool>true</bool>
+      </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
         <string>自由工站</string>
@@ -491,24 +494,6 @@
             </property>
             <property name="text">
              <string>串口连接：</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="7" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_22">
-          <item>
-           <widget class="QPushButton" name="get_battery">
-            <property name="text">
-             <string>显示充电情况</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="start_wifible_test">
-            <property name="text">
-             <string>开始wifi蓝牙信号测试</string>
             </property>
            </widget>
           </item>

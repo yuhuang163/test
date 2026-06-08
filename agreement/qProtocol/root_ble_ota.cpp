@@ -9,7 +9,7 @@
 #include "common_protocl/comm_protocol_defs.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -32,7 +32,7 @@ void waitWork(int ms) {
         QCoreApplication::processEvents(QEventLoop::AllEvents);
 }
 
-}  // namespace
+} // namespace
 
 void RootBleOtaClient::reset() {
     rxBuffer_.clear();
@@ -179,7 +179,7 @@ bool RootBleOtaClient::sendTlvRequest(uint8_t tlvType, const QByteArray& tlvValu
                     .arg(frame.size())
                     .arg(QString::fromLatin1(frame.toHex(' ').toUpper()));
 
-                    // qDebug() << "BLE OTA 发送数据包";
+    // qDebug() << "BLE OTA 发送数据包";
     sendFunc_(frame);
     return true;
 }

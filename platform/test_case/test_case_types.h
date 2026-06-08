@@ -5,25 +5,38 @@
 #include <QVariant>
 #include <QVector>
 
-enum class TestCaseSendAction { Set, Get };
+// --- 发送通道 / 协议 ---
+enum class TestCaseSendAction { Set,
+                                Get };
 
-enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture };
+enum class DeviceCmdParamKind { None,
+                                Int,
+                                UInt,
+                                String,
+                                JsonMap };
 
-/** 产品蓝牙通信协议（仅 Send/Channel=Product 时有效；与 QProtocolManager::ProtocolType 对应）。 */
-enum class TestCaseProductProtocol { Qfctp, Qpb };
+struct DeviceCmdParamSchema {
+    DeviceCmdParamKind kind = DeviceCmdParamKind::None;
+    QString hint;
+};
 
-/** 治具串口协议（仅 Send/Channel=Fixture 时有效）。 */
+enum class TestCaseSendChannel { Product,
+                                 ProductSerial,
+                                 Dongle,
+                                 Cloud,
+                                 Fixture };
+
+enum class TestCaseProductProtocol { Qfctp,
+                                     Qpb };
+
 enum class TestCaseFixtureProtocol { Pcba };
 
+// --- Case 元数据 / 发送 / 时序 ---
 struct TestCaseMeta {
-    /** 名称：界面显示、日志、ini 文件名（支持中文） */
     QString name;
-    /** 与 name 同步写入，兼容旧 ini 的 Meta/DisplayName */
     QString displayName;
     QString mesTag;
-    /** 步骤开始时是否弹出提示框 */
     bool promptEnabled = false;
-    /** 弹窗正文（多行） */
     QString promptText;
 };
 
@@ -39,11 +52,15 @@ struct TestCaseSend {
 struct TestCaseTiming {
     int delayBeforeMs = 0;
     int delayAfterMs = 0;
-    /** sendCommandWithRetry 定时器间隔(ms)；≤0 表示未配置，运行时按卡控开闭回退 8000/3000 */
     int commandTimeoutMs = 0;
 };
 
-enum class TestCaseGateOp { Range, Gt, Lt, Eq, CompareVersions };
+// --- 卡控 ---
+enum class TestCaseGateOp { Range,
+                            Gt,
+                            Lt,
+                            Eq,
+                            CompareVersions };
 
 struct TestCaseGate {
     bool enabled = false;
@@ -58,7 +75,7 @@ struct TestCaseGate {
     QString highSettingsKey;
 };
 
-/** 流程编排中单步：case 名 */
+// --- 流程编排 ---
 struct TestFlowItemEntry {
     QString caseName;
 };
@@ -72,9 +89,7 @@ struct TestCaseDefinition {
     TestCaseMeta meta;
     TestCaseSend send;
     TestCaseTiming timing;
-    /** 主卡控（单项或兼容旧 ini）；多项时见 gates */
     TestCaseGate gate;
-    /** 同一回包多项独立判定（如外设状态 6 路各自期望值） */
     QVector<TestCaseGate> gates;
     TestCaseHook hook;
 };
@@ -85,10 +100,9 @@ struct TestFlowMeta {
     QString selectedStationName;
 };
 
-/** 流程编排工站：key 写入 ini，displayName 为下拉显示名 */
 struct TestFlowStationEntry {
     QString key;
     QString displayName;
 };
 
-#endif  // PLATFORM_TEST_CASE_TYPES_H
+#endif // PLATFORM_TEST_CASE_TYPES_H

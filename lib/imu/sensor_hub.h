@@ -4,7 +4,7 @@
 #include "us_eigen_nonsymmsquare.h"
 
 #ifdef USMILE_Q10
-#    define SENSOR_CONFIG = A
+#define SENSOR_CONFIG = A
 #endif
 
 #define SENSOR_DATA_SIZE 3
@@ -33,13 +33,13 @@ typedef struct {
 } CalibData;
 class new_imu_calibrate : public QObject {
     Q_OBJECT
-signals:
+  signals:
     void send_imu_cali_msg(QString msg);
     void send_imu_cali_reslt_msg(QString msg);
     void send_imu_data_to_csv(QString time, QString msg);
     void send_imu_cali_position(int position);
 
-public:
+  public:
     float LSB = 1;
     int imu_static_state = 1;
     int cali_loop = 0;
@@ -48,7 +48,8 @@ public:
     NewImuCalData calData;
     typedef struct sensordata_q {
         // sensor data queue
-        SENSOR_DATA_TYPE (*data)[SENSOR_DATA_SIZE];
+        SENSOR_DATA_TYPE(*data)
+        [SENSOR_DATA_SIZE];
         int head;
         int tail;
         int capacity;
@@ -60,9 +61,12 @@ public:
         int accdata_sum[3];
         float accdata_mean[3];
 
-        SENSOR_DATA_TYPE (*sum)[SENSOR_DATA_SIZE];
-        SENSOR_DATA_TYPE (*mean)[SENSOR_DATA_SIZE];
-        SENSOR_DATA_TYPE (*var)[SENSOR_DATA_SIZE];
+        SENSOR_DATA_TYPE(*sum)
+        [SENSOR_DATA_SIZE];
+        SENSOR_DATA_TYPE(*mean)
+        [SENSOR_DATA_SIZE];
+        SENSOR_DATA_TYPE(*var)
+        [SENSOR_DATA_SIZE];
         void (*enqueue)(struct sensordata_q*, SENSOR_DATA_TYPE*);
         void (*free)(struct sensordata_q*);
         int (*static_detector)(struct sensordata_q* q, int kernel[8]);
@@ -118,8 +122,8 @@ public:
 
     int STATIC_CONV_VAR = 200;
     int STATIC_CONV_COUNT = 45;
-    int STATIC_CONV_DELAY = 15;  //延迟取数据
-public:
+    int STATIC_CONV_DELAY = 15; //延迟取数据
+  public:
     void add_csvdata(CalibData* csv_data);
 };
 #endif

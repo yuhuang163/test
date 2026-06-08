@@ -5,7 +5,7 @@
 #include <QSet>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 SerialChannel::SerialChannel(QObject* parent) : QObject(parent), port_(new QSerialPort(this)), readTimer_(new QTimer(this)) {

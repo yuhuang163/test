@@ -7,21 +7,20 @@ namespace Ui {
 class UIDemo3;
 }
 
-class UIDemo3 : public QDialog
-{
+class UIDemo3 : public QDialog {
     Q_OBJECT
 
-public:
-    explicit UIDemo3(QWidget *parent = 0);
+  public:
+    explicit UIDemo3(QWidget* parent = 0);
     ~UIDemo3();
 
-private:
-    Ui::UIDemo3 *ui;
+  private:
+    Ui::UIDemo3* ui;
     bool max;
     QRect location;
-    QList<QWidget *> frms;
+    QList<QWidget*> frms;
 
-private slots:
+  private slots:
     void initForm();
     void initTreeWidget();
     void initPanelWidget();
@@ -29,7 +28,7 @@ private slots:
     void initMenu();
     void doMenu();
 
-private slots:
+  private slots:
     void on_btnMenu_Min_clicked();
     void on_btnMenu_Max_clicked();
     void on_btnMenu_Close_clicked();

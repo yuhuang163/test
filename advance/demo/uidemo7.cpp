@@ -2,10 +2,8 @@
 #include "ui_uidemo7.h"
 #include "quiwidget.h"
 
-UIDemo7::UIDemo7(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::UIDemo7)
-{
+UIDemo7::UIDemo7(QWidget* parent) : QDialog(parent),
+                                    ui(new Ui::UIDemo7) {
     ui->setupUi(this);
     this->initForm();
     this->initNavLeft();
@@ -13,13 +11,11 @@ UIDemo7::UIDemo7(QWidget *parent) :
     QUIWidget::setFormInCenter(this);
 }
 
-UIDemo7::~UIDemo7()
-{
+UIDemo7::~UIDemo7() {
     delete ui;
 }
 
-void UIDemo7::initForm()
-{
+void UIDemo7::initForm() {
     this->max = false;
     this->location = this->geometry();
     this->setProperty("form", true);
@@ -46,9 +42,8 @@ void UIDemo7::initForm()
     this->setStyleSheet(qss.join(""));
 }
 
-void UIDemo7::buttonClickedLeft()
-{
-    QToolButton *b = (QToolButton *)sender();
+void UIDemo7::buttonClickedLeft() {
+    QToolButton* b = (QToolButton*)sender();
     QString name = b->text();
 
     int count = tbtnLeft.count();
@@ -65,9 +60,8 @@ void UIDemo7::buttonClickedLeft()
     ui->label->setText(name);
 }
 
-void UIDemo7::buttonClickedTop()
-{
-    QToolButton *b = (QToolButton *)sender();
+void UIDemo7::buttonClickedTop() {
+    QToolButton* b = (QToolButton*)sender();
     QString name = b->text();
 
     int count = tbtnTop.count();
@@ -84,8 +78,7 @@ void UIDemo7::buttonClickedTop()
     ui->label->setText(name);
 }
 
-void UIDemo7::initNavLeft()
-{
+void UIDemo7::initNavLeft() {
     int borderWidth = 3;
     QString borderColor = "#029FEA";
     QString normalBgColor = "#292F38";
@@ -115,8 +108,7 @@ void UIDemo7::initNavLeft()
     ui->tbtn1->click();
 }
 
-void UIDemo7::initNavTop()
-{
+void UIDemo7::initNavTop() {
     int borderWidth = 5;
     QString borderColor = "#1CA0E4";
     QString normalBgColor = "#FFFFFF";
@@ -147,10 +139,9 @@ void UIDemo7::initNavTop()
     ui->btn1->click();
 }
 
-void UIDemo7::setStyle(QWidget *widget, int borderWidth, QString borderColor,
+void UIDemo7::setStyle(QWidget* widget, int borderWidth, QString borderColor,
                        QString normalBgColor, QString selectBgColor,
-                       QString normalTextColor, QString selectTextColor)
-{
+                       QString normalTextColor, QString selectTextColor) {
     QStringList qss;
 
     qss.append(QString("QWidget[flag=\"left\"] QAbstractButton{"
@@ -159,8 +150,8 @@ void UIDemo7::setStyle(QWidget *widget, int borderWidth, QString borderColor,
                        "padding:5px;"
                        "color:%1;"
                        "background:%2;}")
-               .arg(normalTextColor)
-               .arg(normalBgColor));
+                   .arg(normalTextColor)
+                   .arg(normalBgColor));
 
     qss.append(QString("QWidget[flag=\"left\"] QAbstractButton:hover,"
                        "QWidget[flag=\"left\"] QAbstractButton:pressed,"
@@ -171,11 +162,11 @@ void UIDemo7::setStyle(QWidget *widget, int borderWidth, QString borderColor,
                        "border-color:%3;"
                        "color:%4;"
                        "background:%5;}")
-               .arg(borderWidth)
-               .arg(borderWidth * 2)
-               .arg(borderColor)
-               .arg(selectTextColor)
-               .arg(selectBgColor));
+                   .arg(borderWidth)
+                   .arg(borderWidth * 2)
+                   .arg(borderColor)
+                   .arg(selectTextColor)
+                   .arg(selectBgColor));
 
     qss.append(QString("QWidget[flag=\"bottom\"] QAbstractButton{"
                        "border-style:none;"
@@ -183,8 +174,8 @@ void UIDemo7::setStyle(QWidget *widget, int borderWidth, QString borderColor,
                        "padding:5px;"
                        "color:%1;"
                        "background:%2;}")
-               .arg(normalTextColor)
-               .arg(normalBgColor));
+                   .arg(normalTextColor)
+                   .arg(normalBgColor));
 
     qss.append(QString("QWidget[flag=\"bottom\"] QAbstractButton:hover,"
                        "QWidget[flag=\"bottom\"] QAbstractButton:pressed,"
@@ -195,23 +186,20 @@ void UIDemo7::setStyle(QWidget *widget, int borderWidth, QString borderColor,
                        "border-color:%3;"
                        "color:%4;"
                        "background:%5;}")
-               .arg(borderWidth)
-               .arg(borderWidth * 2)
-               .arg(borderColor)
-               .arg(selectTextColor)
-               .arg(selectBgColor));
+                   .arg(borderWidth)
+                   .arg(borderWidth * 2)
+                   .arg(borderColor)
+                   .arg(selectTextColor)
+                   .arg(selectBgColor));
 
     widget->setStyleSheet(qss.join(""));
 }
 
-
-void UIDemo7::on_btnMenu_Min_clicked()
-{
+void UIDemo7::on_btnMenu_Min_clicked() {
     showMinimized();
 }
 
-void UIDemo7::on_btnMenu_Max_clicked()
-{
+void UIDemo7::on_btnMenu_Max_clicked() {
     if (max) {
         this->setGeometry(location);
         this->setProperty("canMove", true);
@@ -224,7 +212,6 @@ void UIDemo7::on_btnMenu_Max_clicked()
     max = !max;
 }
 
-void UIDemo7::on_btnMenu_Close_clicked()
-{
+void UIDemo7::on_btnMenu_Close_clicked() {
     close();
 }

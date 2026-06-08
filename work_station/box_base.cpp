@@ -11,11 +11,11 @@
 #include "test_base.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 box_base::box_base(QWidget* parent) : QMainWindow(parent) {
-    QString station = SETTINGS.value("SYSTEM/station").toString();  // 工站
+    QString station = SETTINGS.value("SYSTEM/station").toString(); // 工站
     pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
 
     if (station == "PCBA_TEST" || pack.factory == "无mes厂") {
@@ -27,7 +27,7 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 }
 void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
-     qDebug() << "远程 provideAuthentication reply:" << reply;
+    qDebug() << "远程 provideAuthentication reply:" << reply;
     authenticator->setUser("usmilejig");
     authenticator->setPassword("Starspulse@123");
 }
@@ -107,7 +107,7 @@ void box_base::checkAndUpdateFile() {
                             if (file.open(QIODevice::WriteOnly)) {
                                 file.write(downloadReply->readAll());
                                 file.close();
-                              emit   sendBoxLog("文件升级成功");
+                                emit sendBoxLog("文件升级成功");
                                 QProcess::startDetached(savePath);
                                 QString batFileName = "./delete_self.bat";
                                 QFile batFile(batFileName);
@@ -127,16 +127,14 @@ void box_base::checkAndUpdateFile() {
                                 QTimer::singleShot(1000, []() {
                                     qApp->quit();
                                     QProcess::startDetached(
-                                        "cmd.exe", QStringList()
-                                                       << "/c"
-                                                       << "taskkill /f /pid " +
-                                                              QString::number(QCoreApplication::applicationPid()));
+                                        "cmd.exe", QStringList() << "/c"
+                                                                 << "taskkill /f /pid " + QString::number(QCoreApplication::applicationPid()));
                                 });
                             } else {
                                 qDebug() << "无法打开文件进行写入:" << savePath;
                             }
                         } else {
-                          emit   sendBoxLog("下载失败:" + downloadReply->errorString());
+                            emit sendBoxLog("下载失败:" + downloadReply->errorString());
                         }
                         downloadReply->deleteLater();
                     });
@@ -145,7 +143,7 @@ void box_base::checkAndUpdateFile() {
                 emit sendBoxLog("本地文件已经是最新的");
             }
         } else {
-           emit  sendBoxLog("获取远程文件列表失败");
+            emit sendBoxLog("获取远程文件列表失败");
             qDebug() << "获取远程文件列表失败:" << reply->errorString();
         }
         reply->deleteLater();
@@ -160,13 +158,13 @@ void box_base::signalAndslot() {
 
         connect(testList[i], SIGNAL(send_go_next_test(int)), this, SLOT(checkAllTest(int)));
         connect(testList[i], SIGNAL(send_end_test(int)), this, SLOT(checkAllover(int)));
-        // mes类；本地 SQLite 入库在 QMesManager::TestPassAll 内与 MES 并行
-        connect(testList[i], SIGNAL(send_end_testPass(MesPacketData)), MesManager, SLOT(TestPassAll(MesPacketData)));
-        connect(testList[i], SIGNAL(sendProcessInspection(MesPacketData)), MesManager,
+        // mes类
+        connect(testList[i], SIGNAL(send_end_test_pass(MesPacketData)), MesManager, SLOT(TestPassAll(MesPacketData)));
+        connect(testList[i], SIGNAL(send_process_inspection(MesPacketData)), MesManager,
                 SLOT(ProcessInspectionAll(MesPacketData)));
-        connect(testList[i], SIGNAL(getMesTestValue(MesPacketData)), MesManager, SLOT(GetTestDataAll(MesPacketData)));
+        connect(testList[i], SIGNAL(send_mes_test_value(MesPacketData)), MesManager, SLOT(GetTestDataAll(MesPacketData)));
 
-        connect(testList[i], SIGNAL(send_startTest(int)), this, SLOT(reset_vector(int)));
+        connect(testList[i], SIGNAL(send_start_test(int)), this, SLOT(reset_vector(int)));
 
         // connect(MesManager, SIGNAL(MesState(const int)), testList[i],SLOT(solveMesSucess(const int)));
         connect(MesManager, SIGNAL(MesError(const int, QString)), testList[i], SLOT(solveMesData(const int, QString)));
@@ -203,7 +201,9 @@ void box_base::signalAndslot() {
 //     }
 // }
 //每一路开始测试都会清除掉自己的那个变量
-void box_base::reset_vector(int i) { FixTureStates[i - 1] = 0; }
+void box_base::reset_vector(int i) {
+    FixTureStates[i - 1] = 0;
+}
 void box_base::initData() {
     pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
@@ -219,7 +219,7 @@ void box_base::initData() {
     pack.error = "NULL";
 
     for (int i = 0; i < testList.size(); i++) {
-        FixTureStates.push_back(0);  // 添加0到vector中
+        FixTureStates.push_back(0); // 添加0到vector中
     }
 }
 // 辅助函数定义
@@ -327,7 +327,7 @@ void box_base::recoverCustom() {
         QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
         QString usbComName = SETTINGS.value(QString("%1/usbcomName").arg(baseKey)).toString();
         QString jigComomName = SETTINGS.value(QString("%1/JigcomName").arg(baseKey)).toString();
-        QString nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(baseKey)).toString();  //需要手动去写
+        QString nfcComName = SETTINGS.value(QString("%1/nfcComName").arg(baseKey)).toString(); //需要手动去写
         QString ProductComName = SETTINGS.value(QString("%1/ProductcomName").arg(baseKey)).toString();
         QString MotorCaliParam = SETTINGS.value(QString("%1/MotorCaliParam").arg(baseKey)).toString();
 
@@ -362,7 +362,7 @@ void box_base::recoverCustom() {
 }
 
 void box_base::ShowData(QMainWindow* parent) {
-    if (parent) {  // 确保 parent 指针不为空
+    if (parent) { // 确保 parent 指针不为空
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
         else if (pack.factory == "lx")
@@ -380,7 +380,7 @@ void box_base::ShowData(QMainWindow* parent) {
         else if (pack.factory == "hz")
             parent->statusBar()->addPermanentWidget(new QLabel("华庄MES"));
         else
-            parent->statusBar()->addPermanentWidget(new QLabel("未知工厂"));  // 处理默认情况
+            parent->statusBar()->addPermanentWidget(new QLabel("未知工厂")); // 处理默认情况
     } else {
         qWarning() << "ShowData的parent指针为空";
     }

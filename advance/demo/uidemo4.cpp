@@ -4,23 +4,19 @@
 #include "quiwidget.h"
 #include "qtimer.h"
 
-UIDemo4::UIDemo4(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::UIDemo4)
-{
+UIDemo4::UIDemo4(QWidget* parent) : QDialog(parent),
+                                    ui(new Ui::UIDemo4) {
     ui->setupUi(this);
     this->initForm();
     QUIWidget::setFormInCenter(this);
     QTimer::singleShot(100, this, SLOT(initIndex()));
 }
 
-UIDemo4::~UIDemo4()
-{
+UIDemo4::~UIDemo4() {
     delete ui;
 }
 
-void UIDemo4::initForm()
-{
+void UIDemo4::initForm() {
     this->max = false;
     this->location = this->geometry();
     this->setProperty("form", true);
@@ -74,24 +70,20 @@ void UIDemo4::initForm()
             this, SLOT(currentItemChanged(int, QString)));
 }
 
-void UIDemo4::initIndex()
-{
+void UIDemo4::initIndex() {
     ui->widgetNavLeft->setCurrentIndex(0);
     ui->widgetNavTop->setCurrentIndex(0);
 }
 
-void UIDemo4::currentItemChanged(int , const QString &item)
-{
+void UIDemo4::currentItemChanged(int, const QString& item) {
     ui->label->setText(item);
 }
 
-void UIDemo4::on_btnMenu_Min_clicked()
-{
+void UIDemo4::on_btnMenu_Min_clicked() {
     showMinimized();
 }
 
-void UIDemo4::on_btnMenu_Max_clicked()
-{
+void UIDemo4::on_btnMenu_Max_clicked() {
     if (max) {
         this->setGeometry(location);
         this->setProperty("canMove", true);
@@ -104,7 +96,6 @@ void UIDemo4::on_btnMenu_Max_clicked()
     max = !max;
 }
 
-void UIDemo4::on_btnMenu_Close_clicked()
-{
+void UIDemo4::on_btnMenu_Close_clicked() {
     close();
 }
