@@ -15,7 +15,10 @@
 #include <QVector>
 #include <QSet>
 #include <QStringList>
+#include <QFontMetrics>
 #include <QRegularExpression>
+#include <QTabBar>
+#include <QTabWidget>
 #include <QThread>
 #include <QtGlobal>
 #include "qproduct.h"
@@ -88,6 +91,45 @@ QString orderGroupName(const QString& stationKey) {
 
 bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
+}
+
+/** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
+void setupFreeWorkTabBar(QTabWidget* tabWidget) {
+    if (!tabWidget)
+        return;
+
+    tabWidget->setUsesScrollButtons(true);
+    QTabBar* bar = tabWidget->tabBar();
+    if (!bar)
+        return;
+
+    bar->setExpanding(false);
+    bar->setElideMode(Qt::ElideNone);
+    bar->setUsesScrollButtons(true);
+
+    QFont font = bar->font();
+    font.setPixelSize(14);
+    bar->setFont(font);
+
+    const QFontMetrics fm(font);
+    int maxTextWidth = 0;
+    for (int i = 0; i < bar->count(); ++i)
+        maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+
+    constexpr int hPad = 32;
+    const int minTabWidth = maxTextWidth + hPad;
+    // updateMainStyle 之后覆盖全局 QTabBar 规则
+    bar->setStyleSheet(QStringLiteral(
+                             "QTabBar::tab {"
+                             "  min-width: %1px;"
+                             "  padding: 6px 16px;"
+                             "  font-size: 14px;"
+                             "}"
+                             "QTabBar::tab:selected {"
+                             "  font-weight: bold;"
+                             "}")
+                             .arg(minTabWidth));
+    bar->updateGeometry();
 }
 
 }  // namespace
@@ -233,6 +275,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     upperComputerVer = FREE_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
+    setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts();  // 要搜索一下一开始
     // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
     ui->test_result->setText("WAIT");
@@ -315,6 +358,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
     ui->tabWidget->setTabText(0, tabName);
+    setupFreeWorkTabBar(ui->tabWidget);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     useTestCaseFlow_ = false;
