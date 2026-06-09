@@ -193,7 +193,7 @@
 | `compareVersions` 泛用 | 多工站 | 用于版本串、外设状态串、flash 状态等，非版本也在用 |
 | CMW Profile 命名 | `qfreework_case_hooks.cpp` | `Profile0~5` 与 `FREE_INSTR_CMW_GPRF_*` 双命名映射 |
 | MES 值格式 | `agreement/qmes/qmes.cpp` | `NAME:VALUE` 与带 MAX/MIN 长格式两种 |
-| 船运业务 | 老化 / IMU 工站 | `ShipMode` 与治具 `shipCurrent` 字段**无关**，勿混在治具协议优化里 |
+| 船运业务 | `common_class.cpp` / 老化 / IMU | `ShipMode` 与治具 `shipCurrent` 字段**无关**，勿混在治具协议优化里 |
 
 ---
 

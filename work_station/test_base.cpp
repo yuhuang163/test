@@ -17,8 +17,9 @@
 
 #include "qcoreapplication.h"
 #include "qprocess.h"
-#include "qfctp.h"
-#include "qaiot.h"
+#include "agreement/qProtocol/qfctp/qfctp.h"
+#include "agreement/qProtocol/qaiot/qaiot.h"
+#include "agreement/qProtocol/qroot/qroot.h"
 #include "common_utils.h"
 
 #pragma comment(lib, "hid.lib")
