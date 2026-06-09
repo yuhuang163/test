@@ -2,7 +2,7 @@
 #define FACTORY_ANALYZER_H
 
 #include "qadb.h"
-#include "qbulk/qbulk.h"
+#include "qbulk.h"
 #include "qcustomplot.h"
 #include "qshell.h"
 #include <QDesktopServices>

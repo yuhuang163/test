@@ -14,7 +14,7 @@
 
 #include "Abini.h"
 #include "serial_channel.h"
-#include "agreement/qProtocol/qprotocolmanager.h"
+#include "qprotocolmanager.h"
 #include "qusb.h"
 #include "qvisa.h"
 #include "qcheckbox.h"

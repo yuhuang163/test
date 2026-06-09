@@ -39,17 +39,18 @@ agreement/
 │   └── qmodbusmanager.*
 │
 ├── device/                   # 设备/协议适配（set/get/parseCmd，绑串口/TCP）
-│   ├── product/              # 产测三协议
+│   ├── protocol/             # 产测三协议（qpb / qfctp / qaiot）
 │   │   ├── qfctp/
 │   │   ├── qaiot/
-│   │   └── qpb/              # qpb.cpp/.h + proto 生成物；generator/Python39 可留原位
+│   │   └── qpb/              # qpb.cpp/.h + proto 生成物；generator/Python39
 │   ├── modbus/               # inovance_h5u、usb_modbus_rtu
-│   ├── peripheral/           # 串口外设
+│   ├── peripheral/           # 治具外设 / 测试仪器
 │   │   ├── qusb/
 │   │   ├── qjig/
 │   │   ├── qat/
+│   │   ├── qvisa/            # NI-VISA（CMW 等）
 │   │   └── fixture/          # fixture_uart（UI+串口）
-│   ├── product_io/           # qproduct、qvisa（可选）
+│   ├── product/              # 产品串口通讯（qproduct）
 │   └── ble/                  # root_ble_ota
 │
 ├── transport/                # 纯 I/O 通道
@@ -86,16 +87,17 @@ codec 不得 include device/manager
 | `qProtocol/qprotocol.*` | `access/qprotocol.*` | access |
 | `qProtocol/qprotocol_types.h` | `access/qprotocol_types.h` | access |
 | `qProtocol/qprotocolmanager.*` | `manager/qprotocolmanager.*` | manager |
-| `qProtocol/qfctp/` | `device/product/qfctp/` | device |
-| `qProtocol/qaiot/` | `device/product/qaiot/` | device |
-| `qProtocol/qpb/qpb.*` | `device/product/qpb/` | device |
+| `qProtocol/qfctp/` | `device/protocol/qfctp/` | device |
+| `qProtocol/qaiot/` | `device/protocol/qaiot/` | device |
+| `qProtocol/qpb/qpb.*` | `device/protocol/qpb/` | device |
 | `qProtocol/root_ble_ota.*` | `device/ble/` | device |
 | `qplc/inovance_*` | `device/modbus/` | device |
 | `qusb/` | `device/peripheral/qusb/` | device |
 | `qjig/` | `device/peripheral/qjig/` | device |
 | `qat/` | `device/peripheral/qat/` | device |
 | `qfixture/fixture_uart.*` | `device/peripheral/fixture/` | device |
-| `qproduct/`、`qvisa/` | `device/product_io/` | device |
+| `qproduct/` | `device/product/` | device（产品侧串口） |
+| `qvisa/` | `device/peripheral/qvisa/` | device（VISA 测试仪器，与 qusb 等同属外设层） |
 | `qtransport/qprocesschannel.*` | `transport/` | transport |
 | `platform/serial/serial_channel.*` | `transport/serial_channel.*` | transport |
 | `qmes/*` | `service/mes/` | service |
@@ -128,9 +130,9 @@ codec 不得 include device/manager
 - 工站：`#include "qprotocolmanager.h"`（靠 INCLUDEPATH）
 - **验收**：`protocolManager.set/get` 正常
 
-### 阶段 3：device/product（产测三协议）
+### 阶段 3：device/protocol（产测三协议）
 
-- 建 `device/product/`，迁入 `qfctp`、`qaiot`、`qpb`
+- 建 `device/protocol/`，迁入 `qfctp`、`qaiot`、`qpb`
 - **不搬** `Python39`、`generator`
 - **验收**：PB + FCTP + AIoT 收发
 
@@ -151,11 +153,12 @@ codec 不得 include device/manager
 - 迁 `qmes`、`qtuple`、`qadb`、`qshell`、`qbulk`
 - **验收**：MES、三元组、日志上传
 
-### 阶段 7：清理
+### 阶段 7：清理（已完成）
 
-- 删空目录 `qProtocol/`、`qtransport/`、`qplc/` 等
-- 收紧 `.pro` INCLUDEPATH（约 6～8 条顶层路径）
-- 删无效 `qbrush`、`adb` 空路径
+- 删空目录 `qtransport/`、`qfixture/`、`platform/serial/` 等；**`qProtocol/` 已移除**（`generator` + `Python39` 迁至 `device/protocol/qpb/`）
+- `.pro` 用 `AGREEMENT_DIR` + `for()` 收紧 service/codec 的 INCLUDEPATH；删除无效 `qbrush`
+- 全仓源码 `#include` 已改为短名；`validate_commit_message.py` 增加 `agreement/service/tuple/`
+- **待做**：全量 MSVC 编译验收；历史 `docs/*.md` 中旧路径说明可择机更新
 
 ---
 
@@ -167,16 +170,35 @@ codec 不得 include device/manager
 | access/adapter 同时上 | 先 **codec → access/manager → device** |
 | 未适配全仓 include | 每阶段改完 **立即编译** |
 | 混进 CRLF / 大提交 | **换行与目录重构分开** |
-| `adapter/qProtocol` 命名绕 | 用 **`device/product`** |
+| `adapter/qProtocol` 命名绕 | **`device/protocol`**（dongle 产测协议）、**`device/product`**（产品串口）、**`device/peripheral`**（治具外设含 qvisa） |
 
 ---
 
-## 6. 自由工站验收清单（每阶段）
+## 6. 验收清单（每阶段）
+
+### 6.1 自由工站（`QFreeWork` / `test_base`）
 
 1. 打开/连接：dongle、product、fixture（菜单「连接治具串口」）
 2. test_case：`Channel=Fixture` 的 PCBA 发令/等包
 3. `protocolManager` FCTP set/get
 4. 华庄 MES / 日志上传（service 阶段后）
+
+### 6.2 调试工站（`factory_analyzer` / `MAIN_TEST`）
+
+> 设置页选「调试上位机」启动；**不走** `test_base` / `protocolManager`，但同样依赖 `agreement/` 下 service、product、peripheral，重构后须冒烟。
+
+| 阶段 | 建议验收 |
+|------|----------|
+| 1 codec | 一般无直接影响；全量编译通过即可 |
+| 2 access+manager | 无直接影响（调试工具不绑产测 Manager） |
+| 3 device/protocol | PB + FCTP + AIoT 收发（dongle 产测协议） |
+| 3 device/product | `Qproduct` 产品串口收发 |
+| 4 peripheral | `Qvisa` CMW 等 VISA 仪器（与 qusb/jig 同层） |
+| 4 peripheral+transport | 若调试页开 dongle/串口相关功能，确认 `SerialChannel` 路径 |
+| 6 service | **`Qadb` / `Qshell` / `QBulk`** 连接与命令队列；日志/批量读写 |
+| 7 清理 | 调试页 `#include` 短名仍有效（靠 `.pro` INCLUDEPATH） |
+
+典型操作：USB/Bulk 连接、ADB 状态、产品串口、shell 命令队列、设置里 `SYSTEM/ProtocolType` 切换后若走产测页再验 PB/FCTP。
 
 ---
 

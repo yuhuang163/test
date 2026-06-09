@@ -15,8 +15,8 @@
 
 #include "Abini.h"
 #include "common_utils.h"
-#include "protocol/fixture_uart_types.h"
-#include "protocol/fixture_pcba_uart_protocol.h"
+#include "fixture_uart_types.h"
+#include "fixture_pcba_uart_protocol.h"
 
 #if _MSC_VER >= 1600
 #    pragma execution_character_set(push, "utf-8")

@@ -12,7 +12,7 @@ public:
 #include <functional>
 #include <vector>
 
-#include "agreement/qProtocol/qprotocolmanager.h"
+#include "qprotocolmanager.h"
 #include "qpb.h"  // 引入 Qpb 头文件
 class Qpb;  // 前向声明 Qpb 类型，避免头文件依赖
 
