@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -197,6 +197,116 @@ class QFreeWork : public test_base {
     quint32 plcKeyCapSyncReadValue_ = 0;
     int plcKeyCapSyncReadAuxId_ = -1;
     QString plcKeyCapPassSummary_;
+    /** 治具仍下压时多次读电容，取最大值卡控；在 runPlcV3TouchKeyFull 内调用。 */
+    bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
+    /** 仪器应答监听（与 Qproduct::instrument* 信号配合）。 */
+    QMetaObject::Connection productInstConn_;
+    /** 非空表示正在等「停止接收」应答（PER 步）；与构造函数里长期 connect 的槽配合。 */
+    QString productInstrumentStopWaitStepName_;
+    /** 最近一次「产品串口开始接收」用到的 profile（0～5），供 PER 步与 CMW 切频对齐。 */
+    int lastBrushInstrumentProfile_ = -1;
+    /** 自上次「开始接收」后是否已在「并联CMW播放*」步成功打过 GPRF；PER 步据此避免重复播放。 */
+    bool cmwGprfBurstDoneSinceStartRx_ = false;
+    /** 自由工站 VISA：地址仅来自界面；并联 CMW 时强制 RxCmwInstrument profile。 */
+    void applyVisaForCmwBurst();
+    QString currentVisaAddress() const;
+    VisaDeviceProfile currentVisaDeviceProfileFromUi() const;
+    void syncVisaUiFromFreeWorkSettings();
+    void refreshVisaResourceCombo();
+    void applyVisaFromUi(bool testConnection);
+    bool freeWorkCmwVisaWrite(const QString& cmd);
+    bool freeWorkCmwVisaQuery(const QString& cmd, QString* response);
+    /** 并联 GPRF：`alignedPostTrigHoldMs>=0` 时 TRIG 后固定等待使用该值（与 BrushInstrument/PacketPhaseWaitMs 同源）；若为真且 **`outAlignedWaitDoneByCmw` 输出 true**，表示已在仪器路径内阻塞等满，PER 勿再延时 waitPacketMs。仅当 **未** 开 `BlePer/CmwWaitArbScount` 时才能把「对齐等满」记在 CMW 内。 */
+    /** `ranCmwBurst`：非空时在入口清零；仅在成功执行完 **`freeWorkRunSingleCmwBurstAtMhz`** 后置真（配置跳过或未打突发时保持假）。 */
+    bool freeWorkInstrumentBleBrushCmwBurstIfEnabled(const QString& scenarioLabel, int brushProfile, QString* errorMessage,
+                                                     int alignedPostTrigHoldMs = -1, bool* outAlignedWaitDoneByCmw = nullptr,
+                                                     bool* ranCmwBurst = nullptr);
+    /** 首次按 BlePer/Cmw* 写 ARB（与 wifibletest::initializeBlePerCmwGprf 一致）。 */
+    bool freeWorkPrimeInstrumentCmwGprf(QString* errorMessage);
+    /** 轮询 SOURce:GPRF:GEN:ARB:SCOunt? 至目标 cycles；`outElapsedMs` 若非空写入从进入轮询到成功返回的总耗时(ms)。 */
+    bool freeWorkWaitBleCmwArbComplete(const QString& scenarioLabel, QString* errorMessage, int* outElapsedMs = nullptr);
+    /** 单次切频、`TRIGger:...MANual:EXECute`→`STAT ON`（对标 docs/cmw100rx）、可选 SCOunt 轮询、`OFF`。`postTrigHoldMsOverride>=0` 时用于积包毫秒补足。 */
+    bool freeWorkRunSingleCmwBurstAtMhz(int freqMhz, const QString& scenarioLabel, QString* errorMessage,
+                                        int postTrigHoldMsOverride = -1);
+    /** 并联 CMW：对单个 brush profile（0～5）打一发 GPRF；GPRF ARB 侧仅首次会做完整初始化（gInstrumentCmwGprfPrimed）。 */
+    bool runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile);
+    void refreshOrderedTestIndexes();
+    QVector<int> loadIndexesFromConfig();
+    QVector<int> orderedTestIndexes_;
+    QStringList orderedTestCaseNames_;
+    /** 工站级：任一步失败是否结束整单流程（来自 总的测试流程.ini） */
+    bool stopFlowOnTestFail_ = true;
+    bool useTestCaseFlow_ = false;
+    struct TestCaseStepResult {
+        bool done = false;
+        bool pass = true;
+        QString testData;
+    };
+    TestCaseDefinition activeTestCase_;
+    QString activeTestCaseStepLabel_;
+    TestCaseStepResult testCaseStepResult_;
+    bool testCaseStepActive_ = false;
+    /** 治具/外设多项卡控已在 evaluate 时写入结果表，步骤结束不再追加汇总单行 */
+    bool testCaseMultiGateTableEmitted_ = false;
+    void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
+    void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                       const QVariant& payload, bool& allPass, QString& detailOut);
+    void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
+    /** 每步完成追加一条或多条 ASCII 键值（如三元组拆三条），供 MES itemvalue。 */
+    QVector<QPair<QString, QString>> freeWorkMesSegments_;
+    QByteArray expectedTailSnFromMes;
+    /** 写整机 SN：优先 MES 缓存 expectedTailSnFromMes，否则 SN 输入框 getMac。 */
+    QByteArray resolvedTailSnToWrite() const;
+    void executeFunctionByName(const QString functionName);
+    struct NamedFunction {
+        int id = -1;
+        QString name;
+        std::function<void()> function;
+        bool needCaseDone = false;
+        /** MES 键名，在 testFunction.cpp 的 FREEWORK_TEST_LIST 与本项写在一起（ASCII）。 */
+        QString mesTag;
+    };
+    void createTestFunctions();
+    std::vector<NamedFunction> testFunctions;
+    // 单个测试步骤的运行态：
+    // started: 已经触发过该步骤 action（避免重复发送命令）
+    // done/pass: 业务判定完成与结果（例如电量+卡控的异步判定）
+    // functionId: 当前正在等待判定的测试项稳定ID
+    struct StepRuntime {
+        bool started = false;
+        bool done = false;
+        bool pass = true;
+        int functionId = -1;
+        QString testData;
+        QString ask = "通过";
+        QElapsedTimer caseTimer;
+
+        // 每进入下一步或流程结束时统一复位
+        void reset() {
+            started = false;
+            done = false;
+            pass = true;
+            functionId = -1;
+            testData.clear();
+            ask = "通过";
+            caseTimer.invalidate();
+        }
+    } stepRuntime_;
+    InovanceH5uModbusTcp inovancePlcTcp_;
+    bool isCurrentStep(const QString& functionName) const;
+    /** 产品串口仪器步骤：兼容旧宏流程（functionId）与 test_case 流程（activeTestCaseStepLabel_）。 */
+    bool isCurrentInstrumentStep(const QString& stepName) const;
+    void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
+                          const QString& expect, bool needCompare);
+    void applyTupleByMac();
+    /** BYD AddSfcKey：单条关键物料（DATA_NAME/DATA_VALUE/QTY）。 */
+    void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
+    /** 蓝牙测试：三元组成功后上报 SN / 三元组 / mac 共 5 条关键物料。 */
+    void reportBydBluetoothMesKeyMaterials();
+    /** 三元组未就绪或字段为空时置失败并返回 true（调用方应跳过 sendCommandWithRetry）。 */
+    bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
+    void reportTupleWriteRecord();
+    void debugUpdateTupleMacStatus();
     void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                             const QString& enableKey);
     void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
@@ -301,8 +411,12 @@ class QFreeWork : public test_base {
     void on_jigDisconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
-    void on_pushButton_clicked();
-    void on_pushButton_2_clicked();
+    void on_visaRefreshButton_clicked();
+    void on_visaApplyButton_clicked();
+
+    /** 产品仪器停止接收应答（收包数）；逻辑见 qfreework_data.cpp，在构造函数中与 instrumentStopReceiveSeen 连接。 */
+    void onProductInstrumentStopReceiveAckForPer(int recvPkts);
+
     void on_stopTest_clicked();
 
   signals:

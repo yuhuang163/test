@@ -6,7 +6,10 @@
 #include <qlog.h>
 
 #include "Abini.h"
-#include "agreement/qProtocol/qprotocolmanager.h"
+#include "serial_channel.h"
+#include "qprotocolmanager.h"
+#include "qusb.h"
+#include "qvisa.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"

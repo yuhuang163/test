@@ -348,6 +348,70 @@
             </item>
            </layout>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_visa">
+            <item>
+             <widget class="QLabel" name="label_visa">
+              <property name="text">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;VISA仪器&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="visaDeviceRoleCombo">
+              <property name="toolTip">
+               <string>同一 VISA 口接 CMW 射频或程控电源；仅影响命令模板，地址在右侧填写。</string>
+              </property>
+              <item>
+               <property name="text">
+                <string>CMW射频</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>程控电源</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="visaAddressCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>1</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="toolTip">
+               <string>VISA 地址（界面配置，不读 BlePer/CmwVisaAddress 与 VisaPower/VisaAddress）；下拉为本机已发现资源，可手输。</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="visaRefreshButton">
+              <property name="toolTip">
+               <string>重新枚举本机 VISA 资源（?*INSTR）</string>
+              </property>
+              <property name="text">
+               <string>刷新</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="visaApplyButton">
+              <property name="toolTip">
+               <string>按界面地址与用途应用 VISA 会话，并测试 *IDN?</string>
+              </property>
+              <property name="text">
+               <string>保存并应用</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
          </layout>
         </item>
        </layout>

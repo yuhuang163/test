@@ -90,4 +90,4 @@ alwaysApply: true
 
 - **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须**分别出现** **`[XXX_VER]`** 与 **`[FREE_VER]`**（可两行或同一行用 **`；`** 分隔）；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿把不同模块要点塞进**同一个** `[XXX_VER]` 说明却不写应有宏。
 - 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
-- **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/qProtocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`platform/settings/`**、**`agreement/qProtocol/`**（不含 Python39）等。
+- **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/device/protocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`platform/settings/`**、**`agreement/access/`**、**`agreement/manager/`**、**`agreement/device/`** 等。

@@ -67,7 +67,8 @@ def staged_paths(repo: str) -> list[str]:
 # 路径片段 -> 提交中应出现的宏（与 .copilot-commit-message-instructions.md 一致）
 # 匹配时按片段长度降序，只取第一个命中（避免 agreement/ 误伤 qtuple）
 _PATH_TO_TAG: tuple[tuple[str, str], ...] = (
-    ("agreement/qtuple/", "FREE_VER"),
+    ("agreement/service/tuple/", "FREE_VER"),
+    ("agreement/qtuple/", "FREE_VER"),  # 旧路径（git mv 重命名时仍可能出现在 diff）
     ("work_station/quiescent_current/", "QC_VER"),
     ("work_station/wifi_ble/", "SINGLE_VER"),
     ("work_station/freework/", "FREE_VER"),
