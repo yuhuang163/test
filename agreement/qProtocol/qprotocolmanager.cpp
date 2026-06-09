@@ -6,6 +6,7 @@
 #include "qpb/qpb.h"
 #include "qfctp/qfctp.h"
 #include "qaiot/qaiot.h"
+#include "qroot/qroot.h"
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -46,6 +47,8 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
         return "qfctp";
     case ProtocolType::Qaiot:
         return "qaiot";
+    case ProtocolType::Qroot:
+        return "qroot";
     default:
         return "unknown";
     }
@@ -89,6 +92,15 @@ void QProtocolManager::bindQaiot(Qaiot* aiot) {
         unbindProtocolUpstream(qaiot_);
         qaiot_ = aiot;
         bindProtocolUpstream(qaiot_);
+    }
+    syncActivePointer();
+}
+
+void QProtocolManager::bindQroot(Qroot* root) {
+    if (qroot_ != root) {
+        unbindProtocolUpstream(qroot_);
+        qroot_ = root;
+        bindProtocolUpstream(qroot_);
     }
     syncActivePointer();
 }
@@ -242,6 +254,13 @@ Qaiot* QProtocolManager::currentQaiot() const {
     return nullptr;
 }
 
+Qroot* QProtocolManager::currentQroot() const {
+    if (currentType_ == ProtocolType::Qroot) {
+        return qroot_;
+    }
+    return nullptr;
+}
+
 bool QProtocolManager::isQpbProtocolActive() const {
     return currentType_ == ProtocolType::Qpb;
 }
@@ -254,6 +273,10 @@ bool QProtocolManager::isQaiotProtocolActive() const {
     return currentType_ == ProtocolType::Qaiot;
 }
 
+bool QProtocolManager::isQrootProtocolActive() const {
+    return currentType_ == ProtocolType::Qroot;
+}
+
 void QProtocolManager::syncActivePointer() {
     switch (currentType_) {
     case ProtocolType::Qpb:
@@ -264,6 +287,9 @@ void QProtocolManager::syncActivePointer() {
         break;
     case ProtocolType::Qaiot:
         active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
+        break;
+    case ProtocolType::Qroot:
+        active_ = qroot_ ? static_cast<qProtocol*>(qroot_) : nullptr;
         break;
     default:
         active_ = nullptr;

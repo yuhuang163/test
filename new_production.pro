@@ -48,6 +48,7 @@ INCLUDEPATH += agreement/qProtocol/qpb
 INCLUDEPATH += agreement/qProtocol/qfctp
 INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
 INCLUDEPATH += agreement/qProtocol/qaiot
+INCLUDEPATH += agreement/qProtocol/qroot
 INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
@@ -117,6 +118,7 @@ SOURCES += \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.cpp \
     agreement/qProtocol/qaiot/qaiot.cpp \
     agreement/qProtocol/qfctp/qfctp.cpp \
+    agreement/qProtocol/qroot/qroot.cpp \
     agreement/qProtocol/qprotocol.cpp \
     agreement/qProtocol/qprotocolmanager.cpp \
     agreement/qProtocol/root_ble_ota.cpp \
@@ -231,6 +233,7 @@ HEADERS += \
     agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
     agreement/qProtocol/qaiot/qaiot.h \
     agreement/qProtocol/qfctp/qfctp.h \
+    agreement/qProtocol/qroot/qroot.h \
     agreement/qProtocol/qprotocol.h \
     agreement/qProtocol/qprotocol_types.h \
     agreement/qProtocol/qprotocolmanager.h \

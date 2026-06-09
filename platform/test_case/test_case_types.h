@@ -27,7 +27,8 @@ enum class TestCaseSendChannel { Product,
                                  Fixture };
 
 enum class TestCaseProductProtocol { Qfctp,
-                                     Qpb };
+                                     Qpb,
+                                     Qroot };
 
 enum class TestCaseFixtureProtocol { Pcba };
 

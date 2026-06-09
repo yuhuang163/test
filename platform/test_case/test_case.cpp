@@ -1321,15 +1321,31 @@ TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& 
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qpb;
+    if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("Root"), Qt::CaseInsensitive) == 0)
+        return TestCaseProductProtocol::Qroot;
     return TestCaseProductProtocol::Qfctp;
 }
 
 QString DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol protocol) {
-    return protocol == TestCaseProductProtocol::Qpb ? QStringLiteral("Qpb") : QStringLiteral("Qfctp");
+    switch (protocol) {
+    case TestCaseProductProtocol::Qpb:
+        return QStringLiteral("Qpb");
+    case TestCaseProductProtocol::Qroot:
+        return QStringLiteral("Qroot");
+    default:
+        return QStringLiteral("Qfctp");
+    }
 }
 
 QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protocol) {
-    return protocol == TestCaseProductProtocol::Qpb ? QStringLiteral("QPB") : QStringLiteral("FCTP");
+    switch (protocol) {
+    case TestCaseProductProtocol::Qpb:
+        return QStringLiteral("QPB");
+    case TestCaseProductProtocol::Qroot:
+        return QStringLiteral("Root PCBA");
+    default:
+        return QStringLiteral("FCTP");
+    }
 }
 
 TestCaseSendAction DeviceCmdCatalog::actionFor(DeviceCmd cmd) {
@@ -1993,6 +2009,8 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
+    {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
+    {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2117,6 +2135,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.result;
         }
+    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+        const auto d = payload.value<ProtocolTypeData>();
+        if (field == QLatin1String("type")) {
+            ok = true;
+            return d.type;
+        }
     } else if (reportType == QLatin1String("ProtocolFixturePcbaData")) {
         QVariantMap m = payload.toMap();
         if (m.isEmpty()) {
@@ -2198,6 +2222,18 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("key")) {
             ok = true;
             return d.key.trimmed();
+        }
+    } else if (reportType == QLatin1String("ProtocolMacData")) {
+        const auto d = payload.value<ProtocolMacData>();
+        if (field == QLatin1String("mac")) {
+            ok = true;
+            return d.mac.trimmed();
+        }
+    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+        const auto d = payload.value<ProtocolTypeData>();
+        if (field == QLatin1String("type")) {
+            ok = true;
+            return QString::number(d.type);
         }
     } else if (reportType == QLatin1String("ProtocolPeriphStateData")) {
         const auto d = payload.value<ProtocolPeriphStateData>();

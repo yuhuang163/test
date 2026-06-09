@@ -1,4 +1,4 @@
-#include "test_base.h"
+﻿#include "test_base.h"
 
 #include "my_set/my_typedef.h"
 
@@ -19,6 +19,7 @@
 #include "qprocess.h"
 #include "agreement/qProtocol/qfctp/qfctp.h"
 #include "agreement/qProtocol/qaiot/qaiot.h"
+#include "agreement/qProtocol/qroot/qroot.h"
 #include "common_utils.h"
 
 #pragma comment(lib, "hid.lib")
@@ -46,10 +47,12 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
+                                        qroot(new Qroot(dongleSerialPort)),
                                         product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
+    protocolManager.bindQroot(qroot);
     const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
     if (selectedType == QProtocolManager::ProtocolType::Unknown) {

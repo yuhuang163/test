@@ -42,6 +42,7 @@ typedef enum {
 } STATE_INDEPENDENT_E;
 
 class Qfctp;
+class Qroot;
 class Qaiot;
 
 class test_base : public QWidget {
@@ -128,6 +129,7 @@ class test_base : public QWidget {
     Qpb* pb = nullptr;
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
+    Qroot* qroot = nullptr;
     QProtocolManager protocolManager;
     Qat* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;

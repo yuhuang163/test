@@ -298,6 +298,7 @@ void qsetting::loadConfig() {
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qpb（产测 PB）"), QStringLiteral("qpb"));
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qfctp（FCTP）"), QStringLiteral("qfctp"));
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qaiot（AIOT TLV）"), QStringLiteral("qaiot"));
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qroot（吸奶器 PCBA·蓝牙）"), QStringLiteral("qroot"));
     }
     {
         const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))

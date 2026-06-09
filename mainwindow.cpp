@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 
 #include <QInputDialog>
 #include <QLineEdit>
@@ -168,7 +168,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3", "M8P", "AIR 2", "Hi", "Y30P", "F20", "Q20", "Q20P", "Y20", "Y20P", "Y30",
+    QStringList productList = {"V3","Pump-E", "M8P", "AIR 2", "Hi", "Y30P", "F20", "Q20", "Q20P", "Y20", "Y20P", "Y30",
                                "Y30S", "Y21", "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
