@@ -5,7 +5,7 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
-Qadb::Qadb(QObject *parent) : QObject(parent) {
+Qadb::Qadb(QObject* parent) : QObject(parent) {
     channel_ = new QProcessChannel(this);
     channel_->setTxPrefix(QStringLiteral("ADB TX:"));
     channel_->setRxPrefix(QStringLiteral("ADB RX:"));
@@ -23,7 +23,7 @@ bool Qadb::start() {
 
     // 拼接 adb 路径
     QString adbPath = exeDir + R"(\factorydebugv4\adb\adb.exe)";
-    if(!channel_->start(adbPath, {"shell"}, 3000)) {
+    if (!channel_->start(adbPath, {"shell"}, 3000)) {
         qDebug() << "Failed to start adb shell!";
         return false;
     }
@@ -32,25 +32,23 @@ bool Qadb::start() {
 }
 
 void Qadb::stop() {
-    if(channel_) {
+    if (channel_) {
         channel_->stop();
     }
 }
 
-
-
-void Qadb::sendCommand(const QString &cmd,
-                       std::function<void(const QString &, qint64)> callback,
+void Qadb::sendCommand(const QString& cmd,
+                       std::function<void(const QString&, qint64)> callback,
                        qint64 timeoutMs) {
-    if(channel_) {
+    if (channel_) {
         channel_->sendCommand(cmd, callback, timeoutMs);
     }
 }
-void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
-{
-    if(keyProcess) {
+void Qadb::startKeyMonitorAdbShell(const QString& deviceEvent, KeyCallback cb) {
+    if (keyProcess) {
         // qDebug() << "已经在监控";
-        return;} // 已经在监控
+        return;
+    } // 已经在监控
 
     keyCallback = cb;
 
@@ -70,27 +68,33 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
         // 解析按键数据 (16/24字节结构根据 event size)
         // 这里简单演示，只判断 Power/ Shutter key
         // Power key = code 116, Shutter key = code 355
-        for(int i=0; i+24 <= data.size(); i+=24) {
-            const char *p = data.constData() + i;
-            quint16 type = *(quint16*)(p+16);
-            quint16 code = *(quint16*)(p+18);
-            quint32 value = *(quint32*)(p+20);
+        for (int i = 0; i + 24 <= data.size(); i += 24) {
+            const char* p = data.constData() + i;
+            quint16 type = *(quint16*)(p + 16);
+            quint16 code = *(quint16*)(p + 18);
+            quint32 value = *(quint32*)(p + 20);
             // qDebug() << "已经在监控"<<code<<value;
-            if(type != 1) continue; // EV_KEY
-            if(code == 357 && value == 1) {
-                if(keyCallback) keyCallback("电源按键");
+            if (type != 1)
+                continue; // EV_KEY
+            if (code == 357 && value == 1) {
+                if (keyCallback)
+                    keyCallback("电源按键");
             }
-            if(code == 355 && value == 1) {
-                if(keyCallback) keyCallback("录制按键");
+            if (code == 355 && value == 1) {
+                if (keyCallback)
+                    keyCallback("录制按键");
             }
-            if(code == 116 && value == 1) {
-                if(keyCallback) keyCallback("电源按键");
+            if (code == 116 && value == 1) {
+                if (keyCallback)
+                    keyCallback("电源按键");
             }
-            if(code == 126 && value == 1) {
-                if(keyCallback) keyCallback("翻转镜头按键");
+            if (code == 126 && value == 1) {
+                if (keyCallback)
+                    keyCallback("翻转镜头按键");
             }
-            if(code == 137 && value == 1) {
-                if(keyCallback) keyCallback("录制按键");
+            if (code == 137 && value == 1) {
+                if (keyCallback)
+                    keyCallback("录制按键");
             }
         }
     });
@@ -107,9 +111,8 @@ void Qadb::startKeyMonitorAdbShell(const QString &deviceEvent, KeyCallback cb)
     keyProcess->start(cmd);
 }
 
-void Qadb::stopKeyMonitorAdbShell()
-{
-    if(keyProcess) {
+void Qadb::stopKeyMonitorAdbShell() {
+    if (keyProcess) {
         keyProcess->kill();
         keyProcess->deleteLater();
         keyProcess = nullptr;

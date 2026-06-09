@@ -4,9 +4,8 @@
 #include "qfile.h"
 #include "qdebug.h"
 
-NavDelegate::NavDelegate(QObject *parent) : QStyledItemDelegate(parent)
-{
-    nav = (NavListView *)parent;
+NavDelegate::NavDelegate(QObject* parent) : QStyledItemDelegate(parent) {
+    nav = (NavListView*)parent;
 
     //引入图形字体
     int fontId = QFontDatabase::addApplicationFont(":/image/fontawesome-webfont.ttf");
@@ -14,15 +13,12 @@ NavDelegate::NavDelegate(QObject *parent) : QStyledItemDelegate(parent)
     iconFont = QFont(fontName);
 }
 
-NavDelegate::~NavDelegate()
-{
-
+NavDelegate::~NavDelegate() {
 }
 
-QSize NavDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
-{
+QSize NavDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     QSize size(50, 28);
-    NavModel::TreeNode *node = (NavModel::TreeNode *)index.data(Qt::UserRole).toUInt();
+    NavModel::TreeNode* node = (NavModel::TreeNode*)index.data(Qt::UserRole).toUInt();
 
     if (node->level == 1) {
         size = QSize(50, 35);
@@ -33,10 +29,9 @@ QSize NavDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelInde
     return size;
 }
 
-void NavDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
-{
+void NavDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
     painter->setRenderHint(QPainter::Antialiasing);
-    NavModel::TreeNode *node = (NavModel::TreeNode *)index.data(Qt::UserRole).toUInt();
+    NavModel::TreeNode* node = (NavModel::TreeNode*)index.data(Qt::UserRole).toUInt();
 
     //绘制背景
     QColor colorBg;
@@ -192,27 +187,22 @@ void NavDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, c
     painter->drawText(decoration, Qt::AlignCenter, recordInfo);
 }
 
-
-NavModel::NavModel(QObject *parent)	: QAbstractListModel(parent)
-{
-
+NavModel::NavModel(QObject* parent) : QAbstractListModel(parent) {
 }
 
-NavModel::~NavModel()
-{
-    for (std::vector<TreeNode *>::iterator it = treeNode.begin(); it != treeNode.end();) {
-        for (std::list<TreeNode *>::iterator child = (*it)->children.begin(); child != (*it)->children.end();) {
-            delete(*child);
+NavModel::~NavModel() {
+    for (std::vector<TreeNode*>::iterator it = treeNode.begin(); it != treeNode.end();) {
+        for (std::list<TreeNode*>::iterator child = (*it)->children.begin(); child != (*it)->children.end();) {
+            delete (*child);
             child = (*it)->children.erase(child);
         }
 
-        delete(*it);
+        delete (*it);
         it = treeNode.erase(it);
     }
 }
 
-void NavModel::setData(const QStringList &listItem)
-{
+void NavModel::setData(const QStringList& listItem) {
     int count = listItem.count();
 
     if (count == 0) {
@@ -238,7 +228,7 @@ void NavModel::setData(const QStringList &listItem)
         QString info = list.at(3);
 
         if (fatherTitle.isEmpty()) {
-            TreeNode *node = new TreeNode;
+            TreeNode* node = new TreeNode;
             node->label = title;
             node->collapse = collapse.toInt();
             node->info = info;
@@ -258,7 +248,7 @@ void NavModel::setData(const QStringList &listItem)
                 QString secInfo = secList.at(3);
 
                 if (secFatherTitle == title) {
-                    TreeNode *secNode = new TreeNode;
+                    TreeNode* secNode = new TreeNode;
                     secNode->label = secTitle;
                     secNode->info = secInfo;
                     secNode->collapse = false;
@@ -277,13 +267,11 @@ void NavModel::setData(const QStringList &listItem)
     endResetModel();
 }
 
-int NavModel::rowCount(const QModelIndex &parent) const
-{
+int NavModel::rowCount(const QModelIndex& parent) const {
     return listNode.size();
 }
 
-QVariant NavModel::data(const QModelIndex &index, int role) const
-{
+QVariant NavModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid()) {
         return QVariant();
     }
@@ -301,11 +289,10 @@ QVariant NavModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-void NavModel::refreshList()
-{
+void NavModel::refreshList() {
     listNode.clear();
 
-    for (std::vector<TreeNode *>::iterator it = treeNode.begin(); it != treeNode.end(); ++it) {
+    for (std::vector<TreeNode*>::iterator it = treeNode.begin(); it != treeNode.end(); ++it) {
         ListNode node;
         node.label = (*it)->label;
         node.treeNode = *it;
@@ -316,7 +303,7 @@ void NavModel::refreshList()
             continue;
         }
 
-        for (std::list<TreeNode *>::iterator child = (*it)->children.begin(); child != (*it)->children.end(); ++child) {
+        for (std::list<TreeNode*>::iterator child = (*it)->children.begin(); child != (*it)->children.end(); ++child) {
             ListNode node;
             node.label = (*child)->label;
             node.treeNode = *child;
@@ -330,9 +317,8 @@ void NavModel::refreshList()
     }
 }
 
-void NavModel::collapse(const QModelIndex &index)
-{
-    TreeNode *node = listNode[index.row()].treeNode;
+void NavModel::collapse(const QModelIndex& index) {
+    TreeNode* node = listNode[index.row()].treeNode;
 
     if (node->children.size() == 0) {
         return;
@@ -350,8 +336,7 @@ void NavModel::collapse(const QModelIndex &index)
     }
 }
 
-NavListView::NavListView(QWidget *parent) : QListView(parent)
-{
+NavListView::NavListView(QWidget* parent) : QListView(parent) {
     infoVisible = true;
     lineVisible = true;
     icoColorBg = false;
@@ -374,156 +359,130 @@ NavListView::NavListView(QWidget *parent) : QListView(parent)
     connect(this, SIGNAL(doubleClicked(QModelIndex)), model, SLOT(collapse(QModelIndex)));
 }
 
-NavListView::~NavListView()
-{
+NavListView::~NavListView() {
     delete model;
     delete delegate;
 }
 
-bool NavListView::getInfoVisible() const
-{
+bool NavListView::getInfoVisible() const {
     return this->infoVisible;
 }
 
-bool NavListView::getLineVisible() const
-{
+bool NavListView::getLineVisible() const {
     return this->lineVisible;
 }
 
-bool NavListView::getIcoColorBg() const
-{
+bool NavListView::getIcoColorBg() const {
     return this->icoColorBg;
 }
 
-NavListView::IcoStyle NavListView::getIcoStyle() const
-{
+NavListView::IcoStyle NavListView::getIcoStyle() const {
     return this->icoStyle;
 }
 
-QColor NavListView::getColorLine() const
-{
+QColor NavListView::getColorLine() const {
     return this->colorLine;
 }
 
-QColor NavListView::getColorBgNormal() const
-{
+QColor NavListView::getColorBgNormal() const {
     return this->colorBgNormal;
 }
 
-QColor NavListView::getColorBgSelected() const
-{
+QColor NavListView::getColorBgSelected() const {
     return this->colorBgSelected;
 }
 
-QColor NavListView::getColorBgHover() const
-{
+QColor NavListView::getColorBgHover() const {
     return this->colorBgHover;
 }
 
-QColor NavListView::getColorTextNormal() const
-{
+QColor NavListView::getColorTextNormal() const {
     return this->colorTextNormal;
 }
 
-QColor NavListView::getColorTextSelected() const
-{
+QColor NavListView::getColorTextSelected() const {
     return this->colorTextSelected;
 }
 
-QColor NavListView::getColorTextHover() const
-{
+QColor NavListView::getColorTextHover() const {
     return this->colorTextHover;
 }
 
-QSize NavListView::sizeHint() const
-{
+QSize NavListView::sizeHint() const {
     return QSize(200, 300);
 }
 
-QSize NavListView::minimumSizeHint() const
-{
+QSize NavListView::minimumSizeHint() const {
     return QSize(20, 20);
 }
 
-void NavListView::setData(const QStringList &listItem)
-{
+void NavListView::setData(const QStringList& listItem) {
     model->setData(listItem);
     this->setModel(model);
     this->setItemDelegate(delegate);
 }
 
-void NavListView::setInfoVisible(bool infoVisible)
-{
+void NavListView::setInfoVisible(bool infoVisible) {
     if (this->infoVisible != infoVisible) {
         this->infoVisible = infoVisible;
     }
 }
 
-void NavListView::setLineVisible(bool lineVisible)
-{
+void NavListView::setLineVisible(bool lineVisible) {
     if (this->lineVisible != lineVisible) {
         this->lineVisible = lineVisible;
     }
 }
 
-void NavListView::setIcoColorBg(bool icoColorBg)
-{
+void NavListView::setIcoColorBg(bool icoColorBg) {
     if (this->icoColorBg != icoColorBg) {
         this->icoColorBg = icoColorBg;
     }
 }
 
-void NavListView::setIcoStyle(NavListView::IcoStyle icoStyle)
-{
+void NavListView::setIcoStyle(NavListView::IcoStyle icoStyle) {
     if (this->icoStyle != icoStyle) {
         this->icoStyle = icoStyle;
     }
 }
 
-void NavListView::setColorLine(const QColor &colorLine)
-{
+void NavListView::setColorLine(const QColor& colorLine) {
     if (this->colorLine != colorLine) {
         this->colorLine = colorLine;
     }
 }
 
-void NavListView::setColorBgNormal(const QColor &colorBgNormal)
-{
+void NavListView::setColorBgNormal(const QColor& colorBgNormal) {
     if (this->colorBgNormal != colorBgNormal) {
         this->colorBgNormal = colorBgNormal;
     }
 }
 
-void NavListView::setColorBgSelected(const QColor &colorBgSelected)
-{
+void NavListView::setColorBgSelected(const QColor& colorBgSelected) {
     if (this->colorBgSelected != colorBgSelected) {
         this->colorBgSelected = colorBgSelected;
     }
 }
 
-void NavListView::setColorBgHover(const QColor &colorBgHover)
-{
+void NavListView::setColorBgHover(const QColor& colorBgHover) {
     if (this->colorBgHover != colorBgHover) {
         this->colorBgHover = colorBgHover;
     }
 }
 
-void NavListView::setColorTextNormal(const QColor &colorTextNormal)
-{
+void NavListView::setColorTextNormal(const QColor& colorTextNormal) {
     if (this->colorTextNormal != colorTextNormal) {
         this->colorTextNormal = colorTextNormal;
     }
 }
 
-void NavListView::setColorTextSelected(const QColor &colorTextSelected)
-{
+void NavListView::setColorTextSelected(const QColor& colorTextSelected) {
     if (this->colorTextSelected != colorTextSelected) {
         this->colorTextSelected = colorTextSelected;
     }
 }
 
-void NavListView::setColorTextHover(const QColor &colorTextHover)
-{
+void NavListView::setColorTextHover(const QColor& colorTextHover) {
     if (this->colorTextHover != colorTextHover) {
         this->colorTextHover = colorTextHover;
     }

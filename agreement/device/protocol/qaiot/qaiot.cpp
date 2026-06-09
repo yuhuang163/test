@@ -4,7 +4,7 @@
 #include <QStringList>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -23,9 +23,10 @@ bool toByteValue(const QVariant& v, quint8* out) {
     }
     return true;
 }
-}  // namespace
+} // namespace
 
-Qaiot::Qaiot(QSerialPort* parent) : qProtocol(parent), serialPort(parent) {}
+Qaiot::Qaiot(QSerialPort* parent) : qProtocol(parent), serialPort(parent) {
+}
 
 void Qaiot::parseCmd(const QByteArray& byte) {
     if (byte.size() < 2) {
@@ -40,17 +41,17 @@ void Qaiot::parseCmd(const QByteArray& byte) {
     }
 
     qDebug().noquote() << "QAIOT RX:" << hexText(byte);
-    emit send_pb_date(QStringLiteral("QAIOT RX %1").arg(describeMessage(message)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT RX %1").arg(describeMessage(message)));
 }
 
 void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
     Q_UNUSED(data);
-    emit send_pb_date(QStringLiteral("QAIOT 暂未映射 set 命令，cmd=%1").arg(static_cast<int>(cmd)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT 暂未映射 set 命令，cmd=%1").arg(static_cast<int>(cmd)));
 }
 
 void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
     Q_UNUSED(param);
-    emit send_pb_date(QStringLiteral("QAIOT 暂未映射 get 命令，cmd=%1").arg(static_cast<int>(cmd)));
+    emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT 暂未映射 get 命令，cmd=%1").arg(static_cast<int>(cmd)));
 }
 
 bool Qaiot::sendCustomMessage(const QVariantMap& map) {

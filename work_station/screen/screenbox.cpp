@@ -13,7 +13,7 @@
 
 #if _MSC_VER >= 1600
 
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 screenbox::screenbox(QWidget* parent) : box_base(parent), ui(new Ui::screenbox) {
@@ -26,7 +26,9 @@ screenbox::screenbox(QWidget* parent) : box_base(parent), ui(new Ui::screenbox) 
     ui->statusbar->addPermanentWidget(new QLabel(SCREEN_VER + QString(__DATE__) + " " + QString(__TIME__)));
 }
 
-screenbox::~screenbox() { delete ui; }
+screenbox::~screenbox() {
+    delete ui;
+}
 
 #include <QDebug>
 
@@ -65,7 +67,7 @@ void screenbox::checkAllTest(int fixtureNumber) {
             }
         } else {
             qDebug() << "用户确认屏幕没有问题，继续下一个步骤。";
-            emit go_screen_next(0);  // 没问题
+            emit go_screen_next(0); // 没问题
         }
     }
 }

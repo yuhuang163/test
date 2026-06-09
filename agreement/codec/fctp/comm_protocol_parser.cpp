@@ -15,8 +15,8 @@
 * DEFINES
 *****************************************************************************************
 */
-#define PACKET_ASSEMBLY_BUFFER_SIZE  1024   ///< 环形缓冲区大小
-#define PACKET_ASSEMBLY_TIMEOUT_MS   1000   ///< 组包超时时间(毫秒)
+#define PACKET_ASSEMBLY_BUFFER_SIZE 1024 ///< 环形缓冲区大小
+#define PACKET_ASSEMBLY_TIMEOUT_MS 1000  ///< 组包超时时间(毫秒)
 
 /*
 * LOCAL VARIABLE DEFINITIONS
@@ -24,12 +24,12 @@
 */
 /// 环形缓冲区结构
 typedef struct {
-    uint8_t buffer[PACKET_ASSEMBLY_BUFFER_SIZE];  ///< 环形缓冲区
-    uint16_t write_pos;                            ///< 写位置
-    uint16_t read_pos;                             ///< 读位置
-    uint16_t data_size;                            ///< 已有数据大小
-    qint64 last_recv_ms;                           ///< 最后接收时间（毫秒，QDateTime::currentMSecsSinceEpoch）
-    bool assembling;                               ///< 是否正在组包
+    uint8_t buffer[PACKET_ASSEMBLY_BUFFER_SIZE]; ///< 环形缓冲区
+    uint16_t write_pos;                          ///< 写位置
+    uint16_t read_pos;                           ///< 读位置
+    uint16_t data_size;                          ///< 已有数据大小
+    qint64 last_recv_ms;                         ///< 最后接收时间（毫秒，QDateTime::currentMSecsSinceEpoch）
+    bool assembling;                             ///< 是否正在组包
 } packet_assembly_buffer_t;
 
 /// 组包器全局实例
@@ -44,8 +44,7 @@ static packet_assembly_buffer_t g_packet_assembly = {0};
 * LOCAL FUNCTION DEFINITIONS
 *****************************************************************************************
 */
-static void packet_assembly_reset(void)
-{
+static void packet_assembly_reset(void) {
     g_packet_assembly.write_pos = 0;
     g_packet_assembly.read_pos = 0;
     g_packet_assembly.data_size = 0;
@@ -53,8 +52,7 @@ static void packet_assembly_reset(void)
     g_packet_assembly.assembling = false;
 }
 
-static int packet_assembly_write(const uint8_t *data, uint16_t len)
-{
+static int packet_assembly_write(const uint8_t* data, uint16_t len) {
     if (len > PACKET_ASSEMBLY_BUFFER_SIZE - g_packet_assembly.data_size) {
         qDebug() << "[comm_protocol] packet assembly buffer overflow, need:" << len
                  << "available:" << (PACKET_ASSEMBLY_BUFFER_SIZE - g_packet_assembly.data_size);
@@ -65,14 +63,13 @@ static int packet_assembly_write(const uint8_t *data, uint16_t len)
         g_packet_assembly.buffer[g_packet_assembly.write_pos] = data[i];
         g_packet_assembly.write_pos = (g_packet_assembly.write_pos + 1) % PACKET_ASSEMBLY_BUFFER_SIZE;
     }
-    
+
     g_packet_assembly.data_size += len;
     g_packet_assembly.last_recv_ms = QDateTime::currentMSecsSinceEpoch();
     return 0;
 }
 
-static int packet_assembly_read(uint8_t *buffer, uint16_t len)
-{
+static int packet_assembly_read(uint8_t* buffer, uint16_t len) {
     if (len > g_packet_assembly.data_size) {
         qDebug() << "[comm_protocol] packet assembly read overflow";
         return -1;
@@ -82,14 +79,13 @@ static int packet_assembly_read(uint8_t *buffer, uint16_t len)
         buffer[i] = g_packet_assembly.buffer[g_packet_assembly.read_pos];
         g_packet_assembly.read_pos = (g_packet_assembly.read_pos + 1) % PACKET_ASSEMBLY_BUFFER_SIZE;
     }
-    
+
     g_packet_assembly.data_size -= len;
-    
+
     return 0;
 }
 
-static bool packet_assembly_is_timeout(void)
-{
+static bool packet_assembly_is_timeout(void) {
     if (g_packet_assembly.data_size == 0) {
         return false;
     }
@@ -100,9 +96,8 @@ static bool packet_assembly_is_timeout(void)
 * GLOBAL FUNCTION DEFINITIONS
 *****************************************************************************************
 */
-int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protocol_frame_callback_t callback,
-                                  void *user_data)
-{
+int comm_protocol_assemble_packet(const uint8_t* data, uint16_t len, comm_protocol_frame_callback_t callback,
+                                  void* user_data) {
     if (!data || !callback) {
         return -1;
     }
@@ -135,7 +130,7 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
         /// 临时缓冲区用于读取Header
         uint8_t header[COMM_PROTOCOL_HEADER_SIZE];
         uint16_t read_pos_backup = g_packet_assembly.read_pos;
-        
+
         /// 读取Header（不移动读指针）
         for (uint16_t i = 0; i < COMM_PROTOCOL_HEADER_SIZE; i++) {
             header[i] = g_packet_assembly.buffer[(read_pos_backup + i) % PACKET_ASSEMBLY_BUFFER_SIZE];
@@ -155,9 +150,9 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
 
         /// 解析 Payload 长度（与帧头一致：byte2=seq, byte3=frame_type, byte4-5=payload 小端）
         uint16_t payload_length = (uint16_t)header[4] | ((uint16_t)header[5] << 8);
-        
+
         /// 验证Payload长度
-        if (payload_length < COMM_PROTOCOL_PAYLOAD_SIZE_MIN || 
+        if (payload_length < COMM_PROTOCOL_PAYLOAD_SIZE_MIN ||
             payload_length > COMM_PROTOCOL_MAX_PAYLOAD_SIZE) {
             qDebug() << "[comm_protocol] invalid payload length:" << payload_length;
             /// 丢弃一个字节，继续查找
@@ -167,14 +162,14 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
         }
         /// 计算完整帧的长度
         uint16_t frame_size = COMM_PROTOCOL_HEADER_SIZE + payload_length + COMM_PROTOCOL_FOOTER_SIZE;
-    
+
         /// 检查是否接收到完整的帧
         if (g_packet_assembly.data_size < frame_size) {
             g_packet_assembly.assembling = true;
             return 1; /// 需要更多数据
         }
         /// 分配临时缓冲区存储完整帧
-        uint8_t *frame_buffer = (uint8_t *)malloc(frame_size);
+        uint8_t* frame_buffer = (uint8_t*)malloc(frame_size);
         if (frame_buffer == NULL) {
             qDebug() << "[comm_protocol] failed to allocate memory for frame";
             packet_assembly_reset();
@@ -210,8 +205,7 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
     return 0; /// 1: 成功处理, 0: 需要更多数据, <0: 错误
 }
 
-int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size, comm_protocol_frame_node_t *frame)
-{
+int comm_protocol_frame_deserialize(const uint8_t* buffer, uint16_t buffer_size, comm_protocol_frame_node_t* frame) {
     if (!buffer || !frame) {
         return COMM_PROTOCOL_ERROR_INVALID_DATA;
     }
@@ -219,7 +213,7 @@ int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size,
     if (buffer_size < COMM_PROTOCOL_FRAME_SIZE_MIN || buffer_size > COMM_PROTOCOL_FRAME_SIZE_MAX) {
         qDebug() << "[comm_protocol] buffer size error:" << buffer_size;
         return COMM_PROTOCOL_ERROR_INVALID_FRAME_SIZE;
-    }    
+    }
     /// 解析Header（小端序）
     frame->sof = buffer[0] | ((uint16_t)buffer[1] << 8);
     frame->seq = buffer[2];
@@ -251,8 +245,8 @@ int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size,
         return COMM_PROTOCOL_ERROR_INVALID_CRC;
     }
     /// 获取Payload指针
-    const uint8_t *payload = buffer + COMM_PROTOCOL_HEADER_SIZE;
-    comm_protocol_service_t *service  = NULL;
+    const uint8_t* payload = buffer + COMM_PROTOCOL_HEADER_SIZE;
+    comm_protocol_service_t* service = NULL;
     uint32_t payload_offset = 0, next_offset = 0;
     frame->payload.service_count = 0;
     for (uint8_t i = 0; i < COMM_PROTOCOL_MAX_SERVICE_NUM; i++) {
@@ -260,11 +254,11 @@ int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size,
             // qDebug() << "[comm_protocol] complete deserialize, payload_length:" << frame->payload_length
             //          << "payload_offset:" << payload_offset;
             break;
-        }       
-        service = (comm_protocol_service_t *)(payload + payload_offset); 
+        }
+        service = (comm_protocol_service_t*)(payload + payload_offset);
         frame->payload.services[i].svr_id = service->svr_id;
         frame->payload.services[i].srv_length = service->srv_length;
-        frame->payload.services[i].tlvs = service->tlvs;  /// 零拷贝：tlvs 指向 buffer，必须保证 buffer 生命周期足够长
+        frame->payload.services[i].tlvs = service->tlvs; /// 零拷贝：tlvs 指向 buffer，必须保证 buffer 生命周期足够长
         frame->payload.service_count++;
         payload_offset += service->srv_length + COMM_PROTOCOL_SERVICE_HEADER_SIZE;
         // qDebug() << "[comm_protocol] payload_length:" << frame->payload_length

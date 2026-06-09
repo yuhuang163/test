@@ -16,16 +16,16 @@
 #include "usmile_ring_buffer.h"
 
 namespace Ui {
-    class cameratest;
+class cameratest;
 }
 
 // ImageViewer 类继承自 QGraphicsView
 class ImageViewer : public QGraphicsView {
     Q_OBJECT
-public:
+  public:
     // 加载和显示图片
     QPixmap pixmap;
-    QPixmap temporarypixmap;  //原图
+    QPixmap temporarypixmap; //原图
 
     // 构造函数
     ImageViewer(const QString& filePath = "", QWidget* parent = nullptr) : QGraphicsView(parent) {
@@ -55,10 +55,10 @@ public:
     void updateImage() {
         pixmapItem->setPixmap(pixmap);
         scene->setSceneRect(pixmap.rect());
-        fitInView(scene->sceneRect(), Qt::KeepAspectRatio);  // 可选：根据图像大小调整视图
+        fitInView(scene->sceneRect(), Qt::KeepAspectRatio); // 可选：根据图像大小调整视图
     }
 
-protected:
+  protected:
     // 重载滚轮事件处理函数
     void wheelEvent(QWheelEvent* event) override {
         // 缩放因子
@@ -72,14 +72,14 @@ protected:
         }
     }
 
-private:
-    QGraphicsScene* scene;            // 场景对象
-    QGraphicsPixmapItem* pixmapItem;  // 用于显示图片的图元对象
+  private:
+    QGraphicsScene* scene;           // 场景对象
+    QGraphicsPixmapItem* pixmapItem; // 用于显示图片的图元对象
 };
 
 class cameratest : public test_base {
     Q_OBJECT
-public:
+  public:
     int cameradatasize = 0;
     QTimer* cameratimer = new QTimer(this);
     int dataNumber = 0;
@@ -104,11 +104,11 @@ public:
         return crc;
     }
 #define EXT_UART_MAGIC 0xCCCCCCCCCCCCCCCC
-#define UART_PHY_LAYER_HEAD_SIZE 9  // 头大小
+#define UART_PHY_LAYER_HEAD_SIZE 9 // 头大小
 #define UART_PHY_LAYER_LENGTH 1
 #define UART_PHY_LAYER_HEADER_ADN_LEN (UART_PHY_LAYER_HEAD_SIZE + UART_PHY_LAYER_LENGTH)
 #define EXT_PICTURE_PHY_LAYER_MAGIC 0xA5A5A5A5
-#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct)  // 头大小
+#define PICTURE_PHY_LAYER_HEAD_SIZE sizeof(video_frame_data_struct) // 头大小
 #define PICTURE_PHY_LAYER_HEADER_ADN_CRC (PICTURE_PHY_LAYER_HEAD_SIZE)
 #pragma pack(1)
     typedef struct video_frame_data_struct {
@@ -117,14 +117,14 @@ public:
         int height;
         int format;
         int reserved;
-        int data_crc16;                        // 图像帧校验
-        uint32_t data_size;                    // 图像帧长度
-        uint8_t exposure_time_max;             // 最大曝光时间
-        uint8_t exposure_time_mini;            // 最小曝光时间
-        uint8_t exposure_time;                 // 设置曝光时间
-        uint8_t exposure_time_rate_of_change;  // 最大曝光时间变化
-        uint8_t brightness_target;             // 目标亮度 范围：0~255
-        uint8_t data[0];                       // 图像帧内容.
+        int data_crc16;                       // 图像帧校验
+        uint32_t data_size;                   // 图像帧长度
+        uint8_t exposure_time_max;            // 最大曝光时间
+        uint8_t exposure_time_mini;           // 最小曝光时间
+        uint8_t exposure_time;                // 设置曝光时间
+        uint8_t exposure_time_rate_of_change; // 最大曝光时间变化
+        uint8_t brightness_target;            // 目标亮度 范围：0~255
+        uint8_t data[0];                      // 图像帧内容.
     } ext_picture_layer_t;
 
     typedef struct {
@@ -139,21 +139,21 @@ public:
     ImageViewer* viewercamrea;
     ImageViewer* viewercamrea_py;
     typedef enum {
-        PHY_CHANNEL_INVALID = 0,  //无效值
-        PHY_CHANNEL_CAMREA,       //摄像头命令通道
-        PHY_CHANNEL_LOG,          // ota数据通道
-        PHY_CHANNEL_HARMONY_APP,  //鸿蒙app通道
-        PHY_CHANNEL_FACTORY,      //厂测通道
-        PHY_CHANNEL_USMILE_APP,   //笑容加app通道
-        PHY_CHANNEL_USMILE_ROTA,  //笑容加ota通道
+        PHY_CHANNEL_INVALID = 0, //无效值
+        PHY_CHANNEL_CAMREA,      //摄像头命令通道
+        PHY_CHANNEL_LOG,         // ota数据通道
+        PHY_CHANNEL_HARMONY_APP, //鸿蒙app通道
+        PHY_CHANNEL_FACTORY,     //厂测通道
+        PHY_CHANNEL_USMILE_APP,  //笑容加app通道
+        PHY_CHANNEL_USMILE_ROTA, //笑容加ota通道
     } ext_ble_phy_channel_e;
     QMutex mutex;
-    usmile_ring_buffer_t p_dongleRingBuffer;  // 串口的队列指针
-    usmile_ring_buffer_t p_cameraRingBuffer;  // 摄像头的队列指针
-    uint8_t dongle_ring_buffer[100 * 1024];   // 串口队列池
-    uint8_t frame_buf[2 * 1024];              // 队列池
-    uint8_t camera_ring_buf[100 * 1024];      // 摄像头队列池
-    uint8_t frame_picture_buf[37 * 1024];     // 照片队列池
+    usmile_ring_buffer_t p_dongleRingBuffer; // 串口的队列指针
+    usmile_ring_buffer_t p_cameraRingBuffer; // 摄像头的队列指针
+    uint8_t dongle_ring_buffer[100 * 1024];  // 串口队列池
+    uint8_t frame_buf[2 * 1024];             // 队列池
+    uint8_t camera_ring_buf[100 * 1024];     // 摄像头队列池
+    uint8_t frame_picture_buf[37 * 1024];    // 照片队列池
     int ext_ble_find_next_frame(void);
     int ext_ble_find_next_picture_frame(QByteArray& picturedata);
     void write_camera_data(uint8_t* p_data, int data_len);
@@ -166,21 +166,36 @@ public:
     ~cameratest();
     Ui::cameratest* ui;
     void startTask() override;
+
+    // clang-format off
+    // test_base 控件桥接
+    QComboBox* getComNameCombo() override { return ui->comNameCombo; }
+    QCheckBox* getIsUseMes() override { return ui->isusemes; }
+    QCheckBox* getIsFormMes() override { return ui->isformmes; }
+    QLineEdit* getMacLineEdit() override { return ui->getMac; }
+    QLineEdit* macInputLineEdit() override { return ui->macInput; }
+    QPlainTextEdit* logEdit() override { return ui->log; }
+    QPlainTextEdit* msgEdit() override { return ui->msgEdit; }
+    QTableWidget* testResultTable() override { return ui->testResultTable; }
+    QLabel* getMesStateQlabel() override { return ui->mes_state; }
+    QPushButton* getEndTestButton() override { return ui->stopTest; }
+    // clang-format on
+
     QMap<int, QByteArray> packetMap;
     QVector<int> faultData;
 
-private:
+  private:
     QPixmap currentPixmap;
 
     typedef enum {
-        STATE_IDLE,          // 休眠状态
-        STATE_WATI_CONNECT,  // 等待连接
+        STATE_IDLE,         // 休眠状态
+        STATE_WATI_CONNECT, // 等待连接
         STATE_WATI_BASE_INFO,
-        STATE_DISABLE_SLEEP_1,     // 进入禁止休眠
-        STATE_PROCESS_INSPECTION,  // 工序核对检查
-        STATE_NET_SET,             // 配网
+        STATE_DISABLE_SLEEP_1,    // 进入禁止休眠
+        STATE_PROCESS_INSPECTION, // 工序核对检查
+        STATE_NET_SET,            // 配网
         CAMERA_TEST,
-        STATE_SAVE_RESULT  // 保存结果在本地
+        STATE_SAVE_RESULT // 保存结果在本地
     } State;
     bool isExecuted = false;
     QElapsedTimer TestTime;
@@ -198,23 +213,13 @@ private:
     bool can_start_offset_test = 0;
     int refresh_times = 1;
     int picutre_offset_times = 0;
-    QComboBox* getComNameCombo() override { return ui->comNameCombo; };  // dongle口
-    QCheckBox* getIsUseMes() override { return ui->isusemes; };
-    QCheckBox* getIsFormMes() override { return ui->isformmes; };
-    QLineEdit* getMacLineEdit() override { return ui->getMac; };               // sn输入口
-    QLineEdit* macInputLineEdit() override { return ui->macInput; };           // mac地址输入口
-    QPlainTextEdit* logEdit() override { return ui->log; };                    // mac地址输入口
-    QPlainTextEdit* msgEdit() override { return ui->msgEdit; };                // msg输入口
-    QTableWidget* testResultTable() override { return ui->testResultTable; };  // 测试结果表格输入口
-    QLabel* getMesStateQlabel() override { return ui->mes_state; };            // mes状态的qlab
-    QPushButton* getEndTestButton() override { return ui->stopTest; };         // 结束测试按钮
     bool displayRectangles;
     bool displayDirty;
 
-protected:
+  protected:
     void closeEvent(QCloseEvent*) override;
 
-private slots:
+  private slots:
     void deinit_distribution_network();
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void checkMissingPackets();
@@ -223,7 +228,7 @@ private slots:
     void addPacket(const QByteArray& packet);
     QByteArray reassembleData();
     void onDongleSerialFrame(const QByteArray& data) override;
-    void getPictureSendOver(ProtocolPictureSendOverData x);
+    void refreshPictureSendOver(ProtocolPictureSendOverData x) override;
     void onTimeout();
     void processTheDatagram(QByteArray& datagram);
     void bandSnMacToCsv(const QString& macAddress, const QString& sn);
@@ -231,7 +236,7 @@ private slots:
     void canGoNextMechine(int x) override;
     void refreshBleState(int state) override;
     void refreshSn(ProtocolSnData data) override;
-    void getDongleWifi(QString data) override;
+    void refreshDongleWifi(QString data) override;
     void readPendingDatagrams();
     void refreshDongleUartState(int state) override;
     void getTestValue(const int mechines, const QString value) override;
@@ -242,7 +247,7 @@ private slots:
     void on_disconnectButton_clicked();
     void on_macInput_returnPressed();
     void on_getMac_returnPressed();
-    void processInspection(QString stringsn);
+    void processInspection(QString inputSnText);
     void on_distribution_network_clicked();
     void on_open_camera_clicked();
     void on_close_camera_clicked();
@@ -258,10 +263,10 @@ private slots:
     void updateImageOnMainThread();
     void on_ResolutionTestButton_clicked();
 
-signals:
+  signals:
     void send_go_next_focus();
     void send_go_next_test(int data);
-    void send_startTest(int data);
+    void send_start_test(int data);
     void send_image_processed();
     void send_fault_data_packet(int, const QVector<int>&);
     void sendPicture_speed(int);
@@ -270,4 +275,4 @@ signals:
     void send_set_camera_action(camreaFixtureState);
 };
 
-#endif  // CAMERATEST_H
+#endif // CAMERATEST_H

@@ -2,10 +2,6 @@
 
 #include "test_case.h"
 
-#include "test_case.h"
-
-#include <algorithm>
-#include <functional>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QComboBox>
@@ -15,39 +11,17 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QVector>
-#include <QSet>
 #include <QStringList>
+#include <QFontMetrics>
 #include <QRegularExpression>
+#include <QTabBar>
+#include <QTabWidget>
 #include <QThread>
 #include <QtGlobal>
 #include "qproduct.h"
 #include "ui_qfreework.h"
 
-/** 本轮测试内是否已对 CMW 做过 GPRF 波形侧初始化（与 BlePer/CmwEnableFixedInit 一致）。 */
-static bool gInstrumentCmwGprfPrimed = false;
-
 namespace {
-
-/** Ini：BlePer/CmwVisaTrace，默认 true；打印 [CMW-VISA] >> / << 收发（仅自由工站 CMW 封装路径）。 */
-bool freeWorkShouldLogCmwVisaIo() {
-    return SETTINGS.value(QStringLiteral("BlePer/CmwVisaTrace"), true).toBool();
-}
-
-/** BlePer/CmwWaveformFile → 写 FILE 的整行 SCPI；配置已是 '@WAVEFORM\xxx.wv' 时原样下发，不剥单引号。 */
-QString cmwGprfArbFileWriteCommand(const QString& rawPath) {
-    const QString p = rawPath.trimmed();
-    if (p.startsWith(QStringLiteral("SOURce:GPRF:GEN:ARB:FILE"), Qt::CaseInsensitive)) {
-        return p;
-    }
-    if (p.size() >= 2 && p.front() == QLatin1Char('\'') && p.back() == QLatin1Char('\'')) {
-        return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE %1").arg(p);
-    }
-    QString inner = p;
-    if (inner.size() >= 2 && inner.front() == QLatin1Char('"') && inner.back() == QLatin1Char('"')) {
-        inner = inner.mid(1, inner.size() - 2).trimmed();
-    }
-    return QStringLiteral("SOURce:GPRF:GEN:ARB:FILE '%1'").arg(inner);
-}
 
 /** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
 QString sanitizeMesValuePipes(QString v) {
@@ -68,21 +42,6 @@ static void pushMesSeg(QVector<QPair<QString, QString>>* out, const QString& key
     if (k.isEmpty())
         return;
     out->append(qMakePair(k, sanitizeMesValuePipes(value)));
-}
-
-/** 解析 productKey / deviceName / deviceSecret 各占一条，避免整包塞进一个 value。 */
-static bool tryAppendAliTupleFields(QVector<QPair<QString, QString>>* out, const QString& pkKey, const QString& dnKey, const QString& skKey,
-                                    const QString& blob) {
-    static const QRegularExpression re(
-        QStringLiteral(R"(productKey\s*:\s*(\S+)\s+deviceName\s*:\s*(\S+)\s+deviceSecret\s*:\s*(\S+))"),
-        QRegularExpression::CaseInsensitiveOption);
-    const QRegularExpressionMatch m = re.match(blob.trimmed());
-    if (!m.hasMatch())
-        return false;
-    pushMesSeg(out, pkKey, m.captured(1));
-    pushMesSeg(out, dnKey, m.captured(2));
-    pushMesSeg(out, skKey, m.captured(3));
-    return true;
 }
 
 static void appendOneMesStep(QVector<QPair<QString, QString>>* out, const QString& tag, bool pass, const QString& testData) {
@@ -107,115 +66,50 @@ QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segment
     return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
 }
 
-}  // namespace
-
-static int brushProfileToBleCmwMHz(int profile) {
-    switch (profile) {
-        case 1:
-        case 4:
-            return 2440;
-        case 2:
-        case 5:
-            return 2480;
-        case 0:
-        case 3:
-        default:
-            return 2402;
-    }
+bool isDongleBleConnectStepName(const QString& name) {
+    return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
 
-static QString brushInstrumentBandLabel(int profile) {
-    switch (profile) {
-        case 1:
-            return QStringLiteral("2440_BLE1M");
-        case 2:
-            return QStringLiteral("2480_BLE1M");
-        case 3:
-            return QStringLiteral("2402_BLE2M");
-        case 4:
-            return QStringLiteral("2440_BLE2M");
-        case 5:
-            return QStringLiteral("2480_BLE2M");
-        case 0:
-        default:
-            return QStringLiteral("2402_BLE1M");
-    }
+/** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
+void setupFreeWorkTabBar(QTabWidget* tabWidget) {
+    if (!tabWidget)
+        return;
+
+    tabWidget->setUsesScrollButtons(true);
+    QTabBar* bar = tabWidget->tabBar();
+    if (!bar)
+        return;
+
+    bar->setExpanding(false);
+    bar->setElideMode(Qt::ElideNone);
+    bar->setUsesScrollButtons(true);
+
+    QFont font = bar->font();
+    font.setPixelSize(14);
+    bar->setFont(font);
+
+    const QFontMetrics fm(font);
+    int maxTextWidth = 0;
+    for (int i = 0; i < bar->count(); ++i)
+        maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+
+    constexpr int hPad = 32;
+    const int minTabWidth = maxTextWidth + hPad;
+    // updateMainStyle 之后覆盖全局 QTabBar 规则
+    bar->setStyleSheet(QStringLiteral(
+                           "QTabBar::tab {"
+                           "  min-width: %1px;"
+                           "  padding: 6px 16px;"
+                           "  font-size: 14px;"
+                           "}"
+                           "QTabBar::tab:selected {"
+                           "  font-weight: bold;"
+                           "}")
+                           .arg(minTabWidth));
+    bar->updateGeometry();
 }
 
-static bool parseBlePerCmwArbScountFree(const QString& response, double* countTime, int* cycles, int* samplesCurrent) {
-    const QString clean = response.trimmed().remove(QLatin1Char('"'));
-    const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
-    if (parts.size() < 3) {
-        return false;
-    }
-    bool timeOk = false;
-    bool cyclesOk = false;
-    bool samplesOk = false;
-    const double parsedTime = parts.at(0).trimmed().toDouble(&timeOk);
-    const int parsedCycles = parts.at(1).trimmed().toInt(&cyclesOk);
-    const int parsedSamples = parts.at(2).trimmed().toInt(&samplesOk);
-    if (!timeOk || !cyclesOk || !samplesOk) {
-        return false;
-    }
-    if (countTime) {
-        *countTime = parsedTime;
-    }
-    if (cycles) {
-        *cycles = parsedCycles;
-    }
-    if (samplesCurrent) {
-        *samplesCurrent = parsedSamples;
-    }
-    return true;
-}
-
-void QFreeWork::appendFreeWorkMesForCompletedStep(const NamedFunction& nf, bool pass, const QString& testData) {
-    QVector<QPair<QString, QString>>* const out = &freeWorkMesSegments_;
-    const int functionId = nf.id;
-    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    // 默认 MES 键与 testFunction.cpp 中 FREEWORK_TEST_LIST 本行的 mesTag 一致
-    const QString tag = nf.mesTag.isEmpty() ? QStringLiteral("STEP_%1").arg(functionId) : nf.mesTag;
-
-    switch (functionId) {
-    case 62:
-        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("CLOUD_PRODUCT_KEY"), QStringLiteral("CLOUD_DEVICE_NAME"),
-                                                        QStringLiteral("CLOUD_DEVICE_SECRET"), testData))
-            return;
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    case 66:
-        if (pass && hasData && tryAppendAliTupleFields(out, QStringLiteral("READ_PRODUCT_KEY"), QStringLiteral("READ_DEVICE_NAME"),
-                                                        QStringLiteral("READ_DEVICE_SECRET"), testData))
-            return;
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    case 8:
-        pushMesSeg(out, QStringLiteral("BASE_INFO_RESULT"), pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        if (hasData)
-            pushMesSeg(out, QStringLiteral("BASE_INFO_DETAIL"), testData);
-        // refreshBaseData 将 stepRuntime_.testData 置为 "-"，版本单独来自协议回填成员
-        {
-            const QString sv = softwareVersionForReport_.trimmed();
-            if (!sv.isEmpty())
-                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION"), sv);
-            if (SETTINGS.value("ProductInfo/SoftwareVersion_checkBox").toBool())
-                pushMesSeg(out, QStringLiteral("SOFTWARE_VERSION_CHECK"),
-                           softwareVersionPassForReport_ ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        }
-        return;
-    case 9: {
-        // 获取电量信息：结果 PASS/FAIL 与百分比分两段，value 全 ASCII
-        pushMesSeg(out, tag, pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-        if (hasData) {
-            pushMesSeg(out, QStringLiteral("BATTERY_PERCENT"), testData);
-        }
-        return;
-    }
-    default:
-        appendOneMesStep(out, tag, pass, testData);
-        return;
-    }
-}
+} // namespace
 
 void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask) {
     stepRuntime_.done = true;
@@ -231,86 +125,8 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
-
-
-
-void QFreeWork::on_get_battery_clicked() {
-    // if (at->getConnected()) {
-    //     protocolManager.get(DeviceCmd::GetBattery);
-    //     showlog("正在获取设备电量");
-    // } else {
-    //     showlog("请等待连接设备后再试");
-    // }
-     startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
-    // runPlcV3TouchKeyFull(0, false);
-
-    // runPlcV3TouchKeyFull(1, false);
-
-
-    // runPlcV3TouchKeyFull(2, false);
-
-}
-void QFreeWork::on_start_wifible_test_clicked()
-{
-
-
-    runPlcV3TouchKeyFull(1, false);
-    // const QString host = resolvedPlcIpAddress();
-    // const int port = resolvedPlcPort();
-    // const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    // QString err;
-    // showlog(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
-    //             .arg(0)
-    //             .arg(getIndex())
-    //             .arg(host)
-    //             .arg(port)
-    //             .arg(resolvedPlcUnitId()));
-    // if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-    //     showlog(QStringLiteral("PLC 连接失败: %1").arg(err));
-    //     return;
-    // }
-
-    // if (!plcSendStepDone(&err)) {
-    //     showlog(QStringLiteral("发送 StepDone 失败: %1").arg(err));
-    //     return;
-    // }
-}
-
-void QFreeWork::on_pushButton_clicked() {
-    // ui->macInput->setText("f4:12:fa:c5:51:c6");
-    // // ui->macInput->setText("74:4D:BD:95:7D:EA");//wd设备
-    // // ui->macInput->setText("3c:84:27:06:f7:5e");
-    // ui->macInput->setText("3C:84:27:07:A8:D2");
-    // // // ui->macInput->setText("3c:84:27:29:50:32");
-    // ui->macInput->setText("b4:56:5d:bf:57:9d");
-
-    // on_macInput_returnPressed();
-    // // usb-> getlxMEASure();
-    // // waitWork(1000);
-
-    // showlog("正在获取设备电量");
-    // ui->comNameCombo->setCurrentText("COM134");
-
-    // debugUpdateTupleMacStatus();
-    // applyTupleByMac();
-    // runPlcModbusConnectTest();
-    // startPlcKeyButtonTest("PLC+V3模式键", "治具将自动按压模式键，请确认设备按键上报", "ProductInfo/KeyIdMode", "ProductInfo/KeyIdMode_checkBox", 0);
-    // startProductInstrumentResetAndWaitAck();
-
-    runPlcModbusConnectTest();
-}
-namespace {
-QString orderGroupName(const QString& stationKey) {
-    const QString key = stationKey.trimmed();
-    return key.isEmpty() ? "TestOrder_default" : QString("TestOrder_%1").arg(key);
-}
-
-QString plcBoolText(bool on) {
-    return on ? QStringLiteral("开启") : QStringLiteral("关闭");
-}
-}
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
     registerFreeWorkTestCaseHooks();
@@ -320,8 +136,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     upperComputerVer = FREE_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
-    scanSerialPorts();  // 要搜索一下一开始
-    // connect(at, SIGNAL(send_rssi(QString)), this, SLOT(refreshBleRssi(QString)));
+    setupFreeWorkTabBar(ui->tabWidget);
+    scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                    "padding: 10px; text-align: center; ");
@@ -357,7 +173,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
-    // ui->wifiUserName->setText(SETTINGS.value("WIFI/Name", "请在配置文件中设置").toString());
     ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
 
     ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
@@ -387,7 +202,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->jigDisconnectButton->setEnabled(false);
     }
 
-    createTestFunctions();
     refreshOrderedTestIndexes();
     testResultTableInit();
     if (product) {
@@ -404,11 +218,12 @@ void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
     ui->tabWidget->setTabText(0, tabName);
+    setupFreeWorkTabBar(ui->tabWidget);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
-    useTestCaseFlow_ = false;
     orderedTestCaseNames_.clear();
     stopFlowOnTestFail_ = true;
+
     QString stationKey = TestCaseStore::resolveFlowStationKey(
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
     if (TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
@@ -419,113 +234,45 @@ void QFreeWork::refreshOrderedTestIndexes() {
     }
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
-    if (QFile::exists(TestCasePaths::flowIniPath())) {
-        stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
-        const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
+
+    if (!QFile::exists(TestCasePaths::flowIniPath())) {
+        showlog(QStringLiteral("未找到测试流程文件，请在设置页「测试流程编排」中配置"));
+        qDebug() << "[FreeWork] flow ini missing:" << TestCasePaths::flowIniPath();
+        return;
+    }
+
+    stopFlowOnTestFail_ = TestCaseStore::loadStationStopFlowOnTestFail(stationKey, true);
+    const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(stationKey);
+    for (const TestFlowItemEntry& entry : flowItems) {
+        if (entry.enabled)
+            orderedTestCaseNames_.append(entry.caseName);
+    }
+
+    if (orderedTestCaseNames_.isEmpty()) {
         if (!flowItems.isEmpty()) {
-            for (const TestFlowItemEntry& entry : flowItems)
-                orderedTestCaseNames_.append(entry.caseName);
-            useTestCaseFlow_ = true;
-            qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
-            return;
+            showlog(QStringLiteral("当前工站流程步骤均已取消勾选，请在设置页「测试流程编排」中重新勾选"));
+            qDebug() << "[FreeWork] all flow items disabled, station =" << stationKey;
+        } else {
+            showlog(QStringLiteral("当前工站未配置测试步骤，请在设置页「测试流程编排」中添加"));
+            qDebug() << "[FreeWork] empty flow, station =" << stationKey;
         }
-    }
-
-    orderedTestIndexes_.clear();
-    QSet<int> validIds;
-    for (const auto& testFunction : testFunctions) {
-        validIds.insert(testFunction.id);
-    }
-    const QVector<int> indexes = loadIndexesFromConfig();
-    for (int index : indexes) {
-        if (validIds.contains(index) && !orderedTestIndexes_.contains(index)) {
-            orderedTestIndexes_.append(index);
-        }
-    }
-    if (orderedTestIndexes_.isEmpty()) {
-        for (const auto& testFunction : testFunctions) {
-            orderedTestIndexes_.append(testFunction.id);
-        }
+    } else {
+        qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
     }
 }
-
-QVector<int> QFreeWork::loadIndexesFromConfig() {
-    QVector<int> indexes;
-    const QString selectedStation = SETTINGS.value("TestOrderMeta/SelectedStation").toString().trimmed();
-    qDebug() << "[FreeWork] loadIndexesFromConfig, SelectedStationName =" << selectedStation;
-
-    auto loadFromGroup = [&indexes](const QString& groupPath) {
-        SETTINGS.beginGroup(groupPath);
-        QStringList keys = SETTINGS.childKeys();
-        std::sort(keys.begin(), keys.end(), [](const QString& left, const QString& right) { return left.toInt() < right.toInt(); });
-        for (const QString& key : keys) {
-            indexes.append(SETTINGS.value(key).toInt());
-        }
-        SETTINGS.endGroup();
-    };
-
-    if (!selectedStation.isEmpty()) {
-        loadFromGroup(orderGroupName(selectedStation));
-    }
-    if (indexes.isEmpty() && !selectedStation.isEmpty()) {
-        loadFromGroup(QString("TestOrder/%1").arg(selectedStation));
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup("TestOrder");
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup(orderGroupName("default"));
-    }
-    if (indexes.isEmpty()) {
-        loadFromGroup("TestOrder/default");
-    }
-
-    qDebug() << "[FreeWork] loaded indexes, station =" << selectedStation << ", indexes =" << indexes;
-    return indexes;
-}
-
-// 获取下一个状态的函数
-QFreeWork::State QFreeWork::getNextState(State currentState) {
-    return static_cast<State>((static_cast<int>(currentState) + 1) % 5);
-}
-
-const QFreeWork::NamedFunction* QFreeWork::currentOrderedNamedFunction() const {
-    if (useTestCaseFlow_ || teststate < 0 || teststate >= orderedTestIndexes_.count()) {
-        return nullptr;
-    }
-    const int functionId = orderedTestIndexes_.at(teststate);
-    const auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
-                                 [functionId](const QFreeWork::NamedFunction& item) { return item.id == functionId; });
-    return it == testFunctions.cend() ? nullptr : &*it;
-}
-
-namespace {
-
-bool isDongleBleConnectStepName(const QString& name) {
-    return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
-}
-
-}  // namespace
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
-    if (teststate < 0) {
+    if (teststate < 0 || teststate >= orderedTestCaseNames_.count()) {
         return false;
     }
-    if (useTestCaseFlow_) {
-        if (teststate >= orderedTestCaseNames_.count()) {
-            return false;
-        }
-        TestCaseDefinition caseDef;
-        if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
-            return false;
-        }
-        if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
-            return true;
-        }
-        return isDongleBleConnectStepName(caseDef.meta.name);
+    TestCaseDefinition caseDef;
+    if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
+        return false;
     }
-    const NamedFunction* const nf = currentOrderedNamedFunction();
-    return nf != nullptr && isDongleBleConnectStepName(nf->name);
+    if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
+        return true;
+    }
+    return isDongleBleConnectStepName(caseDef.meta.name);
 }
 
 bool QFreeWork::canRunOrderedTestStepLoop() const {
@@ -535,39 +282,37 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (stepRuntime_.started) {
         return true;
     }
-    if (useTestCaseFlow_ && teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
+    if (teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
         TestCaseDefinition caseDef;
         if (TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
             return !TestCaseRunner::stepRequiresProductBle(caseDef);
         }
         return true;
     }
-    if (currentOrderedStepIsDongleBleConnect()) {
-        return true;
-    }
-    const QFreeWork::NamedFunction* const nf = currentOrderedNamedFunction();
-    return nf != nullptr
-           && (nf->name.startsWith(QStringLiteral("产品串口"))
-               || nf->name.startsWith(QStringLiteral("并联CMW")));
+    return currentOrderedStepIsDongleBleConnect();
 }
 
-QByteArray QFreeWork::resolvedTailSnToWrite() const {
-    const QByteArray fromMes = expectedTailSnFromMes.trimmed();
-    if (!fromMes.isEmpty()) {
-        return fromMes;
+bool QFreeWork::isBydFactory() const {
+    return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
+}
+
+QString QFreeWork::resolvedExpectedTailSnText() const {
+    if (isBydFactory()) {
+        return QString::fromUtf8(expectedTailSnFromMes.trimmed());
     }
     if (ui && ui->getMac) {
-        return ui->getMac->text().trimmed().toUtf8();
+        return ui->getMac->text().trimmed();
     }
     return {};
 }
 
+QByteArray QFreeWork::resolvedTailSnToWrite() const {
+    return resolvedExpectedTailSnText().toUtf8();
+}
+
 void QFreeWork::runTestFlowBootstrap() {
     showlog(QStringLiteral("开始测试"));
-    initDate();
-    if (expectedTailSnFromMes.trimmed().isEmpty() && ui->getMac && !ui->getMac->text().trimmed().isEmpty()) {
-        expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
-    }
+    initData();
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
     refreshOrderedTestIndexes();
     waitWork(1000);
@@ -576,47 +321,26 @@ void QFreeWork::runTestFlowBootstrap() {
 }
 
 bool QFreeWork::tickOrderedTestStepLoop() {
-    const int stepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+    const int stepCount = orderedTestCaseNames_.count();
     for (; teststate < stepCount;) {
         TestCaseDefinition caseDef;
-        NamedFunction currentFunction;
         QString functionName;
-        QString caseName;
-        bool needCaseDone = false;
-        bool hasNamedFunction = false;
-
-        if (useTestCaseFlow_) {
-            caseName = orderedTestCaseNames_.at(teststate);
-            if (!TestCaseRunner::loadCase(caseName, caseDef)) {
-                ++teststate;
-                stepRuntime_.reset();
-                clearActiveTestCase();
-                break;
-            }
-            functionName = TestCaseRunner::stepLabel(caseDef);
-            needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
-        } else {
-            const int functionId = orderedTestIndexes_.at(teststate);
-            auto it = std::find_if(testFunctions.begin(), testFunctions.end(),
-                                   [functionId](const NamedFunction& item) { return item.id == functionId; });
-            if (it == testFunctions.end()) {
-                ++teststate;
-                stepRuntime_.reset();
-                break;
-            }
-            currentFunction = *it;
-            hasNamedFunction = true;
-            functionName = currentFunction.name;
-            needCaseDone = currentFunction.needCaseDone;
+        const QString caseName = orderedTestCaseNames_.at(teststate);
+        if (!TestCaseRunner::loadCase(caseName, caseDef)) {
+            ++teststate;
+            stepRuntime_.reset();
+            clearActiveTestCase();
+            break;
         }
+        functionName = TestCaseRunner::stepLabel(caseDef);
+        const bool needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
 
         if (!stepRuntime_.started) {
             if (!canGoNext) {
                 break;
             }
             stepRuntime_.started = true;
-            stepRuntime_.functionId = hasNamedFunction ? currentFunction.id : -1;
-            stepRuntime_.done = useTestCaseFlow_ ? false : !needCaseDone;
+            stepRuntime_.done = false;
             stepRuntime_.pass = true;
             stepRuntime_.testData = QStringLiteral("-");
             stepRuntime_.ask = QStringLiteral("通过");
@@ -625,12 +349,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             testCasePromptAcknowledged_ = false;
             testCasePromptProgrammaticClose_ = false;
             showlog(QStringLiteral("开始测试内容：") + functionName);
-            if (useTestCaseFlow_) {
-                showTestCasePromptForStep(caseDef);
-                TestCaseRunner::beginStep(this, caseDef);
-            } else {
-                executeFunctionByName(functionName);
-            }
+            showTestCasePromptForStep(caseDef);
+            TestCaseRunner::beginStep(this, caseDef);
             qDebug() << "程序在跑" << teststate << stepCount;
             break;
         }
@@ -648,11 +368,9 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             showlog(QStringLiteral("步骤失败：%1（超时未响应或协议 FAIL）").arg(functionName));
         }
 
-        if (useTestCaseFlow_ && !caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
+        if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
-            const bool productGet = !caseDef.hook.enabled && !dongleBleConnect
-                                    && caseDef.send.channel == TestCaseSendChannel::Product
-                                    && caseDef.send.action == TestCaseSendAction::Get;
+            const bool productGet = !caseDef.hook.enabled && !dongleBleConnect && caseDef.send.channel == TestCaseSendChannel::Product && caseDef.send.action == TestCaseSendAction::Get;
             if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
@@ -660,8 +378,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     if (stepRuntime_.testData == QLatin1String("-"))
                         stepRuntime_.testData = QStringLiteral("ok");
                 }
-            } else if ((caseDef.hook.enabled || dongleBleConnect)
-                       && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
+            } else if ((caseDef.hook.enabled || dongleBleConnect) && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 if (dongleBleConnect && at->getConnected()) {
@@ -669,18 +386,6 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                 } else if (stepRuntime_.testData == QLatin1String("-")) {
                     stepRuntime_.testData = QStringLiteral("ok");
                 }
-            }
-        }
-
-        if (!useTestCaseFlow_ && needCaseDone && canGoNext && !stepRuntime_.done && !sendRetryOver
-            && (lastCommandRetryCount > 0
-                || (isDongleBleConnectStepName(functionName) && at->getConnected()))) {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = true;
-            if (isDongleBleConnectStepName(functionName) && at->getConnected()) {
-                stepRuntime_.testData = QStringLiteral("已连接");
-            } else if (stepRuntime_.testData == QLatin1String("-")) {
-                stepRuntime_.testData = QStringLiteral("ok");
             }
         }
 
@@ -698,7 +403,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     .arg(functionName)
                     .arg(caseRetryCount)
                     .arg(caseElapsedMs));
-        if (!(useTestCaseFlow_ && testCaseMultiGateTableEmitted_)) {
+        if (!testCaseMultiGateTableEmitted_) {
             TestItem test;
             test.testItem = functionName;
             test.testData = stepRuntime_.testData;
@@ -707,21 +412,17 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             testItems.append(test);
         }
         testCaseMultiGateTableEmitted_ = false;
-        if (useTestCaseFlow_) {
-            appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
-            if (caseDef.timing.delayAfterMs > 0) {
-                waitWork(caseDef.timing.delayAfterMs);
-            }
-            closeTestCasePrompt();
-            closeKeyWaitPrompt();
-            clearActiveTestCase();
-        } else {
-            appendFreeWorkMesForCompletedStep(currentFunction, stepRuntime_.pass, stepRuntime_.testData);
+        appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
+        if (caseDef.timing.delayAfterMs > 0) {
+            waitWork(caseDef.timing.delayAfterMs);
         }
+        closeTestCasePrompt();
+        closeKeyWaitPrompt();
+        clearActiveTestCase();
         testResultTableUpdate(testItems);
 
         ++teststate;
-        if (useTestCaseFlow_ && stopFlowOnTestFail_ && !stepRuntime_.pass) {
+        if (stopFlowOnTestFail_ && !stepRuntime_.pass) {
             showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
             teststate = orderedTestCaseNames_.count();
         }
@@ -733,7 +434,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 }
 
 void QFreeWork::finalizeTestFlowIfComplete() {
-    const int flowStepCount = useTestCaseFlow_ ? orderedTestCaseNames_.count() : orderedTestIndexes_.count();
+    const int flowStepCount = orderedTestCaseNames_.count();
     if (teststate != flowStepCount || teststate == 0) {
         return;
     }
@@ -751,7 +452,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.sn = ui->getMac->text();
         pack.instruct_num = QStringLiteral("079");
         if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
+            emit send_end_test_pass(pack);
         }
     } else {
         ui->test_result->setText(QStringLiteral("PASS"));
@@ -763,7 +464,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.sn = ui->getMac->text();
         pack.instruct_num = QStringLiteral("079");
         if (ui->isusemes->checkState()) {
-            emit send_end_testPass(pack);
+            emit send_end_test_pass(pack);
         }
     }
 
@@ -805,7 +506,7 @@ QFreeWork::~QFreeWork() {
     delete ui;
 }
 
-void QFreeWork::getDongleWifi(QString data) {
+void QFreeWork::refreshDongleWifi(QString data) {
     // 保存密码
     SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
@@ -969,11 +670,7 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
                                .arg(configuredKeyId)
                                .arg(capAsk);
         plcKeyCapPollMode_ = true;
-        showlog(testName + QStringLiteral("：治具下压期间读取电容 KK=%1（配置ID=%2 减1），卡控%3，读%4次")
-                    .arg(currentKeyCapRequestKk_)
-                    .arg(configuredKeyId)
-                    .arg(capAsk)
-                    .arg(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt()));
+        showlog(testName + QStringLiteral("：治具下压期间读取电容 KK=%1（配置ID=%2 减1），卡控%3，读%4次").arg(currentKeyCapRequestKk_).arg(configuredKeyId).arg(capAsk).arg(SETTINGS.value(QStringLiteral("KeyCap/ReadCount"), 3).toInt()));
     } else {
         showlog(testName + QStringLiteral("：已等待协议按键，将执行PLC整步"));
     }
@@ -1054,7 +751,7 @@ void QFreeWork::armPlcBleKeyWaitTimeout() {
         QString tail = QStringLiteral("等待设备按键上报超时");
         if (ph == 3) {
             tail = QStringLiteral("等待左旋上报超时");
-           } else if (ph == 4) {
+        } else if (ph == 4) {
             tail = QStringLiteral("等待右旋上报超时");
         }
         stepRuntime_.testData = plcPart.isEmpty() ? tail : plcPart + QStringLiteral("；") + tail;
@@ -1062,82 +759,6 @@ void QFreeWork::armPlcBleKeyWaitTimeout() {
         showlog(currentKeyTestName_ + QStringLiteral("失败：%1").arg(tail));
     });
     showlog(currentKeyTestName_ + QStringLiteral("：等待协议上报（超时 %1ms）").arg(bleWaitMs));
-}
-
-void QFreeWork::startPlcSwitchPlcAndWaitLeftRotate() {
-    const QString leftEn = QStringLiteral("ProductInfo/KeyIdLeftRotate_checkBox");
-    if (!SETTINGS.value(leftEn).toBool()) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("左旋按键配置未启用");
-        stepRuntime_.ask = QStringLiteral("请检查配置");
-        TestResult = failValue;
-        showlog(QStringLiteral("PLC+V3旋钮左旋失败：左旋配置未启用"));
-        return;
-    }
-
-    // phase 3：PLC 旋钮整步后仅校验左旋；右旋为测试项 89。
-    plcSwitchBlePhase_ = 3;
-    currentKeyTestName_ = QStringLiteral("PLC+V3旋钮左旋");
-    currentKeyExpectedKey_ = QStringLiteral("ProductInfo/KeyIdLeftRotate");
-    freeWorkKeyWaiting_ = true;
-    stepRuntime_.done = false;
-    stepRuntime_.pass = true;
-    stepRuntime_.testData = QStringLiteral("PLC旋钮整步与等待左旋上报");
-    stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-    plcKeyBlePlcOkSummary_.clear();
-
-    closeKeyWaitPrompt();
-    keyWaitPrompt_ = new QMessageBox(QMessageBox::Information, QStringLiteral("PLC旋钮左旋"),
-                                     QStringLiteral("治具将自动完成旋钮动作，请确认设备上报左旋"),
-                                     QMessageBox::NoButton, this);
-    keyWaitPrompt_->setStandardButtons(QMessageBox::NoButton);
-    {
-        QPushButton* hiddenCloseButton = keyWaitPrompt_->addButton("", QMessageBox::RejectRole);
-        hiddenCloseButton->hide();
-    }
-    keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
-    keyWaitPromptProgrammaticClose_ = false;
-    connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
-        keyWaitPrompt_ = nullptr;
-        if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
-            ++plcKeyBleWaitSeq_;
-            freeWorkKeyWaiting_ = false;
-            plcSwitchBlePhase_ = 0;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = "用户关闭按键弹窗";
-            stepRuntime_.ask = SETTINGS.value(currentKeyExpectedKey_).toString();
-            plcKeyBlePlcOkSummary_.clear();
-            TestResult = failValue;
-            showlog(currentKeyTestName_ + "失败：用户关闭按键弹窗");
-        }
-        keyWaitPromptProgrammaticClose_ = false;
-    });
-    keyWaitPrompt_->show();
-    showlog(QStringLiteral("PLC+V3旋钮左旋：已等待协议，将执行PLC旋钮整步"));
-
-    runPlcV3TouchSwitchFull(false);
-
-    if (!stepRuntime_.pass) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        plcKeyBlePlcOkSummary_.clear();
-        return;
-    }
-
-    if (stepRuntime_.done) {
-        ++plcKeyBleWaitSeq_;
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        closeKeyWaitPrompt();
-        return;
-    }
-
-    armPlcBleKeyWaitTimeout();
-    showlog(currentKeyTestName_ + QStringLiteral("：PLC旋钮整步完成，等待左旋上报"));
 }
 
 void QFreeWork::closeKeyWaitPrompt() {
@@ -1178,7 +799,7 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
 
 void QFreeWork::onTestCasePromptAcknowledged() {
     testCasePromptAcknowledged_ = true;
-    if (!useTestCaseFlow_ || !stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
+    if (!stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
         return;
     if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
         return;
@@ -1197,80 +818,7 @@ void QFreeWork::closeTestCasePrompt() {
     box->close();
 }
 
-void QFreeWork::checkbutton(ProtocolButtonStateData data) {
-    if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
-        return;
-    }
-
-    ++plcKeyBleWaitSeq_;
-
-    const QString actualKeyId = QString::number(data.keyButtonId);
-    const QString expectedKeyId = SETTINGS.value(currentKeyExpectedKey_).toString();
-    const bool idOk = compareVersions(expectedKeyId, actualKeyId);
-
-    if (plcSwitchBlePhase_ == 3 || plcSwitchBlePhase_ == 4) {
-        // 编码器：modeButtonState 为 dir（1左旋/2右旋）。须与旋钮 PLC 步骤的 phase 期望一致。
-        const int expectedDir = (plcSwitchBlePhase_ == 3) ? 1 : 2;
-        const bool dirOk = (data.modeButtonState == expectedDir);
-        const bool pass = idOk && dirOk;
-        const QString rotLabel = (plcSwitchBlePhase_ == 3) ? QStringLiteral("左旋") : QStringLiteral("右旋");
-        closeKeyWaitPrompt();
-        freeWorkKeyWaiting_ = false;
-        plcSwitchBlePhase_ = 0;
-        stepRuntime_.done = true;
-        stepRuntime_.pass = pass;
-        const QString plcPart = plcKeyBlePlcOkSummary_;
-        plcKeyBlePlcOkSummary_.clear();
-        const QString keyLine = QStringLiteral("旋钮%1：方向=%2(期望%3) ID:%4 期望ID:%5")
-                                    .arg(rotLabel)
-                                    .arg(data.modeButtonState)
-                                    .arg(expectedDir)
-                                    .arg(actualKeyId, expectedKeyId);
-        stepRuntime_.testData = plcPart.isEmpty() ? keyLine : QStringLiteral("%1；%2").arg(plcPart, keyLine);
-        if (!pass) {
-            TestResult = failValue;
-        }
-        stepRuntime_.ask = expectedKeyId;
-        showlog(QStringLiteral("%1%2：%3上报")
-                    .arg(currentKeyTestName_)
-                    .arg(pass ? QStringLiteral("通过") : QStringLiteral("失败"))
-                    .arg(rotLabel));
-        return;
-    }
-
-    const bool pass = idOk;
-
-    closeKeyWaitPrompt();
-    freeWorkKeyWaiting_ = false;
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    if (plcKeyBlePlcOkSummary_.isEmpty()) {
-        stepRuntime_.testData = QString("按键ID:%1 期望:%2").arg(actualKeyId, expectedKeyId);
-    } else {
-        stepRuntime_.testData =
-            QString("%1；按键ID:%2 期望:%3").arg(plcKeyBlePlcOkSummary_, actualKeyId, expectedKeyId);
-    }
-    plcKeyBlePlcOkSummary_.clear();
-    stepRuntime_.ask = expectedKeyId;
-    if (!pass) {
-        TestResult = failValue;
-    }
-
-    showlog(QString("%1%2：实际按键ID=%3 期望=%4")
-                .arg(currentKeyTestName_)
-                .arg(pass ? "通过" : "失败")
-                .arg(actualKeyId, expectedKeyId));
-}
-int QFreeWork::resolvedPlcSwitchTestDoneResetM() const {
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    return SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetM"), 211).toInt();
-}
-
-void QFreeWork::initDate() {
+void QFreeWork::initData() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
@@ -1302,9 +850,8 @@ void QFreeWork::initDate() {
     closeKeyWaitPrompt();
     closeTestCasePrompt();
     lastBrushInstrumentProfile_ = -1;
-    cmwGprfBurstDoneSinceStartRx_ = false;
-    gInstrumentCmwGprfPrimed = false;
-    inovancePlcTcp_.disconnect();
+    cmwFacade_.run(CmwGprfCommand::ResetSession, makeCmwRunParams());
+    plcFixture_.disconnect();
     clearProductInstrumentWatch();
     is_battary_test = 0;
     charageresult = "未测";
@@ -1324,62 +871,115 @@ void QFreeWork::initDate() {
     freeWorkMesSegments_.clear();
     TestTime.start();
 }
-void QFreeWork::runPlcSwitchTestDoneResetM() {
-    syncPlcModbusTraceFromSettings();
-    const int resetM = resolvedPlcSwitchTestDoneResetM();
-    const QString host = resolvedPlcIpAddress();
-    const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const int pulseMs = SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"), 0).toInt();
-    const int offset = resolvedPlcMCoilAddressOffset();
 
-    showlog(QStringLiteral("PLC旋钮测试完成复位: 工位=%1 M%2(addr=%3) PulseMs=%4")
-                .arg(getIndex())
-                .arg(resetM)
-                .arg(resetM + offset)
-                .arg(pulseMs));
-
-    QString err;
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("复位线圈连接失败: %1").arg(err);
-        showlog(QStringLiteral("PLC旋钮测试完成复位失败: %1").arg(err));
-        return;
-    }
-    showlog(QStringLiteral("PLC旋钮测试完成复位: 写 M%1(addr=%2)=1").arg(resetM).arg(resetM + offset));
-    if (!plcWriteCoil(resetM, true, &err)) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("写复位线圈失败: %1").arg(err);
-        showlog(QStringLiteral("PLC旋钮测试完成复位失败: %1").arg(err));
-        return;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (pulseMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(pulseMs));
-        showlog(QStringLiteral("PLC旋钮测试完成复位: 脉冲置0 M%1(addr=%2)").arg(resetM).arg(resetM + offset));
-        if (!plcWriteCoil(resetM, false, &err)) {
-            inovancePlcTcp_.disconnect();
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("复位线圈脉冲回0失败: %1").arg(err);
-            showlog(QStringLiteral("PLC旋钮测试完成复位失败: %1").arg(err));
-            return;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-    inovancePlcTcp_.disconnect();
-    stepRuntime_.pass = true;
-    stepRuntime_.testData =
-        pulseMs > 0 ? QStringLiteral("M%1 复位脉冲%2ms").arg(resetM).arg(pulseMs)
-                    : QStringLiteral("M%1 复位常1").arg(resetM);
-    showlog(QStringLiteral("PLC旋钮测试完成复位通过"));
+PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6) {
+    PlcV3RunParams params;
+    params.stationIndex = getIndex();
+    params.keyIndex0To6 = keyIndex0To6;
+    params.log = [this](const QString& line) { showlog(line); };
+    params.isTestContinue = [this]() { return isTestContinue; };
+    return params;
 }
 
+CmwGprfRunParams QFreeWork::makeCmwRunParams(const QString& scenarioLabel, int brushProfile) {
+    CmwGprfRunParams params;
+    params.visa = visa;
+    params.scenarioLabel = scenarioLabel;
+    params.brushProfile = brushProfile;
+    params.log = [this](const QString& line) { showlog(line); };
+    params.wait = [this](int ms) { waitWork(ms); };
+    return params;
+}
+
+void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command command, bool finishStepRuntime) {
+    if (!result.ok) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = result.summary;
+        stepRuntime_.done = true;
+        if (!result.summary.isEmpty()) {
+            showlog(result.summary);
+        }
+        return;
+    }
+    if (command == PlcV3Command::TouchSwitch) {
+        return;
+    }
+    if (command == PlcV3Command::TouchKey) {
+        stepRuntime_.pass = true;
+        if (finishStepRuntime) {
+            stepRuntime_.testData = result.summary;
+            stepRuntime_.done = true;
+            plcKeyBlePlcOkSummary_.clear();
+        } else if (stepRuntime_.done) {
+            if (!result.summary.isEmpty()) {
+                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
+                    ? result.summary
+                    : QStringLiteral("%1；%2").arg(result.summary, stepRuntime_.testData);
+            }
+            plcKeyBlePlcOkSummary_.clear();
+        } else {
+            stepRuntime_.testData = result.summary;
+            stepRuntime_.done = false;
+            plcKeyBlePlcOkSummary_ = result.summary;
+        }
+        if (!result.summary.isEmpty()) {
+            showlog(result.summary);
+        }
+        return;
+    }
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = result.summary;
+    stepRuntime_.done = true;
+}
+
+PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool finishStepRuntime) {
+    Q_UNUSED(finishStepRuntime);
+    PlcV3RunParams params = makePlcRunParams(keyIndex0To6);
+    if (command == PlcV3Command::TouchKey && plcKeyCapPollMode_) {
+        params.pollCapDuringPress = [this](QString* errOut, QString* outSummary) {
+            return pollKeyCapDuringPress(errOut, outSummary);
+        };
+    }
+    return plcFixture_.run(command, params);
+}
+
+CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel, int brushProfile,
+                                       int alignedPostTrigHoldMs, bool* outRanBurst) {
+    CmwGprfRunParams params = makeCmwRunParams(scenarioLabel, brushProfile);
+    params.alignedPostTrigHoldMs = alignedPostTrigHoldMs;
+    params.outRanBurst = outRanBurst;
+    return cmwFacade_.run(command, params);
+}
+
+void QFreeWork::runPlcSwitchTestDoneResetM() {
+    const PlcV3RunResult result = runPlcV3(PlcV3Command::SwitchDoneReset);
+    applyPlcStepResult(result, PlcV3Command::SwitchDoneReset);
+}
+
+void QFreeWork::runPlcModbusConnectTest() {
+    const PlcV3RunResult result = runPlcV3(PlcV3Command::ModbusConnectTest);
+    applyPlcStepResult(result, PlcV3Command::ModbusConnectTest);
+}
+
+void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
+    const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchKey, keyIndex0To6, finishStepRuntime);
+    applyPlcStepResult(result, PlcV3Command::TouchKey, finishStepRuntime);
+}
+
+void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
+    Q_UNUSED(finishStepRuntime);
+    const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchSwitch);
+    applyPlcStepResult(result, PlcV3Command::TouchSwitch, finishStepRuntime);
+}
+
+bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int brushProfile) {
+    const CmwGprfRunResult result =
+        runCmwGprf(CmwGprfCommand::ParallelBurstForProfile, QString(), brushProfile);
+    if (detail) {
+        *detail = result.detail;
+    }
+    return result.ok || result.skipped;
+}
 
 void QFreeWork::on_disconnectwifi_clicked() {
     if (at->getConnected()) {
@@ -1426,7 +1026,7 @@ void QFreeWork::on_macInput_returnPressed() {
     } else {
         macAddress = ui->macInput->text();
         if (ui->just_banding->checkState()) {
-            bandingMacSn(macAddress, ui->getMac->text());  //获取测试数据不要绑定测试mac——sn
+            bindingMacSn(macAddress, ui->getMac->text()); //获取测试数据不要绑定测试mac——sn
             ui->test_result->setText("PASS");
             ui->test_result->setStyleSheet(
                 "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
@@ -1443,8 +1043,6 @@ void QFreeWork::on_macInput_returnPressed() {
         ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
                                        "10px; padding: 10px; text-align: center; ");
 
-        ui->start_wifible_test->setEnabled(false);
-        // 主状态机流程
         isTestContinue = true;
         teststate = -1;
 
@@ -1454,8 +1052,12 @@ void QFreeWork::on_macInput_returnPressed() {
     }
 }
 
+void QFreeWork::on_pushButton_clicked() {
+    runPlcModbusConnectTest();
+}
+
 void QFreeWork::on_pushButton_2_clicked() {
-    at->set(DongleCmd::BleLog, 1);  // 日志开
+    at->set(DongleCmd::BleLog, 1); // 日志开
 }
 
 void QFreeWork::on_getMac_returnPressed() {
@@ -1481,16 +1083,16 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    expectedTailSnFromMes = ui->getMac->text().trimmed().toUtf8();
+    if (isBydFactory()) {
+        expectedTailSnFromMes.clear();
+    }
     showlog("正在查询mac地址");
-    processGetMesTestValue();     // mes获取
+    processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取
     if (ui->isusemes->checkState()) {
         processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
-
-// on_macInput_returnPressed();
 }
 
 void QFreeWork::processInspection(QString inputSnText) {
@@ -1503,13 +1105,13 @@ void QFreeWork::processInspection(QString inputSnText) {
 
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -1531,20 +1133,20 @@ void QFreeWork::processGetMesTestValue() {
 
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 void QFreeWork::getMac(QString sn_to_search) {
-    QFile file("mac_sn.txt");              // 创建一个文件对象
-    if (file.open(QIODevice::ReadOnly)) {  // 打开文件
+    QFile file("mac_sn.txt");             // 创建一个文件对象
+    if (file.open(QIODevice::ReadOnly)) { // 打开文件
         QTextStream in(&file);
-        while (!in.atEnd()) {                      // 逐行读取文件
-            QString line = in.readLine();          // 读取一行
-            QStringList fields = line.split(",");  // 将行按照逗号分隔成两个字段
+        while (!in.atEnd()) {                     // 逐行读取文件
+            QString line = in.readLine();         // 读取一行
+            QStringList fields = line.split(","); // 将行按照逗号分隔成两个字段
             if (fields.count() >= 2) {
-                QString sn = fields.at(0);   // 第一个字段是sn
-                QString mac = fields.at(1);  // 第二个字段是mac
-                if (sn == sn_to_search) {    // 检查是否是待检索的sn
+                QString sn = fields.at(0);  // 第一个字段是sn
+                QString mac = fields.at(1); // 第二个字段是mac
+                if (sn == sn_to_search) {   // 检查是否是待检索的sn
                     {
                         ui->macInput->setText(mac);
                         on_macInput_returnPressed();
@@ -1557,14 +1159,14 @@ void QFreeWork::getMac(QString sn_to_search) {
             }
         }
 
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
     }
     if (!ui->isformmes->isChecked() && ui->macInput->text().isEmpty()) {
         ui->getMac->clear();
         showlog("找不到mac地址，清空当前输入的sn");
     }
 }
-void QFreeWork::getmacadress(const QByteArray& byte) {
+void QFreeWork::getMacAddress(const QByteArray& byte) {
     receivedData = "";
     receivedData = receivedData + QString::fromUtf8(byte);
 
@@ -1633,13 +1235,13 @@ void QFreeWork::on_mac_combo_textActivated(const QString& arg1) {
         macAddress = arg1;
         // at->set(DongleCmd::BleScanConnect, macAddress);//发送mac地址
         qDebug() << getIndex() << macAddress;
-        bandingMacSn(macAddress, snbanding);
+        bindingMacSn(macAddress, snBinding);
     }
     ui->snbanding->setFocus();
 }
-void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
-    if (bandingsn == "" || bandingmac == "")
-        bandingresult = false;
+void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
+    if (bindingSn == "" || bindingMac == "")
+        bindingResult = false;
 
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
@@ -1651,18 +1253,18 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
 
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
-    QFile file(path);  // 创建一个文件对象
+    QFile file(path); // 创建一个文件对象
 
-    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {  //
-        QTextStream in(&file);                                // 创建一个文本流对象
-        QStringList lines;                                    // 用于存储文件中的每一行数据
-        bool found = false;                                   // 标记是否找到了相同的SN
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) { //
+        QTextStream in(&file);                               // 创建一个文本流对象
+        QStringList lines;                                   // 用于存储文件中的每一行数据
+        bool found = false;                                  // 标记是否找到了相同的SN
         while (!in.atEnd()) {
-            QString line = in.readLine();         // 逐行读取文件
-            QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            QString line = in.readLine();        // 逐行读取文件
+            QStringList parts = line.split(","); // 以逗号分隔每行数据
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -1671,7 +1273,7 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);
@@ -1679,27 +1281,27 @@ void QFreeWork::bandingMacSn(QString bandingmac, QString bandingsn) {
         for (const QString& line : lines) {
             out << line << '\n';
         }
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
         showlog("保存mac_sn文件成功");
     } else {
         showlog("保存mac_sn文件失败");
     }
 
-    // bandingMacSn_mes(bandingmac, bandingsn);
+    // bindingMacSnMes(bindingMac, bindingSn);
 }
 
-void QFreeWork::bandingMacSn_mes(QString bandingmac, QString bandingsn) {
-    Q_UNUSED(bandingsn);
-    pack.mechines = 1;  // 1脱1,1号上位机
-    pack.sn = snbanding;
+void QFreeWork::bindingMacSnMes(QString bindingMac, QString bindingSn) {
+    Q_UNUSED(bindingSn);
+    pack.mechines = 1; // 1脱1,1号上位机
+    pack.sn = snBinding;
     pack.result = "PASS";
-    pack.itemvalue = QString("|BTMAC:%1|").arg(bandingmac);
+    pack.itemvalue = QString("|BTMAC:%1|").arg(bindingMac);
     pack.instruct_num = "076";
     if (ui->isusemes->checkState()) {
-        emit send_end_testPass(pack);
+        emit send_end_test_pass(pack);
     }
 
-    if (bandingresult) {
+    if (bindingResult) {
         ui->banding_result->setText("绑定:PASS");
         ui->banding_result->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
                                           "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
@@ -1718,10 +1320,10 @@ void QFreeWork::on_snbanding_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    snbanding = ui->snbanding->text();
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
+    snBinding = ui->snbanding->text();
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
     ui->snbanding->clear();
-    bandingresult = true;
+    bindingResult = true;
 }
 
 void QFreeWork::getTestValue(const int mechines, const QString value) {
@@ -1792,7 +1394,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        // 自由工站无 writesn/stringsn：写入 SN 用 expectedTailSnFromMes testFunction「写入SN码」）；读回比对用 deviceTailSnFromDevice + ui->getMac
+        // BYD 写入/读回 SN 均用 MES 返回的整机 SN（同 ageing writesn/stringsn）
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
@@ -1889,19 +1491,19 @@ bool QFreeWork::ensureProductSerialForInstrumentStep(const QString& stepName) {
 
 QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
     switch (profile) {
-        case 1:
-            return Qproduct::buildStartReceiveCmd2440Ble1M();
-        case 2:
-            return Qproduct::buildStartReceiveCmd2480Ble1M();
-        case 3:
-            return Qproduct::buildStartReceiveCmd2402Ble2M();
-        case 4:
-            return Qproduct::buildStartReceiveCmd2440Ble2M();
-        case 5:
-            return Qproduct::buildStartReceiveCmd2480Ble2M();
-        case 0:
-        default:
-            return Qproduct::buildStartReceiveCmd2402Ble1M();
+    case 1:
+        return Qproduct::buildStartReceiveCmd2440Ble1M();
+    case 2:
+        return Qproduct::buildStartReceiveCmd2480Ble1M();
+    case 3:
+        return Qproduct::buildStartReceiveCmd2402Ble2M();
+    case 4:
+        return Qproduct::buildStartReceiveCmd2440Ble2M();
+    case 5:
+        return Qproduct::buildStartReceiveCmd2480Ble2M();
+    case 0:
+    default:
+        return Qproduct::buildStartReceiveCmd2402Ble1M();
     }
 }
 
@@ -1954,7 +1556,7 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
     }
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
     lastBrushInstrumentProfile_ = profile;
-    cmwGprfBurstDoneSinceStartRx_ = false;
+    cmwFacade_.clearBurstDoneSinceStartRx();
     QString err;
     if (!product->writeRaw(frame, &err)) {
         stepRuntime_.done = true;
@@ -2011,15 +1613,15 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
         showlog(stepName + QStringLiteral("：BlePer/CmwWaveformFile=%1").arg(wfPath));
     }
 
-    QString cmwErr;
     bool ranCmwBurst = false;
-    if (!freeWorkInstrumentBleBrushCmwBurstIfEnabled(stepName, lastBrushInstrumentProfile_, &cmwErr, waitPacketMs, nullptr,
-                                                     &ranCmwBurst)) {
+    const CmwGprfRunResult cmwResult =
+        runCmwGprf(CmwGprfCommand::BrushBurstOnStopPer, stepName, lastBrushInstrumentProfile_, waitPacketMs, &ranCmwBurst);
+    if (!cmwResult.ok) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
-        stepRuntime_.testData = cmwErr;
+        stepRuntime_.testData = cmwResult.detail;
         TestResult = failValue;
-        showlog(stepName + QStringLiteral("失败：CMW GPRF——") + cmwErr);
+        showlog(stepName + QStringLiteral("失败：CMW GPRF——") + cmwResult.detail);
         return;
     }
 
@@ -2558,10 +2160,8 @@ bool QFreeWork::runFreeInstrumentBleCmwBurstForBrushProfile(QString* detail, int
 }
 
 void QFreeWork::on_stopTest_clicked() {
-    // at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");   // 发送mac地址
-    // waitWork(100);
     clearProductInstrumentWatch();
-    inovancePlcTcp_.disconnect();
+    plcFixture_.disconnect();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 
@@ -2569,605 +2169,6 @@ void QFreeWork::on_stopTest_clicked() {
     ui->getMac->clear();
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
-}
-
-int QFreeWork::resolvedPlcMBase() const {
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/MBase_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    const int base1 = SETTINGS.value(QStringLiteral("PLC/MBase"), 200).toInt();
-    const int step = SETTINGS.value(QStringLiteral("PLC/MBaseStationStep"), 20).toInt();
-    if (st <= 1) {
-        return base1;
-    }
-    return base1 + step * (st - 1);
-}
-
-int QFreeWork::resolvedPlcSwitchForwardM() const {
-    const int base = resolvedPlcMBase();
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/SwitchForwardM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    const int global = SETTINGS.value(QStringLiteral("PLC/SwitchForwardM"), -1).toInt();
-    if (global >= 0) {
-        return global;
-    }
-    return base + SETTINGS.value(QStringLiteral("PLC/SwitchForwardOffset"), 12).toInt();
-}
-
-int QFreeWork::resolvedPlcSwitchPressM() const {
-    const int base = resolvedPlcMBase();
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/SwitchPressM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    const int global = SETTINGS.value(QStringLiteral("PLC/SwitchPressM"), -1).toInt();
-    if (global >= 0) {
-        return global;
-    }
-    return base + SETTINGS.value(QStringLiteral("PLC/SwitchPressOffset"), 7).toInt();
-}
-
-int QFreeWork::resolvedPlcConnectVerifyM() const {
-    const int st = qMax(1, getIndex());
-    const int perStation = SETTINGS.value(QStringLiteral("PLC/ConnectVerifyM_Station%1").arg(st), -1).toInt();
-    if (perStation >= 0) {
-        return perStation;
-    }
-    return SETTINGS.value(QStringLiteral("PLC/ConnectVerifyM"), resolvedPlcMBase()).toInt();
-}
-
-QString QFreeWork::resolvedPlcIpAddress() const {
-    const int st = qMax(1, getIndex());
-    return SETTINGS.value(QStringLiteral("PLC/IpAddress_Station%1").arg(st),
-                          SETTINGS.value(QStringLiteral("PLC/IpAddress"), QStringLiteral("192.168.1.88")))
-        .toString();
-}
-
-int QFreeWork::resolvedPlcPort() const {
-    const int st = qMax(1, getIndex());
-    return SETTINGS.value(QStringLiteral("PLC/Port_Station%1").arg(st), SETTINGS.value(QStringLiteral("PLC/Port"), 502))
-        .toInt();
-}
-
-quint8 QFreeWork::resolvedPlcUnitId() const {
-    const int st = qMax(1, getIndex());
-    return quint8(SETTINGS.value(QStringLiteral("PLC/UnitId_Station%1").arg(st), SETTINGS.value(QStringLiteral("PLC/UnitId"), 1))
-                      .toUInt());
-}
-
-int QFreeWork::resolvedPlcMCoilAddressOffset() const {
-    const int st = qMax(1, getIndex());
-    return SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset_Station%1").arg(st),
-                          SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset"), 0))
-        .toInt();
-}
-
-int QFreeWork::resolvedPlcPositionReadyBase() const {
-    const int st = qMax(1, getIndex());
-    const int per = SETTINGS.value(QStringLiteral("PLC/PositionReadyBase_Station%1").arg(st), -1).toInt();
-    if (per >= 0) {
-        return per;
-    }
-    const int g = SETTINGS.value(QStringLiteral("PLC/PositionReadyBase"), -1).toInt();
-    if (g >= 0) {
-        return g;
-    }
-    const int step = SETTINGS.value(QStringLiteral("PLC/PositionReadyBaseStationStep"), 20).toInt();
-    return 250 + step * (st - 1);
-}
-
-int QFreeWork::resolvedPlcStepDoneBase() const {
-    const int st = qMax(1, getIndex());
-    const int per = SETTINGS.value(QStringLiteral("PLC/StepDoneBase_Station%1").arg(st), -1).toInt();
-    if (per >= 0) {
-        return per;
-    }
-    const int g = SETTINGS.value(QStringLiteral("PLC/StepDoneBase"), -1).toInt();
-    if (g >= 0) {
-        return g;
-    }
-    const int step = SETTINGS.value(QStringLiteral("PLC/StepDoneBaseStationStep"), 20).toInt();
-    return 260 + step * (st - 1);
-}
-
-int QFreeWork::resolvedPlcKeyDoneM() const {
-    const int st = qMax(1, getIndex());
-    const int per = SETTINGS.value(QStringLiteral("PLC/KeyDoneM_Station%1").arg(st), -1).toInt();
-    if (per >= 0) {
-        return per;
-    }
-    const int g = SETTINGS.value(QStringLiteral("PLC/KeyDoneM"), -1).toInt();
-    if (g >= 0) {
-        return g;
-    }
-    return resolvedPlcMBase() + SETTINGS.value(QStringLiteral("PLC/KeyDoneOffsetFromMBase"), 10).toInt();
-}
-
-void QFreeWork::syncPlcModbusTraceFromSettings() {
-    const bool on = SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
-                     || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0);
-    // inovancePlcTcp_.setTraceEnabled(on);
-}
-
-void QFreeWork::maybeShowlogPlcSessionSummary(const QString& stepTag) {
-    showlog(QStringLiteral("[PLC调试 %1] IP=%2 Port=%3 UnitId=%4 M偏移=%5 MBase=%6 PosReady基=%7 StepDone基=%8 "
-                           "KeyDoneM=%9 ConnectVerifyM=%10 ConnectTimeoutMs=%11 RequestTimeoutMs=%12 "
-                           "Trace=%13 验证读=%14 握手=%15 等KeyDone=%16 完成后释放=%17 KeyDone预复位=%18 KeyDone复位等待=%19 "
-                           "CommandGapMs=%20 PosTimeoutMs=%21 PosPollMs=%22 KeyDoneTimeoutMs=%23 KeyDonePollMs=%24")
-                .arg(stepTag)
-                .arg(resolvedPlcIpAddress())
-                .arg(resolvedPlcPort())
-                .arg(resolvedPlcUnitId())
-                .arg(resolvedPlcMCoilAddressOffset())
-                .arg(resolvedPlcMBase())
-                .arg(resolvedPlcPositionReadyBase())
-                .arg(resolvedPlcStepDoneBase())
-                .arg(resolvedPlcKeyDoneM())
-                .arg(resolvedPlcConnectVerifyM())
-                .arg(SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt())
-                .arg(plcBoolText(1))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/UseStepHandshake"), true).toBool()))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneAfterStepDone"), true).toBool()))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/ReleasePositionAfterKeyDone"), true).toBool()))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/EnsureKeyDoneIdleBeforeStep"), false).toBool()))
-                .arg(plcBoolText(SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool()))
-                .arg(SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
-                                    SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
-                         .toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
-                                    SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt())
-                         .toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
-                .arg(SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt()));
-}
-
-void QFreeWork::runPlcModbusConnectTest() {
-    syncPlcModbusTraceFromSettings();
-    maybeShowlogPlcSessionSummary(QStringLiteral("连接测试"));
-    const QString host = resolvedPlcIpAddress();
-    const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    const quint8 uid = resolvedPlcUnitId();
-    const int offset = resolvedPlcMCoilAddressOffset();
-
-    showlog(QStringLiteral("PLC_Modbus连接开始(工位%1): IP=%2 Port=%3 UnitId=%4 ConnectTimeoutMs=%5 RequestTimeoutMs=%6")
-                .arg(getIndex())
-                .arg(host)
-                .arg(port)
-                .arg(uid)
-                .arg(connMs)
-                .arg(reqMs));
-
-    QString err;
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), uid, connMs, &err)) {
-        stepRuntime_.pass = false;
-        const QString detail = QStringLiteral("%1；配置: IP=%2 Port=%3 UnitId=%4 ConnectTimeoutMs=%5 "
-                                              "RequestTimeoutMs=%6 M偏移=%7 验证读=%8；请检查PLC IP/端口、网线、"
-                                              "PLC Modbus TCP服务和防火墙")
-                                   .arg(err)
-                                   .arg(host)
-                                   .arg(port)
-                                   .arg(uid)
-                                   .arg(connMs)
-                                   .arg(reqMs)
-                                   .arg(offset)
-                                   .arg(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()
-                                            ? QStringLiteral("开启")
-                                            : QStringLiteral("关闭"));
-        stepRuntime_.testData = detail;
-        showlog(QStringLiteral("PLC_Modbus连接失败(工位%1): %2").arg(getIndex()).arg(detail));
-        return;
-    }
-    showlog(QStringLiteral("PLC_Modbus TCP已连接(工位%1): IP=%2 Port=%3 UnitId=%4")
-                .arg(getIndex())
-                .arg(host)
-                .arg(port)
-                .arg(uid));
-    bool ok = true;
-    if (SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()) {
-        const int verifyM = resolvedPlcConnectVerifyM();
-        showlog(QStringLiteral("PLC_Modbus连接验证读: M%1(addr=%2) Quantity=1 TimeoutMs=%3")
-                    .arg(verifyM)
-                    .arg(verifyM + offset)
-                    .arg(reqMs));
-        QVector<bool> bits;
-        if (!inovancePlcTcp_.readMCoils(verifyM, 1, offset, uid, reqMs, &bits, &err)) {
-            ok = false;
-            stepRuntime_.testData = QStringLiteral("连接验证读失败: M%1(addr=%2) %3")
-                                        .arg(verifyM)
-                                        .arg(verifyM + offset)
-                                        .arg(err);
-            showlog(QStringLiteral("PLC 连接后读线圈失败(可关 PLC/ConnectVerifyRead): M%1(addr=%2) %3")
-                        .arg(verifyM)
-                        .arg(verifyM + offset)
-                        .arg(err));
-        } else {
-            stepRuntime_.testData = QStringLiteral("已连 %1:%2")
-                                        .arg(host)
-                                        .arg(port);
-            showlog(QStringLiteral("PLC_Modbus连接验证读通过: M%1(addr=%2)=%3")
-                        .arg(verifyM)
-                        .arg(verifyM + offset)
-                        .arg(bits.value(0) ? 1 : 0));
-        }
-    } else {
-        stepRuntime_.testData = QStringLiteral("已连 %1:%2 UnitId=%3，验证读关闭").arg(host).arg(port).arg(uid);
-        showlog(QStringLiteral("PLC_Modbus连接验证读关闭"));
-    }
-    inovancePlcTcp_.disconnect();
-    stepRuntime_.pass = ok;
-    showlog(ok ? QStringLiteral("PLC_Modbus连接通过") : QStringLiteral("PLC_Modbus连接未通过"));
-}
-
-bool QFreeWork::plcReadCoil(int absoluteM, bool* value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    const quint8 uid = resolvedPlcUnitId();
-    const int offset = resolvedPlcMCoilAddressOffset();
-    QVector<bool> bits;
-    if (!inovancePlcTcp_.readMCoils(absoluteM, 1, offset, uid, reqMs, &bits, errorMessage)) {
-        return false;
-    }
-    *value = bits.value(0);
-    return true;
-}
-
-bool QFreeWork::plcWriteCoil(int absoluteM, bool value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    const quint8 uid = resolvedPlcUnitId();
-    const int offset = resolvedPlcMCoilAddressOffset();
-    return inovancePlcTcp_.writeMCoil(absoluteM, value, offset, uid, reqMs, errorMessage);
-}
-
-bool QFreeWork::plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        // if (!isTestContinue) {
-        //     if (errorMessage) {
-        //         *errorMessage = QStringLiteral("测试已停止");
-        //     }
-        //     return false;
-        // }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=1 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
-}
-
-bool QFreeWork::plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        if (!isTestContinue) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("测试已停止");
-            }
-            return false;
-        }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (!v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=0 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
-}
-
-bool QFreeWork::plcSendStepDone(QString* errorMessage) {
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const int pulseMs = SETTINGS.value(QStringLiteral("PLC/StepDonePulseMs"), 0).toInt();
-    const int m = resolvedPlcStepDoneBase();
-    const int offset = resolvedPlcMCoilAddressOffset();
-    showlog(QStringLiteral("PLC发送 StepDone: M%1(addr=%2)=1 GapMs=%3 PulseMs=%4")
-                .arg(m)
-                .arg(m + offset)
-                .arg(gapMs)
-                .arg(pulseMs));
-    if (!plcWriteCoil(m, true, errorMessage)) {
-        return false;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (pulseMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(pulseMs));
-        showlog(QStringLiteral("PLC复位 StepDone 脉冲: M%1(addr=%2)=0").arg(m).arg(m + offset));
-        if (!plcWriteCoil(m, false, errorMessage)) {
-            return false;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-    return true;
-}
-
-void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
-    syncPlcModbusTraceFromSettings();
-    maybeShowlogPlcSessionSummary(QStringLiteral("V3键%1").arg(keyIndex0To6));
-
-    if (keyIndex0To6 < 0 || keyIndex0To6 > 6) {
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("V3 Touch keyIndex 非法: %1").arg(keyIndex0To6);
-        stepRuntime_.done = true;
-        showlog(stepRuntime_.testData);
-        return;
-    }
-
-    const QString host = resolvedPlcIpAddress();
-    const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    QString err;
-    showlog(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
-                .arg(keyIndex0To6)
-                .arg(getIndex())
-                .arg(host)
-                .arg(port)
-                .arg(resolvedPlcUnitId()));
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("PLC 连接失败: %1").arg(err);
-        stepRuntime_.done = true;
-        showlog(stepRuntime_.testData);
-        return;
-    }
-
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const bool useHandshake = SETTINGS.value(QStringLiteral("PLC/UseStepHandshake"), true).toBool();
-    const bool waitKeyDone = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneAfterStepDone"), true).toBool();
-    const bool releaseAfter = SETTINGS.value(QStringLiteral("PLC/ReleasePositionAfterKeyDone"), true).toBool();
-    const bool ensureKeyIdle = SETTINGS.value(QStringLiteral("PLC/EnsureKeyDoneIdleBeforeStep"), false).toBool();
-    const bool waitKeyReset = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool();
-    const int posSettle = SETTINGS.value(QStringLiteral("PLC/PositionSettleMs"), 500).toInt();
-    const int actionSettle = SETTINGS.value(QStringLiteral("PLC/KeyActionSettleMs"),
-                                             SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
-                                 .toInt();
-    const int releaseSettle = SETTINGS.value(QStringLiteral("PLC/KeyReleaseSettleMs"),
-                                               SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
-                                  .toInt();
-    const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
-                                          SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
-                               .toInt();
-    const int posPoll = SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
-                                       SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 1000).toInt())
-                            .toInt();
-    const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
-    const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
-    const int keyResetTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneResetTimeoutMs"), 1500).toInt();
-    const int offset = resolvedPlcMCoilAddressOffset();
-
-    const int mBase = resolvedPlcMBase();
-    const int keyM = mBase + keyIndex0To6;
-    const int posReadyM = resolvedPlcPositionReadyBase() + keyIndex0To6;
-    const int stepDoneM = resolvedPlcStepDoneBase();
-    const int failResetM = resolvedPlcSwitchTestDoneResetM();
-    const int keyDoneM = resolvedPlcKeyDoneM();
-    const auto fail = [this, stepDoneM, failResetM, gapMs, offset](const QString& msg) {
-        // 现场要求：按键失败时先补发 StepDone(M260) 再发复位 M211，避免 PLC 状态机卡在等待态
-        if (inovancePlcTcp_.isConnected()) {
-            QString plcErr;
-            showlog(QStringLiteral("按键测试失败补发：StepDone M%1(addr=%2)=1").arg(stepDoneM).arg(stepDoneM + offset));
-            if (!plcWriteCoil(stepDoneM, true, &plcErr)) {
-                showlog(QStringLiteral("按键失败补发 StepDone 失败: %1").arg(plcErr));
-            } else if (gapMs > 0) {
-                QThread::msleep(static_cast<unsigned long>(gapMs));
-            }
-
-            showlog(QStringLiteral("按键测试失败补发：复位 M%1(addr=%2)=1").arg(failResetM).arg(failResetM + offset));
-            if (!plcWriteCoil(failResetM, true, &plcErr)) {
-                showlog(QStringLiteral("按键失败补发复位M失败: %1").arg(plcErr));
-            }
-        }
-
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = msg;
-        stepRuntime_.done = true;
-        showlog(msg);
-    };
-    const auto passOk = [this, finishStepRuntime](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = true;
-        if (finishStepRuntime) {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = true;
-            plcKeyBlePlcOkSummary_.clear();
-        } else if (stepRuntime_.done) {
-            // 阻塞跑 PLC 时事件循环已收到协议并置 done，勿再清掉
-            if (!msg.isEmpty()) {
-                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
-                                            ? msg
-                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
-            }
-            plcKeyBlePlcOkSummary_.clear();
-        } else {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = false;
-            plcKeyBlePlcOkSummary_ = msg;
-        }
-        showlog(msg);
-    };
-    showlog(QStringLiteral("PLC按键整步开始: 键Index=%1 KeyM=M%2(addr=%3) PosReady=M%4(addr=%5) "
-                           "StepDone=M%6(addr=%7) KeyDone=M%8(addr=%9) 握手=%10 等KeyDone=%11 完成后释放=%12")
-                .arg(keyIndex0To6)
-                .arg(keyM)
-                .arg(keyM + offset)
-                .arg(posReadyM)
-                .arg(posReadyM + offset)
-                .arg(stepDoneM)
-                .arg(stepDoneM + offset)
-                .arg(keyDoneM)
-                .arg(keyDoneM + offset)
-                .arg(plcBoolText(useHandshake))
-                .arg(plcBoolText(waitKeyDone))
-                .arg(plcBoolText(releaseAfter)));
-
-    if (ensureKeyIdle) {
-        bool kd = false;
-        showlog(QStringLiteral("PLC预检 KeyDone 空闲: 读 M%1(addr=%2)").arg(keyDoneM).arg(keyDoneM + offset));
-        if (!plcReadCoil(keyDoneM, &kd, &err)) {
-            fail(QStringLiteral("读 KeyDone 失败: %1").arg(err));
-            return;
-        }
-        if (kd && !plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
-            return;
-        }
-    }
-
-    if (useHandshake) {
-        bool sd = false;
-        showlog(QStringLiteral("PLC预检 StepDone: 读 M%1(addr=%2)").arg(stepDoneM).arg(stepDoneM + offset));
-        if (!plcReadCoil(stepDoneM, &sd, &err)) {
-            fail(QStringLiteral("读 StepDone 失败: %1").arg(err));
-            return;
-        }
-        if (sd) {
-            showlog(QStringLiteral("PLC复位残留 StepDone: M%1(addr=%2)=0").arg(stepDoneM).arg(stepDoneM + offset));
-            if (!plcWriteCoil(stepDoneM, false, &err)) {
-                fail(QStringLiteral("复位 StepDone 失败: %1").arg(err));
-                return;
-            }
-            if (gapMs > 0) {
-                QThread::msleep(static_cast<unsigned long>(gapMs));
-            }
-        }
-    }
-
-    showlog(QStringLiteral("PLC按键下压: M%1(addr=%2)=1").arg(keyM).arg(keyM + offset));
-    if (!plcWriteCoil(keyM, true, &err)) {
-        fail(QStringLiteral("下压 M%1 失败: %2").arg(keyM).arg(err));
-        return;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-
-    if (useHandshake) {
-        showlog(QStringLiteral("PLC等待位置到位哈哈: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                    .arg(posReadyM)
-                    .arg(posReadyM + offset)
-                    .arg(posTimeout)
-                    .arg(posPoll));
-        if (!plcWaitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
-            fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
-            return;
-        }
-    }
-
-    if (posSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(posSettle));
-    }
-    if (actionSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(actionSettle));
-    }
-
-    // 与 V3 脚本一致：下压稳定后、StepDone/抬起前读电容（治具仍按压中），读完再继续握手与抬起
-    if (plcKeyCapPollMode_) {
-        QString capSummary;
-        QString capErr;
-        if (!pollKeyCapDuringPress(&capErr, &capSummary)) {
-            fail(capErr.isEmpty() ? QStringLiteral("按下期间读取按键电容失败") : capErr);
-            return;
-        }
-        plcKeyCapPassSummary_ = capSummary;
-    }
-
-    if (useHandshake) {
-        if (!plcSendStepDone(&err)) {
-            fail(QStringLiteral("发送 StepDone 失败: %1").arg(err));
-            return;
-        }
-    }
-
-    bool sawKeyDone = false;
-    if (waitKeyDone) {
-        showlog(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(keyDoneTimeout)
-                    .arg(keyDonePoll));
-        if (!plcWaitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
-            return;
-        }
-        sawKeyDone = true;
-    }
-
-    if (releaseAfter) {
-        showlog(QStringLiteral("PLC按键抬起: M%1(addr=%2)=0").arg(keyM).arg(keyM + offset));
-        if (!plcWriteCoil(keyM, false, &err)) {
-            fail(QStringLiteral("抬起 M%1 失败: %2").arg(keyM).arg(err));
-            return;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-
-    if (releaseSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(releaseSettle));
-    }
-
-    if (sawKeyDone && waitKeyReset) {
-        showlog(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(keyResetTimeout)
-                    .arg(keyDonePoll));
-        if (!plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
-            return;
-        }
-    }
-
-    if (plcKeyCapPollMode_ && !plcKeyCapPassSummary_.isEmpty()) {
-        passOk(QStringLiteral("键%1 M%2 P%3 S%4 K%5 电容:%6")
-                   .arg(keyIndex0To6)
-                   .arg(keyM)
-                   .arg(posReadyM)
-                   .arg(stepDoneM)
-                   .arg(keyDoneM)
-                   .arg(plcKeyCapPassSummary_));
-        plcKeyCapPassSummary_.clear();
-        return;
-    }
-
-    passOk(QStringLiteral("键%1 M%2 P%3 S%4 K%5")
-               .arg(keyIndex0To6)
-               .arg(keyM)
-               .arg(posReadyM)
-               .arg(stepDoneM)
-               .arg(keyDoneM));
 }
 
 void QFreeWork::resetPlcKeyCapSyncReadState() {
@@ -3227,11 +2228,7 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
 
         bestCap = qMax(bestCap, plcKeyCapSyncReadValue_);
         sampleTexts.append(QString::number(plcKeyCapSyncReadValue_));
-        showlog(currentKeyTestName_ + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4")
-                    .arg(i + 1)
-                    .arg(readCount)
-                    .arg(kk)
-                    .arg(plcKeyCapSyncReadValue_));
+        showlog(currentKeyTestName_ + QStringLiteral("：第%1/%2次读电容 KK=%3 值=%4").arg(i + 1).arg(readCount).arg(kk).arg(plcKeyCapSyncReadValue_));
 
         if (i + 1 < readCount && intervalMs > 0) {
             QThread::msleep(static_cast<unsigned long>(intervalMs));
@@ -3268,10 +2265,7 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
             *errOut = QStringLiteral("电容卡控失败，最大=%1 允许%2").arg(bestCap).arg(capAsk);
         }
         TestResult = failValue;
-        showlog(currentKeyTestName_ + QStringLiteral("卡控失败，采样[%1] 最大=%2 允许%3")
-                    .arg(sampleTexts.join(QLatin1Char(',')))
-                    .arg(bestCap)
-                    .arg(capAsk));
+        showlog(currentKeyTestName_ + QStringLiteral("卡控失败，采样[%1] 最大=%2 允许%3").arg(sampleTexts.join(QLatin1Char(','))).arg(bestCap).arg(capAsk));
         return false;
     }
 
@@ -3279,228 +2273,6 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
     return true;
 }
 
-void QFreeWork::runPlcV3TouchSwitchFull(bool finishStepRuntime) {
-    syncPlcModbusTraceFromSettings();
-    maybeShowlogPlcSessionSummary(QStringLiteral("V3旋钮"));
-    const auto fail = [this](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = msg;
-        stepRuntime_.done = true;
-        showlog(msg);
-    };
-    const auto passOk = [this, finishStepRuntime](const QString& msg) {
-        inovancePlcTcp_.disconnect();
-        stepRuntime_.pass = true;
-        if (finishStepRuntime) {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = true;
-            plcKeyBlePlcOkSummary_.clear();
-        } else if (stepRuntime_.done) {
-            if (!msg.isEmpty()) {
-                stepRuntime_.testData = stepRuntime_.testData.isEmpty()
-                                            ? msg
-                                            : QStringLiteral("%1；%2").arg(msg, stepRuntime_.testData);
-            }
-            plcKeyBlePlcOkSummary_.clear();
-        } else {
-            stepRuntime_.testData = msg;
-            stepRuntime_.done = false;
-            plcKeyBlePlcOkSummary_ = msg;
-        }
-        showlog(msg);
-    };
-
-    const QString host = resolvedPlcIpAddress();
-    const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
-    QString err;
-    showlog(QStringLiteral("PLC旋钮整步连接: 工位=%1 IP=%2 Port=%3 UnitId=%4")
-                .arg(getIndex())
-                .arg(host)
-                .arg(port)
-                .arg(resolvedPlcUnitId()));
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
-        fail(QStringLiteral("PLC 连接失败: %1").arg(err));
-        return;
-    }
-
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const bool useHandshake = SETTINGS.value(QStringLiteral("PLC/UseStepHandshake"), true).toBool();
-    const bool waitKeyDone = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneAfterStepDone"), true).toBool();
-    const bool releaseAfter = SETTINGS.value(QStringLiteral("PLC/ReleasePositionAfterKeyDone"), true).toBool();
-    const bool ensureKeyIdle = SETTINGS.value(QStringLiteral("PLC/EnsureKeyDoneIdleBeforeStep"), false).toBool();
-    const bool waitKeyReset = SETTINGS.value(QStringLiteral("PLC/WaitKeyDoneResetAfterStep"), false).toBool();
-    const int posSettle = SETTINGS.value(QStringLiteral("PLC/PositionSettleMs"), 500).toInt();
-    const int actionSettle = SETTINGS.value(QStringLiteral("PLC/KeyActionSettleMs"),
-                                             SETTINGS.value(QStringLiteral("KeyTest/ActionSettleMs"), 0).toInt())
-                                 .toInt();
-    const int releaseSettle = SETTINGS.value(QStringLiteral("PLC/KeyReleaseSettleMs"),
-                                               SETTINGS.value(QStringLiteral("KeyTest/ReleaseSettleMs"), 120).toInt())
-                                  .toInt();
-    const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
-                                          SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
-                               .toInt();
-    const int posPoll = SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
-                                       SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt())
-                            .toInt();
-    const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
-    const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
-    const int keyResetTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneResetTimeoutMs"), 1500).toInt();
-    const int offset = resolvedPlcMCoilAddressOffset();
-
-    const int forwardM = resolvedPlcSwitchForwardM();
-    const int pressM = resolvedPlcSwitchPressM();
-    const int posReadyM = resolvedPlcPositionReadyBase() + 7;
-    const int stepDoneM = resolvedPlcStepDoneBase();
-    const int keyDoneM = resolvedPlcKeyDoneM();
-    showlog(QStringLiteral("PLC旋钮整步开始: Forward=M%1(addr=%2) Press=M%3(addr=%4) PosReady=M%5(addr=%6) "
-                           "StepDone=M%7(addr=%8) KeyDone=M%9(addr=%10) 握手=%11 等KeyDone=%12 完成后释放=%13")
-                .arg(forwardM)
-                .arg(forwardM + offset)
-                .arg(pressM)
-                .arg(pressM + offset)
-                .arg(posReadyM)
-                .arg(posReadyM + offset)
-                .arg(stepDoneM)
-                .arg(stepDoneM + offset)
-                .arg(keyDoneM)
-                .arg(keyDoneM + offset)
-                .arg(plcBoolText(useHandshake))
-                .arg(plcBoolText(waitKeyDone))
-                .arg(plcBoolText(releaseAfter)));
-
-    if (ensureKeyIdle) {
-        bool kd = false;
-        showlog(QStringLiteral("PLC预检 KeyDone 空闲: 读 M%1(addr=%2)").arg(keyDoneM).arg(keyDoneM + offset));
-        if (!plcReadCoil(keyDoneM, &kd, &err)) {
-            fail(QStringLiteral("读 KeyDone 失败: %1").arg(err));
-            return;
-        }
-        if (kd && !plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
-            return;
-        }
-    }
-
-    if (useHandshake) {
-        bool sd = false;
-        showlog(QStringLiteral("PLC预检 StepDone: 读 M%1(addr=%2)").arg(stepDoneM).arg(stepDoneM + offset));
-        if (!plcReadCoil(stepDoneM, &sd, &err)) {
-            fail(QStringLiteral("读 StepDone 失败: %1").arg(err));
-            return;
-        }
-        if (sd) {
-            showlog(QStringLiteral("PLC复位残留 StepDone: M%1(addr=%2)=0").arg(stepDoneM).arg(stepDoneM + offset));
-            if (!plcWriteCoil(stepDoneM, false, &err)) {
-                fail(QStringLiteral("复位 StepDone 失败: %1").arg(err));
-                return;
-            }
-            if (gapMs > 0) {
-                QThread::msleep(static_cast<unsigned long>(gapMs));
-            }
-        }
-    }
-
-    showlog(QStringLiteral("PLC旋钮前推: M%1(addr=%2)=1").arg(forwardM).arg(forwardM + offset));
-    if (!plcWriteCoil(forwardM, true, &err)) {
-        fail(QStringLiteral("旋钮前推 M%1 失败: %2").arg(forwardM).arg(err));
-        return;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    showlog(QStringLiteral("PLC旋钮按压: M%1(addr=%2)=1").arg(pressM).arg(pressM + offset));
-    if (!plcWriteCoil(pressM, true, &err)) {
-        fail(QStringLiteral("旋钮按压 M%1 失败: %2").arg(pressM).arg(err));
-        return;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-
-    if (useHandshake) {
-        showlog(QStringLiteral("PLC等待位置到位: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                    .arg(posReadyM)
-                    .arg(posReadyM + offset)
-                    .arg(posTimeout)
-                    .arg(posPoll));
-        if (!plcWaitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
-            fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
-            return;
-        }
-    }
-
-    if (posSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(posSettle));
-    }
-    if (actionSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(actionSettle));
-    }
-
-    if (useHandshake) {
-        if (!plcSendStepDone(&err)) {
-            fail(QStringLiteral("发送 StepDone 失败: %1").arg(err));
-            return;
-        }
-    }
-
-    bool sawKeyDone = false;
-    if (waitKeyDone) {
-        showlog(QStringLiteral("PLC等待 KeyDone: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(keyDoneTimeout)
-                    .arg(keyDonePoll));
-        if (!plcWaitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone M%1: %2").arg(keyDoneM).arg(err));
-            return;
-        }
-        sawKeyDone = true;
-    }
-
-    if (releaseAfter) {
-        showlog(QStringLiteral("PLC旋钮释放按压: M%1(addr=%2)=0").arg(pressM).arg(pressM + offset));
-        if (!plcWriteCoil(pressM, false, &err)) {
-            fail(QStringLiteral("旋钮释放按压 M%1 失败: %2").arg(pressM).arg(err));
-            return;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-        showlog(QStringLiteral("PLC旋钮收回前推: M%1(addr=%2)=0").arg(forwardM).arg(forwardM + offset));
-        if (!plcWriteCoil(forwardM, false, &err)) {
-            fail(QStringLiteral("旋钮收回前推 M%1 失败: %2").arg(forwardM).arg(err));
-            return;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-
-    if (releaseSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(releaseSettle));
-    }
-
-    if (sawKeyDone && waitKeyReset) {
-        showlog(QStringLiteral("PLC等待 KeyDone 复位: M%1(addr=%2)=0 TimeoutMs=%3 PollMs=%4")
-                    .arg(keyDoneM)
-                    .arg(keyDoneM + offset)
-                    .arg(keyResetTimeout)
-                    .arg(keyDonePoll));
-        if (!plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
-            fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
-            return;
-        }
-    }
-
-    // passOk(QStringLiteral("旋钮整步 M%1+M%2 Pos%3 Step%4 KeyDone%5")
-    //            .arg(forwardM)
-    //            .arg(pressM)
-    //            .arg(posReadyM)
-    //            .arg(stepDoneM)
-    //            .arg(keyDoneM));
-}
 void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
     const QString rightEn = QStringLiteral("ProductInfo/KeyIdRightRotate_checkBox");
     if (!SETTINGS.value(rightEn).toBool()) {

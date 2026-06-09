@@ -8,19 +8,19 @@
 #include "ui_motor.h"
 
 namespace Ui {
-    class motorbox;
+class motorbox;
 }
 
 class motorbox : public box_base {
     Q_OBJECT
-public:
+  public:
     explicit motorbox(QWidget* parent = nullptr);
     ~motorbox();
     Ui::motorbox* ui;
     int motor_cali_stage = 1;
-private slots:
+  private slots:
     void resetValue();
     void checkAllTest(int fixtureNumber) override;
 };
 
-#endif  // MOTORmotorbox_H
+#endif // MOTORmotorbox_H

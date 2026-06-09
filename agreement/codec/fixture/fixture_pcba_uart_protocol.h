@@ -9,7 +9,7 @@
 #include "usmile_ring_buffer.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 // 板厂 PCBA 治具：0x55 物理层帧（电流/按键等长包 + 休眠/启动短包）
@@ -25,7 +25,7 @@ struct FixturePcbaUartEvent {
 };
 
 class FixturePcbaUartProtocol {
-public:
+  public:
     FixturePcbaUartProtocol(RingBuf* ringBuf, usmile_ring_buffer_t* ring, uint8_t* frameBuf, int frameBufSize);
 
     void pollFrames(const std::function<void(const FixturePcbaUartEvent&)>& handler);
@@ -40,7 +40,7 @@ public:
     static QByteArray buildSleepCommand(int machineIndex);
     static QByteArray buildWhiteModeCommand(int machineIndex);
 
-private:
+  private:
     RingBuf* ringBuf_;
     usmile_ring_buffer_t* ring_;
     uint8_t* frameBuf_;
@@ -48,7 +48,7 @@ private:
 };
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif
 
-#endif  // FIXTURE_PCBA_UART_PROTOCOL_H
+#endif // FIXTURE_PCBA_UART_PROTOCOL_H

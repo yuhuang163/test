@@ -7,7 +7,7 @@
 // osThreadId acccalib_thread_id = NULL;
 // TimerHandle_t sensorhub_timer = NULL;
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 void free_int_3(new_imu_calibrate::sensordata_q* q) {
     free(q->data);
@@ -37,7 +37,7 @@ int q_convolution_int_3(new_imu_calibrate::sensordata_q* q, int kernel[8]) {
 
 new_imu_calibrate::sensordata_q* new_imu_calibrate::init_int_3(int n) {
     sensordata_q* q = (sensordata_q*)malloc(sizeof(sensordata_q));
-    q->data = (int(*)[3])malloc(sizeof(int[3]) * n);
+    q->data = (int (*)[3])malloc(sizeof(int[3]) * n);
     q->head = 0;
     q->tail = 0;
     q->capacity = n;
@@ -55,23 +55,23 @@ new_imu_calibrate::sensordata_q* new_imu_calibrate::init_int_3(int n) {
 }
 
 bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data) {
-    double fixed_positions[11][3] = {};  // 去掉const关键字
+    double fixed_positions[11][3] = {}; // 去掉const关键字
 
     if (LSB == 4) {
         if (imu_static_state == 1) {
             // y20的f20的
             double y_right_positions[11][3] = {
-                {0, 0, 1},            // Position 8     u     u
-                {0, 1, 0},            // Position 9		r
-                {0, 0, -1},           // Position 10    d
-                {-0.643, 0, 0.766},   // Position 6 	d     u
-                {-0.643, 0.766, 0},   // Position 4 	d     l
-                {-0.643, 0, -0.766},  // Position 7 	d     d
-                {-0.643, -0.766, 0},  // Position 5 	d     r
-                {0.643, 0, 0.766},    // Position 2 	u     u
-                {0.643, 0.766, 0},    // Position 0 	u     r
-                {0.643, 0, -0.766},   // Position 3 	u     d
-                {0.643, -0.766, 0},   // Position 1 	u     l
+                {0, 0, 1},           // Position 8     u     u
+                {0, 1, 0},           // Position 9		r
+                {0, 0, -1},          // Position 10    d
+                {-0.643, 0, 0.766},  // Position 6 	d     u
+                {-0.643, 0.766, 0},  // Position 4 	d     l
+                {-0.643, 0, -0.766}, // Position 7 	d     d
+                {-0.643, -0.766, 0}, // Position 5 	d     r
+                {0.643, 0, 0.766},   // Position 2 	u     u
+                {0.643, 0.766, 0},   // Position 0 	u     r
+                {0.643, 0, -0.766},  // Position 3 	u     d
+                {0.643, -0.766, 0},  // Position 1 	u     l
 
             };
             memcpy(fixed_positions, y_right_positions, sizeof(fixed_positions));
@@ -80,17 +80,17 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
             // p30pU7U7P也在这
             double y_up_positions[11][3] = {
 
-                {0, 0, 1},            // Position 1
-                {1, 0, 0},            // Position 2
-                {0, 0, -1},           // Position 3
-                {0, 0.643, 0.766},    // Position 4
-                {0.766, 0.643, 0},    // Position 5
-                {0, 0.643, -0.766},   // Position 6
-                {-0.766, 0.643, 0},   // Position 7
-                {0, -0.643, 0.766},   // Position 8
-                {0.766, -0.643, 0},   // Position 9
-                {0, -0.643, -0.766},  // Position 10
-                {-0.766, -0.643, 0}   // Position 11
+                {0, 0, 1},           // Position 1
+                {1, 0, 0},           // Position 2
+                {0, 0, -1},          // Position 3
+                {0, 0.643, 0.766},   // Position 4
+                {0.766, 0.643, 0},   // Position 5
+                {0, 0.643, -0.766},  // Position 6
+                {-0.766, 0.643, 0},  // Position 7
+                {0, -0.643, 0.766},  // Position 8
+                {0.766, -0.643, 0},  // Position 9
+                {0, -0.643, -0.766}, // Position 10
+                {-0.766, -0.643, 0}  // Position 11
 
             };
             memcpy(fixed_positions, y_up_positions, sizeof(fixed_positions));
@@ -98,17 +98,17 @@ bool new_imu_calibrate::add_CalibData(float* data, CalibDatasets* add_calib_data
     } else {
         // for q20 and p20pro
         double y_up_positions[11][3] = {
-            {0, 0, 1},            // Position 1
-            {1, 0, 0},            // Position 2
-            {0, 0, -1},           // Position 3
-            {0, 0.643, 0.766},    // Position 4
-            {0.766, 0.643, 0},    // Position 5
-            {0, 0.643, -0.766},   // Position 6
-            {-0.766, 0.643, 0},   // Position 7
-            {0, -0.643, 0.766},   // Position 8
-            {0.766, -0.643, 0},   // Position 9
-            {0, -0.643, -0.766},  // Position 10
-            {-0.766, -0.643, 0}   // Position 11
+            {0, 0, 1},           // Position 1
+            {1, 0, 0},           // Position 2
+            {0, 0, -1},          // Position 3
+            {0, 0.643, 0.766},   // Position 4
+            {0.766, 0.643, 0},   // Position 5
+            {0, 0.643, -0.766},  // Position 6
+            {-0.766, 0.643, 0},  // Position 7
+            {0, -0.643, 0.766},  // Position 8
+            {0.766, -0.643, 0},  // Position 9
+            {0, -0.643, -0.766}, // Position 10
+            {-0.766, -0.643, 0}  // Position 11
 
         };
         memcpy(fixed_positions, y_up_positions, sizeof(fixed_positions));
@@ -166,7 +166,7 @@ new_imu_calibrate::CalibDatasets* new_imu_calibrate::init_CalibData() {
     calib_data = (CalibDatasets*)malloc(sizeof(CalibDatasets));
 
     for (int i = 0; i < FACTORY_POSE_NUM; i++) {
-        for (int j = 0; j < 3; j++) {  // make sure the initial value is not near the fixed position
+        for (int j = 0; j < 3; j++) { // make sure the initial value is not near the fixed position
             calib_data->data[i].data[j] = 0;
         }
     }
@@ -179,7 +179,7 @@ new_imu_calibrate::CalibDatasets* new_imu_calibrate::init_ExtraCalibData() {
     extra_calib_data = (CalibDatasets*)malloc(sizeof(CalibDatasets));
 
     for (int i = 0; i < EXTRA_POSE_NUM; i++) {
-        for (int j = 0; j < 3; j++) {  // make sure the initial value is not near the fixed position
+        for (int j = 0; j < 3; j++) { // make sure the initial value is not near the fixed position
             extra_calib_data->data[i].data[j] = 0;
         }
     }
@@ -216,9 +216,7 @@ float new_imu_calibrate::acccalib_vl(us_matrix_float* v, us_matrix_float* acc_da
     float loss = 0;
     for (int i = 0; i < acc_data->size1; i++) {
         us_matrix_float_set(v, i, 0,
-                            1 - sqrt(us_matrix_float_get(acc_data, i, 0) * us_matrix_float_get(acc_data, i, 0) +
-                                     us_matrix_float_get(acc_data, i, 1) * us_matrix_float_get(acc_data, i, 1) +
-                                     us_matrix_float_get(acc_data, i, 2) * us_matrix_float_get(acc_data, i, 2)));
+                            1 - sqrt(us_matrix_float_get(acc_data, i, 0) * us_matrix_float_get(acc_data, i, 0) + us_matrix_float_get(acc_data, i, 1) * us_matrix_float_get(acc_data, i, 1) + us_matrix_float_get(acc_data, i, 2) * us_matrix_float_get(acc_data, i, 2)));
     }
 
     for (int i = 0; i < acc_data->size1; i++) {
@@ -232,17 +230,14 @@ void new_imu_calibrate::acccalib_jacobian(us_matrix_float* J, CalibDatasets* acc
     for (int i = 0; i < FACTORY_POSE_NUM; i++) {
         float ax = THETA_ACC(0) * (acc_raw->data[i].data[0] - THETA_ACC(6));
         float ay = (0 - THETA_ACC(3)) * THETA_ACC(0) * (acc_raw->data[i].data[0] - THETA_ACC(6)) +
-                   THETA_ACC(1) * (acc_raw->data[i].data[1] - THETA_ACC(7));
+            THETA_ACC(1) * (acc_raw->data[i].data[1] - THETA_ACC(7));
         float az = (0 - THETA_ACC(4)) * THETA_ACC(0) * (acc_raw->data[i].data[0] - THETA_ACC(6)) +
-                   (0 - THETA_ACC(5)) * THETA_ACC(1) * (acc_raw->data[i].data[1] - THETA_ACC(7)) +
-                   THETA_ACC(2) * (acc_raw->data[i].data[2] - THETA_ACC(8));
+            (0 - THETA_ACC(5)) * THETA_ACC(1) * (acc_raw->data[i].data[1] - THETA_ACC(7)) +
+            THETA_ACC(2) * (acc_raw->data[i].data[2] - THETA_ACC(8));
         us_matrix_float_set(J, i, 0,
-                            -2 * (ax * (acc_raw->data[i].data[0] - THETA_ACC(6)) +
-                                  ay * (-1) * THETA_ACC(3) * (acc_raw->data[i].data[0] - THETA_ACC(6)) +
-                                  az * (-1) * THETA_ACC(4) * (acc_raw->data[i].data[0] - THETA_ACC(6))));
+                            -2 * (ax * (acc_raw->data[i].data[0] - THETA_ACC(6)) + ay * (-1) * THETA_ACC(3) * (acc_raw->data[i].data[0] - THETA_ACC(6)) + az * (-1) * THETA_ACC(4) * (acc_raw->data[i].data[0] - THETA_ACC(6))));
         us_matrix_float_set(J, i, 1,
-                            -2 * (ay * (acc_raw->data[i].data[1] - THETA_ACC(7)) +
-                                  az * (-1) * (THETA_ACC(5) * (acc_raw->data[i].data[1] - THETA_ACC(7)))));
+                            -2 * (ay * (acc_raw->data[i].data[1] - THETA_ACC(7)) + az * (-1) * (THETA_ACC(5) * (acc_raw->data[i].data[1] - THETA_ACC(7)))));
         us_matrix_float_set(J, i, 2, -2 * (az * (acc_raw->data[i].data[2] - THETA_ACC(8))));
         us_matrix_float_set(J, i, 3, -2 * (ay * (-1) * (THETA_ACC(0)) * (acc_raw->data[i].data[0] - THETA_ACC(6))));
         us_matrix_float_set(J, i, 4, -2 * (az * (-1) * (THETA_ACC(0)) * (acc_raw->data[i].data[0] - THETA_ACC(6))));
@@ -279,7 +274,7 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
         q->static_conv_count++;
         // sum+=data
         if ((q->static_conv_count >= STATIC_CONV_DELAY) &&
-            (q->static_conv_count < STATIC_CONV_COUNT))  //取后段数据进行累加
+            (q->static_conv_count < STATIC_CONV_COUNT)) //取后段数据进行累加
         {
             for (int i = 0; i < 3; i++) {
                 q->accdata_sum[i] += accdata[i];
@@ -300,7 +295,7 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
         if (!q->mean_cal_done) {
             for (int i = 0; i < 3; i++) {
                 q->accdata_mean[i] =
-                    (float)(q->accdata_sum[i] / (STATIC_CONV_COUNT - STATIC_CONV_DELAY)) / 2048;  //增加延时取数据
+                    (float)(q->accdata_sum[i] / (STATIC_CONV_COUNT - STATIC_CONV_DELAY)) / 2048; //增加延时取数据
                 // qDebug() << "q->accdata_mean[i]" << q->accdata_mean[i];
             }
             q->mean_cal_done = true;
@@ -312,7 +307,7 @@ void new_imu_calibrate::sensorhub_timer_callback(ImuDataT* imu_in) {
                                calib_datasets->data[i].data[1], calib_datasets->data[i].data[2]);
                     }
                 }
-            } else if (extra_calib_datasets->size < EXTRA_POSE_NUM)  //加载extra_calib_datasets
+            } else if (extra_calib_datasets->size < EXTRA_POSE_NUM) //加载extra_calib_datasets
             {
                 if (add_CalibData(q->accdata_mean, extra_calib_datasets)) {
                     for (int i = 0; i < extra_calib_datasets->size; i++) {
@@ -342,7 +337,7 @@ void new_imu_calibrate::acccalib_sensors_init() {
     STATIC_CONV_DELAY = SETTINGS.value("IMU/STATIC_CONV_DELAY", "15").toInt();
     // init sensorhub timer. it's will collect data from sensor
 
-    q = init_int_3(8);  // init a int[3] q with capacity 25 for sensor data
+    q = init_int_3(8); // init a int[3] q with capacity 25 for sensor data
 
     acccalib_datasets_matrix = us_matrix_float_alloc(FACTORY_POSE_NUM, 3);
     acccalib_value_matrix = us_matrix_float_alloc(FACTORY_POSE_NUM, 1);
@@ -370,8 +365,8 @@ void new_imu_calibrate::acccalib_sensors_init() {
     // {
     //     free(temp_calib_datasets);
     //  }
-    calib_datasets = init_CalibData();             // calib_data
-    extra_calib_datasets = init_ExtraCalibData();  // extra_calib_data
+    calib_datasets = init_CalibData();            // calib_data
+    extra_calib_datasets = init_ExtraCalibData(); // extra_calib_data
 
     printf("2:start acccalib task!\n");
 }
@@ -511,7 +506,7 @@ int new_imu_calibrate::acccalib_sensors_task() {
                         qDebug() << "重复次数：" << cali_loop;
                         int k = acccalib_sensors_task();
                         if (k == CALIB_SUCCESS) {
-                            return CALIB_SUCCESS;  //重标校准成功
+                            return CALIB_SUCCESS; //重标校准成功
                         }
                     }
 
@@ -535,7 +530,7 @@ int new_imu_calibrate::acccalib_sensors_task() {
                         ", calData.bx=" + QString::number(calData.bx) + ", calData.by=" + QString::number(calData.by) +
                         ", calData.bz=" + QString::number(calData.bz));
 
-                    return CALIB_FAIL;  // 校准失败
+                    return CALIB_FAIL; // 校准失败
                 }
 
                 calData.kx = us_matrix_float_get(imu_calib->acc_calib, 0, 0);
@@ -556,7 +551,7 @@ int new_imu_calibrate::acccalib_sensors_task() {
                     ", calData.bx=" + QString::number(calData.bx) + ", calData.by=" + QString::number(calData.by) +
                     ", calData.bz=" + QString::number(calData.bz));
 
-                return CALIB_SUCCESS;  // 校准成功
+                return CALIB_SUCCESS; // 校准成功
             }
         }
         if (cali_loop < FACTORY_POSE_NUM) {
@@ -586,13 +581,13 @@ int new_imu_calibrate::acccalib_sensors_task() {
             qDebug() << "重复次数：" << cali_loop;
             int k = acccalib_sensors_task();
             if (k == CALIB_SUCCESS) {
-                return CALIB_SUCCESS;  //重标校准成功
+                return CALIB_SUCCESS; //重标校准成功
             }
         }
-        return CALIB_FAIL;  // 校准失败
+        return CALIB_FAIL; // 校准失败
     }
 
-    return CALIB_NOT_START;  // 还没开始
+    return CALIB_NOT_START; // 还没开始
 }
 
 void new_imu_calibrate::add_csvdata(CalibData* csv_data) {

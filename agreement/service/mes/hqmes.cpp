@@ -1,9 +1,10 @@
 #include "hqmes.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
-hqmes::hqmes() {}
+hqmes::hqmes() {
+}
 void hqmes::GetTestData(MesPacketData pack) {
     if (pack.factory == "hq") {
         ProcessInspection(pack);
@@ -51,7 +52,7 @@ void hqmes::LogIn(MesPacketData pack) {
         requestData["HEAD"] = QJsonObject{{"H_GUID", "F60A9855F87E4510A3CA39045C57325E"}, {"H_OP", "MesGetToken"}};
         requestData["MAIN"] =
             QJsonObject{{"G_USER", pack.userNo},
-                        {"G_PASSWORD", pack.password},  // encryption(password)
+                        {"G_PASSWORD", pack.password}, // encryption(password)
                         {"G_OP_PC", hostName},
                         {"G_HOSTINFO", QJsonArray{QJsonObject{{"G_OP_IP", IP_Adress}, {"G_OP_MAC", MAC_Adress}}}}};
 
@@ -186,10 +187,10 @@ void hqmes::ProcessInspection(MesPacketData pack) {
         QJsonObject main;
         main["G_GROUP"] = pack.line;
 
-        main["G_WS"] = pack.machineNo;  // 站位
+        main["G_WS"] = pack.machineNo; // 站位
         main["G_OP_LINE"] = pack.line;
         main["G_OP_PC"] = hostName;
-        main["G_OP_SHIFT"] = "D";  // 白班
+        main["G_OP_SHIFT"] = "D"; // 白班
 
         QJsonArray hostInfoArray;
         QJsonObject hostInfo;

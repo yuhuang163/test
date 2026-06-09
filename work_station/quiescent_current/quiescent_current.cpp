@@ -6,12 +6,11 @@
 #include <QVector>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
-{
+Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
         return Qusb::ProtocolType::Scpi;
@@ -24,9 +23,8 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     }
     return Qusb::ProtocolType::Auto;
 }
-}
-quiescent_current::quiescent_current(int index, QWidget* parent) :
-    test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
+} // namespace
+quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = QC_VER;
@@ -34,7 +32,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
     updateMainStyle("Ubuntu.qss");
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -83,7 +81,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
 
     if (SETTINGS.value("SYSTEM/SerialPortMAC").toBool()) {
         ui->productComNameCombo->setEnabled(true);
-    }else {
+    } else {
         ui->productComNameCombo->setEnabled(false);
     }
 
@@ -92,7 +90,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) :
     // } else {
     //     productBaudRate = 1000000;
     // }
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 
 void quiescent_current::applyCurrentProtocolConfig() {
@@ -175,7 +173,9 @@ void quiescent_current::refreshProgrammablePowerCurrent(double valueAmps, bool o
     }
 }
 
-void quiescent_current::disconnect_dongle() { on_disconnectButton_clicked(); }
+void quiescent_current::disconnect_dongle() {
+    on_disconnectButton_clicked();
+}
 
 void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
@@ -207,12 +207,12 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
     }
 }
 
-void quiescent_current::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
+void quiescent_current::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
     if (state != STATE_SLEEP_CURRENT_TEST) {
         return;
     }
 
-    const double currentMa = static_cast<double>(data.value);
+    const double currentMa = static_cast<double>(data.currentMa);
     const double lowCharCurrent = SETTINGS.value("Current/LowCharCurrent").toDouble();
     const double highCharCurrent = SETTINGS.value("Current/HighCharCurrent").toDouble();
     const bool pass = currentMa >= lowCharCurrent && currentMa <= highCharCurrent;
@@ -257,9 +257,7 @@ void quiescent_current::refreshBaseData(ProtocolBaseInfoData data) {
         qDebug() << getIndex() << "soft_version" << QString("%1").arg(data.soft_version);
         qDebug() << getIndex() << "res_version" << data.res_version;
 
-  
         QString softwareVersion = SETTINGS.value("ProductInfo/Software_Version").toString();
-
 
         // bool isProductTest = SETTINGS.value("ProductInfo/ProductName_checkBox").toBool();
         // bool isHwTest = SETTINGS.value("ProductInfo/HardwareVersion_checkBox").toBool();
@@ -417,9 +415,9 @@ void quiescent_current::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "audio_state" << data.audio_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-    << "battery_ic_state" << data.battery_ic_state;
+             << "battery_ic_state" << data.battery_ic_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-    << "touch_ic_state" << data.touch_ic_state;
+             << "touch_ic_state" << data.touch_ic_state;
 
     if (refresh_periph_times) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -637,7 +635,7 @@ void quiescent_current::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->snInput->text());//获取测试数据不要绑定测试
+    // bindingMacSn(mesmacAddress, ui->snInput->text());//获取测试数据不要绑定测试
 }
 
 quiescent_current::~quiescent_current() {
@@ -676,7 +674,7 @@ void quiescent_current::refreshSn(ProtocolSnData data) {
         testResultTableUpdate(testItems);
         snCompareOk = 2;
     }
-    }
+}
 
 void quiescent_current::on_snInput_returnPressed() {
     clearDisplay();
@@ -697,7 +695,7 @@ void quiescent_current::on_snInput_returnPressed() {
         return;
     }
 
-    emit send_startTest(getIndex());
+    emit send_start_test(getIndex());
     // stringsn = ui->snInput->text();
     // sn = ui->snInput->text().toUtf8();
     ui->snInput->setDisabled(1);
@@ -758,7 +756,7 @@ void quiescent_current::processGetMesTestValue() {
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 
@@ -847,28 +845,26 @@ void quiescent_current::on_usbdisconnectButton_clicked() {
     closeUsbSerialPort();
 }
 
-void quiescent_current::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void quiescent_current::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
                                      "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
     }
 }
-
-
 
 void quiescent_current::startFlowWithMac(const QString& mac) {
     const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
@@ -890,7 +886,7 @@ void quiescent_current::startFlowWithMac(const QString& mac) {
     //     openJigSerialPort();
     // }
     // jig->set_cylinder_state(1, getIndex());
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     state = STATE_IDLE;
     isTestContinue = true;
 }
@@ -899,133 +895,130 @@ void quiescent_current::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE: {  // 复位一切
-                if (useProgrammablePower) {
-                    applyCurrentProtocolConfig();
-                    if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()
-                        || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
-                        showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
-                        pack.itemvalue = "power_visa_config=NG";
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                        break;
-                    }
-                    showlog(QStringLiteral("开始配置程控电源：address=%1")
-                                .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString()));
-                    bool powerCfgOk = true;
-                    if (!visa) {
-                        powerCfgOk = false;
-                    } else {
-                        powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
-                    }
-                    const bool outOk = setProgrammablePowerOutput(true);
-                    showlog(QString("程控电源配置=%1, 输出打开=%2")
-                                .arg(powerCfgOk ? "OK" : "NG")
-                                .arg(outOk ? "OK" : "NG"));
-                    if (!powerCfgOk || !outOk) {
-                        pack.itemvalue = "power_on=NG";
-                        totalresult = failValue;
-                        state = STATE_SAVE_RESULT;
-                        break;
-                    }
-                    if (outOk) {
-                        auto* prompt = new QMessageBox(QMessageBox::Information,
-                                                       QStringLiteral("操作提示"),
-                                                       QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
-                                                       QMessageBox::NoButton,
-                                                       this);
-                        prompt->setAttribute(Qt::WA_DeleteOnClose);
-                        prompt->show();
-                        QTimer::singleShot(5000, prompt, &QMessageBox::accept);
-                    }
+        case STATE_IDLE: { // 复位一切
+            if (useProgrammablePower) {
+                applyCurrentProtocolConfig();
+                if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
+                    showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
+                    pack.itemvalue = "power_visa_config=NG";
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                    break;
                 }
-
-                protocolManager.resetAllPb();
-                periph_state = 0;
-                base_state = 0;
-                isovertime = 0;
-                refresh_base_times = 1;
-                refresh_periph_times = 1;
-                totalresult = "";
-                at->resetConnected();
-                measure_ammeter = 0;
-                waitWork(5000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
-                showlog("已经发送mac地址");
-                TestTime.start();
-                state = STATE_SET_TEST_MODE;
-
-                break;
+                showlog(QStringLiteral("开始配置程控电源：address=%1")
+                            .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString()));
+                bool powerCfgOk = true;
+                if (!visa) {
+                    powerCfgOk = false;
+                } else {
+                    powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
+                }
+                const bool outOk = setProgrammablePowerOutput(true);
+                showlog(QString("程控电源配置=%1, 输出打开=%2")
+                            .arg(powerCfgOk ? "OK" : "NG")
+                            .arg(outOk ? "OK" : "NG"));
+                if (!powerCfgOk || !outOk) {
+                    pack.itemvalue = "power_on=NG";
+                    totalresult = failValue;
+                    state = STATE_SAVE_RESULT;
+                    break;
+                }
+                if (outOk) {
+                    auto* prompt = new QMessageBox(QMessageBox::Information,
+                                                   QStringLiteral("操作提示"),
+                                                   QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
+                                                   QMessageBox::NoButton,
+                                                   this);
+                    prompt->setAttribute(Qt::WA_DeleteOnClose);
+                    prompt->show();
+                    QTimer::singleShot(5000, prompt, &QMessageBox::accept);
+                }
             }
 
-            case STATE_SET_TEST_MODE:
-                if (at->getConnected()) {
-                    showlog("设置工厂模式");
-                    sendCommandWithRetry([&]() { 
-                        protocolManager.set(DeviceCmd::FacMode, 1);
-                    });
-                    waitWork(300);
-                    state = STATE_VERIFY_TEST_MODE;
-                }
-                break;
+            protocolManager.resetAllPb();
+            periph_state = 0;
+            base_state = 0;
+            isovertime = 0;
+            refresh_base_times = 1;
+            refresh_periph_times = 1;
+            totalresult = "";
+            at->resetConnected();
+            measure_ammeter = 0;
+            waitWork(5000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
+            showlog("已经发送mac地址");
+            TestTime.start();
+            state = STATE_SET_TEST_MODE;
 
-            case STATE_VERIFY_TEST_MODE:
-                if (canGoNext) {
-                    showlog("已进入工厂模式");
-                    appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
-                    testResultTableUpdate(testItems);
-                    sendCommandWithRetry([&]() { 
-                        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
-                    });
-                    state = STATE_BANDING;
+            break;
+        }
+
+        case STATE_SET_TEST_MODE:
+            if (at->getConnected()) {
+                showlog("设置工厂模式");
+                sendCommandWithRetry([&]() {
+                    protocolManager.set(DeviceCmd::FacMode, 1);
+                });
+                waitWork(300);
+                state = STATE_VERIFY_TEST_MODE;
+            }
+            break;
+
+        case STATE_VERIFY_TEST_MODE:
+            if (canGoNext) {
+                showlog("已进入工厂模式");
+                appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
+                testResultTableUpdate(testItems);
+                sendCommandWithRetry([&]() {
+                    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
+                });
+                state = STATE_BANDING;
                 break;
 
             case STATE_BANDING: {
                 if (canGoNext) {
                     if (snCompareOk == 1) {
-                        state = STATE_WATI_GET_BASE_STATE;                        
+                        state = STATE_WATI_GET_BASE_STATE;
                         showlog("sn已比对成功");
                         appendStationResult(testItems, "sn写入校验", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                         pack.itemvalue += QStringLiteral("|SN_BANDING:%1:::%2:").arg(tail_sn_string).arg(stringsn);
-                        sendCommandWithRetry([&]() { 
+                        sendCommandWithRetry([&]() {
                             protocolManager.get(DeviceCmd::BaseInfo);
                         });
-                        
+
                     } else if (snCompareOk == 2) {
-                        showlog("sn已比对失败"); 
+                        showlog("sn已比对失败");
                         // pack.error="SP03011";
                         result = failValue;
                         pack.itemvalue += QStringLiteral("|SN_BANDING:%1:::%2:").arg(tail_sn_string).arg(stringsn);
                         state = STATE_SAVE_RESULT;
                     } else {
-                    waitWork(500);
-                    protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
-                    showlog("已发送sn绑定");
+                        waitWork(500);
+                        protocolManager.get(DeviceCmd::Sn, static_cast<int>(FacDevInfoType_TAIL_SN));
+                        showlog("已发送sn绑定");
                     }
                 }
                 break;
             }
 
             case STATE_WATI_GET_BASE_STATE:
-                if (base_state == 1)  // 基础信息正常
+                if (base_state == 1) // 基础信息正常
                 {
                     waitWork(WAITTIME);
                     showlog("固件版本验证通过");
-                    sendCommandWithRetry([&]() { 
+                    sendCommandWithRetry([&]() {
                         protocolManager.get(DeviceCmd::PeriphState);
                     });
                     state = STATE_WATI_GET_PERIPHERAL_STATE;
-                }
-                else if (base_state == 2) {
+                } else if (base_state == 2) {
                     waitWork(WAITTIME);
                     showlog("固件版本验证失败");
                     protocolManager.get(DeviceCmd::PeriphState);
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
-                }
-                else {
+                } else {
                     waitWork(500);
                     protocolManager.get(DeviceCmd::BaseInfo);
                     showlog("正在重发获取固件版本");
@@ -1033,7 +1026,7 @@ void quiescent_current::startTask() {
                 break;
 
             case STATE_WATI_GET_PERIPHERAL_STATE:
-                if (periph_state == 1)  // 设备信息正常
+                if (periph_state == 1) // 设备信息正常
                 {
                     showlog("外设状态正常");
                     const QString mesProductName = SETTINGS.value("MES/Product_Name").toString().trimmed();
@@ -1046,13 +1039,12 @@ void quiescent_current::startTask() {
                         state = STATE_SAVE_RESULT;
                     }
 
-                } else if (periph_state == 2)  // 设备信息异常
+                } else if (periph_state == 2) // 设备信息异常
                 {
                     showlog("外设状态异常");
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
-                }
-                else {
+                } else {
                     waitWork(500);
                     protocolManager.get(DeviceCmd::PeriphState);
                     showlog("正在重发获取外设信息");
@@ -1071,8 +1063,6 @@ void quiescent_current::startTask() {
                 }
                 break;
 
-
-
             case STATE_SAVE_RESULT:
                 stringsn = "";
                 setProgrammablePowerOutput(false);
@@ -1083,7 +1073,7 @@ void quiescent_current::startTask() {
                     pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:PASS");
                     if (ui->isusemes->checkState()) {
                         pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                        emit send_end_testPass(pack);
+                        emit send_end_test_pass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1099,7 +1089,7 @@ void quiescent_current::startTask() {
                     pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:FAIL");
                     if (ui->isusemes->checkState()) {
                         pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                        emit send_end_testPass(pack);
+                        emit send_end_test_pass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1114,7 +1104,7 @@ void quiescent_current::startTask() {
                 ui->macInput->clear();
                 ui->snInput->clear();
 
-                isTestContinue = false;  // 结束
+                isTestContinue = false; // 结束
 
                 if (SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 3 ||
                     SETTINGS.value("SYSTEM/CurrentMechine").toInt() == 2) {
@@ -1132,22 +1122,22 @@ void quiescent_current::startTask() {
 
                 state = STATE_IDLE;
                 break;
+            }
+            //   QCoreApplication::processEvents();
         }
-        //   QCoreApplication::processEvents();
-    }
     }
 }
 void quiescent_current::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");
     // on_snInput_returnPressed();
-    at->set(DongleCmd::BleScanConnect, ui->macInput->text()); 
-    sendCommandWithRetry([&]() { 
-        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
+    at->set(DongleCmd::BleScanConnect, ui->macInput->text());
+    sendCommandWithRetry([&]() {
+        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
     });
     // sendjigData(STATE_CYLINDER_RESET);
 
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     //     save_brush_log("dataTemp");
 }
 
@@ -1175,9 +1165,9 @@ void quiescent_current::processReceivedData(const QByteArray& data) {
         int macIndex = logString.indexOf('=', lastIndex);
 
         if (macIndex != -1 &&
-            logString.length() >= macIndex + 18) {  // 判断是否包含完整的 MAC 地址（17 个字符 + 1 个分隔符）
+            logString.length() >= macIndex + 18) { // 判断是否包含完整的 MAC 地址（17 个字符 + 1 个分隔符）
             // 提取 MAC 地址
-            QString macAddress = logString.mid(macIndex + 1, 17).trimmed();  // MAC 地址长度为17，并去除首尾空格
+            QString macAddress = logString.mid(macIndex + 1, 17).trimmed(); // MAC 地址长度为17，并去除首尾空格
             qDebug() << "提取到的MAC地址：" << macAddress;
 
             // 清空日志字符串
@@ -1201,7 +1191,7 @@ void quiescent_current::processReceivedData(const QByteArray& data) {
 }
 
 void quiescent_current::on_pushButton_4_clicked() {
-    static int clickStep = 1;  // 用于跟踪当前运行的步骤
+    static int clickStep = 1; // 用于跟踪当前运行的步骤
     pack.mechines = 1;
     pack.sn = "U03000077I1H00007D";
 
@@ -1210,15 +1200,17 @@ void quiescent_current::on_pushButton_4_clicked() {
     pack.itemvalue = QString("|BTMAC:3C:84:27:07:A8:D2|") + QString("CURRENT:0.24|");
 
     switch (clickStep) {
-        case 1: showlog("Running processInspection"); break;
+    case 1:
+        showlog("Running processInspection");
+        break;
 
-        case 2:
-            emit send_end_testPass(pack);
-            showlog("Running send_end_testPass");
-            break;
+    case 2:
+        emit send_end_test_pass(pack);
+        showlog("Running send_end_test_pass");
+        break;
     }
 
-    clickStep++;  // 增加步骤计数
+    clickStep++; // 增加步骤计数
 
     // 如果步骤计数超过了最大步骤数，重置为第一步
     if (clickStep > 2) {
@@ -1226,7 +1218,7 @@ void quiescent_current::on_pushButton_4_clicked() {
     }
 }
 
-void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
+void quiescent_current::bindingMacSn(QString bindingMac, QString bindingSn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
@@ -1236,18 +1228,18 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
 
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
-    QFile file(path);  // 创建一个文件对象
+    QFile file(path); // 创建一个文件对象
 
-    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {  //
-        QTextStream in(&file);                                // 创建一个文本流对象
-        QStringList lines;                                    // 用于存储文件中的每一行数据
-        bool found = false;                                   // 标记是否找到了相同的SN
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) { //
+        QTextStream in(&file);                               // 创建一个文本流对象
+        QStringList lines;                                   // 用于存储文件中的每一行数据
+        bool found = false;                                  // 标记是否找到了相同的SN
         while (!in.atEnd()) {
-            QString line = in.readLine();         // 逐行读取文件
-            QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            QString line = in.readLine();        // 逐行读取文件
+            QStringList parts = line.split(","); // 以逗号分隔每行数据
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -1256,7 +1248,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);
@@ -1264,7 +1256,7 @@ void quiescent_current::bandingMacSn(QString bandingmac, QString bandingsn) {
         for (const QString& line : lines) {
             out << line << '\n';
         }
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
         showlog("保存mac_sn文件成功");
     } else {
         showlog("保存mac_sn文件失败");
@@ -1278,7 +1270,7 @@ void quiescent_current::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->snInput->clear();
     ui->snInput->setFocus();
-    isTestContinue = false;  // 结束
+    isTestContinue = false; // 结束
     if (pack.factory != "jj") {
         jig->set_cylinder_state(0, getIndex());
     }
@@ -1287,17 +1279,10 @@ void quiescent_current::on_stopTest_clicked() {
     ui->getMac->setDisabled(0);
 }
 
-
-
-
-
-
-void quiescent_current::on_visa_test_clicked()
-{
+void quiescent_current::on_visa_test_clicked() {
     applyCurrentProtocolConfig();
 
-    if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()
-        || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
+    if (!SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() || SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
         return;
     }
@@ -1319,15 +1304,14 @@ void quiescent_current::on_visa_test_clicked()
     const bool outOffOk = setProgrammablePowerOutput(false);
 
     showlog(QStringLiteral("程控电源已按配置上电：电压=%1V，限流=%2A，链路=%3")
-                    .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble(), 0, 'f', 2)
-                    .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble(), 0, 'f', 3)
-                    .arg(QStringLiteral("VISA:%1")
-                             .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString())));
+                .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble(), 0, 'f', 2)
+                .arg(SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble(), 0, 'f', 3)
+                .arg(QStringLiteral("VISA:%1")
+                         .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString())));
     showlog(QStringLiteral("程控电源输出关闭=%1").arg(outOffOk ? QStringLiteral("OK") : QStringLiteral("NG")));
 }
 
-void quiescent_current::on_currentAmmeterVisaApplyButton_clicked()
-{
+void quiescent_current::on_currentAmmeterVisaApplyButton_clicked() {
     SETTINGS.setValue(QStringLiteral("VisaPower/ScpiUseVisa"), ui->currentAmmeterUseVisaCheckBox->isChecked());
     SETTINGS.setValue(QStringLiteral("VisaPower/VisaAddress"), ui->currentAmmeterVisaAddressEdit->text().trimmed());
     closeUsbSerialPort();
@@ -1336,4 +1320,3 @@ void quiescent_current::on_currentAmmeterVisaApplyButton_clicked()
                 .arg(ui->currentAmmeterUseVisaCheckBox->isChecked() ? 1 : 0)
                 .arg(ui->currentAmmeterVisaAddressEdit->text().trimmed()));
 }
-

@@ -2,21 +2,19 @@
 #define SUCTION_BOX_H
 #include "box_base.h"
 
-namespace Ui
-{
-    class suction_box;
+namespace Ui {
+class suction_box;
 }
 
-class suction_box : public box_base
-{
+class suction_box : public box_base {
     Q_OBJECT
-public:
-    explicit suction_box(QWidget *parent = nullptr);
+  public:
+    explicit suction_box(QWidget* parent = nullptr);
     ~suction_box();
-    Ui::suction_box *ui;
+    Ui::suction_box* ui;
 
-private slots:
+  private slots:
     void checkAllover(int fixtureNumber) override;
 };
 
-#endif   // SUCTION_BOX_H
+#endif // SUCTION_BOX_H

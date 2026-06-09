@@ -2,7 +2,8 @@
 
 #include <QStringList>
 
-Qmes::Qmes() {}
+Qmes::Qmes() {
+}
 
 QVector<Qmes::TestDataItem> Qmes::parseTestDataItems(const MesPacketData& pack) const {
     QVector<TestDataItem> items;

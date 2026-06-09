@@ -4,10 +4,8 @@
 #include "frmdevice.h"
 #include "qtimer.h"
 
-UIDemo3::UIDemo3(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::UIDemo3)
-{
+UIDemo3::UIDemo3(QWidget* parent) : QDialog(parent),
+                                    ui(new Ui::UIDemo3) {
     ui->setupUi(this);
     this->initForm();
     this->initTreeWidget();
@@ -17,13 +15,11 @@ UIDemo3::UIDemo3(QWidget *parent) :
     QTimer::singleShot(100, this, SLOT(initPanelWidget()));
 }
 
-UIDemo3::~UIDemo3()
-{
+UIDemo3::~UIDemo3() {
     delete ui;
 }
 
-void UIDemo3::initForm()
-{
+void UIDemo3::initForm() {
     this->max = false;
     this->location = this->geometry();
     this->setProperty("form", true);
@@ -45,8 +41,8 @@ void UIDemo3::initForm()
     int icoWidth = 85;
 
     //设置顶部导航按钮
-    QList<QToolButton *> tbtns = ui->widgetTop->findChildren<QToolButton *>();
-    foreach (QToolButton *btn, tbtns) {
+    QList<QToolButton*> tbtns = ui->widgetTop->findChildren<QToolButton*>();
+    foreach (QToolButton* btn, tbtns) {
         btn->setIconSize(icoSize);
         btn->setMinimumWidth(icoWidth);
     }
@@ -60,42 +56,41 @@ void UIDemo3::initForm()
     ui->splitterV->setSizes(heights);
 }
 
-void UIDemo3::initTreeWidget()
-{
+void UIDemo3::initTreeWidget() {
     ui->treeWidget->clear();
     ui->treeWidget->setHeaderLabel(" 树状列表控件");
 
-    QTreeWidgetItem *group1 = new QTreeWidgetItem(ui->treeWidget);
+    QTreeWidgetItem* group1 = new QTreeWidgetItem(ui->treeWidget);
     group1->setText(0, "父元素1");
     group1->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     group1->setCheckState(0, Qt::PartiallyChecked);
 
-    QTreeWidgetItem *subItem11 = new QTreeWidgetItem(group1);
+    QTreeWidgetItem* subItem11 = new QTreeWidgetItem(group1);
     subItem11->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     subItem11->setText(0, "子元素1");
     subItem11->setCheckState(0, Qt::Checked);
 
-    QTreeWidgetItem *subItem12 = new QTreeWidgetItem(group1);
+    QTreeWidgetItem* subItem12 = new QTreeWidgetItem(group1);
     subItem12->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     subItem12->setText(0, "子元素2");
     subItem12->setCheckState(0, Qt::Unchecked);
 
-    QTreeWidgetItem *subItem13 = new QTreeWidgetItem(group1);
+    QTreeWidgetItem* subItem13 = new QTreeWidgetItem(group1);
     subItem13->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     subItem13->setText(0, "子元素3");
     subItem13->setCheckState(0, Qt::Unchecked);
 
-    QTreeWidgetItem *group2 = new QTreeWidgetItem(ui->treeWidget);
+    QTreeWidgetItem* group2 = new QTreeWidgetItem(ui->treeWidget);
     group2->setText(0, "父元素2");
     group2->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     group2->setCheckState(0, Qt::Unchecked);
 
-    QTreeWidgetItem *subItem21 = new QTreeWidgetItem(group2);
+    QTreeWidgetItem* subItem21 = new QTreeWidgetItem(group2);
     subItem21->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     subItem21->setText(0, "子元素1");
     subItem21->setCheckState(0, Qt::Unchecked);
 
-    QTreeWidgetItem *subItem211 = new QTreeWidgetItem(subItem21);
+    QTreeWidgetItem* subItem211 = new QTreeWidgetItem(subItem21);
     subItem211->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
     subItem211->setText(0, "子子元素1");
     subItem211->setCheckState(0, Qt::Unchecked);
@@ -103,14 +98,13 @@ void UIDemo3::initTreeWidget()
     ui->treeWidget->expandAll();
 }
 
-void UIDemo3::initPanelWidget()
-{
+void UIDemo3::initPanelWidget() {
     //加载设备面板
     qDeleteAll(frms);
     frms.clear();
 
     for (int i = 0; i < 100; i++) {
-        frmDevice *frm = new frmDevice;
+        frmDevice* frm = new frmDevice;
         frm->setFixedHeight(100);
         frm->setDeviceName(QString("温湿度设备 %1").arg(i + 1));
         frm->setDeviceTemp(25.8);
@@ -125,8 +119,7 @@ void UIDemo3::initPanelWidget()
     ui->widgetPanel->setSpacing(3);
 }
 
-void UIDemo3::initTableWidget()
-{
+void UIDemo3::initTableWidget() {
     //设置列数和列宽
     int width = qApp->desktop()->availableGeometry().width() - 120;
     ui->tableWidget->setColumnCount(5);
@@ -153,11 +146,11 @@ void UIDemo3::initTableWidget()
     for (int i = 0; i < 300; i++) {
         ui->tableWidget->setRowHeight(i, 24);
 
-        QTableWidgetItem *itemDeviceID = new QTableWidgetItem(QString::number(i + 1));
-        QTableWidgetItem *itemDeviceName = new QTableWidgetItem(QString("测试设备%1").arg(i + 1));
-        QTableWidgetItem *itemDeviceAddr = new QTableWidgetItem(QString::number(i + 1));
-        QTableWidgetItem *itemContent = new QTableWidgetItem("防区告警");
-        QTableWidgetItem *itemTime = new QTableWidgetItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+        QTableWidgetItem* itemDeviceID = new QTableWidgetItem(QString::number(i + 1));
+        QTableWidgetItem* itemDeviceName = new QTableWidgetItem(QString("测试设备%1").arg(i + 1));
+        QTableWidgetItem* itemDeviceAddr = new QTableWidgetItem(QString::number(i + 1));
+        QTableWidgetItem* itemContent = new QTableWidgetItem("防区告警");
+        QTableWidgetItem* itemTime = new QTableWidgetItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"));
 
         itemDeviceID->setTextAlignment(Qt::AlignCenter);
         itemDeviceName->setTextAlignment(Qt::AlignCenter);
@@ -172,9 +165,8 @@ void UIDemo3::initTableWidget()
     }
 }
 
-void UIDemo3::initMenu()
-{
-    QMenu *menu = new QMenu(this);
+void UIDemo3::initMenu() {
+    QMenu* menu = new QMenu(this);
     menu->addAction("端口管理", this, SLOT(doMenu()));
     menu->addAction("设备管理", this, SLOT(doMenu()));
     menu->addAction("告警设置", this, SLOT(doMenu()));
@@ -188,19 +180,16 @@ void UIDemo3::initMenu()
     ui->btnMain->setMenu(menu);
 }
 
-void UIDemo3::doMenu()
-{
-    QAction *action = (QAction *)sender();
+void UIDemo3::doMenu() {
+    QAction* action = (QAction*)sender();
     QUIWidget::showMessageBoxInfo(QString("你选择了菜单 [%1]").arg(action->text()), 5);
 }
 
-void UIDemo3::on_btnMenu_Min_clicked()
-{
+void UIDemo3::on_btnMenu_Min_clicked() {
     showMinimized();
 }
 
-void UIDemo3::on_btnMenu_Max_clicked()
-{
+void UIDemo3::on_btnMenu_Max_clicked() {
     if (max) {
         this->setGeometry(location);
         this->setProperty("canMove", true);
@@ -213,7 +202,6 @@ void UIDemo3::on_btnMenu_Max_clicked()
     max = !max;
 }
 
-void UIDemo3::on_btnMenu_Close_clicked()
-{
+void UIDemo3::on_btnMenu_Close_clicked() {
     close();
 }

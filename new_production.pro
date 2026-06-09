@@ -59,7 +59,8 @@ INCLUDEPATH += $$AGREEMENT_DIR/device/protocol/qpb/factory_protocol
 INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
-INCLUDEPATH += platform/test_case
+INCLUDEPATH += platform/test_case \
+    platform/test_case/manifest
 INCLUDEPATH += platform/test_record
 INCLUDEPATH += platform/log_upload
 INCLUDEPATH += $$AGREEMENT_DIR/device/peripheral/qusb
@@ -152,6 +153,11 @@ SOURCES += \
     platform/settings/qsetting_bindings.cpp \
     platform/settings/test_flow/test_flow_editor.cpp \
     platform/settings/widgets/test_case_edit_dialog.cpp \
+    platform/test_case/manifest/device_cmd_manifest.cpp \
+    platform/test_case/manifest/dongle_cmd_manifest.cpp \
+    platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
+    platform/test_case/manifest/product_serial_cmd_manifest.cpp \
+    platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
     platform/test_record/test_record_store.cpp \
     platform/log_upload/log_upload_service.cpp \
@@ -179,11 +185,9 @@ SOURCES += \
     work_station/ageing/ageingbox.cpp \
     work_station/camera/camerabox.cpp \
     work_station/camera/cameratest.cpp \
-    work_station/common_class.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
-    work_station/freework/testFunction.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
     agreement/device/modbus/inovance_h5u_modbus_tcp.cpp \
@@ -259,6 +263,12 @@ HEADERS += \
     platform/settings/qsetting_bindings.h \
     platform/settings/test_flow/test_flow_editor.h \
     platform/settings/widgets/test_case_edit_dialog.h \
+    platform/test_case/manifest/cmd_manifest_common.h \
+    platform/test_case/manifest/device_cmd_manifest.h \
+    platform/test_case/manifest/dongle_cmd_manifest.h \
+    platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/product_serial_cmd_manifest.h \
+    platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
     platform/test_record/test_record_store.h \
     platform/log_upload/log_upload_service.h \
@@ -287,7 +297,6 @@ HEADERS += \
     work_station/ageing/ageingbox.h \
     work_station/camera/camerabox.h \
     work_station/camera/cameratest.h \
-    work_station/common_class.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
     agreement/device/modbus/inovance_h5u_modbus_tcp.h \

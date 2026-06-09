@@ -4,17 +4,17 @@
 #include "box_base.h"
 
 namespace Ui {
-    class ageingbox;
+class ageingbox;
 }
 
 class ageingbox : public box_base {
     Q_OBJECT
-public:
+  public:
     explicit ageingbox(QWidget* parent = nullptr);
     ~ageingbox();
 
-private:
+  private:
     Ui::ageingbox* ui;
 };
 
-#endif  // AGEINGBOX_H
+#endif // AGEINGBOX_H

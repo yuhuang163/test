@@ -38,14 +38,14 @@ void QBulk::registerCommand() {
 
     djifactoryCommandList[djiFactroyCmd_get_product_dbg_misc_subcmd_count] =
         std::bind(&QBulk::process_get_product_dbg_misc_subcmd_count, this,
-                                                                                       std::placeholders::_1);
+                  std::placeholders::_1);
 
     djifactoryCommandList[djiFactroyCmd_sec_dbg_command_req_handler] = std::bind(
         &QBulk::process_sec_dbg_command_req_handler, this, std::placeholders::_1);
 
     djifactoryCommandList[djiFactroyCmd_sec_dbg_command_auth_handler] =
         std::bind(&QBulk::process_sec_dbg_command_auth_handler, this,
-                                                                                  std::placeholders::_1);
+                  std::placeholders::_1);
 
     djifactoryCommandList[djiFactroyCmd_anti_rollback_comm] = std::bind(
         &QBulk::process_get_anti_rollback_comm, this, std::placeholders::_1);
@@ -75,9 +75,9 @@ bool QBulk::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber) {
     qDebug() << "[QBulk] Scanning USB devices...";
     usb_find_busses();
     usb_find_devices();
-    struct usb_bus *bus;
-    struct usb_device *dev = nullptr;
-    const struct usb_interface_descriptor *ifd;
+    struct usb_bus* bus;
+    struct usb_device* dev = nullptr;
+    const struct usb_interface_descriptor* ifd;
     for (bus = usb_get_busses(); bus; bus = bus->next) {
         for (dev = bus->devices; dev; dev = dev->next) {
 
@@ -99,11 +99,11 @@ bool QBulk::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber) {
             }
             // 遍历 configuration
             for (int cfg = 0; cfg < dev->descriptor.bNumConfigurations; ++cfg) {
-                const struct usb_config_descriptor *config = &dev->config[cfg];
+                const struct usb_config_descriptor* config = &dev->config[cfg];
 
                 // 遍历 interface
                 for (int ifc = 0; ifc < config->bNumInterfaces; ++ifc) {
-                    const struct usb_interface *interface = &config->interface[ifc];
+                    const struct usb_interface* interface = &config->interface[ifc];
 
                     // 遍历 altsetting
                     for (int alt = 0; alt < interface->num_altsetting; ++alt) {
@@ -156,9 +156,9 @@ bool QBulk::searchDevice() {
 
     QSet<UsbVidPid> currentDevices;
 
-    struct usb_bus *bus;
-    struct usb_device *dev = nullptr;
-    const struct usb_interface_descriptor *ifd;
+    struct usb_bus* bus;
+    struct usb_device* dev = nullptr;
+    const struct usb_interface_descriptor* ifd;
 
     for (bus = usb_get_busses(); bus; bus = bus->next) {
         for (dev = bus->devices; dev; dev = dev->next) {
@@ -173,10 +173,10 @@ bool QBulk::searchDevice() {
 
             // ===== 遍历 interface（保留你原逻辑）=====
             for (int cfg = 0; cfg < dev->descriptor.bNumConfigurations; ++cfg) {
-                const struct usb_config_descriptor *config = &dev->config[cfg];
+                const struct usb_config_descriptor* config = &dev->config[cfg];
 
                 for (int ifc = 0; ifc < config->bNumInterfaces; ++ifc) {
-                    const struct usb_interface *interface = &config->interface[ifc];
+                    const struct usb_interface* interface = &config->interface[ifc];
 
                     for (int alt = 0; alt < interface->num_altsetting; ++alt) {
                         ifd = &interface->altsetting[alt];
@@ -213,7 +213,7 @@ void QBulk::closeDevice() {
     }
 }
 
-static const char *usbErrorToString(int err) {
+static const char* usbErrorToString(int err) {
     switch (err) {
     case USB_ERROR_IO:
         return "I/O error";
@@ -232,19 +232,19 @@ static const char *usbErrorToString(int err) {
     }
 }
 
-bool QBulk::bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout) {
+bool QBulk::bulkRead(unsigned char ep, QByteArray& data, unsigned int timeout) {
     if (!handle) {
         qDebug() << "[QBulk] bulkRead: handle is null";
         return false;
     }
 
     unsigned char buffer[4096];
-    int transferred = usb_bulk_read(handle, ep, reinterpret_cast<char *>(buffer),
+    int transferred = usb_bulk_read(handle, ep, reinterpret_cast<char*>(buffer),
                                     sizeof(buffer), timeout);
 
     // ✅ 正常收到数据
     if (transferred > 0) {
-        data = QByteArray(reinterpret_cast<char *>(buffer), transferred);
+        data = QByteArray(reinterpret_cast<char*>(buffer), transferred);
         qDebug().noquote() << "BULK RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
         return true;
     }
@@ -278,7 +278,7 @@ bool QBulk::bulkRead(unsigned char ep, QByteArray &data, unsigned int timeout) {
     return false;
 }
 QByteArray QBulk::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t cmdSet,
-                              uint8_t cmdID, const QByteArray &data,
+                              uint8_t cmdID, const QByteArray& data,
                               uint8_t encryptionType, uint8_t isResponse) {
     QByteArray packet;
 
@@ -288,7 +288,7 @@ QByteArray QBulk::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t cmdSet,
     // 2️⃣ length 占 2 字节 (整个包长度，包括 CRC16)
     uint16_t len =
         1 + 2 + 1 + 1 + 1 + 2 + 1 + 1 + 1 + data.size() +
-                   2; // sync+ver/len+headcrc+sender/recv+seq+type+cmdset+cmdid+data+CRC16
+        2; // sync+ver/len+headcrc+sender/recv+seq+type+cmdset+cmdid+data+CRC16
     // packet.append(char(len & 0xFF));       // length低字节
     // packet.append(char((len >> 8) & 0xFF)); // length高字节
 
@@ -301,8 +301,8 @@ QByteArray QBulk::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t cmdSet,
 
     // 3️⃣ Header CRC (CRC-8 over sync + length bytes)
     uint8_t headerCrc =
-        crc8_calc(reinterpret_cast<const uint8_t *>(packet.data()), 3,
-                                  DUSS_MB_PACKAGE_V1_CRCH_INIT);
+        crc8_calc(reinterpret_cast<const uint8_t*>(packet.data()), 3,
+                  DUSS_MB_PACKAGE_V1_CRCH_INIT);
     packet.append(char(headerCrc));
 
     // 4️⃣ sender/receiver 字节
@@ -321,15 +321,15 @@ QByteArray QBulk::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t cmdSet,
         // 1000 0000
         cmdType = 0;                            // 回复不需要应答
         typeByte = ((isResponse & 0x01) << 7) | // 数据包的类型
-                   ((cmdType & 0x03) << 5) |    // 是否需要应答
-                   ((reserve & 0x01) << 4) |
-                   (encryptionType & 0x0F); // encription type 加密类型
+            ((cmdType & 0x03) << 5) |           // 是否需要应答
+            ((reserve & 0x01) << 4) |
+            (encryptionType & 0x0F); // encription type 加密类型
     } else {
 
         typeByte = ((isResponse & 0x01) << 7) | // 数据包的类型
-                   ((cmdType & 0x03) << 5) |    // 是否需要应答
-                   ((reserve & 0x01) << 4) |
-                   (encryptionType & 0x0F); // encription type 加密类型
+            ((cmdType & 0x03) << 5) |           // 是否需要应答
+            ((reserve & 0x01) << 4) |
+            (encryptionType & 0x0F); // encription type 加密类型
     }
 
     packet.append(char(typeByte));
@@ -343,14 +343,14 @@ QByteArray QBulk::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t cmdSet,
 
     // 9️⃣ CRC16
     uint16_t crc16 =
-        duss_util_crc16_calc(reinterpret_cast<const uint8_t *>(packet.data()),
-                                          packet.size(), DUSS_MB_PACKAGE_V1_CRC_INIT);
+        duss_util_crc16_calc(reinterpret_cast<const uint8_t*>(packet.data()),
+                             packet.size(), DUSS_MB_PACKAGE_V1_CRC_INIT);
     packet.append(char(crc16 & 0xFF));        // CRC16低字节
     packet.append(char((crc16 >> 8) & 0xFF)); // CRC16高字节
 
     return packet;
 }
-bool QBulk::bulkWrite(const QByteArray &data, unsigned int timeout) {
+bool QBulk::bulkWrite(const QByteArray& data, unsigned int timeout) {
     if (!handle) {
         qDebug() << "[QBulk] bulkWrite failed: handle is null.";
         return false;
@@ -362,13 +362,13 @@ bool QBulk::bulkWrite(const QByteArray &data, unsigned int timeout) {
     hexdata.chop(1); // 去掉最后一个空格
 
     qDebug().noquote() << "BULK TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-    emit send_bulk_data("USB TX:"+hexdata);
+    emit send_bulk_data("USB TX:" + hexdata);
 
     int transferred =
         usb_bulk_write(handle, ep_numer,
-                                     reinterpret_cast<char *>(const_cast<unsigned char *>(
-                                         reinterpret_cast<const unsigned char *>(data.data()))),
-                                     data.size(), timeout);
+                       reinterpret_cast<char*>(const_cast<unsigned char*>(
+                           reinterpret_cast<const unsigned char*>(data.data()))),
+                       data.size(), timeout);
     if (transferred > 0) {
         // qDebug() << "[QBulk] bulkWrite success, transferred bytes:" <<
         // transferred
@@ -382,7 +382,9 @@ bool QBulk::bulkWrite(const QByteArray &data, unsigned int timeout) {
         return false;
     }
 }
-void QBulk::stopRead() { running = false; }
+void QBulk::stopRead() {
+    running = false;
+}
 void QBulk::startRead() {
     running = true;
 
@@ -527,7 +529,7 @@ void QBulk::set_wake_wifi() {
     v1data.append(char(0x00));
 
     QByteArray pkt =
-    buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0700), 2, 0x07, 0x41, v1data);
+        buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0700), 2, 0x07, 0x41, v1data);
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
 
@@ -564,8 +566,8 @@ void QBulk::set_product_dbg_count() {
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
 
-void QBulk::set_sec_dbg_auth_req_one_func(const QString &snStr,
-                                          const QString &nameStr, uint32_t perm,
+void QBulk::set_sec_dbg_auth_req_one_func(const QString& snStr,
+                                          const QString& nameStr, uint32_t perm,
                                           uint32_t count, uint32_t time,
                                           uint32_t nonce) {
 #pragma pack(push, 1)
@@ -577,7 +579,7 @@ void QBulk::set_sec_dbg_auth_req_one_func(const QString &snStr,
         uint8_t name[32];   // name padded
         uint32_t perm;      // 授权的权限
         uint32_t
-            count; // 授权次数。不过使用次数，对QA测试会有一些问题。0xFFFFFFFF可以不限制
+            count;        // 授权次数。不过使用次数，对QA测试会有一些问题。0xFFFFFFFF可以不限制
         uint32_t time;    // 授权的到期时间
         uint32_t nonce;   // random
         uint8_t cmac[32]; // only first 16 bytes used
@@ -628,7 +630,7 @@ void QBulk::set_sec_dbg_auth_req_one_func(const QString &snStr,
     // TODO: calculate real ECDSA signature
     // 不需要再 memset，一次 memcpy 就够
     static const uint8_t sig_data[64] = {
-                                         0x25, 0x53, 0x70, 0x57, 0x57, 0x00, 0x49, 0x33, 0x52, 0x3f, 0xe5,
+        0x25, 0x53, 0x70, 0x57, 0x57, 0x00, 0x49, 0x33, 0x52, 0x3f, 0xe5,
         0xfa, 0xd2, 0xf1, 0x39, 0x4d, 0xa1, 0xd1, 0x96, 0xa6, 0x6c, 0x45,
         0x0d, 0xf7, 0x38, 0x95, 0x37, 0x21, 0xa5, 0x84, 0x7c, 0x80, 0xed,
         0xd2, 0x13, 0xba, 0xd6, 0xe2, 0x1f, 0x87, 0x92, 0x4c, 0x61, 0xa2,
@@ -646,7 +648,7 @@ void QBulk::set_sec_dbg_auth_req_one_func(const QString &snStr,
     v1data.append(char(0x00));
 
     // payload
-    v1data.append(reinterpret_cast<const char *>(&req), sizeof(req));
+    v1data.append(reinterpret_cast<const char*>(&req), sizeof(req));
 
     QByteArray pkt =
         buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe2, v1data);
@@ -766,7 +768,7 @@ void QBulk::set_sys_event_reboot() {
         buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x0b, v1data);
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
-void QBulk::set_Rpmb_Board(const QString &sn) {
+void QBulk::set_Rpmb_Board(const QString& sn) {
     QByteArray snBytes = sn.toUtf8();
     uint16_t snLen = snBytes.size();
 
@@ -791,7 +793,7 @@ void QBulk::set_Rpmb_Board(const QString &sn) {
     bulkWrite(pkt, 1000);
 }
 
-void QBulk::set_Rpmb_Device(const QString &sn) {
+void QBulk::set_Rpmb_Device(const QString& sn) {
     QByteArray snBytes = sn.toUtf8();
     uint16_t snLen = snBytes.size();
 
@@ -804,10 +806,9 @@ void QBulk::set_Rpmb_Device(const QString &sn) {
     v1data.append(char((snLen >> 8) & 0xFF));
     //sn的地址
     v1data.append(char(0x00));
-     v1data.append(char(0x10));
-       v1data.append(char(0x00));
-       v1data.append(char(0xf5));
-
+    v1data.append(char(0x10));
+    v1data.append(char(0x00));
+    v1data.append(char(0xf5));
 
     // ④ sn 内容
     v1data.append(snBytes);
@@ -884,7 +885,7 @@ void QBulk::set_2a_send_file_data() {
         v1data.append(char(0x04));
 
         // ② seq_num（小端）
-        v1data.append(reinterpret_cast<const char *>(&seq), sizeof(uint32_t));
+        v1data.append(reinterpret_cast<const char*>(&seq), sizeof(uint32_t));
 
         // ③ payload
         v1data.append(payload);
@@ -939,7 +940,7 @@ void QBulk::set_2a_send_file_info_check() {
     while (!file.atEnd()) {
         QByteArray chunk = file.read(4096);
         if (!chunk.isEmpty()) {
-            md5_append(&md5, reinterpret_cast<const md5_byte_t *>(chunk.constData()),
+            md5_append(&md5, reinterpret_cast<const md5_byte_t*>(chunk.constData()),
                        chunk.size());
         }
     }
@@ -947,10 +948,10 @@ void QBulk::set_2a_send_file_info_check() {
     md5_finish(&md5, digest);
 
     // ④ 添加 md5（uint8_t[16]）
-    v1data.append(reinterpret_cast<const char *>(digest), 16);
+    v1data.append(reinterpret_cast<const char*>(digest), 16);
 
     // 调试输出
-    QByteArray md5Hex(reinterpret_cast<const char *>(digest), 16);
+    QByteArray md5Hex(reinterpret_cast<const char*>(digest), 16);
     qDebug() << "[2A] file path =" << tow_a_filepath;
     qDebug() << "[2A] file md5  =" << md5Hex.toHex();
 
@@ -961,7 +962,7 @@ void QBulk::set_2a_send_file_info_check() {
     bulkWrite(pkt, 1000);
 }
 
-void QBulk::set_2a_send_file_info(const QString &filepath) {
+void QBulk::set_2a_send_file_info(const QString& filepath) {
     QByteArray v1data;
     tow_a_filepath = filepath;
     // ① 请求类型
@@ -976,7 +977,7 @@ void QBulk::set_2a_send_file_info(const QString &filepath) {
 
     // ③ 文件大小 uint32_t
     quint32 fileSize = file.size();
-    v1data.append(reinterpret_cast<const char *>(&fileSize), sizeof(fileSize));
+    v1data.append(reinterpret_cast<const char*>(&fileSize), sizeof(fileSize));
 
     // ④ 文件名（只取名字，不要路径）
     QString fileName = QFileInfo(filepath).fileName();
@@ -999,7 +1000,7 @@ void QBulk::set_2a_send_file_info(const QString &filepath) {
         buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
-void QBulk::set_amt_task_test(const QString &cmdStr, uint32_t timeout) {
+void QBulk::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
 
     emit send_bulk_data("执行脚本：" + cmdStr);
 
@@ -1052,7 +1053,7 @@ void QBulk::waitWork(int ms) {
         QCoreApplication::processEvents();
 }
 
-void QBulk::set_2a_download_path_info(const QString &filepath) {
+void QBulk::set_2a_download_path_info(const QString& filepath) {
     QByteArray v1data;
     tow_a_download_filepath = filepath;
     // ① 请求类型
@@ -1070,7 +1071,7 @@ void QBulk::set_2a_download_path_info(const QString &filepath) {
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
 
-void QBulk::set_2a_download_file_info(const QString &filepath) {
+void QBulk::set_2a_download_file_info(const QString& filepath) {
     m_totalFileSize = 0; // 文件总大小（字节）
     m_receivedSize = 0;  // 已接收字节数
     lost_list_rsp_seq = 0;
@@ -1155,7 +1156,7 @@ void QBulk::set_2a_download_file_devide_lost_list_rsp() {
     // ① 请求类型
     v1data.append(char(0x00)); // 请求接收文件
 
-    v1data.append(reinterpret_cast<const char *>(&lost_list_rsp_seq),
+    v1data.append(reinterpret_cast<const char*>(&lost_list_rsp_seq),
                   sizeof(uint32_t));
 
     QByteArray pkt = buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00,
@@ -1163,7 +1164,7 @@ void QBulk::set_2a_download_file_devide_lost_list_rsp() {
 
     bulkWrite(pkt, 1000);
 }
-void QBulk::set_2a_download_file_ok_rsp(QByteArray &f) {
+void QBulk::set_2a_download_file_ok_rsp(QByteArray& f) {
     qDebug() << "==== set_2a_download_file_ok_rsp ====";
     qDebug() << "f.size() =" << f.size();
     qDebug() << "f md5 HEX =" << f.toHex(' ');
@@ -1196,14 +1197,14 @@ void QBulk::set_2a_download_file_ok_rsp(QByteArray &f) {
     while (!file.atEnd()) {
         QByteArray chunk = file.read(4096);
         if (!chunk.isEmpty()) {
-            md5_append(&md5, reinterpret_cast<const md5_byte_t *>(chunk.constData()),
+            md5_append(&md5, reinterpret_cast<const md5_byte_t*>(chunk.constData()),
                        chunk.size());
         }
     }
 
     md5_finish(&md5, digest);
 
-    QByteArray localMd5(reinterpret_cast<const char *>(digest), 16);
+    QByteArray localMd5(reinterpret_cast<const char*>(digest), 16);
 
     qDebug() << "[2A] local file md5 =" << localMd5.toHex();
 
@@ -1232,7 +1233,7 @@ void QBulk::set_2a_download_file_ok_rsp(QByteArray &f) {
     bulkWrite(pkt, 1000);
 }
 
-void QBulk::prase_2a_download_file_data(QByteArray &f) {
+void QBulk::prase_2a_download_file_data(QByteArray& f) {
     // qDebug() << "==== prase_2a_download_file_data ====";
     // qDebug() << "f.size() =" << f.size();
     // qDebug() << "f HEX =" << f.toHex(' ');
@@ -1243,10 +1244,10 @@ void QBulk::prase_2a_download_file_data(QByteArray &f) {
     }
 
     // ① 解析前 4 个字节（uint32，小端）
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     lost_list_rsp_seq = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-                        ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+        ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 
     qDebug() << "lost_list_rsp_seq =" << lost_list_rsp_seq;
 
@@ -1287,10 +1288,12 @@ void QBulk::prase_2a_download_file_data(QByteArray &f) {
     emit download2aprogress(progress);
 }
 
-void QBulk::set_2a_download_file_info_check() { ; }
+void QBulk::set_2a_download_file_info_check() {
+    ;
+}
 
-void QBulk::set_amt_task_start(const QString &cmdStr, uint32_t timeout,
-                               const QByteArray &param) {
+void QBulk::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
+                               const QByteArray& param) {
     QByteArray payload;
 
     // ---------- cmd：固定 SYS_AMT_TEST_CMD_STR_LEN ----------
@@ -1310,10 +1313,10 @@ void QBulk::set_amt_task_start(const QString &cmdStr, uint32_t timeout,
     uint16_t paramLen = param.size();
 
     // ---------- append fields ----------
-    payload.append(reinterpret_cast<const char *>(&cmdlen), sizeof(cmdlen));
-    payload.append(reinterpret_cast<const char *>(&cmdid), sizeof(cmdid));
-    payload.append(reinterpret_cast<const char *>(&timeout), sizeof(timeout));
-    payload.append(reinterpret_cast<const char *>(&paramLen), sizeof(paramLen));
+    payload.append(reinterpret_cast<const char*>(&cmdlen), sizeof(cmdlen));
+    payload.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
+    payload.append(reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+    payload.append(reinterpret_cast<const char*>(&paramLen), sizeof(paramLen));
 
     // ---------- param ----------
     if (paramLen > 0) {
@@ -1330,7 +1333,7 @@ void QBulk::set_amt_task_start(const QString &cmdStr, uint32_t timeout,
 void QBulk::set_amt_task_get_result() {
     QByteArray v1data;
     uint32_t cmdid = m_cmdId; // ✅ 内部自增
-    v1data.append(reinterpret_cast<const char *>(&cmdid), sizeof(cmdid));
+    v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
     QByteArray pkt =
         buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf6, v1data);
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
@@ -1343,19 +1346,19 @@ void QBulk::set_amt_task_get_log(uint32_t offset) {
     uint8_t metaDataType = 0x01; // 没有用
     uint32_t fetchLen = 4096;
 
-    v1data.append(reinterpret_cast<const char *>(&cmdid), sizeof(cmdid));
+    v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
     // metaid
-    v1data.append(reinterpret_cast<const char *>(&metaId), sizeof(metaId));
+    v1data.append(reinterpret_cast<const char*>(&metaId), sizeof(metaId));
 
     // meta_data_type
-    v1data.append(reinterpret_cast<const char *>(&metaDataType),
+    v1data.append(reinterpret_cast<const char*>(&metaDataType),
                   sizeof(metaDataType));
 
     // meta_data_offset
-    v1data.append(reinterpret_cast<const char *>(&offset), sizeof(offset));
+    v1data.append(reinterpret_cast<const char*>(&offset), sizeof(offset));
 
     // fetchlength
-    v1data.append(reinterpret_cast<const char *>(&fetchLen), sizeof(fetchLen));
+    v1data.append(reinterpret_cast<const char*>(&fetchLen), sizeof(fetchLen));
     QByteArray pkt =
         buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf8, v1data);
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
@@ -1375,10 +1378,10 @@ void QBulk::set_write_product_status() {
     bulkWrite(pkt, 1000); // 发到 OUT endpoint 0x01，100ms超时
 }
 
-void QBulk::parseCmd(QByteArray &buffer) {
+void QBulk::parseCmd(QByteArray& buffer) {
     const int minHeaderSize = 12; // sync + ver/len + headCRC + sender/receiver +
     // seq + type + cmdSet + cmdID
-    const int crcSize = 2;        // CRC16
+    const int crcSize = 2; // CRC16
     QByteArray buf = buffer;
 
     // qDebug() << "[QBulk] parseCmd start, buffer size:" << buf.size();
@@ -1457,7 +1460,7 @@ void QBulk::parseCmd(QByteArray &buffer) {
 
         // qDebug() << "USB RX:" << hexdata;
 
-        emit send_bulk_data("USB RX:"+hexdata);
+        emit send_bulk_data("USB RX:" + hexdata);
 
         qDebug() << "[QBulk] handlePacket: version=" << version
                  << "isResponse=" << isResponse << "cmdType=" << cmdType
@@ -1491,12 +1494,12 @@ void QBulk::parseCmd(QByteArray &buffer) {
     // buffer.size();
 }
 
-void QBulk::process_dji_amt_task_start(QByteArray &f) {
+void QBulk::process_dji_amt_task_start(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
 
@@ -1558,12 +1561,12 @@ QString QBulk::amtTaskResultToString(uint8_t code) {
     }
 }
 
-void QBulk::process_dji_amt_task_get_result(QByteArray &f) {
+void QBulk::process_dji_amt_task_get_result(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     if (info.retCode == 0) {
@@ -1583,7 +1586,7 @@ void QBulk::process_dji_amt_task_get_result(QByteArray &f) {
     }
 }
 
-void QBulk::process_dji_2a_send_file(QByteArray &f) {
+void QBulk::process_dji_2a_send_file(QByteArray& f) {
 
     struct DeviceInfo {
         uint8_t retCode;
@@ -1591,7 +1594,7 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
 
     DeviceInfo info = {0};
 
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     uint8_t retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
@@ -1602,9 +1605,9 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
     if (f.size() == 5) // 窗口的文件第几包
     {
         uint32_t window_size = static_cast<uint32_t>(p[1]) |
-                               (static_cast<uint32_t>(p[2]) << 8) |
-                               (static_cast<uint32_t>(p[3]) << 16) |
-                               (static_cast<uint32_t>(p[4]) << 24);
+            (static_cast<uint32_t>(p[2]) << 8) |
+            (static_cast<uint32_t>(p[3]) << 16) |
+            (static_cast<uint32_t>(p[4]) << 24);
 
         emit send_bulk_data("当前设备端收到的窗口内的最大值" +
                             QString::number(window_size));
@@ -1614,16 +1617,16 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
 
     if (retCode == 0x01) {
         m_totalFileSize = static_cast<uint32_t>(p[1]) |
-                          (static_cast<uint32_t>(p[2]) << 8) |
-                          (static_cast<uint32_t>(p[3]) << 16) |
-                          (static_cast<uint32_t>(p[4]) << 24);
+            (static_cast<uint32_t>(p[2]) << 8) |
+            (static_cast<uint32_t>(p[3]) << 16) |
+            (static_cast<uint32_t>(p[4]) << 24);
 
         set_2a_download_file_devide_rsp();
         return; // 不希望往下跑
     }
     if (retCode == 0x04) {
         QByteArray payload = QByteArray::fromRawData(
-            reinterpret_cast<const char *>(p + 1), f.size() - 1);
+            reinterpret_cast<const char*>(p + 1), f.size() - 1);
 
         prase_2a_download_file_data(payload);
         set_2a_download_file_devide_lost_list_rsp();
@@ -1632,7 +1635,7 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
     }
     if (retCode == 0x03) {
         QByteArray payload = QByteArray::fromRawData(
-            reinterpret_cast<const char *>(p + 1), f.size() - 1);
+            reinterpret_cast<const char*>(p + 1), f.size() - 1);
         set_2a_download_file_ok_rsp(payload);
         emit send_bulk_data("文件下载完成");
         return; // 不希望往下跑
@@ -1702,19 +1705,18 @@ void QBulk::process_dji_2a_send_file(QByteArray &f) {
 }
 
 // test_wakealarm_interrupts.sh  研究看看日志少捞的问题
-void QBulk::process_dji_amt_task_get_log(QByteArray &f) {
+void QBulk::process_dji_amt_task_get_log(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info = {0};
-
 
     if (f.size() < 9) {
         qWarning() << "[AMT] get_log ack too short:" << f.size();
         return;
     }
 
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     uint8_t retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
@@ -1745,81 +1747,81 @@ void QBulk::process_dji_amt_task_get_log(QByteArray &f) {
     }
 }
 
-void QBulk::process_sys_event_reboot(QByteArray &f) {
+void QBulk::process_sys_event_reboot(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t product_status;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 }
-void QBulk::process_sys_event_report_status(QByteArray &f) {
+void QBulk::process_sys_event_report_status(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t product_status;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
     info.product_status = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
-                          ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
+        ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
     emit send_bulk_data(QString("报告内容=%1").arg(info.product_status));
 }
-void QBulk::process_set_product_status(QByteArray &f) {
+void QBulk::process_set_product_status(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 }
 
-void QBulk::process_read_root_key_status(QByteArray &f) {
+void QBulk::process_read_root_key_status(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint8_t key_status;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 
     if (info.retCode == 0) {
-    info.key_status = (uint8_t)p[1];
+        info.key_status = (uint8_t)p[1];
 
         emit send_bulk_data(QString("key注入情况=%1").arg(info.key_status));
     }
 }
 
-void QBulk::process_dji_get_product_status(QByteArray &f) {
+void QBulk::process_dji_get_product_status(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t product_status;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 
     if (info.retCode == 0) {
-    info.product_status = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
-                              ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
+        info.product_status = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
+            ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
-    emit send_bulk_data(QString("切量产状态=%1").arg(info.product_status));
+        emit send_bulk_data(QString("切量产状态=%1").arg(info.product_status));
     }
 }
 
-void QBulk::process_get_sn_operate(QByteArray &f) {
+void QBulk::process_get_sn_operate(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode;
@@ -1838,7 +1840,7 @@ void QBulk::process_get_sn_operate(QByteArray &f) {
         return;
     }
 
-    const DeviceInfo *info = reinterpret_cast<const DeviceInfo *>(f.constData());
+    const DeviceInfo* info = reinterpret_cast<const DeviceInfo*>(f.constData());
 
     // 2️⃣ 端序修正
     uint16_t sn_len = qFromLittleEndian(info->length);
@@ -1850,8 +1852,8 @@ void QBulk::process_get_sn_operate(QByteArray &f) {
     }
 
     // 4️⃣ 取 SN
-    const char *sn_ptr =
-        reinterpret_cast<const char *>(info) + sizeof(DeviceInfo);
+    const char* sn_ptr =
+        reinterpret_cast<const char*>(info) + sizeof(DeviceInfo);
 
     if (sn_ptr[0] == 0) {
         sn_len = sn_len - 4;
@@ -1869,13 +1871,13 @@ void QBulk::process_get_sn_operate(QByteArray &f) {
     emit send_bulk_data(QString("sn=%1").arg(sn));
 }
 
-void QBulk::process_set_sn_operate(QByteArray &f) {
+void QBulk::process_set_sn_operate(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t value;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
@@ -1914,13 +1916,13 @@ static QString checkErrToString(uint8_t err) {
     }
 }
 
-void QBulk::process_get_anti_rollback_comm(QByteArray &f) {
+void QBulk::process_get_anti_rollback_comm(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t value;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
@@ -1946,12 +1948,12 @@ void QBulk::process_get_anti_rollback_comm(QByteArray &f) {
         return;
     }
     info.value = (uint32_t)p[1] | ((uint32_t)p[2] << 8) | ((uint32_t)p[3] << 16) |
-                 ((uint32_t)p[4] << 24);
+        ((uint32_t)p[4] << 24);
 
     emit send_bulk_data(QString("返回滚的value=%1").arg(info.value));
 }
 
-void QBulk::process_sec_dbg_command_auth_handler(QByteArray &f) {
+void QBulk::process_sec_dbg_command_auth_handler(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode; // 0
@@ -1970,7 +1972,7 @@ void QBulk::process_sec_dbg_command_auth_handler(QByteArray &f) {
     emit sendGetDjiResponse(1, info.retCode);
 }
 
-void QBulk::process_sec_dbg_command_req_handler(QByteArray &f) {
+void QBulk::process_sec_dbg_command_req_handler(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode;    // 0
@@ -1999,7 +2001,7 @@ void QBulk::process_sec_dbg_command_req_handler(QByteArray &f) {
 
     // 3️⃣ sn 转 QString（假设是 ASCII）
     QString snStr =
-        QString::fromLatin1(reinterpret_cast<const char *>(info.sn), snLen);
+        QString::fromLatin1(reinterpret_cast<const char*>(info.sn), snLen);
 
     emit send_bulk_data(QStringLiteral("SN=%1").arg(snStr));
 
@@ -2010,23 +2012,23 @@ void QBulk::process_sec_dbg_command_req_handler(QByteArray &f) {
                                   info.nonce);
 }
 
-void QBulk::process_get_product_dbg_misc_subcmd_count(QByteArray &f) {
+void QBulk::process_get_product_dbg_misc_subcmd_count(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t left_count;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
     info.left_count = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
-                      ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
+        ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
     emit send_bulk_data(QString("安全调试模式次数=%1").arg(info.left_count));
 }
 
-void QBulk::process_dji_get_active(QByteArray &f) {
+void QBulk::process_dji_get_active(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint32_t left_count;
@@ -2050,7 +2052,7 @@ void QBulk::process_dji_get_active(QByteArray &f) {
     } sec_cmd_act_trial_times_ack_t;
 #pragma pack(pop)
 
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     if (p[1] == 5) {
         sec_cmd_act_trial_times_ack_t times_info;
@@ -2121,7 +2123,7 @@ void QBulk::process_dji_get_active(QByteArray &f) {
     // 5️⃣ board_num（变长）
     if (offset + board_num_length > len)
         return;
-    QByteArray board_num(reinterpret_cast<const char *>(p + offset),
+    QByteArray board_num(reinterpret_cast<const char*>(p + offset),
                          board_num_length);
     offset += board_num_length;
 
@@ -2129,17 +2131,17 @@ void QBulk::process_dji_get_active(QByteArray &f) {
     qDebug() << "board_num STR =" << QString::fromLatin1(board_num);
 }
 
-void QBulk::process_dji_set_date(QByteArray &f) {
+void QBulk::process_dji_set_date(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 }
-void QBulk::process_dji_get_date(QByteArray &f) {
+void QBulk::process_dji_get_date(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
         uint16_t year;
@@ -2156,7 +2158,7 @@ void QBulk::process_dji_get_date(QByteArray &f) {
 
     DeviceInfo info{};
 
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     int idx = 0;
 
@@ -2189,18 +2191,18 @@ void QBulk::process_dji_get_date(QByteArray &f) {
     emit send_bulk_data(QString("日期=%1").arg(dateStr));
 }
 
-void QBulk::process_dji_factory_mode_handle(QByteArray &f) {
+void QBulk::process_dji_factory_mode_handle(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
     };
     DeviceInfo info;
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
-  emit sendGetDjiResponse(1, info.retCode);
+    emit sendGetDjiResponse(1, info.retCode);
 }
 
-void QBulk::process_djiFactroyCmd_get_version(QByteArray &f) {
+void QBulk::process_djiFactroyCmd_get_version(QByteArray& f) {
     struct DeviceVersionInfo {
         uint8_t retCode;
 
@@ -2223,7 +2225,7 @@ void QBulk::process_djiFactroyCmd_get_version(QByteArray &f) {
 
     DeviceVersionInfo info;
 
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(f.constData());
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     info.retCode = p[0];
 
@@ -2234,8 +2236,8 @@ void QBulk::process_djiFactroyCmd_get_version(QByteArray &f) {
 
     // 3️⃣ hardware_version (CHAR8, 0 结尾)
     info.hardwareVersion =
-        QString::fromLatin1(reinterpret_cast<const char *>(p + 2),
-                                               strnlen(reinterpret_cast<const char *>(p + 2), 16));
+        QString::fromLatin1(reinterpret_cast<const char*>(p + 2),
+                            strnlen(reinterpret_cast<const char*>(p + 2), 16));
 
     // 4️⃣ loader_version (LSB → MSB)
     info.loaderVersion = QString("%1.%2.%3.%4")
@@ -2252,7 +2254,7 @@ void QBulk::process_djiFactroyCmd_get_version(QByteArray &f) {
                                .arg(p[22], 2, 10, QChar('0'));
 
     uint32_t flags = (uint32_t)p[26] | ((uint32_t)p[27] << 8) |
-                     ((uint32_t)p[28] << 16) | ((uint32_t)p[29] << 24);
+        ((uint32_t)p[28] << 16) | ((uint32_t)p[29] << 24);
 
     info.is_mass_product = flags & (1u << 31);
 

@@ -3,24 +3,21 @@
 
 #include "box_base.h"
 
-namespace Ui
-{
-    class screenbox;
+namespace Ui {
+class screenbox;
 }
 
-class screenbox : public box_base
-{
+class screenbox : public box_base {
     Q_OBJECT
-public:
-    explicit screenbox(QWidget *parent = nullptr);
+  public:
+    explicit screenbox(QWidget* parent = nullptr);
     ~screenbox();
-    Ui::screenbox *ui;
-private:
+    Ui::screenbox* ui;
 
-private slots:
+  private:
+  private slots:
 
-    void checkAllTest(int fixtureNumber)override;
-
+    void checkAllTest(int fixtureNumber) override;
 };
 
-#endif   // SCREENBOX_H
+#endif // SCREENBOX_H

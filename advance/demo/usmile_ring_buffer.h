@@ -15,21 +15,20 @@
 #include <QQueue>
 typedef struct
 {
-    uint32_t             member_size;           /**< 成员的大小。 */
-    uint32_t             element_size;          //!< 一个元素的大小
-    uint8_t              *p_buffer;              /**< 指向保存数据的缓冲区的指针，大小为 member_size * element_size */
-    uint32_t             write_index;           /**< 写入索引。 */
-    uint32_t             read_index;            /**< 读取索引。 */
+    uint32_t member_size;  /**< 成员的大小。 */
+    uint32_t element_size; //!< 一个元素的大小
+    uint8_t* p_buffer;     /**< 指向保存数据的缓冲区的指针，大小为 member_size * element_size */
+    uint32_t write_index;  /**< 写入索引。 */
+    uint32_t read_index;   /**< 读取索引。 */
 } usmile_ring_buffer_t;
-class RingBuf: public QObject
-{
-   Q_OBJECT
+class RingBuf : public QObject {
+    Q_OBJECT
 
-public:
-     RingBuf(usmile_ring_buffer_t *p_ring_buff,  uint8_t *p_buff, uint32_t element_size, uint32_t member_size);
-      ~RingBuf();
-    void LOGE(const char *data);
- QMutex mutex;
+  public:
+    RingBuf(usmile_ring_buffer_t* p_ring_buff, uint8_t* p_buff, uint32_t element_size, uint32_t member_size);
+    ~RingBuf();
+    void LOGE(const char* data);
+    QMutex mutex;
     /**
  *****************************************************************************************
  * @brief 初始化环形缓冲区。
@@ -41,7 +40,7 @@ public:
  * @return 初始化环形缓冲区的结果。
  *****************************************************************************************
  */
-    bool usmile_ring_buffer_init(usmile_ring_buffer_t *p_ring_buff, QMutex *lock, uint8_t *p_buff, uint32_t element_size, uint32_t member_size);
+    bool usmile_ring_buffer_init(usmile_ring_buffer_t* p_ring_buff, QMutex* lock, uint8_t* p_buff, uint32_t element_size, uint32_t member_size);
 
     /**
  *****************************************************************************************
@@ -53,7 +52,7 @@ public:
  *****************************************************************************************
  */
 
-    bool usmile_ring_buffer_deinit(usmile_ring_buffer_t *p_ring_buff);
+    bool usmile_ring_buffer_deinit(usmile_ring_buffer_t* p_ring_buff);
 
     /**
  *****************************************************************************************
@@ -66,8 +65,7 @@ public:
  * @return 写入的数据长度。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_write(usmile_ring_buffer_t *p_ring_buff, uint8_t const *p_wr_data, uint32_t length);
-
+    uint32_t usmile_ring_buffer_write(usmile_ring_buffer_t* p_ring_buff, uint8_t const* p_wr_data, uint32_t length);
 
     /**
  *****************************************************************************************
@@ -79,8 +77,7 @@ public:
  * @return 删除的数据长度。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_delete(usmile_ring_buffer_t *p_ring_buff, uint32_t length);
-
+    uint32_t usmile_ring_buffer_delete(usmile_ring_buffer_t* p_ring_buff, uint32_t length);
 
     /**
  *****************************************************************************************
@@ -93,7 +90,7 @@ public:
  * @return 可用的读取数据长度。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_read(usmile_ring_buffer_t *p_ring_buff, uint8_t *p_rd_data, uint32_t length);
+    uint32_t usmile_ring_buffer_read(usmile_ring_buffer_t* p_ring_buff, uint8_t* p_rd_data, uint32_t length);
 
     /**
  *****************************************************************************************
@@ -106,7 +103,7 @@ public:
  * @return 可用的挑选数据长度。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_pick(usmile_ring_buffer_t *p_ring_buff, uint8_t *p_rd_data, uint32_t length);
+    uint32_t usmile_ring_buffer_pick(usmile_ring_buffer_t* p_ring_buff, uint8_t* p_rd_data, uint32_t length);
     /**
  *****************************************************************************************
  * @brief 获取环形缓冲区的剩余空间。
@@ -116,7 +113,7 @@ public:
  * @retval  剩余空间的大小。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_surplus_space_get(usmile_ring_buffer_t *p_ring_buff);
+    uint32_t usmile_ring_buffer_surplus_space_get(usmile_ring_buffer_t* p_ring_buff);
 
     /**
  *****************************************************************************************
@@ -127,7 +124,7 @@ public:
  * @retval  可用数据的长度。
  *****************************************************************************************
  */
-    uint32_t usmile_ring_buffer_items_count_get(usmile_ring_buffer_t *p_ring_buff);
+    uint32_t usmile_ring_buffer_items_count_get(usmile_ring_buffer_t* p_ring_buff);
 
     /**
  *****************************************************************************************
@@ -136,7 +133,7 @@ public:
  * @param[in] p_ring_buff: 指向环形缓冲区结构体的指针。
  *****************************************************************************************
  */
-    void usmile_ring_buffer_clean(usmile_ring_buffer_t *p_ring_buff);
+    void usmile_ring_buffer_clean(usmile_ring_buffer_t* p_ring_buff);
 
     /**
  *****************************************************************************************
@@ -148,16 +145,12 @@ public:
  * @return 缓冲区接近满的状态。
  *****************************************************************************************
  */
-    bool usmile_ring_buffer_is_reach_left_threshold(usmile_ring_buffer_t *p_ring_buff, uint32_t letf_threshold);
+    bool usmile_ring_buffer_is_reach_left_threshold(usmile_ring_buffer_t* p_ring_buff, uint32_t letf_threshold);
     /** @} */
 
+    int usmile_ring_buffer_get_last_wr_index(usmile_ring_buffer_t* p_ring_buff);
 
-    int usmile_ring_buffer_get_last_wr_index(usmile_ring_buffer_t *p_ring_buff);
-
-    int usmile_ring_buffer_get_rd_index(usmile_ring_buffer_t *p_ring_buff);
+    int usmile_ring_buffer_get_rd_index(usmile_ring_buffer_t* p_ring_buff);
 };
-
-
-
 
 #endif

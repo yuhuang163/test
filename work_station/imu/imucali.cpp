@@ -4,7 +4,7 @@
 #include "qserialportinfo.h"
 #include "ui_imucali.h"
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 void imucali::on_pushButton_clicked() {
     // emit send_end_test(getIndex());
@@ -20,15 +20,14 @@ void imucali::on_pushButton_clicked() {
     // ui->macInput->setText("b4:56:5d:bf:57:9d");
     on_macInput_returnPressed();
 }
-imucali::imucali(int index, QWidget* parent) :
-    test_base(parent), ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
+imucali::imucali(int index, QWidget* parent) : test_base(parent), ui(new Ui::imucali), qimuc(new imu_calibrate), nqimuc(new new_imu_calibrate) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = IMU_VER;
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
 
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
 
     connect(nqimuc, SIGNAL(send_imu_cali_position(int)), this, SLOT(refresh_imu_cali_position(int)));
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
@@ -117,7 +116,7 @@ imucali::imucali(int index, QWidget* parent) :
     ui->acc_z->setFont(font);
 
     testResultTableInit();
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 void imucali::refreshImuCaliResult(ProtocolImuCalibResultData x) {
     showlog("以下为收到设备的imu校准数据");
@@ -244,10 +243,12 @@ void imucali::getTestValue(const int mechines, const QString value) {
         }
     }
 
-    // bandingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
+    // bindingMacSn(mesmacAddress, ui->getMac->text());//获取测试数据不要绑定测试mac——sn
 }
 
-imucali::~imucali() { delete ui; }
+imucali::~imucali() {
+    delete ui;
+}
 
 void imucali::on_disconnectButton_clicked() {
     closeDongleSerialPort();
@@ -308,9 +309,13 @@ void imucali::get_fix_action(int state) {
     }
 }
 
-void imucali::print_fixture_log(QString data) { showlog(data); }
+void imucali::print_fixture_log(QString data) {
+    showlog(data);
+}
 
-void imucali::refresh_imu_cali_reslt_msg(QString msg) { showlog(msg); }
+void imucali::refresh_imu_cali_reslt_msg(QString msg) {
+    showlog(msg);
+}
 void imucali::refreshImuCaliMsg(QString msg) {
     showlog(msg);
     // qDebug() << getIndex()<< "收到数据: " << getIndex();
@@ -389,7 +394,7 @@ void imucali::refresh_imu_cali_position(int position) {
         showlog("停止小位置超时定时器");
         if (index != 0) {
             QLabel* label = labelList.at(index - 1);
-            label->setStyleSheet(  // border: 2px solid #00FF00;
+            label->setStyleSheet( // border: 2px solid #00FF00;
                 " background-color: #00FF00; color: black;  border-radius: 10px; padding: 10px; text-align: center;");
         }
         if (index == 0) {
@@ -538,7 +543,7 @@ void imucali::refresh_imu_data_to_csv(QString imutime, QString msg) {
     }
 }
 
-void imucali::getimuData(ProtocolImuSampleData x) {
+void imucali::refreshImuData(ProtocolImuSampleData x) {
     int ret = 0;
     int old_ret = 0;
     int32_t imudata_result = 0;
@@ -565,10 +570,10 @@ void imucali::getimuData(ProtocolImuSampleData x) {
             nqimuc->imu_time = QString::number(x.timeStamp);
             qimuc->imu_time = QString::number(x.timeStamp);
 
-            if (orgData.gyro[0] & 0x8000) {  // 判断最高位是否为 1，表示负数测试一下
-                imudata_result = static_cast<int32_t>(orgData.gyro[0] | 0xFFFF0000);  // 扩展为 32 位的负数
+            if (orgData.gyro[0] & 0x8000) {                                          // 判断最高位是否为 1，表示负数测试一下
+                imudata_result = static_cast<int32_t>(orgData.gyro[0] | 0xFFFF0000); // 扩展为 32 位的负数
             } else {
-                imudata_result = static_cast<int32_t>(orgData.gyro[0]);  // 保持正数不变
+                imudata_result = static_cast<int32_t>(orgData.gyro[0]); // 保持正数不变
             }
 
             // qDebug()<< "Converted back result: " << imudata_result;
@@ -614,7 +619,7 @@ void imucali::getimuData(ProtocolImuSampleData x) {
                     is_old_cali = 0;
             }
 
-            if (ret == 1)  // 标定失败
+            if (ret == 1) // 标定失败
             {
                 caliwaittime->stop();
                 showlog("停止小位置超时定时器");
@@ -677,10 +682,10 @@ void imucali::getimuData(ProtocolImuSampleData x) {
 
             int32_t result = 0;
 
-            if (orgData.acc[2] & 0x8000) {  // 判断最高位是否为 1，表示负数
-                result = static_cast<int32_t>(orgData.acc[2] | 0xFFFF0000);  // 扩展为 32 位的负数
+            if (orgData.acc[2] & 0x8000) {                                  // 判断最高位是否为 1，表示负数
+                result = static_cast<int32_t>(orgData.acc[2] | 0xFFFF0000); // 扩展为 32 位的负数
             } else {
-                result = static_cast<int32_t>(orgData.acc[2]);  // 保持正数不变
+                result = static_cast<int32_t>(orgData.acc[2]); // 保持正数不变
             }
 
             qDebug() << getIndex() << "Converted back result: " << result;
@@ -700,11 +705,11 @@ void imucali::refreshBaseData(ProtocolBaseInfoData data) {
 
     if (QString(data.product_name).compare("P20PS") == 0 || QString(data.product_name).compare("P20P") == 0 ||
         QString(data.product_name).compare("Q20") == 0) {
-        if (data.imu_id == 144) {  //无陀螺仪
+        if (data.imu_id == 144) { //无陀螺仪
             nqimuc->LSB = 1;
             isNeedNewCali = 1;
 
-        } else if (data.imu_id == 250) {  //博士的imu无陀螺仪
+        } else if (data.imu_id == 250) { //博士的imu无陀螺仪
             nqimuc->LSB = 0.25;
             isNeedNewCali = 1;
         }
@@ -728,24 +733,24 @@ void imucali::refreshBaseData(ProtocolBaseInfoData data) {
     showlog("LSB改为" + QString::number(nqimuc->LSB));
 }
 
-void imucali::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void imucali::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
 
             pack.mechines = getIndex();
 
             pack.is_hq_send_mac = 0;
             pack.instruct_num = "079";
 
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 20px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -755,11 +760,21 @@ void imucali::processInspection(QString stringsn) {
 void imucali::refreshBattaryData(ProtocolBatteryData adc) {
     QString chargeStateStr;
     switch (adc.chargeState) {
-        case 1: chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>"; break;
-        case 2: chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>"; break;
-        case 3: chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>"; break;
-        case 4: chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>"; break;
-        default: chargeStateStr = "充电状态为：<span style='color:red'>未知</span>"; break;
+    case 1:
+        chargeStateStr = "充电状态为：<span style='color:green'>电量充满</span>";
+        break;
+    case 2:
+        chargeStateStr = "充电状态为：<span style='color:orange'>正在充电</span>";
+        break;
+    case 3:
+        chargeStateStr = "充电状态为：<span style='color:red'>充电断开</span>";
+        break;
+    case 4:
+        chargeStateStr = "充电状态为：<span style='color:red'>没有电池</span>";
+        break;
+    default:
+        chargeStateStr = "充电状态为：<span style='color:red'>未知</span>";
+        break;
     }
     ui->battary_state->setText(chargeStateStr);
 
@@ -770,8 +785,8 @@ void imucali::refreshBattaryData(ProtocolBatteryData adc) {
 
     // 修改电压的显示样式
     QString batteryVoltageStr = "电压为：<span style='color:purple'>" +
-                                QString::number(adc.voltageMv / 1000.0, 'f', 3) +
-                                "V</span>";
+        QString::number(adc.voltageMv / 1000.0, 'f', 3) +
+        "V</span>";
     ui->battary_voltage->setText(batteryVoltageStr);
 
     voltage = adc.voltageMv / 1000.0;
@@ -780,13 +795,13 @@ void imucali::refreshBattaryData(ProtocolBatteryData adc) {
     // chargestate = match.captured(2);
 
     if (adc.voltageMv / 1000.0 > standbattary) {
-        is_battary_test = 1;  // 正常
+        is_battary_test = 1; // 正常
     }
     if (adc.voltageMv / 1000.0 <= standbattary)
-        is_battary_test = 2;  // 低电量
+        is_battary_test = 2; // 低电量
 }
 void imucali::dataInit() {
-    upPositionIndex = 0;  // 上一个位置的索引
+    upPositionIndex = 0; // 上一个位置的索引
     ui->test_time->display(0);
     information = "";
 
@@ -796,13 +811,13 @@ void imucali::dataInit() {
     is_new_cali = 1;
     is_out_counts = 0;
     is_imu_test_ok = 0;
-    is_fix_set_ok = 0;  // 是否治具设置ok
+    is_fix_set_ok = 0; // 是否治具设置ok
     iscompareovertime = 0;
-    isimuCaliOk = 0;  // 是否校准完成
+    isimuCaliOk = 0; // 是否校准完成
     is_start_ium_test = 0;
-    dongleOutTime = 50;  // 调小会奔溃
+    dongleOutTime = 50; // 调小会奔溃
     is_start_ium_cali = 0;
-    isStartSendCaliResult = 0;  // 是否开始发送校验结果
+    isStartSendCaliResult = 0; // 是否开始发送校验结果
     imudata_check = 0;
     count123 = 0;
     count4567 = 0;
@@ -863,359 +878,362 @@ void imucali::endTask() {
     on_disconnectButton_clicked();
     emit send_end_test(getIndex());
 }
-void imucali::startTest() { on_macInput_returnPressed(); };
+void imucali::startTest() {
+    on_macInput_returnPressed();
+};
 
-void imucali::startTask()  // 编写六轴校准的代码
+void imucali::startTask() // 编写六轴校准的代码
 {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE:  // 复位一切
-                showlog("开始测试");
-                dataInit();
-                waitWork(1000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 开始连接
-                showlog("MAC地址为：" + ui->macInput->text());
+        case STATE_IDLE: // 复位一切
+            showlog("开始测试");
+            dataInit();
+            waitWork(1000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 开始连接
+            showlog("MAC地址为：" + ui->macInput->text());
 
-                TestTime.start();
-                state = STATE_WATI_CONNECT;
-                break;
+            TestTime.start();
+            state = STATE_WATI_CONNECT;
+            break;
 
-            case STATE_WATI_CONNECT:  // 设置禁止休眠
-                if (at->getConnected()) {
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
-                    state = STATE_DISABLE_SLEEP_1;
-                }
-                break;
+        case STATE_WATI_CONNECT: // 设置禁止休眠
+            if (at->getConnected()) {
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN)); });
+                state = STATE_DISABLE_SLEEP_1;
+            }
+            break;
 
-            case STATE_DISABLE_SLEEP_1:  // 设置设备采集
-                if (canGoNext) {
-                    showlog("已进入禁止休眠");
+        case STATE_DISABLE_SLEEP_1: // 设置设备采集
+            if (canGoNext) {
+                showlog("已进入禁止休眠");
 
-                    if (SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool()) {
-                        sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); });
-                        state = STATE_CLOSE_UART;
-                    } else {
-                        sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
-                        state = STATE_GETBASEDATA;
-                    }
-                }
-                break;
-
-            case STATE_CLOSE_UART:
-
-                if (canGoNext) {
-                    showlog("已经关闭串口接收功能");
-                    TestItem test;
-                    test.testItem = "串口接收";
-                    test.testData = "关闭";
-                    test.testResult = "通过";
-                    test.ask = "关闭";
-                    testItems.append(test);
-                    testResultTableUpdate(testItems);
+                if (SETTINGS.value("SYSTEM/DisableSerialPortRx").toBool()) {
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::UartReceive, 0); });
+                    state = STATE_CLOSE_UART;
+                } else {
                     sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
                     state = STATE_GETBASEDATA;
                 }
-                break;
+            }
+            break;
 
-            case STATE_GETBASEDATA:
-                if (canGoNext) {
-                    showlog("开始获取出厂电压");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
-                    state = STATE_GETBATTERY;
-                }
-                break;
+        case STATE_CLOSE_UART:
 
-            case STATE_GETBATTERY:
-                //等于0就卡着
-                if (is_battary_test != 0) {
-                    if (is_battary_test == 1) {
-                        showlog("出厂电压正常");
-                        TestItem test;
-                        test.testItem = "出厂电压";
-                        test.testData = QString::number(voltage);
-                        test.testResult = "通过";
-                        test.ask = QString::number(standbattary);
-                        testItems.append(test);
+            if (canGoNext) {
+                showlog("已经关闭串口接收功能");
+                TestItem test;
+                test.testItem = "串口接收";
+                test.testData = "关闭";
+                test.testResult = "通过";
+                test.ask = "关闭";
+                testItems.append(test);
+                testResultTableUpdate(testItems);
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::BaseInfo); });
+                state = STATE_GETBASEDATA;
+            }
+            break;
 
-                        testResultTableUpdate(testItems);
-                    }
+        case STATE_GETBASEDATA:
+            if (canGoNext) {
+                showlog("开始获取出厂电压");
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetBattery); });
+                state = STATE_GETBATTERY;
+            }
+            break;
 
-                    if (is_battary_test == 2) {
-                        pack.error = "SP03020";
-                        showlog("出厂电压异常为" + QString::number(voltage));
-                        result = failValue;
-                        TestItem test;
-                        test.testItem = "出厂电压";
-                        test.testData = QString::number(voltage);
-                        test.testResult = "失败";
-                        test.ask = QString::number(standbattary);
-                        testItems.append(test);
-
-                        testResultTableUpdate(testItems);
-                    }
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); });
-
-                    state = STATE_CAIL;
-                }
-                break;
-
-            case STATE_CAIL:  // 开始校准
-                if (canGoNext) {
-                    showlog("已发送imu采集参数");
-
-                    qimuc->imu_calib_init();
-                    nqimuc->acccalib_sensors_init();
-
-                    // emit fixture_up(getIndex());
-
-                    is_start_ium_cali = 1;
-                    qDebug() << getIndex() << "开始校准";
-                    showlog("等待校准");
-                    waittime->start(imu_wait_time);
-                    caliwaittime->start(imu_cali_wait_time);
-                    state = STATE_SEND_CAIL_RESULT;
-                }
-                break;
-
-            case STATE_SEND_CAIL_RESULT:  // 开始发送校准值
-                if (isimuCaliOk) {
-                    waittime->stop();
-                    showlog("IMU校准成功");
-                    nqimuc->calData.gyro_offset[0] = qimuc->calData.gyro_offset[0];
-                    nqimuc->calData.gyro_offset[1] = qimuc->calData.gyro_offset[1];
-                    nqimuc->calData.gyro_offset[2] = qimuc->calData.gyro_offset[2];
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); });
-                    state = STATE_END_CALI_DATA;
-                    break;
-                }
-                if (isovertime) {
-                    caliwaittime->stop();
-                    is_start_ium_cali = 0;
-                    refreshImuCaliMsg("六轴校准失败");
-                    isovertime = 0;
-                    showlog("六轴校准失败：超时");
-                    waitWork(WAITTIME);
-                    protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
-                    waitWork(WAITTIME);
-                    state = STATE_SAVE_RESULT;
-                    result = failValue;
-                }
-
-                break;
-
-            case STATE_END_CALI_DATA:
-
-                if (canGoNext) {
-                    showlog("开始设置六轴校准结果");
-                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::NewImuCaliResult, QVariant::fromValue(nqimuc->calData)); });
-                    state = STATE_SENDOK;
-                }
-                break;
-
-            case STATE_SENDOK:
-
-                if (canGoNext) {
-                    showlog("已获取到imu校准结果发送回应");
-                    sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetImuCaliResult); });
-                    showlog("开始获取imu校准结果");
-                    state = STATE_CHECKOK;
-                }
-                break;
-
-            case STATE_CHECKOK:
-
-                if (canGoNext) {
-                    if (imudata_check == 1) {
-                        state = STATE_SAVE_RESULT;
-                    } else if (imudata_check == 2) {
-                        result = failValue;
-                        showlog("获取的设备校准值错误");
-                        state = STATE_SAVE_RESULT;
-                    }
-                }
-
-                break;
-
-            case STATE_SAVE_RESULT:  //保存结果用的
-                if (result == failValue) {
+        case STATE_GETBATTERY:
+            //等于0就卡着
+            if (is_battary_test != 0) {
+                if (is_battary_test == 1) {
+                    showlog("出厂电压正常");
                     TestItem test;
-                    test.testItem = "IMU校准测试";
-                    test.testData = qimuc->imureason + nqimuc->imureason;
-                    test.testResult = "失败";
-                    test.ask = "通过";
-                    testItems.append(test);
-
-                    testResultTableUpdate(testItems);
-                    pack.error = "SP03021";
-                    showlog("六轴校准结束");
-                    emit endcali(getIndex());
-                    state = STATE_END;
-                    break;
-                }
-                if (result == passValue) {
-                    TestItem test;
-                    // 使用 QString 连接所有内容
-                    QString data;
-                    data.append("校准值kx=" + QString::number(nqimuc->calData.kx) + "\n");
-                    data.append("校准值ky=" + QString::number(nqimuc->calData.ky) + "\n");
-                    data.append("校准值kz=" + QString::number(nqimuc->calData.kz) + "\n");
-                    data.append("校准值syx=" + QString::number(nqimuc->calData.syx) + "\n");
-                    data.append("校准值szx=" + QString::number(nqimuc->calData.szx) + "\n");
-                    data.append("校准值szy=" + QString::number(nqimuc->calData.szy) + "\n");
-                    data.append("校准值bx=" + QString::number(nqimuc->calData.bx) + "\n");
-                    data.append("校准值by=" + QString::number(nqimuc->calData.by) + "\n");
-                    data.append("校准值bz=" + QString::number(nqimuc->calData.bz) + "\n");
-                    data.append("校准值x=" + QString::number(qimuc->calData.gyro_offset[0]) + "\n");
-                    data.append("校准值y=" + QString::number(qimuc->calData.gyro_offset[1]) + "\n");
-                    data.append("校准值z=" + QString::number(qimuc->calData.gyro_offset[2]) + "\n");
-
-                    // 将连接好的字符串赋值给 test.testData
-                    test.testItem = "IMU校准测试";
-                    test.testData = data;
+                    test.testItem = "出厂电压";
+                    test.testData = QString::number(voltage);
                     test.testResult = "通过";
-                    test.ask = "通过";
+                    test.ask = QString::number(standbattary);
                     testItems.append(test);
 
                     testResultTableUpdate(testItems);
-
-                    showlog(data);
-
-                    showlog("六轴校准结束");
-                    emit endcali(getIndex());
-
-                    if ((ui->isusemes->checkState() || pack.factory == "无mes厂") && result == passValue) {
-                        protocolManager.set(DeviceCmd::FacMode, 0);
-                        waitWork(100);
-                        sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); });
-                        showlog("已发送进入船运模式");
-                        qDebug() << ui->getMac->text() << macAddress << getIndex() << "已发送进入船运模式";
-                        state = STATE_SHIP_MODE_CHECK;
-
-                    } else {
-                        state = STATE_END;
-                    }
                 }
 
-                break;
-
-            case STATE_SHIP_MODE_CHECK:
-                if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
-                    if (!at->getConnected() && canGoNext) {
-                        showlog("检测到蓝牙已经断开且收到设备回应收到船运退出指令");
-                        showlog("说明已经成功进入船运模式");
-                        TestItem test;
-                        test.testItem = "船运测试";
-                        test.testData = "收到回应";
-                        test.testResult = "通过";
-                        test.ask = "通过";
-                        testItems.append(test);
-                        testResultTableUpdate(testItems);
-                        state = STATE_END;
-                    }
-
-                } else {
-                    if (!at->getConnected()) {
-                        showlog("检测到蓝牙已经断开");
-                        showlog("说明已经成功进入船运模式");
-                        TestItem test;
-                        test.testItem = "船运测试";
-                        test.testData = "收到回应";
-                        test.testResult = "通过";
-                        test.ask = "通过";
-                        testItems.append(test);
-                        testResultTableUpdate(testItems);
-                        state = STATE_END;
-                    }
-                }
-                if (sendRetryOver) {
-                    TestItem test;
-                    test.testItem = "船运测试";
-                    test.testData = "等待超时";
-                    test.testResult = "失败";
-                    test.ask = "通过";
-                    pack.error = "SP03022";
-                    testItems.append(test);
-                    testResultTableUpdate(testItems);
-
+                if (is_battary_test == 2) {
+                    pack.error = "SP03020";
+                    showlog("出厂电压异常为" + QString::number(voltage));
                     result = failValue;
-                    state = STATE_END;
-                }
+                    TestItem test;
+                    test.testItem = "出厂电压";
+                    test.testData = QString::number(voltage);
+                    test.testResult = "失败";
+                    test.ask = QString::number(standbattary);
+                    testItems.append(test);
 
+                    testResultTableUpdate(testItems);
+                }
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START)); });
+
+                state = STATE_CAIL;
+            }
+            break;
+
+        case STATE_CAIL: // 开始校准
+            if (canGoNext) {
+                showlog("已发送imu采集参数");
+
+                qimuc->imu_calib_init();
+                nqimuc->acccalib_sensors_init();
+
+                // emit fixture_up(getIndex());
+
+                is_start_ium_cali = 1;
+                qDebug() << getIndex() << "开始校准";
+                showlog("等待校准");
+                waittime->start(imu_wait_time);
+                caliwaittime->start(imu_cali_wait_time);
+                state = STATE_SEND_CAIL_RESULT;
+            }
+            break;
+
+        case STATE_SEND_CAIL_RESULT: // 开始发送校准值
+            if (isimuCaliOk) {
+                waittime->stop();
+                showlog("IMU校准成功");
+                nqimuc->calData.gyro_offset[0] = qimuc->calData.gyro_offset[0];
+                nqimuc->calData.gyro_offset[1] = qimuc->calData.gyro_offset[1];
+                nqimuc->calData.gyro_offset[2] = qimuc->calData.gyro_offset[2];
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); });
+                state = STATE_END_CALI_DATA;
                 break;
+            }
+            if (isovertime) {
+                caliwaittime->stop();
+                is_start_ium_cali = 0;
+                refreshImuCaliMsg("六轴校准失败");
+                isovertime = 0;
+                showlog("六轴校准失败：超时");
+                waitWork(WAITTIME);
+                protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
+                waitWork(WAITTIME);
+                state = STATE_SAVE_RESULT;
+                result = failValue;
+            }
 
-            case STATE_END:
-                if (result == passValue) {
-                    QString mesresult = "PASS";
-                    QString itemvalue;
+            break;
 
-                    itemvalue =
-                        QString("|outvoltage:%1").arg(voltage) +
-                        QString("|gyro_offsetx:%1").arg(nqimuc->calData.gyro_offset[0]) +
-                        QString("|gyro_offsety:%1").arg(nqimuc->calData.gyro_offset[1]) +
-                        QString("|gyro_offsetz:%1").arg(nqimuc->calData.gyro_offset[2]) +
-                        QString("|kx:%1").arg(nqimuc->calData.kx) + QString("|ky:%1").arg(nqimuc->calData.ky) +
-                        QString("|kz:%1").arg(nqimuc->calData.kz) + QString("|syx:%1").arg(nqimuc->calData.syx) +
-                        QString("|szx:%1").arg(nqimuc->calData.szx) + QString("|szy:%1").arg(nqimuc->calData.szy) +
-                        QString("|bx:%1").arg(nqimuc->calData.bx) + QString("|by:%1").arg(nqimuc->calData.by) +
-                        QString("|bz:%1|").arg(nqimuc->calData.bz) + QString("IMU_TEST_RESULT:PASS|");
+        case STATE_END_CALI_DATA:
 
-                    pack.result = mesresult;
-                    pack.itemvalue = itemvalue;
-                    pack.instruct_num = "084";
-                    pack.sn = ui->getMac->text();
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
+            if (canGoNext) {
+                showlog("开始设置六轴校准结果");
+                sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::NewImuCaliResult, QVariant::fromValue(nqimuc->calData)); });
+                state = STATE_SENDOK;
+            }
+            break;
 
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 20px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if (result == failValue) {
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 20px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
-                    QString mesresult = "NG";
-                    QString itemvalue = QString("|outvoltage:%1").arg(voltage) + QString("|IMU_CALI_RESULT:NG|") +
-                                        QString("IMU_TEST_RESULT:NG|");
-                    pack.result = mesresult;
-                    pack.itemvalue = itemvalue;
-                    pack.sn = ui->getMac->text();
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                    }
+        case STATE_SENDOK:
+
+            if (canGoNext) {
+                showlog("已获取到imu校准结果发送回应");
+                sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::GetImuCaliResult); });
+                showlog("开始获取imu校准结果");
+                state = STATE_CHECKOK;
+            }
+            break;
+
+        case STATE_CHECKOK:
+
+            if (canGoNext) {
+                if (imudata_check == 1) {
+                    state = STATE_SAVE_RESULT;
+                } else if (imudata_check == 2) {
+                    result = failValue;
+                    showlog("获取的设备校准值错误");
+                    state = STATE_SAVE_RESULT;
                 }
+            }
+
+            break;
+
+        case STATE_SAVE_RESULT: //保存结果用的
+            if (result == failValue) {
+                TestItem test;
+                test.testItem = "IMU校准测试";
+                test.testData = qimuc->imureason + nqimuc->imureason;
+                test.testResult = "失败";
+                test.ask = "通过";
+                testItems.append(test);
+
+                testResultTableUpdate(testItems);
+                pack.error = "SP03021";
+                showlog("六轴校准结束");
+                emit endcali(getIndex());
+                state = STATE_END;
+                break;
+            }
+            if (result == passValue) {
+                TestItem test;
+                // 使用 QString 连接所有内容
+                QString data;
+                data.append("校准值kx=" + QString::number(nqimuc->calData.kx) + "\n");
+                data.append("校准值ky=" + QString::number(nqimuc->calData.ky) + "\n");
+                data.append("校准值kz=" + QString::number(nqimuc->calData.kz) + "\n");
+                data.append("校准值syx=" + QString::number(nqimuc->calData.syx) + "\n");
+                data.append("校准值szx=" + QString::number(nqimuc->calData.szx) + "\n");
+                data.append("校准值szy=" + QString::number(nqimuc->calData.szy) + "\n");
+                data.append("校准值bx=" + QString::number(nqimuc->calData.bx) + "\n");
+                data.append("校准值by=" + QString::number(nqimuc->calData.by) + "\n");
+                data.append("校准值bz=" + QString::number(nqimuc->calData.bz) + "\n");
+                data.append("校准值x=" + QString::number(qimuc->calData.gyro_offset[0]) + "\n");
+                data.append("校准值y=" + QString::number(qimuc->calData.gyro_offset[1]) + "\n");
+                data.append("校准值z=" + QString::number(qimuc->calData.gyro_offset[2]) + "\n");
+
+                // 将连接好的字符串赋值给 test.testData
+                test.testItem = "IMU校准测试";
+                test.testData = data;
+                test.testResult = "通过";
+                test.ask = "通过";
+                testItems.append(test);
 
                 testResultTableUpdate(testItems);
 
-                waitWork(WAITTIME);
-                protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
-                waitWork(100);
-                at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
-                stringsn = "";
-                ui->macInput->setDisabled(0);
-                ui->getMac->setDisabled(0);
-                ui->macInput->clear();
-                ui->getMac->clear();
+                showlog(data);
 
-                // emit fixture_left(getIndex());
-                // emit fixture_down(getIndex());
-                // emit fixture_right(getIndex());
-                // emit fixture_up(getIndex());
-                emit send_end_test(getIndex());
+                showlog("六轴校准结束");
+                emit endcali(getIndex());
 
-                showlog("流程结束");
-                caliwaittime->stop();
-                isTestContinue = false;  // 结束
-                waitWork(100);
-                on_disconnectButton_clicked();
-                state = STATE_IDLE;
+                if ((ui->isusemes->checkState() || pack.factory == "无mes厂") && result == passValue) {
+                    protocolManager.set(DeviceCmd::FacMode, 0);
+                    waitWork(100);
+                    sendCommandWithRetry([&]() { protocolManager.set(DeviceCmd::ShipMode, 1); });
+                    showlog("已发送进入船运模式");
+                    qDebug() << ui->getMac->text() << macAddress << getIndex() << "已发送进入船运模式";
+                    state = STATE_SHIP_MODE_CHECK;
 
-                break;
+                } else {
+                    state = STATE_END;
+                }
+            }
 
-            default: break;
+            break;
+
+        case STATE_SHIP_MODE_CHECK:
+            if (SETTINGS.value("SYSTEM/ShipModeResponse").toBool()) {
+                if (!at->getConnected() && canGoNext) {
+                    showlog("检测到蓝牙已经断开且收到设备回应收到船运退出指令");
+                    showlog("说明已经成功进入船运模式");
+                    TestItem test;
+                    test.testItem = "船运测试";
+                    test.testData = "收到回应";
+                    test.testResult = "通过";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+                    state = STATE_END;
+                }
+
+            } else {
+                if (!at->getConnected()) {
+                    showlog("检测到蓝牙已经断开");
+                    showlog("说明已经成功进入船运模式");
+                    TestItem test;
+                    test.testItem = "船运测试";
+                    test.testData = "收到回应";
+                    test.testResult = "通过";
+                    test.ask = "通过";
+                    testItems.append(test);
+                    testResultTableUpdate(testItems);
+                    state = STATE_END;
+                }
+            }
+            if (sendRetryOver) {
+                TestItem test;
+                test.testItem = "船运测试";
+                test.testData = "等待超时";
+                test.testResult = "失败";
+                test.ask = "通过";
+                pack.error = "SP03022";
+                testItems.append(test);
+                testResultTableUpdate(testItems);
+
+                result = failValue;
+                state = STATE_END;
+            }
+
+            break;
+
+        case STATE_END:
+            if (result == passValue) {
+                QString mesresult = "PASS";
+                QString itemvalue;
+
+                itemvalue =
+                    QString("|outvoltage:%1").arg(voltage) +
+                    QString("|gyro_offsetx:%1").arg(nqimuc->calData.gyro_offset[0]) +
+                    QString("|gyro_offsety:%1").arg(nqimuc->calData.gyro_offset[1]) +
+                    QString("|gyro_offsetz:%1").arg(nqimuc->calData.gyro_offset[2]) +
+                    QString("|kx:%1").arg(nqimuc->calData.kx) + QString("|ky:%1").arg(nqimuc->calData.ky) +
+                    QString("|kz:%1").arg(nqimuc->calData.kz) + QString("|syx:%1").arg(nqimuc->calData.syx) +
+                    QString("|szx:%1").arg(nqimuc->calData.szx) + QString("|szy:%1").arg(nqimuc->calData.szy) +
+                    QString("|bx:%1").arg(nqimuc->calData.bx) + QString("|by:%1").arg(nqimuc->calData.by) +
+                    QString("|bz:%1|").arg(nqimuc->calData.bz) + QString("IMU_TEST_RESULT:PASS|");
+
+                pack.result = mesresult;
+                pack.itemvalue = itemvalue;
+                pack.instruct_num = "084";
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 20px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if (result == failValue) {
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 20px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+                QString mesresult = "NG";
+                QString itemvalue = QString("|outvoltage:%1").arg(voltage) + QString("|IMU_CALI_RESULT:NG|") +
+                    QString("IMU_TEST_RESULT:NG|");
+                pack.result = mesresult;
+                pack.itemvalue = itemvalue;
+                pack.sn = ui->getMac->text();
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                }
+            }
+
+            testResultTableUpdate(testItems);
+
+            waitWork(WAITTIME);
+            protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP));
+            waitWork(100);
+            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+            stringsn = "";
+            ui->macInput->setDisabled(0);
+            ui->getMac->setDisabled(0);
+            ui->macInput->clear();
+            ui->getMac->clear();
+
+            // emit fixture_left(getIndex());
+            // emit fixture_down(getIndex());
+            // emit fixture_right(getIndex());
+            // emit fixture_up(getIndex());
+            emit send_end_test(getIndex());
+
+            showlog("流程结束");
+            caliwaittime->stop();
+            isTestContinue = false; // 结束
+            waitWork(100);
+            on_disconnectButton_clicked();
+            state = STATE_IDLE;
+
+            break;
+
+        default:
+            break;
         }
     }
 }
@@ -1292,13 +1310,13 @@ void imucali::on_getMac_returnPressed() {
     }
     dataInit();
     showlog("正在查询mac地址");
-    getMac(ui->getMac->text());  // 文件获取
+    getMac(ui->getMac->text()); // 文件获取
     if (ui->isusemes->checkState()) {
         processInspection(ui->getMac->text());
         appendStationResult(testItems, "MES启动", "0.0000", passValue);
     }
 
-    processGetMesTestValue();  // mes获取
+    processGetMesTestValue(); // mes获取
 }
 
 void imucali::processGetMesTestValue() {
@@ -1314,14 +1332,14 @@ void imucali::processGetMesTestValue() {
         pack.mechines = getIndex();
         pack.instruct_num = "079";
 
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 
 void imucali::on_stopTest_clicked() {
     emit send_end_test(getIndex());
 
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");  // 发送mac地址
+    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
     waitWork(100);
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
@@ -1332,7 +1350,3 @@ void imucali::on_stopTest_clicked() {
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }
-
-
-
-

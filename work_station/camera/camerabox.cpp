@@ -9,7 +9,7 @@
 #include "ui_camerabox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) {
@@ -28,7 +28,6 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
                         SLOT(set_camera_action(camreaFixtureState)));
             }
 
-               
             QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         }
@@ -45,7 +44,6 @@ camerabox::camerabox(QWidget* parent) : box_base(parent), ui(new Ui::camerabox) 
 }
 
 camerabox::~camerabox() {
-       
 
     if (Fixture_uart_ui != NULL)
         SETTINGS.setValue(QString("mechine/0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
@@ -76,7 +74,7 @@ void camerabox::checkAllTest(int fixtureNumber) {
                 QMessageBox::warning(nullptr, "警告", "没有输入错误的摄像头");
             }
         } else {
-            emit go_camera_next(0);  // 没问题
+            emit go_camera_next(0); // 没问题
         }
     }
 }

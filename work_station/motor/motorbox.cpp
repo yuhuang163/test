@@ -10,7 +10,7 @@
 #include "ui_motorbox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
@@ -39,7 +39,9 @@ motorbox::motorbox(QWidget* parent) : box_base(parent), ui(new Ui::motorbox) {
 
     connect(testList[testList.size() - 1]->getMacLineEdit(), SIGNAL(returnPressed()), this, SLOT(resetValue()));
 }
-void motorbox::resetValue() { motor_cali_stage = 1; }
+void motorbox::resetValue() {
+    motor_cali_stage = 1;
+}
 motorbox::~motorbox() {
     // delete Fixture_uart_ui;
 
@@ -65,7 +67,7 @@ void motorbox::checkAllTest(int fixtureNumber) {
             }
             QMessageBox::warning(NULL, "警告", " 请把所有电机置于0位\t\r\n");
             qDebug() << "弹窗：请把所有电机置于0位";
-            emit go_screen_next(0);  // 没问题
+            emit go_screen_next(0); // 没问题
             return;
         }
 
@@ -73,7 +75,7 @@ void motorbox::checkAllTest(int fixtureNumber) {
             motor_cali_stage++;
             QMessageBox::warning(NULL, "警告", " 校准完成,请取出电机\t\r\n");
             qDebug() << "弹窗：校准完成,请取出电机";
-            emit go_screen_next(0);  // 没问题
+            emit go_screen_next(0); // 没问题
             return;
         }
 
@@ -96,7 +98,7 @@ void motorbox::checkAllTest(int fixtureNumber) {
             } else {
                 qDebug() << "发送没问题";
 
-                emit go_screen_next(0);  // 没问题
+                emit go_screen_next(0); // 没问题
             }
             return;
         }

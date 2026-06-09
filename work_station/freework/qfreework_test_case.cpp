@@ -14,23 +14,21 @@
 #include <memory>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
 
 bool isRuntimeMachineIndexPlaceholder(const QString& text) {
     const QString s = text.trimmed();
-    return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}")
-           || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}")
-           || s == QStringLiteral("{index}");
+    return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}") || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}") || s == QStringLiteral("{index}");
 }
 
 int fixtureMachineIndexFromParam(const QVariant& param) {
     if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
         const QStringList keys = {QStringLiteral("MachineIndex"), QStringLiteral("machineIndex"),
-                                  QStringLiteral("int"),         QStringLiteral("value")};
+                                  QStringLiteral("int"), QStringLiteral("value")};
         for (const QString& key : keys) {
             if (!map.contains(key))
                 continue;
@@ -64,17 +62,11 @@ enum class TuplePlaceholderKind {
 
 TuplePlaceholderKind tuplePlaceholderKind(const QString& text) {
     const QString s = text.trimmed();
-    if (s.compare(QStringLiteral("$TUPLE_PRODUCT_KEY"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_PRODUCT_KEY}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$PRODUCT_KEY"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_PRODUCT_KEY"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_PRODUCT_KEY}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$PRODUCT_KEY"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::ProductKey;
-    if (s.compare(QStringLiteral("$TUPLE_DEVICE_NAME"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_DEVICE_NAME}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$DEVICE_NAME"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_NAME"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_DEVICE_NAME}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$DEVICE_NAME"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::DeviceName;
-    if (s.compare(QStringLiteral("$TUPLE_DEVICE_SECRET"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("${TUPLE_DEVICE_SECRET}"), Qt::CaseInsensitive) == 0
-        || s.compare(QStringLiteral("$DEVICE_SECRET"), Qt::CaseInsensitive) == 0)
+    if (s.compare(QStringLiteral("$TUPLE_DEVICE_SECRET"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("${TUPLE_DEVICE_SECRET}"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("$DEVICE_SECRET"), Qt::CaseInsensitive) == 0)
         return TuplePlaceholderKind::DeviceSecret;
     return TuplePlaceholderKind::None;
 }
@@ -99,12 +91,11 @@ bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
     return false;
 }
 
-}  // namespace
+} // namespace
 
 int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
     const QVariant resolved = resolveTestCaseSendParamTree(param);
-    if (resolved.userType() == QMetaType::QString
-        && isRuntimeMachineIndexPlaceholder(resolved.toString())) {
+    if (resolved.userType() == QMetaType::QString && isRuntimeMachineIndexPlaceholder(resolved.toString())) {
         return qBound(1, getIndex(), 15);
     }
     int idx = fixtureMachineIndexFromParam(resolved);
@@ -153,7 +144,7 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
         return true;
 
     const QString stepName = def.meta.displayName.trimmed().isEmpty() ? def.meta.name.trimmed()
-                                                                       : def.meta.displayName.trimmed();
+                                                                      : def.meta.displayName.trimmed();
     if (failTupleWriteIfNoValidField(stepName, tupleData_.success, QStringLiteral("云端三元组未获取成功")))
         return false;
 
@@ -228,25 +219,11 @@ void QFreeWork::clearActiveTestCase() {
     testCaseMultiGateTableEmitted_ = false;
 }
 
-namespace {
-
-QString formatFixtureGateAsk(const TestCaseGate& g) {
-    if (g.op == TestCaseGateOp::Range) {
-        double low = g.low;
-        double high = g.high;
-        GateRegistry::resolveRangeBounds(g, low, high);
-        return QStringLiteral("[%1,%2]").arg(low).arg(high);
-    }
-    if (g.op == TestCaseGateOp::Gt)
-        return QStringLiteral(">%1").arg(g.low);
-    if (g.op == TestCaseGateOp::Lt)
-        return QStringLiteral("<%1").arg(g.high);
-    if (g.op == TestCaseGateOp::Eq)
-        return g.expected;
-    return g.expected;
+void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
+    if (gates.size() != 1 || gates.first().field != QStringLiteral("value") || !gates.first().expected.trimmed().isEmpty())
+        return;
+    gates[0].expected = resolvedExpectedTailSnText();
 }
-
-}  // namespace
 
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                               const QVariant& payload, bool& allPass, QString& detailOut) {
@@ -271,7 +248,7 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         item.testItem =
             stepName + QLatin1Char('-') + GateRegistry::fieldDisplayName(reportType, ge.field);
         item.testData = subDetail;
-        item.ask = formatFixtureGateAsk(ge);
+        item.ask = GateRegistry::formatGateAsk(ge, reportType);
         item.testResult = subPass ? passValue : failValue;
         rows.append(item);
     }
@@ -293,38 +270,33 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         return false;
 
     if (reportType == QStringLiteral("ProtocolSnData")) {
-        if (activeTestCase_.send.deviceCmd != QStringLiteral("Sn")
-            || activeTestCase_.send.action != TestCaseSendAction::Get)
+        if (activeTestCase_.send.deviceCmd != QStringLiteral("Sn") || activeTestCase_.send.action != TestCaseSendAction::Get)
             return false;
         if (!payload.canConvert<ProtocolSnData>()) {
             markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
             showlog(QStringLiteral("卡控失败：SN 回传数据类型无效"));
+            if (commandRetryTimer)
+                finishCommandRetryWait(false, QStringLiteral("卡控失败"));
             return true;
         }
     }
 
     QVector<TestCaseGate> gatesForEval = TestCaseStore::effectiveGates(activeTestCase_);
     if (gatesForEval.isEmpty()) {
-        if (activeTestCase_.gate.enabled) {
-            markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
-            showlog(QStringLiteral("卡控失败：未加载到判定项（请检查 case ini 的 Gate/Count 与 Gate/1..N）"));
-        }
-        return activeTestCase_.gate.enabled;
+        markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
+        showlog(QStringLiteral("卡控失败：未加载到判定项（请检查 case ini 的 Gate/Count 与 Gate/1..N）"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(false, QStringLiteral("卡控失败"));
+        return true;
     }
 
-    if (reportType == QStringLiteral("ProtocolSnData") && gatesForEval.size() == 1
-        && gatesForEval.first().field == QStringLiteral("value")
-        && gatesForEval.first().expected.trimmed().isEmpty()) {
-        gatesForEval[0].expected = QString::fromUtf8(expectedTailSnFromMes.trimmed());
-        if (gatesForEval[0].expected.isEmpty() && ui && ui->getMac)
-            gatesForEval[0].expected = ui->getMac->text().trimmed();
-    }
+    applyRuntimeSnGateExpected(gatesForEval);
 
     bool pass = true;
     QString detail;
-    const bool fixtureMultiGate = reportType == QStringLiteral("ProtocolFixturePcbaData")
-                                  && TestCaseStore::usesMultiFieldGates(activeTestCase_);
-    if (fixtureMultiGate) {
+    const bool multiFieldMode = TestCaseStore::usesMultiFieldGates(activeTestCase_);
+    const bool fixtureTableMode = reportType == QStringLiteral("ProtocolFixturePcbaData") && multiFieldMode;
+    if (fixtureTableMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
     } else if (gatesForEval.size() > 1) {
         GateRegistry::evaluateAll(gatesForEval, reportType, payload, pass, detail);
@@ -332,102 +304,15 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
     }
 
-    const TestCaseGate& primaryGate = gatesForEval.first();
-    QString testData = detail;
-    QString ask;
-    if (reportType == QStringLiteral("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
-        testData = payload.value<ProtocolSnData>().value.trimmed();
-        ask = primaryGate.expected.trimmed();
-    } else if (reportType == QStringLiteral("ProtocolRssiData") && payload.canConvert<ProtocolRssiData>()) {
-        testData = QString::number(payload.value<ProtocolRssiData>().dbm);
-        if (primaryGate.op == TestCaseGateOp::Range) {
-            double low = primaryGate.low;
-            double high = primaryGate.high;
-            GateRegistry::resolveRangeBounds(primaryGate, low, high);
-            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
-        }
-    } else if (reportType == QStringLiteral("ProtocolBatteryData") && payload.canConvert<ProtocolBatteryData>()) {
-        testData = QString::number(payload.value<ProtocolBatteryData>().percent);
-        if (primaryGate.op == TestCaseGateOp::Range) {
-            double low = primaryGate.low;
-            double high = primaryGate.high;
-            GateRegistry::resolveRangeBounds(primaryGate, low, high);
-            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
-        }
-    } else if (reportType == QStringLiteral("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
-        const ProtocolBaseInfoData base = payload.value<ProtocolBaseInfoData>();
-        if (primaryGate.field == QStringLiteral("soft_version"))
-            testData = base.soft_version.trimmed();
-        else if (primaryGate.field == QStringLiteral("res_version"))
-            testData = base.res_version.trimmed();
-        else if (primaryGate.field == QStringLiteral("product_name"))
-            testData = base.product_name.trimmed();
-    } else if (reportType == QStringLiteral("ProtocolFixturePcbaData")
-               && payload.canConvert<FixturePacketData>()) {
-        const FixturePacketData pack = payload.value<FixturePacketData>();
-        testData = QStringLiteral("机号=%1 静态=%2 工作=%3 充电=%4 泵=%5 MCU=%6 电池=%7")
-                       .arg(pack.machineNumber)
-                       .arg(pack.staticCurrent)
-                       .arg(pack.workingCurrent)
-                       .arg(pack.chargingCurrent)
-                       .arg(pack.pumpVoltageMv)
-                       .arg(pack.mcuVoltageMv)
-                       .arg(pack.batteryVoltageMv);
-        if (TestCaseStore::usesMultiFieldGates(activeTestCase_)) {
-            QStringList expectedParts;
-            for (const TestCaseGate& g : gatesForEval) {
-                const QString name = GateRegistry::fieldDisplayName(reportType, g.field);
-                if (g.op == TestCaseGateOp::Range) {
-                    double low = g.low;
-                    double high = g.high;
-                    GateRegistry::resolveRangeBounds(g, low, high);
-                    expectedParts.append(QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high));
-                } else if (g.op == TestCaseGateOp::Eq) {
-                    expectedParts.append(QStringLiteral("%1=%2").arg(name, g.expected));
-                } else if (g.op == TestCaseGateOp::Gt) {
-                    expectedParts.append(QStringLiteral("%1>%2").arg(name).arg(g.low));
-                } else if (g.op == TestCaseGateOp::Lt) {
-                    expectedParts.append(QStringLiteral("%1<%2").arg(name).arg(g.high));
-                } else {
-                    expectedParts.append(QStringLiteral("%1:%2").arg(name, g.expected));
-                }
-            }
-            ask = expectedParts.join(QLatin1Char(';'));
-        } else if (primaryGate.op == TestCaseGateOp::Range) {
-            double low = primaryGate.low;
-            double high = primaryGate.high;
-            GateRegistry::resolveRangeBounds(primaryGate, low, high);
-            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
-        } else if (primaryGate.op == TestCaseGateOp::Eq) {
-            ask = primaryGate.expected;
-        }
-    } else if (reportType == QStringLiteral("ProtocolPeriphStateData")
-               && payload.canConvert<ProtocolPeriphStateData>()) {
-        const ProtocolPeriphStateData periph = payload.value<ProtocolPeriphStateData>();
-        testData = QStringLiteral("press0=%1;press1=%2;battery=%3;touch=%4;led=%5;pd=%6")
-                       .arg(periph.press0_state)
-                       .arg(periph.press1_state)
-                       .arg(periph.battery_ic_state)
-                       .arg(periph.touch_ic_state)
-                       .arg(periph.led_ic_state)
-                       .arg(periph.pd_ic_state);
-        if (TestCaseStore::usesMultiFieldGates(activeTestCase_)) {
-            QStringList expectedParts;
-            for (const TestCaseGate& g : gatesForEval)
-                expectedParts.append(QStringLiteral("%1=%2")
-                                         .arg(GateRegistry::fieldDisplayName(reportType, g.field), g.expected));
-            ask = expectedParts.join(QLatin1Char(';'));
-        } else if (primaryGate.op == TestCaseGateOp::Eq) {
-            ask = primaryGate.expected;
-        } else if (primaryGate.op == TestCaseGateOp::Range) {
-            double low = primaryGate.low;
-            double high = primaryGate.high;
-            GateRegistry::resolveRangeBounds(primaryGate, low, high);
-            ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
-        }
-    }
+    GateStepDisplay display =
+        GateRegistry::formatStepDisplay(gatesForEval.first(), gatesForEval, reportType, payload, multiFieldMode);
+    if (display.testData.isEmpty())
+        display.testData = detail;
 
-    markActiveTestCaseStepDone(pass, testData, ask);
+    markActiveTestCaseStepDone(pass, display.testData, display.ask);
+    if (commandRetryTimer) {
+        finishCommandRetryWait(pass, pass ? QStringLiteral("卡控通过，步骤完成") : QStringLiteral("卡控失败"));
+    }
     if (!pass) {
         result = failValue;
         showlog(QStringLiteral("卡控失败：%1").arg(detail));
@@ -457,8 +342,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected()
-        && !TestCaseRunner::stepRequiresProductBle(def)) {
+    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
         ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
         if (!TestCaseRunner::stepWaitsForPromptAck(def))
             ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
@@ -625,8 +509,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
             return;
         stopWaitTimer();
         const QVariant payload = QVariant::fromValue(pack);
-        if (def.gate.enabled
-            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
+        if (def.gate.enabled && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
             return;
         const QString detail =
             QStringLiteral("机号=%1 静态=%2uA 工作=%3mA")

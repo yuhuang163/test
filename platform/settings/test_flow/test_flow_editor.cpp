@@ -35,7 +35,7 @@
 #include <QVBoxLayout>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -75,13 +75,13 @@ bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlo
     if (a.size() != b.size())
         return false;
     for (int i = 0; i < a.size(); ++i) {
-        if (a.at(i).caseName != b.at(i).caseName)
+        if (a.at(i).caseName != b.at(i).caseName || a.at(i).enabled != b.at(i).enabled)
             return false;
     }
     return true;
 }
 
-}  // namespace
+} // namespace
 
 // ---------- TestCaseBlock ----------
 
@@ -184,10 +184,10 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     menu.exec(event->globalPos());
 }
 
-
 // ---------- TestFlowEditor ----------
 
-TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {}
+TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {
+}
 
 void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                             QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
@@ -293,14 +293,12 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                 if (names.isEmpty())
                     return;
 
-                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QLatin1Char('、'))
-                                                                + QStringLiteral(" 等 %1 项").arg(names.count())
+                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QLatin1Char('、')) + QStringLiteral(" 等 %1 项").arg(names.count())
                                                           : names.join(QLatin1Char('、'));
                 if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
                                           QStringLiteral("将永久删除 test_case 下以下功能块 ini：\n%1\n\n"
                                                          "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
-                                              .arg(preview))
-                    != QMessageBox::Yes) {
+                                              .arg(preview)) != QMessageBox::Yes) {
                     return;
                 }
 
@@ -694,8 +692,7 @@ void TestFlowEditor::promptRemoveCurrentFlowStation() {
     if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
                               QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\n"
                                              "不会删除 test_case 下的功能块 ini。")
-                                  .arg(label))
-        != QMessageBox::Yes) {
+                                  .arg(label)) != QMessageBox::Yes) {
         return;
     }
     QString err;
@@ -729,13 +726,14 @@ void TestFlowEditor::clearBlocks() {
     }
 }
 
-void TestFlowEditor::appendBlock(const QString& caseName) {
+void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
     if (!scroll_ || !flowLayout_)
         return;
     QWidget* container = scroll_->widget();
     if (!container)
         return;
     auto* block = new TestCaseBlock(caseName, container);
+    block->setChecked(enabled);
     connect(block, &TestCaseBlock::editRequested, this, &TestFlowEditor::openEditDialog);
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
@@ -763,6 +761,7 @@ QVector<TestFlowItemEntry> TestFlowEditor::currentFlowEntries() const {
             continue;
         TestFlowItemEntry entry;
         entry.caseName = block->caseName();
+        entry.enabled = block->isChecked();
         entries.append(entry);
     }
     return entries;
@@ -824,8 +823,7 @@ bool TestFlowEditor::hasUnsavedChanges() const {
         return false;
     if (!flowEntriesEqual(currentFlowEntries(), savedEntriesSnapshot_))
         return true;
-    if (stopFlowOnTestFailCheck_
-        && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
+    if (stopFlowOnTestFailCheck_ && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
         return true;
     }
     return false;
@@ -867,7 +865,7 @@ void TestFlowEditor::reloadCurrentStation() {
     }
     const QVector<TestFlowItemEntry> entries = TestCaseStore::loadStationFlowItems(key);
     for (const TestFlowItemEntry& entry : entries)
-        appendBlock(entry.caseName);
+        appendBlock(entry.caseName, entry.enabled);
     if (flowLayout_ && flowLayout_->count() > 0) {
         if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(0)->widget()))
             setSelectedBlock(block);

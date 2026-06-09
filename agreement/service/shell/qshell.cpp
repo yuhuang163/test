@@ -6,8 +6,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-Qshell::Qshell(QObject *parent) : QObject(parent)
-{
+Qshell::Qshell(QObject* parent) : QObject(parent) {
     channel_ = new QProcessChannel(this);
     channel_->setTxPrefix(QStringLiteral("SHELL TX:"));
     channel_->setRxPrefix(QStringLiteral("SHELL RX:"));
@@ -18,20 +17,18 @@ Qshell::Qshell(QObject *parent) : QObject(parent)
     channel_->setInitCommand(initCommand);
 }
 
-Qshell::~Qshell()
-{
+Qshell::~Qshell() {
     stop();
 }
 
-bool Qshell::start()
-{
+bool Qshell::start() {
     QString program = "powershell.exe";
     QStringList args = {
         "-NoLogo",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
-        "-NoExit",          // ⭐ 必须
-        "-Command", "-"     // ⭐ stdin
+        "-NoExit",      // ⭐ 必须
+        "-Command", "-" // ⭐ stdin
     };
     const bool ok = channel_->start(program, args, 3000);
     if (ok) {
@@ -42,18 +39,15 @@ bool Qshell::start()
     return ok;
 }
 
-
-void Qshell::stop()
-{
+void Qshell::stop() {
     if (channel_) {
         channel_->stop();
     }
 }
 
-void Qshell::sendCommand(const QString &cmd,
-                         std::function<void(const QString &, qint64)> callback,
-                         qint64 timeoutMs)
-{
+void Qshell::sendCommand(const QString& cmd,
+                         std::function<void(const QString&, qint64)> callback,
+                         qint64 timeoutMs) {
     if (channel_) {
         channel_->sendCommand(cmd, std::move(callback), timeoutMs);
     }

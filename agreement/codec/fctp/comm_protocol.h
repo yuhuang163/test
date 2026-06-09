@@ -22,4 +22,3 @@ extern "C" {
 #endif
 
 #endif // __COMM_PROTOCOL_H__
-

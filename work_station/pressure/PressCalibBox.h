@@ -14,25 +14,25 @@
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
-    class PressCalibBox;
+class PressCalibBox;
 }
 QT_END_NAMESPACE
 
 class PressCalibBox : public box_base {
     Q_OBJECT
-public:
+  public:
     explicit PressCalibBox(QWidget* parent = nullptr);
     ~PressCalibBox();
 
-private:
+  private:
     Ui::PressCalibBox* ui;
-    Fixture_uart* Fixture_uart_ui = NULL;  // 设备控制窗口
+    Fixture_uart* Fixture_uart_ui = NULL; // 设备控制窗口
 
     std::vector<int> display_state;
-private slots:
-    void checkAllover(int testNumber)override;
+  private slots:
+    void checkAllover(int testNumber) override;
     void reset_display_state();
     void send_uart_data(FixturePacketData PacketData);
     void display_on_screen(int instruct);
 };
-#endif  // MAINWINDOW_H
+#endif // MAINWINDOW_H

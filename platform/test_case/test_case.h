@@ -25,11 +25,11 @@ QString flowIniFileName();
 bool ensureRootDir();
 bool isValidCaseFileName(const QString& name, QString* errorOut = nullptr);
 bool isReservedCaseName(const QString& name);
-}  // namespace TestCasePaths
+} // namespace TestCasePaths
 
 // ---------- 存储 ----------
 class TestCaseStore {
-public:
+  public:
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
@@ -47,7 +47,7 @@ public:
                                      bool stopFlowOnTestFail = true);
     static QStringList listStationKeysFromFlow();
 
-    /** 内置工站（与设置页 TestOrder 预设一致，并含 default / FREE_WORK） */
+    /** 内置工站（与测试流程编排页预设一致，并含 default / FREE_WORK） */
     static QVector<TestFlowStationEntry> defaultFlowStationPresets();
     /** 从 总的测试流程.ini [FlowStations] 读取；无记录时写入预设并返回 */
     static QVector<TestFlowStationEntry> loadFlowStationCatalog();
@@ -67,38 +67,25 @@ public:
 
 // ---------- 校验 ----------
 class TestCaseValidator {
-public:
+  public:
     static bool validateCase(const TestCaseDefinition& def, QStringList& errors);
 };
 
 // ---------- 设备指令 ----------
-enum class DeviceCmdParamKind { None, Int, UInt, String, JsonMap };
-
-struct DeviceCmdParamSchema {
-    DeviceCmdParamKind kind = DeviceCmdParamKind::None;
-    QString hint;
-};
-
 class DeviceCmdCatalog {
-public:
-    static QStringList allDeviceCmdNames();
+  public:
     static QStringList allDeviceCmdNames(TestCaseSendAction action);
-    static QStringList allDeviceCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
-    static bool isCmdSupportedByProtocol(DeviceCmd cmd, TestCaseProductProtocol protocol, TestCaseSendAction action);
     static TestCaseSendAction actionFor(DeviceCmd cmd);
     static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
     static QString deviceCmdUiLabel(const QString& enumName);
-    static QString deviceCmdUiLabel(const QString& enumName, TestCaseProductProtocol protocol);
     static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
     static QString deviceCmdToName(DeviceCmd cmd);
     static bool paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out);
     /** 设置页「指令参数」填写说明（含示例）。 */
     static QString paramUiHint(const QString& deviceCmdName);
-    static QVariant paramFromSettings(const QSettings& settings, const QString& prefix);
-    static void paramToSettings(QSettings& settings, const QString& prefix, const QVariant& value);
     static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value);
     /** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
@@ -106,8 +93,7 @@ public:
 };
 
 class DongleCmdCatalog {
-public:
-    static QStringList allDongleCmdNames();
+  public:
     static QStringList allDongleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(DongleCmd cmd);
     static bool isCmdForAction(DongleCmd cmd, TestCaseSendAction action);
@@ -142,8 +128,7 @@ enum class FixturePcbaCmd {
 };
 
 class FixturePcbaCmdCatalog {
-public:
-    static QStringList allFixturePcbaCmdNames();
+  public:
     static QStringList allFixturePcbaCmdNames(TestCaseSendAction action);
     static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
     static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
@@ -160,7 +145,7 @@ public:
 };
 
 class ProductSerialCmdCatalog {
-public:
+  public:
     static QStringList allProductSerialCmdNames();
     static TestCaseSendAction actionFor(ProductSerialCmd cmd);
     static bool isCmdForAction(ProductSerialCmd cmd, TestCaseSendAction action);
@@ -174,8 +159,7 @@ public:
 };
 
 class TupleCmdCatalog {
-public:
-    static QStringList allTupleCmdNames();
+  public:
     static QStringList allTupleCmdNames(TestCaseSendAction action);
     static TestCaseSendAction actionFor(TupleCmd cmd);
     static bool isCmdForAction(TupleCmd cmd, TestCaseSendAction action);
@@ -200,8 +184,14 @@ struct GateTypeDescriptor {
     QVector<GateFieldDescriptor> fields;
 };
 
+/** 卡控步 MES/表格展示用的 testData 与 ask。 */
+struct GateStepDisplay {
+    QString testData;
+    QString ask;
+};
+
 class GateRegistry {
-public:
+  public:
     static QStringList reportTypes();
     static QVector<GateTypeDescriptor> allTypeDescriptors();
     static bool descriptorFor(const QString& reportType, GateTypeDescriptor& out);
@@ -216,13 +206,20 @@ public:
                             bool& passOut, QString& detailOut);
     /** 解析 range 卡控上下限（含 LowSettingsKey/HighSettingsKey）。 */
     static void resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut);
+    /** 单项卡控的期望展示（范围/比较符/等值）。 */
+    static QString formatGateAsk(const TestCaseGate& gate, const QString& reportType);
+    /** 多项卡控合并期望展示。 */
+    static QString formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType);
+    /** 从回包与主卡控项生成步骤 testData/ask（判定逻辑仍用 evaluate/evaluateAll）。 */
+    static GateStepDisplay formatStepDisplay(const TestCaseGate& primaryGate, const QVector<TestCaseGate>& allGates,
+                                             const QString& reportType, const QVariant& payload, bool multiFieldMode);
 };
 
 // ---------- 钩子（仅自由工站 QFreeWork 执行） ----------
 using TestCaseHookFn = std::function<void(QFreeWork*)>;
 
 class TestCaseHookRegistry {
-public:
+  public:
     static void registerHook(const QString& hookId, TestCaseHookFn fn);
     static bool contains(const QString& hookId);
     static QStringList hookIds();
@@ -231,12 +228,12 @@ public:
 
 /** 自由工站 test_case 钩子（幂等）。 */
 void registerFreeWorkTestCaseHooks();
-/** FREEWORK_TEST_LIST 全量钩子（幂等，实现于 qfreework_case_hooks.cpp）。 */
+/** 自由工站目录钩子（幂等，实现于 qfreework_case_hooks.cpp）。 */
 void registerQFreeWorkCatalogTestCaseHooks();
 
 // ---------- 执行 ----------
 class TestCaseRunner {
-public:
+  public:
     static QStringList loadFlowForStation(const QString& stationKey);
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
@@ -252,4 +249,4 @@ public:
     static int commandTimeoutMs(const TestCaseDefinition& def);
 };
 
-#endif  // PLATFORM_TEST_CASE_H
+#endif // PLATFORM_TEST_CASE_H

@@ -8,26 +8,24 @@
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
-class DraggableCheckBox : public QCheckBox
-{
+class DraggableCheckBox : public QCheckBox {
     Q_OBJECT
 
-public:
+  public:
     DraggableCheckBox(const QString& text, int index, QWidget* parent = nullptr);
 
     int getIndex() const;
     void setIndex(int newIndex);
 
-protected:
+  protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
 
-private:
+  private:
     void performDrag();
 
     QPoint startPos;
     int index;
 };
-
 
 #endif // DRAGGABLECHECKBOX_H

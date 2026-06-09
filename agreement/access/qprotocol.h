@@ -10,7 +10,7 @@
 
 class qProtocol : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit qProtocol(QObject* parent = nullptr);
     virtual ~qProtocol() = default;
 
@@ -23,15 +23,16 @@ public:
     // 统一通用消息发送入口（由具体协议实现；不支持时返回 false）。
     virtual bool sendCustomMessage(const QVariantMap& map) = 0;
 
-signals:
-    void send_pb_date(QString data);
+  protected:
+    void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
+        emit reportReceived(ProtocolReport(reportType, payload));
+    }
+
+  signals:
+    /** 统一上行数据信封 */
+    void reportReceived(const ProtocolReport& report);
+    /** 传输层 ACK，与结构化 report 分离 */
     void sendGetProductResponse(int data);
-    void send_base_data(ProtocolBaseInfoData data);
-    void send_sn_data(ProtocolSnData data);
-    void send_battary(ProtocolBatteryData data);
-    void send_button_state(ProtocolButtonStateData data);
-    void send_periph_data(ProtocolPeriphStateData data);
-    void send_photosensitive_info(ProtocolPhotosensitiveData data);
 };
 
-#endif  // QPROTOCOL_H
+#endif // QPROTOCOL_H

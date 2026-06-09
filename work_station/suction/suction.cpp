@@ -11,12 +11,11 @@
 #include <QVector>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
-{
+Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
         return Qusb::ProtocolType::Scpi;
@@ -29,9 +28,8 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type)
     }
     return Qusb::ProtocolType::Auto;
 }
-}
-suction::suction(int index, QWidget* parent) :
-    test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
+} // namespace
+suction::suction(int index, QWidget* parent) : test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = SUCTION_VER;
@@ -39,7 +37,7 @@ suction::suction(int index, QWidget* parent) :
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
     updateMainStyle("Ubuntu.qss");
-    scanSerialPorts();  // 要搜索一下一开始
+    scanSerialPorts(); // 要搜索一下一开始
 
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -107,7 +105,7 @@ suction::suction(int index, QWidget* parent) :
         ui->productComNameCombo->setEnabled(true);
         ui->productConnectButton->setEnabled(true);
         ui->productDisconnectButton->setEnabled(true);
-    }else {
+    } else {
         ui->productComNameCombo->setEnabled(false);
         ui->productConnectButton->setEnabled(false);
         ui->productDisconnectButton->setEnabled(false);
@@ -118,7 +116,7 @@ suction::suction(int index, QWidget* parent) :
     // } else {
     //     productBaudRate = 1000000;
     // }
-    ui->tabWidget->setCurrentIndex(0);  // 设置当前页为第一页
+    ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
     connect(visa, &Qvisa::programmablePowerVoltageRead, this, &suction::refreshProgrammablePowerVoltage);
     connect(visa, &Qvisa::programmablePowerCurrentRead, this, &suction::refreshProgrammablePowerCurrent);
 }
@@ -164,7 +162,7 @@ void suction::applySuctionProtocolConfig() {
         showlog(QStringLiteral("程控电源配置: useVisa=%1, address=%2")
                     .arg(SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() ? 1 : 0)
                     .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("GPIB0::7::INSTR"))
-                           .toString()));
+                             .toString()));
     }
 
     showlog("吸力测试协议=" + SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString() +
@@ -220,7 +218,9 @@ void suction::refreshProgrammablePowerCurrent(double valueAmps, bool ok) {
     }
 }
 
-void suction::disconnect_dongle() { on_disconnectButton_clicked(); }
+void suction::disconnect_dongle() {
+    on_disconnectButton_clicked();
+}
 
 void suction::refreshMusicState(ProtocolMusicStateData data) {
     bool isMusicStateTest = SETTINGS.value("Music/MusicState_checkBox").toBool();
@@ -435,9 +435,9 @@ void suction::refreshPeriphData(ProtocolPeriphStateData data) {
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
              << "audio_state" << data.audio_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-    << "battery_ic_state" << data.battery_ic_state;
+             << "battery_ic_state" << data.battery_ic_state;
     qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
-    << "touch_ic_state" << data.touch_ic_state;
+             << "touch_ic_state" << data.touch_ic_state;
 
     if (refresh_periph_times) {
         qDebug() << "pcba号：" << getIndex() << "mac地址：" << macAddress << "log："
@@ -694,12 +694,12 @@ void suction::on_snInput_returnPressed() {
     }
 
     showlog("正在查询mac地址");
-    emit send_startTest(getIndex());
+    emit send_start_test(getIndex());
     appendStationResult(testItems, "主板条码", "0.0000", passValue);
     testResultTableUpdate(testItems);
     // 获取比亚迪mes的sn校验规则
     processGetMesTestValue();
-    // BYD + 启用 MES：输入不像公司 SN 时视为过程码，经 getMesTestValue → bydmes::GetTestData 分支走 QuerySnByProcessCode
+    // BYD + 启用 MES：输入不像公司 SN 时视为过程码，经 send_mes_test_value → bydmes::GetTestData 分支走 QuerySnByProcessCode
     // MES站前检测，成功再开始测试
     if (ui->isusemes->checkState()) {
         processInspection(ui->snInput->text());
@@ -719,7 +719,7 @@ void suction::processGetMesTestValue() {
         pack.is_hq_send_mac = 1;
         pack.mechines = getIndex();
         pack.instruct_num = "079";
-        emit getMesTestValue(pack);
+        emit send_mes_test_value(pack);
     }
 }
 void suction::getTestValue(const int mechines, const QString value) {
@@ -803,41 +803,38 @@ void suction::getTestValue(const int mechines, const QString value) {
             on_macInput_returnPressed();
         }
     }
-
-
 }
 
 void suction::on_macInput_returnPressed() {
-        ui->test_result->setText("WAIT");
-        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                       "padding: 10px; text-align: center; ");
-    
-        if (!dongleSerialPort->isOpen()) {
-            on_connectButton_clicked();
-        }
-        
-    
-        // 检查是否是mac格式
-        static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-        // 使用正则表达式匹配
-        if (!macRegex.match(ui->macInput->text()).hasMatch()) {
-            QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
-            return;
-        } else {
-            macAddress = ui->macInput->text();
-            ui->macLabel->setText("蓝牙mac: " + macAddress);
-    
-            ui->test_result->setText("WAIT");
-            ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
-                                           "10px; padding: 10px; text-align: center; ");
-    
-            qDebug() << getIndex() << macAddress;
-            // 主状态机流程
-            isTestContinue = true;
-            emit send_go_next_focus();
-            state = STATE_IDLE;
-        }
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                   "padding: 10px; text-align: center; ");
+
+    if (!dongleSerialPort->isOpen()) {
+        on_connectButton_clicked();
     }
+
+    // 检查是否是mac格式
+    static const QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
+    // 使用正则表达式匹配
+    if (!macRegex.match(ui->macInput->text()).hasMatch()) {
+        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
+        return;
+    } else {
+        macAddress = ui->macInput->text();
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
+        ui->test_result->setText("WAIT");
+        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                       "10px; padding: 10px; text-align: center; ");
+
+        qDebug() << getIndex() << macAddress;
+        // 主状态机流程
+        isTestContinue = true;
+        emit send_go_next_focus();
+        state = STATE_IDLE;
+    }
+}
 
 void suction::clearDisplay() {
     ui->msgEdit->clear();
@@ -936,7 +933,7 @@ void suction::on_usbconnectButton_clicked() {
         params.flowControl = QSerialPort::HardwareControl;
         params.rtsDtrMode = SerialChannel::RtsDtrMode::DtrOnly;
         if (usbSerialChannel_->open(params)) {
-            emit refreshUsbSerialPortState(1);
+            emit send_usb_serialPort_state(1);
             showlog(QStringLiteral("Pico吸力板串口已连接：%1，波特率=%2，流控=RTS/CTS")
                         .arg(ui->usbcomNameCombo->currentText())
                         .arg(usbBaudRate));
@@ -1010,8 +1007,8 @@ void suction::on_suctionPowerVisaApplyButton_clicked() {
         ui->suctionPowerUseVisaCheckBox->setChecked(powerCfg.useVisa);
         ui->suctionPowerVisaAddressEdit->setText(powerCfg.visaAddress);
         showlog(QStringLiteral("已保存程控电源 VISA 配置（VisaPower），useVisa=%1，地址=%2")
-                     .arg(powerCfg.useVisa ? 1 : 0)
-                     .arg(powerCfg.visaAddress));
+                    .arg(powerCfg.useVisa ? 1 : 0)
+                    .arg(powerCfg.visaAddress));
     }
 }
 
@@ -1039,21 +1036,21 @@ void suction::on_jigDisconnectButton_clicked() {
     ui->jigConnectButton->setEnabled(true);
 }
 
-void suction::processInspection(QString stringsn) {
-    if (stringsn != "" || !ui->isusemes->checkState()) {
+void suction::processInspection(QString inputSnText) {
+    if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
 
             showlog("正在进行站前检测");
-            pack.sn = stringsn;
+            pack.sn = inputSnText;
             pack.mechines = getIndex();
             pack.instruct_num = "079";
-            emit sendProcessInspection(pack);
+            emit send_process_inspection(pack);
         }
     } else {
         showlog("SN比对错误");
     }
 
-    if (!ui->isusemes->checkState())  // 离线
+    if (!ui->isusemes->checkState()) // 离线
     {
         ui->mes_state->setText("MES");
         ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
@@ -1078,10 +1075,10 @@ void suction::startFlowWithMac(const QString& mac) {
         on_usbconnectButton_clicked();
     }
     if (pack.factory == "byd" && !jigSerialPort->isOpen()) {
-    openJigSerialPort();
+        openJigSerialPort();
     }
     // jig->set_cylinder_state(1, getIndex());
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     state = STATE_IDLE;
     isTestContinue = true;
 }
@@ -1090,320 +1087,320 @@ void suction::startTask() {
     if (isTestContinue) {
         ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
         switch (state) {
-            case STATE_IDLE: {  // 复位一切
-                // 同工站双设备：传感器走 Pico/SCPI，电源走基类通用 VISA 对象。
-                bool powerCfgOk = true;
-                if (suctionExternalPowerEnabled) {
-                    if (!visa) {
-                        powerCfgOk = false;
-                    } else {
-                        powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
-                    }
-                }
-                const bool powerOutOk = setExternalProgrammablePowerOutput(true);
-                showlog(QString("程控电源配置=%1, 输出打开=%2")
-                            .arg(powerCfgOk ? "OK" : "NG")
-                            .arg(powerOutOk ? "OK" : "NG"));
-                if (!powerCfgOk || !powerOutOk) {
-                    pack.itemvalue = "power_on=NG";
-                    totalresult = failValue;
-                    state = STATE_SAVE_RESULT;
-                    break;
-                }
-                if (suctionExternalPowerEnabled && powerOutOk) {
-                    auto* prompt = new QMessageBox(QMessageBox::Information,
-                                                   QStringLiteral("操作提示"),
-                                                   QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
-                                                   QMessageBox::NoButton,
-                                                   this);
-                    prompt->setAttribute(Qt::WA_DeleteOnClose);
-                    prompt->show();
-                    QTimer::singleShot(5000, prompt, &QMessageBox::accept);
-                }
-                protocolManager.resetAllPb();
-                periph_state = 0;
-                base_state = 0;
-                isovertime = 0;
-                refresh_base_times = 1;
-                refresh_periph_times = 1;
-                totalresult = "";
-                at->resetConnected();
-                measure_ammeter = 0;
-                waitWork(1000);
-                at->set(DongleCmd::BleScanConnect, ui->macInput->text());  // 发送mac地址
-                showlog("MAC地址为：" + ui->macInput->text());
-                showlog("已经发送mac地址");
-                TestTime.start();
-                state = STATE_SET_TEST_MODE;
-
-                break;
-            }
-
-            case STATE_SET_TEST_MODE:
-                if (at->getConnected()) {
-                    showlog("设置工厂模式");
-                    sendCommandWithRetry([&]() { 
-                        protocolManager.set(DeviceCmd::FacMode, 1);
-                    });
-                    waitWork(300);
-                    state = STATE_VERIFY_TEST_MODE;
-                }
-                break;
-
-            case STATE_VERIFY_TEST_MODE:
-                if (canGoNext) {
-                    showlog("已进入工厂模式");
-                    appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
-                    testResultTableUpdate(testItems);
-                    sendCommandWithRetry([&]() { 
-                        QVariantMap m;
-                        m["enter"] = 1;
-                        protocolManager.set(DeviceCmd::SuctionMode, m);
-                    });
-                    state = STATE_VERIFY_SUCTION_MODE;
-                }
-                break;
-
-            case STATE_VERIFY_SUCTION_MODE:
-                if (canGoNext) {
-                    if (sendRetryOver) {
-                        showlog("进入吸力模式失败（设备无响应或超时）");
-                        appendStationResult(testItems, "进入吸力模式", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                        totalresult = failValue;
-                        pack.itemvalue = "suction_mode_timeout=NG";
-                        state = STATE_SAVE_RESULT;
-                    } else {
-                        showlog("已进入吸力模式");
-                        appendStationResult(testItems, "进入吸力模式", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                        state = STATE_SUCTION_TEST;
-                    }
-                }
-                break;
-
-            case STATE_SUCTION_TEST: {
-                    const int durationMs = qMax(1000, suctionSampleDurationMs);
-                    const int intervalMs = qMax(20, suctionSampleIntervalMs);
-                    const int totalSamples = qMax(1, durationMs / intervalMs);
-                    QVector<double> leftSamples;
-                    QVector<double> rightSamples;
-                    leftSamples.reserve(totalSamples);
-                    rightSamples.reserve(totalSamples);
-
-                    if (suctionUsePicoSensor) {
-                        showlog(QStringLiteral("双通道吸力(Pico)：第1列=左吸力，第2列=右吸力，帧格式 $X1 X2 X3 X4;"));
-                        if (!usbSerialPort->isOpen()) {
-                            showlog(QStringLiteral("Pico吸力板串口未连接，正在自动连接"));
-                            on_usbconnectButton_clicked();
-                        }
-                        if (!usbSerialPort->isOpen()) {
-                            showlog(QStringLiteral("Pico吸力板串口未连接，无法采集吸力数据"));
-                            totalresult = failValue;
-                            pack.itemvalue = "pico_suction_not_connected=NG";
-                            state = STATE_SAVE_RESULT;
-                            break;
-                        }
-                        picoRxBuffer_.clear();
-                        usbSerialPort->clear(QSerialPort::Input);
-                        sendPicoSysModeStart();
-                        waitWork(100);
-                        if (picoRxBuffer_.isEmpty())
-                            showlog(QStringLiteral("Pico已发送SYSMODE=1，100ms内暂未收到数据"));
-                    } else {
-                        showlog(QStringLiteral("双通道吸力：本协议下按「先左后右」两次读数，左/右数据来自设备返回顺序"));
-                    }
-
-                    showlog(QString("━━━━━ 双传感器并行采集 (%1ms) ━━━━━").arg(durationMs));
-                    const QDateTime start = QDateTime::currentDateTime();
-                    const QDateTime end = start.addMSecs(durationMs);
-                    showlog("开始时间: " + start.toString("hh:mm:ss.zzz"));
-                    showlog("预计结束: " + end.toString("hh:mm:ss.zzz"));
-
-                    bool collectionStopped = false;
-                    for (int i = 0; i < totalSamples; ++i) {
-                        if (!isTestContinue) {
-                            collectionStopped = true;
-                            break;
-                        }
-                        if (suctionUsePicoSensor) {
-                            // Pico 板持续主动上报；经 SerialChannel 防抖后由 onUsbSerialFrame 解析并更新 damLeftKpa_/damRightKpa_。
-                            if (usbSerialPort->bytesAvailable() > 0) {
-                                onUsbSerialFrame(usbSerialPort->readAll());
-                            }
-                        } else {
-                            usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
-                        }
-                        const int readDelayMs = suctionUsePicoSensor ? 0 : 30;
-                        if (readDelayMs > 0) {
-                            waitWork(readDelayMs);
-                        }
-                        const double leftKpa = suctionUsePicoSensor ? damLeftKpa_ : measure_ammeter;
-                        leftSamples.append(leftKpa);
-
-                        const double rightKpa = suctionUsePicoSensor ? damRightKpa_ : measure_ammeter;
-                        rightSamples.append(rightKpa);
-
-                        showlog(QString("[吸力原始点%1] 左: %2Kpa | 右: %3Kpa")
-                                    .arg(i + 1)
-                                    .arg(leftKpa, 0, 'f', 2)
-                                    .arg(rightKpa, 0, 'f', 2));
-                        if (((i + 1) % 10) == 0) {
-                            showlog(QString("[%1] 左: %2Kpa | 右: %3Kpa")
-                                        .arg(i + 1)
-                                        .arg(leftKpa, 0, 'f', 2)
-                                        .arg(rightKpa, 0, 'f', 2));
-                        }
-                        waitWork(qMax(0, intervalMs - readDelayMs));
-                    }
-                    if (collectionStopped) {
-                        sendPicoSysModeStop();
-                        showlog(QStringLiteral("吸力采集已停止"));
-                        break;
-                    }
-
-                    const double lowerBound = suctionPeakTargetKpa - suctionPeakToleranceKpa;
-                    const double upperBound = suctionPeakTargetKpa + suctionPeakToleranceKpa;
-                    const bool hasSamples = !leftSamples.isEmpty() && !rightSamples.isEmpty();
-                    const double leftPeak = hasSamples ? *std::min_element(leftSamples.cbegin(), leftSamples.cend()) : 0.0;
-                    const double rightPeak = hasSamples ? *std::min_element(rightSamples.cbegin(), rightSamples.cend()) : 0.0;
-                    const bool leftPass = hasSamples && leftPeak >= lowerBound && leftPeak <= upperBound;
-                    const bool rightPass = hasSamples && rightPeak >= lowerBound && rightPeak <= upperBound;
-                    const double sideDiff = hasSamples ? qAbs(leftPeak - rightPeak) : 0.0;
-                    const bool diffPass = hasSamples && sideDiff <= suctionPeakDiffMaxKpa;
-
-                    showlog(QString("采集完成！循环: %1次, 左: %2点, 右: %3点")
-                                .arg(totalSamples)
-                                .arg(leftSamples.size())
-                                .arg(rightSamples.size()));
-                    showlog(QString("峰值提取: 10秒采样内取左右最小值，左=%1Kpa，右=%2Kpa")
-                                .arg(leftPeak, 0, 'f', 2)
-                                .arg(rightPeak, 0, 'f', 2));
-                    showlog("━━━━━ 测试结果（仅吸力测试）━━━━━");
-                    showlog("【左侧吸力测量】");
-                    showlog(QString("峰值: %1Kpa, 判定: %2")
-                                .arg(leftPeak, 0, 'f', 2)
-                                .arg(leftPass ? "通过" : "不通过"));
-                    if (!leftPass) {
-                        showlog(QString("左侧峰值不通过（允许范围: %1~%2Kpa）")
-                                    .arg(lowerBound, 0, 'f', 2)
-                                    .arg(upperBound, 0, 'f', 2));
-                    }
-                    showlog("【右侧吸力测量】");
-                    showlog(QString("峰值: %1Kpa, 判定: %2")
-                                .arg(rightPeak, 0, 'f', 2)
-                                .arg(rightPass ? "通过" : "不通过"));
-                    if (!rightPass) {
-                        showlog(QString("右侧峰值不通过（允许范围: %1~%2Kpa）")
-                                    .arg(lowerBound, 0, 'f', 2)
-                                    .arg(upperBound, 0, 'f', 2));
-                    }
-                    showlog(QString("左右峰值差: %1Kpa, 判定: %2")
-                                .arg(sideDiff, 0, 'f', 2)
-                                .arg(diffPass ? "通过" : "不通过"));
-
-                    TestItem leftTest;
-                    leftTest.testItem = "左侧吸力峰值(kPa)";
-                    leftTest.testData = QString::number(leftPeak, 'f', 2);
-                    leftTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
-                    leftTest.testResult = leftPass ? passValue : failValue;
-                    testItems.append(leftTest);
-                    reportBydSfcKey("左侧吸力峰值", leftPeak, 1);
-
-                    TestItem rightTest;
-                    rightTest.testItem = "右侧吸力峰值(kPa)";
-                    rightTest.testData = QString::number(rightPeak, 'f', 2);
-                    rightTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
-                    rightTest.testResult = rightPass ? passValue : failValue;
-                    testItems.append(rightTest);
-                    reportBydSfcKey("右侧吸力峰值", rightPeak, 1);
-
-                    TestItem diffTest;
-                    diffTest.testItem = "左右吸力峰值差(kPa)";
-                    diffTest.testData = QString::number(sideDiff, 'f', 2);
-                    diffTest.ask = QString("<=%1").arg(suctionPeakDiffMaxKpa, 0, 'f', 2);
-                    diffTest.testResult = diffPass ? passValue : failValue;
-                    testItems.append(diffTest);
-                    testResultTableUpdate(testItems);
-                    reportBydSfcKey("左右吸力峰值差", sideDiff, 1);
-
-                    totalresult = (leftPass && rightPass && diffPass) ? passValue : failValue;
-                    if (totalresult == passValue) {
-                        showlog("仅吸力测试通过");
-                    } else {
-                        pack.itemvalue = QString("suction_left_peak=%1,suction_right_peak=%2,suction_peak_diff=%3")
-                                                .arg(leftPeak, 0, 'f', 2)
-                                                .arg(rightPeak, 0, 'f', 2)
-                                                .arg(sideDiff, 0, 'f', 2);
-                    }
-                    QVariantMap m;
-                    m["enter"] = 0;
-                    protocolManager.set(DeviceCmd::SuctionMode, m);
-                    state = STATE_SAVE_RESULT;
-                    break;
-            }
-
-            case STATE_SAVE_RESULT:
-                sendPicoSysModeStop();
-                stringsn = "";
-                setExternalProgrammablePowerOutput(false);
-                if (totalresult == passValue) {
-                    pack.result = "PASS";
-                    pack.sn = stringsn;
-                    pack.instruct_num = "076";
-                    pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
-                                     QString("@SUCTION*0");
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                        appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
-                        testResultTableUpdate(testItems);
-                    }
-
-                    ui->test_result->setText("PASS");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                        "border-radius: 10px; padding: 10px; text-align: center;");
-                } else if ((totalresult == failValue)) {
-                    pack.result = "NG";
-                    pack.sn = stringsn;
-                    pack.instruct_num = "076";
-                    if (pack.itemvalue.isEmpty()) {
-                        pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
-                                         QString("@SUCTION*0");
-                    }
-                    if (ui->isusemes->checkState()) {
-                        emit send_end_testPass(pack);
-                        appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
-                        testResultTableUpdate(testItems);
-                    }
-
-                    ui->test_result->setText("FAIL");
-                    ui->test_result->setStyleSheet(
-                        "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                        "border-radius: 10px; padding: 10px; text-align: center; ");
-                }
-
-                showlog("测试结束，sn为：" + stringsn);
-                ui->macInput->clear();
-                ui->snInput->clear();
-
-                isTestContinue = false;  // 结束
-
-                if (SETTINGS.value("SYSTEM/SuctionMechine", SETTINGS.value("SYSTEM/CurrentMechine")).toInt() == 3 ||
-                    SETTINGS.value("SYSTEM/SuctionMechine", SETTINGS.value("SYSTEM/CurrentMechine")).toInt() == 2) {
+        case STATE_IDLE: { // 复位一切
+            // 同工站双设备：传感器走 Pico/SCPI，电源走基类通用 VISA 对象。
+            bool powerCfgOk = true;
+            if (suctionExternalPowerEnabled) {
+                if (!visa) {
+                    powerCfgOk = false;
                 } else {
-                    if (pack.factory == "xwd")
-                        jig->set_cylinder_state(0, getIndex());
+                    powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
+                }
+            }
+            const bool powerOutOk = setExternalProgrammablePowerOutput(true);
+            showlog(QString("程控电源配置=%1, 输出打开=%2")
+                        .arg(powerCfgOk ? "OK" : "NG")
+                        .arg(powerOutOk ? "OK" : "NG"));
+            if (!powerCfgOk || !powerOutOk) {
+                pack.itemvalue = "power_on=NG";
+                totalresult = failValue;
+                state = STATE_SAVE_RESULT;
+                break;
+            }
+            if (suctionExternalPowerEnabled && powerOutOk) {
+                auto* prompt = new QMessageBox(QMessageBox::Information,
+                                               QStringLiteral("操作提示"),
+                                               QStringLiteral("请按产品电源键开机，5秒后自动继续连接"),
+                                               QMessageBox::NoButton,
+                                               this);
+                prompt->setAttribute(Qt::WA_DeleteOnClose);
+                prompt->show();
+                QTimer::singleShot(5000, prompt, &QMessageBox::accept);
+            }
+            protocolManager.resetAllPb();
+            periph_state = 0;
+            base_state = 0;
+            isovertime = 0;
+            refresh_base_times = 1;
+            refresh_periph_times = 1;
+            totalresult = "";
+            at->resetConnected();
+            measure_ammeter = 0;
+            waitWork(1000);
+            at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 发送mac地址
+            showlog("MAC地址为：" + ui->macInput->text());
+            showlog("已经发送mac地址");
+            TestTime.start();
+            state = STATE_SET_TEST_MODE;
+
+            break;
+        }
+
+        case STATE_SET_TEST_MODE:
+            if (at->getConnected()) {
+                showlog("设置工厂模式");
+                sendCommandWithRetry([&]() {
+                    protocolManager.set(DeviceCmd::FacMode, 1);
+                });
+                waitWork(300);
+                state = STATE_VERIFY_TEST_MODE;
+            }
+            break;
+
+        case STATE_VERIFY_TEST_MODE:
+            if (canGoNext) {
+                showlog("已进入工厂模式");
+                appendStationResult(testItems, "进入工厂模式", "0.0000", passValue);
+                testResultTableUpdate(testItems);
+                sendCommandWithRetry([&]() {
+                    QVariantMap m;
+                    m["enter"] = 1;
+                    protocolManager.set(DeviceCmd::SuctionMode, m);
+                });
+                state = STATE_VERIFY_SUCTION_MODE;
+            }
+            break;
+
+        case STATE_VERIFY_SUCTION_MODE:
+            if (canGoNext) {
+                if (sendRetryOver) {
+                    showlog("进入吸力模式失败（设备无响应或超时）");
+                    appendStationResult(testItems, "进入吸力模式", "0.0000", failValue);
+                    testResultTableUpdate(testItems);
+                    totalresult = failValue;
+                    pack.itemvalue = "suction_mode_timeout=NG";
+                    state = STATE_SAVE_RESULT;
+                } else {
+                    showlog("已进入吸力模式");
+                    appendStationResult(testItems, "进入吸力模式", "0.0000", passValue);
+                    testResultTableUpdate(testItems);
+                    state = STATE_SUCTION_TEST;
+                }
+            }
+            break;
+
+        case STATE_SUCTION_TEST: {
+            const int durationMs = qMax(1000, suctionSampleDurationMs);
+            const int intervalMs = qMax(20, suctionSampleIntervalMs);
+            const int totalSamples = qMax(1, durationMs / intervalMs);
+            QVector<double> leftSamples;
+            QVector<double> rightSamples;
+            leftSamples.reserve(totalSamples);
+            rightSamples.reserve(totalSamples);
+
+            if (suctionUsePicoSensor) {
+                showlog(QStringLiteral("双通道吸力(Pico)：第1列=左吸力，第2列=右吸力，帧格式 $X1 X2 X3 X4;"));
+                if (!usbSerialPort->isOpen()) {
+                    showlog(QStringLiteral("Pico吸力板串口未连接，正在自动连接"));
+                    on_usbconnectButton_clicked();
+                }
+                if (!usbSerialPort->isOpen()) {
+                    showlog(QStringLiteral("Pico吸力板串口未连接，无法采集吸力数据"));
+                    totalresult = failValue;
+                    pack.itemvalue = "pico_suction_not_connected=NG";
+                    state = STATE_SAVE_RESULT;
+                    break;
+                }
+                picoRxBuffer_.clear();
+                usbSerialPort->clear(QSerialPort::Input);
+                sendPicoSysModeStart();
+                waitWork(100);
+                if (picoRxBuffer_.isEmpty())
+                    showlog(QStringLiteral("Pico已发送SYSMODE=1，100ms内暂未收到数据"));
+            } else {
+                showlog(QStringLiteral("双通道吸力：本协议下按「先左后右」两次读数，左/右数据来自设备返回顺序"));
+            }
+
+            showlog(QString("━━━━━ 双传感器并行采集 (%1ms) ━━━━━").arg(durationMs));
+            const QDateTime start = QDateTime::currentDateTime();
+            const QDateTime end = start.addMSecs(durationMs);
+            showlog("开始时间: " + start.toString("hh:mm:ss.zzz"));
+            showlog("预计结束: " + end.toString("hh:mm:ss.zzz"));
+
+            bool collectionStopped = false;
+            for (int i = 0; i < totalSamples; ++i) {
+                if (!isTestContinue) {
+                    collectionStopped = true;
+                    break;
+                }
+                if (suctionUsePicoSensor) {
+                    // Pico 板持续主动上报；经 SerialChannel 防抖后由 onUsbSerialFrame 解析并更新 damLeftKpa_/damRightKpa_。
+                    if (usbSerialPort->bytesAvailable() > 0) {
+                        onUsbSerialFrame(usbSerialPort->readAll());
+                    }
+                } else {
+                    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+                }
+                const int readDelayMs = suctionUsePicoSensor ? 0 : 30;
+                if (readDelayMs > 0) {
+                    waitWork(readDelayMs);
+                }
+                const double leftKpa = suctionUsePicoSensor ? damLeftKpa_ : measure_ammeter;
+                leftSamples.append(leftKpa);
+
+                const double rightKpa = suctionUsePicoSensor ? damRightKpa_ : measure_ammeter;
+                rightSamples.append(rightKpa);
+
+                showlog(QString("[吸力原始点%1] 左: %2Kpa | 右: %3Kpa")
+                            .arg(i + 1)
+                            .arg(leftKpa, 0, 'f', 2)
+                            .arg(rightKpa, 0, 'f', 2));
+                if (((i + 1) % 10) == 0) {
+                    showlog(QString("[%1] 左: %2Kpa | 右: %3Kpa")
+                                .arg(i + 1)
+                                .arg(leftKpa, 0, 'f', 2)
+                                .arg(rightKpa, 0, 'f', 2));
+                }
+                waitWork(qMax(0, intervalMs - readDelayMs));
+            }
+            if (collectionStopped) {
+                sendPicoSysModeStop();
+                showlog(QStringLiteral("吸力采集已停止"));
+                break;
+            }
+
+            const double lowerBound = suctionPeakTargetKpa - suctionPeakToleranceKpa;
+            const double upperBound = suctionPeakTargetKpa + suctionPeakToleranceKpa;
+            const bool hasSamples = !leftSamples.isEmpty() && !rightSamples.isEmpty();
+            const double leftPeak = hasSamples ? *std::min_element(leftSamples.cbegin(), leftSamples.cend()) : 0.0;
+            const double rightPeak = hasSamples ? *std::min_element(rightSamples.cbegin(), rightSamples.cend()) : 0.0;
+            const bool leftPass = hasSamples && leftPeak >= lowerBound && leftPeak <= upperBound;
+            const bool rightPass = hasSamples && rightPeak >= lowerBound && rightPeak <= upperBound;
+            const double sideDiff = hasSamples ? qAbs(leftPeak - rightPeak) : 0.0;
+            const bool diffPass = hasSamples && sideDiff <= suctionPeakDiffMaxKpa;
+
+            showlog(QString("采集完成！循环: %1次, 左: %2点, 右: %3点")
+                        .arg(totalSamples)
+                        .arg(leftSamples.size())
+                        .arg(rightSamples.size()));
+            showlog(QString("峰值提取: 10秒采样内取左右最小值，左=%1Kpa，右=%2Kpa")
+                        .arg(leftPeak, 0, 'f', 2)
+                        .arg(rightPeak, 0, 'f', 2));
+            showlog("━━━━━ 测试结果（仅吸力测试）━━━━━");
+            showlog("【左侧吸力测量】");
+            showlog(QString("峰值: %1Kpa, 判定: %2")
+                        .arg(leftPeak, 0, 'f', 2)
+                        .arg(leftPass ? "通过" : "不通过"));
+            if (!leftPass) {
+                showlog(QString("左侧峰值不通过（允许范围: %1~%2Kpa）")
+                            .arg(lowerBound, 0, 'f', 2)
+                            .arg(upperBound, 0, 'f', 2));
+            }
+            showlog("【右侧吸力测量】");
+            showlog(QString("峰值: %1Kpa, 判定: %2")
+                        .arg(rightPeak, 0, 'f', 2)
+                        .arg(rightPass ? "通过" : "不通过"));
+            if (!rightPass) {
+                showlog(QString("右侧峰值不通过（允许范围: %1~%2Kpa）")
+                            .arg(lowerBound, 0, 'f', 2)
+                            .arg(upperBound, 0, 'f', 2));
+            }
+            showlog(QString("左右峰值差: %1Kpa, 判定: %2")
+                        .arg(sideDiff, 0, 'f', 2)
+                        .arg(diffPass ? "通过" : "不通过"));
+
+            TestItem leftTest;
+            leftTest.testItem = "左侧吸力峰值(kPa)";
+            leftTest.testData = QString::number(leftPeak, 'f', 2);
+            leftTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
+            leftTest.testResult = leftPass ? passValue : failValue;
+            testItems.append(leftTest);
+            reportBydSfcKey("左侧吸力峰值", leftPeak, 1);
+
+            TestItem rightTest;
+            rightTest.testItem = "右侧吸力峰值(kPa)";
+            rightTest.testData = QString::number(rightPeak, 'f', 2);
+            rightTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
+            rightTest.testResult = rightPass ? passValue : failValue;
+            testItems.append(rightTest);
+            reportBydSfcKey("右侧吸力峰值", rightPeak, 1);
+
+            TestItem diffTest;
+            diffTest.testItem = "左右吸力峰值差(kPa)";
+            diffTest.testData = QString::number(sideDiff, 'f', 2);
+            diffTest.ask = QString("<=%1").arg(suctionPeakDiffMaxKpa, 0, 'f', 2);
+            diffTest.testResult = diffPass ? passValue : failValue;
+            testItems.append(diffTest);
+            testResultTableUpdate(testItems);
+            reportBydSfcKey("左右吸力峰值差", sideDiff, 1);
+
+            totalresult = (leftPass && rightPass && diffPass) ? passValue : failValue;
+            if (totalresult == passValue) {
+                showlog("仅吸力测试通过");
+            } else {
+                pack.itemvalue = QString("suction_left_peak=%1,suction_right_peak=%2,suction_peak_diff=%3")
+                                     .arg(leftPeak, 0, 'f', 2)
+                                     .arg(rightPeak, 0, 'f', 2)
+                                     .arg(sideDiff, 0, 'f', 2);
+            }
+            QVariantMap m;
+            m["enter"] = 0;
+            protocolManager.set(DeviceCmd::SuctionMode, m);
+            state = STATE_SAVE_RESULT;
+            break;
+        }
+
+        case STATE_SAVE_RESULT:
+            sendPicoSysModeStop();
+            stringsn = "";
+            setExternalProgrammablePowerOutput(false);
+            if (totalresult == passValue) {
+                pack.result = "PASS";
+                pack.sn = stringsn;
+                pack.instruct_num = "076";
+                pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
+                    QString("@SUCTION*0");
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                    appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
+                    testResultTableUpdate(testItems);
                 }
 
-                on_disconnectButton_clicked();
-                ui->snInput->setDisabled(0);
-                // ui->macInput->setDisabled(1);
-                ui->getMac->setDisabled(0);
-                emit send_end_test(getIndex());
+                ui->test_result->setText("PASS");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                    "border-radius: 10px; padding: 10px; text-align: center;");
+            } else if ((totalresult == failValue)) {
+                pack.result = "NG";
+                pack.sn = stringsn;
+                pack.instruct_num = "076";
+                if (pack.itemvalue.isEmpty()) {
+                    pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
+                        QString("@SUCTION*0");
+                }
+                if (ui->isusemes->checkState()) {
+                    emit send_end_test_pass(pack);
+                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
+                    testResultTableUpdate(testItems);
+                }
 
-                state = STATE_IDLE;
-                break;
+                ui->test_result->setText("FAIL");
+                ui->test_result->setStyleSheet(
+                    "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                    "border-radius: 10px; padding: 10px; text-align: center; ");
+            }
+
+            showlog("测试结束，sn为：" + stringsn);
+            ui->macInput->clear();
+            ui->snInput->clear();
+
+            isTestContinue = false; // 结束
+
+            if (SETTINGS.value("SYSTEM/SuctionMechine", SETTINGS.value("SYSTEM/CurrentMechine")).toInt() == 3 ||
+                SETTINGS.value("SYSTEM/SuctionMechine", SETTINGS.value("SYSTEM/CurrentMechine")).toInt() == 2) {
+            } else {
+                if (pack.factory == "xwd")
+                    jig->set_cylinder_state(0, getIndex());
+            }
+
+            on_disconnectButton_clicked();
+            ui->snInput->setDisabled(0);
+            // ui->macInput->setDisabled(1);
+            ui->getMac->setDisabled(0);
+            emit send_end_test(getIndex());
+
+            state = STATE_IDLE;
+            break;
         }
         //   QCoreApplication::processEvents();
     }
@@ -1413,19 +1410,18 @@ void suction::on_pushButton_clicked() {
     // 开发测试入口：改为模拟SN扫码触发，MAC自动解析。
     // ui->snInput->setText("U03000077I1H00007D");
     // on_snInput_returnPressed();
-    at->set(DongleCmd::BleScanConnect, ui->macInput->text()); 
-    sendCommandWithRetry([&]() { 
-        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn})); 
+    at->set(DongleCmd::BleScanConnect, ui->macInput->text());
+    sendCommandWithRetry([&]() {
+        protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, sn}));
     });
     // sendjigData(STATE_CYLINDER_RESET);
 
-    // bandingMacSn(macAddress, stringsn);
+    // bindingMacSn(macAddress, stringsn);
     //     save_brush_log("dataTemp");
 
     // 开发：已配置 VisaPower 时，对程控电源做一次电压/电流读（VISA 为同步，会进 refreshProgrammablePower*）
     applySuctionProtocolConfig();
-    if (suctionExternalPowerEnabled && visa
-        && !SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
+    if (suctionExternalPowerEnabled && visa && !SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed().isEmpty()) {
         const bool vOk = visa->get(VisaCmd::ReadVoltage);
         const bool iOk = visa->get(VisaCmd::ReadCurrent);
         showlog(QStringLiteral("VISA 程控电源试读：电压=%1 电流=%2")
@@ -1459,9 +1455,9 @@ void suction::processReceivedData(const QByteArray& data) {
         int macIndex = logString.indexOf('=', lastIndex);
 
         if (macIndex != -1 &&
-            logString.length() >= macIndex + 18) {  // 判断是否包含完整的 MAC 地址（17 个字符 + 1 个分隔符）
+            logString.length() >= macIndex + 18) { // 判断是否包含完整的 MAC 地址（17 个字符 + 1 个分隔符）
             // 提取 MAC 地址
-            QString macAddress = logString.mid(macIndex + 1, 17).trimmed();  // MAC 地址长度为17，并去除首尾空格
+            QString macAddress = logString.mid(macIndex + 1, 17).trimmed(); // MAC 地址长度为17，并去除首尾空格
             qDebug() << "提取到的MAC地址：" << macAddress;
 
             // 清空日志字符串
@@ -1488,7 +1484,7 @@ void suction::processReceivedData(const QByteArray& data) {
 }
 
 void suction::on_pushButton_4_clicked() {
-    static int clickStep = 1;  // 用于跟踪当前运行的步骤
+    static int clickStep = 1; // 用于跟踪当前运行的步骤
     pack.mechines = 1;
     pack.sn = "U03000077I1H00007D";
 
@@ -1497,15 +1493,17 @@ void suction::on_pushButton_4_clicked() {
     pack.itemvalue = QString("|BTMAC:3C:84:27:07:A8:D2|") + QString("SUCTION:PASS|");
 
     switch (clickStep) {
-        case 1: showlog("Running processInspection"); break;
+    case 1:
+        showlog("Running processInspection");
+        break;
 
-        case 2:
-            emit send_end_testPass(pack);
-            showlog("Running send_end_testPass");
-            break;
+    case 2:
+        emit send_end_test_pass(pack);
+        showlog("Running send_end_test_pass");
+        break;
     }
 
-    clickStep++;  // 增加步骤计数
+    clickStep++; // 增加步骤计数
 
     // 如果步骤计数超过了最大步骤数，重置为第一步
     if (clickStep > 2) {
@@ -1513,10 +1511,7 @@ void suction::on_pushButton_4_clicked() {
     }
 }
 
-
-
-
-void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
+void suction::bindingMacSn(QString bindingMac, QString bindingSn) {
     // 将网络路径转换为 QFile 能够处理的格式
     QString path;
     if (pack.factory == "xwd")
@@ -1526,18 +1521,18 @@ void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
 
     // 在 Windows 上，使用 QDir::fromNativeSeparators 将路径中的反斜杠转换为正斜杠
     // path = QDir::fromNativeSeparators(path);
-    QFile file(path);  // 创建一个文件对象
+    QFile file(path); // 创建一个文件对象
 
-    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) {  //
-        QTextStream in(&file);                                // 创建一个文本流对象
-        QStringList lines;                                    // 用于存储文件中的每一行数据
-        bool found = false;                                   // 标记是否找到了相同的SN
+    if (file.open(QIODevice::ReadWrite | QIODevice::Text)) { //
+        QTextStream in(&file);                               // 创建一个文本流对象
+        QStringList lines;                                   // 用于存储文件中的每一行数据
+        bool found = false;                                  // 标记是否找到了相同的SN
         while (!in.atEnd()) {
-            QString line = in.readLine();         // 逐行读取文件
-            QStringList parts = line.split(",");  // 以逗号分隔每行数据
-            if (parts.size() == 2 && parts[0].trimmed() == bandingsn) {
+            QString line = in.readLine();        // 逐行读取文件
+            QStringList parts = line.split(","); // 以逗号分隔每行数据
+            if (parts.size() == 2 && parts[0].trimmed() == bindingSn) {
                 // 如果找到了相同的SN，替换MAC地址
-                lines << (bandingsn + "," + bandingmac);
+                lines << (bindingSn + "," + bindingMac);
                 found = true;
             } else {
                 // 否则，保留原有数据
@@ -1546,7 +1541,7 @@ void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
         }
         if (!found) {
             // 如果没有找到相同的SN，则追加新的SN和MAC地址
-            lines << (bandingsn + "," + bandingmac);
+            lines << (bindingSn + "," + bindingMac);
         }
         // 清空文件并写入新的数据
         file.resize(0);
@@ -1554,7 +1549,7 @@ void suction::bandingMacSn(QString bandingmac, QString bandingsn) {
         for (const QString& line : lines) {
             out << line << '\n';
         }
-        file.close();  // 关闭文件
+        file.close(); // 关闭文件
         showlog("保存mac_sn文件成功");
     } else {
         showlog("保存mac_sn文件失败");
@@ -1569,7 +1564,7 @@ void suction::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->snInput->clear();
     ui->snInput->setFocus();
-    isTestContinue = false;  // 结束
+    isTestContinue = false; // 结束
     if (pack.factory != "jj") {
         jig->set_cylinder_state(0, getIndex());
     }
@@ -1605,10 +1600,8 @@ void suction::reportBydSfcKey(const QString& dataName,
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit getMesTestValue(p);
+    emit send_mes_test_value(p);
 }
-
-
 
 void suction::on_snruler_formes_clicked() {
     if (!ui->isusemes->isChecked()) {
@@ -1625,7 +1618,7 @@ void suction::on_snruler_formes_clicked() {
     }
     p.instruct_num = QStringLiteral("079");
     showlog(QStringLiteral("MES：GetCustomData（bydmes::GetTestData）"));
-    emit getMesTestValue(p);
+    emit send_mes_test_value(p);
 }
 
 void suction::on_start_formes_clicked() {
@@ -1642,8 +1635,8 @@ void suction::on_start_formes_clicked() {
         return;
     }
     p.instruct_num = QStringLiteral("079");
-    showlog(QStringLiteral("模拟站前：sendProcessInspection（BYD Start）"));
-    emit sendProcessInspection(p);
+    showlog(QStringLiteral("模拟站前：send_process_inspection（BYD Start）"));
+    emit send_process_inspection(p);
 }
 
 void suction::on_testdata_formes_clicked() {
@@ -1664,13 +1657,11 @@ void suction::on_testdata_formes_clicked() {
     p.error = QStringLiteral("NULL");
     p.instruct_num = QStringLiteral("076");
     p.itemvalue = p.sn + QLatin1Char(',') + mac + QStringLiteral(",SUCTION_RESULT*PASS@SUCTION*0");
-    showlog(QStringLiteral("模拟过站：send_end_testPass（BYD TestDataCollect + Complete）"));
-    emit send_end_testPass(p);
+    showlog(QStringLiteral("模拟过站：send_end_test_pass（BYD TestDataCollect + Complete）"));
+    emit send_end_test_pass(p);
 }
 
-
-void suction::on_pushButton_2_clicked()
-{
+void suction::on_pushButton_2_clicked() {
     // 手动：使用基类通用 VISA 对象上电（同工站 STATE_IDLE 电源段 + 电压限流）
     if (!suctionExternalPowerEnabled) {
         showlog(QStringLiteral("未启用外接程控电源：请在 ini 中开启 VisaPower/ScpiUseVisa"));
@@ -1693,8 +1684,7 @@ void suction::on_pushButton_2_clicked()
     setExternalProgrammablePowerOutput(false);
 
     showlog(QStringLiteral("程控电源已按配置上电：电压=%1V，限流=%2A，链路=%3")
-                 .arg(powerCfg.powerVoltageV, 0, 'f', 2)
-                 .arg(powerCfg.powerCurrentA, 0, 'f', 3)
-                 .arg(QStringLiteral("VISA:%1").arg(powerCfg.visaAddress)));
+                .arg(powerCfg.powerVoltageV, 0, 'f', 2)
+                .arg(powerCfg.powerCurrentA, 0, 'f', 3)
+                .arg(QStringLiteral("VISA:%1").arg(powerCfg.visaAddress)));
 }
-

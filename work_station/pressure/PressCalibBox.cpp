@@ -12,7 +12,7 @@
 #include "ui_PressCalibBox.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 PressCalibBox::PressCalibBox(QWidget* parent) : box_base(parent), ui(new Ui::PressCalibBox) {
@@ -77,7 +77,7 @@ void PressCalibBox::display_on_screen(int instruct) {
         }
 
         if (SETTINGS.value("SYSTEM/PressWindow").toBool() &&
-            SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 0) {  //木星治具是比较简单的不需要对话
+            SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 0) { //木星治具是比较简单的不需要对话
             QMessageBox::StandardButton reply;
             reply = QMessageBox::question(this, "压感校准测试", "是否开始", QMessageBox::Yes | QMessageBox::No);
 
@@ -136,51 +136,51 @@ void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
     if ((SETTINGS.value("Mes/Product_Name").toString() == "Y20P" ||
          SETTINGS.value("Mes/Product_Name").toString() == "Y20PS") &&
         SETTINGS.value("PRESSURE/functionSwitch", 1).toInt() != 2) {
-        if (1)  //默认y20p非独立
+        if (1) //默认y20p非独立
         {
             qDebug() << "当前是"
                      << "Y20P";
             switch (PacketData.machine_command_id) {
-                case COMMAND_ID_TRAY_IN:
-                case COMMAND_ID_FIXED_BLOCK_DOWN:
-                    for (int i = 0; i < testList.size(); i++) {
-                        //只要有一个不在状态就返回
-                        if (testList[i]->get_independent_state() < STATE_CALIB_STATIC_WAIT) {
-                            qDebug() << "STATE_CALIB_STATIC_WAIT这个还不满足" << i;
-                            return;
-                        }
+            case COMMAND_ID_TRAY_IN:
+            case COMMAND_ID_FIXED_BLOCK_DOWN:
+                for (int i = 0; i < testList.size(); i++) {
+                    //只要有一个不在状态就返回
+                    if (testList[i]->get_independent_state() < STATE_CALIB_STATIC_WAIT) {
+                        qDebug() << "STATE_CALIB_STATIC_WAIT这个还不满足" << i;
+                        return;
                     }
-                    break;
+                }
+                break;
 
-                case COMMAND_ID_BTH_DOWN_200:
-                    for (int i = 0; i < testList.size(); i++) {
-                        if (testList[i]->get_independent_state() < STATE_CALIB_CH0) {
-                            qDebug() << "STATE_CALIB_CH0这个还不满足" << i;
-                            return;
-                        }
+            case COMMAND_ID_BTH_DOWN_200:
+                for (int i = 0; i < testList.size(); i++) {
+                    if (testList[i]->get_independent_state() < STATE_CALIB_CH0) {
+                        qDebug() << "STATE_CALIB_CH0这个还不满足" << i;
+                        return;
                     }
-                    break;
+                }
+                break;
 
-                case COMMAND_ID_KEY_DOWN_200:
-                case COMMAND_ID_BTH_UP:
-                    for (int i = 0; i < testList.size(); i++) {
-                        if (testList[i]->get_independent_state() < STATE_CALIB_CH1) {
-                            qDebug() << "STATE_CALIB_CH1这个还不满足" << i;
-                            return;
-                        }
+            case COMMAND_ID_KEY_DOWN_200:
+            case COMMAND_ID_BTH_UP:
+                for (int i = 0; i < testList.size(); i++) {
+                    if (testList[i]->get_independent_state() < STATE_CALIB_CH1) {
+                        qDebug() << "STATE_CALIB_CH1这个还不满足" << i;
+                        return;
                     }
-                    break;
+                }
+                break;
 
-                case COMMAND_ID_KEY_UP:
-                case COMMAND_ID_FIXED_BLOCK_UP:
-                case COMMAND_ID_TRAY_OUT:
-                    for (int i = 0; i < testList.size(); i++) {
-                        if (testList[i]->get_independent_state() < STATE_CALIB_RESULT) {
-                            qDebug() << "STATE_CALIB_RESULT这个还不满足" << i;
-                            return;
-                        }
+            case COMMAND_ID_KEY_UP:
+            case COMMAND_ID_FIXED_BLOCK_UP:
+            case COMMAND_ID_TRAY_OUT:
+                for (int i = 0; i < testList.size(); i++) {
+                    if (testList[i]->get_independent_state() < STATE_CALIB_RESULT) {
+                        qDebug() << "STATE_CALIB_RESULT这个还不满足" << i;
+                        return;
                     }
-                    break;
+                }
+                break;
             }
 
             qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
@@ -188,23 +188,23 @@ void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
 
             // 此处处理是为了等治具到位之后才进行下一步
             switch (Fixture_uart_ui->last_commid) {
-                case COMMAND_ID_TRAY_IN:
-                case COMMAND_ID_TRAY_OUT:
-                    if (current_timestamp - last_sent_timestamp < 3000 && last_sent_timestamp != 0) {
-                        Fixture_uart_ui->delay_msec(3000);
-                    }
-                    break;
+            case COMMAND_ID_TRAY_IN:
+            case COMMAND_ID_TRAY_OUT:
+                if (current_timestamp - last_sent_timestamp < 3000 && last_sent_timestamp != 0) {
+                    Fixture_uart_ui->delay_msec(3000);
+                }
+                break;
 
-                case COMMAND_ID_FIXED_BLOCK_DOWN:
-                case COMMAND_ID_FIXED_BLOCK_UP:
-                case COMMAND_ID_BTH_DOWN_200:
-                case COMMAND_ID_KEY_DOWN_200:
-                case COMMAND_ID_BTH_UP:
-                case COMMAND_ID_KEY_UP:
-                    if (current_timestamp - last_sent_timestamp < 2000 && last_sent_timestamp != 0) {
-                        Fixture_uart_ui->delay_msec(2000);
-                    }
-                    break;
+            case COMMAND_ID_FIXED_BLOCK_DOWN:
+            case COMMAND_ID_FIXED_BLOCK_UP:
+            case COMMAND_ID_BTH_DOWN_200:
+            case COMMAND_ID_KEY_DOWN_200:
+            case COMMAND_ID_BTH_UP:
+            case COMMAND_ID_KEY_UP:
+                if (current_timestamp - last_sent_timestamp < 2000 && last_sent_timestamp != 0) {
+                    Fixture_uart_ui->delay_msec(2000);
+                }
+                break;
             }
 
             Fixture_uart_ui->last_commid = PacketData.machine_command_id;

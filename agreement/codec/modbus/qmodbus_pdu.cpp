@@ -164,4 +164,4 @@ bool validateRtuFrame(const QByteArray& frame, quint8* outByteCount) {
     return true;
 }
 
-}  // namespace QModbusPdu
+} // namespace QModbusPdu

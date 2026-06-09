@@ -12,7 +12,7 @@
 
 class QProcessChannel : public QObject {
     Q_OBJECT
-public:
+  public:
     using Callback = std::function<void(const QString&, qint64)>;
 
     explicit QProcessChannel(QObject* parent = nullptr);
@@ -28,12 +28,12 @@ public:
 
     void sendCommand(const QString& cmd, Callback callback, qint64 timeoutMs = 3000);
 
-private slots:
+  private slots:
     void onReadyRead();
     void onFinished(int exitCode, QProcess::ExitStatus status);
     void checkTimeout();
 
-private:
+  private:
     struct CmdItem {
         QString command;
         QString endMark;
@@ -61,4 +61,4 @@ private:
     QString rxPrefix_ = QStringLiteral("PROC RX:");
 };
 
-#endif  // QPROCESSCHANNEL_H
+#endif // QPROCESSCHANNEL_H

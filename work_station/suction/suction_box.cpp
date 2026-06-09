@@ -4,7 +4,7 @@
 #include "ui_suction_box.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 suction_box::suction_box(QWidget* parent) : box_base(parent), ui(new Ui::suction_box) {
@@ -29,7 +29,9 @@ suction_box::suction_box(QWidget* parent) : box_base(parent), ui(new Ui::suction
     //  });
 }
 
-suction_box::~suction_box() { delete ui; }
+suction_box::~suction_box() {
+    delete ui;
+}
 
 void suction_box::checkAllover(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;

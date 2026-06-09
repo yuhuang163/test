@@ -14,8 +14,8 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
     }
     const QString stepName = productInstrumentStopWaitStepName_;
     if (!isCurrentInstrumentStep(stepName)) {
-        qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "currentFid=" << stepRuntime_.functionId
-                 << "recvPkts=" << recvPkts << "工位=" << getIndex();
+        qDebug() << "[FreeWork][StopRxAck] 忽略：非当前步骤 期待=" << stepName << "recvPkts=" << recvPkts
+                 << "工位=" << getIndex();
         return;
     }
     if (stepRuntime_.done) {
@@ -44,16 +44,7 @@ bool QFreeWork::isCurrentStep(const QString& functionName) const {
     if (!stepRuntime_.started) {
         return false;
     }
-    // test_case 流程无 functionId，用当前激活的 case 名称匹配
-    if (useTestCaseFlow_ && isActiveTestCaseStep(functionName)) {
-        return true;
-    }
-    if (stepRuntime_.functionId < 0) {
-        return false;
-    }
-    auto it = std::find_if(testFunctions.cbegin(), testFunctions.cend(),
-                           [this](const NamedFunction& item) { return item.id == stepRuntime_.functionId; });
-    return it != testFunctions.cend() && it->name == functionName;
+    return isActiveTestCaseStep(functionName);
 }
 
 bool QFreeWork::isCurrentInstrumentStep(const QString& stepName) const {
@@ -122,7 +113,7 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     const QString expectedSoftwareVersion = softwareVersion.trimmed();
     const QStringList expectedSoftwareVersions = expectedSoftwareVersion.split("=", QString::SkipEmptyParts);
     softwareVersionPassForReport_ = !isSoftwareTest || expectedSoftwareVersions.contains(actualSoftwareVersion) ||
-                                    expectedSoftwareVersion == actualSoftwareVersion;
+        expectedSoftwareVersion == actualSoftwareVersion;
     qDebug() << "[Tuple] software version report, actual =" << actualSoftwareVersion
              << "expected =" << expectedSoftwareVersion
              << "pass =" << softwareVersionPassForReport_;
@@ -147,7 +138,6 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
 
 void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 
-
     // 电量测试为异步判定：在电池回调里显式回填当前步骤。
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(adc)))
         return;
@@ -168,20 +158,12 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
 }
 
 void QFreeWork::refreshWifiState(int state) {
-    if (state) {
-        // ui->WIFIStatusLabel->setText("WIFI连接：<font color='green'>成功</font>");
-        //  showlog("WIFI连接成功");
-        wifistate = 1;
-    } else {
-        //  ui->WIFIStatusLabel->setText("WIFI连接：<font color='red'>失败</font>");
-        //  showlog("WIFI连接断开");
-        wifistate = 0;
-    }
+    wifistate = state ? 1 : 0;
 }
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedTailSnFromMesText = expectedTailSnFromMes.trimmed();
+    const QString expectedTailSnFromMesText = resolvedExpectedTailSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
@@ -206,11 +188,6 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     } else {
         showlog("整机SN校验通过");
     }
-
-    // if (deviceTailSnFromDevice == "")
-    // {
-    //     QMessageBox::warning(NULL, "警告", " 该设备未绑定sn！\t\r\n");
-    // }
 }
 
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
@@ -338,26 +315,26 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     }
 }
 
-void QFreeWork::refreshKeySignalRead(ProtocolUInt32ValueData data) {
+void QFreeWork::refreshKeySignalRead(ProtocolKeyCapData data) {
     // 治具下压期间同步轮询：由 pollKeyCapDuringPress 等待本槽结束
     if (plcKeyCapSyncReadPending_) {
         plcKeyCapSyncReadPending_ = false;
         plcKeyCapSyncReadOk_ = true;
-        plcKeyCapSyncReadValue_ = data.value;
-        plcKeyCapSyncReadAuxId_ = data.auxId;
+        plcKeyCapSyncReadValue_ = data.capacitance;
+        plcKeyCapSyncReadAuxId_ = data.keyId;
         return;
     }
 }
 
-void QFreeWork::refreshChargeCurrentRead(ProtocolUInt32ValueData data) {
-    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolUInt32ValueData"), QVariant::fromValue(data)))
+void QFreeWork::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolChargeCurrentData"), QVariant::fromValue(data)))
         return;
 
     if (!isCurrentStep("读取充电电流")) {
         return;
     }
 
-    const double currentMa = static_cast<double>(data.value);
+    const double currentMa = static_cast<double>(data.currentMa);
     const QString value = QString::number(currentMa, 'f', 0) + "ma";
     const QString ask = QString("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
     const bool pass = (currentMa >= LowCurrent && currentMa <= HighCurrent);
@@ -421,7 +398,7 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
         return;
     }
     showlog(QStringLiteral("MES：AddSfcKey 上报 %1=%2").arg(p.instruct_num, p.itemvalue));
-    emit getMesTestValue(p);
+    emit send_mes_test_value(p);
 }
 
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
@@ -485,8 +462,7 @@ void QFreeWork::applyTupleByMac() {
 
     stepRuntime_.done = true;
     stepRuntime_.ask = "获取成功";
-    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac")
-        && sku.isEmpty()) {
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac") && sku.isEmpty()) {
         stepRuntime_.pass = false;
         stepRuntime_.testData = QStringLiteral("SKU未配置");
         TestResult = failValue;
@@ -517,9 +493,9 @@ void QFreeWork::applyTupleByMac() {
     tupleData_ = service.lastApplyResult();
     stepRuntime_.pass = tupleData_.success;
     stepRuntime_.testData = tupleData_.success
-                                 ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
-                                       .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
-                                 : tupleData_.error;
+        ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
+              .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
+        : tupleData_.error;
     if (!tupleData_.success) {
         TestResult = failValue;
         showlog("三元组获取失败：" + tupleData_.error);
@@ -658,9 +634,7 @@ void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
 bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data) {
     if (!testCaseStepActive_)
         return false;
-    if (activeTestCase_.send.channel != TestCaseSendChannel::Product
-        || activeTestCase_.send.action != TestCaseSendAction::Get
-        || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
+    if (activeTestCase_.send.channel != TestCaseSendChannel::Product || activeTestCase_.send.action != TestCaseSendAction::Get || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
         return false;
 
     const QString testData =
@@ -765,7 +739,7 @@ void QFreeWork::refreshAmmeterData(QString data) {
     }
 }
 
-void QFreeWork::getWifiMsg(QString data) {
+void QFreeWork::refreshWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");
     int numPairs = parts.size() / 2;
@@ -792,4 +766,68 @@ void QFreeWork::getWifiMsg(QString data) {
             }
         }
     }
+}
+void QFreeWork::refreshButton(ProtocolButtonStateData data) {
+    if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
+        return;
+    }
+
+    ++plcKeyBleWaitSeq_;
+
+    const QString actualKeyId = QString::number(data.keyButtonId);
+    const QString expectedKeyId = SETTINGS.value(currentKeyExpectedKey_).toString();
+    const bool idOk = compareVersions(expectedKeyId, actualKeyId);
+
+    if (plcSwitchBlePhase_ == 3 || plcSwitchBlePhase_ == 4) {
+        // 编码器：modeButtonState 为 dir（1左旋/2右旋）。须与旋钮 PLC 步骤的 phase 期望一致。
+        const int expectedDir = (plcSwitchBlePhase_ == 3) ? 1 : 2;
+        const bool dirOk = (data.modeButtonState == expectedDir);
+        const bool pass = idOk && dirOk;
+        const QString rotLabel = (plcSwitchBlePhase_ == 3) ? QStringLiteral("左旋") : QStringLiteral("右旋");
+        closeKeyWaitPrompt();
+        freeWorkKeyWaiting_ = false;
+        plcSwitchBlePhase_ = 0;
+        stepRuntime_.done = true;
+        stepRuntime_.pass = pass;
+        const QString plcPart = plcKeyBlePlcOkSummary_;
+        plcKeyBlePlcOkSummary_.clear();
+        const QString keyLine = QStringLiteral("旋钮%1：方向=%2(期望%3) ID:%4 期望ID:%5")
+                                    .arg(rotLabel)
+                                    .arg(data.modeButtonState)
+                                    .arg(expectedDir)
+                                    .arg(actualKeyId, expectedKeyId);
+        stepRuntime_.testData = plcPart.isEmpty() ? keyLine : QStringLiteral("%1；%2").arg(plcPart, keyLine);
+        if (!pass) {
+            TestResult = failValue;
+        }
+        stepRuntime_.ask = expectedKeyId;
+        showlog(QStringLiteral("%1%2：%3上报")
+                    .arg(currentKeyTestName_)
+                    .arg(pass ? QStringLiteral("通过") : QStringLiteral("失败"))
+                    .arg(rotLabel));
+        return;
+    }
+
+    const bool pass = idOk;
+
+    closeKeyWaitPrompt();
+    freeWorkKeyWaiting_ = false;
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    if (plcKeyBlePlcOkSummary_.isEmpty()) {
+        stepRuntime_.testData = QString("按键ID:%1 期望:%2").arg(actualKeyId, expectedKeyId);
+    } else {
+        stepRuntime_.testData =
+            QString("%1；按键ID:%2 期望:%3").arg(plcKeyBlePlcOkSummary_, actualKeyId, expectedKeyId);
+    }
+    plcKeyBlePlcOkSummary_.clear();
+    stepRuntime_.ask = expectedKeyId;
+    if (!pass) {
+        TestResult = failValue;
+    }
+
+    showlog(QString("%1%2：实际按键ID=%3 期望=%4")
+                .arg(currentKeyTestName_)
+                .arg(pass ? "通过" : "失败")
+                .arg(actualKeyId, expectedKeyId));
 }

@@ -24,8 +24,8 @@ extern "C" {
  * @param user_data 用户自定义数据，会传递给回调函数
  * @return 0-成功处理, 1-需要更多数据, <0-错误
  */
-int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protocol_frame_callback_t callback,
-                                  void *user_data);
+int comm_protocol_assemble_packet(const uint8_t* data, uint16_t len, comm_protocol_frame_callback_t callback,
+                                  void* user_data);
 
 /**
  * @brief 反序列化协议帧
@@ -34,11 +34,10 @@ int comm_protocol_assemble_packet(const uint8_t *data, uint16_t len, comm_protoc
  * @param frame 输出的帧节点结构
  * @return 0-成功, <0-错误码
  */
-int comm_protocol_frame_deserialize(const uint8_t *buffer, uint16_t buffer_size, comm_protocol_frame_node_t *frame);
+int comm_protocol_frame_deserialize(const uint8_t* buffer, uint16_t buffer_size, comm_protocol_frame_node_t* frame);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif // __COMM_PROTOCOL_PARSER_H__
-

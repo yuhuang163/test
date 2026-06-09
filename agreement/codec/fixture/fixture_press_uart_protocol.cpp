@@ -8,7 +8,7 @@
 #include "Abini.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 void FixturePressUartProtocol::initCommands() {
@@ -96,7 +96,7 @@ void FixturePressUartProtocol::initCommands() {
 
 bool FixturePressUartProtocol::isValidCommand(int commandId, int numb) const {
     return commandId > COMMAND_ID_INVALID && commandId < COMMAND_ID_MAX && numb >= 0 && numb < 6 &&
-           press_commands_[commandId][numb] != nullptr;
+        press_commands_[commandId][numb] != nullptr;
 }
 
 bool FixturePressUartProtocol::commandBytes(int commandId, int numb, QByteArray* out) const {
@@ -109,13 +109,20 @@ bool FixturePressUartProtocol::commandBytes(int commandId, int numb, QByteArray*
 
 QByteArray FixturePressUartProtocol::buildFixtureStateCommand(FixtureState state) {
     switch (state) {
-        case STATE_CYLINDER_OPEN: return QByteArray::fromHex("5501050001");
-        case STATE_RELAY1_OPEN: return QByteArray::fromHex("5501010001");
-        case STATE_RELAY1_RESET: return QByteArray::fromHex("5501010000");
-        case STATE_CYLINDER_RESET: return QByteArray::fromHex("5501050000");
-        case STATE_RELAY4_OPEN: return QByteArray::fromHex("5501040001");
-        case STATE_RELAY4_RESET: return QByteArray::fromHex("5501040000");
-        default: return QByteArray();
+    case STATE_CYLINDER_OPEN:
+        return QByteArray::fromHex("5501050001");
+    case STATE_RELAY1_OPEN:
+        return QByteArray::fromHex("5501010001");
+    case STATE_RELAY1_RESET:
+        return QByteArray::fromHex("5501010000");
+    case STATE_CYLINDER_RESET:
+        return QByteArray::fromHex("5501050000");
+    case STATE_RELAY4_OPEN:
+        return QByteArray::fromHex("5501040001");
+    case STATE_RELAY4_RESET:
+        return QByteArray::fromHex("5501040000");
+    default:
+        return QByteArray();
     }
 }
 
@@ -142,5 +149,5 @@ FixturePressUartEvent FixturePressUartProtocol::parseReceived(const QByteArray& 
 }
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif

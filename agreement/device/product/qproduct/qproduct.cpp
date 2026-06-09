@@ -3,7 +3,8 @@
 #include <QDebug>
 #include <QSerialPort>
 
-Qproduct::Qproduct(QSerialPort* port, QObject* parent) : QObject(parent), port_(port) {}
+Qproduct::Qproduct(QSerialPort* port, QObject* parent) : QObject(parent), port_(port) {
+}
 
 QByteArray Qproduct::hexToBytes(const QString& hexNoSpaces) {
     QString s;
@@ -81,7 +82,7 @@ double Qproduct::computePer(int instrumentSendCount, int receivedCount) {
     if (instrumentSendCount <= 0)
         return 0.0;
     return static_cast<double>(instrumentSendCount - receivedCount) /
-           static_cast<double>(instrumentSendCount);
+        static_cast<double>(instrumentSendCount);
 }
 
 void Qproduct::parseCmd(const QByteArray& data) {
@@ -96,59 +97,59 @@ void Qproduct::parseCmd(const QByteArray& data) {
 
 void Qproduct::set(ProductCmd cmd, const QVariant& data) {
     switch (cmd) {
-        case ProductCmd::WriteRaw:
-            writeRaw(data.toByteArray());
-            return;
-        case ProductCmd::WriteHex:
-            writeHex(data.toString());
-            return;
-        case ProductCmd::ParseRx:
-            parseCmd(data.toByteArray());
-            return;
-        case ProductCmd::ClearRxAccum:
-            clearProductSerialRxAccum();
-            return;
-        case ProductCmd::SendReset:
-            writeRaw(cmdReset());
-            return;
-        case ProductCmd::SendStopReceive:
-            writeRaw(cmdStopReceive());
-            return;
-        case ProductCmd::SendStart2402Ble1M:
-            writeRaw(buildStartReceiveCmd2402Ble1M());
-            return;
-        case ProductCmd::SendStart2440Ble1M:
-            writeRaw(buildStartReceiveCmd2440Ble1M());
-            return;
-        case ProductCmd::SendStart2480Ble1M:
-            writeRaw(buildStartReceiveCmd2480Ble1M());
-            return;
-        case ProductCmd::SendStart2402Ble2M:
-            writeRaw(buildStartReceiveCmd2402Ble2M());
-            return;
-        case ProductCmd::SendStart2440Ble2M:
-            writeRaw(buildStartReceiveCmd2440Ble2M());
-            return;
-        case ProductCmd::SendStart2480Ble2M:
-            writeRaw(buildStartReceiveCmd2480Ble2M());
-            return;
-        case ProductCmd::GetStopReceiveCount:
-            return;
+    case ProductCmd::WriteRaw:
+        writeRaw(data.toByteArray());
+        return;
+    case ProductCmd::WriteHex:
+        writeHex(data.toString());
+        return;
+    case ProductCmd::ParseRx:
+        parseCmd(data.toByteArray());
+        return;
+    case ProductCmd::ClearRxAccum:
+        clearProductSerialRxAccum();
+        return;
+    case ProductCmd::SendReset:
+        writeRaw(cmdReset());
+        return;
+    case ProductCmd::SendStopReceive:
+        writeRaw(cmdStopReceive());
+        return;
+    case ProductCmd::SendStart2402Ble1M:
+        writeRaw(buildStartReceiveCmd2402Ble1M());
+        return;
+    case ProductCmd::SendStart2440Ble1M:
+        writeRaw(buildStartReceiveCmd2440Ble1M());
+        return;
+    case ProductCmd::SendStart2480Ble1M:
+        writeRaw(buildStartReceiveCmd2480Ble1M());
+        return;
+    case ProductCmd::SendStart2402Ble2M:
+        writeRaw(buildStartReceiveCmd2402Ble2M());
+        return;
+    case ProductCmd::SendStart2440Ble2M:
+        writeRaw(buildStartReceiveCmd2440Ble2M());
+        return;
+    case ProductCmd::SendStart2480Ble2M:
+        writeRaw(buildStartReceiveCmd2480Ble2M());
+        return;
+    case ProductCmd::GetStopReceiveCount:
+        return;
     }
 }
 
 void Qproduct::get(ProductCmd cmd, const QVariant& param) {
     switch (cmd) {
-        case ProductCmd::GetStopReceiveCount: {
-            const QByteArray rx = param.toByteArray().isEmpty() ? productSerialRxAccum_ : param.toByteArray();
-            qDebug() << "[Qproduct] stop receive packet count =" << parseStopReceivePacketCountLe(rx);
-            return;
-        }
-        case ProductCmd::ClearRxAccum:
-            clearProductSerialRxAccum();
-            return;
-        default:
-            return;
+    case ProductCmd::GetStopReceiveCount: {
+        const QByteArray rx = param.toByteArray().isEmpty() ? productSerialRxAccum_ : param.toByteArray();
+        qDebug() << "[Qproduct] stop receive packet count =" << parseStopReceivePacketCountLe(rx);
+        return;
+    }
+    case ProductCmd::ClearRxAccum:
+        clearProductSerialRxAccum();
+        return;
+    default:
+        return;
     }
 }
 
@@ -220,12 +221,12 @@ void Qproduct::scanRxForInstrumentEvents() {
     if (!emittedAckReset_ && responseContainsPrefix(productSerialRxAccum_, ackReset())) {
         emittedAckReset_ = true;
         emit instrumentAckResetSeen();
-        qDebug() << "instrumentAckResetSeen" ;
+        qDebug() << "instrumentAckResetSeen";
     }
     if (!emittedAckStart_ && responseContainsPrefix(productSerialRxAccum_, ackStartReceive())) {
         emittedAckStart_ = true;
         emit instrumentAckStartReceiveSeen();
-        qDebug() << "instrumentAckStartReceiveSeen" ;
+        qDebug() << "instrumentAckStartReceiveSeen";
     }
     if (!emittedStopReceive_) {
         const int n = parseStopReceivePacketCountLe(productSerialRxAccum_);

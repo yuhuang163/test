@@ -17,16 +17,16 @@
 #include "usmile_ring_buffer.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace Ui {
-    class Fixture_uart;
+class Fixture_uart;
 }
 
 class Fixture_uart : public QWidget {
     Q_OBJECT
-public:
+  public:
     qint64 last_sent_timestamp = 0;
     std::atomic<bool> running;
     QFuture<void> future;
@@ -52,7 +52,7 @@ public:
 
     int fixBaudRate = 9600;
 
-private:
+  private:
     void solve_frame(void);
     void dispatchTextProtocols(const QByteArray& data);
     void writeFixturePort(const QByteArray& data, bool logTx = true, bool startAction = false);
@@ -70,7 +70,7 @@ private:
     QTimer* fixtureSerialPortTimer = new QTimer(this);
     QByteArray fixtureSerialPortBuf = 0;
 
-signals:
+  signals:
     void send_data_to_mechine(const FixturePacketData datapack);
     void send_data_to_mechine_imu(int state);
     void send_data_to_mechine_sleep(const FixturePacketData datapack);
@@ -78,7 +78,7 @@ signals:
     void start_fix_action(int state);
     void send_data_to_mechine_press(int state);
 
-private slots:
+  private slots:
     void readFixtureSerialPortData();
     void set_camera_action(camreaFixtureState fixstate);
 
@@ -95,7 +95,7 @@ private slots:
 };
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif
 
-#endif  // FIXTURE_UART_H
+#endif // FIXTURE_UART_H

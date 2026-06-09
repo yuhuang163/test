@@ -109,9 +109,9 @@ int32_t my_write_cb(uint8_t* decompress_data, uint32_t len, uint16_t packCnt) {
     if (file.open(QIODevice::WriteOnly)) {
         file.write(reinterpret_cast<char*>(decompress_data), len);
         file.close();
-        return 0;  // 返回0表示成功
+        return 0; // 返回0表示成功
     }
-    return -1;  // 返回负值表示失败
+    return -1; // 返回负值表示失败
 }
 
 // 示例读回调函数
@@ -123,5 +123,5 @@ int32_t my_read_cb(uint8_t* addr, uint8_t* buf, uint32_t len) {
         file.close();
         return read_size;
     }
-    return -1;  // 返回负值表示失败
+    return -1; // 返回负值表示失败
 }

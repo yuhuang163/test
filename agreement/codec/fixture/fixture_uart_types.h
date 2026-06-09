@@ -5,7 +5,7 @@
 #include <QtGlobal>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 // 压感等工站：气缸/继电器 0x55 短帧（见 FixturePressUartProtocol::buildFixtureStateCommand）
@@ -101,7 +101,8 @@ typedef struct FixturePacketData {
     uchar button1 = 0;
     uchar button2 = 0;
     uint musicCurrent = 0;
-    uint shipCurrent = 0;
+    /** 治具长包字节 14~15：待机电流 uA（原 shipCurrent，与蓝牙船运模式无关） */
+    uint standbyCurrentUa = 0;
     uchar music_state = 0;
     uint staticCurrent = 0;
     uint workingCurrent = 0;
@@ -120,7 +121,7 @@ typedef struct FixturePacketData {
 Q_DECLARE_METATYPE(FixturePacketData)
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(pop)
+#pragma execution_character_set(pop)
 #endif
 
-#endif  // FIXTURE_UART_TYPES_H
+#endif // FIXTURE_UART_TYPES_H

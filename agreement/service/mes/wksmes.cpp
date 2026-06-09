@@ -13,7 +13,7 @@
 #include "qlibrary.h"
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 wksmes::wksmes() {
     url = SETTINGS.value("Mes/NET", "http://218.14.127.107:8880").toString();
@@ -28,7 +28,7 @@ void wksmes::ProcessInspection(MesPacketData pack) {
         json["lotName"] = pack.lotName;
         json["station_name"] = pack.machineNo;
         json["userID"] = pack.userNo;
-        json["stepName"] = pack.test_station;  //工序名称
+        json["stepName"] = pack.test_station; //工序名称
         json["SCAN_TYPE"] = 22;
 
         QJsonArray inputSerials;
@@ -103,10 +103,14 @@ void wksmes::ProcessInspection(MesPacketData pack) {
         reply->deleteLater();
     }
 }
-void wksmes::LogIn(MesPacketData pack) {Q_UNUSED(pack);}
+void wksmes::LogIn(MesPacketData pack) {
+    Q_UNUSED(pack);
+}
 
 // sn和上位机号获取mac
-void wksmes::GetTestData(MesPacketData pack) {Q_UNUSED(pack);}
+void wksmes::GetTestData(MesPacketData pack) {
+    Q_UNUSED(pack);
+}
 QString wksmes::transformString(const QString& input) {
     // 去掉开头和结尾的 '|'
     QString modifiedString = input;
@@ -160,7 +164,7 @@ void wksmes::TestPass(MesPacketData pack) {
         // 2. 添加 testdatas (如果 pack.itemvalue 存在)
         if (!pack.itemvalue.isEmpty()) {
             QJsonArray testdatasArray;
-            QString inputString = pack.itemvalue.mid(1, pack.itemvalue.length() - 2);  // 移除起始和结束的'|'
+            QString inputString = pack.itemvalue.mid(1, pack.itemvalue.length() - 2); // 移除起始和结束的'|'
 
             // 分割字符串成键值对
             QStringList keyValuePairs = inputString.split("|");

@@ -1,4 +1,4 @@
-﻿---
+---
 description: new_product_test Qt/C++ 工程约定与 AI 协作规则
 alwaysApply: true
 ---
@@ -8,16 +8,8 @@ alwaysApply: true
 ## 技术栈
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
-- **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.qrc` / `.md` / `.ini` 配置片段等** 使用 **UTF-8 with BOM** 保存，避免 MSVC/工具链对无 BOM UTF-8 的误判。已有文件若非任务要求不要随意改编码。
-- **`.pro` 工程文件（硬性例外，Agent 必遵守）**：
-  - **必须 UTF-8 无 BOM**；qmake 遇 BOM 报 `Unexpected UTF-8 BOM`。
-  - **禁止**把「源文件默认 with BOM」套用到 `*.pro`；编辑工具保存后常会偷偷写入 BOM，不能假定「只改了几行就没事」。
-  - **每次**用 Write/StrReplace 等改动 `new_production.pro` 或其它 `*.pro` 后，**同一轮对话内必须**立刻去 BOM 并验证文件头为 ASCII（如 `QT`），再结束任务。示例（PowerShell/Python 均可）：
-    ```bash
-    python -c "p=r'new_production.pro'; b=open(p,'rb').read(); bom=b'\xef\xbb\xbf'; open(p,'wb').write(b[3:] if b.startswith(bom) else b)"
-    python -c "print(open(r'new_production.pro','rb').read(3))"  # 应为 b'QT '，不能是 b'\xef\xbb\xbf'
-    ```
-  - 用户或 Qt Creator 反馈 qmake BOM 报错时，**优先查 `.pro` 是否又被写成 with BOM**，不要只让用户自己排查。
+- **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8（无 BOM）** 保存；工程已配置 `/utf-8` 编译选项，无需 BOM。已有文件若非任务要求不要随意改编码。
+- **换行**：`.gitattributes` 为 `* -text`，**仓库与工作区均 CRLF 原样入库**（GitLab 上也显示 CRLF）；`*.sh` 保持 LF。批量统一：`python scripts/convert_to_crlf.py`。
 - 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
 
 ## 代码风格（与仓库一致）
@@ -26,6 +18,11 @@ alwaysApply: true
 - **测试结果**：继承 **`test_base`** 的工站使用 **`passValue` / `failValue`**（中文「通过」「失败」）、**`TestResult`** 与 **`showlog`**；表格分项用 **`TestItem` + `testResultTableUpdate`**。与用户可见结论用 **`showlog`**，调试细节可用 **`qDebug()`**。
 - **字符串比对**：期望值与实测比较优先 **`compareVersions`**（与现有关键键测等逻辑一致），不要随意换成裸 `==` 除非周边代码如此。
 - **头文件 / Qt**：保持与邻文件一致的包含风格（工程内多为 **`#include "..."`**，Qt 模块多为小写 **`#include <qxxx.h>`** 形式）。
+- **代码整齐性**：对齐同一类语句的换行与缩进风格（尤其是 `if / else if` 条件链）；尽量使用单行条件，必要多行时保证括号配对且 `&& / ||` 的换行位置与邻近代码一致，避免把 `&&` 留到括号外导致语法错误。
+- **避免无意义混用**：除非周边代码/性能/语义明确需要，否则不要引入与文件风格不一致的包装（例如 `QLatin1String`）。这类“没必要的转换/换写”应删除并保持同文件一致写法。
+- **批量格式化**：全仓 C/C++ 统一用 **`scripts\格式化代码.ps1`**（基于 Qt Creator 自带 `clang-format` + 根目录 `.clang-format`）；脚本会自动排除 `advance/xlsx`、`lib/qcustomplot`、生成 pb 等第三方/生成目录，并在末尾确保文本为 **UTF-8（无 BOM）**。
+- **查找表/常量矩阵**：CRC 表、256 项查表数组等**手工对齐的常量块**须用 `// clang-format off` … `// clang-format on` 包裹，避免被格式化成逐行一项；新增同类表沿用此约定。
+- **test_base 控件桥接**：工站头文件里 `override { return ui->xxx; }` 的单行桥接块同样用 `// clang-format off` … `on` 包裹，放在 `public:` 区，避免全仓格式化拆成多行。
 
 ## 测试卡控（阈值与判定）
 
@@ -34,6 +31,12 @@ alwaysApply: true
 - **回填状态机**：判定结束后设置 **`stepRuntime_.done = true`**、**`stepRuntime_.pass`**，失败时 **`TestResult = failValue`**；日志建议带「卡控通过/失败、当前值、允许范围」，与现有 RSSI/电流等句式一致。
 - **边界含义**：新建卡控时与同类步骤保持一致（例如 RSSI 现为 **`>` / `<` 非 `>=`**）；若改边界语义须在注释与设置说明里写清。
 - **`sendCommandWithRetry`**：仅表示「等到设备回包」；**`needCaseDone == false`** 的步骤默认不会因协议 FAIL 自动 **`pass = false`**，卡控类步骤应用 **`needCaseDone == true`** 并在回调里写入 **`stepRuntime_.pass`**，或在做不到时用显式预检/单独判定（参见自由工站三元组写入）。
+
+## 编译验证
+
+- 修改 **`.cpp` / `.h` / `.pro` / `.ui`** 等需编译项后，Agent 应在终端执行 **`scripts\编译Release版本.ps1`**（或 `scripts\编译Release版本.bat`）做 **Release 编译**；失败则根据输出中的 `error C` / `LNK` 修复后重跑，直至通过或确认环境缺失。
+- 仅改逻辑未改 `.pro` 时可用 **`-SkipQmake`** 加快增量编译；改了 `.pro` / 新增源文件须完整跑（默认含 qmake）。
+- 完整日志：`build/logs/build_*.log`；可通过环境变量覆盖工具路径：`NEW_PRODUCT_QT_DIR`、`NEW_PRODUCT_JOM`、`NEW_PRODUCT_VCVARS`。
 
 ## 改代码的原则
 
