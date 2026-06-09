@@ -309,7 +309,7 @@ static const Row kSettings[] = {
     TIP("label_mes_config_file_path", "仅 BYD：外部 MES 配置文件路径。"),
     TIP("comboBox_testFlowStation", "TestOrderMeta/SelectedStation；切换工站编排 test_case 流程。"),
     TIP("pushButton_testFlowClear", "清空当前工站已配置测试流程。"),
-    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot。"),
+    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot / qroot（吸奶器 PCBA，经蓝牙透传）。"),
     TIP("comboBox_tupleEnvironment", "三元组环境预设。"),
     TIP("lineEdit_tupleBaseUrl", "Tuple/BaseUrl。"),
     TIP("lineEdit_imu_status", "外设 imu 状态期望值。"),

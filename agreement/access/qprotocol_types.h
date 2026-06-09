@@ -415,6 +415,15 @@ enum class DeviceCmd {
     LightCalibWrite,    // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
 
+    // 【Qroot】吸奶器 PCBA 串口协议
+    RootVibration,       // 0x94 振子控制
+    RootFlangeQuery,   // 0x96 法兰状态查询
+    RootNtcQuery,        // 0x97 加热 NTC 查询
+    RootHeatTempQuery,   // 0x98 加热温度查询
+    RootVibStatusQuery,  // 0x99 振子状态查询
+    RootPumpTestEnter,   // 0x9D 主机泵测试进入
+    RootPumpTestExit,    // 0x9E 主机泵测试退出
+
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）

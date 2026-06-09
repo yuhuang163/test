@@ -62,6 +62,8 @@ void fillProductProtocolCombo(QComboBox* box) {
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qfctp));
     box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qpb),
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qpb));
+    box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qroot),
+                 DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qroot));
 }
 
 void fillFixtureProtocolCombo(QComboBox* box) {
