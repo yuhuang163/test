@@ -26,7 +26,6 @@
 #include <functional>
 #include <vector>
 
-// factory_analyzer 专用命名，避免与 common_class.h 中同名结构体在 main.cpp 等翻译单元里重定义
 struct FactoryNamedFunction {
     QString name;
     std::function<void()> function;

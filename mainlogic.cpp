@@ -3176,12 +3176,6 @@ void MainWindow::onRequestFinished(QNetworkReply* reply) {
     // 处理完整的 accumulatedContent
     if (!accumulatedContent.isEmpty()) {
         showlog(accumulatedContent);
-
-        // 解析命令（TestFunctionExecutor / common_class 已移除，暂不按名执行 PB 测试项）
-        // QStringList segments = accumulatedContent.split(',');
-        // for (const QString& segment : segments) {
-        //     executor.executeFunctionByName(segment);
-        // }
     }
 
     reply->deleteLater();
