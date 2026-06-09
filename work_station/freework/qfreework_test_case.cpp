@@ -5,7 +5,7 @@
 #include "qat.h"
 #include "qfreeworkbox.h"
 #include "fixture_uart.h"
-#include "fixture_pcba_uart_protocol.h"
+#include "protocol/fixture_pcba_uart_protocol.h"
 #include "qprotocol_types.h"
 
 #include <QFile>

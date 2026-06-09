@@ -17,7 +17,7 @@ EXCLUDE_DIR_NAMES = {
 }
 
 EXCLUDE_PATH_PARTS = (
-    "agreement/device/protocol/qpb/Python39",
+    "agreement/qProtocol/qpb/Python39",
     "lib/libusb",
 )
 

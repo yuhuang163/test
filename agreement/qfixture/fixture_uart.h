@@ -10,9 +10,9 @@
 
 #include <QtConcurrent>
 
-#include "fixture_pcba_uart_protocol.h"
-#include "fixture_press_uart_protocol.h"
-#include "fixture_uart_types.h"
+#include "protocol/fixture_pcba_uart_protocol.h"
+#include "protocol/fixture_press_uart_protocol.h"
+#include "protocol/fixture_uart_types.h"
 #include "qlog.h"
 #include "usmile_ring_buffer.h"
 

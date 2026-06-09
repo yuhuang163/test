@@ -4,8 +4,8 @@
 #include <QEventLoop>
 #include <QMessageBox>
 
-#include "fixture_camera_uart_protocol.h"
-#include "fixture_imu_uart_protocol.h"
+#include "protocol/fixture_camera_uart_protocol.h"
+#include "protocol/fixture_imu_uart_protocol.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_fixture_uart.h"

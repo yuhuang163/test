@@ -108,6 +108,7 @@ new_product_test/
 ├── work_station/                         ← 各工站业务模块
 │   ├── test_base.h/.cpp                  ← 工站公共基类（串口/通用流程）
 │   ├── box_base.h/.cpp                   ← 工站容器基类
+│   ├── common_class.h/.cpp               ← MainWindow 用 TestFunctionExecutor（PB 按名执行测试项）
 │   ├── key/                              ← 按键工站
 │   ├── suction/                          ← 吸力工站
 │   │
@@ -169,7 +170,7 @@ new_product_test/
 | 界面入口 | `mainwindow.*`、`mainlogic.cpp` | UI、工站切换、流程联动 | 业务 + 平台 |
 | 协议层 | `agreement/` | 设备协议、MES、OTA/ADB/Bulk | 协议 |
 | 工站业务 | `work_station/` | 测试步骤、卡控、结果判定 | 业务 |
-| 独立工具 | `tools/factory_analyzer/` | DJI 分析页，独立 Bulk 脚本测试表 | 工具/协议 |
+| 独立工具 | `tools/factory_analyzer/` | DJI 分析页，不依赖 `common_class.h` | 工具/协议 |
 
 依赖建议（自上而下，避免反向 include）：
 
@@ -177,12 +178,13 @@ new_product_test/
 UI / 工站  →  SerialChannel / QProtocolManager / 平台服务  →  具体协议实现
 ```
 
-- `tools/factory_analyzer` 使用自有 `FactoryNamedFunction`（`factory_analyzer.h`），与工站 `test_base` / `platform/test_case` 测试流程分离。
+- `tools/factory_analyzer` 使用自有 `FactoryNamedFunction`（定义在 `factory_analyzer.h`），勿 include `common_class.h`，避免与 `MainWindow` 侧 `NamedFunction` 在 `main.cpp` 中重定义。
+- `MainWindow` 通过 `TestFunctionExecutor`（`common_class`）按名称执行 PB 测试命令；`factory_analyzer` 自行维护 Bulk 脚本测试表。
 
 ## 维护约定
 
 - 业务改动优先在 `work_station/`、`agreement/`、`mainlogic.cpp`；配置项 UI 在 `platform/settings/qsetting`。
-- `tools/factory_analyzer/` 改动保持模块内聚。
+- `tools/factory_analyzer/` 改动保持模块内聚，勿再 include `common_class.h`。
 - 不建议手改 `build/` 与 `agreement/qProtocol/qpb/Python39/`。
 - 新增协议优先扩展 `agreement/qProtocol`（经 `QProtocolManager` 统一入口）或 `agreement/qusb` / `qat` 等适配层；工站通过 `test_base` 接入。
 - 配置键统一走 `SETTINGS`（`上位机设置.ini`），新增项同步 `qsetting` 加载/保存与 UI。
