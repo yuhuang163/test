@@ -1,6 +1,13 @@
 
 #include "config.h"
 #include "esp_gatt_common_api.h"
+#include "esp_gap_ble_api.h"
+
+// 首选连接间隔（单位 1.25 ms）。目标 5 ms 对应 0x04，但 BLE/ESP-IDF 合法下限为 7.5 ms (0x06)。
+#define BLE_PREFER_CONN_INT_MIN 0x06
+#define BLE_PREFER_CONN_INT_MAX 0x06
+#define BLE_PREFER_CONN_LATENCY 0
+#define BLE_PREFER_CONN_SUP_TOUT 2000
 
 uint16_t conn_id = -1;
 static BLEClient *pClient = nullptr; // 蓝牙客户端的类
@@ -80,6 +87,12 @@ static FactoryBleProfile factoryProfiles[] = {
      BLEUUID("a6ed0202-d344-460a-8075-b9e8ec90d71b"),
      BLEUUID("a6ed0203-d344-460a-8075-b9e8ec90d71b"),
      true},
+    // UART Over BLE: RX=0xAF01(Write Without Response), TX=0xAF02(Notify)
+    {"root",
+     BLEUUID("AF00"),
+     BLEUUID("AF02"),
+     BLEUUID("AF01"),
+     false},
 };
 
 static FactoryBleProfile *activeFactoryProfile = nullptr;
@@ -406,7 +419,7 @@ class MyClientCallback : public BLEClientCallbacks
         Serial.println("AT+DISCONNECT");
         delay(100);
         Serial.println("AT+DISCONNECT");
-
+        colorWipe(strip.Color(255, 0, 0)); // 红色
         if (is_need_reset_adress)
         {
             // 禁止重连
@@ -501,6 +514,28 @@ void strToBdAddr(const char *str, esp_bd_addr_t addr)
         Serial.println("MAC 地址格式错误");
     }
 }
+
+static void applyPreferConnParams(const char *addressStr)
+{
+    esp_bd_addr_t bd_addr;
+    strToBdAddr(addressStr, bd_addr);
+    esp_err_t status = esp_ble_gap_set_prefer_conn_params(
+        bd_addr,
+        BLE_PREFER_CONN_INT_MIN,
+        BLE_PREFER_CONN_INT_MAX,
+        BLE_PREFER_CONN_LATENCY,
+        BLE_PREFER_CONN_SUP_TOUT);
+    if (status == ESP_OK)
+    {
+        Serial.printf("首选连接间隔已设置: min=0x%02x max=0x%02x (x1.25ms)\r\n",
+                      BLE_PREFER_CONN_INT_MIN, BLE_PREFER_CONN_INT_MAX);
+    }
+    else
+    {
+        Serial.printf("首选连接间隔设置失败, err=%d\r\n", status);
+    }
+}
+
 /**
  * 扫描BLE服务器，找到第一个广告我们所寻找的服务的服务器。
  */
@@ -571,27 +606,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     Serial.print((addrType == BLE_ADDR_TYPE_PUBLIC) ? "public" : ((addrType == BLE_ADDR_TYPE_RANDOM) ? "random" : "other"));
                     Serial.println(")");
                 }
-                esp_bd_addr_t target_device_addr;
-                strToBdAddr(targetDeviceAddress, target_device_addr);
-
-                // // 设置首选连接参数
-                // esp_err_t status = esp_ble_gap_set_prefer_conn_params(
-                //     target_device_addr,
-                //     0x09, // 9 * 1.25ms = 11.25ms
-                //     0x0c, // 12 * 1.25ms = 15ms
-                //     0,    // 从机延迟// 从机延迟 (单位: 连接事件数)
-                //     2000  // 2000 * 10ms = 20s
-                // );
-
-                // if (status == ESP_OK)
-                // {
-                //     Serial.println("连接间隔设置成功");
-                // }
-                // else
-                // {
-                //     Serial.printf("连接间隔设置失败，错误码 %d", status);
-                // }
-
                 digitalWrite(D2_PIN, LOW); // 将 D2_PIN 设置为高电
 
                 // colorWipe(strip.Color(255, 0, 0));  // 红色
@@ -867,6 +881,11 @@ bool connectTobleServer()
 
     pClient->setClientCallbacks(connect_callback); // 设置客户端回调函数
     Serial.println("创建完成,连接到设备");
+
+    const char *connAddr = (get_ble_connect_mode() == CONNECT_BY_SCAN && bleRuntime.hasScanDevice)
+                               ? bleRuntime.scanDeviceAddress
+                               : targetDeviceAddress;
+    applyPreferConnParams(connAddr);
 
     bool connected = false;
     if (get_ble_connect_mode() == CONNECT_BY_SCAN)

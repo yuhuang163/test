@@ -427,7 +427,7 @@ void processDataTask(void *pvParameters)
     byte packet[UART_SOLVE_BUFFER_SIZE];
     byte pbpacket[1024];
     size_t pboffset = 0;
-    int uartsolvesize = 0;
+    // int uartsolvesize = 0;
     while (1)
     {
         size_t packetSize = bufferRead(packet, sizeof(packet)); // 从环形缓冲区读取数据
@@ -440,6 +440,7 @@ void processDataTask(void *pvParameters)
                 // uartsolvesize = uartsolvesize + packetSize;
                 // Serial.print("处理总数");
                 // Serial.println(uartsolvesize);
+                // Serial0.printf("send_ble_data: %lu\r\n", millis());
             }
             else
             {
