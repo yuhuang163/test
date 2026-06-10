@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1393</width>
+    <width>1411</width>
     <height>1016</height>
    </rect>
   </property>
@@ -351,7 +351,7 @@
                 <string/>
                </property>
                <property name="text">
-                <string>DF:F1:10:00:00:10</string>
+                <string>b8:08:07:0c:2d:21</string>
                </property>
                <property name="placeholderText">
                 <string>扫描/输入MAC后连接</string>
@@ -485,7 +485,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>10</number>
+               <number>4</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -994,6 +994,20 @@
                        <widget class="QPushButton" name="get_battery">
                         <property name="text">
                          <string>显示充电情况</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="get_root_battery_temp">
+                        <property name="text">
+                         <string>查询电池温度</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="root_battery_temp_value">
+                        <property name="text">
+                         <string>电池温度：</string>
                         </property>
                        </widget>
                       </item>
@@ -2809,11 +2823,22 @@
                     </layout>
                    </item>
                    <item row="0" column="4">
-                    <widget class="QPushButton" name="get_botton_state">
-                     <property name="text">
-                      <string>获取按键状态</string>
-                     </property>
-                    </widget>
+                    <layout class="QHBoxLayout" name="horizontalLayout_keyNotify">
+                     <item>
+                      <widget class="QPushButton" name="open_key_notify">
+                       <property name="text">
+                        <string>开启按键上报</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="close_key_notify">
+                       <property name="text">
+                        <string>关闭按键上报</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </widget>
@@ -4265,6 +4290,16 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QCheckBox" name="is_img_res_ota_v2">
+                    <property name="toolTip">
+                     <string>图片资源 OTA v2：原子 TLV、Service 9、固定 1024 字节块（见 IMG_RES_OTA_PROTOCOL.md）</string>
+                    </property>
+                    <property name="text">
+                     <string>图片资源OTA v2</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QCheckBox" name="is_clear_mac">
                     <property name="text">
                      <string>是否升级完成清空mac</string>
@@ -5493,7 +5528,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1393</width>
+     <width>1411</width>
      <height>21</height>
     </rect>
    </property>

@@ -90,13 +90,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           dongleSerialChannel_(new SerialChannel(this)),
                                           dongleSerialPort(dongleSerialChannel_->port()),
                                           pb(new Qpb(dongleSerialPort)),
-                                          qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
+                                          qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)),
+                                          qroot(new Qroot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
                                           nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
+    protocolManager.bindQroot(qroot);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
@@ -110,12 +112,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
     // 当前激活协议由 protocolManager 统一维护。
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     } else {
         protocolManager.setCurrentProtocolType(selectedType);
     }
+    showlog(QStringLiteral("当前设备协议：%1")
+                .arg(QString::fromStdString(
+                    QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
 
     // tts = new QTextToSpeech(this);
     // if (!tts) {
@@ -469,6 +475,8 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshServoMotorInfo(payload.value<ProtocolServoMotorInfoData>());
     } else if (reportType == QLatin1String("ProtocolButtonStateData") && payload.canConvert<ProtocolButtonStateData>()) {
         refreshButtonState(payload.value<ProtocolButtonStateData>());
+    } else if (reportType == QLatin1String("ProtocolBatteryTempData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshRootBatteryTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
     }
 }
 
@@ -582,8 +590,30 @@ void MainWindow::refreshOtaResult(int result) {
 }
 
 void MainWindow::refreshButtonState(ProtocolButtonStateData data) {
-    showlog("电源按键" + QString::number(data.powerButtonState));
-    showlog("模式按键" + QString::number(data.modeButtonState));
+    switch (data.keyButtonId) {
+    case 1:
+        showlog(QStringLiteral("按键上报：加挡位(9A01)"));
+        break;
+    case 2:
+        showlog(QStringLiteral("按键上报：减挡位(9A02)"));
+        break;
+    case 3:
+        showlog(QStringLiteral("按键上报：模式按键(9A03)"));
+        break;
+    default:
+        if (data.keyButtonId != 0)
+            showlog(QStringLiteral("按键上报：ID=0x%1").arg(data.keyButtonId, 2, 16, QChar('0')));
+        break;
+    }
+    if (data.powerButtonState != 0)
+        showlog(QStringLiteral("电源按键") + QString::number(data.powerButtonState));
+    if (data.modeButtonState != 0)
+        showlog(QStringLiteral("模式按键") + QString::number(data.modeButtonState));
+}
+
+void MainWindow::refreshRootBatteryTemp(quint8 temp) {
+    ui->root_battery_temp_value->setText(QStringLiteral("电池温度：%1°C").arg(temp));
+    showlog(QStringLiteral("电池温度：%1°C (0x80)").arg(temp));
 }
 void MainWindow::setting_ui() {
     if (qsetting_ui == NULL) {
@@ -895,43 +925,45 @@ void MainWindow::on_snInput_returnPressed() {
 }
 
 void MainWindow::on_enterBurningMode_clicked() {
-    if (at->getConnected()) {
-        const QString currentText = ui->burningModeCombo->currentText();
-        int mode = 0;
-        if (currentText == "老化1") {
-            mode = 1;
-        } else if (currentText == "老化2") {
-            mode = 2;
-        } else if (currentText == "老化3") {
-            mode = 3;
-        } else if (currentText == "老化4") {
-            mode = 4;
-        }
-
-        if (mode == 0) {
-            showlog("未知老化模式，请先选择老化1-老化4");
-            return;
-        }
-
-        QVariantMap m;
-        m["mode"] = mode;
-        m["seconds"] = ui->burningModetime->text(); // 统一上层入参，协议层做兼容
-        protocolManager.set(DeviceCmd::BurningMode, m);
-        showlog("已发送老化");
-    } else {
+    if (!at->getConnected()) {
         showlog("请等待连接设备后再试");
+        return;
     }
+
+    const QString currentText = ui->burningModeCombo->currentText();
+    int mode = 0;
+    if (currentText == "老化1") {
+        mode = 1;
+    } else if (currentText == "老化2") {
+        mode = 2;
+    } else if (currentText == "老化3") {
+        mode = 3;
+    } else if (currentText == "老化4") {
+        mode = 4;
+    }
+
+    if (mode == 0) {
+        showlog("未知老化模式，请先选择老化1-老化4");
+        return;
+    }
+
+    QVariantMap m;
+    m["mode"] = mode;
+    m["seconds"] = ui->burningModetime->text();
+    protocolManager.set(DeviceCmd::BurningMode, m);
+    showlog("已发送老化");
 }
 void MainWindow::on_exitBurningMode_clicked() {
-    if (at->getConnected()) {
-        QVariantMap m;
-        m["mode"] = 1;
-        m["switch"] = static_cast<int>(FacSwitch_CLOSE);
-        protocolManager.set(DeviceCmd::BurningMode, m);
-        showlog("已退出老化模式");
-    } else {
+    if (!at->getConnected()) {
         showlog("请等待连接设备后再试");
+        return;
     }
+
+    QVariantMap m;
+    m["mode"] = 1;
+    m["switch"] = static_cast<int>(FacSwitch_CLOSE);
+    protocolManager.set(DeviceCmd::BurningMode, m);
+    showlog("已退出老化模式");
 }
 void MainWindow::on_pushButton_2_clicked() {
     FacSetBrushRecord record;
@@ -2270,26 +2302,11 @@ void MainWindow::on_pink_led_clicked() {
 }
 
 void MainWindow::on_white_led_clicked() {
-    static int turn = 1;
-    if (turn) {
-        if (protocolManager.isQfctpProtocolActive()) {
-            QVariantMap m;
-            m["on"] = 1;
-            protocolManager.set(DeviceCmd::LedTest, m);
-        } else {
-            protocolManager.set(DeviceCmd::LedColor, QVariantList{1, 1});
-        }
-        turn = 0;
-    } else {
-        if (protocolManager.isQfctpProtocolActive()) {
-            QVariantMap m;
-            m["on"] = 0;
-            protocolManager.set(DeviceCmd::LedTest, m);
-        } else {
-            protocolManager.set(DeviceCmd::LedColor, QVariantList{0, 1});
-        }
-        turn = 1;
-    }
+    static int on = 1;
+    QVariantMap m;
+    m[QStringLiteral("on")] = on;
+    protocolManager.set(DeviceCmd::LedTest, m);
+    on = on ? 0 : 1;
 }
 
 void MainWindow::on_get_motor_log_clicked() {
@@ -2940,6 +2957,12 @@ void MainWindow::on_get_battery_clicked() {
     }
 }
 
+void MainWindow::on_get_root_battery_temp_clicked() {
+
+    protocolManager.get(DeviceCmd::RootBatteryTempQuery);
+    showlog(QStringLiteral("正在查询电池温度(8001)"));
+}
+
 void MainWindow::on_get_motor_info_clicked() {
     protocolManager.get(DeviceCmd::GetServoMotorInfo);
 }
@@ -3362,6 +3385,16 @@ void MainWindow::startRootBleOta() {
         return;
     }
 
+    if (ui->is_img_res_ota_v2->isChecked()) {
+        if (!progressToSourceBar) {
+            QMessageBox::warning(this, QStringLiteral("警告"),
+                                 QStringLiteral("图片资源 OTA v2 仅支持「资源 OTA 路径」，请填写 otaFilePath_source"));
+            return;
+        }
+        startRootBleOta2(imageData, RootBleOta2Client::kDefaultImageId, filePath, progressToSourceBar);
+        return;
+    }
+
     bool intervalOk = false;
     int intervalMs = ui->OtaTimeInterval->text().toInt(&intervalOk);
     if (!intervalOk || intervalMs < 0)
@@ -3471,6 +3504,86 @@ void MainWindow::startRootBleOta() {
     tryScheduleBleOtaPressTest(ok);
 }
 
+void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId, const QString& filePath,
+                                    bool progressToSourceBar) {
+    bool intervalOk = false;
+    int intervalMs = ui->OtaTimeInterval->text().toInt(&intervalOk);
+    if (!intervalOk || intervalMs < 0)
+        intervalMs = 5;
+
+    const uint32_t imageCrc32 = RootBleOta2Client::calculateImageCrc32(imageData);
+    const int totalBlocks = (imageData.size() + RootBleOta2Client::kBlockSize - 1) / RootBleOta2Client::kBlockSize;
+
+    showlog(QStringLiteral("图片资源 OTA v2 开始：%1，大小 %2，CRC32=0x%3，块数 %4")
+                .arg(filePath)
+                .arg(imageData.size())
+                .arg(imageCrc32, 8, 16, QChar('0'))
+                .arg(totalBlocks));
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" 图片资源 OTA v2 开始 ") + filePath);
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                   QStringLiteral(" 写数据间隔：%1 ms，块大小：%2 字节")
+                                       .arg(intervalMs)
+                                       .arg(RootBleOta2Client::kBlockSize));
+    at->set(DongleCmd::OtaDataPassthrough, 1);
+    waitWork(500);
+
+    auto sendFrame = [this](const QByteArray& frame) {
+        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd") +
+                                       QStringLiteral(" IMG RES OTA 发送数据片"));
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(frame);
+    };
+    rootBleOta2Client_.setSendFunc(sendFrame);
+    rootBleOta2Client_.setLogFunc([this](const QString& msg) {
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + " " + msg);
+    });
+
+    rootBleOtaActive_ = true;
+    rootBleOta2Active_ = true;
+    rootBleOta2Client_.reset();
+    bleOtaTestTime.start();
+
+    QString errorText;
+    const uint32_t version = 0x00010000u;
+    const bool ok = rootBleOta2Client_.runTransfer(
+        imageData, imageId, version, intervalMs, [this]() { return stopBleOta != 0; }, &errorText,
+        [this, progressToSourceBar](int percent) {
+            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            if (progressToSourceBar)
+                emit sendBelSourceOtaSpeed(percent);
+            else
+                emit sendBelOtaSpeed(percent);
+        });
+
+    rootBleOtaActive_ = false;
+    rootBleOta2Active_ = false;
+    at->set(DongleCmd::OtaDataPassthrough, 0);
+    waitWork(200);
+
+    if (stopBleOta) {
+        showlog(QStringLiteral("图片资源 OTA v2 已停止"));
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" OTA 已停止"));
+        return;
+    }
+
+    if (ok) {
+        ui->bleotaresult->setText(QStringLiteral("PASS"));
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
+                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        showlog(QStringLiteral("图片资源 OTA v2 成功，耗时 %1").arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" OTA 成功"));
+    } else {
+        ui->bleotaresult->setText(QStringLiteral("FAIL"));
+        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
+        const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
+        showlog(QStringLiteral("图片资源 OTA v2 失败：") + msg);
+        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" OTA 失败：") + msg);
+    }
+
+    tryScheduleBleOtaPressTest(ok);
+}
+
 void MainWindow::tryScheduleBleOtaPressTest(bool lastOk) {
     if (!ui->is_bleota_press->checkState() || stopBleOta)
         return;
@@ -3561,6 +3674,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
 void MainWindow::on_stopBleOta_clicked() {
     stopBleOta = 1;
     rootBleOtaActive_ = false;
+    rootBleOta2Active_ = false;
     bleotatimer->stop();
     disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连接
     currentChunk = 0;
@@ -4124,8 +4238,14 @@ void MainWindow::on_speakAi_pressed() {
     ui->speakAi->setText("请说话"); // 设置按钮文本
 }
 
-void MainWindow::on_get_botton_state_clicked() {
+void MainWindow::on_open_key_notify_clicked() {
     protocolManager.get(DeviceCmd::ButtonState, 1);
+    showlog(QStringLiteral("开启按键上报"));
+}
+
+void MainWindow::on_close_key_notify_clicked() {
+    protocolManager.get(DeviceCmd::ButtonState, 0);
+    showlog(QStringLiteral("关闭按键上报"));
 }
 
 void MainWindow::on_selectPath_source_clicked() {

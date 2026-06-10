@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 #include "common_utils.h"
 #include "qlog.h"
 #include "qat.h"
@@ -463,7 +463,10 @@ void MainWindow::saveDongleUartLog(QString data) {
 }
 void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     if (rootBleOtaActive_) {
-        rootBleOtaClient_.onRx(dataTemp);
+        if (rootBleOta2Active_)
+            rootBleOta2Client_.onRx(dataTemp);
+        else
+            rootBleOtaClient_.onRx(dataTemp);
         // const QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
         // ui->bleOtaMsg->appendPlainText(QString("[%1] RX %2 bytes: %3")
         //                                    .arg(timestamp)

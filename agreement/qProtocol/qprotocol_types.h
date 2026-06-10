@@ -160,6 +160,7 @@ typedef struct {
 } ProtocolTypeData;
 
 typedef ProtocolTypeData ProtocolLcdControlData;
+typedef ProtocolTypeData ProtocolBatteryTempData;
 
 typedef struct {
     int timeStamp = 0;
@@ -363,7 +364,7 @@ enum class DeviceCmd {
     MotorCaliResultParam,  // 【Qpb】电机校准结果参数（uint，set_motor_cali_result_param）
     WifiConnect,           // 【Qpb】连 WiFi（WifiConnectPayload / QVariantMap{name,password} / WifiInfo，set_connect_wifi）
     Music,                 // 【Qpb】音乐控制/曲目数据（QByteArray，set_music）
-    BurningMode,           // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp 均兼容
+    BurningMode,           // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp/Qroot(0xAF) 均兼容
     BrushRecord,           // 【Qpb】使用记录写入（FacSetBrushRecord，set_brush_record）
     BrushTime,             // 【Qpb】使用计时相关（int，set_brush_time）
     Sleep,                 // 【主入口】休眠/待机控制；Qpb 走 set_sleeep，Qfctp 映射待机 TLV
@@ -407,8 +408,8 @@ enum class DeviceCmd {
     TrimSet,               // 【Qfctp】写 trim（QVariantMap，setCaseTrimSet）
     MacWrite,              // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
     NightLightSet,         // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）
-    LedTest,               // 【Qfctp】显示测试 LED（QVariantMap，setCaseLedTest）
-    FactoryReset,          // 【Qfctp】恢复出厂（无参，setCaseFactoryReset）
+    LedTest,               // 【主入口】LED 测试开关（QVariantMap{on:0|1}）；Qfctp/Qroot/Qpb 均兼容
+    FactoryReset,          // 【Qfctp】恢复出厂（无参）；【Qroot】Notify 0xFC+0x04，应答 0xE0 返回 0x04
 
     LcdBacklight,       // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
     LightReportControl, // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
@@ -416,6 +417,7 @@ enum class DeviceCmd {
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
 
     // 【Qroot】吸奶器 PCBA 串口协议
+    RootBatteryTempQuery, // 0x80 电池温度查询
     RootVibration,       // 0x94 振子控制
     RootFlangeQuery,   // 0x96 法兰状态查询
     RootNtcQuery,        // 0x97 加热 NTC 查询
@@ -428,8 +430,8 @@ enum class DeviceCmd {
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）
     LightSensorInfo,    // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
-    GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV（getCaseBatteryRead）
-    ButtonState,        // 【Qpb】按键状态（param.toInt() 为按键索引/掩码，get_button_state）
+    GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV；【Qroot】Notify 0xE0 查询
+    ButtonState,        // 【主入口】按键状态/上报开关；Qpb 读按键，Qroot 9A 开关（param 0|1）
     GetPressCaliResult, // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,   // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
     DeviceInfo,         // 【主入口】设备信息查询（Qpb）

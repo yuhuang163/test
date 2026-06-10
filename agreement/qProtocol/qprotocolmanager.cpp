@@ -36,6 +36,9 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
     if (lower == "qaiot") {
         return ProtocolType::Qaiot;
     }
+    if (lower == "qroot") {
+        return ProtocolType::Qroot;
+    }
     return ProtocolType::Unknown;
 }
 

@@ -18,14 +18,29 @@ constexpr const char kHintSn[] =
     u8"写 deviceName：which_sn=6，sn=$TUPLE_DEVICE_NAME\n"
     u8"写整机 SN：which_sn=1，sn=具体值或 $TAIL_SN";
 constexpr const char kHintSoftVersionRead[] =
-    u8"FCTP：Get SoftVersionRead 回包 soft_version（软件版本），无需参数\n"
-    u8"卡控：ReportType=ProtocolBaseInfoData，Field=soft_version，Op=compareVersions，Expected=目标版本";
+    u8"Qroot：Req 0x91，回包 soft_version(2B)+hw_version(1B)\n"
+    u8"卡控：ReportType=ProtocolBaseInfoData，Field=soft_version，Op=compareVersions";
+constexpr const char kHintGetBattery[] =
+    u8"Qroot：Notify 0xE0+0x01 查询；回包 percent(1B)+voltage 大端 0.01V\n"
+    u8"卡控：ReportType=ProtocolBatteryData，Field=percent / voltageMv";
+constexpr const char kHintRootBatteryTemp[] =
+    u8"Qroot：Notify 0x80+0x01 查询电池温度\n"
+    u8"卡控：ReportType=ProtocolBatteryTempData，Field=type";
+constexpr const char kHintFactoryReset[] =
+    u8"Qroot：Notify 0xFC+0x04 恢复出厂；应答 0xE0 返回 0x04\n"
+    u8"卡控：ReportType=ProtocolResultData，Field=result，Expected=1";
+constexpr const char kHintLedTest[] =
+    u8"Qroot：Req 0x93，on=1 全亮 / on=0 全灭\n"
+    u8"示例：Param/on=1 或 {\"on\":1}";
+constexpr const char kHintButtonState[] =
+    u8"Qroot：Notify 0x9A，1=开启按键上报 / 0=关闭\n"
+    u8"Qpb：Param/int 为按键索引";
 constexpr const char kHintBaseInfo[] =
     u8"QPB：读写基础信息（含软件/资源版本等）\nFCTP 请改用 SoftVersionRead（读取版本号）";
 constexpr const char kHintFacResult[] =
     u8"产测结果：done=1 通过(留空等同1)，done=0 失败\n示例：done=1 或 {\"done\":1}";
 constexpr const char kHintBurningMode[] =
-    u8"老化：mode、seconds，可选 switch\n示例：{\"mode\":1,\"seconds\":3600}";
+    u8"老化：mode、seconds，可选 switch/enter\nQroot 进入老化：Notify 0xAF+0x01\n示例：{\"mode\":1,\"seconds\":3600}";
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] = u8"工厂模式：value=1 进入，0 退出\n示例：{\"value\":1}";
 constexpr const char kHintWifiConnect[] =
@@ -41,7 +56,7 @@ const Row kRows[] = {
     {DeviceCmd::Sn, "Sn", u8"序列号", DeviceCmdParamKind::JsonMap, kHintSn, kBoth},
     {DeviceCmd::SoftVersionRead, "SoftVersionRead", u8"版本号", DeviceCmdParamKind::None, kHintSoftVersionRead, kGet},
     {DeviceCmd::BaseInfo, "BaseInfo", u8"基本信息", DeviceCmdParamKind::None, kHintBaseInfo, kGet},
-    {DeviceCmd::GetBattery, "GetBattery", u8"电量", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::GetBattery, "GetBattery", u8"电量", DeviceCmdParamKind::None, kHintGetBattery, kGet},
     {DeviceCmd::FacResult, "FacResult", u8"产测结果", DeviceCmdParamKind::JsonMap, kHintFacResult, kSet},
     {DeviceCmd::BurningMode, "BurningMode", u8"老化模式", DeviceCmdParamKind::JsonMap, kHintBurningMode, kSet},
     {DeviceCmd::Sleep, "Sleep", u8"休眠", DeviceCmdParamKind::JsonMap, kHintSleep, kSet},
@@ -54,7 +69,8 @@ const Row kRows[] = {
     {DeviceCmd::ChargeCurrentRead, "ChargeCurrentRead", u8"充电电流", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::None, kHintTupleRead, kGet},
     {DeviceCmd::PeriphState, "PeriphState", u8"外设状态", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::None, kHintFactoryReset, kSet},
+    {DeviceCmd::RootBatteryTempQuery, "RootBatteryTempQuery", u8"电池温度", DeviceCmdParamKind::None, kHintRootBatteryTemp, kGet},
     {DeviceCmd::RootVibration, "RootVibration", u8"振子控制", DeviceCmdParamKind::JsonMap, u8"0=停止 1=震动\n示例：{\"value\":1}", kSet},
     {DeviceCmd::RootFlangeQuery, "RootFlangeQuery", u8"法兰状态", DeviceCmdParamKind::None, u8"0=无法兰 1=加热法兰 2=震动法兰 0xA0=二合一", kGet},
     {DeviceCmd::RootNtcQuery, "RootNtcQuery", u8"加热NTC", DeviceCmdParamKind::None, nullptr, kGet},
@@ -111,7 +127,7 @@ const Row kRows[] = {
     {DeviceCmd::TrimSet, "TrimSet", u8"微调值", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::MacWrite, "MacWrite", u8"网卡地址", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::NightLightSet, "NightLightSet", u8"夜灯", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::JsonMap, kHintLedTest, kSet},
     {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LightReportControl, "LightReportControl", u8"灯光上报控制", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"灯光校准", DeviceCmdParamKind::None, nullptr, kSet},
@@ -119,7 +135,7 @@ const Row kRows[] = {
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::ButtonState, "ButtonState", u8"按键状态", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::ButtonState, "ButtonState", u8"按键状态", DeviceCmdParamKind::Int, kHintButtonState, kGet},
     {DeviceCmd::GetPressCaliResult, "GetPressCaliResult", u8"压力校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::GetImuCaliResult, "GetImuCaliResult", u8"惯性校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::DeviceInfo, "DeviceInfo", u8"设备信息", DeviceCmdParamKind::None, nullptr, kGet},

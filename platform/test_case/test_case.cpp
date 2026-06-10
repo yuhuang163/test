@@ -1321,7 +1321,7 @@ TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& 
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qpb;
-    if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("Root"), Qt::CaseInsensitive) == 0)
+    if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qroot;
     return TestCaseProductProtocol::Qfctp;
 }
@@ -1342,7 +1342,7 @@ QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protoco
     case TestCaseProductProtocol::Qpb:
         return QStringLiteral("QPB");
     case TestCaseProductProtocol::Qroot:
-        return QStringLiteral("Root PCBA");
+        return QStringLiteral("Qroot");
     default:
         return QStringLiteral("FCTP");
     }
