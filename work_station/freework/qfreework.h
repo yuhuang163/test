@@ -9,7 +9,7 @@
 
 #include "Abini.h"
 #include "cmw_gprf_facade.h"
-#include "plc_v3_fixture.h"
+#include "plc_v3_facade.h"
 #include "qapplication.h"
 #include "qtupleservice.h"
 #include "test_base.h"
@@ -212,8 +212,8 @@ class QFreeWork : public test_base {
     bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     void resetPlcKeyCapSyncReadState();
 
-    // --- PLC / CMW 协议（agreement 统一入口，工站只调度命令） ---
-    PlcV3Fixture plcFixture_;
+    // --- 业务门面（business/ + qcmw，工站只调度命令） ---
+    PlcV3Facade plcFacade_;
     CmwGprfFacade cmwFacade_;
     PlcV3RunParams makePlcRunParams(int keyIndex0To6 = 0);
     CmwGprfRunParams makeCmwRunParams(const QString& scenarioLabel = QString(), int brushProfile = -1);

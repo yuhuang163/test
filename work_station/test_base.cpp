@@ -17,9 +17,9 @@
 
 #include "qcoreapplication.h"
 #include "qprocess.h"
-#include "agreement/qProtocol/qfctp/qfctp.h"
-#include "agreement/qProtocol/qaiot/qaiot.h"
-#include "agreement/qProtocol/qroot/qroot.h"
+#include "qfctp.h"
+#include "qaiot.h"
+#include "qroot.h"
 #include "common_utils.h"
 
 #pragma comment(lib, "hid.lib")
@@ -67,6 +67,17 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
 }
+
+void test_base::setupModbusManager() {
+    modbusManager.setStationIndex(getIndex());
+    modbusManager.setIsContinueFn([this]() { return isTestContinue; });
+    modbusManager.setLogFn([this](const QString& line) { showlog(line); });
+
+    modbusManager.attachSerialChannel(usbSerialChannel_);
+    modbusManager.loadRtuRouteFromSettings();
+    usb->setModbusManager(&modbusManager);
+}
+
 void test_base::initData() {
     pack.factory = SETTINGS.value("Mes/FACTORY").toString();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
@@ -88,6 +99,10 @@ void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
     connect(at, &Qat::reportReceived, this, &test_base::onDongleAtReport);
     connect(usb, &Qusb::reportReceived, this, &test_base::onUsbInstrumentReport);
+    connect(&modbusManager, &QModbusManager::rtuAmmeterReadingReceived, this, [this](const QString& value) {
+        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
+                                             QVariant::fromValue(ProtocolAmmeterReadingData{value})));
+    });
     connect(jig, &Qjig::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
@@ -290,6 +305,10 @@ void test_base::closeDongleSerialPort() {
 }
 
 void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
+    if (modbusManager.isRtuAmmeterRoute()) {
+        modbusManager.feedRtuRx(dataTemp);
+        return;
+    }
     usb->parseCmd(dataTemp);
 }
 

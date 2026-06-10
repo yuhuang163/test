@@ -26,12 +26,12 @@ $ClangFormat = if ($env:NEW_PRODUCT_CLANG_FORMAT) {
 
 $ExcludeDirNames = @("build", ".git", "Python39", "node_modules", ".cursor")
 $ExcludePathContains = @(
-    "agreement/qProtocol/qpb/Python39",
+    "agreement/factory_protocol/protocol/qpb/Python39",
     "advance/xlsx",
     "lib/qcustomplot",
     "lib/libusb",
-    "agreement/qProtocol/qpb/ble_protocol",
-    "agreement/qProtocol/qpb/factory_protocol"
+    "agreement/factory_protocol/protocol/qpb/ble_protocol",
+    "agreement/factory_protocol/protocol/qpb/factory_protocol"
 )
 $Extensions = @(".cpp", ".h", ".hpp", ".cc", ".cxx", ".c")
 

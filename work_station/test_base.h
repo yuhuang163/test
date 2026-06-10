@@ -6,7 +6,8 @@
 #include <qlog.h>
 
 #include "Abini.h"
-#include "agreement/qProtocol/qprotocolmanager.h"
+#include "qprotocolmanager.h"
+#include "qmodbusmanager.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -104,6 +105,8 @@ class test_base : public QWidget {
     void signalAndslot();
     int getIndex() const;
     void showlog(QString msg);
+    /** 配置 modbusManager 工位号、日志与中止回调（按键/自由工站等 PLC 工站构造时调用）。 */
+    void setupModbusManager();
 
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";
@@ -131,6 +134,7 @@ class test_base : public QWidget {
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
     QProtocolManager protocolManager;
+    QModbusManager modbusManager;
     Qat* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
     Qusb* usb = nullptr;

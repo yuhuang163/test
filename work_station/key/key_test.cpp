@@ -28,15 +28,13 @@ Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
     }
     return Qusb::ProtocolType::Auto;
 }
-
-QString plcBoolText(bool v) {
-    return v ? QStringLiteral("开") : QStringLiteral("关");
-}
 } // namespace
 key_test::key_test(int index, QWidget* parent) : test_base(parent), ui(new Ui::key_test), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = KEY_VER;
+
+    setupModbusManager();
 
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
@@ -520,94 +518,39 @@ int key_test::resolvedPlcKeyDoneM() const {
 }
 
 bool key_test::plcReadCoil(int absoluteM, bool* value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    QVector<bool> bits;
-    if (!inovancePlcTcp_.readMCoils(absoluteM, 1, resolvedPlcMCoilAddressOffset(), resolvedPlcUnitId(), reqMs, &bits, errorMessage)) {
+    QVariant result;
+    if (!modbusManager.exec(PlcCmd::ReadCoil, absoluteM, &result, errorMessage)) {
         return false;
     }
-    *value = bits.value(0);
+    *value = result.toBool();
     return true;
 }
 
 bool key_test::plcWriteCoil(int absoluteM, bool value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    return inovancePlcTcp_.writeMCoil(absoluteM, value, resolvedPlcMCoilAddressOffset(), resolvedPlcUnitId(), reqMs, errorMessage);
+    PlcCoilRequest req;
+    req.m = absoluteM;
+    req.value = value;
+    return modbusManager.exec(PlcCmd::WriteCoil, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        if (!isTestContinue) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("测试已停止");
-            }
-            return false;
-        }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=1 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
+    PlcWaitCoilRequest req;
+    req.m = absoluteM;
+    req.timeoutMs = timeoutMs;
+    req.pollMs = pollMs;
+    return modbusManager.exec(PlcCmd::WaitCoilTrue, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        if (!isTestContinue) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("测试已停止");
-            }
-            return false;
-        }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (!v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=0 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
+    PlcWaitCoilRequest req;
+    req.m = absoluteM;
+    req.timeoutMs = timeoutMs;
+    req.pollMs = pollMs;
+    return modbusManager.exec(PlcCmd::WaitCoilFalse, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcSendStepDone(QString* errorMessage) {
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const int pulseMs = SETTINGS.value(QStringLiteral("PLC/StepDonePulseMs"), 0).toInt();
-    const int m = resolvedPlcStepDoneBase();
-    if (!plcWriteCoil(m, true, errorMessage)) {
-        return false;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (pulseMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(pulseMs));
-        if (!plcWriteCoil(m, false, errorMessage)) {
-            return false;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-    return true;
+    return modbusManager.exec(PlcCmd::SendStepDone, {}, nullptr, errorMessage);
 }
 
 bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
@@ -630,7 +573,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 .arg(host)
                 .arg(port)
                 .arg(resolvedPlcUnitId()));
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
+    if (!modbusManager.connectPlc(&err)) {
         if (summary) {
             *summary = QStringLiteral("PLC 连接失败: %1").arg(err);
         }
@@ -677,7 +620,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 .arg(plcBoolText(waitKeyDone)));
 
     const auto fail = [&](const QString& msg) {
-        if (inovancePlcTcp_.isConnected()) {
+        if (modbusManager.isPlcConnected()) {
             QString releaseErr;
             if (!plcWriteCoil(keyM, false, &releaseErr)) {
                 showlog(QStringLiteral("按键测试失败后释放 M%1 失败: %2").arg(keyM).arg(releaseErr));
@@ -685,7 +628,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 QThread::msleep(static_cast<unsigned long>(gapMs));
             }
         }
-        inovancePlcTcp_.disconnect();
+        modbusManager.disconnectPlc();
         if (summary) {
             *summary = msg;
         }
@@ -758,7 +701,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
     if (sawKeyDone && waitKeyReset && !plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
         return fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
     }
-    inovancePlcTcp_.disconnect();
+    modbusManager.disconnectPlc();
     if (summary) {
         *summary = QStringLiteral("键%1 整步 M%2 Pos%3 Step%4 KeyDone%5 电容:%6")
                        .arg(keyIndex0To6)
@@ -1942,7 +1885,7 @@ void key_test::on_stopTest_clicked() {
     ++plcKeyWaitSeq;
     plcKeyActionStarted = false;
     refresh_key_times = 0;
-    inovancePlcTcp_.disconnect();
+    modbusManager.disconnectPlc();
     usblogwaittime->stop();
     ui->macInput->clear();
     ui->snInput->clear();

@@ -134,6 +134,10 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = FREE_VER;
+
+    setupModbusManager();
+    plcFacade_.setModbusManager(&modbusManager);
+
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
     setupFreeWorkTabBar(ui->tabWidget);
@@ -846,7 +850,7 @@ void QFreeWork::initData() {
     closeTestCasePrompt();
     lastBrushInstrumentProfile_ = -1;
     cmwFacade_.run(CmwGprfCommand::ResetSession, makeCmwRunParams());
-    plcFixture_.disconnect();
+    plcFacade_.disconnect();
     clearProductInstrumentWatch();
     is_battary_test = 0;
     charageresult = "未测";
@@ -871,6 +875,7 @@ PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6) {
     PlcV3RunParams params;
     params.stationIndex = getIndex();
     params.keyIndex0To6 = keyIndex0To6;
+    params.modbus = &modbusManager;
     params.log = [this](const QString& line) { showlog(line); };
     params.isTestContinue = [this]() { return isTestContinue; };
     return params;
@@ -935,8 +940,10 @@ PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool 
             return pollKeyCapDuringPress(errOut, outSummary);
         };
     }
-    return plcFixture_.run(command, params);
+    // 业务层 plcFacade_（business/），与 cmwFacade_ 同级。
+    return plcFacade_.run(command, params);
 }
+
 
 CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel, int brushProfile,
                                        int alignedPostTrigHoldMs, bool* outRanBurst) {
@@ -1660,7 +1667,7 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
 
 void QFreeWork::on_stopTest_clicked() {
     clearProductInstrumentWatch();
-    plcFixture_.disconnect();
+    plcFacade_.disconnect();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 

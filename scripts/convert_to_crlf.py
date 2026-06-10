@@ -18,6 +18,7 @@ EXCLUDE_DIR_NAMES = {
 }
 
 EXCLUDE_PATH_PARTS = (
+    "factory_protocol/protocol/qpb/Python39",
     "qProtocol/qpb/Python39",
     "adapter/qProtocol/qpb/Python39",
     "lib/libusb",

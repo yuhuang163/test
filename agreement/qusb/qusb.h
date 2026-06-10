@@ -6,6 +6,9 @@
 #include <map>
 
 #include "qprotocol_types.h"
+#include "scpi_line_codec.h"
+
+class QModbusManager;
 
 class Qusb : public QSerialPort {
     Q_OBJECT
@@ -61,6 +64,8 @@ class Qusb : public QSerialPort {
 
     void setProtocolConfig(const ProtocolConfig& config);
     ProtocolConfig protocolConfig() const;
+    /** 注入 QModbusManager 后，HQ/LX RTU 收发走 modbus manager（拆 qusb 过渡）。 */
+    void setModbusManager(QModbusManager* manager);
     bool sendPowerInstruction(PowerAction action);
 
     void sendCmd(QString cmd);
@@ -108,14 +113,18 @@ class Qusb : public QSerialPort {
     bool handleLxAction(PowerAction action);
     void processScpiData(const QByteArray& byte);
     void processModbusRTUData(const QByteArray& data);
-    QString cmd, parameter;
+    /** 程控/量测 SCPI 前合并会凌 WFP60H profile（SETTINGS 与 qvisa 回退链一致）。 */
+    void mergeHuilingScpiProfile();
+    void syncModbusManagerRtuRoute();
+    QString parameter;
+    ScpiLineCodec scpiLineCodec_;
     QSerialPort* serialPort;
     int sssss = 255;
     typedef std::function<void(QString)> callback;
     std::map<QString, callback> commandList;
     void registerCommand();
     void CONFigureFUNCtion(QString p);
-    QByteArray data = 0;
+    QModbusManager* modbusManager_ = nullptr;
     ProtocolConfig protocolConfig_;
     ProgrammablePowerReadPending pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
 
