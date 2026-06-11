@@ -1,4 +1,4 @@
-#ifndef TEST_BASE_H
+﻿#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 #include <functional>
@@ -7,6 +7,7 @@
 
 #include "Abini.h"
 #include "agreement/qProtocol/qprotocolmanager.h"
+#include "test_case_types.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -106,6 +107,8 @@ class test_base : public QWidget {
     void signalAndslot();
     int getIndex() const;
     void showlog(QString msg);
+    /** Product 通道：按 test_case ini 的 Protocol= 切换 QProtocolManager（不读 SYSTEM/ProtocolType）。 */
+    void applyTestCaseProductProtocol(TestCaseProductProtocol protocol);
 
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";

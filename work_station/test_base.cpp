@@ -1,4 +1,4 @@
-#include "test_base.h"
+﻿#include "test_base.h"
 
 #include "my_set/my_typedef.h"
 
@@ -53,6 +53,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     {
         auto selectedType = QProtocolManager::protocolTypeFromString(
             SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
@@ -61,19 +62,41 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
         if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
             (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
             (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
-            showlog(QStringLiteral("所选协议未就绪，已回退到 qpb"));
             selectedType = QProtocolManager::ProtocolType::Qpb;
         }
         protocolManager.setCurrentProtocolType(selectedType);
     }
-    showlog(QStringLiteral("当前设备协议：%1")
-                .arg(QString::fromStdString(
-                    QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
 
     signalAndslot();
     scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
 }
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    QProtocolManager::ProtocolType selectedType = QProtocolManager::ProtocolType::Qfctp;
+    switch (protocol) {
+    case TestCaseProductProtocol::Qpb:
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+        break;
+    case TestCaseProductProtocol::Qroot:
+        selectedType = QProtocolManager::ProtocolType::Qroot;
+        break;
+    case TestCaseProductProtocol::Qfctp:
+    default:
+        selectedType = QProtocolManager::ProtocolType::Qfctp;
+        break;
+    }
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    if (protocolManager.currentProtocolType() == selectedType)
+        return;
+    protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("切换设备协议：%1")
+                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+}
+
 void test_base::initData() {
     pack.factory = SETTINGS.value("Mes/FACTORY").toString();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();

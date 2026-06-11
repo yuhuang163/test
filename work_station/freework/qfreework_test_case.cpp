@@ -395,6 +395,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    ctx->applyTestCaseProductProtocol(def.send.productProtocol);
+
     DeviceCmd cmd = DeviceCmd::FacMode;
     if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
         ctx->showlog(QStringLiteral("未知指令：%1").arg(def.send.deviceCmd));
