@@ -139,15 +139,14 @@ QString QScpiManager::lastQueryResponse() const {
     return QString();
 }
 
-bool QScpiManager::isHuilingQueryCmd(HuilingScpiCmd cmd) {
-    switch (cmd) {
-    case HuilingScpiCmd::ReadMeasureCurrent:
-    case HuilingScpiCmd::ReadProgrammableVoltage:
-    case HuilingScpiCmd::ReadProgrammableCurrent:
-    case HuilingScpiCmd::InitializeProgrammablePower:
-        return true;
+IScpiDevice* QScpiManager::activeDevice() {
+    switch (deviceRoute_) {
+    case ScpiDeviceRoute::HuilingWfp60h:
+        return &huilingDevice_;
+    case ScpiDeviceRoute::RsCmw100:
+        return &cmwDevice_;
     default:
-        return false;
+        return nullptr;
     }
 }
 
@@ -174,45 +173,6 @@ bool QScpiManager::isTransportReady(QString* errorMessage) const {
         return false;
     }
     return true;
-}
-
-bool QScpiManager::exec(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
-    if (deviceRoute_ != ScpiDeviceRoute::HuilingWfp60h) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("当前路由非会凌 SCPI 设备");
-        }
-        return false;
-    }
-    if (!isTransportReady(errorMessage)) {
-        return false;
-    }
-
-    const bool ok = isHuilingQueryCmd(cmd) ? huilingDevice_.get(cmd, param) : huilingDevice_.set(cmd, param);
-    if (!ok && errorMessage) {
-        *errorMessage = QStringLiteral("会凌 SCPI 命令发送失败或设备不支持");
-    }
-    return ok;
-}
-
-bool QScpiManager::exec(CmwScpiCmd cmd, const QVariant& param, QString* errorMessage) {
-    if (deviceRoute_ != ScpiDeviceRoute::RsCmw100) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("当前路由非 CMW100 SCPI 设备");
-        }
-        return false;
-    }
-    if (!isTransportReady(errorMessage)) {
-        return false;
-    }
-
-    const bool isQuery = cmd == CmwScpiCmd::Identity || cmd == CmwScpiCmd::ArbFilePath || cmd == CmwScpiCmd::ArbScount
-                         || cmd == CmwScpiCmd::GenState || cmd == CmwScpiCmd::SystemError || cmd == CmwScpiCmd::QueryLine
-                         || cmd == CmwScpiCmd::GenOff || cmd == CmwScpiCmd::GenOn;
-    const bool ok = isQuery ? cmwDevice_.get(cmd, param) : cmwDevice_.set(cmd, param);
-    if (!ok && errorMessage) {
-        *errorMessage = QStringLiteral("CMW100 SCPI 命令发送失败");
-    }
-    return ok;
 }
 
 bool QScpiManager::feedRx(const QByteArray& chunk) {

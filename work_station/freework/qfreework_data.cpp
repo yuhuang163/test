@@ -831,3 +831,19 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
                 .arg(pass ? "通过" : "失败")
                 .arg(actualKeyId, expectedKeyId));
 }
+
+void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
+    if (report.reportType == QLatin1String("ProtocolMeasureData")) {
+        if (report.payload.canConvert<ProtocolMeasureData>()) {
+            const auto data = report.payload.value<ProtocolMeasureData>();
+            if (data.type == QLatin1String("Current")) {
+                measure_ammeter = data.value;
+                showlog(QStringLiteral("上报电流值: %1 mA").arg(data.value, 0, 'f', 4));
+            } else if (data.type == QLatin1String("Voltage")) {
+                showlog(QStringLiteral("上报电压值: %1 V").arg(data.value, 0, 'f', 4));
+            }
+            evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), report.payload);
+        }
+    }
+    test_base::onUsbInstrumentReport(report);
+}

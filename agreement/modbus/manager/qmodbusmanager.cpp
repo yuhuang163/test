@@ -100,6 +100,17 @@ void QModbusManager::resetRtuRxState() {
     rtuRxBuffer_.reset();
 }
 
+IModbusRtuDevice* QModbusManager::activeRtuDevice() {
+    switch (deviceRoute_) {
+    case ModbusDeviceRoute::HqAmmeterRtu:
+        return &hqAmmeterDevice_;
+    case ModbusDeviceRoute::LxAmmeterRtu:
+        return &lxAmmeterDevice_;
+    default:
+        return nullptr;
+    }
+}
+
 bool QModbusManager::exec(HqAmmeterRtuCmd cmd, QString* errorMessage) {
     if (deviceRoute_ != ModbusDeviceRoute::HqAmmeterRtu) {
         if (errorMessage) {
@@ -107,44 +118,7 @@ bool QModbusManager::exec(HqAmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
-    if (!serialChannel_ || !serialChannel_->isOpen()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 串口未打开");
-        }
-        return false;
-    }
-
-    QByteArray payload;
-    switch (cmd) {
-    case HqAmmeterRtuCmd::ReadMeasurement:
-        payload = HqAmmeterModbusRtu::buildReadMeasurementRequest();
-        break;
-    case HqAmmeterRtuCmd::SetBaud115200:
-        payload = HqAmmeterModbusRtu::buildSetBaud115200Request();
-        break;
-    default:
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("华勤 RTU 表不支持该命令");
-        }
-        return false;
-    }
-
-    if (payload.isEmpty()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 组帧失败");
-        }
-        return false;
-    }
-
-    resetRtuRxState();
-    qDebug().noquote() << "Modbus RTU TX:" << QString::fromLatin1(payload.toHex(' ').toUpper());
-    if (serialChannel_->write(payload) < 0) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 发送失败: %1").arg(serialChannel_->errorString());
-        }
-        return false;
-    }
-    return true;
+    return exec<HqAmmeterRtuCmd>(cmd, {}, errorMessage);
 }
 
 bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
@@ -154,51 +128,19 @@ bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
-    if (!serialChannel_ || !serialChannel_->isOpen()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 串口未打开");
-        }
-        return false;
-    }
-
-    QByteArray payload;
-    switch (cmd) {
-    case LxAmmeterRtuCmd::ReadMeasurement:
-        payload = LxAmmeterModbusRtu::buildReadMeasurementRequest(luxshareMachineId_);
-        break;
-    default:
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("立讯 RTU 表不支持该命令");
-        }
-        return false;
-    }
-
-    if (payload.isEmpty()) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 组帧失败");
-        }
-        return false;
-    }
-
-    resetRtuRxState();
-    qDebug().noquote() << "Modbus RTU TX:" << QString::fromLatin1(payload.toHex(' ').toUpper());
-    if (serialChannel_->write(payload) < 0) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Modbus RTU 发送失败: %1").arg(serialChannel_->errorString());
-        }
-        return false;
-    }
-    return true;
+    return exec<LxAmmeterRtuCmd>(cmd, luxshareMachineId_, errorMessage);
 }
 
 bool QModbusManager::tryEmitRtuReading(const QByteArray& frame) {
-    const ModbusRtuCodec::AmmeterReading reading =
-        deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu ? LxAmmeterModbusRtu::parseResponse(frame)
-                                        : HqAmmeterModbusRtu::parseResponse(frame);
-    if (!reading.ok) {
+    IModbusRtuDevice* dev = activeRtuDevice();
+    if (!dev) {
         return false;
     }
-    emit rtuAmmeterReadingReceived(reading.valueText);
+    QString valueText;
+    if (!dev->parseResponse(frame, &valueText)) {
+        return false;
+    }
+    emit rtuAmmeterReadingReceived(valueText);
     return true;
 }
 

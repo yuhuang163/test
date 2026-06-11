@@ -19,6 +19,24 @@ QByteArray LxAmmeterModbusRtu::buildReadMeasurementRequest(int machineId1Based) 
     return QByteArray::fromHex(machineCmdList.at(machineId1Based).toLatin1());
 }
 
-ModbusRtuCodec::AmmeterReading LxAmmeterModbusRtu::parseResponse(const QByteArray& frame) {
+ModbusRtuCodec::AmmeterReading LxAmmeterModbusRtu::parseResponseFrame(const QByteArray& frame) {
     return ModbusRtuCodec::parseLxHoldRegisterFrame(frame);
+}
+
+// --- IModbusRtuDevice interface bridge ---
+
+QByteArray LxAmmeterModbusRtu::buildRequest(int cmd, const QVariant& param) {
+    switch (static_cast<LxAmmeterRtuCmd>(cmd)) {
+    case LxAmmeterRtuCmd::ReadMeasurement:
+        return buildReadMeasurementRequest(param.toInt());
+    default:
+        return {};
+    }
+}
+
+bool LxAmmeterModbusRtu::parseResponse(const QByteArray& frame, QString* valueText) {
+    const auto reading = parseResponseFrame(frame);
+    if (!reading.ok) return false;
+    if (valueText) *valueText = reading.valueText;
+    return true;
 }

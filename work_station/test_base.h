@@ -20,6 +20,7 @@
 #include "qjig.h"
 #include "qusb.h"
 #include "serial_channel.h"
+#include "serial_port_controller.h"
 
 extern "C" {
 #include "lib/nfc/dcrf32.h"
@@ -134,9 +135,13 @@ class test_base : public QWidget {
     Qlog* log;
     QTimer* scanSerialPortsTimer = new QTimer(this);
     SerialChannel* dongleSerialChannel_ = nullptr;
+    SerialPortController* dongleController_ = nullptr;
     SerialChannel* usbSerialChannel_ = nullptr;
+    SerialPortController* usbController_ = nullptr;
     SerialChannel* jigSerialChannel_ = nullptr;
+    SerialPortController* jigController_ = nullptr;
     SerialChannel* productSerialChannel_ = nullptr;
+    SerialPortController* productController_ = nullptr;
     QSerialPort* dongleSerialPort = nullptr;
     Qpb* pb = nullptr;
     Qfctp* qfctp = nullptr;
@@ -182,21 +187,21 @@ class test_base : public QWidget {
 
     // --- 串口打开 / 关闭 / 扫描 ---
     virtual void onDongleSerialFrame(const QByteArray& data);
-    void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);
+    
     virtual void onUsbSerialFrame(const QByteArray& data);
-    void handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
+    
     void onJigSerialFrame(const QByteArray& data);
-    void handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
+    
     void onProductSerialFrame(const QByteArray& data);
-    void handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
+    
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
 

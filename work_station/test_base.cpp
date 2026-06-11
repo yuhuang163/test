@@ -1,4 +1,5 @@
-﻿#include "test_base.h"
+#include "test_base.h"
+#include "qprotocol_types.h"
 
 #include "modbus_types.h"
 
@@ -35,9 +36,13 @@
 test_base::test_base(QWidget* parent) : QWidget(parent),
                                         log(new Qlog),
                                         dongleSerialChannel_(new SerialChannel(this)),
+                                        dongleController_(new SerialPortController(dongleSerialChannel_, this)),
                                         usbSerialChannel_(new SerialChannel(this)),
+                                        usbController_(new SerialPortController(usbSerialChannel_, this)),
                                         jigSerialChannel_(new SerialChannel(this)),
+                                        jigController_(new SerialPortController(jigSerialChannel_, this)),
                                         productSerialChannel_(new SerialChannel(this)),
+                                        productController_(new SerialPortController(productSerialChannel_, this)),
                                         dongleSerialPort(dongleSerialChannel_->port()),
                                         pb(new Qpb(dongleSerialPort)),
                                         qfctp(new Qfctp(dongleSerialPort)),
@@ -142,7 +147,54 @@ void test_base::signalAndslot() {
     connect(&modbusManager, &QModbusManager::rtuAmmeterReadingReceived, this, [this](const QString& value) {
         onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
                                              QVariant::fromValue(ProtocolAmmeterReadingData{value})));
+        
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("Modbus_Ammeter");
+        measureData.type = QStringLiteral("Current");
+        measureData.value = value.toDouble();
+        measureData.valueText = value;
+        measureData.unit = QStringLiteral("mA");
+        measureData.isOk = true;
+        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                             QVariant::fromValue(measureData)));
     });
+
+    connect(&scpiVisaManager_, &QScpiManager::ammeterReadingReceived, this, [this](const QString& valueText) {
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("VISA_SCPI");
+        measureData.type = QStringLiteral("Current");
+        measureData.value = valueText.toDouble();
+        measureData.valueText = valueText;
+        measureData.unit = QStringLiteral("mA");
+        measureData.isOk = true;
+        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                             QVariant::fromValue(measureData)));
+    });
+
+    connect(&scpiVisaManager_, &QScpiManager::programmablePowerVoltageRead, this, [this](double valueVolts, bool ok) {
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("VISA_Power");
+        measureData.type = QStringLiteral("Voltage");
+        measureData.value = valueVolts;
+        measureData.valueText = QString::number(valueVolts);
+        measureData.unit = QStringLiteral("V");
+        measureData.isOk = ok;
+        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                             QVariant::fromValue(measureData)));
+    });
+
+    connect(&scpiVisaManager_, &QScpiManager::programmablePowerCurrentRead, this, [this](double valueAmps, bool ok) {
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("VISA_Power");
+        measureData.type = QStringLiteral("Current");
+        measureData.value = valueAmps;
+        measureData.valueText = QString::number(valueAmps);
+        measureData.unit = QStringLiteral("A");
+        measureData.isOk = ok;
+        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                             QVariant::fromValue(measureData)));
+    });
+
     connect(jig, &Qjig::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
@@ -161,10 +213,25 @@ void test_base::signalAndslot() {
     connect(productSerialChannel_, &SerialChannel::frameReceived, this, [this](const QByteArray& data) {
         onProductSerialFrame(data);
     });
-    connect(dongleSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleDongleSerialPortError);
-    connect(usbSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleUsbSerialPortError);
-    connect(jigSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleJigSerialPortError);
-    connect(productSerialChannel_, &SerialChannel::errorOccurred, this, &test_base::handleProductSerialPortError);
+
+    // Controllers error signals
+    connect(dongleController_, &SerialPortController::errorOccurred, this, [this](const QString& msg) {
+        msgEdit()->appendPlainText(msg);
+    });
+    
+    // Connect state changed signals to original slots
+    connect(dongleController_, &SerialPortController::stateChanged, this, [this](bool isOpen) {
+        emit send_dongle_serialPort_state(isOpen ? 1 : 0);
+    });
+    connect(usbController_, &SerialPortController::stateChanged, this, [this](bool isOpen) {
+        emit send_usb_serialPort_state(isOpen ? 1 : 0);
+    });
+    connect(jigController_, &SerialPortController::stateChanged, this, [this](bool isOpen) {
+        emit send_jig_serialPort_state(isOpen ? 1 : 0);
+    });
+    connect(productController_, &SerialPortController::stateChanged, this, [this](bool isOpen) {
+        emit send_product_serialPort_state(isOpen ? 1 : 0);
+    });
 
     connect(this, SIGNAL(send_dongle_serialPort_state(int)), this, SLOT(refreshDongleUartState(int)));
     connect(this, SIGNAL(send_usb_serialPort_state(int)), this, SLOT(refreshUsbUartState(int)));
@@ -286,14 +353,9 @@ void test_base::getMacAddress(const QByteArray& byte) {
 }
 
 void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
-    // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
-    // getMacAddress(dataTemp);
-    //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
-    // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-    // 获取当前时间
     const QString timestamp = CommonUtils::formatTimestampMs();
     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
 
@@ -308,37 +370,23 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     }
     saveDongleUartLog(logEntry);
 }
-void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
-    if (error == QSerialPort::NoError)
-        return;
-    qWarning() << "DongleSerialPort串口异常"
-               << "port=" << dongleSerialChannel_->portName() << "code=" << error << "detail=" << message;
-    if (error == QSerialPort::PermissionError) {
-        closeDongleSerialPort();
-        msgEdit()->appendPlainText(QStringLiteral("串口权限问题"));
-    }
-}
 
 void test_base::openDongleSerialPort() {
-    SerialChannel::OpenParams params;
-    params.portName = getComNameCombo()->currentText();
-    params.baudRate = dongleBaudRate;
-    params.readDebounceMs = dongleOutTime;
-    params.rtsDtrMode = SerialChannel::RtsDtrMode::ToggleReset;
-
-    if (dongleSerialChannel_->open(params)) {
+    dongleController_->setUIControls({getComNameCombo()});
+    dongleController_->setBaudRate(dongleBaudRate);
+    dongleController_->setReadDebounceMs(dongleOutTime);
+    dongleController_->setRtsDtrMode(SerialChannel::RtsDtrMode::ToggleReset);
+    if (dongleController_->open()) {
         showlog(QStringLiteral("当前设备协议：%1")
                     .arg(QString::fromStdString(
                         QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
-        emit send_dongle_serialPort_state(1);
     } else {
         showlog(QStringLiteral("串口被占用！"));
     }
 }
 
 void test_base::closeDongleSerialPort() {
-    dongleSerialChannel_->close();
-    emit send_dongle_serialPort_state(0);
+    dongleController_->close();
     showlog(QStringLiteral("已经关闭串口"));
 }
 
@@ -352,27 +400,16 @@ void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
     }
 }
 
-void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
-    Q_UNUSED(message);
-    qDebug() << "UsbSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
-        closeUsbSerialPort();
-}
-
 void test_base::openUsbSerialPort() {
-    SerialChannel::OpenParams params;
-    params.portName = getUsbcomNameCombo()->currentText();
-    params.baudRate = usbBaudRate;
-    params.readDebounceMs = 10;
-    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
-
-    if (usbSerialChannel_->open(params))
-        emit send_usb_serialPort_state(1);
+    usbController_->setUIControls({getUsbcomNameCombo()});
+    usbController_->setBaudRate(usbBaudRate);
+    usbController_->setReadDebounceMs(10);
+    usbController_->setRtsDtrMode(SerialChannel::RtsDtrMode::Enable);
+    usbController_->open();
 }
 
 void test_base::closeUsbSerialPort() {
-    usbSerialChannel_->close();
-    emit send_usb_serialPort_state(0);
+    usbController_->close();
 }
 
 void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
@@ -380,27 +417,16 @@ void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
     jig->parseCmd(dataTemp);
 }
 
-void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
-    Q_UNUSED(message);
-    qDebug() << "JigSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
-        closeJigSerialPort();
-}
-
 void test_base::openJigSerialPort() {
-    SerialChannel::OpenParams params;
-    params.portName = getJigcomNameCombo()->currentText();
-    params.baudRate = jigBaudRate;
-    params.readDebounceMs = 10;
-    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
-
-    if (jigSerialChannel_->open(params))
-        emit send_jig_serialPort_state(1);
+    jigController_->setUIControls({getJigcomNameCombo()});
+    jigController_->setBaudRate(jigBaudRate);
+    jigController_->setReadDebounceMs(10);
+    jigController_->setRtsDtrMode(SerialChannel::RtsDtrMode::Enable);
+    jigController_->open();
 }
 
 void test_base::closeJigSerialPort() {
-    jigSerialChannel_->close();
-    emit send_jig_serialPort_state(0);
+    jigController_->close();
 }
 
 void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
@@ -413,32 +439,21 @@ void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
     logEdit()->appendPlainText(QStringLiteral("收到设备日志"));
 }
 
-void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
-    Q_UNUSED(message);
-    qDebug() << "ProductSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
-        closeProductSerialPort();
-}
-
 void test_base::openProductSerialPort() {
     if (product)
         product->clearProductSerialRxAccum();
 
-    SerialChannel::OpenParams params;
-    params.portName = getProductcomNameCombo()->currentText();
-    params.baudRate = productBaudRate;
-    params.readDebounceMs = 10;
-    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
-
-    if (productSerialChannel_->open(params))
-        emit send_product_serialPort_state(1);
+    productController_->setUIControls({getProductcomNameCombo()});
+    productController_->setBaudRate(productBaudRate);
+    productController_->setReadDebounceMs(10);
+    productController_->setRtsDtrMode(SerialChannel::RtsDtrMode::Enable);
+    productController_->open();
 }
 
 void test_base::closeProductSerialPort() {
-    productSerialChannel_->close();
+    productController_->close();
     if (product)
         product->clearProductSerialRxAccum();
-    emit send_product_serialPort_state(0);
 }
 
 void test_base::refreshPbData(QString data) {

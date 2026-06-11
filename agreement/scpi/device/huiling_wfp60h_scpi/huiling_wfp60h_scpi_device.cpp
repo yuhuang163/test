@@ -197,6 +197,28 @@ void HuilingWfp60hScpiDevice::emitProgrammablePowerReadIfPending(const QString& 
     }
 }
 
+// --- IScpiDevice interface bridge ---
+
+bool HuilingWfp60hScpiDevice::set(int cmd, const QVariant& param) {
+    return set(static_cast<HuilingScpiCmd>(cmd), param);
+}
+
+bool HuilingWfp60hScpiDevice::get(int cmd, const QVariant& param) {
+    return get(static_cast<HuilingScpiCmd>(cmd), param);
+}
+
+bool HuilingWfp60hScpiDevice::isQueryCmd(int cmd) const {
+    switch (static_cast<HuilingScpiCmd>(cmd)) {
+    case HuilingScpiCmd::ReadMeasureCurrent:
+    case HuilingScpiCmd::ReadProgrammableVoltage:
+    case HuilingScpiCmd::ReadProgrammableCurrent:
+    case HuilingScpiCmd::InitializeProgrammablePower:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void HuilingWfp60hScpiDevice::handleLineReceived(const QString& line) {
     auto it = commandList_.find(line);
     if (it != commandList_.end()) {

@@ -91,6 +91,66 @@ bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
     return false;
 }
 
+PlcCmd plcCmdFromName(const QString& name) {
+    if (name == QLatin1String("Connect")) return PlcCmd::Connect;
+    if (name == QLatin1String("Disconnect")) return PlcCmd::Disconnect;
+    if (name == QLatin1String("IsConnected")) return PlcCmd::IsConnected;
+    if (name == QLatin1String("ReadCoil")) return PlcCmd::ReadCoil;
+    if (name == QLatin1String("WriteCoil")) return PlcCmd::WriteCoil;
+    if (name == QLatin1String("ReadCoils")) return PlcCmd::ReadCoils;
+    if (name == QLatin1String("WaitCoilTrue")) return PlcCmd::WaitCoilTrue;
+    if (name == QLatin1String("WaitCoilFalse")) return PlcCmd::WaitCoilFalse;
+    if (name == QLatin1String("SendStepDone")) return PlcCmd::SendStepDone;
+    return PlcCmd::IsConnected;
+}
+
+HqAmmeterRtuCmd hqAmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadMeasurement")) return HqAmmeterRtuCmd::ReadMeasurement;
+    if (name == QLatin1String("SetBaud115200")) return HqAmmeterRtuCmd::SetBaud115200;
+    return HqAmmeterRtuCmd::ReadMeasurement;
+}
+
+LxAmmeterRtuCmd lxAmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadMeasurement")) return LxAmmeterRtuCmd::ReadMeasurement;
+    return LxAmmeterRtuCmd::ReadMeasurement;
+}
+
+HuilingScpiCmd huilingScpiCmdFromName(const QString& name) {
+    if (name == QLatin1String("ConfigureMeasure")) return HuilingScpiCmd::ConfigureMeasure;
+    if (name == QLatin1String("ReadMeasureCurrent")) return HuilingScpiCmd::ReadMeasureCurrent;
+    if (name == QLatin1String("ReadMeasureConfiguration")) return HuilingScpiCmd::ReadMeasureConfiguration;
+    if (name == QLatin1String("InitializeDevice")) return HuilingScpiCmd::InitializeDevice;
+    if (name == QLatin1String("ConfigureProgrammablePower")) return HuilingScpiCmd::ConfigureProgrammablePower;
+    if (name == QLatin1String("ProgrammablePowerOutput")) return HuilingScpiCmd::ProgrammablePowerOutput;
+    if (name == QLatin1String("ReadProgrammableVoltage")) return HuilingScpiCmd::ReadProgrammableVoltage;
+    if (name == QLatin1String("ReadProgrammableCurrent")) return HuilingScpiCmd::ReadProgrammableCurrent;
+    if (name == QLatin1String("InitializeProgrammablePower")) return HuilingScpiCmd::InitializeProgrammablePower;
+    if (name == QLatin1String("SendRawLine")) return HuilingScpiCmd::SendRawLine;
+    return HuilingScpiCmd::InitializeDevice;
+}
+
+CmwScpiCmd cmwScpiCmdFromName(const QString& name) {
+    if (name == QLatin1String("ClearStatus")) return CmwScpiCmd::ClearStatus;
+    if (name == QLatin1String("GenOff")) return CmwScpiCmd::GenOff;
+    if (name == QLatin1String("GenOn")) return CmwScpiCmd::GenOn;
+    if (name == QLatin1String("ListOff")) return CmwScpiCmd::ListOff;
+    if (name == QLatin1String("BbModeArb")) return CmwScpiCmd::BbModeArb;
+    if (name == QLatin1String("ArbFile")) return CmwScpiCmd::ArbFile;
+    if (name == QLatin1String("ArbRepetition")) return CmwScpiCmd::ArbRepetition;
+    if (name == QLatin1String("ArbCycles")) return CmwScpiCmd::ArbCycles;
+    if (name == QLatin1String("TxLevelDbm")) return CmwScpiCmd::TxLevelDbm;
+    if (name == QLatin1String("FrequencyMhz")) return CmwScpiCmd::FrequencyMhz;
+    if (name == QLatin1String("ManualArbTrigger")) return CmwScpiCmd::ManualArbTrigger;
+    if (name == QLatin1String("WriteLine")) return CmwScpiCmd::WriteLine;
+    if (name == QLatin1String("Identity")) return CmwScpiCmd::Identity;
+    if (name == QLatin1String("ArbFilePath")) return CmwScpiCmd::ArbFilePath;
+    if (name == QLatin1String("ArbScount")) return CmwScpiCmd::ArbScount;
+    if (name == QLatin1String("GenState")) return CmwScpiCmd::GenState;
+    if (name == QLatin1String("SystemError")) return CmwScpiCmd::SystemError;
+    if (name == QLatin1String("QueryLine")) return CmwScpiCmd::QueryLine;
+    return CmwScpiCmd::ClearStatus;
+}
+
 } // namespace
 
 int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
@@ -372,6 +432,135 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     if (def.send.channel == TestCaseSendChannel::ProductSerial) {
         ctx->executeProductSerialCase(def);
+        return;
+    }
+
+    if (def.send.channel == TestCaseSendChannel::Modbus) {
+        const QString deviceKey = def.send.device;
+        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(deviceKey);
+        ctx->modbusManager.setDeviceRoute(devRoute);
+
+        const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
+        QString errStr;
+
+        if (devRoute == ModbusDeviceRoute::InovanceH5uTcp) {
+            PlcCmd plcCmd = plcCmdFromName(def.send.deviceCmd);
+            QVariant resultVal;
+            bool ok = ctx->modbusManager.exec(plcCmd, resolvedParam, &resultVal, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else {
+                if (def.send.action == TestCaseSendAction::Get) {
+                    ProtocolMeasureData measureData;
+                    measureData.deviceName = deviceKey;
+                    measureData.type = QStringLiteral("PLC_Register");
+                    measureData.value = resultVal.toDouble();
+                    measureData.valueText = resultVal.toString();
+                    measureData.unit = QStringLiteral("");
+                    measureData.isOk = true;
+                    ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                                             QVariant::fromValue(measureData)));
+                } else {
+                    ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+                }
+            }
+        } else if (devRoute == ModbusDeviceRoute::HqAmmeterRtu) {
+            HqAmmeterRtuCmd cmd = hqAmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("HQ 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                        return;
+                    ctx->showlog(QStringLiteral("HQ 电流表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 HQ 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::LxAmmeterRtu) {
+            LxAmmeterRtuCmd cmd = lxAmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("LX 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                        return;
+                    ctx->showlog(QStringLiteral("LX 电流表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else {
+            ctx->showlog(QStringLiteral("未知 Modbus 设备路由: %1").arg(deviceKey));
+            ctx->markActiveTestCaseStepDone(false, deviceKey, QStringLiteral("失败"));
+        }
+        return;
+    }
+
+    if (def.send.channel == TestCaseSendChannel::Scpi) {
+        const QString deviceKey = def.send.device;
+        ScpiDeviceRoute devRoute = ScpiPeriphCmdCatalog::deviceFromIni(deviceKey);
+        ctx->scpiVisaManager()->setDeviceRoute(devRoute);
+
+        const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
+        QString errStr;
+
+        if (devRoute == ScpiDeviceRoute::HuilingWfp60h) {
+            HuilingScpiCmd cmd = huilingScpiCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->scpiVisaManager()->exec(cmd, resolvedParam, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("会凌电源指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else {
+                if (def.send.action == TestCaseSendAction::Get) {
+                    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                    QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                        if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                            return;
+                        ctx->showlog(QStringLiteral("SCPI 设备等待超时：%1").arg(def.send.deviceCmd));
+                        ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                    });
+                } else {
+                    ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+                }
+            }
+        } else if (devRoute == ScpiDeviceRoute::RsCmw100) {
+            CmwScpiCmd cmd = cmwScpiCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->scpiVisaManager()->exec(cmd, resolvedParam, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("CMW100 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else {
+                if (def.send.action == TestCaseSendAction::Get) {
+                    QString response = ctx->scpiVisaManager()->lastQueryResponse();
+                    ProtocolMeasureData measureData;
+                    measureData.deviceName = deviceKey;
+                    measureData.type = def.send.deviceCmd;
+                    measureData.value = response.toDouble();
+                    measureData.valueText = response;
+                    measureData.unit = QStringLiteral("");
+                    measureData.isOk = true;
+                    ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                                             QVariant::fromValue(measureData)));
+                } else {
+                    ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+                }
+            }
+        } else {
+            ctx->showlog(QStringLiteral("未知 SCPI 设备路由: %1").arg(deviceKey));
+            ctx->markActiveTestCaseStepDone(false, deviceKey, QStringLiteral("失败"));
+        }
         return;
     }
 

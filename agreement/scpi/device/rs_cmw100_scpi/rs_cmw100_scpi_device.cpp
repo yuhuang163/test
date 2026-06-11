@@ -108,3 +108,29 @@ bool RsCmw100ScpiDevice::get(CmwScpiCmd cmd, const QVariant& param) {
         return false;
     }
 }
+
+// --- IScpiDevice interface bridge ---
+
+bool RsCmw100ScpiDevice::set(int cmd, const QVariant& param) {
+    return set(static_cast<CmwScpiCmd>(cmd), param);
+}
+
+bool RsCmw100ScpiDevice::get(int cmd, const QVariant& param) {
+    return get(static_cast<CmwScpiCmd>(cmd), param);
+}
+
+bool RsCmw100ScpiDevice::isQueryCmd(int cmd) const {
+    switch (static_cast<CmwScpiCmd>(cmd)) {
+    case CmwScpiCmd::Identity:
+    case CmwScpiCmd::ArbFilePath:
+    case CmwScpiCmd::ArbScount:
+    case CmwScpiCmd::GenState:
+    case CmwScpiCmd::SystemError:
+    case CmwScpiCmd::QueryLine:
+    case CmwScpiCmd::GenOff:
+    case CmwScpiCmd::GenOn:
+        return true;
+    default:
+        return false;
+    }
+}

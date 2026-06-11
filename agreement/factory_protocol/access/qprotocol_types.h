@@ -321,6 +321,17 @@ typedef struct {
 } ProtocolAckData;
 
 typedef struct {
+    QString deviceName;  // 设备名称，如 "HuilingWfp60h"
+    QString channel;     // 通道号（如有，如 "CH1"）
+    QString type;        // 测量类型：Current(电流), Voltage(电压), Power(功率), Temp(温度)
+    double value = 0.0;  // 测量数值
+    QString valueText;   // 测量文本结果（用于非数值匹配，如 CMW IDN、错误文本）
+    QString unit;        // 单位，如 "mA", "V", "W"
+    bool isOk = true;    // 状态是否有效
+} ProtocolMeasureData;
+
+
+typedef struct {
     QByteArray name;
     QByteArray password;
     QString ip;
@@ -511,5 +522,6 @@ Q_DECLARE_METATYPE(ProtocolFactoryDoneData)
 Q_DECLARE_METATYPE(ProtocolRssiData)
 Q_DECLARE_METATYPE(ProtocolMacData)
 Q_DECLARE_METATYPE(ProtocolAckData)
+Q_DECLARE_METATYPE(ProtocolMeasureData)
 
 #endif // QPB_TYPES_H

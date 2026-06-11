@@ -24,7 +24,9 @@ enum class TestCaseSendChannel { Product,
                                  ProductSerial,
                                  Dongle,
                                  Cloud,
-                                 Fixture };
+                                 Fixture,
+                                 Modbus,
+                                 Scpi };
 
 enum class TestCaseProductProtocol { Qfctp,
                                      Qpb,
@@ -46,6 +48,7 @@ struct TestCaseSend {
     TestCaseProductProtocol productProtocol = TestCaseProductProtocol::Qfctp;
     TestCaseFixtureProtocol fixtureProtocol = TestCaseFixtureProtocol::Pcba;
     TestCaseSendAction action = TestCaseSendAction::Set;
+    QString device;
     QString deviceCmd;
     QVariant param;
 };

@@ -2,6 +2,7 @@
 #define QMODBUSMANAGER_H
 
 #include "hq_ammeter_rtu.h"
+#include "imodbus_rtu_device.h"
 #include "inovance_h5u_tcp.h"
 #include "lx_ammeter_rtu.h"
 #include "modbus_types.h"
@@ -62,6 +63,34 @@ class QModbusManager : public QObject {
 
     bool isRtuAmmeterRoute() const;
 
+    IModbusRtuDevice* activeRtuDevice();
+
+    template <typename CmdType>
+    bool exec(CmdType cmd, const QVariant& param = {}, QString* errorMessage = nullptr) {
+        IModbusRtuDevice* dev = activeRtuDevice();
+        if (!dev) {
+            if (errorMessage) *errorMessage = QStringLiteral("当前未配置正确的 RTU 设备路由");
+            return false;
+        }
+        if (!serialChannel_ || !serialChannel_->isOpen()) {
+            if (errorMessage) *errorMessage = QStringLiteral("Modbus RTU 串口未打开");
+            return false;
+        }
+        
+        QByteArray payload = dev->buildRequest(static_cast<int>(cmd), param);
+        if (payload.isEmpty()) {
+            if (errorMessage) *errorMessage = QStringLiteral("Modbus RTU 组帧失败或设备不支持该命令");
+            return false;
+        }
+
+        resetRtuRxState();
+        if (serialChannel_->write(payload) < 0) {
+            if (errorMessage) *errorMessage = QStringLiteral("Modbus RTU 发送失败: %1").arg(serialChannel_->errorString());
+            return false;
+        }
+        return true;
+    }
+
     bool exec(HqAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
     bool exec(LxAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
 
@@ -76,6 +105,9 @@ class QModbusManager : public QObject {
     PlcModbusSession makeSession() const;
     bool tryEmitRtuReading(const QByteArray& frame);
     bool tryEmitLxRtuReading();
+
+    HqAmmeterModbusRtu hqAmmeterDevice_;
+    LxAmmeterModbusRtu lxAmmeterDevice_;
 
     int stationIndex_ = 1;
     InovanceH5uModbusTcp h5uTcp_;

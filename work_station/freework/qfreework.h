@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -75,6 +75,7 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
+    void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
     int teststate = -1;
@@ -147,6 +148,7 @@ class QFreeWork : public test_base {
         QString testData;
     };
     TestCaseStepResult testCaseStepResult_;
+    const TestCaseStepResult& testCaseStepResult() const { return testCaseStepResult_; }
 
     // --- 有序测试队列（test_case 编排） ---
     void refreshOrderedTestIndexes();

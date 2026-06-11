@@ -122,6 +122,7 @@ INCLUDEPATH += platform/driver/visa
 
 SOURCES += \
     common/common_utils.cpp \
+    common/serial_port_controller.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -181,6 +182,7 @@ SOURCES += \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
+    platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
     platform/test_record/test_record_store.cpp \
@@ -247,6 +249,7 @@ SOURCES += \
 
 HEADERS += \
     common/common_utils.h \
+    common/serial_port_controller.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
@@ -309,6 +312,7 @@ HEADERS += \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
     platform/test_case/manifest/modbus_cmd_manifest.h \
+    platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
@@ -320,6 +324,7 @@ HEADERS += \
     business/cmw_gprf/cmw_gprf_facade.h \
     agreement/scpi/access/scpi_types.h \
     agreement/scpi/access/scpi_transport.h \
+    agreement/scpi/access/iscpi_device.h \
     platform/driver/visa/visa_channel.h \
     agreement/scpi/manager/qscpivisasession.h \
     agreement/scpi/manager/qscpimanager.h \
@@ -350,6 +355,7 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
+    agreement/modbus/access/imodbus_rtu_device.h \
     agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
     agreement/scpi/codec/scpi_line_codec.h \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \

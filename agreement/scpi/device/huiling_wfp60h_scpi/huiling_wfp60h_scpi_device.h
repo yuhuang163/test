@@ -1,6 +1,8 @@
 #ifndef HUILING_WFP60H_SCPI_DEVICE_H
 #define HUILING_WFP60H_SCPI_DEVICE_H
 
+#include "iscpi_device.h"
+
 #include <QObject>
 #include <QVariant>
 #include <QVariantMap>
@@ -15,7 +17,7 @@
 class ScpiTransport;
 
 /** 会凌 WFP60H：HuilingScpiCmd → profile 组行；串口异步收行 / VISA 同步 query。 */
-class HuilingWfp60hScpiDevice : public QObject {
+class HuilingWfp60hScpiDevice : public QObject, public IScpiDevice {
     Q_OBJECT
 
   public:
@@ -30,6 +32,11 @@ class HuilingWfp60hScpiDevice : public QObject {
     bool set(HuilingScpiCmd cmd, const QVariant& data = {});
     bool get(HuilingScpiCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
+
+    // --- IScpiDevice interface ---
+    bool set(int cmd, const QVariant& param) override;
+    bool get(int cmd, const QVariant& param) override;
+    bool isQueryCmd(int cmd) const override;
 
     void handleLineReceived(const QString& line);
 

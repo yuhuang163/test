@@ -13,6 +13,7 @@
 #include <QTextStream>
 #include <QtDebug>
 #include <unordered_map>
+#include "qprotocol_types.h"
 
 #include "PressCalibBox.h"
 #include "ageingbox.h"
@@ -96,6 +97,7 @@ int main(int argc, char* argv[]) {
     a.setFont(QFont("Microsoft Yahei", 9));
     qRegisterMetaType<FacErrorCode>("FacErrorCode");
     qRegisterMetaType<ProtocolReport>("ProtocolReport");
+    qRegisterMetaType<ProtocolMeasureData>("ProtocolMeasureData");
 
     std::unordered_map<QString, int> map = {{"QUIESCENT_CURRENT", 1}, {"MOTOR_TEST", 2}, {"IMU_CALI", 3}, {"SCREEN_TEST", 4}, {"CAMERA_TEST", 5}, {"WIFIBLE_TEST", 6}, {"AGE_TEST", 7}, {"PCBA_TEST", 8}, {"PRESS_TEST", 9}, {"FREE_WORK", 10}, {"MAIN_TEST", 11}, {"dji_TEST", 12}, {"KEY_TEST", 13}, {"SUCTION_TEST", 14}};
 

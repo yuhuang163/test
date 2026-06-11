@@ -176,6 +176,19 @@ class ModbusPeriphCmdCatalog {
     static QString paramUiHint(ModbusDeviceRoute device, const QString& enumName);
 };
 
+class ScpiPeriphCmdCatalog {
+  public:
+    static QStringList allDeviceKeys();
+    static QString deviceUiLabel(ScpiDeviceRoute device);
+    static ScpiDeviceRoute deviceFromIni(const QString& text);
+    static QString deviceToIni(ScpiDeviceRoute device);
+
+    static QStringList allCmdNames(ScpiDeviceRoute device, TestCaseSendAction action);
+    static bool isCmdForDevice(ScpiDeviceRoute device, const QString& enumName, TestCaseSendAction action);
+    static QString cmdUiLabel(ScpiDeviceRoute device, const QString& enumName);
+    static QString paramUiHint(ScpiDeviceRoute device, const QString& enumName);
+};
+
 class TupleCmdCatalog {
   public:
     static QStringList allTupleCmdNames(TestCaseSendAction action);
