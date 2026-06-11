@@ -446,8 +446,8 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
         box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
     if (!uart || !uart->isFixtureSerialOpen()) {
         const QString msg = fixtureConnectDetail.isEmpty()
-                                ? QStringLiteral("治具串口未连接，且无法自动连接（请检查配置或菜单「连接治具串口」）")
-                                : fixtureConnectDetail;
+            ? QStringLiteral("治具串口未连接，且无法自动连接（请检查配置或菜单「连接治具串口」）")
+            : fixtureConnectDetail;
         showlog(msg);
         markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
         return;

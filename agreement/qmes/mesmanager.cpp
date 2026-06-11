@@ -1,4 +1,4 @@
-﻿#include "mesmanager.h"
+#include "mesmanager.h"
 
 #include "test_record_store.h"
 

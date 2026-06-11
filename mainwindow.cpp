@@ -26,7 +26,7 @@ QByteArray allPackets;
 
 void MainWindow::on_pushButton_clicked() {
     // int* p = nullptr;
-     at->set(DongleCmd::OtaDataPassthrough, 1);// *p = 42;  // 触发崩溃
+    at->set(DongleCmd::OtaDataPassthrough, 1); // *p = 42;  // 触发崩溃
 
     // // 创建一个按钮
     // QPushButton* button = nullptr;
@@ -174,7 +174,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3","Pump-E", "M8P", "AIR 2", "Hi", "Y30P", "F20", "Q20", "Q20P", "Y20", "Y20P", "Y30",
+    QStringList productList = {"V3", "Pump-E", "M8P", "AIR 2", "Hi", "Y30P", "F20", "Q20", "Q20P", "Y20", "Y20P", "Y30",
                                "Y30S", "Y21", "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
@@ -726,7 +726,7 @@ void MainWindow::openDongleSerialPort() {
     SerialChannel::OpenParams params;
     params.portName = ui->comNameCombo->currentText();
     params.baudRate = 921600;
-    params.readDebounceMs =1;
+    params.readDebounceMs = 1;
     params.rtsDtrMode = ui->is_reset_dongle->checkState() ? SerialChannel::RtsDtrMode::FullReset
                                                           : SerialChannel::RtsDtrMode::Enable;
 
@@ -3332,7 +3332,7 @@ void MainWindow::applyDongleOtaLinkSettingsFromUi() {
     int bleMtu = ui->BleMtuSize->text().toInt(&ok);
     if (!ok || bleMtu <= 0)
         bleMtu = 247;
-   at->set(DongleCmd::BleMtu, bleMtu);
+    at->set(DongleCmd::BleMtu, bleMtu);
     at->set(DongleCmd::OtaPktSize, pktSize);
 
     const QString msg =
@@ -3526,7 +3526,7 @@ void MainWindow::startRootBleOta() {
 }
 
 void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId, const QString& filePath,
-                                    bool progressToSourceBar) {
+                                  bool progressToSourceBar) {
     bool intervalOk = false;
     int intervalMs = ui->OtaTimeInterval->text().toInt(&intervalOk);
     if (!intervalOk || intervalMs < 0)

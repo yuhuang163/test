@@ -21,7 +21,7 @@ class RootBleOta2Client {
     static constexpr uint32_t kDefaultImageId = 0x00000001u;
     static constexpr uint32_t kDefaultImageVersion = 0x00010000u; // TLV 0x0002 VERSION
     static constexpr int kBlockSize = 3848;
-    static constexpr int kDefaultUartChunkSize = 128; // 串口透传单包默认长度（与 OTA v1 分片 UI 一致）
+    static constexpr int kDefaultUartChunkSize = 128;      // 串口透传单包默认长度（与 OTA v1 分片 UI 一致）
     static constexpr int kUpgradeControlTimeoutMs = 10000; // 开始/结束升级等控制命令应答
     static constexpr int kBlockResponseTimeoutMs = 2000;   // 写数据块应答
     static constexpr int kMaxWriteRetry = 3;

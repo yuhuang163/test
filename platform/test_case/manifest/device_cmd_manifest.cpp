@@ -84,7 +84,7 @@ const Row kRows[] = {
     {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::None, kHintTupleRead, kGet},
     {DeviceCmd::PeriphState, "PeriphState", u8"外设状态", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::None, kHintFactoryReset, kSet},
-    {DeviceCmd::RootSystemControl, "RootSystemControl", u8"系统控制", DeviceCmdParamKind::JsonMap,kHintRootSystemControl, kSet},
+    {DeviceCmd::RootSystemControl, "RootSystemControl", u8"系统控制", DeviceCmdParamKind::JsonMap, kHintRootSystemControl, kSet},
     {DeviceCmd::RootBatteryTempQuery, "RootBatteryTempQuery", u8"电池温度", DeviceCmdParamKind::None, kHintRootBatteryTemp, kGet},
     {DeviceCmd::RootVibration, "RootVibration", u8"振子控制", DeviceCmdParamKind::JsonMap, u8"0=停止 1=震动\n示例：{\"value\":1}", kSet},
     {DeviceCmd::RootFlangeQuery, "RootFlangeQuery", u8"法兰状态", DeviceCmdParamKind::None, u8"0=无法兰 1=加热法兰 2=震动法兰 0xA0=二合一", kGet},

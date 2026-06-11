@@ -1,4 +1,4 @@
-﻿#include "qsetting.h"
+#include "qsetting.h"
 
 #include "qsetting_bindings.h"
 #include "qevent.h"
@@ -464,7 +464,7 @@ void qsetting::saveConfig() {
 
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
-                                                                           : QStringLiteral("big"));
+                                                                          : QStringLiteral("big"));
     if (ui->comboBox_factory->currentText() == QStringLiteral("byd")) {
         bydmes::loadExternalMesConfig(nullptr);
     }
@@ -864,7 +864,7 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
         startDir = QCoreApplication::applicationDirPath();
     }
     const QString path = QFileDialog::getOpenFileName(this, "选择MES配置文件", startDir,
-                                                    "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
+                                                      "配置文件 (*.ini *.json *.xml);;所有文件 (*.*)");
     if (!path.isEmpty()) {
         ui->lineEdit_mes_config_file_path->setText(path);
     }

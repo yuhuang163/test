@@ -1,4 +1,4 @@
-﻿#ifndef TEST_BASE_H
+#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 #include <functional>
@@ -89,7 +89,9 @@ class test_base : public QWidget {
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
-    void setCommandWaitSource(CommandWaitSource source) { commandWaitSource_ = source; }
+    void setCommandWaitSource(CommandWaitSource source) {
+        commandWaitSource_ = source;
+    }
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
@@ -162,7 +164,9 @@ class test_base : public QWidget {
         qDebug() << "机器" << getIndex() << "independent_state状态被设置" << newState;
         independent_state = newState;
     }
-    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; }
+    STATE_INDEPENDENT_E get_independent_state(void) {
+        return independent_state;
+    }
     void solveGetBrushResponse(int data);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);

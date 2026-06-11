@@ -5,7 +5,7 @@
 
 /** 打包 所有log 目录并上传到 factory-tool 日志接口 */
 class LogUploadService {
-public:
+  public:
     struct UploadConfig {
         QString uploadUrl;
         QString deviceId;
@@ -27,4 +27,4 @@ public:
     static bool packAndUpload(const UploadConfig& cfg, QString* message);
 };
 
-#endif  // LOG_UPLOAD_SERVICE_H
+#endif // LOG_UPLOAD_SERVICE_H

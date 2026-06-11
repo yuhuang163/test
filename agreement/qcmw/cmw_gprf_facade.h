@@ -35,8 +35,10 @@ class CmwGprfFacade {
   public:
     CmwGprfRunResult run(CmwGprfCommand command, const CmwGprfRunParams& params);
     void resetSession();
+    // clang-format off
     bool burstDoneSinceStartRx() const { return burstDoneSinceStartRx_; }
     void clearBurstDoneSinceStartRx() { burstDoneSinceStartRx_ = false; }
+    // clang-format on
 
   private:
     using LogFn = std::function<void(const QString&)>;

@@ -207,7 +207,7 @@ bool CmwGprfFacade::primeGprf(QString* errorMessage) {
 }
 
 bool CmwGprfFacade::waitArbComplete(const QString& scenarioLabel, const Config& cfg, const LogFn& log,
-                                     const WaitFn& wait, QString* errorMessage, int* outElapsedMs) {
+                                    const WaitFn& wait, QString* errorMessage, int* outElapsedMs) {
     Q_UNUSED(log);
     Q_UNUSED(wait);
 
@@ -377,8 +377,8 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
 }
 
 CmwGprfRunResult CmwGprfFacade::runBurstAtProfile(const CmwGprfRunParams& params, const LogFn& log,
-                                                   const WaitFn& wait, const QString& burstLabel,
-                                                   bool logWaveformHint) {
+                                                  const WaitFn& wait, const QString& burstLabel,
+                                                  bool logWaveformHint) {
     CmwGprfRunResult result;
     const BrushProfile brush = BrushProfile::fromProfile(params.brushProfile);
     const Config cfg = Config::fromSettings();

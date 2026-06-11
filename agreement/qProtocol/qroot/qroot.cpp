@@ -4,7 +4,7 @@
 #include <QVariantMap>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -675,7 +675,7 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
         return;
     case DeviceCmd::RootSystemControl:
         sendPacket(Req, FactoryReset,
-                    QByteArray(1, static_cast<char>(parseSystemControlCommand(data, kSystemControlShutdown))));
+                   QByteArray(1, static_cast<char>(parseSystemControlCommand(data, kSystemControlShutdown))));
         return;
     default:
         qWarning() << "[Qroot] unsupported set cmd" << static_cast<int>(cmd);
