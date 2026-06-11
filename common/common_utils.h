@@ -31,7 +31,7 @@ class CommonUtils {
     static QString dateStampYmd(const QDateTime& dateTime = QDateTime::currentDateTime());
     static QString formatDateIso(const QDateTime& dateTime = QDateTime::currentDateTime());
     static QString dateTimeStamp(const QDateTime& dateTime = QDateTime::currentDateTime());
-    /** yyyy-MM-dd HH:mm:ss.zzz，串口/设备日志常用 */
+    /** yyyy-MM-dd HH:mm:ss.zzzzzz（微秒），串口/设备日志常用 */
     static QString formatTimestampMs(const QDateTime& dateTime = QDateTime::currentDateTime());
     static QString formatElapsedMs(qint64 elapsedMs, bool compact = true);
     static QString formatElapsedSeconds(int seconds, bool compact = true);

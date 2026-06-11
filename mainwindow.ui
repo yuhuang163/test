@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1411</width>
+    <width>1591</width>
     <height>1016</height>
    </rect>
   </property>
@@ -339,6 +339,16 @@
                </property>
               </widget>
              </item>
+             <item row="0" column="3">
+              <widget class="QPushButton" name="connectProductButton">
+               <property name="toolTip">
+                <string>使用上方「蓝牙 MAC」连接待测产品，效果与在 MAC 输入框按回车相同。</string>
+               </property>
+               <property name="text">
+                <string>连接产品</string>
+               </property>
+              </widget>
+             </item>
              <item row="0" column="2">
               <widget class="QLineEdit" name="macInput">
                <property name="sizePolicy">
@@ -358,13 +368,10 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="3">
-              <widget class="QPushButton" name="connectProductButton">
-               <property name="toolTip">
-                <string>使用上方「蓝牙 MAC」连接待测产品，效果与在 MAC 输入框按回车相同。</string>
-               </property>
+             <item row="0" column="4">
+              <widget class="QPushButton" name="pushButton">
                <property name="text">
-                <string>连接产品</string>
+                <string>测试(开发用)</string>
                </property>
               </widget>
              </item>
@@ -485,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>4</number>
+               <number>10</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -4144,7 +4151,7 @@
                     <item>
                      <widget class="QLineEdit" name="bleotamacInput">
                       <property name="text">
-                       <string>df:a1:10:00:0f:5f</string>
+                       <string>df:a1:00:00:23:f4</string>
                       </property>
                      </widget>
                     </item>
@@ -4254,7 +4261,7 @@
                   <item>
                    <widget class="QLineEdit" name="OtaTimeInterval">
                     <property name="text">
-                     <string>8</string>
+                     <string>2</string>
                     </property>
                    </widget>
                   </item>
@@ -4285,7 +4292,24 @@
                      <string>BLOCK_DATA 每帧携带的镜像字节数，默认 400；过大可能超出 BLE MTU</string>
                     </property>
                     <property name="text">
-                     <string>200</string>
+                     <string>242</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_ota_img_res_version">
+                    <property name="text">
+                     <string>图片资源版本(0x0002)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="OtaImgResVersion">
+                    <property name="toolTip">
+                     <string>开始升级 TLV VERSION(0x0002)，uint32；支持 0x00010000 或十进制</string>
+                    </property>
+                    <property name="text">
+                     <string>0x00250000</string>
                     </property>
                    </widget>
                   </item>
@@ -4296,6 +4320,9 @@
                     </property>
                     <property name="text">
                      <string>图片资源OTA v2</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
                     </property>
                    </widget>
                   </item>
@@ -5484,19 +5511,6 @@ border-color: rgb(255, 165, 0)</string>
                  </item>
                 </layout>
                </widget>
-               <widget class="QPushButton" name="pushButton">
-                <property name="geometry">
-                 <rect>
-                  <x>420</x>
-                  <y>30</y>
-                  <width>234</width>
-                  <height>23</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>测试(开发用)</string>
-                </property>
-               </widget>
                <widget class="QPushButton" name="pushButton_3">
                 <property name="geometry">
                  <rect>
@@ -5528,7 +5542,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1411</width>
+     <width>1591</width>
      <height>21</height>
     </rect>
    </property>

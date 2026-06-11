@@ -3,7 +3,6 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QElapsedTimer>
-#include <QThread>
 
 #include "common_utils.h"
 #include "common_protocl/comm_protocol_defs.h"
@@ -252,17 +251,29 @@ bool RootBleOta2Client::tryTakeStatusNotify(uint16_t* errorCode) {
     return true;
 }
 
+void RootBleOta2Client::sendFrameChunked(const QByteArray& frame) {
+    if (!sendFunc_ || frame.isEmpty())
+        return;
+    const int step = qMax(1, uartChunkSize_);
+    for (int off = 0; off < frame.size(); off += step) {
+        const int pieceLen = qMin(step, frame.size() - off);
+        sendFunc_(frame.mid(off, pieceLen));
+        if (off + pieceLen < frame.size())
+            waitWork(transferIntervalMs_);
+    }
+}
+
 bool RootBleOta2Client::sendOtaRequest(const QByteArray& tlvBlob, uint8_t* outSeq) {
     if (!sendFunc_)
         return false;
     const QByteArray payload = buildOtaServicePayload(tlvBlob);
     const uint8_t sendSeq = seq_;
     const QByteArray frame = buildFrame(seq_, kFrameTypeReq, payload);
-    qDebug() << QStringLiteral("BLE OTA2 发送 seq=%1 len=%2 data=%3")
-                    .arg(sendSeq)
-                    .arg(frame.size())
-                    .arg(QString::fromLatin1(frame.toHex(' ').toUpper()));
-    sendFunc_(frame);
+    // qDebug() << QStringLiteral("BLE OTA2 发送 seq=%1 len=%2 data=%3")
+    //                 .arg(sendSeq)
+    //                 .arg(frame.size())
+    //                 .arg(QString::fromLatin1(frame.toHex(' ').toUpper()));
+    sendFrameChunked(frame);
     if (outSeq)
         *outSeq = sendSeq;
     return true;
@@ -286,8 +297,8 @@ bool RootBleOta2Client::waitResponse(uint8_t expectSeq, FrameResponse* out, int 
         if (tryTakeResponse(expectSeq, out))
             return true;
 
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
-        QThread::msleep(10);
+        // 勿用 QThread::msleep：会阻塞事件循环，串口 onRx 延迟导致块间多出 ~10–30ms
+        waitWork(1);
     }
     return false;
 }
@@ -313,7 +324,7 @@ bool RootBleOta2Client::startUpgrade(uint32_t imageId, uint32_t version, const Q
     }
 
     FrameResponse resp;
-    if (!waitResponse(sendSeq, &resp, kResponseTimeoutMs, cancelled)) {
+    if (!waitResponse(sendSeq, &resp, kUpgradeControlTimeoutMs, cancelled)) {
         if (errorOut)
             *errorOut = QStringLiteral("等待开始升级应答超时或收到异常通知");
         return false;
@@ -351,8 +362,10 @@ bool RootBleOta2Client::writeBlock(uint32_t offset, const QByteArray& chunk, Can
         return false;
     }
 
+    QElapsedTimer blockRtt;
+    blockRtt.start(); // 整帧串口发完后才开始计 RTT
     FrameResponse resp;
-    if (!waitResponse(sendSeq, &resp, kResponseTimeoutMs, cancelled)) {
+    if (!waitResponse(sendSeq, &resp, kBlockResponseTimeoutMs, cancelled)) {
         if (errorOut)
             *errorOut = QStringLiteral("等待写数据应答超时 offset=%1").arg(offset);
         return false;
@@ -363,6 +376,13 @@ bool RootBleOta2Client::writeBlock(uint32_t offset, const QByteArray& chunk, Can
         if (errorOut)
             *errorOut = QStringLiteral("写数据 F000=0x%1 offset=%2").arg(serviceErr, 4, 16, QLatin1Char('0')).arg(offset);
         return false;
+    }
+    // 单调时钟：整帧串口发完 → 收到应答，与 dongle 内部戳 38585→38614 同语义
+    if (logFunc_) {
+        logFunc_(QStringLiteral("写块 offset=%1 seq=%2 发完→应答 %3ms")
+                     .arg(offset)
+                     .arg(sendSeq)
+                     .arg(blockRtt.elapsed()));
     }
     return true;
 }
@@ -378,7 +398,7 @@ bool RootBleOta2Client::endUpgrade(CancelPredicate cancelled, QString* errorOut)
     }
 
     FrameResponse resp;
-    if (!waitResponse(sendSeq, &resp, kResponseTimeoutMs, cancelled)) {
+    if (!waitResponse(sendSeq, &resp, kUpgradeControlTimeoutMs, cancelled)) {
         if (errorOut)
             *errorOut = QStringLiteral("等待结束升级应答超时");
         return false;
@@ -400,7 +420,8 @@ bool RootBleOta2Client::endUpgrade(CancelPredicate cancelled, QString* errorOut)
 }
 
 bool RootBleOta2Client::runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                                    CancelPredicate cancelled, QString* errorOut, ProgressFunc onProgress) {
+                                    int uartChunkSize, CancelPredicate cancelled, QString* errorOut,
+                                    ProgressFunc onProgress) {
     if (imageData.isEmpty()) {
         if (errorOut)
             *errorOut = QStringLiteral("镜像数据为空");
@@ -411,6 +432,9 @@ bool RootBleOta2Client::runTransfer(const QByteArray& imageData, uint32_t imageI
             *errorOut = QStringLiteral("未设置发送回调");
         return false;
     }
+
+    transferIntervalMs_ = qMax(0, intervalMs);
+    uartChunkSize_ = qMax(1, uartChunkSize);
 
     reset();
 
@@ -445,8 +469,7 @@ bool RootBleOta2Client::runTransfer(const QByteArray& imageData, uint32_t imageI
         offset += static_cast<uint32_t>(chunkLen);
         if (onProgress)
             onProgress(CommonUtils::progressPercent(static_cast<int>(offset), totalSize));
-
-        waitWork(intervalMs);
+        // 块间收到设备应答后立即发下一块；transferIntervalMs_ 仅用于 sendFrameChunked 串口分片间隔
     }
 
     if (onProgress)

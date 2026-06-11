@@ -26,13 +26,13 @@ QByteArray allPackets;
 
 void MainWindow::on_pushButton_clicked() {
     // int* p = nullptr;
-    // *p = 42;  // 触发崩溃
+     at->set(DongleCmd::OtaDataPassthrough, 1);// *p = 42;  // 触发崩溃
 
-    // 创建一个按钮
-    QPushButton* button = nullptr;
+    // // 创建一个按钮
+    // QPushButton* button = nullptr;
 
-    // 尝试访问空指针
-    button->setText("Click Me");
+    // // 尝试访问空指针
+    // button->setText("Click Me");
     // ui->macInput->setText("B4:56:5D:BF:53:66");
     // ui->macInput->setText("B4:56:5D:BF:53:71");   // wd设备
     // ui->macInput->setText("b4:56:5d:bf:54:4e");   // wd设备
@@ -726,7 +726,7 @@ void MainWindow::openDongleSerialPort() {
     SerialChannel::OpenParams params;
     params.portName = ui->comNameCombo->currentText();
     params.baudRate = 921600;
-    params.readDebounceMs = 5;
+    params.readDebounceMs =1;
     params.rtsDtrMode = ui->is_reset_dongle->checkState() ? SerialChannel::RtsDtrMode::FullReset
                                                           : SerialChannel::RtsDtrMode::Enable;
 
@@ -3434,26 +3434,23 @@ void MainWindow::startRootBleOta() {
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
-    rootBleOtaClient_.setSendFunc([this](const QByteArray& frame) {
-        const uint8_t seq = frame.size() > 2 ? static_cast<uint8_t>(frame[2]) : 0;
-        const int tlvType = frame.size() > 8 ? static_cast<uint8_t>(frame[8]) : -1;
-        // ui->bleOtaMsg->appendPlainText(
-        //      QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd")+
-        //     QStringLiteral(" BLE OTA 发送数据包 type=0x%1 seq=%2 len=%3 data=%4")
-        //         .arg(tlvType, 2, 16, QChar('0'))
-        //         .arg(seq)
-        //         .arg(frame.size())
-        //         .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
-
+    qint64 otaUartTxTotal = 0;
+    rootBleOtaClient_.setSendFunc([this, &otaUartTxTotal](const QByteArray& frame) {
+        otaUartTxTotal += frame.size();
         ui->bleOtaMsg->appendPlainText(
-            QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd") +
-            QStringLiteral(" BLE OTA 发送数据片"));
+            CommonUtils::formatTimestampMs() + QLatin1Char(' ') +
+            QDateTime::currentDateTime().toString(QStringLiteral("ddd")) +
+            QStringLiteral(" BLE OTA 发送数据片 len=%1 total=%2")
+                .arg(frame.size())
+                .arg(otaUartTxTotal));
 
         if (dongleSerialPort && dongleSerialPort->isOpen())
             dongleSerialPort->write(frame);
     });
     rootBleOtaClient_.setLogFunc([this](const QString& msg) {
-        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + " " + msg);
+        ui->bleOtaMsg->appendPlainText(CommonUtils::formatTimestampMs() + QLatin1Char(' ') +
+                                       QDateTime::currentDateTime().toString(QStringLiteral("ddd")) +
+                                       QLatin1Char(' ') + msg);
     });
     rootBleOtaActive_ = true;
     rootBleOtaClient_.reset();
@@ -3475,6 +3472,11 @@ void MainWindow::startRootBleOta() {
     rootBleOtaActive_ = false;
     at->set(DongleCmd::OtaDataPassthrough, 0);
     waitWork(200);
+
+    const QString otaTxSummary =
+        QStringLiteral("OTA 通道发送累计 %1 字节").arg(otaUartTxTotal);
+    showlog(otaTxSummary);
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QLatin1Char(' ') + otaTxSummary);
 
     if (stopBleOta) {
         showlog(QStringLiteral("路特 BLE OTA 已停止"));
@@ -3510,6 +3512,20 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
     int intervalMs = ui->OtaTimeInterval->text().toInt(&intervalOk);
     if (!intervalOk || intervalMs < 0)
         intervalMs = 5;
+    bool uartChunkOk = false;
+    int uartChunkSize = ui->OtaFragmentSize->text().toInt(&uartChunkOk);
+    if (!uartChunkOk || uartChunkSize <= 0)
+        uartChunkSize = RootBleOta2Client::kDefaultUartChunkSize;
+
+    const QString versionText = ui->OtaImgResVersion->text().trimmed();
+    bool versionOk = false;
+    uint32_t version = 0;
+    if (versionText.startsWith(QLatin1String("0x"), Qt::CaseInsensitive))
+        version = versionText.mid(2).toUInt(&versionOk, 16);
+    else
+        version = versionText.toUInt(&versionOk, 10);
+    if (!versionOk)
+        version = RootBleOta2Client::kDefaultImageVersion;
 
     const uint32_t imageCrc32 = RootBleOta2Client::calculateImageCrc32(imageData);
     const int totalBlocks = (imageData.size() + RootBleOta2Client::kBlockSize - 1) / RootBleOta2Client::kBlockSize;
@@ -3521,21 +3537,33 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
                 .arg(totalBlocks));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" 图片资源 OTA v2 开始 ") + filePath);
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
-                                   QStringLiteral(" 写数据间隔：%1 ms，块大小：%2 字节")
+                                   QStringLiteral(" 串口分片间隔：%1 ms，块大小：%2 字节，分片大小：%3 字节，版本 0x%4（块间收到应答即发下一块）")
                                        .arg(intervalMs)
-                                       .arg(RootBleOta2Client::kBlockSize));
+                                       .arg(RootBleOta2Client::kBlockSize)
+                                       .arg(uartChunkSize)
+                                       .arg(version, 8, 16, QChar('0')));
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
-    auto sendFrame = [this](const QByteArray& frame) {
-        ui->bleOtaMsg->appendPlainText(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ddd") +
-                                       QStringLiteral(" IMG RES OTA 发送数据片"));
-        if (dongleSerialPort && dongleSerialPort->isOpen())
+    qint64 otaUartTxTotal = 0;
+    auto sendFrame = [this, &otaUartTxTotal](const QByteArray& frame) {
+        otaUartTxTotal += frame.size();
+        // 先 write 再记时：避免 UI 刷新抢在串口写之前导致时间戳偏早
+        if (dongleSerialPort && dongleSerialPort->isOpen()) {
             dongleSerialPort->write(frame);
+            dongleSerialPort->waitForBytesWritten(200);
+        }
+        ui->bleOtaMsg->appendPlainText(CommonUtils::formatTimestampMs() + QLatin1Char(' ') +
+                                       QDateTime::currentDateTime().toString(QStringLiteral("ddd")) +
+                                       QStringLiteral(" IMG RES OTA 串口发完 len=%1 total=%2")
+                                           .arg(frame.size())
+                                           .arg(otaUartTxTotal));
     };
     rootBleOta2Client_.setSendFunc(sendFrame);
     rootBleOta2Client_.setLogFunc([this](const QString& msg) {
-        ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + " " + msg);
+        ui->bleOtaMsg->appendPlainText(CommonUtils::formatTimestampMs() + QLatin1Char(' ') +
+                                       QDateTime::currentDateTime().toString(QStringLiteral("ddd")) +
+                                       QLatin1Char(' ') + msg);
     });
 
     rootBleOtaActive_ = true;
@@ -3544,9 +3572,8 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
     bleOtaTestTime.start();
 
     QString errorText;
-    const uint32_t version = 0x00010000u;
     const bool ok = rootBleOta2Client_.runTransfer(
-        imageData, imageId, version, intervalMs, [this]() { return stopBleOta != 0; }, &errorText,
+        imageData, imageId, version, intervalMs, uartChunkSize, [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
             ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
             if (progressToSourceBar)
@@ -3559,6 +3586,11 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
     rootBleOta2Active_ = false;
     at->set(DongleCmd::OtaDataPassthrough, 0);
     waitWork(200);
+
+    const QString otaTxSummary =
+        QStringLiteral("OTA 通道发送累计 %1 字节").arg(otaUartTxTotal);
+    showlog(otaTxSummary);
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QLatin1Char(' ') + otaTxSummary);
 
     if (stopBleOta) {
         showlog(QStringLiteral("图片资源 OTA v2 已停止"));

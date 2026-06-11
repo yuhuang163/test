@@ -473,7 +473,7 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
         //                                    .arg(dataTemp.size())
         //                                    .arg(QString(dataTemp.toHex(' ').left(120))));
         // saveDongleUartLog(QString("[%1] OTA_RX %2").arg(timestamp, QString(dataTemp.toHex(' '))));
-        return;
+        // return;
     }
 
     int write_len = 0;

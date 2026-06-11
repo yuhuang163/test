@@ -19,8 +19,11 @@ class RootBleOta2Client {
     static constexpr uint16_t kOtaServiceId = 9;
     static constexpr uint16_t kTestServiceId = 7;
     static constexpr uint32_t kDefaultImageId = 0x00000001u;
-    static constexpr int kBlockSize = 1024;
-    static constexpr int kResponseTimeoutMs = 30000;
+    static constexpr uint32_t kDefaultImageVersion = 0x00010000u; // TLV 0x0002 VERSION
+    static constexpr int kBlockSize = 3848;
+    static constexpr int kDefaultUartChunkSize = 128; // 串口透传单包默认长度（与 OTA v1 分片 UI 一致）
+    static constexpr int kUpgradeControlTimeoutMs = 10000; // 开始/结束升级等控制命令应答
+    static constexpr int kBlockResponseTimeoutMs = 2000;   // 写数据块应答
     static constexpr int kMaxWriteRetry = 3;
 
     enum TlvId : uint16_t {
@@ -54,7 +57,8 @@ class RootBleOta2Client {
     void onRx(const QByteArray& data);
 
     bool runTransfer(const QByteArray& imageData, uint32_t imageId, uint32_t version, int intervalMs,
-                     CancelPredicate cancelled, QString* errorOut, ProgressFunc onProgress = nullptr);
+                     int uartChunkSize, CancelPredicate cancelled, QString* errorOut,
+                     ProgressFunc onProgress = nullptr);
 
     static uint32_t calculateImageCrc32(const QByteArray& imageData);
 
@@ -74,6 +78,7 @@ class RootBleOta2Client {
     void parseServiceBody(uint16_t serviceId, const QByteArray& body, uint8_t seq, uint8_t frameType);
     bool tryTakeResponse(uint8_t seq, FrameResponse* out);
     bool tryTakeStatusNotify(uint16_t* errorCode);
+    void sendFrameChunked(const QByteArray& frame);
     bool sendOtaRequest(const QByteArray& tlvBlob, uint8_t* outSeq);
     bool waitResponse(uint8_t expectSeq, FrameResponse* out, int timeoutMs, CancelPredicate cancelled);
     bool startUpgrade(uint32_t imageId, uint32_t version, const QByteArray& imageData, uint32_t* outOffset,
@@ -83,6 +88,8 @@ class RootBleOta2Client {
 
     SendFunc sendFunc_;
     LogFunc logFunc_;
+    int transferIntervalMs_ = 0;
+    int uartChunkSize_ = kDefaultUartChunkSize;
     QByteArray rxBuffer_;
     QQueue<FrameResponse> responses_;
     QQueue<uint16_t> statusNotifies_;
