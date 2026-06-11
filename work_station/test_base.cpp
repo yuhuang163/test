@@ -40,6 +40,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         pb(new Qpb(dongleSerialPort)),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
+                                        qroot(new Qroot(dongleSerialPort)),
                                         at(new Qat(dongleSerialPort)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         usb(new Qusb(usbSerialPort)),
@@ -47,18 +48,24 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
-                                        qroot(new Qroot(dongleSerialPort)),
                                         product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
-    const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
-    auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
-    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
-        selectedType = QProtocolManager::ProtocolType::Qpb;
+    {
+        auto selectedType = QProtocolManager::protocolTypeFromString(
+            SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
+        if (selectedType == QProtocolManager::ProtocolType::Unknown)
+            selectedType = QProtocolManager::ProtocolType::Qpb;
+        if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+            (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+            showlog(QStringLiteral("所选协议未就绪，已回退到 qpb"));
+            selectedType = QProtocolManager::ProtocolType::Qpb;
+        }
+        protocolManager.setCurrentProtocolType(selectedType);
     }
-    protocolManager.setCurrentProtocolType(selectedType);
     showlog(QStringLiteral("当前设备协议：%1")
                 .arg(QString::fromStdString(
                     QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
@@ -497,6 +504,12 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshPictureSendOver(payload.value<ProtocolResultData>());
     } else if (reportType == "ProtocolAgingStatusData" && payload.canConvert<ProtocolAgingStatusData>()) {
         refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
+    } else if (reportType == QLatin1String("ProtocolBatteryTempData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshRootBatteryTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
+        refreshResultCode(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshTypeStatus(payload.value<ProtocolTypeData>());
     }
 }
 

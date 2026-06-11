@@ -73,7 +73,7 @@ void Fixture_uart::refresh_Fixtureuart_state(int state) {
 }
 
 void Fixture_uart::on_FixtureconnectButton_clicked() {
-    openFixtureSerialPort();
+    openFixtureSerialPort(false);
 }
 
 void Fixture_uart::on_FixturedisconnectButton_clicked() {
@@ -89,8 +89,19 @@ void Fixture_uart::on_FixturerefreshCom_clicked() {
     }
 }
 
-void Fixture_uart::openFixtureSerialPort(void) {
-    fixtureSerialPort->setPortName(ui->FixturecomNameCombo->currentText());
+bool Fixture_uart::openFixtureSerialPort(bool quiet) {
+    const QString portName = ui->FixturecomNameCombo->currentText().trimmed();
+    if (portName.isEmpty()) {
+        if (!quiet)
+            QMessageBox::warning(nullptr, QStringLiteral("警告"), QStringLiteral("未选择治具串口"));
+        return false;
+    }
+    if (fixtureSerialPort->isOpen() && fixtureSerialPort->portName() == portName)
+        return true;
+    if (fixtureSerialPort->isOpen())
+        closeFixtureSerialPort();
+
+    fixtureSerialPort->setPortName(portName);
     fixtureSerialPort->setBaudRate(fixBaudRate);
     fixtureSerialPort->setDataBits(QSerialPort::Data8);
     fixtureSerialPort->setParity(QSerialPort::NoParity);
@@ -107,9 +118,23 @@ void Fixture_uart::openFixtureSerialPort(void) {
         fixtureSerialPort->setDataTerminalReady(true);
 
         connect(fixtureSerialPortTimer, &QTimer::timeout, this, &Fixture_uart::readFixtureSerialPortData);
-    } else {
-        QMessageBox::warning(NULL, "警告", " 串口被占用！\t\r\n");
+        return true;
     }
+    if (!quiet)
+        QMessageBox::warning(nullptr, QStringLiteral("警告"), QStringLiteral("串口被占用！\t\r\n"));
+    else
+        qWarning().noquote() << QStringLiteral("[Fixture_uart] 打开治具串口失败：%1").arg(portName);
+    return false;
+}
+
+bool Fixture_uart::tryOpenSerialPort(const QString& portName, bool quiet) {
+    const QString port = portName.trimmed();
+    if (port.isEmpty())
+        return false;
+    if (ui->FixturecomNameCombo->findText(port) < 0)
+        ui->FixturecomNameCombo->addItem(port);
+    ui->FixturecomNameCombo->setCurrentText(port);
+    return openFixtureSerialPort(quiet);
 }
 
 bool Fixture_uart::isFixtureSerialOpen() const {

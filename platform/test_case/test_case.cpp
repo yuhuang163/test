@@ -2011,6 +2011,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
+    {QStringLiteral("ProtocolBatteryTempData"), QStringLiteral("电池温度"), {{QStringLiteral("type"), QStringLiteral("温度(°C)")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2135,7 +2136,7 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.result;
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;
@@ -2229,7 +2230,7 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return d.mac.trimmed();
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;

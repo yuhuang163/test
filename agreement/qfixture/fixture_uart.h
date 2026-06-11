@@ -47,6 +47,8 @@ class Fixture_uart : public QWidget {
 
     /** test_case 治具通道：串口是否已打开。 */
     bool isFixtureSerialOpen() const;
+    /** 按指定端口打开治具串口（用于 test_case 防呆自动连接）；quiet 为 true 时不弹窗。 */
+    bool tryOpenSerialPort(const QString& portName, bool quiet = true);
     /** 发送 PCBA 0x55 组包帧（由上位机组包，不记 start_action）。 */
     void sendPcbaFrame(const QByteArray& frame);
 
@@ -82,7 +84,7 @@ class Fixture_uart : public QWidget {
     void readFixtureSerialPortData();
     void set_camera_action(camreaFixtureState fixstate);
 
-    void openFixtureSerialPort();
+    bool openFixtureSerialPort(bool quiet = false);
     void closeFixtureSerialPort();
     void refresh_Fixtureuart_state(int state);
     void on_FixtureconnectButton_clicked();

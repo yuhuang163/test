@@ -366,7 +366,11 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
             const bool productGet = !caseDef.hook.enabled && !dongleBleConnect && caseDef.send.channel == TestCaseSendChannel::Product && caseDef.send.action == TestCaseSendAction::Get;
-            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
+            // 治具/产品串口 Get 等异步等待须由回包回调 markActiveTestCaseStepDone，不可在此直接 done
+            const bool fixtureOrSerialAsync =
+                caseDef.send.channel == TestCaseSendChannel::Fixture ||
+                caseDef.send.channel == TestCaseSendChannel::ProductSerial;
+            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;

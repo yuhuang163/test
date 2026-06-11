@@ -222,6 +222,9 @@ class test_base : public QWidget {
     virtual void refreshTupleData(ProtocolTupleData) {}
     virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
     virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
+    virtual void refreshRootBatteryTemp(quint8 temp) {}
+    virtual void refreshResultCode(ProtocolResultData data) {}
+    virtual void refreshTypeStatus(ProtocolTypeData data) {}
     virtual void refreshAmmeterData(QString) {}
     virtual void refreshDongleUartState(int) {}
     virtual void refreshUsbUartState(int) {}
@@ -231,7 +234,7 @@ class test_base : public QWidget {
     // clang-format on
 
   protected:
-    /** 产测协议（Qpb/Qfctp）上行分发 */
+    /** 产测协议（Qpb/Qfctp/Qaiot/Qroot）上行分发 */
     virtual void onProtocolReport(const ProtocolReport& report);
     /** Dongle AT 上行分发 */
     virtual void onDongleAtReport(const ProtocolReport& report);

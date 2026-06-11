@@ -440,12 +440,20 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     }
 
     auto* box = qobject_cast<QFreeWorkBox*>(window());
-    Fixture_uart* uart = box ? box->fixtureUartWidget() : nullptr;
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
     if (!uart || !uart->isFixtureSerialOpen()) {
-        showlog(QStringLiteral("治具串口未连接，请从菜单打开「连接治具串口」"));
+        const QString msg = fixtureConnectDetail.isEmpty()
+                                ? QStringLiteral("治具串口未连接，且无法自动连接（请检查配置或菜单「连接治具串口」）")
+                                : fixtureConnectDetail;
+        showlog(msg);
         markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
         return;
     }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
 
     const int machineIndex = resolveFixtureMachineIndex(def.send.param);
 
@@ -551,6 +559,19 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
                                        "WaitStartTestAck 不支持卡控，请关闭卡控或改用 WaitFixturePacket"));
                                    markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
                                }
+                           });
+    } else if (cmd == FixturePcbaCmd::WaitWorkCurrentDoneAck) {
+        const auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine_sleep, this,
+                           [this, def, stopWaitTimer, connPtr](const FixturePacketData& pack) {
+                               QObject::disconnect(*connPtr);
+                               if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
+                                   return;
+                               stopWaitTimer();
+                               const QString detail =
+                                   QStringLiteral("工作电流测量完成 机号=%1").arg(pack.machineNumber);
+                               markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+                               showlog(QStringLiteral("收到治具短包 55 01 05 CC AA：%1").arg(detail));
                            });
     } else {
         stopWaitTimer();

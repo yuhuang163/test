@@ -767,6 +767,32 @@ void QFreeWork::refreshWifiMsg(QString data) {
         }
     }
 }
+void QFreeWork::refreshRootBatteryTemp(quint8 temp) {
+    ProtocolBatteryTempData data;
+    data.type = temp;
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBatteryTempData"), QVariant::fromValue(data)))
+        return;
+
+    // Gate 关闭时：仅在本步为 RootBatteryTempQuery 时回填（与电量等 Get 步一致）
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootBatteryTempQuery"))
+        return;
+
+    const QString testData = QString::number(temp);
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("[0,255]"));
+    showlog(QStringLiteral("电池温度：%1°C").arg(temp));
+}
+
+void QFreeWork::refreshResultCode(ProtocolResultData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolResultData"), QVariant::fromValue(data)))
+        return;
+    showlog(QStringLiteral("协议结果码：%1").arg(data.result));
+}
+
+void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(data)))
+        return;
+}
+
 void QFreeWork::refreshButton(ProtocolButtonStateData data) {
     if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
         return;

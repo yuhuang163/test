@@ -21,6 +21,8 @@ const Row kRows[] = {
      u8"等待治具短包「开始测试」应答（55 AA … AA AA）", kGet},
     {FixturePcbaCmd::WaitSleepRequest, "WaitSleepRequest", u8"等待休眠请求", DeviceCmdParamKind::None,
      u8"等待治具短包「请求休眠」（55 xx 05 CC AA）", kGet},
+    {FixturePcbaCmd::WaitWorkCurrentDoneAck, "WaitWorkCurrentDoneAck", u8"等待工作电流测量完成",
+     DeviceCmdParamKind::None, u8"等待治具短包 55 01 05 CC AA（工作电流测量完成）", kGet},
 };
 
 } // namespace

@@ -267,6 +267,9 @@ class QFreeWork : public test_base {
     void refreshKeySignalRead(ProtocolKeyCapData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
     void refreshButton(ProtocolButtonStateData data) override;
+    void refreshRootBatteryTemp(quint8 temp) override;
+    void refreshResultCode(ProtocolResultData data) override;
+    void refreshTypeStatus(ProtocolTypeData data) override;
     void refreshAmmeterData(QString data) override;
     void refreshWifiState(int state);
     void onProductInstrumentStopReceiveAckForPer(int recvPkts);

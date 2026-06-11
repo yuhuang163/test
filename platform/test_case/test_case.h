@@ -125,6 +125,7 @@ enum class FixturePcbaCmd {
     WaitFixturePacket,
     WaitStartTestAck,
     WaitSleepRequest,
+    WaitWorkCurrentDoneAck,
 };
 
 class FixturePcbaCmdCatalog {

@@ -16,6 +16,8 @@ constexpr quint8 kPhyTxHeaderByte = 0xCC;
 constexpr quint8 kPhyRxHeaderByte = 0xAA;
 constexpr int kPhyHeaderSize = 8;
 constexpr quint8 kPhyChannelFac = 1;
+/** 0x9A 开/关按键上报的 Ack body：0xFF=已接收（旧固件曾为 0x00） */
+constexpr quint8 kKeyNotifySwitchAck = 0xFF;
 
 } // namespace
 
@@ -183,6 +185,21 @@ QByteArray Qroot::parseMacToWire(const QVariant& data) {
     return wire;
 }
 
+quint8 Qroot::parseSystemControlCommand(const QVariant& data, quint8 defaultValue) {
+    if (!data.isValid() || data.isNull())
+        return defaultValue;
+    if (data.canConvert<int>())
+        return static_cast<quint8>(data.toInt() & 0xFF);
+    if (data.canConvert<QVariantMap>()) {
+        const QVariantMap map = data.toMap();
+        if (map.contains(QStringLiteral("command")))
+            return static_cast<quint8>(map.value(QStringLiteral("command")).toUInt() & 0xFF);
+        if (map.contains(QStringLiteral("value")))
+            return static_cast<quint8>(map.value(QStringLiteral("value")).toUInt() & 0xFF);
+    }
+    return defaultValue;
+}
+
 quint8 Qroot::parseOnOffParam(const QVariant& data, quint8 defaultValue) {
     if (!data.isValid() || data.isNull())
         return defaultValue;
@@ -293,6 +310,7 @@ void Qroot::drainRxBuffer() {
 
 void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     if (ct == Nack) {
+        keyNotifySwitchPending_ = false;
         emit sendGetProductResponse(0);
         hasPending_ = false;
         ProtocolResultData result;
@@ -304,7 +322,22 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     // 设备按键主动上报：实测 CT=Ack(0x01)；文档亦允许 Notify(0x03)
     if (body.size() >= 1 && (ct == Notify || ct == Ack)) {
         if (cid == KeyNotify) {
-            emitKeyNotifyReport(static_cast<quint8>(body.at(0)));
+            const quint8 keyId = static_cast<quint8>(body.at(0));
+            // 开/关上报 Ack：body=0xFF 表示已接收，须完成 sendCommandWithRetry
+            if (ct == Ack && keyNotifySwitchPending_ &&
+                (keyId == kKeyNotifySwitchAck || keyId == 0x00)) {
+                keyNotifySwitchPending_ = false;
+                ProtocolResultData result;
+                result.result = 1;
+                emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+                emit sendGetProductResponse(1);
+                hasPending_ = false;
+                return;
+            }
+            if (keyId >= 1 && keyId <= 3) {
+                emitKeyNotifyReport(keyId);
+                return;
+            }
             return;
         }
         if (cid == ToggleKeyNotify) {
@@ -435,10 +468,13 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         hasPending_ = false;
         break;
     case FactoryReset:
-        if (body.size() >= 1 && static_cast<quint8>(body.at(0)) == kFactoryResetParam) {
-            ProtocolResultData result;
-            result.result = 1;
-            emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+        if (body.size() >= 1) {
+            const quint8 ctrl = static_cast<quint8>(body.at(0));
+            if (ctrl >= kSystemControlShutdown && ctrl <= kFactoryResetParam) {
+                ProtocolResultData result;
+                result.result = 1;
+                emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+            }
         }
         emit sendGetProductResponse(1);
         hasPending_ = false;
@@ -448,6 +484,24 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             ProtocolBatteryTempData status;
             status.type = static_cast<quint8>(body.at(0));
             emitReport(QStringLiteral("ProtocolBatteryTempData"), QVariant::fromValue(status));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case SuctionTest:
+        if (body.size() >= 1) {
+            ProtocolResultData result;
+            result.result = 1;
+            emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case PumpControl:
+        if (body.size() >= 1) {
+            ProtocolTypeData status;
+            status.type = static_cast<quint8>(body.at(0));
+            emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(status));
         }
         emit sendGetProductResponse(1);
         hasPending_ = false;
@@ -500,7 +554,68 @@ void Qroot::sendQuery(CommandId cid) {
 }
 
 void Qroot::sendKeyNotifySwitch(quint8 enable) {
+    keyNotifySwitchPending_ = true;
     sendPacket(Notify, KeyNotify, QByteArray(1, static_cast<char>(enable ? 1 : 0)));
+}
+
+QByteArray Qroot::buildPumpControlBody(const QVariant& data) {
+    QVariantMap map;
+    if (data.canConvert<QVariantMap>())
+        map = data.toMap();
+    const auto u8 = [&map](const QString& key, quint8 def) -> quint8 {
+        if (!map.contains(key))
+            return def;
+        return static_cast<quint8>(map.value(key).toUInt() & 0xFF);
+    };
+    QByteArray body(10, '\0');
+    body[0] = static_cast<char>(u8(QStringLiteral("status"), 1));
+    body[1] = static_cast<char>(u8(QStringLiteral("mode"), 1));
+    body[2] = static_cast<char>(u8(QStringLiteral("level"), 1));
+    body[3] = static_cast<char>(u8(QStringLiteral("customMode"), 1));
+    body[4] = static_cast<char>(u8(QStringLiteral("customLevel"), 1));
+    body[5] = static_cast<char>(u8(QStringLiteral("customFreq"), 2));
+    body[6] = static_cast<char>(u8(QStringLiteral("controlType"), 2));
+    body[7] = static_cast<char>(u8(QStringLiteral("pumpFreq"), 1));
+    return body;
+}
+
+void Qroot::sendPumpControl(const QByteArray& body10) {
+    if (body10.size() != 10) {
+        qWarning() << "[Qroot] PumpControl body must be 10 bytes, got" << body10.size();
+        return;
+    }
+    sendPacket(Req, PumpControl, body10);
+}
+
+QByteArray Qroot::buildSuctionTestBody(const QVariant& data) {
+    QVariantMap map;
+    if (data.canConvert<QVariantMap>())
+        map = data.toMap();
+    const auto u8 = [&map](const QString& key, quint8 def) -> quint8 {
+        if (!map.contains(key))
+            return def;
+        return static_cast<quint8>(map.value(key).toUInt() & 0xFF);
+    };
+    quint8 switchVal = 1;
+    if (map.contains(QStringLiteral("switch")))
+        switchVal = u8(QStringLiteral("switch"), 1);
+    else if (map.contains(QStringLiteral("status")))
+        switchVal = u8(QStringLiteral("status"), 1);
+    else if (map.contains(QStringLiteral("on")))
+        switchVal = u8(QStringLiteral("on"), 1);
+    QByteArray body(3, '\0');
+    body[0] = static_cast<char>(switchVal ? 1 : 0);
+    body[1] = static_cast<char>(u8(QStringLiteral("mode"), 1));
+    body[2] = static_cast<char>(u8(QStringLiteral("level"), 8));
+    return body;
+}
+
+void Qroot::sendSuctionTest(const QByteArray& body3) {
+    if (body3.size() != 3) {
+        qWarning() << "[Qroot] SuctionTest body must be 3 bytes, got" << body3.size();
+        return;
+    }
+    sendPacket(Req, SuctionTest, body3);
 }
 
 void Qroot::set(DeviceCmd cmd, const QVariant& data) {
@@ -529,6 +644,12 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::RootPumpTestExit:
         sendPacket(Notify, PumpTestExit, QByteArray(1, '\x01'));
         return;
+    case DeviceCmd::RootSuctionTest:
+        sendSuctionTest(buildSuctionTestBody(data));
+        return;
+    case DeviceCmd::RootPumpControl:
+        sendPumpControl(buildPumpControlBody(data));
+        return;
     case DeviceCmd::BurningMode: {
         bool wantExit = false;
         if (data.canConvert<QVariantMap>()) {
@@ -551,6 +672,10 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
     }
     case DeviceCmd::FactoryReset:
         sendPacket(Notify, FactoryReset, QByteArray(1, static_cast<char>(kFactoryResetParam)));
+        return;
+    case DeviceCmd::RootSystemControl:
+        sendPacket(Req, FactoryReset,
+                    QByteArray(1, static_cast<char>(parseSystemControlCommand(data, kSystemControlShutdown))));
         return;
     default:
         qWarning() << "[Qroot] unsupported set cmd" << static_cast<int>(cmd);
