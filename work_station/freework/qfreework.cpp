@@ -883,7 +883,7 @@ PlcV3RunParams QFreeWork::makePlcRunParams(int keyIndex0To6) {
 
 CmwGprfRunParams QFreeWork::makeCmwRunParams(const QString& scenarioLabel, int brushProfile) {
     CmwGprfRunParams params;
-    params.visa = visa;
+    params.scpi = scpiVisaManager();
     params.scenarioLabel = scenarioLabel;
     params.brushProfile = brushProfile;
     params.log = [this](const QString& line) { showlog(line); };

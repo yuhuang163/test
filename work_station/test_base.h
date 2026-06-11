@@ -1,4 +1,4 @@
-﻿#ifndef TEST_BASE_H
+#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 #include <functional>
@@ -8,6 +8,9 @@
 #include "Abini.h"
 #include "qprotocolmanager.h"
 #include "qmodbusmanager.h"
+#include "qscpimanager.h"
+#include "huiling_wfp60h_scpi_types.h"
+#include "scpi_types.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -16,7 +19,6 @@
 #include "qat.h"
 #include "qjig.h"
 #include "qusb.h"
-#include "qvisa.h"
 #include "serial_channel.h"
 
 extern "C" {
@@ -107,6 +109,13 @@ class test_base : public QWidget {
     void showlog(QString msg);
     /** 配置 modbusManager 工位号、日志与中止回调（按键/自由工站等 PLC 工站构造时调用）。 */
     void setupModbusManager();
+    /** 当前路由为 RTU 时走 modbusManager.exec，否则 USB scpiManager.exec。 */
+    bool execAmmeterMeasure(QString* errorMessage = nullptr);
+    bool execScpi(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
+    /** VISA 会凌程控电源（scpiVisaManager_，与 USB 电流表独立实例）。 */
+    bool execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
+    QScpiManager* scpiVisaManager();
+    const QScpiManager* scpiVisaManager() const;
 
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";
@@ -138,7 +147,7 @@ class test_base : public QWidget {
     Qat* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
     Qusb* usb = nullptr;
-    Qvisa* visa = nullptr;
+    QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
     Qjig* jig = nullptr;
     QSerialPort* productSerialPort = nullptr;

@@ -57,7 +57,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(par
         at->get(DongleCmd::GetGmac);
         showlog("正在定时器复位设备");
     });
-    connect(visa, &Qvisa::programmablePowerCurrentRead, this, &quiescent_current::refreshProgrammablePowerCurrent);
+    connect(scpiVisaManager(), &QScpiManager::programmablePowerCurrentRead, this, &quiescent_current::refreshProgrammablePowerCurrent);
 
     HighCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();
     LowCurrent = SETTINGS.value("Current/LowstaticCurrent").toDouble();
@@ -145,16 +145,12 @@ bool quiescent_current::setProgrammablePowerOutput(bool enable) {
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         return true;
     }
-    if (!visa) {
-        return false;
-    }
-    const VisaCmd cmd = enable ? VisaCmd::PowerOutputOn : VisaCmd::PowerOutputOff;
-    bool ok = visa->set(cmd);
+    bool ok = execVisaHuiling(HuilingScpiCmd::ProgrammablePowerOutput, enable);
     if (!ok) {
         showlog(QStringLiteral("程控电源输出%1失败，重连VISA后重试")
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         resetVisaBackend();
-        ok = visa->set(cmd);
+        ok = execVisaHuiling(HuilingScpiCmd::ProgrammablePowerOutput, enable);
     }
     showlog(QStringLiteral("程控电源输出%1=%2")
                 .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭"))
@@ -907,12 +903,7 @@ void quiescent_current::startTask() {
                 }
                 showlog(QStringLiteral("开始配置程控电源：address=%1")
                             .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString()));
-                bool powerCfgOk = true;
-                if (!visa) {
-                    powerCfgOk = false;
-                } else {
-                    powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
-                }
+                const bool powerCfgOk = execVisaHuiling(HuilingScpiCmd::ConfigureProgrammablePower);
                 const bool outOk = setProgrammablePowerOutput(true);
                 showlog(QString("程控电源配置=%1, 输出打开=%2")
                             .arg(powerCfgOk ? "OK" : "NG")
@@ -1143,11 +1134,9 @@ void quiescent_current::on_pushButton_clicked() {
 
 void quiescent_current::on_pushButton_3_clicked() {
     if (useProgrammablePower) {
-        if (visa) {
-            visa->get(VisaCmd::ReadCurrent);
-        }
+        execVisaHuiling(HuilingScpiCmd::ReadProgrammableCurrent);
     } else {
-        usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+        execAmmeterMeasure();
     }
 
     // at->get(DongleCmd::GetGmac);
@@ -1286,12 +1275,8 @@ void quiescent_current::on_visa_test_clicked() {
         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
         return;
     }
-    if (!visa) {
-        showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
-        return;
-    }
-    if (!visa->set(VisaCmd::ConfigurePowerSupply)) {
-        showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
+    if (!execVisaHuiling(HuilingScpiCmd::ConfigureProgrammablePower)) {
+        showlog(QStringLiteral("程控电源 ConfigureProgrammablePower 失败"));
         return;
     }
 

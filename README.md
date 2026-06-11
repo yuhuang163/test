@@ -78,7 +78,9 @@ new_product_test/
 │   │
 │   ├── qat/                              ← dongle AT协议
 │   │   └── qat.h/.cpp
-│   ├── qusb/                             ← USB电流表协议（SCPI/HQ/LX统一入口）
+│   ├── peripheral_protocol/              ← 外设 RS232 自定义帧（治具帧后续迁入）
+│   ├── qusb/                             ← COM 电流表工站入口（历史名；内嵌 QScpiManager）
+│   │   ├── qusb_types.h
 │   │   └── qusb.h/.cpp
 │   ├── fixture/                          ← 治具域
 │   │   ├── jig/qjig.*                    ← 气缸/继电器（无 UI）
@@ -86,27 +88,15 @@ new_product_test/
 │   │   └── uart_ui/fixture_uart.*        ← 治具串口调试（带 UI）
 │   ├── peripheral_protocol/              ← 外设 RS232 自定义协议（codec/device，治具帧后续迁入）
 │   ├── product_serial/protocol/          ← 产品串口 qproduct（独立域，不迁入 peripheral_protocol）
-│   ├── visa_instrument/cmw/              ← CMW GPRF（qcmw、cmw_gprf_facade）
-│   ├── qbulk/
-│   │   ├── qbulk.h/.cpp                  ← 真 USB Bulk 大包传输
-│   │   └── crc_md5.cpp                   ← CRC/MD5工具
-│   ├── qshell/
-│   │   └── qshell.h/.cpp                 ← shell命令封装
-│   ├── qadb/
-│   │   └── qadb.h/.cpp                   ← ADB交互封装
-│   ├── modbus/                           ← 通用 Modbus（无工站业务步骤）
-│   │   ├── access/modbus_types.h         ← 链路级通用类型
-│   │   ├── manager/qmodbusmanager.*      ← 唯一入口（H5U TCP + HQ/LX RTU）
-│   │   ├── codec/qmodbus_pdu.*           ← PDU/CRC
-│   │   ├── codec/qmodbus_rtu_*           ← RTU 帧解析/粘包缓冲
+│   ├── scpi/                             ← SCPI（串口 + VISA；见 docs/agreement协议目录分层规范.md）
+│   │   ├── access/scpi_types.h           ← ScpiDeviceRoute、ScpiLinkKind（无跨设备 Cmd）
+│   │   ├── manager/qscpimanager.*        ← exec(HuilingScpiCmd) / exec(CmwScpiCmd)
+│   │   ├── manager/qscpiserialsession.*  ← 串口写行/收行
+│   │   ├── manager/qscpivisasession.*    ← VISA SCPI
+│   │   ├── codec/scpi_line_codec.*
 │   │   └── device/
-│   │       ├── inovance_h5u_tcp/         ← H5U 单头文件设备封装（inovance_h5u_tcp.h）
-│   │       ├── hq_ammeter_rtu/           ← 华勤产线 RTU 表（厂商_型号_协议，铭牌后改真名）
-│   │       └── lx_ammeter_rtu/           ← 立讯产线 RTU 表（同上）
-│   ├── scpi/                             ← SCPI 协议 + 设备
-│   │   ├── codec/scpi_line_codec.*       ← 行缓冲（COM/VISA 共用）
-│   │   └── device/huiling_wfp60h_scpi/   ← 会凌 WFP60H 命令表
-│   ├── qvisa/                            ← NI-VISA 仪器（可选编译）
+│   │       ├── huiling_wfp60h_scpi/      ← HuilingScpiCmd（电流/程控电源）
+│   │       └── rs_cmw100_scpi/           ← CmwScpiCmd（CMW100 GPRF）
 │   └── qmes/                             ← 多工厂MES适配
 │       ├── qmes.h/.cpp                   ← MES基类
 │       ├── mesmanager.h/.cpp             ← MES路由与管理
@@ -116,6 +106,7 @@ new_product_test/
 │
 ├── business/                             ← 工站业务封装（非 agreement 通讯协议）
 │   ├── plc_v3_fixture/                   ← V3 治具 PLC（PlcV3Facade）
+│   ├── cmw_gprf/                         ← CMW100 GPRF PER/burst（CmwGprfFacade）
 │   ├── tuple/                            ← 三元组 QTupleService
 │   └── ble_ota/                          ← 路特 BLE OTA
 │

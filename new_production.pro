@@ -63,6 +63,8 @@ INCLUDEPATH += platform/log_upload
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
+INCLUDEPATH += agreement/scpi/access
+INCLUDEPATH += agreement/scpi/manager
 INCLUDEPATH += agreement/fixture/jig
 INCLUDEPATH += agreement/fixture/codec
 INCLUDEPATH += agreement/fixture/uart_ui
@@ -77,8 +79,8 @@ INCLUDEPATH += agreement/modbus/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/scpi/codec
 INCLUDEPATH += agreement/scpi/device/huiling_wfp60h_scpi
-INCLUDEPATH += agreement/visa_instrument/cmw
-INCLUDEPATH += agreement/qvisa
+INCLUDEPATH += agreement/scpi/device/rs_cmw100_scpi
+INCLUDEPATH += business/cmw_gprf
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
 INCLUDEPATH += tools/factory_analyzer
@@ -109,6 +111,7 @@ INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
 INCLUDEPATH += platform/driver/serial
+INCLUDEPATH += platform/driver/visa
 
 
 # INCLUDEPATH += advance/xlsx
@@ -125,6 +128,7 @@ SOURCES += \
     advance/imagewindow/myopenglwidget.cpp \
     agreement/scpi/codec/scpi_line_codec.cpp \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.cpp \
+    agreement/modbus/access/modbus_device_catalog.cpp \
     agreement/modbus/manager/qmodbusmanager.cpp \
     agreement/modbus/codec/qmodbus_pdu.cpp \
     agreement/modbus/codec/qmodbus_rtu_codec.cpp \
@@ -176,15 +180,20 @@ SOURCES += \
     platform/test_case/manifest/dongle_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
+    platform/test_case/manifest/modbus_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
     platform/test_record/test_record_store.cpp \
     platform/log_upload/log_upload_service.cpp \
     agreement/qshell/qshell.cpp \
     business/tuple/qtupleservice.cpp \
-    agreement/visa_instrument/cmw/qcmw.cpp \
-    agreement/visa_instrument/cmw/cmw_gprf_facade.cpp \
-    agreement/qvisa/qvisa.cpp \
+    business/cmw_gprf/cmw_gprf_facade.cpp \
+    platform/driver/visa/visa_channel.cpp \
+    agreement/scpi/manager/qscpivisasession.cpp \
+    agreement/scpi/manager/qscpimanager.cpp \
+    agreement/scpi/manager/qscpiserialsession.cpp \
+    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
+    agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
     agreement/qusb/qusb.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
     tools/factory_analyzer/factory_analyzer.cpp \
@@ -243,6 +252,7 @@ HEADERS += \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
     agreement/modbus/access/modbus_types.h \
+    agreement/modbus/access/modbus_device_catalog.h \
     agreement/modbus/manager/qmodbusmanager.h \
     agreement/modbus/codec/qmodbus_pdu.h \
     agreement/modbus/codec/qmodbus_rtu_codec.h \
@@ -298,6 +308,7 @@ HEADERS += \
     platform/test_case/manifest/device_cmd_manifest.h \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/modbus_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
@@ -306,9 +317,16 @@ HEADERS += \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     business/tuple/qtupleservice.h \
-    agreement/visa_instrument/cmw/qcmw.h \
-    agreement/visa_instrument/cmw/cmw_gprf_facade.h \
-    agreement/qvisa/qvisa.h \
+    business/cmw_gprf/cmw_gprf_facade.h \
+    agreement/scpi/access/scpi_types.h \
+    agreement/scpi/access/scpi_transport.h \
+    platform/driver/visa/visa_channel.h \
+    agreement/scpi/manager/qscpivisasession.h \
+    agreement/scpi/manager/qscpimanager.h \
+    agreement/scpi/manager/qscpiserialsession.h \
+    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
+    agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
+    agreement/qusb/qusb_types.h \
     agreement/qusb/qusb.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
@@ -423,7 +441,7 @@ win32 {
 
 win32 {
     # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
-    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头（AbIni.h → qvisa.h 等）。
+    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
     VISA_DIR = $$PWD/lib/visa
     exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
         INCLUDEPATH += $$VISA_DIR

@@ -1072,23 +1072,23 @@ int wifibletest::parseBlePerRxCount(const QByteArray& response, bool* ok) const 
 }
 
 void wifibletest::loadWifiBleCmw100Config() {
-    if (visa) {
-        visa->set(VisaCmd::DeviceProfile, static_cast<int>(VisaDeviceProfile::RxCmwInstrument));
+    if (scpiVisaManager()) {
+        scpiVisaManager()->loadCmwVisaFromSettings();
     }
 }
 
 bool wifibletest::cmwVisaWrite(const QString& cmd) {
     loadWifiBleCmw100Config();
-    return visa && visa->set(VisaCmd::WriteLine, cmd);
+    return scpiVisaManager() && scpiVisaManager()->exec(CmwScpiCmd::WriteLine, cmd);
 }
 
 bool wifibletest::cmwVisaQuery(const QString& cmd, QString* response) {
     loadWifiBleCmw100Config();
-    if (!visa || !visa->get(VisaCmd::QueryLine, cmd)) {
+    if (!scpiVisaManager() || !scpiVisaManager()->exec(CmwScpiCmd::QueryLine, cmd)) {
         return false;
     }
     if (response) {
-        *response = visa->lastQueryResponse();
+        *response = scpiVisaManager()->lastQueryResponse();
     }
     return true;
 }
@@ -1102,9 +1102,9 @@ bool wifibletest::prepareBlePerCmw(QString* errorMessage) {
         return false;
     }
     QString idn;
-    const bool connected = visa && visa->get(VisaCmd::QueryLine, QStringLiteral("*IDN?"));
+    const bool connected = scpiVisaManager() && scpiVisaManager()->exec(CmwScpiCmd::QueryLine, QStringLiteral("*IDN?"));
     if (connected) {
-        idn = visa->lastQueryResponse();
+        idn = scpiVisaManager()->lastQueryResponse();
     }
     if (connected && !idn.trimmed().isEmpty()) {
         showlog(QStringLiteral("CMW100: %1").arg(idn.trimmed()));
@@ -2938,16 +2938,18 @@ void wifibletest::on_usbconnectButton_clicked() {
         cmd = QStringLiteral("*IDN?");
     }
 
+    loadWifiBleCmw100Config();
     QString response;
-    const bool ok = visa && visa->get(VisaCmd::QueryLine, cmd);
+    const bool ok = scpiVisaManager() && scpiVisaManager()->exec(CmwScpiCmd::QueryLine, cmd);
     if (ok) {
-        response = visa->lastQueryResponse();
+        response = scpiVisaManager()->lastQueryResponse();
     }
     if (!ok) {
         showlog(QStringLiteral("CMW100 指令交互失败: %1").arg(cmd));
         return;
     }
 
-    showlog(QStringLiteral("CMW100 VISA已连接: %1").arg(visa ? visa->protocolConfig().visaAddress : QString()));
+    showlog(QStringLiteral("CMW100 VISA已连接: %1")
+                .arg(scpiVisaManager() ? scpiVisaManager()->visaConfig().visaAddress : QString()));
     showlog(QStringLiteral("CMW100 指令 %1 返回: %2").arg(cmd, response));
 }

@@ -2,25 +2,16 @@
 #define MODBUS_TYPES_H
 
 /**
- * Modbus 域 access：链路级通用类型（不含具体设备组帧/SETTINGS 线圈表）。
- * 设备命令：inovance_h5u_tcp（PlcCmd）、hq/lx_ammeter_rtu（经 manager 路由）。
+ * Modbus 域 access：工站可见设备列表（ModbusDeviceRoute）。
+ * Tcp/Rtu、组帧等由 device/ 与 manager 内部处理；各设备 Cmd 在对应 device 头文件。
  */
 
-enum class ModbusLinkKind {
-    Tcp,
-    Rtu,
-};
-
-/** 串口 RTU 电流表产线路由（SETTINGS，非 device 目录名）。 */
-enum class ModbusRtuRoute {
+/** 工站/自由工站测试项配置：只选设备，再选该设备下的 Cmd。 */
+enum class ModbusDeviceRoute {
     None,
-    Hq,
-    Lx,
-};
-
-enum class ModbusRtuAmmeterCmd {
-    ReadMeasurement,
-    InitializeBaud115200,
+    InovanceH5uTcp, // device/inovance_h5u_tcp → PlcCmd
+    HqAmmeterRtu,   // device/hq_ammeter_rtu → HqAmmeterRtuCmd
+    LxAmmeterRtu,   // device/lx_ammeter_rtu → LxAmmeterRtuCmd
 };
 
 #endif // MODBUS_TYPES_H

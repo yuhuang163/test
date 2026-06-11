@@ -1,10 +1,14 @@
 #ifndef CMW_GPRF_FACADE_H
 #define CMW_GPRF_FACADE_H
 
-#include "qcmw.h"
-#include "qvisa.h"
+#include <QString>
 
+#include "rs_cmw100_scpi_types.h"
+
+#include <QVariant>
 #include <functional>
+
+class QScpiManager;
 
 /** CMW100 GPRF 统一入口：会话复位 / PER 伴随 burst / 独立并联播放步。 */
 enum class CmwGprfCommand {
@@ -14,7 +18,7 @@ enum class CmwGprfCommand {
 };
 
 struct CmwGprfRunParams {
-    Qvisa* visa = nullptr;
+    QScpiManager* scpi = nullptr;
     QString scenarioLabel;
     int brushProfile = -1;
     int alignedPostTrigHoldMs = -1;
@@ -31,6 +35,10 @@ struct CmwGprfRunResult {
     bool markBurstDoneSinceStartRx = false;
 };
 
+/**
+ * CMW100 GPRF 工站门面（business/，与 PlcV3Facade 同级）。
+ * 协议 Cmd 在 agreement/scpi/device/rs_cmw100_scpi；本类编排 PER/burst 场景。
+ */
 class CmwGprfFacade {
   public:
     CmwGprfRunResult run(CmwGprfCommand command, const CmwGprfRunParams& params);
@@ -75,9 +83,9 @@ class CmwGprfFacade {
         static bool isValid(int profile);
     };
 
-    void bindSession(Qvisa* visa, const LogFn& log, const WaitFn& wait);
+    void bindSession(QScpiManager* scpi, const LogFn& log, const WaitFn& wait);
     QString cmwVisaAddress() const;
-    bool ensureVisaConnected(Qvisa* visa, const LogFn& log, QString* detail);
+    bool ensureVisaConnected(QScpiManager* scpi, const LogFn& log, QString* detail);
     bool primeGprf(QString* errorMessage);
     bool waitArbComplete(const QString& scenarioLabel, const Config& cfg, const LogFn& log, const WaitFn& wait,
                          QString* errorMessage, int* outElapsedMs);
@@ -86,16 +94,16 @@ class CmwGprfFacade {
     CmwGprfRunResult runBurstAtProfile(const CmwGprfRunParams& params, const LogFn& log, const WaitFn& wait,
                                        const QString& burstLabel, bool logWaveformHint);
 
-    bool cmwSet(CmwGprfCmd cmd, const QVariant& data = {});
-    bool cmwGet(CmwGprfCmd cmd, const QVariant& param = {}, QString* response = nullptr);
+    bool cmwSet(CmwScpiCmd cmd, const QVariant& data = {});
+    bool cmwGet(CmwScpiCmd cmd, const QVariant& param = {}, QString* response = nullptr);
     static bool parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent);
 
-    Qcmw cmw_;
-    LogFn log_;
-    WaitFn wait_;
     bool sessionReady_ = false;
     bool gprfPrimed_ = false;
     bool burstDoneSinceStartRx_ = false;
+    QScpiManager* scpi_ = nullptr;
+    LogFn log_;
+    WaitFn wait_;
 };
 
 #endif // CMW_GPRF_FACADE_H

@@ -49,7 +49,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
 
     if (hookId == QStringLiteral("JIG_CURRENT_READ")) {
-        fw->sendCommandWithRetry([&]() { fw->usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); });
+        fw->sendCommandWithRetry([&]() { fw->execAmmeterMeasure(); });
         return;
     }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {

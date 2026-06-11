@@ -16,7 +16,7 @@
 
 
 
-与 [agreement按外设域拆分重构方案.md](./agreement按外设域拆分重构方案.md)（按外设域拆分、迁移阶段）互补；与 [协议解耦迁移说明.md](./协议解耦迁移说明.md)（`Protocol*Data` 信号体系）互补。
+与 [agreement按外设域拆分重构方案.md](./agreement按外设域拆分重构方案.md)（按外设域拆分、迁移阶段）、[agreement协议目录分层规范.md](./agreement协议目录分层规范.md)（各域 access/manager/device 对照）互补；与 [协议解耦迁移说明.md](./协议解耦迁移说明.md)（`Protocol*Data` 信号体系）互补。
 
 
 

@@ -212,7 +212,7 @@ class QFreeWork : public test_base {
     bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     void resetPlcKeyCapSyncReadState();
 
-    // --- 业务门面（business/ + qcmw，工站只调度命令） ---
+    // --- 业务门面（business/，工站只调度命令） ---
     PlcV3Facade plcFacade_;
     CmwGprfFacade cmwFacade_;
     PlcV3RunParams makePlcRunParams(int keyIndex0To6 = 0);

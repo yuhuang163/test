@@ -1,8 +1,7 @@
 #include "qmodbusmanager.h"
 
 #include "Abini.h"
-#include "hq_ammeter_rtu.h"
-#include "lx_ammeter_rtu.h"
+#include "modbus_device_catalog.h"
 #include "serial_channel.h"
 
 #include <QDebug>
@@ -10,24 +9,6 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
-
-namespace {
-
-ModbusRtuRoute rtuRouteFromSetting(const QString& type) {
-    const QString value = type.trimmed().toLower();
-    if (value == QStringLiteral("scpi")) {
-        return ModbusRtuRoute::None;
-    }
-    if (value == QStringLiteral("lx") || value == QStringLiteral("lxmodbus")) {
-        return ModbusRtuRoute::Lx;
-    }
-    if (value == QStringLiteral("hq") || value == QStringLiteral("hqmodbus")) {
-        return ModbusRtuRoute::Hq;
-    }
-    return ModbusRtuRoute::None;
-}
-
-} // namespace
 
 QModbusManager::QModbusManager(QObject* parent) : QObject(parent) {
     InovanceH5uPlcExec::registerMetaTypes();
@@ -88,13 +69,13 @@ SerialChannel* QModbusManager::serialChannel() const {
     return serialChannel_;
 }
 
-void QModbusManager::setRtuRoute(ModbusRtuRoute route) {
-    rtuRoute_ = route;
+void QModbusManager::setDeviceRoute(ModbusDeviceRoute route) {
+    deviceRoute_ = route;
     resetRtuRxState();
 }
 
-ModbusRtuRoute QModbusManager::rtuRoute() const {
-    return rtuRoute_;
+ModbusDeviceRoute QModbusManager::deviceRoute() const {
+    return deviceRoute_;
 }
 
 void QModbusManager::setLuxshareMachineId(int machineId1Based) {
@@ -105,23 +86,24 @@ int QModbusManager::luxshareMachineId() const {
     return luxshareMachineId_;
 }
 
-void QModbusManager::loadRtuRouteFromSettings() {
-    setRtuRoute(rtuRouteFromSetting(SETTINGS.value(QStringLiteral("Current/ProtocolType")).toString()));
+void QModbusManager::loadDeviceRouteFromSettings() {
+    setDeviceRoute(ModbusDeviceCatalog::deviceRouteFromProtocolType(
+        SETTINGS.value(QStringLiteral("Current/ProtocolType")).toString()));
     setLuxshareMachineId(SETTINGS.value(QStringLiteral("Current/LuxshareMachineId"), 1).toInt());
 }
 
 bool QModbusManager::isRtuAmmeterRoute() const {
-    return rtuRoute_ == ModbusRtuRoute::Hq || rtuRoute_ == ModbusRtuRoute::Lx;
+    return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu;
 }
 
 void QModbusManager::resetRtuRxState() {
     rtuRxBuffer_.reset();
 }
 
-bool QModbusManager::exec(ModbusRtuAmmeterCmd cmd, QString* errorMessage) {
-    if (!isRtuAmmeterRoute()) {
+bool QModbusManager::exec(HqAmmeterRtuCmd cmd, QString* errorMessage) {
+    if (deviceRoute_ != ModbusDeviceRoute::HqAmmeterRtu) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("当前非 Modbus RTU 电流表路由");
+            *errorMessage = QStringLiteral("当前路由非华勤 RTU 电流表");
         }
         return false;
     }
@@ -133,27 +115,62 @@ bool QModbusManager::exec(ModbusRtuAmmeterCmd cmd, QString* errorMessage) {
     }
 
     QByteArray payload;
-    switch (rtuRoute_) {
-    case ModbusRtuRoute::Hq:
-        if (cmd == ModbusRtuAmmeterCmd::ReadMeasurement) {
-            payload = HqAmmeterModbusRtu::buildReadMeasurementRequest();
-        } else if (cmd == ModbusRtuAmmeterCmd::InitializeBaud115200) {
-            payload = HqAmmeterModbusRtu::buildSetBaud115200Request();
-        } else if (errorMessage) {
-            *errorMessage = QStringLiteral("华勤 RTU 表不支持该命令");
-            return false;
-        }
+    switch (cmd) {
+    case HqAmmeterRtuCmd::ReadMeasurement:
+        payload = HqAmmeterModbusRtu::buildReadMeasurementRequest();
         break;
-    case ModbusRtuRoute::Lx:
-        if (cmd == ModbusRtuAmmeterCmd::ReadMeasurement) {
-            payload = LxAmmeterModbusRtu::buildReadMeasurementRequest(luxshareMachineId_);
-        } else if (errorMessage) {
-            *errorMessage = QStringLiteral("立讯 RTU 表仅支持读测量");
-            return false;
-        }
+    case HqAmmeterRtuCmd::SetBaud115200:
+        payload = HqAmmeterModbusRtu::buildSetBaud115200Request();
         break;
     default:
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("华勤 RTU 表不支持该命令");
+        }
+        return false;
+    }
+
+    if (payload.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("Modbus RTU 组帧失败");
+        }
+        return false;
+    }
+
+    resetRtuRxState();
+    qDebug().noquote() << "Modbus RTU TX:" << QString::fromLatin1(payload.toHex(' ').toUpper());
+    if (serialChannel_->write(payload) < 0) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("Modbus RTU 发送失败: %1").arg(serialChannel_->errorString());
+        }
+        return false;
+    }
+    return true;
+}
+
+bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
+    if (deviceRoute_ != ModbusDeviceRoute::LxAmmeterRtu) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("当前路由非立讯 RTU 电流表");
+        }
+        return false;
+    }
+    if (!serialChannel_ || !serialChannel_->isOpen()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("Modbus RTU 串口未打开");
+        }
+        return false;
+    }
+
+    QByteArray payload;
+    switch (cmd) {
+    case LxAmmeterRtuCmd::ReadMeasurement:
+        payload = LxAmmeterModbusRtu::buildReadMeasurementRequest(luxshareMachineId_);
         break;
+    default:
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("立讯 RTU 表不支持该命令");
+        }
+        return false;
     }
 
     if (payload.isEmpty()) {
@@ -176,7 +193,7 @@ bool QModbusManager::exec(ModbusRtuAmmeterCmd cmd, QString* errorMessage) {
 
 bool QModbusManager::tryEmitRtuReading(const QByteArray& frame) {
     const ModbusRtuCodec::AmmeterReading reading =
-        rtuRoute_ == ModbusRtuRoute::Lx ? LxAmmeterModbusRtu::parseResponse(frame)
+        deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu ? LxAmmeterModbusRtu::parseResponse(frame)
                                         : HqAmmeterModbusRtu::parseResponse(frame);
     if (!reading.ok) {
         return false;
@@ -204,7 +221,7 @@ bool QModbusManager::feedRtuRx(const QByteArray& chunk) {
 
     qDebug().noquote() << "Modbus RTU RX:" << QString::fromLatin1(chunk.toHex(' ').toUpper());
 
-    if (rtuRoute_ == ModbusRtuRoute::Lx) {
+    if (deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu) {
         rtuRxBuffer_.feed(chunk);
         return tryEmitLxRtuReading() || !rtuRxBuffer_.buffer().isEmpty();
     }

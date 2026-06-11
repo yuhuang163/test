@@ -5,21 +5,27 @@
 
 /** 会凌电子 HUILING ELECTRONIC（因曼吉）WFP60H 双通道电池模拟器 SCPI 命令表。 */
 struct HuilingWfp60hScpiProfile {
-    QString scpiCurrentType = QStringLiteral("CURRent");
-    QString scpiCurrentMode = QStringLiteral("DC");
-    QString scpiRange = QStringLiteral("500e-3");
-    double scpiPowerVoltageV = 16.8;
-    double scpiPowerCurrentA = 1.0;
-    QString scpiSetVoltageCmd = QStringLiteral("VOLT %1");
-    QString scpiSetCurrentCmd = QStringLiteral("CURR %1");
-    QString scpiOutputOnCmd = QStringLiteral("OUTP ON");
-    QString scpiOutputOffCmd = QStringLiteral("OUTP OFF");
-    QString scpiReadVoltageCmd = QStringLiteral("MEASure1:VOLTage:DC?");
-    QString scpiReadCurrentCmd = QStringLiteral("MEASure1:CURRent:DC?");
+    QString scpiCurrentType;
+    QString scpiCurrentMode;
+    QString scpiRange;
+    double scpiPowerVoltageV = 0.0;
+    double scpiPowerCurrentA = 0.0;
+    QString scpiSetVoltageCmd;
+    QString scpiSetCurrentCmd;
+    QString scpiOutputOnCmd;
+    QString scpiOutputOffCmd;
+    QString scpiReadVoltageCmd;
+    QString scpiReadCurrentCmd;
 
     static HuilingWfp60hScpiProfile defaults();
-    /** 读 [VisaPower] 与 Current/Scpi*（程控电源模式回退链与 qvisa 一致）。 */
+    /** 暂与 defaults 相同（常量表）；后续若需再接入 SETTINGS。 */
     static HuilingWfp60hScpiProfile fromSettings();
+    /** VISA 程控电源：从 [VisaPower] 加载命令模板。 */
+    static HuilingWfp60hScpiProfile fromVisaPowerSettings();
+
+    QString buildConfigureMeasureLine() const;
+    QString buildReadMeasureCurrentLine() const;
+    QString buildReadMeasureConfigurationLine() const;
 };
 
 #endif // HUILING_WFP60H_PROFILE_H

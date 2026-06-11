@@ -5,6 +5,7 @@
 #include "dongle_cmd_manifest.h"
 #include "fixture_pcba_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
+#include "modbus_cmd_manifest.h"
 #include "tuple_cmd_manifest.h"
 
 #include <QCoreApplication>
@@ -1870,6 +1871,61 @@ int ProductSerialCmdCatalog::brushProfileForCmd(ProductSerialCmd cmd) {
     default:
         return -1;
     }
+}
+
+// ===================== ModbusPeriphCmdCatalog =====================
+
+QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
+    return {ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::InovanceH5uTcp),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu)};
+}
+
+QString ModbusPeriphCmdCatalog::deviceUiLabel(ModbusDeviceRoute device) {
+    return ModbusDeviceCatalog::deviceRouteUiLabel(device);
+}
+
+ModbusDeviceRoute ModbusPeriphCmdCatalog::deviceFromIni(const QString& text) {
+    return ModbusDeviceCatalog::deviceRouteFromIni(text);
+}
+
+QString ModbusPeriphCmdCatalog::deviceToIni(ModbusDeviceRoute device) {
+    return ModbusDeviceCatalog::deviceRouteToIni(device);
+}
+
+QStringList ModbusPeriphCmdCatalog::allCmdNames(ModbusDeviceRoute device, TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < ModbusCmdManifest::rowCount(); ++i) {
+        const ModbusCmdManifest::Row& row = ModbusCmdManifest::rows()[i];
+        if (row.device != device) {
+            continue;
+        }
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action)) {
+            continue;
+        }
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+bool ModbusPeriphCmdCatalog::isCmdForDevice(ModbusDeviceRoute device, const QString& enumName,
+                                            TestCaseSendAction action) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    if (!row) {
+        return false;
+    }
+    return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+}
+
+QString ModbusPeriphCmdCatalog::cmdUiLabel(ModbusDeviceRoute device, const QString& enumName) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->uiLabel ? QString::fromUtf8(row->uiLabel) : enumName;
+}
+
+QString ModbusPeriphCmdCatalog::paramUiHint(ModbusDeviceRoute device, const QString& enumName) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
 }
 
 // ===================== TupleCmdCatalog =====================

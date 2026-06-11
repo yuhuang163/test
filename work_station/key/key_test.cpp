@@ -1454,7 +1454,7 @@ void key_test::startTask() {
         switch (state) {
         case STATE_IDLE: // 复位一切
 
-            // usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
+            // execScpi(ScpiCmd::ConfigureMeasure);
 
             protocolManager.resetAllPb();
             isovertime = 0;
@@ -1762,7 +1762,7 @@ void key_test::on_pushButton_clicked() {
 }
 
 void key_test::on_pushButton_3_clicked() {
-    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+    execAmmeterMeasure();
 
     // at->get(DongleCmd::GetGmac);
     // MesInit();

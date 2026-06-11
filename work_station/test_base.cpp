@@ -1,5 +1,7 @@
 ﻿#include "test_base.h"
 
+#include "modbus_types.h"
+
 #include "my_set/my_typedef.h"
 
 #include <dbt.h>
@@ -42,8 +44,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         at(new Qat(dongleSerialPort)),
                                         usbSerialPort(usbSerialChannel_->port()),
-                                        usb(new Qusb(usbSerialPort)),
-                                        visa(new Qvisa(this)),
+                                        usb(new Qusb(usbSerialPort, this)),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
@@ -74,8 +75,47 @@ void test_base::setupModbusManager() {
     modbusManager.setLogFn([this](const QString& line) { showlog(line); });
 
     modbusManager.attachSerialChannel(usbSerialChannel_);
-    modbusManager.loadRtuRouteFromSettings();
+    modbusManager.loadDeviceRouteFromSettings();
     usb->setModbusManager(&modbusManager);
+}
+
+bool test_base::execScpi(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
+    if (!usb || !usb->scpiManager()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("SCPI 管理器未初始化");
+        }
+        return false;
+    }
+    return usb->scpiManager()->exec(cmd, param, errorMessage);
+}
+
+QScpiManager* test_base::scpiVisaManager() {
+    return &scpiVisaManager_;
+}
+
+const QScpiManager* test_base::scpiVisaManager() const {
+    return &scpiVisaManager_;
+}
+
+bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
+    scpiVisaManager_.loadHuilingVisaFromSettings();
+    return scpiVisaManager_.exec(cmd, param, errorMessage);
+}
+
+bool test_base::execAmmeterMeasure(QString* errorMessage) {
+    if (modbusManager.isRtuAmmeterRoute()) {
+        if (modbusManager.deviceRoute() == ModbusDeviceRoute::HqAmmeterRtu) {
+            return modbusManager.exec(HqAmmeterRtuCmd::ReadMeasurement, errorMessage);
+        }
+        if (modbusManager.deviceRoute() == ModbusDeviceRoute::LxAmmeterRtu) {
+            return modbusManager.exec(LxAmmeterRtuCmd::ReadMeasurement, errorMessage);
+        }
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("未配置 Modbus RTU 电流表路由");
+        }
+        return false;
+    }
+    return execScpi(HuilingScpiCmd::ReadMeasureCurrent, {}, errorMessage);
 }
 
 void test_base::initData() {
@@ -133,9 +173,7 @@ void test_base::signalAndslot() {
 }
 
 void test_base::resetVisaBackend() {
-    if (visa) {
-        visa->closeConnection();
-    }
+    scpiVisaManager_.closeConnection();
 }
 
 void test_base::scanSerialPorts() {
@@ -309,7 +347,9 @@ void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
         modbusManager.feedRtuRx(dataTemp);
         return;
     }
-    usb->parseCmd(dataTemp);
+    if (usb && usb->scpiManager()) {
+        usb->scpiManager()->feedRx(dataTemp);
+    }
 }
 
 void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message) {

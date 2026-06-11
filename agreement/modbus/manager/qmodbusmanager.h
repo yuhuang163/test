@@ -1,7 +1,9 @@
 #ifndef QMODBUSMANAGER_H
 #define QMODBUSMANAGER_H
 
+#include "hq_ammeter_rtu.h"
 #include "inovance_h5u_tcp.h"
+#include "lx_ammeter_rtu.h"
 #include "modbus_types.h"
 #include "qmodbus_rtu_rx_buffer.h"
 
@@ -50,17 +52,18 @@ class QModbusManager : public QObject {
     void attachSerialChannel(SerialChannel* channel);
     SerialChannel* serialChannel() const;
 
-    void setRtuRoute(ModbusRtuRoute route);
-    ModbusRtuRoute rtuRoute() const;
+    void setDeviceRoute(ModbusDeviceRoute route);
+    ModbusDeviceRoute deviceRoute() const;
 
     void setLuxshareMachineId(int machineId1Based);
     int luxshareMachineId() const;
 
-    void loadRtuRouteFromSettings();
+    void loadDeviceRouteFromSettings();
 
     bool isRtuAmmeterRoute() const;
 
-    bool exec(ModbusRtuAmmeterCmd cmd, QString* errorMessage = nullptr);
+    bool exec(HqAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
+    bool exec(LxAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
 
     bool feedRtuRx(const QByteArray& chunk);
 
@@ -79,7 +82,7 @@ class QModbusManager : public QObject {
     LogFn log_;
     IsContinueFn isContinue_;
 
-    ModbusRtuRoute rtuRoute_ = ModbusRtuRoute::None;
+    ModbusDeviceRoute deviceRoute_ = ModbusDeviceRoute::None;
     int luxshareMachineId_ = 1;
     SerialChannel* serialChannel_ = nullptr;
     ModbusRtuRxBuffer rtuRxBuffer_;
