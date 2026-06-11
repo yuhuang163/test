@@ -104,6 +104,7 @@ void setup()
   delay(1); // 给串口硬件一个最小稳定时间，尽早进入接收流程
 
   initRingBuffer();
+  otaBleTxInit();
 
   // 串口任务尽早创建，确保上电后第一时间接收并处理数据
   xTaskCreate(

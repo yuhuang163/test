@@ -30,44 +30,48 @@ void bufferWrite(const byte *data, size_t length)
     }
 }
 
-size_t bufferRead(byte *data, size_t length)
+static size_t bufferReadInternal(byte *data, size_t length, TickType_t waitTicks, bool quiet)
 {
-
-    size_t readLength = length; // 确保长度不超过缓冲区大小
+    size_t readLength = length;
     if (readLength > UART_RING_BUFFER_SIZE)
     {
-        Serial.print("读取失败，需要读取的太多");
-        Serial.println(readLength);
+        if (!quiet)
+        {
+            Serial.print("读取失败，需要读取的太多");
+            Serial.println(readLength);
+        }
         readLength = UART_RING_BUFFER_SIZE;
     }
 
     size_t bytesRead = 0;
-    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, pdMS_TO_TICKS(25));
-    if (temp != NULL)
+    void *temp = xRingbufferReceive(ringBuffer, &bytesRead, waitTicks);
+    if (temp == NULL)
     {
-        size_t copyLength = 0;
-        if (bytesRead < readLength)
-        {
-            copyLength = bytesRead;
-        }
-        else
-        {
-            Serial.print("失败，实际读取的大于需要的");
-            Serial.print(bytesRead); Serial.print(" ");
-            Serial.println(readLength);
-
-            copyLength = readLength;
-        }
-
-        memcpy(data, temp, copyLength);
-        vRingbufferReturnItem(ringBuffer, temp); // 清空已经使用的缓存区
-        return copyLength;
-    }
-    else
-    {
-
         return 0;
     }
+
+    size_t copyLength = bytesRead < readLength ? bytesRead : readLength;
+    if (!quiet && bytesRead > readLength)
+    {
+        Serial.print("失败，实际读取的大于需要的");
+        Serial.print(bytesRead);
+        Serial.print(" ");
+        Serial.println(readLength);
+    }
+
+    memcpy(data, temp, copyLength);
+    vRingbufferReturnItem(ringBuffer, temp);
+    return copyLength;
+}
+
+size_t bufferRead(byte *data, size_t length)
+{
+    return bufferReadInternal(data, length, pdMS_TO_TICKS(25), false);
+}
+
+size_t bufferReadOta(byte *data, size_t length)
+{
+    return bufferReadInternal(data, length, pdMS_TO_TICKS(OTA_UART_READ_WAIT_MS), true);
 }
 
 void cleanupRingBuffer()

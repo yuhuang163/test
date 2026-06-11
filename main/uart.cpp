@@ -37,6 +37,8 @@ enum CommandType
     GMAC,
     BOMB,
     OTADATA,
+    OTAPKTSIZE,
+    BLEMTU,
     MAINDATA,
     DCON,
     // 加入其他的at命令
@@ -95,7 +97,7 @@ CommandType handleCommand(byte *get_cmd, int &length, const CommandInfo &command
 
 void processATCommand(byte *get_cmd, int length)
 {
-    CommandType commandType;
+    CommandType commandType = MAC;
     StartBombState = false;
 
     Serial.print("收到AT命令,命令内容长度：");
@@ -114,6 +116,8 @@ void processATCommand(byte *get_cmd, int length)
         {"GMAC", 4, GMAC},                   // 默认使用 FAC
         {"BOMB=", 5, BOMB},                  // 默认使用 FAC
         {"BLELOG=", 7, BLELOG},              // 默认使用 FAC
+        {"OTAPKTSIZE=", 11, OTAPKTSIZE},     // OTA BLE 满包长度
+        {"BLEMTU=", 7, BLEMTU},              // BLE 连接 MTU
         {"OTADATA=", 8, OTADATA},            // 默认使用 FAC
         {"MAINDATA=", 9, MAINDATA},          // 默认使用 FAC
         {"BLEDEVICELOG=", 13, BLEDEVICELOG}, // 默认使用 FAC
@@ -215,11 +219,89 @@ void processATCommand(byte *get_cmd, int length)
 
     case BLEDEVICELOG:
         finddevicelogs = (get_cmd[0] == '1') ? 1 : 0;
+        Serial.printf("蓝牙扫描日志%s\r\n", finddevicelogs ? "已开启" : "已关闭");
+        break;
+
+    case BLEMTU:
+        if (StartSendOtaData)
+        {
+            Serial.println("OTA透传进行中，无法修改MTU");
+            break;
+        }
+        {
+            char numBuf[8] = {0};
+            int copyLen = length < (int)sizeof(numBuf) - 1 ? length : (int)sizeof(numBuf) - 1;
+            memcpy(numBuf, get_cmd, copyLen);
+            uint16_t mtu = (uint16_t)atoi(numBuf);
+            if (bleSetMtu(mtu))
+            {
+                if (is_ble_connected())
+                {
+                    Serial.printf("BLE MTU已重新协商: %u, 满包上限=%u\r\n",
+                                  bleMtuSize,
+                                  bleMtuPayloadMax());
+                }
+                else
+                {
+                    Serial.printf("BLE MTU已设为 %u, 连接后生效, 满包上限=%u (范围 %u~%u)\r\n",
+                                  bleMtuSize,
+                                  bleMtuPayloadMax(),
+                                  (unsigned)BLE_MTU_MIN,
+                                  (unsigned)BLE_MTU_MAX);
+                }
+            }
+            else
+            {
+                Serial.printf("BLE MTU设置失败: %u, 有效范围 %u~%u\r\n",
+                              mtu,
+                              (unsigned)BLE_MTU_MIN,
+                              (unsigned)BLE_MTU_MAX);
+            }
+        }
+        break;
+
+    case OTAPKTSIZE:
+        if (StartSendOtaData)
+        {
+            Serial.println("OTA透传进行中，无法修改包长");
+            break;
+        }
+        {
+            char numBuf[8] = {0};
+            int copyLen = length < (int)sizeof(numBuf) - 1 ? length : (int)sizeof(numBuf) - 1;
+            memcpy(numBuf, get_cmd, copyLen);
+            uint16_t size = (uint16_t)atoi(numBuf);
+            if (otaBleSetPacketSize(size))
+            {
+                Serial.printf("OTA满包长度已设为 %u (范围 %u~%u)\r\n",
+                              otaBlePacketSize,
+                              (unsigned)OTA_BLE_PACKET_SIZE_MIN,
+                              bleMtuPayloadMax());
+            }
+            else
+            {
+                Serial.printf("OTA满包长度无效: %u, 有效范围 %u~%u\r\n",
+                              size,
+                              (unsigned)OTA_BLE_PACKET_SIZE_MIN,
+                              bleMtuPayloadMax());
+            }
+        }
         break;
 
     case OTADATA:
         uartreceivesize = 0;
-        StartSendOtaData = (get_cmd[0] == '1') ? 1 : 0;
+        if (get_cmd[0] == '1')
+        {
+            otaBleReset();
+            StartSendOtaData = true;
+            Serial.printf("OTA透传已开启, 满包=%u, 超时=%dms\r\n", otaBlePacketSize, OTA_TX_FLUSH_TIMEOUT_MS);
+        }
+        else
+        {
+            StartSendOtaData = false;
+            otaBleReset();
+            Serial.println("OTA透传已关闭");
+        }
         break;
 
     case MAINDATA:
@@ -427,20 +509,25 @@ void processDataTask(void *pvParameters)
     byte packet[UART_SOLVE_BUFFER_SIZE];
     byte pbpacket[1024];
     size_t pboffset = 0;
-    // int uartsolvesize = 0;
+#if OTA_LOG_UART_RX_TOTAL
+    int uartsolvesize = 0;
+#endif
     while (1)
     {
-        size_t packetSize = bufferRead(packet, sizeof(packet)); // 从环形缓冲区读取数据
+        size_t packetSize = StartSendOtaData
+                                ? bufferReadOta(packet, sizeof(packet))
+                                : bufferRead(packet, sizeof(packet));
 
         if (packetSize > 0)
         {
             if (StartSendOtaData)
             {
-                send_ble_data(PHY_CHANNEL_INVALID_SEND, packet, packetSize); // 发送ota数据包
-                // uartsolvesize = uartsolvesize + packetSize;
-                // Serial.print("处理总数");
-                // Serial.println(uartsolvesize);
-                // Serial0.printf("send_ble_data: %lu\r\n", millis());
+                otaBleFeed(packet, packetSize);
+#if OTA_LOG_UART_RX_TOTAL
+                uartsolvesize += packetSize;
+                Serial.print("处理总数");
+                Serial.println(uartsolvesize);
+#endif
             }
             else
             {
@@ -486,16 +573,22 @@ void processDataTask(void *pvParameters)
                     }
                 }
             }
-            for (size_t i = 0; i < packetSize; ++i)
+            if (!StartSendOtaData || (packetSize >= 3 && packet[0] == 'A' && packet[1] == 'T' && packet[2] == '+'))
             {
-                processATChar((char)packet[i]);
+                for (size_t i = 0; i < packetSize; ++i)
+                {
+                    processATChar((char)packet[i]);
+                }
             }
             // Serial.print("处理掉数据大小1：");
             // Serial.println(packetSize);
             packetSize = 0;
         }
 
-        vTaskDelay(1); // 延时一段时间，避免空转
+        if (!StartSendOtaData || packetSize == 0)
+        {
+            vTaskDelay(1);
+        }
     }
     Serial.print("processDataTask线程退出");
 }

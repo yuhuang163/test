@@ -52,7 +52,21 @@
     }
 #define RGB_PIN 48  // WS2812B数据引脚
 #define LED_COUNT 1 // LED数量
-#define MY_MTU 247  // LED数量
+#define BLE_MTU_DEFAULT 247
+#define BLE_MTU_MIN 23
+#define BLE_MTU_MAX 1000
+#define OTA_BLE_PACKET_SIZE_DEFAULT 242        // 默认满包长度
+#define OTA_BLE_PACKET_BUF_SIZE (BLE_MTU_MAX - 3)
+#define OTA_BLE_PACKET_SIZE_MIN 1
+#define OTA_TX_BUFFER_SIZE (16 * 1024)         // OTA 发送累积缓冲
+#define OTA_TX_FLUSH_TIMEOUT_MS 8              // 未满包时最大等待时间(ms)，超时发余包
+#define OTA_TX_TASK_POLL_MS 1                  // OTA 发送任务轮询间隔(ms)
+#define OTA_UART_READ_WAIT_MS 1                // OTA 模式环形缓冲读取等待(ms)
+#define OTA_TX_BURST_MAX 6                     // 控制器有槽位时连续发送上限
+#define OTA_TX_TASK_STACK_SIZE (4 * 1024)
+#define OTA_TX_TASK_PRIORITY (configMAX_PRIORITIES - 2)
+#define OTA_LOG_UART_RX_TOTAL 0 // 1=打印串口累计「处理总数」
+#define OTA_LOG_BLE_TX 0        // 1=打印「OTA_BLE_TX len=...」
 
 extern int blelogs;        // 蓝牙信号日志1表示默认开
 extern int finddevicelogs; // 蓝牙扫描日志1表示默认开
@@ -63,6 +77,8 @@ extern int image_get_n;
 extern int image_get_time;
 extern int cmdtime;
 extern boolean StartSendOtaData;
+extern uint16_t bleMtuSize;
+extern uint16_t otaBlePacketSize;
 extern boolean StartSendmainData;
 extern boolean StartBombState;
 extern String BOMBdevicename;     // 伤害设备
@@ -76,6 +92,7 @@ extern bool is_need_reset_adress;
 extern RingbufHandle_t ringBuffer;
 void cleanupRingBuffer();
 size_t bufferRead(byte *data, size_t length);
+size_t bufferReadOta(byte *data, size_t length);
 void bufferWrite(const byte *data, size_t length);
 
 void initRingBuffer();
@@ -140,6 +157,12 @@ void deinit_ble(BleState nextState = BLE_IDLE);
 void clear_ble_scan_device();
 void colorWipe(uint32_t color);
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length);
+void otaBleTxInit(void);
+void otaBleReset(void);
+void otaBleFeed(const uint8_t *data, size_t length);
+bool bleSetMtu(uint16_t mtu);
+uint16_t bleMtuPayloadMax(void);
+bool otaBleSetPacketSize(uint16_t size);
 void print_wifi_rssi(int numClients);
 
 

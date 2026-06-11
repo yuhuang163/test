@@ -13,6 +13,8 @@ uint16_t conn_id = -1;
 static BLEClient *pClient = nullptr; // 蓝牙客户端的类
 BLEClientCallbacks *connect_callback = nullptr;
 boolean StartSendOtaData = false;
+uint16_t bleMtuSize = BLE_MTU_DEFAULT;
+uint16_t otaBlePacketSize = OTA_BLE_PACKET_SIZE_DEFAULT;
 boolean StartSendmainData = false;
 boolean StartBombState = false;
 
@@ -398,7 +400,8 @@ class MyClientCallback : public BLEClientCallbacks
 {
     void onConnect(BLEClient *ppclient)
     {
-        pClient->setMTU(MY_MTU);
+        pClient->setMTU(bleMtuSize);
+        Serial.printf("BLE MTU 已请求: %u\r\n", bleMtuSize);
         set_ble_state(BLE_CONNECTED);
         conn_id = pClient->getConnId();
     }
@@ -625,8 +628,11 @@ void scanCompleteCallback(BLEScanResults scanResults)
     if (get_ble_state() == BLE_SCANNING)
     {
         bleRuntime.scanStarted = false;
-        Serial.print("本轮扫描结束，设备数：");
-        Serial.println(scanResults.getCount());
+        if (finddevicelogs)
+        {
+            Serial.print("本轮扫描结束，设备数：");
+            Serial.println(scanResults.getCount());
+        }
     }
 }
 
@@ -658,7 +664,11 @@ void start_ble_scan()
         return;
     }
     bleRuntime.scanStarted = true;
-    Serial.println("开启扫描" + String(scantime) + "s");
+
+    if (finddevicelogs)
+    {
+        Serial.println("开启扫描" + String(scantime) + "s");
+    }
     pBLEScan->clearResults();         // memory，释放扫描缓存消耗
     if (!pBLEScan->start(scantime, scanCompleteCallback, false))
     {
@@ -736,6 +746,282 @@ void deinit_ble(BleState nextState)
     strcpy(bleRuntime.scanDeviceAddress, "00:00:00:00:00:00");
 }
 
+struct OtaTxContext
+{
+    uint8_t buf[OTA_TX_BUFFER_SIZE];
+    size_t len;
+    size_t readOff;
+    uint32_t firstByteMs;
+    SemaphoreHandle_t mutex;
+    TaskHandle_t task;
+};
+
+static OtaTxContext otaTx = {};
+
+static bool otaBleCanSend()
+{
+    return AppDataCharacteristic != nullptr
+           && pClient != nullptr
+           && pClient->isConnected()
+           && esp_ble_get_cur_sendable_packets_num(conn_id) > 0;
+}
+
+static bool otaBleTrySend(const uint8_t *data, size_t length)
+{
+    if (!otaBleCanSend())
+    {
+        return false;
+    }
+    return AppDataCharacteristic->writeValue((uint8_t *)data, length, false) != 0;
+}
+
+static void otaBleNotifyTask()
+{
+    if (otaTx.task != nullptr)
+    {
+        xTaskNotifyGive(otaTx.task);
+    }
+}
+
+static size_t otaTxPendingUnlocked()
+{
+    return otaTx.len > otaTx.readOff ? (otaTx.len - otaTx.readOff) : 0;
+}
+
+static void otaTxCompactUnlocked()
+{
+    if (otaTx.readOff == 0)
+    {
+        return;
+    }
+    if (otaTx.readOff >= otaTx.len)
+    {
+        otaTx.readOff = 0;
+        otaTx.len = 0;
+        return;
+    }
+    size_t pending = otaTx.len - otaTx.readOff;
+    memmove(otaTx.buf, otaTx.buf + otaTx.readOff, pending);
+    otaTx.readOff = 0;
+    otaTx.len = pending;
+}
+
+void otaBleReset()
+{
+    if (otaTx.mutex == nullptr)
+    {
+        return;
+    }
+    xSemaphoreTake(otaTx.mutex, portMAX_DELAY);
+    otaTx.len = 0;
+    otaTx.readOff = 0;
+    otaTx.firstByteMs = 0;
+    xSemaphoreGive(otaTx.mutex);
+}
+
+void otaBleFeed(const uint8_t *data, size_t length)
+{
+    if (data == nullptr || length == 0 || otaTx.mutex == nullptr)
+    {
+        return;
+    }
+
+    xSemaphoreTake(otaTx.mutex, portMAX_DELAY);
+    if (otaTx.readOff > 0 && otaTx.readOff >= (OTA_TX_BUFFER_SIZE / 2))
+    {
+        otaTxCompactUnlocked();
+    }
+
+    if (otaTxPendingUnlocked() == 0)
+    {
+        otaTx.firstByteMs = millis();
+    }
+
+    if (otaTx.len + length > sizeof(otaTx.buf))
+    {
+        LOG_ERROR("OTA 发送缓冲区溢出");
+        xSemaphoreGive(otaTx.mutex);
+        return;
+    }
+
+    memcpy(otaTx.buf + otaTx.len, data, length);
+    otaTx.len += length;
+    xSemaphoreGive(otaTx.mutex);
+    otaBleNotifyTask();
+}
+
+uint16_t bleMtuPayloadMax()
+{
+    return (uint16_t)(bleMtuSize);
+}
+
+bool bleSetMtu(uint16_t mtu)
+{
+    if (StartSendOtaData)
+    {
+        return false;
+    }
+    if (mtu < BLE_MTU_MIN || mtu > BLE_MTU_MAX)
+    {
+        return false;
+    }
+    bleMtuSize = mtu;
+    if (otaBlePacketSize > bleMtuPayloadMax())
+    {
+        otaBlePacketSize = bleMtuPayloadMax();
+        otaBleReset();
+    }
+    if (pClient != nullptr && pClient->isConnected())
+    {
+        return pClient->setMTU(bleMtuSize);
+    }
+    return true;
+}
+
+bool otaBleSetPacketSize(uint16_t size)
+{
+    if (StartSendOtaData)
+    {
+        return false;
+    }
+    if (size < OTA_BLE_PACKET_SIZE_MIN || size > bleMtuPayloadMax())
+    {
+        return false;
+    }
+    otaBlePacketSize = size;
+    otaBleReset();
+    return true;
+}
+
+static void otaBleTxTask(void *pvParameters)
+{
+    uint8_t sendPkt[OTA_BLE_PACKET_BUF_SIZE];
+    int burstLeft = 0;
+
+    for (;;)
+    {
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(OTA_TX_FLUSH_TIMEOUT_MS));
+
+        if (!StartSendOtaData)
+        {
+            continue;
+        }
+
+        while (StartSendOtaData)
+        {
+            size_t sendLen = 0;
+
+            xSemaphoreTake(otaTx.mutex, portMAX_DELAY);
+            size_t pending = otaTxPendingUnlocked();
+            if (pending == 0)
+            {
+                otaTx.firstByteMs = 0;
+                xSemaphoreGive(otaTx.mutex);
+                break;
+            }
+
+            uint32_t now = millis();
+            const uint16_t pktSize = otaBlePacketSize;
+            if (pending >= pktSize)
+            {
+                sendLen = pktSize;
+            }
+            else if ((now - otaTx.firstByteMs) >= OTA_TX_FLUSH_TIMEOUT_MS)
+            {
+                sendLen = pending;
+            }
+            else
+            {
+                xSemaphoreGive(otaTx.mutex);
+                break;
+            }
+
+            memcpy(sendPkt, otaTx.buf + otaTx.readOff, sendLen);
+            xSemaphoreGive(otaTx.mutex);
+
+            if (!otaBleCanSend())
+            {
+                vTaskDelay(1);
+                break;
+            }
+
+            if (!otaBleTrySend(sendPkt, sendLen))
+            {
+                vTaskDelay(1);
+                break;
+            }
+
+#if OTA_LOG_BLE_TX
+            Serial.printf("[%lu] OTA_BLE_TX len=%u (%s)\r\n",
+                          millis(),
+                          (unsigned)sendLen,
+                          sendLen < pktSize ? "timeout" : "mtu");
+#endif
+
+            xSemaphoreTake(otaTx.mutex, portMAX_DELAY);
+            otaTx.readOff += sendLen;
+            if (otaTx.readOff >= otaTx.len)
+            {
+                otaTx.readOff = 0;
+                otaTx.len = 0;
+                otaTx.firstByteMs = 0;
+            }
+            else
+            {
+                otaTx.firstByteMs = millis();
+            }
+            xSemaphoreGive(otaTx.mutex);
+
+            if (sendLen < pktSize)
+            {
+                break;
+            }
+
+            burstLeft++;
+            if (burstLeft >= OTA_TX_BURST_MAX)
+            {
+                burstLeft = 0;
+                break;
+            }
+
+            if (esp_ble_get_cur_sendable_packets_num(conn_id) <= 0)
+            {
+                break;
+            }
+        }
+        burstLeft = 0;
+    }
+}
+
+void otaBleTxInit()
+{
+    if (otaTx.mutex != nullptr)
+    {
+        return;
+    }
+
+    otaTx.mutex = xSemaphoreCreateMutex();
+    if (otaTx.mutex == nullptr)
+    {
+        Serial.println("OTA 发送互斥量创建失败");
+        return;
+    }
+
+    BaseType_t created = xTaskCreate(
+        otaBleTxTask,
+        "OTA BLE TX Task",
+        OTA_TX_TASK_STACK_SIZE,
+        NULL,
+        OTA_TX_TASK_PRIORITY,
+        &otaTx.task);
+
+    if (created != pdPASS)
+    {
+        Serial.println("OTA 发送任务创建失败");
+        otaTx.task = nullptr;
+    }
+}
+
 void clear_ble_scan_device()
 {
     BleState state = get_ble_state();
@@ -754,58 +1040,23 @@ void clear_ble_scan_device()
 
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length)
 {
-    const size_t MAX_PACKET_SIZE = MY_MTU - 3; // 最大每包大小
-    size_t offset = 0;                         // 当前数据的偏移量
-                                               // size_t packetCount = 0;                    // 记录当前包数
+    if (StartSendOtaData)
+    {
+        otaBleFeed(data, length);
+        return;
+    }
+
+    const size_t MAX_PACKET_SIZE = bleMtuPayloadMax();
+    size_t offset = 0;
+    uint8_t packet[OTA_BLE_PACKET_BUF_SIZE];
 
     while (offset < length)
     {
-        size_t remaining = length - offset;                                            // 剩余数据的长度
-        size_t packetSize = remaining > MAX_PACKET_SIZE ? MAX_PACKET_SIZE : remaining; // 当前包的大小
-
-        // 提取当前包的数据
-        uint8_t packet[MAX_PACKET_SIZE];
+        size_t remaining = length - offset;
+        size_t packetSize = remaining > MAX_PACKET_SIZE ? MAX_PACKET_SIZE : remaining;
         memcpy(packet, data + offset, packetSize);
-        // packetCount++;
-        // Serial.printf("开始发送第%d包\r\n", packetCount);
-        // 发送数据
-        if (StartSendOtaData)
-        {
-            if (AppDataCharacteristic != nullptr)
-            {
-                while (1)
-                {
-                    if (pClient->isConnected())
-                    {
 
-                        int free_buff_num = esp_ble_get_cur_sendable_packets_num(conn_id);
-                        if (free_buff_num > 0)
-                        {
-                            if (AppDataCharacteristic->writeValue(packet, packetSize))
-                            {
-                                break;
-                            }
-                            else
-                            {
-                                Serial.println("发送失败");
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            Serial.println("wait send");
-                        }
-                    }
-                    else
-                    {
-                        Serial.println("蓝牙未连接取消发送");
-                        break;
-                    }
-                    vTaskDelay(10);
-                }
-            }
-        }
-        else if (channel == PHY_CHANNEL_MAIN)
+        if (channel == PHY_CHANNEL_MAIN)
         {
             if (mainWriteCharacteristic != nullptr)
                 mainWriteCharacteristic->writeValue(packet, packetSize);
@@ -821,7 +1072,7 @@ void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t len
         {
             if (WriteCharacteristic != nullptr)
                 WriteCharacteristic->writeValue(packet, packetSize);
-            Serial.println("fac通道");
+            Serial.printf("fac通道=%d\r\n", packetSize);
         }
         else
         {

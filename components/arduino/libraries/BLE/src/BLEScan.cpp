@@ -23,6 +23,8 @@
 #include "GeneralUtils.h"
 #include "esp32-hal-log.h"
 
+extern int finddevicelogs;
+
 /**
  * Constructor
  */
@@ -73,7 +75,9 @@ void BLEScan::handleGAPEvent(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_
         // asked to stop.
         case ESP_GAP_SEARCH_INQ_CMPL_EVT:
         {
-          log_w("ESP_GAP_SEARCH_INQ_CMPL_EVT");
+          if (finddevicelogs) {
+            log_w("ESP_GAP_SEARCH_INQ_CMPL_EVT");
+          }
           m_stopped = true;
           m_semaphoreScanEnd.give();
           if (m_scanCompleteCB != nullptr) {

@@ -41,7 +41,7 @@
     "list": "cpp",
     "vector": "cpp"
   },
-  "idf.portWin": "COM4",
+  "idf.portWin": "COM9",
   "idf.monitorBaudRate": "921600",
   "C_Cpp.errorSquiggles": "disabled",
   "idf.espIdfPathWin": "C:\\Users\\Administrator\\esp\\v5.1.4\\esp-idf",
