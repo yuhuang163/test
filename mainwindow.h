@@ -314,6 +314,7 @@ class MainWindow : public QMainWindow {
     void writeDataToCSVFile();
     void clearDisplay();
     bool connectBleForOta(const QString& mac);
+    void applyDongleOtaLinkSettingsFromUi();
     void startRootBleOta();
     void startRootBleOta2(const QByteArray& imageData, uint32_t imageId, const QString& filePath, bool progressToSourceBar);
     void tryScheduleBleOtaPressTest(bool lastOk);
@@ -535,6 +536,8 @@ class MainWindow : public QMainWindow {
     // void on_set_battery_clicked();
     void on_brush_relocation_clicked();
     void on_stopBleOta_clicked();
+    void on_setOtaPktSizeButton_clicked();
+    void on_setBleMtuButton_clicked();
     void on_closeconnect_clicked();
     void on_get_now_music_clicked();
     void on_send_audio_clicked();

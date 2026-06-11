@@ -3323,6 +3323,24 @@ void MainWindow::on_bleotamacInput_returnPressed() {
     startRootBleOta();
 }
 
+void MainWindow::applyDongleOtaLinkSettingsFromUi() {
+    bool ok = false;
+    int pktSize = ui->OtaPktSize->text().toInt(&ok);
+    if (!ok || pktSize <= 0)
+        pktSize = 200;
+    ok = false;
+    int bleMtu = ui->BleMtuSize->text().toInt(&ok);
+    if (!ok || bleMtu <= 0)
+        bleMtu = 247;
+   at->set(DongleCmd::BleMtu, bleMtu);
+    at->set(DongleCmd::OtaPktSize, pktSize);
+
+    const QString msg =
+        QStringLiteral("OTA 开始前：AT+OTAPKTSIZE=%1，AT+BLEMTU=%2").arg(pktSize).arg(bleMtu);
+    showlog(msg);
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QLatin1Char(' ') + msg);
+}
+
 bool MainWindow::connectBleForOta(const QString& mac) {
     at->resetConnected();
     at->set(DongleCmd::BleOtaConnect, mac);
@@ -3431,6 +3449,7 @@ void MainWindow::startRootBleOta() {
                                        .arg(17 + fragmentSize));
     showlog(CommonUtils::isoDateTime() +
             QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
+    applyDongleOtaLinkSettingsFromUi();
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
@@ -3542,6 +3561,7 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
                                        .arg(RootBleOta2Client::kBlockSize)
                                        .arg(uartChunkSize)
                                        .arg(version, 8, 16, QChar('0')));
+    applyDongleOtaLinkSettingsFromUi();
     at->set(DongleCmd::OtaDataPassthrough, 1);
     waitWork(500);
 
@@ -3711,6 +3731,41 @@ void MainWindow::on_stopBleOta_clicked() {
     disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连接
     currentChunk = 0;
 }
+
+void MainWindow::on_setOtaPktSizeButton_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    bool ok = false;
+    int pktSize = ui->OtaPktSize->text().toInt(&ok);
+    if (!ok || pktSize <= 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("OTA 切包大小须为正整数"));
+        return;
+    }
+    at->set(DongleCmd::OtaPktSize, pktSize);
+    showlog(QStringLiteral("已发送 AT+OTAPKTSIZE=%1").arg(pktSize));
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                   QStringLiteral(" 设置 OTA 切包：AT+OTAPKTSIZE=%1").arg(pktSize));
+}
+
+void MainWindow::on_setBleMtuButton_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    bool ok = false;
+    int mtu = ui->BleMtuSize->text().toInt(&ok);
+    if (!ok || mtu <= 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("BLE MTU 须为正整数"));
+        return;
+    }
+    at->set(DongleCmd::BleMtu, mtu);
+    showlog(QStringLiteral("已发送 AT+BLEMTU=%1").arg(mtu));
+    ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
+                                   QStringLiteral(" 设置 BLE MTU：AT+BLEMTU=%1").arg(mtu));
+}
+
 QString calculateMD5(const QByteArray& fileData) {
     void* ctx = init_md5();
     if (!ctx) {
@@ -3848,6 +3903,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     showlog("开始OTA!");
     waitWork(1000);
     showlog("开始发送OTA数据通道开启");
+    applyDongleOtaLinkSettingsFromUi();
     at->set(DongleCmd::OtaDataPassthrough, 1);
     showlog("已发送OTA数据通道开启");
     waitWork(1000);
