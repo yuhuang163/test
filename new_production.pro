@@ -65,9 +65,10 @@ INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/scpi/access
 INCLUDEPATH += agreement/scpi/manager
-INCLUDEPATH += agreement/fixture/jig
+INCLUDEPATH += agreement/fixture/access
+INCLUDEPATH += agreement/fixture/device
+INCLUDEPATH += agreement/fixture/manager
 INCLUDEPATH += agreement/fixture/codec
-INCLUDEPATH += agreement/fixture/uart_ui
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/product_serial/protocol
 INCLUDEPATH += agreement/adb
@@ -150,12 +151,13 @@ SOURCES += \
     agreement/product_serial/protocol/qproduct.cpp \
     agreement/qbulk/crc_md5.cpp \
     agreement/qbulk/qbulk.cpp \
-    agreement/fixture/uart_ui/fixture_uart.cpp \
-    agreement/fixture/codec/fixture_camera_uart_protocol.cpp \
-    agreement/fixture/codec/fixture_imu_uart_protocol.cpp \
-    agreement/fixture/codec/fixture_pcba_uart_protocol.cpp \
-    agreement/fixture/codec/fixture_press_uart_protocol.cpp \
-    agreement/fixture/jig/qjig.cpp \
+    platform/settings/widgets/fixture_uart.cpp \
+    agreement/fixture/manager/qfixturemanager.cpp \
+    agreement/fixture/device/fixture_camera_device.cpp \
+    agreement/fixture/device/fixture_imu_device.cpp \
+    agreement/fixture/device/fixture_pcba_device.cpp \
+    agreement/fixture/device/fixture_press_device.cpp \
+    agreement/fixture/device/qjig.cpp \
     agreement/qmes/bydmes.cpp \
     agreement/qmes/hqmes.cpp \
     agreement/qmes/hzmes.cpp \
@@ -278,13 +280,14 @@ HEADERS += \
     agreement/qat/qat.h \
     agreement/product_serial/protocol/qproduct.h \
     agreement/qbulk/qbulk.h \
-    agreement/fixture/uart_ui/fixture_uart.h \
-    agreement/fixture/codec/fixture_camera_uart_protocol.h \
-    agreement/fixture/codec/fixture_imu_uart_protocol.h \
-    agreement/fixture/codec/fixture_pcba_uart_protocol.h \
-    agreement/fixture/codec/fixture_press_uart_protocol.h \
-    agreement/fixture/codec/fixture_uart_types.h \
-    agreement/fixture/jig/qjig.h \
+    platform/settings/widgets/fixture_uart.h \
+    agreement/fixture/manager/qfixturemanager.h \
+    agreement/fixture/device/fixture_camera_device.h \
+    agreement/fixture/device/fixture_imu_device.h \
+    agreement/fixture/device/fixture_pcba_device.h \
+    agreement/fixture/device/fixture_press_device.h \
+    agreement/fixture/access/fixture_uart_types.h \
+    agreement/fixture/device/qjig.h \
     agreement/qmes/bydmes.h \
     agreement/qmes/hqmes.h \
     agreement/qmes/hzmes.h \
@@ -384,7 +387,7 @@ HEADERS += \
     work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
-    agreement/fixture/uart_ui/fixture_uart.ui \
+    platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
     tools/factory_analyzer/factory_analyzer.ui \

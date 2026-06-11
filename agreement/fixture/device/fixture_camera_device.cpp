@@ -1,4 +1,4 @@
-#include "fixture_camera_uart_protocol.h"
+#include "fixture_camera_device.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")

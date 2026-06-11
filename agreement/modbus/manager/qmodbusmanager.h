@@ -11,9 +11,8 @@
 #include <QObject>
 #include <QString>
 #include <utility>
-
-class SerialChannel;
-
+#include "serial_channel.h"
+#include <QVariant>
 /**
  * Modbus 域唯一工站入口：路由 TCP PLC（汇川 H5U）与串口 RTU 电流表（HQ/LX device）。
  * 组帧/CRC/粘包在 modbus/codec；设备语义在 modbus/device。

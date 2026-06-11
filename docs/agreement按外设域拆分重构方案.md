@@ -394,14 +394,17 @@ factory_protocol/
 4. ~~`modbus` 通用层 + 根目录 `business/` 拆分~~ → **已完成**：`PlcV3Fixture`/三元组/OTA 在 `business/`；`QModbusManager` 仅 H5U 线圈 `PlcCmd`。
 5. **未做**：qusb 拆为按**铭牌品牌型号**的 `device/<brand>_<model>/`（阶段 6；hq/lx 不用于目录名）
 
-### 阶段 4：fixture / product_serial / visa 归位（**4a 已落地**）
+### 阶段 4：fixture / product_serial / visa 归位（**4b 已全面落地**）
 
-1. ~~`qfixture/protocol` → `fixture/codec`；`fixture_uart` → `fixture/uart_ui`；`qjig` → `fixture/jig`~~ → **已完成**。
+1. ~~`qfixture/protocol` → `fixture/codec`；`fixture_uart` → `fixture/uart_ui`；`qjig` → `fixture/jig`~~ → **进一步优化**：
+   - 引入了 `QFixtureManager`（位于 `agreement/fixture/manager`），接管底层串口和拆包逻辑。
+   - `fixture_uart` 纯 UI 化，移至 `platform/settings/widgets`。
+   - 具体的治具协议文件（PCBA、IMU、压感、Camera 等）统一归纳至 `agreement/fixture/device/` 目录下。
 2. ~~`qproduct` → `product_serial/protocol`~~ → **已完成**。
 3. ~~CMW 协议 → `scpi/device/rs_cmw100_scpi`；业务 → `business/cmw_gprf`~~ → **已完成**（2026-06）。
 4. ~~删除 `qvisa`、`visa_instrument`~~ → **已完成**；VISA 字节 I/O 在 `platform/driver/visa`。
 
-> 短名 `#include "fixture_uart.h"`、`qjig.h`、`qproduct.h`、`cmw_gprf_facade.h` 仍可用（`.pro` 已更新 `INCLUDEPATH`）。请 **重新 qmake** 后全量编译。
+> 短名 `#include "fixture_uart.h"`、`qfixturemanager.h`、`qproduct.h` 仍可用（`.pro` 已更新 `INCLUDEPATH`）。请 **重新 qmake** 后全量编译。
 
 ### 阶段 5：服务层（**默认不动**）
 

@@ -1,4 +1,4 @@
-#include "fixture_imu_uart_protocol.h"
+#include "fixture_imu_device.h"
 
 #include <QDebug>
 

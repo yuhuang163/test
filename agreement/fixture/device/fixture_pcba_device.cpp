@@ -1,4 +1,4 @@
-#include "fixture_pcba_uart_protocol.h"
+#include "fixture_pcba_device.h"
 
 #include <QCoreApplication>
 #include <QDebug>

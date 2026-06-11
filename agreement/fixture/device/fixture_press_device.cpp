@@ -1,4 +1,4 @@
-#include "fixture_press_uart_protocol.h"
+#include "fixture_press_device.h"
 
 #include <cstdlib>
 
