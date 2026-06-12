@@ -184,10 +184,10 @@ void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
             }
 
             qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
-            qint64 last_sent_timestamp = Fixture_uart_ui->last_commid_timestamp;
+            qint64 last_sent_timestamp = Fixture_uart_ui->lastCommidTimestamp();
 
             // 此处处理是为了等治具到位之后才进行下一步
-            switch (Fixture_uart_ui->last_commid) {
+            switch (Fixture_uart_ui->lastCommid()) {
             case COMMAND_ID_TRAY_IN:
             case COMMAND_ID_TRAY_OUT:
                 if (current_timestamp - last_sent_timestamp < 3000 && last_sent_timestamp != 0) {
@@ -207,7 +207,7 @@ void PressCalibBox::send_uart_data(FixturePacketData PacketData) {
                 break;
             }
 
-            Fixture_uart_ui->last_commid = PacketData.machine_command_id;
+            Fixture_uart_ui->setLastCommid(PacketData.machine_command_id);
 
             qDebug() << "machine_command_id" << PacketData.machine_command_id << PacketData.machineNumber;
             Fixture_uart_ui->send_command_to_machine(PacketData.machine_command_id, 0);

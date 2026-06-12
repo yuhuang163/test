@@ -18,11 +18,43 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$ClangFormat = if ($env:NEW_PRODUCT_CLANG_FORMAT) {
-    $env:NEW_PRODUCT_CLANG_FORMAT
-} else {
-    "D:\Qt\Tools\QtCreator\bin\clang\bin\clang-format.exe"
+
+function Resolve-ClangFormatPath {
+    if ($env:NEW_PRODUCT_CLANG_FORMAT -and (Test-Path $env:NEW_PRODUCT_CLANG_FORMAT)) {
+        return $env:NEW_PRODUCT_CLANG_FORMAT
+    }
+
+    $candidates = @(
+        "D:\Qt\Tools\QtCreator\bin\clang\bin\clang-format.exe",
+        "C:\Qt\Tools\QtCreator\bin\clang\bin\clang-format.exe",
+        "C:\Program Files\LLVM\bin\clang-format.exe",
+        "C:\Program Files (x86)\LLVM\bin\clang-format.exe"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+
+    $cmd = Get-Command clang-format -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -and (Test-Path $cmd.Source)) {
+        return $cmd.Source
+    }
+
+    foreach ($qtRoot in @("C:\Qt", "D:\Qt")) {
+        if (-not (Test-Path $qtRoot)) { continue }
+        $found = Get-ChildItem -Path $qtRoot -Filter "clang-format.exe" -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1 -ExpandProperty FullName
+        if ($found) {
+            return $found
+        }
+    }
+
+    return $null
 }
+
+$ClangFormat = Resolve-ClangFormatPath
 
 $ExcludeDirNames = @("build", ".git", "Python39", "node_modules", ".cursor")
 $ExcludePathContains = @(
@@ -83,8 +115,12 @@ function Get-FormatTargets([string[]]$InputPaths) {
     } | Sort-Object -Unique
 }
 
-if (-not (Test-Path $ClangFormat)) {
-    throw "Missing clang-format: $ClangFormat (set NEW_PRODUCT_CLANG_FORMAT)"
+if (-not $ClangFormat) {
+    throw @"
+Missing clang-format.
+Install LLVM or Qt Creator (with bundled clang-format), or set:
+  NEW_PRODUCT_CLANG_FORMAT=C:\path\to\clang-format.exe
+"@
 }
 
 $styleFile = Join-Path $RepoRoot ".clang-format"

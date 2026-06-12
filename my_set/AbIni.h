@@ -48,7 +48,6 @@
 #include <qpb.h> // 与设备的pb协议
 #include <qproduct.h>
 #include <qsetting.h> //上位机设置界面
-#include <qusb.h>     // 与治具的测量协议
 #include <xwdmes.h>   // 欣旺达的mes头文件
 
 #define WAITTIME 0 // 指令的300延时防止粘包

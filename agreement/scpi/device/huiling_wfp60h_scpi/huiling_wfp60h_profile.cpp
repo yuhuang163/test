@@ -48,7 +48,7 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromVisaPowerSettings() {
 
 QString HuilingWfp60hScpiProfile::buildConfigureMeasureLine() const {
     return QStringLiteral("CONF:") + scpiCurrentType + QStringLiteral(":") + scpiCurrentMode + QStringLiteral(" ") +
-           scpiRange;
+        scpiRange;
 }
 
 QString HuilingWfp60hScpiProfile::buildReadMeasureCurrentLine() const {

@@ -7,7 +7,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QScpiSerialSession::QScpiSerialSession(QSerialPort* port, QObject* parent) : QObject(parent), serialPort_(port) {}
+QScpiSerialSession::QScpiSerialSession(QSerialPort* port, QObject* parent) : QObject(parent), serialPort_(port) {
+}
 
 bool QScpiSerialSession::isOpen() const {
     return serialPort_ && serialPort_->isOpen();

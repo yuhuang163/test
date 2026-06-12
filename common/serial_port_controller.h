@@ -11,7 +11,7 @@
 class SerialPortController : public QObject {
     Q_OBJECT
 
-public:
+  public:
     struct UIControls {
         QComboBox* portCombo = nullptr;
     };
@@ -20,7 +20,7 @@ public:
     ~SerialPortController() override = default;
 
     void setUIControls(const UIControls& ui);
-    
+
     // Default open parameters
     void setBaudRate(int baudRate);
     void setReadDebounceMs(int debounceMs);
@@ -30,14 +30,14 @@ public:
     void close();
     bool isOpen() const;
 
-signals:
+  signals:
     void stateChanged(bool isOpen);
     void errorOccurred(const QString& errorMessage);
 
-private slots:
+  private slots:
     void onChannelErrorOccurred(QSerialPort::SerialPortError error, const QString& message);
 
-private:
+  private:
     SerialChannel* channel_ = nullptr;
     UIControls ui_;
     int baudRate_ = 115200;

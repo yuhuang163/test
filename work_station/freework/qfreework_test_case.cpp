@@ -5,7 +5,7 @@
 #include "qat.h"
 #include "qfreeworkbox.h"
 #include "fixture_uart.h"
-#include "fixture_pcba_uart_protocol.h"
+#include "fixture_pcba_device.h"
 #include "qprotocol_types.h"
 
 #include <QFile>
@@ -92,62 +92,102 @@ bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
 }
 
 PlcCmd plcCmdFromName(const QString& name) {
-    if (name == QLatin1String("Connect")) return PlcCmd::Connect;
-    if (name == QLatin1String("Disconnect")) return PlcCmd::Disconnect;
-    if (name == QLatin1String("IsConnected")) return PlcCmd::IsConnected;
-    if (name == QLatin1String("ReadCoil")) return PlcCmd::ReadCoil;
-    if (name == QLatin1String("WriteCoil")) return PlcCmd::WriteCoil;
-    if (name == QLatin1String("ReadCoils")) return PlcCmd::ReadCoils;
-    if (name == QLatin1String("WaitCoilTrue")) return PlcCmd::WaitCoilTrue;
-    if (name == QLatin1String("WaitCoilFalse")) return PlcCmd::WaitCoilFalse;
-    if (name == QLatin1String("SendStepDone")) return PlcCmd::SendStepDone;
+    if (name == QLatin1String("Connect"))
+        return PlcCmd::Connect;
+    if (name == QLatin1String("Disconnect"))
+        return PlcCmd::Disconnect;
+    if (name == QLatin1String("IsConnected"))
+        return PlcCmd::IsConnected;
+    if (name == QLatin1String("ReadCoil"))
+        return PlcCmd::ReadCoil;
+    if (name == QLatin1String("WriteCoil"))
+        return PlcCmd::WriteCoil;
+    if (name == QLatin1String("ReadCoils"))
+        return PlcCmd::ReadCoils;
+    if (name == QLatin1String("WaitCoilTrue"))
+        return PlcCmd::WaitCoilTrue;
+    if (name == QLatin1String("WaitCoilFalse"))
+        return PlcCmd::WaitCoilFalse;
+    if (name == QLatin1String("SendStepDone"))
+        return PlcCmd::SendStepDone;
     return PlcCmd::IsConnected;
 }
 
 HqAmmeterRtuCmd hqAmmeterRtuCmdFromName(const QString& name) {
-    if (name == QLatin1String("ReadMeasurement")) return HqAmmeterRtuCmd::ReadMeasurement;
-    if (name == QLatin1String("SetBaud115200")) return HqAmmeterRtuCmd::SetBaud115200;
+    if (name == QLatin1String("ReadMeasurement"))
+        return HqAmmeterRtuCmd::ReadMeasurement;
+    if (name == QLatin1String("SetBaud115200"))
+        return HqAmmeterRtuCmd::SetBaud115200;
     return HqAmmeterRtuCmd::ReadMeasurement;
 }
 
 LxAmmeterRtuCmd lxAmmeterRtuCmdFromName(const QString& name) {
-    if (name == QLatin1String("ReadMeasurement")) return LxAmmeterRtuCmd::ReadMeasurement;
+    if (name == QLatin1String("ReadMeasurement"))
+        return LxAmmeterRtuCmd::ReadMeasurement;
     return LxAmmeterRtuCmd::ReadMeasurement;
 }
 
 HuilingScpiCmd huilingScpiCmdFromName(const QString& name) {
-    if (name == QLatin1String("ConfigureMeasure")) return HuilingScpiCmd::ConfigureMeasure;
-    if (name == QLatin1String("ReadMeasureCurrent")) return HuilingScpiCmd::ReadMeasureCurrent;
-    if (name == QLatin1String("ReadMeasureConfiguration")) return HuilingScpiCmd::ReadMeasureConfiguration;
-    if (name == QLatin1String("InitializeDevice")) return HuilingScpiCmd::InitializeDevice;
-    if (name == QLatin1String("ConfigureProgrammablePower")) return HuilingScpiCmd::ConfigureProgrammablePower;
-    if (name == QLatin1String("ProgrammablePowerOutput")) return HuilingScpiCmd::ProgrammablePowerOutput;
-    if (name == QLatin1String("ReadProgrammableVoltage")) return HuilingScpiCmd::ReadProgrammableVoltage;
-    if (name == QLatin1String("ReadProgrammableCurrent")) return HuilingScpiCmd::ReadProgrammableCurrent;
-    if (name == QLatin1String("InitializeProgrammablePower")) return HuilingScpiCmd::InitializeProgrammablePower;
-    if (name == QLatin1String("SendRawLine")) return HuilingScpiCmd::SendRawLine;
+    if (name == QLatin1String("ConfigureMeasure"))
+        return HuilingScpiCmd::ConfigureMeasure;
+    if (name == QLatin1String("ReadMeasureCurrent"))
+        return HuilingScpiCmd::ReadMeasureCurrent;
+    if (name == QLatin1String("ReadMeasureConfiguration"))
+        return HuilingScpiCmd::ReadMeasureConfiguration;
+    if (name == QLatin1String("InitializeDevice"))
+        return HuilingScpiCmd::InitializeDevice;
+    if (name == QLatin1String("ConfigureProgrammablePower"))
+        return HuilingScpiCmd::ConfigureProgrammablePower;
+    if (name == QLatin1String("ProgrammablePowerOutput"))
+        return HuilingScpiCmd::ProgrammablePowerOutput;
+    if (name == QLatin1String("ReadProgrammableVoltage"))
+        return HuilingScpiCmd::ReadProgrammableVoltage;
+    if (name == QLatin1String("ReadProgrammableCurrent"))
+        return HuilingScpiCmd::ReadProgrammableCurrent;
+    if (name == QLatin1String("InitializeProgrammablePower"))
+        return HuilingScpiCmd::InitializeProgrammablePower;
+    if (name == QLatin1String("SendRawLine"))
+        return HuilingScpiCmd::SendRawLine;
     return HuilingScpiCmd::InitializeDevice;
 }
 
 CmwScpiCmd cmwScpiCmdFromName(const QString& name) {
-    if (name == QLatin1String("ClearStatus")) return CmwScpiCmd::ClearStatus;
-    if (name == QLatin1String("GenOff")) return CmwScpiCmd::GenOff;
-    if (name == QLatin1String("GenOn")) return CmwScpiCmd::GenOn;
-    if (name == QLatin1String("ListOff")) return CmwScpiCmd::ListOff;
-    if (name == QLatin1String("BbModeArb")) return CmwScpiCmd::BbModeArb;
-    if (name == QLatin1String("ArbFile")) return CmwScpiCmd::ArbFile;
-    if (name == QLatin1String("ArbRepetition")) return CmwScpiCmd::ArbRepetition;
-    if (name == QLatin1String("ArbCycles")) return CmwScpiCmd::ArbCycles;
-    if (name == QLatin1String("TxLevelDbm")) return CmwScpiCmd::TxLevelDbm;
-    if (name == QLatin1String("FrequencyMhz")) return CmwScpiCmd::FrequencyMhz;
-    if (name == QLatin1String("ManualArbTrigger")) return CmwScpiCmd::ManualArbTrigger;
-    if (name == QLatin1String("WriteLine")) return CmwScpiCmd::WriteLine;
-    if (name == QLatin1String("Identity")) return CmwScpiCmd::Identity;
-    if (name == QLatin1String("ArbFilePath")) return CmwScpiCmd::ArbFilePath;
-    if (name == QLatin1String("ArbScount")) return CmwScpiCmd::ArbScount;
-    if (name == QLatin1String("GenState")) return CmwScpiCmd::GenState;
-    if (name == QLatin1String("SystemError")) return CmwScpiCmd::SystemError;
-    if (name == QLatin1String("QueryLine")) return CmwScpiCmd::QueryLine;
+    if (name == QLatin1String("ClearStatus"))
+        return CmwScpiCmd::ClearStatus;
+    if (name == QLatin1String("GenOff"))
+        return CmwScpiCmd::GenOff;
+    if (name == QLatin1String("GenOn"))
+        return CmwScpiCmd::GenOn;
+    if (name == QLatin1String("ListOff"))
+        return CmwScpiCmd::ListOff;
+    if (name == QLatin1String("BbModeArb"))
+        return CmwScpiCmd::BbModeArb;
+    if (name == QLatin1String("ArbFile"))
+        return CmwScpiCmd::ArbFile;
+    if (name == QLatin1String("ArbRepetition"))
+        return CmwScpiCmd::ArbRepetition;
+    if (name == QLatin1String("ArbCycles"))
+        return CmwScpiCmd::ArbCycles;
+    if (name == QLatin1String("TxLevelDbm"))
+        return CmwScpiCmd::TxLevelDbm;
+    if (name == QLatin1String("FrequencyMhz"))
+        return CmwScpiCmd::FrequencyMhz;
+    if (name == QLatin1String("ManualArbTrigger"))
+        return CmwScpiCmd::ManualArbTrigger;
+    if (name == QLatin1String("WriteLine"))
+        return CmwScpiCmd::WriteLine;
+    if (name == QLatin1String("Identity"))
+        return CmwScpiCmd::Identity;
+    if (name == QLatin1String("ArbFilePath"))
+        return CmwScpiCmd::ArbFilePath;
+    if (name == QLatin1String("ArbScount"))
+        return CmwScpiCmd::ArbScount;
+    if (name == QLatin1String("GenState"))
+        return CmwScpiCmd::GenState;
+    if (name == QLatin1String("SystemError"))
+        return CmwScpiCmd::SystemError;
+    if (name == QLatin1String("QueryLine"))
+        return CmwScpiCmd::QueryLine;
     return CmwScpiCmd::ClearStatus;
 }
 
@@ -460,7 +500,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     measureData.unit = QStringLiteral("");
                     measureData.isOk = true;
                     ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                                             QVariant::fromValue(measureData)));
+                                                              QVariant::fromValue(measureData)));
                 } else {
                     ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
                 }
@@ -474,7 +514,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             } else if (def.send.action == TestCaseSendAction::Get) {
                 const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
                 QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
-                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
                         return;
                     ctx->showlog(QStringLiteral("HQ 电流表等待超时：%1").arg(def.send.deviceCmd));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
@@ -492,7 +532,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             } else if (def.send.action == TestCaseSendAction::Get) {
                 const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
                 QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
-                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
                         return;
                     ctx->showlog(QStringLiteral("LX 电流表等待超时：%1").arg(def.send.deviceCmd));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
@@ -526,7 +566,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 if (def.send.action == TestCaseSendAction::Get) {
                     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
                     QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
-                        if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
+                        if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
                             return;
                         ctx->showlog(QStringLiteral("SCPI 设备等待超时：%1").arg(def.send.deviceCmd));
                         ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
@@ -552,7 +592,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     measureData.unit = QStringLiteral("");
                     measureData.isOk = true;
                     ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                                             QVariant::fromValue(measureData)));
+                                                              QVariant::fromValue(measureData)));
                 } else {
                     ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
                 }

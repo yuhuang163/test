@@ -11,6 +11,7 @@
 #include "qscpimanager.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "scpi_types.h"
+#include "instrument_device_catalog.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
@@ -93,7 +94,9 @@ class test_base : public QWidget {
     void waitWork(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
-    void setCommandWaitSource(CommandWaitSource source) { commandWaitSource_ = source; }
+    void setCommandWaitSource(CommandWaitSource source) {
+        commandWaitSource_ = source;
+    }
     void testResultTableUpdate(QVector<TestItem>& testItems);
     QString exportTableContent();
     void testResultTableInit();
@@ -117,6 +120,11 @@ class test_base : public QWidget {
     bool execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
     QScpiManager* scpiVisaManager();
     const QScpiManager* scpiVisaManager() const;
+
+    /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
+    QStringList instrumentPurposeLabels() const;
+    /** 工厂 + 用途中文名 → modbus/scpi 协议设备（见 platform/instrument）。 */
+    bool resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const;
 
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";
@@ -180,7 +188,9 @@ class test_base : public QWidget {
         qDebug() << "机器" << getIndex() << "independent_state状态被设置" << newState;
         independent_state = newState;
     }
-    STATE_INDEPENDENT_E get_independent_state(void) { return independent_state; }
+    STATE_INDEPENDENT_E get_independent_state(void) {
+        return independent_state;
+    }
     void solveGetBrushResponse(int data);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);
@@ -189,19 +199,19 @@ class test_base : public QWidget {
     virtual void onDongleSerialFrame(const QByteArray& data);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);
-    
+
     virtual void onUsbSerialFrame(const QByteArray& data);
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
-    
+
     void onJigSerialFrame(const QByteArray& data);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
-    
+
     void onProductSerialFrame(const QByteArray& data);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
-    
+
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
 

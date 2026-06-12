@@ -121,6 +121,26 @@ void Fixture_uart::send_command_to_machine(int command_id, int numb) {
     fixtureManager_->send_command_to_machine(command_id, numb);
 }
 
+void Fixture_uart::delay_msec(unsigned int msec) {
+    fixtureManager_->delayMsec(msec);
+}
+
+qint64 Fixture_uart::lastCommidTimestamp() const {
+    return fixtureManager_->lastCommidTimestamp();
+}
+
+void Fixture_uart::setLastCommidTimestamp(qint64 timestamp) {
+    fixtureManager_->setLastCommidTimestamp(timestamp);
+}
+
+machine_command_id_e Fixture_uart::lastCommid() const {
+    return fixtureManager_->lastCommid();
+}
+
+void Fixture_uart::setLastCommid(machine_command_id_e commandId) {
+    fixtureManager_->setLastCommid(commandId);
+}
+
 #if _MSC_VER >= 1600
 #pragma execution_character_set(pop)
 #endif

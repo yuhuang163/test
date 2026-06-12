@@ -52,7 +52,7 @@ agreement/<域>/
 | 域目录 | 工站入口 | access | manager | codec / 其它 | device / protocol |
 |--------|----------|--------|---------|--------------|-------------------|
 | **factory_protocol** | `QProtocolManager` | `DeviceCmd`、`ProtocolReport` | `qprotocolmanager.*` | `codec/fctp`、nanopb | `protocol/qpb`、`qfctp`、`qaiot`、`qroot` |
-| **modbus** | `QModbusManager` | `ModbusDeviceRoute`；各 device 自有 Cmd | `qmodbusmanager.*`、`modbus_device_catalog.*` | `codec/qmodbus_pdu`、`qmodbus_rtu_*` | `device/inovance_h5u_tcp`（`PlcCmd`）、`hq_ammeter_rtu`、`lx_ammeter_rtu` |
+| **modbus** | `QModbusManager` | `ModbusDeviceRoute`；各 device 自有 Cmd | `qmodbusmanager.*`、`modbus_device_catalog.*` | `codec/qmodbus_pdu`、`qmodbus_rtu_*` | `device/inovance_h5u_tcp`（`PlcCmd`+`InovanceH5uTcpDevice`）、`hq_ammeter_rtu`、`lx_ammeter_rtu` |
 | **scpi** | `QScpiManager` | `ScpiDeviceRoute`、`ScpiLinkKind`、`ScpiTransport`（**无**跨设备 `ScpiCmd`） | `qscpimanager.*`、`qscpiserialsession.*`、`qscpivisasession.*` | `codec/scpi_line_codec.*`；底层 I/O：`platform/driver/serial`、`platform/driver/visa` | `device/huiling_wfp60h_scpi`（`HuilingScpiCmd`）、`device/rs_cmw100_scpi`（`CmwScpiCmd`） |
 | **qusb**（**待废弃**） | `Qusb` | `QusbProtocolRoute` 等 | `qusb.*` | — | 内嵌串口 `QScpiManager`；见 §6.1 |
 | **工站** | `test_base` | `execScpi`、`execVisaHuiling`、`execAmmeterMeasure` | `scpiVisaManager_`（VISA 实例） | — | COM 电流表 + VISA 程控/CMW 门面 |
@@ -279,13 +279,14 @@ agreement/modbus/
 ├── manager/qmodbusmanager.*    # PLC TCP + RTU 电流表路由
 ├── codec/                      # PDU、CRC、RTU 粘包
 └── device/
-    ├── inovance_h5u_tcp/       # 汇川 H5U Modbus TCP
-    ├── hq_ammeter_rtu/         # 华勤产线 RTU 表
-    └── lx_ammeter_rtu/         # 立讯产线 RTU 表
+    ├── inovance_h5u_tcp/       # *_types.h（PlcCmd）+ *_device（set/get）+ TCP 传输/PlcModbusSession
+    ├── hq_ammeter_rtu/         # HqAmmeterRtuCmd + HqAmmeterModbusRtu（IModbusRtuDevice）
+    └── lx_ammeter_rtu/         # LxAmmeterRtuCmd + LxAmmeterModbusRtu（IModbusRtuDevice）
 ```
 
+- **RTU 电流表** 与 SCPI 同构：`IModbusRtuDevice` + 模板 `exec<CmdType>`；PLC 仍用 `InovanceH5uTcpDevice` 的 **`set` / `get`**。
 - **device/** 只放 Modbus 链路设备；SCPI 表不得放入 modbus。
-- RTU 组帧统一走 `codec/qmodbus_pdu`，设备目录只维护寄存器/功能码语义。
+- RTU 组帧统一走 `codec/qmodbus_pdu` / `qmodbus_rtu_codec`，设备内维护寄存器/功能码语义与 RX 解析。
 
 ---
 
@@ -447,4 +448,45 @@ agreement/fixture/
 
 ---
 
-*文档版本：v1.4；§4 各 device 自有 Cmd、双 QScpiManager 实例；§10 移除 qvisa/visa_instrument，CMW 迁至 scpi/device + business/cmw_gprf。*
+---
+
+## 14. 工站用途名与协议设备映射（`platform/instrument`）
+
+产线按 **工厂采购 + 工位用途** 选外设，与协议层 **厂商型号目录** 解耦：
+
+```text
+Mes/FACTORY（byd、hq、lx…）
+        + 用途中文名（程控电源、COM电流表…）
+                ↓  InstrumentDeviceCatalog
+        ModbusDeviceRoute / ScpiDeviceRoute
+                ↓
+        agreement/modbus|scpi/device/<厂商>_<型号>_<链路>/
+```
+
+### 14.1 三层命名（勿混用）
+
+| 层 | 命名 | 示例 | 谁用 |
+|----|------|------|------|
+| **用途** | `InstrumentPurposeId` + **中文 labelZh** | `programmable_power` / 「程控电源」 | 工站、设置页、test_case |
+| **路由** | `ModbusDeviceRoute` / `ScpiDeviceRoute` | `HuilingWfp60h` | manager、`exec` |
+| **协议 device** | 目录 `<厂商>_<型号>_<链路>` | `huiling_wfp60h_scpi` | 组帧/Cmd 实现 |
+
+**规则**：同一台会凌电源在 BYD 叫「程控电源」，在协议层仍是 `huiling_wfp60h_scpi`；华勤线「COM电流表」可能映射 `hq_ammeter_rtu`，另一家映射 `huiling_wfp60h_scpi`。
+
+### 14.2 映射表维护
+
+- 代码：`platform/instrument/instrument_device_catalog.cpp` 的 `kPurposeRows`
+- `factoryId`：小写 `Mes/FACTORY`；`**` 表示通用默认
+- 解析：**先工厂专属行，再 `*` 回退**
+- 工站：`test_base::resolveInstrumentPurpose(u8"程控电源", &ref)`
+
+### 14.3 新增外设 checklist
+
+1. 在 `agreement/<域>/device/` 实现协议与 `XxxCmd`
+2. 在 `access` 增加 `*DeviceRoute` 枚举
+3. 在 `kPurposeRows` 增加「工厂 + 中文用途 → route」
+4. 在 `*_cmd_manifest` 增加 Cmd 中文（test_case 用）
+
+---
+
+*文档版本：v1.5；§14 工厂用途映射 platform/instrument。*

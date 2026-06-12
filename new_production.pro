@@ -60,6 +60,7 @@ INCLUDEPATH += platform/test_case \
     platform/test_case/manifest
 INCLUDEPATH += platform/test_record
 INCLUDEPATH += platform/log_upload
+INCLUDEPATH += platform/instrument
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -137,6 +138,7 @@ SOURCES += \
     agreement/modbus/codec/qmodbus_rtu_rx_buffer.cpp \
     agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
     agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
+    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/qtransport/qprocesschannel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
@@ -187,6 +189,7 @@ SOURCES += \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
+    platform/instrument/instrument_device_catalog.cpp \
     platform/test_record/test_record_store.cpp \
     platform/log_upload/log_upload_service.cpp \
     agreement/qshell/qshell.cpp \
@@ -261,8 +264,11 @@ HEADERS += \
     agreement/modbus/codec/qmodbus_pdu.h \
     agreement/modbus/codec/qmodbus_rtu_codec.h \
     agreement/modbus/codec/qmodbus_rtu_rx_buffer.h \
+    agreement/modbus/access/imodbus_rtu_device.h \
     agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu.h \
+    agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
     agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
+    agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
     agreement/qtransport/qprocesschannel.h \
     agreement/factory_protocol/codec/fctp/comm_protocol.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \
@@ -321,6 +327,7 @@ HEADERS += \
     platform/test_record/test_record_store.h \
     platform/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
+    platform/instrument/instrument_device_catalog.h \
     agreement/qshell/qshell.h \
     business/tuple/qtupleservice.h \
     business/cmw_gprf/cmw_gprf_facade.h \
@@ -356,8 +363,9 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
-    agreement/modbus/access/imodbus_rtu_device.h \
     agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
+    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
+    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
     agreement/scpi/codec/scpi_line_codec.h \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
     business/plc_v3_fixture/plc_v3_touch.h \

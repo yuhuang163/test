@@ -321,15 +321,14 @@ typedef struct {
 } ProtocolAckData;
 
 typedef struct {
-    QString deviceName;  // 设备名称，如 "HuilingWfp60h"
-    QString channel;     // 通道号（如有，如 "CH1"）
-    QString type;        // 测量类型：Current(电流), Voltage(电压), Power(功率), Temp(温度)
-    double value = 0.0;  // 测量数值
-    QString valueText;   // 测量文本结果（用于非数值匹配，如 CMW IDN、错误文本）
-    QString unit;        // 单位，如 "mA", "V", "W"
-    bool isOk = true;    // 状态是否有效
+    QString deviceName; // 设备名称，如 "HuilingWfp60h"
+    QString channel;    // 通道号（如有，如 "CH1"）
+    QString type;       // 测量类型：Current(电流), Voltage(电压), Power(功率), Temp(温度)
+    double value = 0.0; // 测量数值
+    QString valueText;  // 测量文本结果（用于非数值匹配，如 CMW IDN、错误文本）
+    QString unit;       // 单位，如 "mA", "V", "W"
+    bool isOk = true;   // 状态是否有效
 } ProtocolMeasureData;
-
 
 typedef struct {
     QByteArray name;
@@ -427,13 +426,13 @@ enum class DeviceCmd {
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
 
     // 【Qroot】吸奶器 PCBA 串口协议
-    RootVibration,       // 0x94 振子控制
-    RootFlangeQuery,   // 0x96 法兰状态查询
-    RootNtcQuery,        // 0x97 加热 NTC 查询
-    RootHeatTempQuery,   // 0x98 加热温度查询
-    RootVibStatusQuery,  // 0x99 振子状态查询
-    RootPumpTestEnter,   // 0x9D 主机泵测试进入
-    RootPumpTestExit,    // 0x9E 主机泵测试退出
+    RootVibration,      // 0x94 振子控制
+    RootFlangeQuery,    // 0x96 法兰状态查询
+    RootNtcQuery,       // 0x97 加热 NTC 查询
+    RootHeatTempQuery,  // 0x98 加热温度查询
+    RootVibStatusQuery, // 0x99 振子状态查询
+    RootPumpTestEnter,  // 0x9D 主机泵测试进入
+    RootPumpTestExit,   // 0x9E 主机泵测试退出
 
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）

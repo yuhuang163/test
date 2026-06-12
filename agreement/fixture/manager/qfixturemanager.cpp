@@ -22,7 +22,7 @@ QFixtureManager::QFixtureManager(QObject* parent)
       fixtureSerialPortTimer_(new QTimer(this)),
       log_(new Qlog),
       pressProtocol_(new FixturePressUartProtocol) {
-    
+
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
 
     connect(fixtureSerialPort_, SIGNAL(error(QSerialPort::SerialPortError)), this,
@@ -66,7 +66,7 @@ bool QFixtureManager::open(const QString& portName, int baudRate) {
     fixtureSerialPort_->setStopBits(QSerialPort::OneStop);
     fixtureSerialPort_->setReadBufferSize(4096);
     fixtureSerialPort_->setFlowControl(QSerialPort::NoFlowControl);
-    
+
     if (fixtureSerialPort_->open(QIODevice::ReadWrite)) {
         fixtureSerialPort_->setRequestToSend(true);
         fixtureSerialPort_->setDataTerminalReady(true);
@@ -243,10 +243,26 @@ void QFixtureManager::handleError(QSerialPort::SerialPortError error) {
     }
 }
 
-void QFixtureManager::delay_msec(unsigned int msec) {
+void QFixtureManager::delayMsec(unsigned int msec) {
     QEventLoop loop;
     QTimer::singleShot(msec, &loop, SLOT(quit()));
     loop.exec();
+}
+
+qint64 QFixtureManager::lastCommidTimestamp() const {
+    return last_commid_timestamp_;
+}
+
+void QFixtureManager::setLastCommidTimestamp(qint64 timestamp) {
+    last_commid_timestamp_ = timestamp;
+}
+
+machine_command_id_e QFixtureManager::lastCommid() const {
+    return last_commid_;
+}
+
+void QFixtureManager::setLastCommid(machine_command_id_e commandId) {
+    last_commid_ = commandId;
 }
 
 void QFixtureManager::send_command_to_machine(int command_id, int numb) {
@@ -263,7 +279,7 @@ void QFixtureManager::send_command_to_machine(int command_id, int numb) {
     qDebug() << "last" << last_sent_timestamp_ << "current" << current_timestamp;
     if (current_timestamp - last_sent_timestamp_ < 100 && last_sent_timestamp_ != 0) {
         qDebug() << "short time,current_time - last:" << current_timestamp - last_sent_timestamp_;
-        delay_msec(100);
+        delayMsec(100);
     }
     last_sent_timestamp_ = QDateTime::currentDateTime().toMSecsSinceEpoch();
     last_commid_timestamp_ = last_sent_timestamp_;

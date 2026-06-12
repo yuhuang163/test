@@ -65,7 +65,8 @@ class QScpiManager : public QObject {
     bool exec(CmdType cmd, const QVariant& param = {}, QString* errorMessage = nullptr) {
         IScpiDevice* dev = activeDevice();
         if (!dev) {
-            if (errorMessage) *errorMessage = QStringLiteral("当前 SCPI 设备路由未配置");
+            if (errorMessage)
+                *errorMessage = QStringLiteral("当前 SCPI 设备路由未配置");
             return false;
         }
         if (!isTransportReady(errorMessage)) {

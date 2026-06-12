@@ -25,7 +25,9 @@ class IScpiDevice {
     virtual bool isQueryCmd(int cmd) const = 0;
 
     /** 设备最后一次查询的文本应答（如有）。 */
-    virtual QString lastQueryResponse() const { return {}; }
+    virtual QString lastQueryResponse() const {
+        return {};
+    }
 };
 
 #endif // ISCPI_DEVICE_H

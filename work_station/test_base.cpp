@@ -98,6 +98,14 @@ const QScpiManager* test_base::scpiVisaManager() const {
     return &scpiVisaManager_;
 }
 
+QStringList test_base::instrumentPurposeLabels() const {
+    return InstrumentDeviceCatalog::purposeLabelsForFactory(pack.factory);
+}
+
+bool test_base::resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const {
+    return InstrumentDeviceCatalog::resolveByLabel(pack.factory, purposeLabelZh, out);
+}
+
 bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
     scpiVisaManager_.loadHuilingVisaFromSettings();
     return scpiVisaManager_.exec(cmd, param, errorMessage);
@@ -178,7 +186,7 @@ void test_base::signalAndslot() {
     connect(&modbusManager, &QModbusManager::rtuAmmeterReadingReceived, this, [this](const QString& value) {
         onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
                                              QVariant::fromValue(ProtocolAmmeterReadingData{value})));
-        
+
         ProtocolMeasureData measureData;
         measureData.deviceName = QStringLiteral("Modbus_Ammeter");
         measureData.type = QStringLiteral("Current");
@@ -249,7 +257,7 @@ void test_base::signalAndslot() {
     connect(dongleController_, &SerialPortController::errorOccurred, this, [this](const QString& msg) {
         msgEdit()->appendPlainText(msg);
     });
-    
+
     // Connect state changed signals to original slots
     connect(dongleController_, &SerialPortController::stateChanged, this, [this](bool isOpen) {
         emit send_dongle_serialPort_state(isOpen ? 1 : 0);

@@ -32,7 +32,9 @@ QByteArray HqAmmeterModbusRtu::buildRequest(int cmd, const QVariant& param) {
 
 bool HqAmmeterModbusRtu::parseResponse(const QByteArray& frame, QString* valueText) {
     const auto reading = parseResponseFrame(frame);
-    if (!reading.ok) return false;
-    if (valueText) *valueText = reading.valueText;
+    if (!reading.ok)
+        return false;
+    if (valueText)
+        *valueText = reading.valueText;
     return true;
 }

@@ -26,7 +26,6 @@
 #include "Abini.h"
 #include "common_utils.h"
 #include "fixture_uart_types.h"
-#include "fixture_pcba_uart_protocol.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -642,6 +641,10 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
     }
 }
 
+} // namespace
+
+namespace {
+QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue);
 } // namespace
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
@@ -2009,7 +2012,7 @@ QStringList ScpiPeriphCmdCatalog::allCmdNames(ScpiDeviceRoute device, TestCaseSe
 }
 
 bool ScpiPeriphCmdCatalog::isCmdForDevice(ScpiDeviceRoute device, const QString& enumName,
-                                            TestCaseSendAction action) {
+                                          TestCaseSendAction action) {
     const ScpiCmdManifest::Row* row = ScpiCmdManifest::findByDeviceAndName(device, enumName);
     if (!row) {
         return false;
@@ -2166,14 +2169,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
-    {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {
-        {QStringLiteral("value"), QStringLiteral("测量数值")},
-        {QStringLiteral("valueText"), QStringLiteral("测量文本值")},
-        {QStringLiteral("deviceName"), QStringLiteral("外设名称")},
-        {QStringLiteral("channel"), QStringLiteral("通道号")},
-        {QStringLiteral("type"), QStringLiteral("测量类型")},
-        {QStringLiteral("unit"), QStringLiteral("单位")}
-    }},
+    {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {

@@ -7,6 +7,18 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
+void LxAmmeterModbusRtu::setMachineId(int machineId1Based) {
+    machineId1Based_ = machineId1Based;
+}
+
+int LxAmmeterModbusRtu::machineId() const {
+    return machineId1Based_;
+}
+
+void LxAmmeterModbusRtu::resetRxState() {
+    rtuRxBuffer_.reset();
+}
+
 QByteArray LxAmmeterModbusRtu::buildReadMeasurementRequest(int machineId1Based) {
     static const QStringList machineCmdList = {
         QString(), QStringLiteral("010300000002c40b"), QStringLiteral("020300000002C438"),
@@ -23,20 +35,39 @@ ModbusRtuCodec::AmmeterReading LxAmmeterModbusRtu::parseResponseFrame(const QByt
     return ModbusRtuCodec::parseLxHoldRegisterFrame(frame);
 }
 
-// --- IModbusRtuDevice interface bridge ---
-
 QByteArray LxAmmeterModbusRtu::buildRequest(int cmd, const QVariant& param) {
+    Q_UNUSED(param);
     switch (static_cast<LxAmmeterRtuCmd>(cmd)) {
     case LxAmmeterRtuCmd::ReadMeasurement:
-        return buildReadMeasurementRequest(param.toInt());
+        return buildReadMeasurementRequest(machineId1Based_);
     default:
         return {};
     }
 }
 
 bool LxAmmeterModbusRtu::parseResponse(const QByteArray& frame, QString* valueText) {
-    const auto reading = parseResponseFrame(frame);
-    if (!reading.ok) return false;
-    if (valueText) *valueText = reading.valueText;
+    const ModbusRtuCodec::AmmeterReading reading = parseResponseFrame(frame);
+    if (!reading.ok) {
+        return false;
+    }
+    if (valueText) {
+        *valueText = reading.valueText;
+    }
+    return true;
+}
+
+bool LxAmmeterModbusRtu::feedRx(const QByteArray& chunk, QString* valueText) {
+    if (chunk.isEmpty()) {
+        return false;
+    }
+    rtuRxBuffer_.feed(chunk);
+    const QByteArray& frame = rtuRxBuffer_.buffer();
+    if (frame.isEmpty()) {
+        return false;
+    }
+    if (!parseResponse(frame, valueText)) {
+        return false;
+    }
+    rtuRxBuffer_.reset();
     return true;
 }

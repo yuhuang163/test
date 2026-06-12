@@ -42,6 +42,12 @@ class QFixtureManager : public QObject {
     void send_start_white_modle_command(int i);
     void send_command_to_machine(int command_id, int numb);
 
+    void delayMsec(unsigned int msec);
+    qint64 lastCommidTimestamp() const;
+    void setLastCommidTimestamp(qint64 timestamp);
+    machine_command_id_e lastCommid() const;
+    void setLastCommid(machine_command_id_e commandId);
+
   signals:
     void connected();
     void disconnected();
@@ -63,7 +69,6 @@ class QFixtureManager : public QObject {
     void solve_frame();
     void dispatchTextProtocols(const QByteArray& data);
     void writeFixturePort(const QByteArray& data, bool logTx = true, bool startAction = false);
-    void delay_msec(unsigned int msec);
 
     QSerialPort* fixtureSerialPort_ = nullptr;
     QTimer* fixtureSerialPortTimer_ = nullptr;

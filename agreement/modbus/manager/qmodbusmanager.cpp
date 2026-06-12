@@ -10,12 +10,25 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QModbusManager::QModbusManager(QObject* parent) : QObject(parent) {
-    InovanceH5uPlcExec::registerMetaTypes();
+QModbusManager::QModbusManager(QObject* parent) : QObject(parent), h5uDevice_(this) {
+    syncH5uDeviceBindings();
+    syncRtuDeviceBindings();
+}
+
+void QModbusManager::syncH5uDeviceBindings() {
+    h5uDevice_.setTcp(&h5uTcp_);
+    h5uDevice_.setStationIndex(stationIndex_);
+    h5uDevice_.setLogFn(log_);
+    h5uDevice_.setIsContinueFn(isContinue_);
+}
+
+void QModbusManager::syncRtuDeviceBindings() {
+    lxAmmeterRtu_.setMachineId(luxshareMachineId_);
 }
 
 void QModbusManager::setStationIndex(int stationIndex) {
     stationIndex_ = qMax(1, stationIndex);
+    syncH5uDeviceBindings();
 }
 
 int QModbusManager::stationIndex() const {
@@ -24,10 +37,12 @@ int QModbusManager::stationIndex() const {
 
 void QModbusManager::setLogFn(LogFn fn) {
     log_ = std::move(fn);
+    syncH5uDeviceBindings();
 }
 
 void QModbusManager::setIsContinueFn(IsContinueFn fn) {
     isContinue_ = std::move(fn);
+    syncH5uDeviceBindings();
 }
 
 InovanceH5uModbusTcp* QModbusManager::h5uTcp() {
@@ -38,13 +53,24 @@ const InovanceH5uModbusTcp* QModbusManager::h5uTcp() const {
     return &h5uTcp_;
 }
 
+InovanceH5uTcpDevice* QModbusManager::h5uDevice() {
+    return &h5uDevice_;
+}
+
+const InovanceH5uTcpDevice* QModbusManager::h5uDevice() const {
+    return &h5uDevice_;
+}
+
 PlcModbusSession QModbusManager::makeSession() const {
     return PlcModbusSession(const_cast<InovanceH5uModbusTcp*>(&h5uTcp_), PlcStationConfig::fromSettings(stationIndex_),
                             log_, isContinue_);
 }
 
 bool QModbusManager::exec(PlcCmd cmd, const QVariant& param, QVariant* result, QString* errorMessage) {
-    return InovanceH5uPlcExec::exec(h5uTcp_, stationIndex_, log_, isContinue_, cmd, param, result, errorMessage);
+    if (InovanceH5uTcpDevice::isQueryCmd(cmd)) {
+        return h5uDevice_.get(cmd, param, result, errorMessage);
+    }
+    return h5uDevice_.set(cmd, param, errorMessage);
 }
 
 bool QModbusManager::connectPlc(QString* errorMessage) {
@@ -80,6 +106,7 @@ ModbusDeviceRoute QModbusManager::deviceRoute() const {
 
 void QModbusManager::setLuxshareMachineId(int machineId1Based) {
     luxshareMachineId_ = machineId1Based;
+    syncRtuDeviceBindings();
 }
 
 int QModbusManager::luxshareMachineId() const {
@@ -96,18 +123,20 @@ bool QModbusManager::isRtuAmmeterRoute() const {
     return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu;
 }
 
-void QModbusManager::resetRtuRxState() {
-    rtuRxBuffer_.reset();
-}
-
 IModbusRtuDevice* QModbusManager::activeRtuDevice() {
     switch (deviceRoute_) {
     case ModbusDeviceRoute::HqAmmeterRtu:
-        return &hqAmmeterDevice_;
+        return &hqAmmeterRtu_;
     case ModbusDeviceRoute::LxAmmeterRtu:
-        return &lxAmmeterDevice_;
+        return &lxAmmeterRtu_;
     default:
         return nullptr;
+    }
+}
+
+void QModbusManager::resetRtuRxState() {
+    if (IModbusRtuDevice* dev = activeRtuDevice()) {
+        dev->resetRxState();
     }
 }
 
@@ -128,32 +157,7 @@ bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
-    return exec<LxAmmeterRtuCmd>(cmd, luxshareMachineId_, errorMessage);
-}
-
-bool QModbusManager::tryEmitRtuReading(const QByteArray& frame) {
-    IModbusRtuDevice* dev = activeRtuDevice();
-    if (!dev) {
-        return false;
-    }
-    QString valueText;
-    if (!dev->parseResponse(frame, &valueText)) {
-        return false;
-    }
-    emit rtuAmmeterReadingReceived(valueText);
-    return true;
-}
-
-bool QModbusManager::tryEmitLxRtuReading() {
-    const QByteArray& frame = rtuRxBuffer_.buffer();
-    if (frame.isEmpty()) {
-        return false;
-    }
-    if (!tryEmitRtuReading(frame)) {
-        return false;
-    }
-    rtuRxBuffer_.reset();
-    return true;
+    return exec<LxAmmeterRtuCmd>(cmd, {}, errorMessage);
 }
 
 bool QModbusManager::feedRtuRx(const QByteArray& chunk) {
@@ -163,14 +167,19 @@ bool QModbusManager::feedRtuRx(const QByteArray& chunk) {
 
     qDebug().noquote() << "Modbus RTU RX:" << QString::fromLatin1(chunk.toHex(' ').toUpper());
 
-    if (deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu) {
-        rtuRxBuffer_.feed(chunk);
-        return tryEmitLxRtuReading() || !rtuRxBuffer_.buffer().isEmpty();
+    IModbusRtuDevice* dev = activeRtuDevice();
+    if (!dev) {
+        return false;
     }
 
-    if (tryEmitRtuReading(chunk)) {
+    QString valueText;
+    if (dev->feedRx(chunk, &valueText)) {
+        emit rtuAmmeterReadingReceived(valueText);
         return true;
     }
-    qDebug() << "Invalid Modbus RTU frame";
+
+    if (deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu) {
+        qDebug() << "Invalid Modbus RTU frame";
+    }
     return true;
 }

@@ -190,8 +190,8 @@ void suction::applySuctionProtocolConfig() {
 
     showlog("吸力测试协议=" + SETTINGS.value("Suction/ProtocolType", SETTINGS.value("Current/ProtocolType", "auto")).toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(suctionProtocolType)));
-    showlog("吸力测试配置: machineId=" + QString::number(cfg.luxshareMachineId) +
-            ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange +
+    showlog("吸力测试配置: machineId=" + QString::number(linkCfg.luxshareMachineId) +
+            ", scpi=" + scpiCurrentType + ":" + scpiCurrentMode + " " + scpiRange +
             ", pico=" + QString(suctionUsePicoSensor ? "ON" : "OFF") +
             ", picoBaud=" + QString::number(usbBaudRate) +
             ", sampleMs=" + QString::number(suctionSampleDurationMs) +

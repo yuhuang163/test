@@ -20,7 +20,7 @@
 #include <QUrl>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -54,8 +54,7 @@ bool runPowerShell(const QString& script, QString* error, int timeoutMs = 120000
     }
     if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
         if (error) {
-            *error = QStringLiteral("压缩日志失败：")
-                     + QString::fromUtf8(process.readAllStandardError()).trimmed();
+            *error = QStringLiteral("压缩日志失败：") + QString::fromUtf8(process.readAllStandardError()).trimmed();
         }
         return false;
     }
@@ -144,7 +143,7 @@ bool parseUploadResponse(const QByteArray& body, QString* message) {
     return false;
 }
 
-}  // namespace
+} // namespace
 
 QString LogUploadService::defaultLogRootPath() {
     return QDir(QCoreApplication::applicationDirPath()).filePath(QString::fromUtf8(kLogRootName));

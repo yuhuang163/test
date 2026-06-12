@@ -2,6 +2,7 @@
 #define PLATFORM_TEST_CASE_H
 
 #include "modbus_device_catalog.h"
+#include "scpi_types.h"
 #include "qprotocol_types.h"
 #include "qat.h"
 #include "qtupleservice.h"

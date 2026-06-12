@@ -944,7 +944,6 @@ PlcV3RunResult QFreeWork::runPlcV3(PlcV3Command command, int keyIndex0To6, bool 
     return plcFacade_.run(command, params);
 }
 
-
 CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel, int brushProfile,
                                        int alignedPostTrigHoldMs, bool* outRanBurst) {
     CmwGprfRunParams params = makeCmwRunParams(scenarioLabel, brushProfile);

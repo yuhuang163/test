@@ -12,7 +12,7 @@
  * - mes_<工站名>：按 SYSTEM/station 分表，sn 唯一，一行汇总 itemvalue 分项列
  */
 class TestRecordStore {
-public:
+  public:
     struct ParsedItem {
         QString name;
         QString value;
@@ -29,7 +29,7 @@ public:
 
     static QVector<ParsedItem> parseItemValue(const MesPacketData& pack);
 
-private:
+  private:
     TestRecordStore();
     TestRecordStore(const TestRecordStore&) = delete;
     TestRecordStore& operator=(const TestRecordStore&) = delete;
@@ -42,4 +42,4 @@ private:
     bool opened_ = false;
 };
 
-#endif  // TEST_RECORD_STORE_H
+#endif // TEST_RECORD_STORE_H

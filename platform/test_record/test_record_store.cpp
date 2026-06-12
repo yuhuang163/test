@@ -18,7 +18,7 @@
 #include <qdebug.h>
 
 #if _MSC_VER >= 1600
-#    pragma execution_character_set(push, "utf-8")
+#pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
@@ -27,20 +27,17 @@ constexpr const char* kLogRoot = "所有log";
 constexpr const char* kDbFileName = "test_pass_data.db";
 constexpr const char* kConnectionName = "test_pass_sqlite";
 
-QMutex& storeMutex()
-{
+QMutex& storeMutex() {
     static QMutex m;
     return m;
 }
 
-void logRecord(const QString& msg)
-{
+void logRecord(const QString& msg) {
     Qlog::showlog(QStringLiteral("[TestRecord] ") + msg);
     qDebug() << QStringLiteral("[TestRecord]") << msg;
 }
 
-bool isItemResultToken(QString v)
-{
+bool isItemResultToken(QString v) {
     v = v.trimmed();
     if (v.isEmpty()) {
         return false;
@@ -48,11 +45,10 @@ bool isItemResultToken(QString v)
     // 兼容常见 MES/工站写法
     const QString u = v.toUpper();
     return u == QStringLiteral("PASS") || u == QStringLiteral("FAIL") || u == QStringLiteral("NG") ||
-           v == QStringLiteral("通过") || v == QStringLiteral("失败") || v == QStringLiteral("不通过");
+        v == QStringLiteral("通过") || v == QStringLiteral("失败") || v == QStringLiteral("不通过");
 }
 
-QString sanitizeSqlIdent(const QString& raw)
-{
+QString sanitizeSqlIdent(const QString& raw) {
     QString out;
     out.reserve(raw.size());
     for (const QChar ch : raw.trimmed()) {
@@ -71,25 +67,21 @@ QString sanitizeSqlIdent(const QString& raw)
     return out.left(48);
 }
 
-QString stationTableName(const QString& workStation)
-{
+QString stationTableName(const QString& workStation) {
     const QString ws = sanitizeSqlIdent(workStation);
     return QStringLiteral("mes_%1").arg(ws);
 }
 
-QString itemColumnPrefix(const QString& itemName)
-{
+QString itemColumnPrefix(const QString& itemName) {
     return sanitizeSqlIdent(itemName);
 }
 
-void ensureSqlitePluginPath()
-{
+void ensureSqlitePluginPath() {
     const QString pluginPath = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("sqldrivers"));
     QCoreApplication::addLibraryPath(pluginPath);
 }
 
-QSet<QString> existingColumns(QSqlDatabase& db, const QString& tableName)
-{
+QSet<QString> existingColumns(QSqlDatabase& db, const QString& tableName) {
     QSet<QString> cols;
     QSqlQuery query(db);
     if (!query.exec(QStringLiteral("PRAGMA table_info(\"%1\")").arg(tableName))) {
@@ -101,8 +93,7 @@ QSet<QString> existingColumns(QSqlDatabase& db, const QString& tableName)
     return cols;
 }
 
-bool addColumnIfMissing(QSqlDatabase& db, const QString& tableName, const QString& columnName)
-{
+bool addColumnIfMissing(QSqlDatabase& db, const QString& tableName, const QString& columnName) {
     QSet<QString> cols = existingColumns(db, tableName);
     if (cols.contains(columnName)) {
         return true;
@@ -116,8 +107,7 @@ bool addColumnIfMissing(QSqlDatabase& db, const QString& tableName, const QStrin
     return true;
 }
 
-bool ensureStationTableBase(QSqlDatabase& db, const QString& tableName)
-{
+bool ensureStationTableBase(QSqlDatabase& db, const QString& tableName) {
     QSet<QString> required;
     required.insert(QStringLiteral("sn"));
     required.insert(QStringLiteral("item_name"));
@@ -140,16 +130,16 @@ bool ensureStationTableBase(QSqlDatabase& db, const QString& tableName)
 
     QSqlQuery query(db);
     const QString sql = QStringLiteral(
-        "CREATE TABLE IF NOT EXISTS \"%1\" ("
-        "sn TEXT NOT NULL,"
-        "item_name TEXT NOT NULL,"
-        "item_value TEXT,"
-        "max_value TEXT,"
-        "min_value TEXT,"
-        "standard_value TEXT,"
-        "unit TEXT,"
-        "item_result TEXT,"
-        "PRIMARY KEY (sn, item_name))")
+                            "CREATE TABLE IF NOT EXISTS \"%1\" ("
+                            "sn TEXT NOT NULL,"
+                            "item_name TEXT NOT NULL,"
+                            "item_value TEXT,"
+                            "max_value TEXT,"
+                            "min_value TEXT,"
+                            "standard_value TEXT,"
+                            "unit TEXT,"
+                            "item_result TEXT,"
+                            "PRIMARY KEY (sn, item_name))")
                             .arg(tableName);
 
     if (!query.exec(sql)) {
@@ -167,29 +157,26 @@ bool ensureStationTableBase(QSqlDatabase& db, const QString& tableName)
     return true;
 }
 
-}  // namespace
+} // namespace
 
-TestRecordStore& TestRecordStore::instance()
-{
+TestRecordStore& TestRecordStore::instance() {
     static TestRecordStore self;
     return self;
 }
 
 TestRecordStore::TestRecordStore() = default;
 
-QString TestRecordStore::databasePath() const
-{
+QString TestRecordStore::databasePath() const {
     // 固定相对 exe 目录，避免 Qt Creator 工作目录与 bin 不一致导致库写到别处
     const QString logDir =
-        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("所有log"));  // 与 qlog.cpp 一致
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("所有log")); // 与 qlog.cpp 一致
     if (!CommonUtils::ensureDirectory(logDir)) {
         return {};
     }
     return QDir(logDir).filePath(QString::fromLatin1(kDbFileName));
 }
 
-bool TestRecordStore::ensureOpen()
-{
+bool TestRecordStore::ensureOpen() {
     if (opened_) {
         return true;
     }
@@ -225,8 +212,7 @@ bool TestRecordStore::ensureOpen()
     return opened_;
 }
 
-bool TestRecordStore::ensurePassTable()
-{
+bool TestRecordStore::ensurePassTable() {
     QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
     QSqlQuery query(db);
     const bool okPass = query.exec(
@@ -250,8 +236,7 @@ bool TestRecordStore::ensurePassTable()
     return true;
 }
 
-QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPacketData& pack)
-{
+QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPacketData& pack) {
     QVector<ParsedItem> items;
     QString inner = pack.itemvalue.trimmed();
     if (inner.length() >= 2 && inner.startsWith(QLatin1Char('|')) && inner.endsWith(QLatin1Char('|'))) {
@@ -315,8 +300,7 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
 }
 
 bool TestRecordStore::upsertStationRow(const QString& workStation, const MesPacketData& pack,
-                                       const QVector<ParsedItem>& items)
-{
+                                       const QVector<ParsedItem>& items) {
     QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
     const QString tableName = stationTableName(workStation);
     if (!ensureStationTableBase(db, tableName)) {
@@ -330,9 +314,9 @@ bool TestRecordStore::upsertStationRow(const QString& workStation, const MesPack
 
     QSqlQuery query(db);
     query.prepare(QStringLiteral("INSERT OR REPLACE INTO \"%1\" "
-                                  "(sn, item_name, item_value, max_value, min_value, standard_value, unit, item_result) "
-                                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                       .arg(tableName));
+                                 "(sn, item_name, item_value, max_value, min_value, standard_value, unit, item_result) "
+                                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+                      .arg(tableName));
 
     for (const ParsedItem& item : items) {
         query.addBindValue(sn);
@@ -354,8 +338,7 @@ bool TestRecordStore::upsertStationRow(const QString& workStation, const MesPack
     return true;
 }
 
-bool TestRecordStore::saveOnTestPass(const MesPacketData& pack)
-{
+bool TestRecordStore::saveOnTestPass(const MesPacketData& pack) {
     QMutexLocker locker(&storeMutex());
     if (!ensureOpen()) {
         return false;

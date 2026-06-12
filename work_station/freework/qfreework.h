@@ -58,6 +58,9 @@ class QFreeWork : public test_base {
     void setActiveTestCase(const TestCaseDefinition& def);
     void clearActiveTestCase();
     bool isActiveTestCaseStep(const QString& stepLabel) const;
+    bool isActiveTestCaseStepDone() const {
+        return testCaseStepResult_.done;
+    }
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
@@ -148,7 +151,9 @@ class QFreeWork : public test_base {
         QString testData;
     };
     TestCaseStepResult testCaseStepResult_;
-    const TestCaseStepResult& testCaseStepResult() const { return testCaseStepResult_; }
+    const TestCaseStepResult& testCaseStepResult() const {
+        return testCaseStepResult_;
+    }
 
     // --- 有序测试队列（test_case 编排） ---
     void refreshOrderedTestIndexes();

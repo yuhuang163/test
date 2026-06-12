@@ -6,7 +6,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-VisaChannel::VisaChannel(QObject* parent) : QObject(parent) {}
+VisaChannel::VisaChannel(QObject* parent) : QObject(parent) {
+}
 
 VisaChannel::~VisaChannel() {
     close();

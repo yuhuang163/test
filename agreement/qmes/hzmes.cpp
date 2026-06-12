@@ -1,4 +1,4 @@
-﻿#include "hzmes.h"
+#include "hzmes.h"
 
 #include <QEventLoop>
 #include <QJsonDocument>
@@ -18,25 +18,22 @@
 
 namespace {
 
-QString mesIniString(const QString& mesKey, const QString& altKey, const QString& defaultValue)
-{
+QString mesIniString(const QString& mesKey, const QString& altKey, const QString& defaultValue) {
     QString v = SETTINGS.value(mesKey).toString().trimmed();
     if (v.isEmpty() && mesKey != altKey)
         v = SETTINGS.value(altKey).toString().trimmed();
     return v.isEmpty() ? defaultValue : v;
 }
 
-}  // namespace
+} // namespace
 
-hzmes::hzmes()
-{
+hzmes::hzmes() {
     url = mesIniString(QStringLiteral("Mes/NET"), QStringLiteral("MES/NET"),
                        QStringLiteral("http://10.0.2.5/mrs"));
     field = mesIniString(QStringLiteral("Mes/FIELD"), QStringLiteral("MES/FIELD"), QStringLiteral("wifimac"));
 }
 
-void hzmes::reloadMesConfig()
-{
+void hzmes::reloadMesConfig() {
     url = mesIniString(QStringLiteral("Mes/NET"), QStringLiteral("MES/NET"),
                        QStringLiteral("http://10.0.2.5/mrs"));
     field = mesIniString(QStringLiteral("Mes/FIELD"), QStringLiteral("MES/FIELD"), QStringLiteral("wifimac"));

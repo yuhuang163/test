@@ -57,16 +57,16 @@ PlcV3RunResult PlcV3Fixture::run(PlcV3Command command, const PlcV3RunParams& par
                 connectResult.summary = QStringLiteral("%1；配置: IP=%2 Port=%3 UnitId=%4 ConnectTimeoutMs=%5 "
                                                        "RequestTimeoutMs=%6 M偏移=%7 验证读=%8；请检查PLC IP/端口、网线、"
                                                        "PLC Modbus TCP服务和防火墙")
-                                        .arg(err)
-                                        .arg(cfg.ipAddress)
-                                        .arg(cfg.port)
-                                        .arg(cfg.unitId)
-                                        .arg(connMs)
-                                        .arg(reqMs)
-                                        .arg(cfg.mCoilAddressOffset)
-                                        .arg(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()
-                                                 ? QStringLiteral("开启")
-                                                 : QStringLiteral("关闭"));
+                                            .arg(err)
+                                            .arg(cfg.ipAddress)
+                                            .arg(cfg.port)
+                                            .arg(cfg.unitId)
+                                            .arg(connMs)
+                                            .arg(reqMs)
+                                            .arg(cfg.mCoilAddressOffset)
+                                            .arg(SETTINGS.value(QStringLiteral("PLC/ConnectVerifyRead"), true).toBool()
+                                                     ? QStringLiteral("开启")
+                                                     : QStringLiteral("关闭"));
                 log(QStringLiteral("PLC_Modbus连接失败(工位%1): %2").arg(cfg.stationIndex).arg(connectResult.summary));
                 return connectResult;
             }

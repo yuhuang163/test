@@ -49,7 +49,7 @@ class key_test : public test_base {
   private:
     // --- 协议 / 界面 ---
     void applyKeyProtocolConfig();
-    Qusb::ProtocolType keyProtocolType = Qusb::ProtocolType::Scpi;
+    QusbProtocolRoute keyProtocolType = QusbProtocolRoute::Scpi;
 
     // --- SN / 绑定 ---
     QByteArray sn;

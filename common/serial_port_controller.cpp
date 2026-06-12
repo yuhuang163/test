@@ -26,7 +26,8 @@ void SerialPortController::setRtsDtrMode(SerialChannel::RtsDtrMode mode) {
 }
 
 bool SerialPortController::open() {
-    if (!channel_) return false;
+    if (!channel_)
+        return false;
 
     QString portName;
     if (ui_.portCombo) {
@@ -54,7 +55,8 @@ bool SerialPortController::open() {
 }
 
 void SerialPortController::close() {
-    if (!channel_) return;
+    if (!channel_)
+        return;
 
     channel_->close();
     emit stateChanged(false);
@@ -65,9 +67,10 @@ bool SerialPortController::isOpen() const {
 }
 
 void SerialPortController::onChannelErrorOccurred(QSerialPort::SerialPortError error, const QString& message) {
-    if (error == QSerialPort::NoError) return;
-    
-    qWarning() << "SerialPortController: Port error on" << (channel_ ? channel_->portName() : "unknown") 
+    if (error == QSerialPort::NoError)
+        return;
+
+    qWarning() << "SerialPortController: Port error on" << (channel_ ? channel_->portName() : "unknown")
                << "code=" << error << "detail=" << message;
 
     if (error == QSerialPort::PermissionError) {

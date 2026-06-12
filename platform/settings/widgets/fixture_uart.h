@@ -30,6 +30,13 @@ class Fixture_uart : public QWidget {
     bool isFixtureSerialOpen() const;
     void sendPcbaFrame(const QByteArray& frame);
 
+    /** 压感工站多机同步发令时的延时与上次命令记录（委托 QFixtureManager）。 */
+    void delay_msec(unsigned int msec);
+    qint64 lastCommidTimestamp() const;
+    void setLastCommidTimestamp(qint64 timestamp);
+    machine_command_id_e lastCommid() const;
+    void setLastCommid(machine_command_id_e commandId);
+
     int fixBaudRate = 9600;
 
   private:

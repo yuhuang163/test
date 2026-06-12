@@ -6,7 +6,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QScpiVisaSession::QScpiVisaSession(QObject* parent) : QObject(parent), visaChannel_(this) {}
+QScpiVisaSession::QScpiVisaSession(QObject* parent) : QObject(parent), visaChannel_(this) {
+}
 
 void QScpiVisaSession::setVisaConfig(const ScpiVisaLinkConfig& config) {
     if (config_.visaAddress != config.visaAddress) {
