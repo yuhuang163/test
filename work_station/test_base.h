@@ -151,6 +151,7 @@ class test_base : public QWidget {
     QatManager* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
     QScpiManager scpiUsbManager_;
+    QScpiManager scpiUsbManager_;
     QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
     Qjig* jig = nullptr;
