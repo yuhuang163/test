@@ -1380,7 +1380,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
-        on_macInput_returnPressed();
+        // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
