@@ -395,6 +395,9 @@ void brushLogNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, u
     memcpy(modifiedData + additionalBytes, pData, length);
     Serial.write(modifiedData, length + additionalBytes);
 }
+
+static void requestActiveConnParams(const char *addressStr);
+
 // 连接状态函数
 class MyClientCallback : public BLEClientCallbacks
 {
@@ -404,6 +407,11 @@ class MyClientCallback : public BLEClientCallbacks
         Serial.printf("BLE MTU 已请求: %u\r\n", bleMtuSize);
         set_ble_state(BLE_CONNECTED);
         conn_id = pClient->getConnId();
+
+        const char *connAddr = (get_ble_connect_mode() == CONNECT_BY_SCAN && bleRuntime.hasScanDevice)
+                                   ? bleRuntime.scanDeviceAddress
+                                   : targetDeviceAddress;
+        requestActiveConnParams(connAddr);
     }
     void onDisconnect(BLEClient *ppclient)
     {
@@ -539,6 +547,44 @@ static void applyPreferConnParams(const char *addressStr)
     }
 }
 
+static void requestActiveConnParams(const char *addressStr)
+{
+    esp_ble_conn_update_params_t connParams = {};
+    strToBdAddr(addressStr, connParams.bda);
+    connParams.min_int = BLE_PREFER_CONN_INT_MIN;
+    connParams.max_int = BLE_PREFER_CONN_INT_MAX;
+    connParams.latency = BLE_PREFER_CONN_LATENCY;
+    connParams.timeout = BLE_PREFER_CONN_SUP_TOUT;
+
+    esp_err_t status = esp_ble_gap_update_conn_params(&connParams);
+    if (status == ESP_OK)
+    {
+        Serial.printf("主动请求连接参数更新: min=0x%02x max=0x%02x latency=%u timeout=%u\r\n",
+                      connParams.min_int, connParams.max_int, connParams.latency, connParams.timeout);
+    }
+    else
+    {
+        Serial.printf("主动请求连接参数更新失败, err=%d\r\n", status);
+    }
+}
+
+static void customGapEventHandler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
+{
+    if (event != ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT)
+    {
+        return;
+    }
+
+    Serial.printf("实际连接参数: status=%d conn_int=%u %.2fms min=%u max=%u latency=%u timeout=%u\r\n",
+                  param->update_conn_params.status,
+                  param->update_conn_params.conn_int,
+                  param->update_conn_params.conn_int * 1.25f,
+                  param->update_conn_params.min_int,
+                  param->update_conn_params.max_int,
+                  param->update_conn_params.latency,
+                  param->update_conn_params.timeout);
+}
+
 /**
  * 扫描BLE服务器，找到第一个广告我们所寻找的服务的服务器。
  */
@@ -639,6 +685,7 @@ void scanCompleteCallback(BLEScanResults scanResults)
 void ble_init()
 {
     BLEDevice::init("");
+    BLEDevice::setCustomGapHandler(customGapEventHandler);
     connect_callback = new MyClientCallback();
     pBLEScan = BLEDevice::getScan();
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks()); // 只会运行一次
@@ -1072,7 +1119,7 @@ void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t len
         {
             if (WriteCharacteristic != nullptr)
                 WriteCharacteristic->writeValue(packet, packetSize);
-            Serial.printf("fac通道=%d\r\n", packetSize);
+            Serial.printf("[%lu] fac通道=%d\r\n", millis(), packetSize);
         }
         else
         {

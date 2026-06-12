@@ -59,7 +59,7 @@
 #define OTA_BLE_PACKET_BUF_SIZE (BLE_MTU_MAX - 3)
 #define OTA_BLE_PACKET_SIZE_MIN 1
 #define OTA_TX_BUFFER_SIZE (16 * 1024)         // OTA 发送累积缓冲
-#define OTA_TX_FLUSH_TIMEOUT_MS 8              // 未满包时最大等待时间(ms)，超时发余包
+#define OTA_TX_FLUSH_TIMEOUT_MS 4             // 未满包时最大等待时间(ms)，超时发余包
 #define OTA_TX_TASK_POLL_MS 1                  // OTA 发送任务轮询间隔(ms)
 #define OTA_UART_READ_WAIT_MS 1                // OTA 模式环形缓冲读取等待(ms)
 #define OTA_TX_BURST_MAX 6                     // 控制器有槽位时连续发送上限

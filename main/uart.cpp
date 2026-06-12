@@ -555,8 +555,8 @@ void processDataTask(void *pvParameters)
                         send_ble_data(channel, pbpacket + UART_PHY_LAYER_HEAD_SIZE, head->length);
                         pboffset = pboffset - frame_size;
                         memmove(pbpacket, &pbpacket[frame_size], pboffset);
-                        Serial.print("偏移为");
-                        Serial.println(pboffset);
+                        // Serial.print("偏移为");
+                        // Serial.println(pboffset);
                         continue;
                     }
                     else
