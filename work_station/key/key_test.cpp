@@ -15,18 +15,18 @@
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
+UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return Qusb::ProtocolType::Scpi;
+        return UsbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return Qusb::ProtocolType::HqModbus;
+        return UsbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return Qusb::ProtocolType::LxModbus;
+        return UsbProtocolRoute::LxModbus;
     }
-    return Qusb::ProtocolType::Auto;
+    return UsbProtocolRoute::Auto;
 }
 } // namespace
 key_test::key_test(int index, QWidget* parent) : test_base(parent), ui(new Ui::key_test), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -101,31 +101,50 @@ key_test::key_test(int index, QWidget* parent) : test_base(parent), ui(new Ui::k
 }
 
 void key_test::applyKeyProtocolConfig() {
-    Qusb::ProtocolConfig cfg;
-    cfg.protocol = protocolTypeFromSetting("auto");
-    cfg.luxshareMachineId = getIndex();
-    cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
-    cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
-    cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+    UsbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    int luxshareMachineId = getIndex();
+    QString scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
+    QString scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
+    QString scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
 
-    if (cfg.protocol == Qusb::ProtocolType::Auto) {
+    if (protocol == UsbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            cfg.protocol = Qusb::ProtocolType::HqModbus;
+            protocol = UsbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            cfg.protocol = Qusb::ProtocolType::LxModbus;
+            protocol = UsbProtocolRoute::LxModbus;
         } else {
-            cfg.protocol = Qusb::ProtocolType::Scpi;
+            protocol = UsbProtocolRoute::Scpi;
         }
     }
 
-    keyProtocolType = cfg.protocol;
-    usb->setProtocolConfig(cfg);
+    keyProtocolType = protocol;
+    // 根据协议路由同步设备路由
+    switch (protocol) {
+    case UsbProtocolRoute::Scpi:
+    case UsbProtocolRoute::Auto:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
+        break;
+    default:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::None);
+        break;
+    }
+    switch (protocol) {
+    case UsbProtocolRoute::HqModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
+        break;
+    case UsbProtocolRoute::LxModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
+        break;
+    default:
+        break;
+    }
+    modbusManager.setLuxshareMachineId(luxshareMachineId);
 
     showlog("按键测试协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(keyProtocolType)));
-    showlog("按键测试配置: machineId=" + QString::number(cfg.luxshareMachineId) +
-            ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
+    showlog("按键测试配置: machineId=" + QString::number(luxshareMachineId) +
+            ", scpi=" + scpiCurrentType + ":" + scpiCurrentMode + " " + scpiRange);
 }
 
 void key_test::closeKeyWaitPromptProgrammatically() {
@@ -1062,9 +1081,9 @@ void key_test::refreshAmmeterData(QString data) {
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (keyProtocolType == Qusb::ProtocolType::LxModbus)
+    if (keyProtocolType == UsbProtocolRoute::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (keyProtocolType == Qusb::ProtocolType::HqModbus)
+    else if (keyProtocolType == UsbProtocolRoute::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;

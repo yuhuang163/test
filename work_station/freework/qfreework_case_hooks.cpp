@@ -2,7 +2,6 @@
 
 #include "test_case.h"
 
-#include "qusb.h"
 #include "qprotocol_types.h"
 
 #if _MSC_VER >= 1600

@@ -41,7 +41,7 @@ class HuilingWfp60hScpiDevice : public QObject, public IScpiDevice {
     void handleLineReceived(const QString& line);
 
   signals:
-    void ammeterReadingReceived(const QString& valueText);
+    void measureReadingReceived(const QString& valueText);
     void programmablePowerVoltageRead(double valueVolts, bool ok);
     void programmablePowerCurrentRead(double valueAmps, bool ok);
 

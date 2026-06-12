@@ -1,8 +1,8 @@
-#ifndef FACTORY_ANALYZER_H
+﻿#ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
 #include "qadb.h"
-#include "qbulk/qbulk.h"
+#include "agreement/dji_bulk_protocol/manager/qbulkmanager.h"
 #include "qcustomplot.h"
 #include "qshell.h"
 #include <QDesktopServices>
@@ -48,7 +48,7 @@ class factory_analyzer : public QMainWindow {
   public:
     factory_analyzer(QWidget* parent = nullptr);
     ~factory_analyzer();
-    QBulk* bulk = nullptr;
+    QBulkManager* bulk = nullptr;
     QThread* bulkreadThread;
     QTimer* reconnectTimer;
     void setupUSB();

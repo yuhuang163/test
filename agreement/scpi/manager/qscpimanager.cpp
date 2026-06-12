@@ -15,7 +15,7 @@
 QScpiManager::QScpiManager(QObject* parent)
     : QObject(parent), huilingDevice_(nullptr, this), cmwDevice_(nullptr, this) {
     visaSession_ = new QScpiVisaSession(this);
-    connect(&huilingDevice_, &HuilingWfp60hScpiDevice::ammeterReadingReceived, this, &QScpiManager::ammeterReadingReceived);
+    connect(&huilingDevice_, &HuilingWfp60hScpiDevice::measureReadingReceived, this, &QScpiManager::measureReadingReceived);
     connect(&huilingDevice_, &HuilingWfp60hScpiDevice::programmablePowerVoltageRead, this,
             &QScpiManager::programmablePowerVoltageRead);
     connect(&huilingDevice_, &HuilingWfp60hScpiDevice::programmablePowerCurrentRead, this,

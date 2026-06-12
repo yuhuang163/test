@@ -2,7 +2,7 @@
 
 #include "test_case.h"
 
-#include "qat.h"
+#include "qatmanager.h"
 #include "qfreeworkbox.h"
 #include "fixture_uart.h"
 #include "fixture_pcba_uart_protocol.h"
@@ -216,7 +216,7 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
     }
 
     if (writeText.trimmed().isEmpty()) {
-        failTupleWriteIfNoValidField(stepName, false, QStringLiteral("三元组字段为空"));
+        failTupleWriteIfNoValidField(stepName, false, QStringLiteral("三元组字段为�?));
         return false;
     }
     stepRuntime_.testData = writeText;
@@ -344,7 +344,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     QVector<TestCaseGate> gatesForEval = TestCaseStore::effectiveGates(activeTestCase_);
     if (gatesForEval.isEmpty()) {
         markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
-        showlog(QStringLiteral("卡控失败：未加载到判定项（请检查 case ini 的 Gate/Count 与 Gate/1..N）"));
+        showlog(QStringLiteral("卡控失败：未加载到判定项（请检�?case ini �?Gate/Count �?Gate/1..N�?));
         if (commandRetryTimer)
             finishCommandRetryWait(false, QStringLiteral("卡控失败"));
         return true;
@@ -371,13 +371,13 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
 
     markActiveTestCaseStepDone(pass, display.testData, display.ask);
     if (commandRetryTimer) {
-        finishCommandRetryWait(pass, pass ? QStringLiteral("卡控通过，步骤完成") : QStringLiteral("卡控失败"));
+        finishCommandRetryWait(pass, pass ? QStringLiteral("卡控通过，步骤完�?) : QStringLiteral("卡控失败"));
     }
     if (!pass) {
         result = failValue;
-        showlog(QStringLiteral("卡控失败：%1").arg(detail));
+        showlog(QStringLiteral("卡控失败�?1").arg(detail));
     } else {
-        showlog(QStringLiteral("卡控通过：%1").arg(detail));
+        showlog(QStringLiteral("卡控通过�?1").arg(detail));
     }
     return true;
 }
@@ -393,7 +393,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     if (!ctx)
         return;
     ctx->setActiveTestCase(def);
-    ctx->showlog(QStringLiteral("执行 case：%1").arg(stepLabel(def)));
+    ctx->showlog(QStringLiteral("执行 case�?1").arg(stepLabel(def)));
     if (def.timing.delayBeforeMs > 0)
         ctx->waitWork(def.timing.delayBeforeMs);
 
@@ -403,7 +403,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
-        ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
+        ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继�?));
         if (!TestCaseRunner::stepWaitsForPromptAck(def))
             ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
         return;
@@ -417,12 +417,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     if (def.send.channel == TestCaseSendChannel::Cloud) {
         TupleCmd tupleCmd;
         if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd)) {
-            ctx->showlog(QStringLiteral("未知云端指令：%1").arg(def.send.deviceCmd));
+            ctx->showlog(QStringLiteral("未知云端指令�?1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
         if (!TupleCmdCatalog::isCmdForAction(tupleCmd, def.send.action)) {
-            ctx->showlog(QStringLiteral("云端指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+            ctx->showlog(QStringLiteral("云端指令与操作方式不匹配�?1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
@@ -469,7 +469,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             HqAmmeterRtuCmd cmd = hqAmmeterRtuCmdFromName(def.send.deviceCmd);
             bool ok = ctx->modbusManager.exec(cmd, &errStr);
             if (!ok) {
-                ctx->showlog(QStringLiteral("HQ 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->showlog(QStringLiteral("HQ 电流表指�?[%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
             } else if (def.send.action == TestCaseSendAction::Get) {
                 const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
@@ -479,7 +479,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->showlog(QStringLiteral("HQ 电流表等待超时：%1").arg(def.send.deviceCmd));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                 });
-                ctx->showlog(QStringLiteral("等待 HQ 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+                ctx->showlog(QStringLiteral("等待 HQ 电流表回包：%1（超�?%2ms�?).arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
@@ -487,7 +487,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             LxAmmeterRtuCmd cmd = lxAmmeterRtuCmdFromName(def.send.deviceCmd);
             bool ok = ctx->modbusManager.exec(cmd, &errStr);
             if (!ok) {
-                ctx->showlog(QStringLiteral("LX 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->showlog(QStringLiteral("LX 电流表指�?[%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
             } else if (def.send.action == TestCaseSendAction::Get) {
                 const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
@@ -497,7 +497,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->showlog(QStringLiteral("LX 电流表等待超时：%1").arg(def.send.deviceCmd));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                 });
-                ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+                ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超�?%2ms�?).arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
@@ -528,7 +528,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
                         if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->testCaseStepResult().done)
                             return;
-                        ctx->showlog(QStringLiteral("SCPI 设备等待超时：%1").arg(def.send.deviceCmd));
+                        ctx->showlog(QStringLiteral("SCPI 设备等待超时�?1").arg(def.send.deviceCmd));
                         ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                     });
                 } else {
@@ -567,7 +567,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
-            ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
+            ctx->showlog(QStringLiteral("未知 Dongle 指令�?1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
@@ -586,7 +586,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     DeviceCmd cmd = DeviceCmd::FacMode;
     if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-        ctx->showlog(QStringLiteral("未知指令：%1").arg(def.send.deviceCmd));
+        ctx->showlog(QStringLiteral("未知指令�?1").arg(def.send.deviceCmd));
         ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
@@ -612,18 +612,18 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
 void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
-        showlog(QStringLiteral("暂不支持的治具协议类型"));
+        showlog(QStringLiteral("暂不支持的治具协议类�?));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
     FixturePcbaCmd cmd;
     if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, cmd)) {
-        showlog(QStringLiteral("未知治具 PCBA 指令：%1").arg(def.send.deviceCmd));
+        showlog(QStringLiteral("未知治具 PCBA 指令�?1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
     if (!FixturePcbaCmdCatalog::isCmdForAction(cmd, def.send.action)) {
-        showlog(QStringLiteral("治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        showlog(QStringLiteral("治具指令与操作方式不匹配�?1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
@@ -631,8 +631,8 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     auto* box = qobject_cast<QFreeWorkBox*>(window());
     Fixture_uart* uart = box ? box->fixtureUartWidget() : nullptr;
     if (!uart || !uart->isFixtureSerialOpen()) {
-        showlog(QStringLiteral("治具串口未连接，请从菜单打开「连接治具串口」"));
-        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
+        showlog(QStringLiteral("治具串口未连接，请从菜单打开「连接治具串口�?));
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连�?), QStringLiteral("失败"));
         return;
     }
 
@@ -655,12 +655,12 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
             return;
         }
         if (frame.isEmpty()) {
-            showlog(QStringLiteral("治具 PCBA 组包失败：机位 %1（有效范围 1~15）").arg(machineIndex));
+            showlog(QStringLiteral("治具 PCBA 组包失败：机�?%1（有效范�?1~15�?).arg(machineIndex));
             markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
         uart->sendPcbaFrame(frame);
-        showlog(QStringLiteral("已发送治具 PCBA：%1，机位 %2，帧 %3")
+        showlog(QStringLiteral("已发送治�?PCBA�?1，机�?%2，帧 %3")
                     .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
                     .arg(machineIndex)
                     .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
@@ -688,7 +688,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
         if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
             return;
         stopWaitTimer();
-        showlog(QStringLiteral("治具等待超时：%1").arg(def.send.deviceCmd));
+        showlog(QStringLiteral("治具等待超时�?1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
     };
     connect(timeoutTimer, &QTimer::timeout, this, onFixtureTimeout);
@@ -701,12 +701,12 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
         if (def.gate.enabled && evaluateActiveTestCaseGate(QStringLiteral("ProtocolFixturePcbaData"), payload))
             return;
         const QString detail =
-            QStringLiteral("机号=%1 静态=%2uA 工作=%3mA")
+            QStringLiteral("机号=%1 静�?%2uA 工作=%3mA")
                 .arg(pack.machineNumber)
                 .arg(pack.staticCurrent)
                 .arg(pack.workingCurrent);
         markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
-        showlog(QStringLiteral("治具回包：%1").arg(detail));
+        showlog(QStringLiteral("治具回包�?1").arg(detail));
     };
 
     if (cmd == FixturePcbaCmd::WaitFixturePacket) {
@@ -732,9 +732,9 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
                                    return;
                                stopWaitTimer();
                                if (!def.gate.enabled) {
-                                   markActiveTestCaseStepDone(true, QStringLiteral("开始测试应答"),
+                                   markActiveTestCaseStepDone(true, QStringLiteral("开始测试应�?),
                                                               QStringLiteral("通过"));
-                                   showlog(QStringLiteral("收到治具开始测试应答"));
+                                   showlog(QStringLiteral("收到治具开始测试应�?));
                                } else {
                                    showlog(QStringLiteral(
                                        "WaitStartTestAck 不支持卡控，请关闭卡控或改用 WaitFixturePacket"));
@@ -748,7 +748,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     }
 
     timeoutTimer->start();
-    showlog(QStringLiteral("等待治具回包：%1（超时 %2ms）")
+    showlog(QStringLiteral("等待治具回包�?1（超�?%2ms�?)
                 .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
                 .arg(timeoutMs));
 }
@@ -756,7 +756,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
     ProductSerialCmd serialCmd;
     if (!ProductSerialCmdCatalog::productSerialCmdFromName(def.send.deviceCmd, serialCmd)) {
-        showlog(QStringLiteral("未知产品串口指令：%1").arg(def.send.deviceCmd));
+        showlog(QStringLiteral("未知产品串口指令�?1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
@@ -794,13 +794,13 @@ void registerFreeWorkTestCaseHooks() {
     TestCaseHookRegistry::registerHook(QStringLiteral("NoOp"), [](QFreeWork* fw) {
         if (!fw)
             return;
-        fw->showlog(QStringLiteral("钩子 NoOp 已执行"));
+        fw->showlog(QStringLiteral("钩子 NoOp 已执�?));
         fw->markActiveTestCaseStepDone(true, QStringLiteral("noop"), QStringLiteral("通过"));
     });
     TestCaseHookRegistry::registerHook(QStringLiteral("FreeWorkNoOpDemo"), [](QFreeWork* fw) {
         if (!fw)
             return;
-        fw->showlog(QStringLiteral("示例钩子 FreeWorkNoOpDemo 已执行"));
+        fw->showlog(QStringLiteral("示例钩子 FreeWorkNoOpDemo 已执�?));
         fw->markActiveTestCaseStepDone(true, QStringLiteral("hook_ok"), QStringLiteral("通过"));
     });
 }

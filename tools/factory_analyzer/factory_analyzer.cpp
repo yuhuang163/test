@@ -1,4 +1,4 @@
-#include "factory_analyzer.h"
+﻿#include "factory_analyzer.h"
 #include "my_set/my_typedef.h"
 #include "qproduct.h"
 #include "qcustomplot.h"
@@ -27,7 +27,7 @@ void factory_analyzer::on_pushButton_14_clicked() {
 }
 
 factory_analyzer::factory_analyzer(QWidget* parent)
-    : QMainWindow(parent), bulk(new QBulk), log(new Qlog), adb(new Qadb), shell(new Qshell),
+    : QMainWindow(parent), bulk(new QBulkManager), log(new Qlog), adb(new Qadb), shell(new Qshell),
       shellMonitor(new Qshell), productSerialPort(new QSerialPort(this)),
       product(new Qproduct(productSerialPort, this)), ui(new Ui::factory_analyzer) {
     ui->setupUi(this);
@@ -901,19 +901,19 @@ void factory_analyzer::setupUSB() {
     // 1️⃣ 移动 bulk 到线程
     bulk->moveToThread(bulkreadThread);
 
-    connect(bulk, SIGNAL(sendGetDjiResponse(int, int)), this,
+    connect(bulk->device(), SIGNAL(sendGetDjiResponse(int, int)), this,
             SLOT(solveGetDjiResponse(int, int)));
-    connect(bulk, SIGNAL(send_bulk_data(QString)), this,
+    connect(bulk->device(), SIGNAL(send_bulk_data(QString)), this,
             SLOT(refreshbulkData(QString)));
-    connect(bulk, SIGNAL(send2aprogress(int)), this,
+    connect(bulk->device(), SIGNAL(send2aprogress(int)), this,
             SLOT(refresh_send_bulk_Data(int)));
-    connect(bulk, SIGNAL(download2aprogress(int)), this,
+    connect(bulk->device(), SIGNAL(download2aprogress(int)), this,
             SLOT(refresh_download_bulk_Data(int)));
 
     connect(bulk, SIGNAL(reconect()), reconnectTimer, SLOT(start()));
 
-    connect(bulk, &QBulk::usbDeviceListReady, this,
-            [this](const QSet<QBulk::UsbVidPid>& devices) {
+    connect(bulk, &QBulkManager::usbDeviceListReady, this,
+            [this](const QSet<UsbVidPid>& devices) {
                 QSet<QString> currentItems;
 
                 for (int i = 0; i < ui->comboBox_2->count(); ++i) {
@@ -953,16 +953,16 @@ void factory_analyzer::setupUSB() {
             });
 
     // 2️⃣ 线程启动 -> 阻塞读
-    connect(bulkreadThread, &QThread::started, bulk, &QBulk::startRead);
+    connect(bulkreadThread, &QThread::started, bulk, &QBulkManager::startRead);
 
     // 3️⃣ 数据到 UI
-    // connect(bulk, &QBulk::readyRead, this, [this]( QByteArray &data){
+    // connect(bulk, &QBulkManager::readyRead, this, [this]( QByteArray &data){
     //     qDebug() << "USB RX:" << data.toHex();
     //     bulk->parseCmd( data);
     // });
 
     // 4️⃣ 错误处理
-    connect(bulk, &QBulk::bulk_device_error, this, [this](int code, const QString& e) {
+    connect(bulk, &QBulkManager::bulk_device_error, this, [this](int code, const QString& e) {
         qDebug() << "bulk error:" << e;
         bulkStatusLabel->setText("bulk连接：: <font color='red'>失败</font>");
         reconnectTimer->start();
@@ -2788,7 +2788,7 @@ void factory_analyzer::on_pushButton_24_clicked() {
 }
 
 void factory_analyzer::on_pushButton_25_clicked() {
-    bulk->get_dev_ver_status();
+    bulk->device()->get_dev_ver_status();
 }
 
 void factory_analyzer::on_pushButton_26_clicked() {
@@ -2806,19 +2806,19 @@ void factory_analyzer::on_pushButton_26_clicked() {
 
 void factory_analyzer::on_pushButton_27_clicked() {
 
-    bulk->set_amt_clean_flag();
+    bulk->device()->set_amt_clean_flag();
 }
 
 void factory_analyzer::on_pushButton_28_clicked() {
-    bulk->set_amt_check_clean_flag();
+    bulk->device()->set_amt_check_clean_flag();
 }
 
 void factory_analyzer::on_pushButton_29_clicked() {
-    bulk->set_amt_task_get_result();
+    bulk->device()->set_amt_task_get_result();
 }
 
 void factory_analyzer::on_pushButton_30_clicked() {
-    bulk->set_amt_task_get_log(0);
+    bulk->device()->set_amt_task_get_log(0);
 }
 //通用的脚本执行函数
 void factory_analyzer::on_comboBox_activated(int index) {
@@ -2858,14 +2858,14 @@ void factory_analyzer::on_comboBox_activated(int index) {
 
     // 4️⃣ 调用
     qDebug() << "[ComboBox] call set_amt_task_start";
-    bulk->set_amt_task_start(cmd,
+    bulk->device()->set_amt_task_start(cmd,
                              ui->lineEdit_2->text().toUInt(), // timeout
                              param                            // 参数
     );
 }
 
 void factory_analyzer::on_pushButton_32_clicked() {
-    bulk->set_sys_poweroff();
+    bulk->device()->set_sys_poweroff();
 }
 
 void factory_analyzer::on_pushButton_33_clicked() {
@@ -3147,15 +3147,15 @@ void factory_analyzer::on_pushButton_36_clicked() {
     qDebug() << "[SendFile] select file:" << filePath;
 
     // ③ 调用发送接口
-    bulk->set_2a_send_file_info(filePath);
+    bulk->device()->set_2a_send_file_info(filePath);
 }
 
 void factory_analyzer::on_pushButton_37_clicked() {
-    bulk->set_2a_send_file_info_check();
+    bulk->device()->set_2a_send_file_info_check();
 }
 
 void factory_analyzer::on_pushButton_38_clicked() {
-    bulk->set_2a_send_file_data();
+    bulk->device()->set_2a_send_file_data();
 }
 
 void factory_analyzer::on_pushButton_39_clicked() {
@@ -3426,21 +3426,21 @@ void factory_analyzer::on_pushButton_45_clicked() {
 }
 
 void factory_analyzer::on_pushButton_47_clicked() {
-    // bulk->set_2a_download_path_info("/blackbox/system");
-    bulk->set_2a_download_file_info(ui->lineEdit_3->text());
-    // bulk->set_2a_download_file_info("/blackbox/amt/aging_test/log.txt");
+    // bulk->device()->set_2a_download_path_info("/blackbox/system");
+    bulk->device()->set_2a_download_file_info(ui->lineEdit_3->text());
+    // bulk->device()->set_2a_download_file_info("/blackbox/amt/aging_test/log.txt");
 }
 
 void factory_analyzer::on_pushButton_49_clicked() {
-    bulk->set_device_date();
+    bulk->device()->set_device_date();
 }
 
 void factory_analyzer::on_pushButton_50_clicked() {
-    bulk->get_device_date();
+    bulk->device()->get_device_date();
 }
 
 void factory_analyzer::on_pushButton_51_clicked() {
-    bulk->set_device_restory_setting();
+    bulk->device()->set_device_restory_setting();
 }
 
 /// system/etc/dji.json
@@ -3450,60 +3450,60 @@ void factory_analyzer::on_pushButton_52_clicked() {
 }
 
 void factory_analyzer::on_pushButton_46_clicked() {
-    bulk->set_write_product_status();
+    bulk->device()->set_write_product_status();
     showlog("成功后记得重启");
 }
 
 void factory_analyzer::on_pushButton_48_clicked() {
-    bulk->get_product_active();
+    bulk->device()->get_product_active();
 }
 
 void factory_analyzer::on_pushButton_53_clicked() {
-    bulk->get_product_status();
+    bulk->device()->get_product_status();
 }
 
 void factory_analyzer::on_pushButton_55_clicked() {
-    bulk->get_product_dbg_misc_subcmd_count();
+    bulk->device()->get_product_dbg_misc_subcmd_count();
 }
 
 void factory_analyzer::on_pushButton_56_clicked() {
-    bulk->get_Esdd_Check_Antirollback();
+    bulk->device()->get_Esdd_Check_Antirollback();
 }
 
 void factory_analyzer::on_pushButton_57_clicked() {
-    bulk->set_Rpmb_Board(ui->lineEdit_4->text());
+    bulk->device()->set_Rpmb_Board(ui->lineEdit_4->text());
 }
 
 void factory_analyzer::on_pushButton_58_clicked() {
-    bulk->set_Rpmb_Device(ui->lineEdit_5->text());
+    bulk->device()->set_Rpmb_Device(ui->lineEdit_5->text());
 }
 
 void factory_analyzer::on_pushButton_60_clicked() {
-    bulk->get_current_slot();
+    bulk->device()->get_current_slot();
 }
 
 void factory_analyzer::on_pushButton_59_clicked() {
-    bulk->get_product_md5_result();
+    bulk->device()->get_product_md5_result();
 }
 
 void factory_analyzer::on_pushButton_61_clicked() {
-    bulk->set_product_dbg_count();
+    bulk->device()->set_product_dbg_count();
 }
 
 void factory_analyzer::on_pushButton_62_clicked() {
-    bulk->get_Rpmb_Board();
+    bulk->device()->get_Rpmb_Board();
 }
 
 void factory_analyzer::on_pushButton_63_clicked() {
-    bulk->get_Rpmb_Device();
+    bulk->device()->get_Rpmb_Device();
 }
 
 void factory_analyzer::on_pushButton_64_clicked() {
-    bulk->set_sys_event_reboot();
+    bulk->device()->set_sys_event_reboot();
 }
 
 void factory_analyzer::on_pushButton_65_clicked() {
-    bulk->get_root_key_status();
+    bulk->device()->get_root_key_status();
 }
 
 void factory_analyzer::on_tabWidget_currentChanged(int index) {
@@ -3554,7 +3554,7 @@ void factory_analyzer::on_pushButton_68_clicked() {
                       .arg(ui->lineEdit_4->text());
 
     sendCommandWithRetry(
-        std::bind(&QBulk::set_amt_task_test,
+        std::bind(&DjiBulkDevice::set_amt_task_test,
                   bulk,
                   cmd,
                   2000));
@@ -3565,7 +3565,7 @@ void factory_analyzer::on_pushButton_69_clicked() {
                       .arg(ui->lineEdit_5->text());
 
     sendCommandWithRetry(
-        std::bind(&QBulk::set_amt_task_test,
+        std::bind(&DjiBulkDevice::set_amt_task_test,
                   bulk,
                   cmd,
                   2000));
@@ -3575,7 +3575,7 @@ void factory_analyzer::on_pushButton_70_clicked() {
     QString cmd = QString("eagle4_state_pro.sh");
 
     sendCommandWithRetry(
-        std::bind(&QBulk::set_amt_task_test,
+        std::bind(&DjiBulkDevice::set_amt_task_test,
                   bulk,
                   cmd,
                   2000));
@@ -3587,7 +3587,7 @@ void factory_analyzer::on_pushButton_71_clicked() {
     QString cmd = QString("e3t_state_pro.sh");
 
     sendCommandWithRetry(
-        std::bind(&QBulk::set_amt_task_test,
+        std::bind(&DjiBulkDevice::set_amt_task_test,
                   bulk,
                   cmd,
                   2000));
@@ -3596,11 +3596,11 @@ void factory_analyzer::on_pushButton_71_clicked() {
 }
 
 void factory_analyzer::on_pushButton_72_clicked() {
-    bulk->get_active_times();
+    bulk->device()->get_active_times();
 }
 
 void factory_analyzer::on_pushButton_73_clicked() {
-    bulk->set_wake_wifi();
+    bulk->device()->set_wake_wifi();
 }
 
 void factory_analyzer::qmlstartTest() {

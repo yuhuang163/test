@@ -41,12 +41,12 @@ bool HuilingWfp60hScpiDevice::queryMeasureLine(const QString& queryLine, bool em
     QString response;
     if (!transport_->queryLine(queryLine, &response)) {
         if (emitAsAmmeterReading) {
-            emit ammeterReadingReceived(QString());
+            emit measureReadingReceived(QString());
         }
         return false;
     }
     if (emitAsAmmeterReading) {
-        emit ammeterReadingReceived(response);
+        emit measureReadingReceived(response);
         qDebug() << "SCPI 电流读数(VISA):" << response;
     }
     return true;
@@ -229,6 +229,6 @@ void HuilingWfp60hScpiDevice::handleLineReceived(const QString& line) {
         emitProgrammablePowerReadIfPending(line);
         return;
     }
-    emit ammeterReadingReceived(line);
+    emit measureReadingReceived(line);
     qDebug() << "SCPI 电流读数:" << line;
 }
