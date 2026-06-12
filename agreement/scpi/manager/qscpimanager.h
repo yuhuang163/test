@@ -85,7 +85,7 @@ class QScpiManager : public QObject {
     bool sendCustomMessage(const QVariantMap& map);
 
   signals:
-    void ammeterReadingReceived(const QString& valueText);
+    void measureReadingReceived(const QString& valueText);
     void programmablePowerVoltageRead(double valueVolts, bool ok);
     void programmablePowerCurrentRead(double valueAmps, bool ok);
 

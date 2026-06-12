@@ -198,7 +198,6 @@ SOURCES += \
     agreement/scpi/manager/qscpiserialsession.cpp \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
     agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
-    agreement/qusb/qusb.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
     tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
@@ -335,7 +334,6 @@ HEADERS += \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
     agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
     agreement/qusb/qusb_types.h \
-    agreement/qusb/qusb.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \

@@ -62,8 +62,8 @@ class suction : public test_base {
     double HighSuction = 0;
     double LowSuction = 0;
     double measure_ammeter = 0;
-    Qusb::ProtocolType suctionProtocolType = Qusb::ProtocolType::Scpi;
-    Qusb::ProtocolConfig suctionUsbProtocolConfig_;
+    QusbProtocolRoute suctionProtocolType = QusbProtocolRoute::Scpi;
+    QusbLinkConfig suctionUsbProtocolConfig_;
     double damLeftKpa_ = 0.0;
     double damRightKpa_ = 0.0;
     bool suctionUsePicoSensor = true;

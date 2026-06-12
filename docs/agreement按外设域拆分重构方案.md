@@ -410,7 +410,7 @@ factory_protocol/
 
 `business/` 已收 `plc_v3_fixture`、`tuple`、`ble_ota`；`qbulk`、`qadb`、`qshell`、`qmes` 仍 `agreement/q*`。
 
-### 阶段 6：拆 `qusb`（**6b 部分落地**）
+### 阶段 6：拆 `qusb`（**6c 已全面落地**）
 
 1. ~~新建 `agreement/scpi/codec/scpi_line_codec`~~ → **已完成**；`qusb` 已改用 `ScpiLineCodec`。
 2. ~~新建 `scpi/device/huiling_wfp60h_scpi` 命令表~~ → **已完成**。
@@ -419,8 +419,8 @@ factory_protocol/
 5. ~~`qusb` 程控/量测 SCPI 接入 `HuilingWfp60hScpiProfile::fromSettings()`~~ → **已完成**（`mergeHuilingScpiProfile`）。
 6. ~~HQ/LX RTU 并入 `QModbusManager`~~ → **已完成**；`qusb` HQ/LX 过渡委托。
 7. ~~COM 电流表 + SCPI 各 device 自有 Cmd~~ → **已完成**：`HuilingScpiCmd`、`CmwScpiCmd`；无 access 层 `ScpiCmd`。
-8. **未做（最后阶段）**：**废弃 `agreement/qusb/`，门面并进 `test_base`**；详见分层规范 §6.1。
-9. **未做（同批收尾）**：**SCPI 协议层去除 `ammeter` 命名**（`ammeterReadingReceived` → 通用行/测量信号；`execAmmeterMeasure` 保留在工站）；详见分层规范 §4.6、§6.2。
+8. ~~**废弃 `agreement/qusb/`，门面并进 `test_base`**~~ → **已完成**：`Qusb` 类已删除，`test_base` 直接持有 `scpiUsbManager_` 完成 SCPI/Modbus RTU 路由。`qusb_types.h` 保留于 `agreement/qusb/` 提供枚举兼容。
+9. ~~**SCPI 协议层去除 `ammeter` 命名**~~ → **已完成**：`ammeterReadingReceived` → `measureReadingReceived`；`ProtocolAmmeterReadingData` 保留兼容别名。
 10. **未做**：`peripheral_protocol` 收纳治具自定义帧；modbus 独立 pro 冒烟。
 11. 验收：静态电流、吸力、程控电源 SCPI；HQ/LX RTU 读电流；多 SCPI 设备路由冒烟（**请本地 qmake + 全量编译**）。
 

@@ -1,6 +1,8 @@
 #include "suction.h"
 
-#include "qusb.h"
+#include "qusb_types.h"
+#include "modbus_types.h"
+#include "scpi_types.h"
 #include "ui_suction.h"
 #include <algorithm>
 #include <QMessageBox>
@@ -15,18 +17,18 @@
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
+QusbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return Qusb::ProtocolType::Scpi;
+        return QusbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return Qusb::ProtocolType::HqModbus;
+        return QusbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return Qusb::ProtocolType::LxModbus;
+        return QusbProtocolRoute::LxModbus;
     }
-    return Qusb::ProtocolType::Auto;
+    return QusbProtocolRoute::Auto;
 }
 } // namespace
 suction::suction(int index, QWidget* parent) : test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -122,13 +124,11 @@ suction::suction(int index, QWidget* parent) : test_base(parent), ui(new Ui::suc
 }
 
 void suction::applySuctionProtocolConfig() {
-    Qusb::ProtocolConfig cfg;
-    // usb：传感器/电流表等；程控电源走 scpiVisaManager_（VisaPower/*）。
-    cfg.protocol = protocolTypeFromSetting("auto");
-    cfg.luxshareMachineId = getIndex();
-    cfg.scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
-    cfg.scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
-    cfg.scpiRange = SETTINGS.value("Suction/ScpiRange", SETTINGS.value("Current/ScpiRange", "500e-3")).toString();
+    QusbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    int luxshareMachineId = getIndex();
+    QString scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
+    QString scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
+    QString scpiRange = SETTINGS.value("Suction/ScpiRange", SETTINGS.value("Current/ScpiRange", "500e-3")).toString();
     suctionSampleDurationMs = SETTINGS.value("Suction/SampleDurationMs", 10000).toInt();
     suctionSampleIntervalMs = SETTINGS.value("Suction/SampleIntervalMs", 20).toInt();
     suctionPeakTargetKpa = SETTINGS.value("Suction/PeakTargetKpa", -36.0).toDouble();
@@ -139,25 +139,48 @@ void suction::applySuctionProtocolConfig() {
     suctionPowerOnWaitMs = SETTINGS.value("Suction/PowerOnWaitMs", 5000).toInt();
     suctionUsePicoSensor = SETTINGS.value(QStringLiteral("Suction/UsePicoSensor"), true).toBool();
     if (suctionUsePicoSensor) {
-        cfg.protocol = Qusb::ProtocolType::Scpi;
+        protocol = QusbProtocolRoute::Scpi;
         usbBaudRate = SETTINGS.value(QStringLiteral("Suction/PicoBaudRate"), 19200).toInt();
     }
 
-    if (!suctionUsePicoSensor && cfg.protocol == Qusb::ProtocolType::Auto) {
+    if (!suctionUsePicoSensor && protocol == QusbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            cfg.protocol = Qusb::ProtocolType::HqModbus;
-
+            protocol = QusbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            cfg.protocol = Qusb::ProtocolType::LxModbus;
+            protocol = QusbProtocolRoute::LxModbus;
         } else {
-            cfg.protocol = Qusb::ProtocolType::Scpi;
+            protocol = QusbProtocolRoute::Scpi;
         }
     }
 
-    suctionProtocolType = cfg.protocol;
-    usb->setProtocolConfig(cfg);
-    suctionUsbProtocolConfig_ = cfg;
+    suctionProtocolType = protocol;
+    // 配置 scpiUsbManager_ 和 modbusManager 路由
+    QusbLinkConfig linkCfg;
+    linkCfg.protocol = protocol;
+    linkCfg.luxshareMachineId = luxshareMachineId;
+    suctionUsbProtocolConfig_ = linkCfg;
+    // 根据协议路由同步设备路由
+    switch (protocol) {
+    case QusbProtocolRoute::Scpi:
+    case QusbProtocolRoute::Auto:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
+        break;
+    default:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::None);
+        break;
+    }
+    switch (protocol) {
+    case QusbProtocolRoute::HqModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
+        break;
+    case QusbProtocolRoute::LxModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
+        break;
+    default:
+        break;
+    }
+    modbusManager.setLuxshareMachineId(luxshareMachineId);
     {
         showlog(QStringLiteral("程控电源配置: useVisa=%1, address=%2")
                     .arg(SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() ? 1 : 0)
