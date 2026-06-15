@@ -26,4 +26,16 @@ struct ScpiVisaLinkConfig {
     int timeoutMs = 3000;
 };
 
+enum class UsbProtocolRoute {
+    Auto,
+    Scpi,
+    HqModbus,
+    LxModbus,
+};
+
+struct UsbLinkConfig {
+    UsbProtocolRoute protocol = UsbProtocolRoute::Auto;
+    int luxshareMachineId = 1;
+};
+
 #endif // SCPI_TYPES_H

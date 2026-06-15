@@ -17,9 +17,8 @@
 #include "qlabel.h"
 #include "qpushbutton.h"
 #include "qtablewidget.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "qjig.h"
-#include "qusb_types.h"
 #include "serial_channel.h"
 #include "serial_port_controller.h"
 
@@ -157,8 +156,9 @@ class test_base : public QWidget {
     Qroot* qroot = nullptr;
     QProtocolManager protocolManager;
     QModbusManager modbusManager;
-    Qat* at = nullptr;
+    QatManager* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
+    QScpiManager scpiUsbManager_;
     QScpiManager scpiUsbManager_;
     QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;

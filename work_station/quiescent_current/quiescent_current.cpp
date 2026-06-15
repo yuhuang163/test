@@ -10,18 +10,18 @@
 #endif
 
 namespace {
-QusbProtocolRoute protocolTypeFromSetting(const QString& type) {
+UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return QusbProtocolRoute::Scpi;
+        return UsbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return QusbProtocolRoute::HqModbus;
+        return UsbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return QusbProtocolRoute::LxModbus;
+        return UsbProtocolRoute::LxModbus;
     }
-    return QusbProtocolRoute::Auto;
+    return UsbProtocolRoute::Auto;
 }
 } // namespace
 quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -94,31 +94,31 @@ quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(par
 }
 
 void quiescent_current::applyCurrentProtocolConfig() {
-    QusbProtocolRoute protocol =
-        protocolTypeFromSetting(SETTINGS.value("Current/ProtocolType", "auto").toString());
-    const int luxshareMachineId = getIndex();
-    const QString scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
-    const QString scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
-    const QString scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+    UsbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    int luxshareMachineId = getIndex();
+    QString scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
+    QString scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
+    QString scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
     syncVisaPowerUiFromSettings();
 
-    if (protocol == QusbProtocolRoute::Auto) {
+    if (protocol == UsbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            protocol = QusbProtocolRoute::HqModbus;
+            protocol = UsbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            protocol = QusbProtocolRoute::LxModbus;
+            protocol = UsbProtocolRoute::LxModbus;
         } else {
-            protocol = QusbProtocolRoute::Scpi;
+            protocol = UsbProtocolRoute::Scpi;
         }
     }
 
     currentProtocolType = protocol;
     useProgrammablePower = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
 
+    // 根据协议路由同步设备路由
     switch (protocol) {
-    case QusbProtocolRoute::Scpi:
-    case QusbProtocolRoute::Auto:
+    case UsbProtocolRoute::Scpi:
+    case UsbProtocolRoute::Auto:
         scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
         break;
     default:
@@ -126,10 +126,10 @@ void quiescent_current::applyCurrentProtocolConfig() {
         break;
     }
     switch (protocol) {
-    case QusbProtocolRoute::HqModbus:
+    case UsbProtocolRoute::HqModbus:
         modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
         break;
-    case QusbProtocolRoute::LxModbus:
+    case UsbProtocolRoute::LxModbus:
         modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
         break;
     default:
@@ -547,9 +547,9 @@ void quiescent_current::refreshAmmeterData(QString data) {
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (currentProtocolType == QusbProtocolRoute::LxModbus)
+    if (currentProtocolType == UsbProtocolRoute::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (currentProtocolType == QusbProtocolRoute::HqModbus)
+    else if (currentProtocolType == UsbProtocolRoute::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;

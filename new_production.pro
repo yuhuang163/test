@@ -38,10 +38,13 @@ QMAKE_CXXFLAGS += /utf-8
 
 
 INCLUDEPATH += agreement
-INCLUDEPATH += agreement/qmes
-INCLUDEPATH += agreement/qadb
-INCLUDEPATH += agreement/qshell
-INCLUDEPATH += agreement/qat
+INCLUDEPATH += services/qmes
+INCLUDEPATH += services/qadb
+INCLUDEPATH += services/qshell
+INCLUDEPATH += agreement/at_protocol/access
+INCLUDEPATH += agreement/at_protocol/codec
+INCLUDEPATH += agreement/at_protocol/device
+INCLUDEPATH += agreement/at_protocol/manager
 INCLUDEPATH += agreement/qtransport
 INCLUDEPATH += agreement/factory_protocol/access
 INCLUDEPATH += agreement/factory_protocol/manager
@@ -63,7 +66,6 @@ INCLUDEPATH += platform/log_upload
 INCLUDEPATH += platform/instrument
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
-INCLUDEPATH += agreement/qusb
 INCLUDEPATH += agreement/scpi/access
 INCLUDEPATH += agreement/scpi/manager
 INCLUDEPATH += agreement/fixture/access
@@ -148,11 +150,15 @@ SOURCES += \
     agreement/factory_protocol/access/qprotocol.cpp \
     agreement/factory_protocol/manager/qprotocolmanager.cpp \
     business/ble_ota/root_ble_ota.cpp \
-    agreement/qadb/qadb.cpp \
-    agreement/qat/qat.cpp \
+    services/qadb/qadb.cpp \
+    agreement/at_protocol/codec/dongle_at_codec.cpp \
+    agreement/at_protocol/device/dongle_at_device.cpp \
+    agreement/at_protocol/manager/qatmanager.cpp \
     agreement/product_serial/protocol/qproduct.cpp \
-    agreement/qbulk/crc_md5.cpp \
-    agreement/qbulk/qbulk.cpp \
+    agreement/dji_bulk_protocol/access/dji_bulk_types.h \
+    agreement/dji_bulk_protocol/codec/dji_bulk_codec.cpp \
+    agreement/dji_bulk_protocol/device/dji_bulk_device.cpp \
+    agreement/dji_bulk_protocol/manager/qbulkmanager.cpp \
     platform/settings/widgets/fixture_uart.cpp \
     agreement/fixture/manager/qfixturemanager.cpp \
     agreement/fixture/device/fixture_camera_device.cpp \
@@ -160,16 +166,16 @@ SOURCES += \
     agreement/fixture/device/fixture_pcba_device.cpp \
     agreement/fixture/device/fixture_press_device.cpp \
     agreement/fixture/device/qjig.cpp \
-    agreement/qmes/bydmes.cpp \
-    agreement/qmes/hqmes.cpp \
-    agreement/qmes/hzmes.cpp \
-    agreement/qmes/jjmes.cpp \
-    agreement/qmes/lxmes.cpp \
-    agreement/qmes/mesmanager.cpp \
-    agreement/qmes/qmes.cpp \
-    agreement/qmes/wksmes.cpp \
-    agreement/qmes/xwdmes.cpp \
-    agreement/qmes/ydmmes.cpp \
+    services/qmes/bydmes.cpp \
+    services/qmes/hqmes.cpp \
+    services/qmes/hzmes.cpp \
+    services/qmes/jjmes.cpp \
+    services/qmes/lxmes.cpp \
+    services/qmes/mesmanager.cpp \
+    services/qmes/qmes.cpp \
+    services/qmes/wksmes.cpp \
+    services/qmes/xwdmes.cpp \
+    services/qmes/ydmmes.cpp \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.c \
     agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.c \
@@ -192,7 +198,7 @@ SOURCES += \
     platform/instrument/instrument_device_catalog.cpp \
     platform/test_record/test_record_store.cpp \
     platform/log_upload/log_upload_service.cpp \
-    agreement/qshell/qshell.cpp \
+    services/qshell/qshell.cpp \
     business/tuple/qtupleservice.cpp \
     business/cmw_gprf/cmw_gprf_facade.cpp \
     platform/driver/visa/visa_channel.cpp \
@@ -281,10 +287,15 @@ HEADERS += \
     agreement/factory_protocol/access/qprotocol_types.h \
     agreement/factory_protocol/manager/qprotocolmanager.h \
     business/ble_ota/root_ble_ota.h \
-    agreement/qadb/qadb.h \
-    agreement/qat/qat.h \
+    services/qadb/qadb.h \
+    agreement/at_protocol/access/dongle_at_types.h \
+    agreement/at_protocol/codec/dongle_at_codec.h \
+    agreement/at_protocol/device/dongle_at_device.h \
+    agreement/at_protocol/manager/qatmanager.h \
     agreement/product_serial/protocol/qproduct.h \
-    agreement/qbulk/qbulk.h \
+    agreement/dji_bulk_protocol/codec/dji_bulk_codec.h \
+    agreement/dji_bulk_protocol/device/dji_bulk_device.h \
+    agreement/dji_bulk_protocol/manager/qbulkmanager.h \
     platform/settings/widgets/fixture_uart.h \
     agreement/fixture/manager/qfixturemanager.h \
     agreement/fixture/device/fixture_camera_device.h \
@@ -293,16 +304,16 @@ HEADERS += \
     agreement/fixture/device/fixture_press_device.h \
     agreement/fixture/access/fixture_uart_types.h \
     agreement/fixture/device/qjig.h \
-    agreement/qmes/bydmes.h \
-    agreement/qmes/hqmes.h \
-    agreement/qmes/hzmes.h \
-    agreement/qmes/jjmes.h \
-    agreement/qmes/lxmes.h \
-    agreement/qmes/mesmanager.h \
-    agreement/qmes/qmes.h \
-    agreement/qmes/wksmes.h \
-    agreement/qmes/xwdmes.h \
-    agreement/qmes/ydmmes.h \
+    services/qmes/bydmes.h \
+    services/qmes/hqmes.h \
+    services/qmes/hzmes.h \
+    services/qmes/jjmes.h \
+    services/qmes/lxmes.h \
+    services/qmes/mesmanager.h \
+    services/qmes/qmes.h \
+    services/qmes/wksmes.h \
+    services/qmes/xwdmes.h \
+    services/qmes/ydmmes.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.h \
     agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.h \
@@ -340,7 +351,6 @@ HEADERS += \
     agreement/scpi/manager/qscpiserialsession.h \
     agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
     agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
-    agreement/qusb/qusb_types.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \

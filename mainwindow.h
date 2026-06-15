@@ -188,7 +188,7 @@ class MainWindow : public QMainWindow {
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
     Qpb* pb = nullptr;
-    Qat* at = nullptr;
+    QatManager* at = nullptr;
     typedef enum {
         STATE_IDLE,            // 休眠状态
         STATE_WATI_CONNECT,    // 等待连接

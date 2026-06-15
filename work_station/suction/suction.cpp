@@ -1,6 +1,5 @@
 #include "suction.h"
 
-#include "qusb_types.h"
 #include "modbus_types.h"
 #include "scpi_types.h"
 #include "ui_suction.h"
@@ -17,18 +16,18 @@
 #endif
 
 namespace {
-QusbProtocolRoute protocolTypeFromSetting(const QString& type) {
+UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return QusbProtocolRoute::Scpi;
+        return UsbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return QusbProtocolRoute::HqModbus;
+        return UsbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return QusbProtocolRoute::LxModbus;
+        return UsbProtocolRoute::LxModbus;
     }
-    return QusbProtocolRoute::Auto;
+    return UsbProtocolRoute::Auto;
 }
 } // namespace
 suction::suction(int index, QWidget* parent) : test_base(parent), ui(new Ui::suction), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -124,7 +123,7 @@ suction::suction(int index, QWidget* parent) : test_base(parent), ui(new Ui::suc
 }
 
 void suction::applySuctionProtocolConfig() {
-    QusbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    UsbProtocolRoute protocol = protocolTypeFromSetting("auto");
     int luxshareMachineId = getIndex();
     QString scpiCurrentType = SETTINGS.value("Suction/ScpiCurrentType", SETTINGS.value("Current/ScpiCurrentType", "CURR")).toString();
     QString scpiCurrentMode = SETTINGS.value("Suction/ScpiCurrentMode", SETTINGS.value("Current/ScpiCurrentMode", "DC")).toString();
@@ -139,31 +138,31 @@ void suction::applySuctionProtocolConfig() {
     suctionPowerOnWaitMs = SETTINGS.value("Suction/PowerOnWaitMs", 5000).toInt();
     suctionUsePicoSensor = SETTINGS.value(QStringLiteral("Suction/UsePicoSensor"), true).toBool();
     if (suctionUsePicoSensor) {
-        protocol = QusbProtocolRoute::Scpi;
+        protocol = UsbProtocolRoute::Scpi;
         usbBaudRate = SETTINGS.value(QStringLiteral("Suction/PicoBaudRate"), 19200).toInt();
     }
 
-    if (!suctionUsePicoSensor && protocol == QusbProtocolRoute::Auto) {
+    if (!suctionUsePicoSensor && protocol == UsbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            protocol = QusbProtocolRoute::HqModbus;
+            protocol = UsbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            protocol = QusbProtocolRoute::LxModbus;
+            protocol = UsbProtocolRoute::LxModbus;
         } else {
-            protocol = QusbProtocolRoute::Scpi;
+            protocol = UsbProtocolRoute::Scpi;
         }
     }
 
     suctionProtocolType = protocol;
     // 配置 scpiUsbManager_ 和 modbusManager 路由
-    QusbLinkConfig linkCfg;
+    UsbLinkConfig linkCfg;
     linkCfg.protocol = protocol;
     linkCfg.luxshareMachineId = luxshareMachineId;
     suctionUsbProtocolConfig_ = linkCfg;
     // 根据协议路由同步设备路由
     switch (protocol) {
-    case QusbProtocolRoute::Scpi:
-    case QusbProtocolRoute::Auto:
+    case UsbProtocolRoute::Scpi:
+    case UsbProtocolRoute::Auto:
         scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
         break;
     default:
@@ -171,10 +170,10 @@ void suction::applySuctionProtocolConfig() {
         break;
     }
     switch (protocol) {
-    case QusbProtocolRoute::HqModbus:
+    case UsbProtocolRoute::HqModbus:
         modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
         break;
-    case QusbProtocolRoute::LxModbus:
+    case UsbProtocolRoute::LxModbus:
         modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
         break;
     default:

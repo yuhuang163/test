@@ -47,8 +47,9 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         pb(new Qpb(dongleSerialPort)),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
-                                        at(new Qat(dongleSerialPort)),
+                                        at(new QatManager(this)),
                                         usbSerialPort(usbSerialChannel_->port()),
+                                        scpiUsbManager_(this),
                                         scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
@@ -72,6 +73,12 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     scpiUsbManager_.attachSerialPort(usbSerialPort);
     scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
 
+    at->setWriteCallback([this](const QByteArray& data) {
+        if (dongleSerialPort && dongleSerialPort->isOpen()) {
+            dongleSerialPort->write(data);
+        }
+    });
+
     signalAndslot();
     scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
@@ -87,6 +94,7 @@ void test_base::setupModbusManager() {
 }
 
 bool test_base::execScpi(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
+    return scpiUsbManager_.exec(cmd, param, errorMessage);
     return scpiUsbManager_.exec(cmd, param, errorMessage);
 }
 
@@ -146,7 +154,7 @@ void test_base::initData() {
 }
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
-    connect(at, &Qat::reportReceived, this, &test_base::onDongleAtReport);
+    connect(at, &QatManager::reportReceived, this, &test_base::onDongleAtReport);
     connect(&scpiUsbManager_, &QScpiManager::measureReadingReceived, this, [this](const QString& valueText) {
         onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
                                              QVariant::fromValue(ProtocolAmmeterReadingData{valueText})));
@@ -198,6 +206,7 @@ void test_base::signalAndslot() {
                                              QVariant::fromValue(measureData)));
     });
 
+    connect(&scpiVisaManager_, &QScpiManager::measureReadingReceived, this, [this](const QString& valueText) {
     connect(&scpiVisaManager_, &QScpiManager::measureReadingReceived, this, [this](const QString& valueText) {
         ProtocolMeasureData measureData;
         measureData.deviceName = QStringLiteral("VISA_SCPI");
@@ -434,6 +443,7 @@ void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
         modbusManager.feedRtuRx(dataTemp);
         return;
     }
+    scpiUsbManager_.feedRx(dataTemp);
     scpiUsbManager_.feedRx(dataTemp);
 }
 
