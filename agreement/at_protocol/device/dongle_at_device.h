@@ -8,6 +8,7 @@
 #include <map>
 #include "dongle_at_types.h"
 #include "dongle_at_codec.h"
+#include "qprotocol_types.h"
 
 class DongleAtDevice : public QObject {
     Q_OBJECT

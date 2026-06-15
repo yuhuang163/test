@@ -67,75 +67,6 @@ void DjiBulkDevice::registerCommand() {
     djifactoryCommandList[djiFactroyCmd_read_root_key_status] = std::bind(
         &DjiBulkDevice::process_read_root_key_status, this, std::placeholders::_1);
 }
-DjiBulkDevice::~QBulk() {
-    closeDevice();
-    stopRead();
-    qDebug() << "[QBulk] libusb exited.";
-}
-
-
-
-
-
-}
-
-
-}
-
-
-
-    unsigned char buffer[4096];
-    int transferred = usb_bulk_read(handle, ep, reinterpret_cast<char*>(buffer),
-                                    sizeof(buffer), timeout);
-
-    // 鉁?姝ｅ父鏀跺埌鏁版嵁
-    if (transferred > 0) {
-        data = QByteArray(reinterpret_cast<char*>(buffer), transferred);
-        qDebug().noquote() << "BULK RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-        return true;
-    }
-
-    // 馃煛 姝ｅ父鏃犳暟鎹紙NAK / timeout锛?
-    if (transferred == 0) {
-        return false;
-    }
-
-    // 馃敶 鐪熷疄閿欒锛?0锛?
-    qDebug().noquote() << "[QBulk] bulkRead failed"
-                       << "error:" << transferred << "("
-                       << usbErrorToString(transferred) << ")"
-                       << "Endpoint: 0x" << hex << int(ep);
-
-    // 猸?璁惧宸叉柇寮€ or 鍙ユ焺澶辨晥
-    if (transferred == USB_ERROR_NOT_FOUND ||
-        transferred == USB_ERROR_NO_DEVICE || transferred == USB_ERROR_NOT_DATA) {
-
-        qDebug() << "[QBulk] USB device disconnected, releasing resources";
-
-        // 绔嬪埢鍥炴敹璧勬簮
-        closeDevice();
-
-        // 閫氱煡涓婂眰锛圲I / 绠＄悊鍣級
-
-        emit bulk_device_error(transferred, "USB device disconnected");
-        is_open = false;
-    }
-
-    return false;
-}
-
-
-
-
-
-        QByteArray data;
-        if (bulkRead(0x85, data) && !data.isEmpty()) {
-            parseCmd(data);
-        }
-
-        QThread::msleep(5);
-    }
-}
 
 void DjiBulkDevice::get_dev_ver_status() {
     QByteArray v1data;
@@ -735,7 +666,7 @@ void DjiBulkDevice::set_2a_send_file_info(const QString& filepath) {
 }
 void DjiBulkDevice::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
 
-    emit send_bulk_data("鎵ц鑴氭湰锛? + cmdStr);
+    emit send_bulk_data(QStringLiteral("执行脚本：") + cmdStr);
 
     QString input = cmdStr.trimmed();
     qDebug() << "[ComboBox] raw text =" << input;
@@ -984,7 +915,7 @@ void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
 
     qDebug() << "lost_list_rsp_seq =" << lost_list_rsp_seq;
 
-    emit send_bulk_data("褰撳墠PC绔敹鍒扮殑绐楀彛鍐呯殑鏈€澶у€? +
+    emit send_bulk_data(QStringLiteral("当前PC端收到的窗口内的最大值：") +
                         QString::number(lost_list_rsp_seq));
 
     // 鈶?鐪熸鐨勬枃浠跺唴瀹癸紙浠庣 4 瀛楄妭寮€濮嬶級
@@ -1129,13 +1060,13 @@ static QString amtAckCodeToString(int code) {
         return QString("Success");
 
     case AMT_TASK_COMMON_ACK_NOTSUPPORT:
-        return QString("涓嶆敮鎸佸懡浠?);
+        return QStringLiteral("不支持命令");
 
     case AMT_TASK_COMMON_ACK_FAILURE:
         return QString("鎵ц澶辫触");
 
     case AMT_TASK_COMMON_ACK_INVALID_STATE:
-        return QString("鏃犳晥鐨勮澶囩姸鎬?);
+        return QStringLiteral("无效的设备状态");
 
     case AMT_TASK_COMMON_ACK_OUTOFTASK:
         return QString("浠诲姟瓒呮暟閲忎簡");
@@ -1151,30 +1082,30 @@ QString DjiBulkDevice::amtTaskResultToString(uint8_t code) {
     switch (code) {
     case AMT_TASK_RESULT_PASS:
         is_running_amt = 0;
-        return "鎵ц鎴愬姛";
+        return QStringLiteral("执行成功");
     case AMT_TASK_RESULT_ONGOING:
         is_running_amt = 1;
-        return "浠诲姟杩涜涓?;
+        return QStringLiteral("任务进行中");
     case AMT_TASK_RESULT_TIMER_ERROR:
         is_running_amt = 0;
-        return "瀹氭椂鍣ㄩ敊璇?;
+        return QStringLiteral("定时器错误");
     case AMT_TASK_RESULT_EXECUTE_SHELL_ERROR:
         is_running_amt = 0;
-        return "鑴氭湰鎵ц澶辫触";
+        return QStringLiteral("脚本执行失败");
     case AMT_TASK_RESULT_NOT_FIND_TASK_INDEX:
         is_running_amt = 0;
-        return "鏈壘鍒颁换鍔＄储寮?;
+        return QStringLiteral("未找到任务索引");
     case AMT_TASK_RESULT_TIMEOUT:
         is_running_amt = 0;
-        return "浠诲姟瓒呮椂";
+        return QStringLiteral("任务超时");
     case AMT_TASK_RESULT_BEING_STOPPED:
         is_running_amt = 0;
-        return "浠诲姟琚腑姝?;
+        return QStringLiteral("任务被中止");
     case AMT_TASK_RESULT_GENERIC_ERROR:
         is_running_amt = 0;
-        return "閫氱敤閿欒";
+        return QStringLiteral("通用错误");
     default:
-        return QString("鏈煡閿欒 (0x%1)").arg(code, 2, 16, QChar('0')).toUpper();
+        return QStringLiteral("未知错误 (0x%1)").arg(code, 2, 16, QChar('0')).toUpper();
     }
 }
 
@@ -1197,7 +1128,7 @@ void DjiBulkDevice::process_dji_amt_task_get_result(QByteArray& f) {
             emit sendGetDjiResponse(1, info.retCode);
     } else {
         emit sendGetDjiResponse(1, info.retCode);
-        emit send_bulk_data("amt鎵ц閿欒鐮佺炕璇戜负锛? +
+        emit send_bulk_data(QStringLiteral("amt执行错误码翻译为：") +
                             amtAckCodeToString(info.retCode));
         emit send_bulk_data("鑴氭湰鎵ц鐘舵€侊細" + amtTaskResultToString(p[1]));
     }
@@ -1216,7 +1147,7 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
     uint8_t retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
     if (f.size() == 1) {
-        emit send_bulk_data("鏀跺埌鍥炲簲鎴愬姛鐘舵€?);
+        emit send_bulk_data(QStringLiteral("收到回应成功状态"));
         return; // 姝ｅ父鍥炲簲涓嶅笇鏈涘線涓嬭窇
     }
     if (f.size() == 5) // 绐楀彛鐨勬枃浠剁鍑犲寘
@@ -1226,7 +1157,7 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
             (static_cast<uint32_t>(p[3]) << 16) |
             (static_cast<uint32_t>(p[4]) << 24);
 
-        emit send_bulk_data("褰撳墠璁惧绔敹鍒扮殑绐楀彛鍐呯殑鏈€澶у€? +
+        emit send_bulk_data(QStringLiteral("当前设备端收到的窗口内的最大值：") +
                             QString::number(window_size));
         two_a_can_send = 1;
         return;
@@ -1511,25 +1442,25 @@ void DjiBulkDevice::process_set_sn_operate(QByteArray& f) {
 static QString checkErrToString(uint8_t err) {
     switch (err) {
     case CHECK_ERR_NO_SLOT:
-        return "鏃犲彲鐢?slot";
+        return QStringLiteral("无可用 slot");
     case CHECK_ERR_UNRD_OPEN:
-        return "UNRD 鎵撳紑澶辫触";
+        return QStringLiteral("UNRD 打开失败");
     case CHECK_ERR_UNRD_ALLOC:
-        return "UNRD 鍐呭瓨鍒嗛厤澶辫触";
+        return QStringLiteral("UNRD 内存分配失败");
     case CHECK_ERR_UNRD_GET:
-        return "UNRD 鑾峰彇鏁版嵁澶辫触锛屽仛涓€涓嬪ぇ鍖呭崌绾?;
+        return QStringLiteral("UNRD 获取数据失败，做一下大包升级");
     case CHECK_ERR_POPEN:
-        return "popen 鎵ц澶辫触";
+        return QStringLiteral("popen 执行失败");
     case CHECK_ERR_EXEC:
-        return "鍛戒护鎵ц澶辫触";
+        return QStringLiteral("命令执行失败");
     case CHECK_ERR_LENGTH:
-        return "鏁版嵁闀垮害閿欒";
+        return QStringLiteral("数据长度错误");
     case CHECK_ERR_MISMATCH:
-        return "鏁版嵁鏍￠獙涓嶅尮閰?;
+        return QStringLiteral("数据校验不匹配");
     case CHECK_ERR_MEM_CALLOC:
-        return "鍐呭瓨 calloc 澶辫触";
+        return QStringLiteral("内存 calloc 失败");
     default:
-        return QString("鏈煡閿欒(0x%1)").arg(err, 2, 16, QLatin1Char('0'));
+        return QStringLiteral("未知错误(0x%1)").arg(err, 2, 16, QLatin1Char('0'));
     }
 }
 
@@ -1555,8 +1486,8 @@ void DjiBulkDevice::process_get_anti_rollback_comm(QByteArray& f) {
         if (info.retCode == 0x00)
             emit send_bulk_data("ab鍒嗗尯鏍￠獙鎴愬姛");
         else
-            emit send_bulk_data(QString("AB 鍒嗗尯鏍￠獙澶辫触锛?
-                                        "A[%1: %2], B[%3: %4]")
+            emit send_bulk_data(QStringLiteral("AB 分区校验失败：")
+                                    + QStringLiteral("A[%1: %2], B[%3: %4]")
                                     .arg(p[1])
                                     .arg(checkErrToString(p[1]))
                                     .arg(p[2])

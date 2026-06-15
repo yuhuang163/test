@@ -45,6 +45,10 @@ INCLUDEPATH += agreement/at_protocol/access
 INCLUDEPATH += agreement/at_protocol/codec
 INCLUDEPATH += agreement/at_protocol/device
 INCLUDEPATH += agreement/at_protocol/manager
+INCLUDEPATH += agreement/dji_bulk_protocol/access
+INCLUDEPATH += agreement/dji_bulk_protocol/codec
+INCLUDEPATH += agreement/dji_bulk_protocol/device
+INCLUDEPATH += agreement/dji_bulk_protocol/manager
 INCLUDEPATH += agreement/qtransport
 INCLUDEPATH += agreement/factory_protocol/access
 INCLUDEPATH += agreement/factory_protocol/manager
@@ -155,7 +159,6 @@ SOURCES += \
     agreement/at_protocol/device/dongle_at_device.cpp \
     agreement/at_protocol/manager/qatmanager.cpp \
     agreement/product_serial/protocol/qproduct.cpp \
-    agreement/dji_bulk_protocol/access/dji_bulk_types.h \
     agreement/dji_bulk_protocol/codec/dji_bulk_codec.cpp \
     agreement/dji_bulk_protocol/device/dji_bulk_device.cpp \
     agreement/dji_bulk_protocol/manager/qbulkmanager.cpp \
@@ -293,6 +296,7 @@ HEADERS += \
     agreement/at_protocol/device/dongle_at_device.h \
     agreement/at_protocol/manager/qatmanager.h \
     agreement/product_serial/protocol/qproduct.h \
+    agreement/dji_bulk_protocol/access/dji_bulk_types.h \
     agreement/dji_bulk_protocol/codec/dji_bulk_codec.h \
     agreement/dji_bulk_protocol/device/dji_bulk_device.h \
     agreement/dji_bulk_protocol/manager/qbulkmanager.h \
@@ -339,7 +343,7 @@ HEADERS += \
     platform/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
     platform/instrument/instrument_device_catalog.h \
-    agreement/qshell/qshell.h \
+    services/qshell/qshell.h \
     business/tuple/qtupleservice.h \
     business/cmw_gprf/cmw_gprf_facade.h \
     agreement/scpi/access/scpi_types.h \

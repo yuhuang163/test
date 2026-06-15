@@ -50,7 +50,6 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         at(new QatManager(this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
-                                        scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
@@ -206,7 +205,6 @@ void test_base::signalAndslot() {
                                              QVariant::fromValue(measureData)));
     });
 
-    connect(&scpiVisaManager_, &QScpiManager::measureReadingReceived, this, [this](const QString& valueText) {
     connect(&scpiVisaManager_, &QScpiManager::measureReadingReceived, this, [this](const QString& valueText) {
         ProtocolMeasureData measureData;
         measureData.deviceName = QStringLiteral("VISA_SCPI");

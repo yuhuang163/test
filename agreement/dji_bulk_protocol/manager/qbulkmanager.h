@@ -43,6 +43,9 @@ public:
     bool bulkWriteRaw(const QByteArray& data, unsigned int timeout = 1000);
 
     DjiBulkDevice* device() const { return device_; }
+    bool isOpen() const { return is_open; }
+    int epNumber() const { return ep_numer; }
+    void setEpNumber(int ep) { ep_numer = ep; }
 
 signals:
     void readyRead(QByteArray& data);

@@ -10,11 +10,9 @@ QBulkManager::QBulkManager(QObject* parent)
     : QObject(parent), handle(nullptr), is_open(false), running(false), ep_numer(0x01) {
     usb_init();
     device_ = new DjiBulkDevice(this);
-    
-    // Connect device signals to our signals (forwarding)
-    connect(device_, &DjiBulkDevice::send_bulk_data, this, &QBulkManager::readyRead); // assuming some mapping
-    connect(device_, &DjiBulkDevice::send_bulk_data, this, [this](QString str){ qDebug() << str; });
-    // Any other signals would be forwarded here.
+
+    // 日志文本由上层直连 device_->send_bulk_data；readyRead 保留给原始 bulk 字节流（若上层需要）
+    connect(device_, &DjiBulkDevice::send_bulk_data, this, [this](const QString& str) { qDebug() << str; });
 
     // Connect WriteCallback
     device_->setWriteCallback([this](const QByteArray& data) {

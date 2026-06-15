@@ -923,8 +923,8 @@ void factory_analyzer::setupUSB() {
                 for (const auto& d : devices) {
 
                     QString text = QString("VID=0x%1 PID=0x%2")
-                                       .arg(d.first, 4, 16, QChar('0'))
-                                       .arg(d.second, 4, 16, QChar('0'))
+                                       .arg(d.vid, 4, 16, QChar('0'))
+                                       .arg(d.pid, 4, 16, QChar('0'))
                                        .toUpper();
 
                     if (!currentItems.contains(text)) {
@@ -933,8 +933,8 @@ void factory_analyzer::setupUSB() {
 
                         // ✅ 真正的数据放到 UserRole
                         QVariantMap dev;
-                        dev["vid"] = d.first;
-                        dev["pid"] = d.second;
+                        dev["vid"] = d.vid;
+                        dev["pid"] = d.pid;
                         dev["if"] = 4; // 你现在用的是 interface 4
 
                         ui->comboBox_2->setItemData(ui->comboBox_2->count() - 1, dev,
@@ -2659,7 +2659,7 @@ void factory_analyzer::updateBatteryLevel() {
             int level = str.toInt(&ok);
             if (ok) {
                 ui->progressBar->setValue(level);
-                bulk->ep_numer = 0x05; //高通
+                bulk->setEpNumber(0x05); //高通
                 // qDebug() << "Battery level:" << level;
             } else {
                 adb->sendCommand(
@@ -2670,7 +2670,7 @@ void factory_analyzer::updateBatteryLevel() {
                         if (match.hasMatch()) {
                             int level = match.captured(1).toInt();
                             ui->progressBar->setValue(level);
-                            bulk->ep_numer = 0x04; //默认走05//自研
+                            bulk->setEpNumber(0x04); //默认走05//自研
                             // qDebug() << "Battery level:" << level;
                         } else {
                             ui->progressBar->setValue(0);
@@ -2679,10 +2679,10 @@ void factory_analyzer::updateBatteryLevel() {
                     });
             }
         });
-    if (bulk->ep_numer == 0x05)
-        ui->label_7->setText("识别为高通：" + QString::number(bulk->ep_numer));
-    else if (bulk->ep_numer == 0x04)
-        ui->label_7->setText("识别为自研：" + QString::number(bulk->ep_numer));
+    if (bulk->epNumber() == 0x05)
+        ui->label_7->setText("识别为高通：" + QString::number(bulk->epNumber()));
+    else if (bulk->epNumber() == 0x04)
+        ui->label_7->setText("识别为自研：" + QString::number(bulk->epNumber()));
 }
 
 void factory_analyzer::on_pushButton_18_clicked() {
@@ -3227,7 +3227,7 @@ void factory_analyzer::startTask() {
             teststate++;
         }
 
-        if (bulk->is_open) {
+        if (bulk->isOpen()) {
             for (; teststate < conFiglayout->count();) {
                 // qDebug() << "程序在跑" << teststate;
                 if (canGoNext) {
@@ -3555,7 +3555,7 @@ void factory_analyzer::on_pushButton_68_clicked() {
 
     sendCommandWithRetry(
         std::bind(&DjiBulkDevice::set_amt_task_test,
-                  bulk,
+                  bulk->device(),
                   cmd,
                   2000));
 }
@@ -3566,7 +3566,7 @@ void factory_analyzer::on_pushButton_69_clicked() {
 
     sendCommandWithRetry(
         std::bind(&DjiBulkDevice::set_amt_task_test,
-                  bulk,
+                  bulk->device(),
                   cmd,
                   2000));
 }
@@ -3576,7 +3576,7 @@ void factory_analyzer::on_pushButton_70_clicked() {
 
     sendCommandWithRetry(
         std::bind(&DjiBulkDevice::set_amt_task_test,
-                  bulk,
+                  bulk->device(),
                   cmd,
                   2000));
 
@@ -3588,7 +3588,7 @@ void factory_analyzer::on_pushButton_71_clicked() {
 
     sendCommandWithRetry(
         std::bind(&DjiBulkDevice::set_amt_task_test,
-                  bulk,
+                  bulk->device(),
                   cmd,
                   2000));
 
