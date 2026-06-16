@@ -46,7 +46,9 @@
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
+#include "qroot/qroot.h"
 #include "root_ble_ota.h"
+#include "root_ble_ota2.h"
 #include "serial_channel.h"
 
 extern "C" {
@@ -142,7 +144,9 @@ class MainWindow : public QMainWindow {
     int totalBleSendData = 0;
     int stopBleOta = 0;
     bool rootBleOtaActive_ = false;
+    bool rootBleOta2Active_ = false;
     RootBleOtaClient rootBleOtaClient_;
+    RootBleOta2Client rootBleOta2Client_;
     void saveDongleUartLog(QString data);
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
@@ -187,6 +191,7 @@ class MainWindow : public QMainWindow {
     QProtocolManager protocolManager;
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
+    Qroot* qroot = nullptr;
     Qpb* pb = nullptr;
     QatManager* at = nullptr;
     typedef enum {
@@ -309,7 +314,9 @@ class MainWindow : public QMainWindow {
     void writeDataToCSVFile();
     void clearDisplay();
     bool connectBleForOta(const QString& mac);
+    void applyDongleOtaLinkSettingsFromUi();
     void startRootBleOta();
+    void startRootBleOta2(const QByteArray& imageData, uint32_t imageId, const QString& filePath, bool progressToSourceBar);
     void tryScheduleBleOtaPressTest(bool lastOk);
     void startUsmileBleOtaLegacy();
     void startUsmileBleOtaTransferLegacy();
@@ -377,6 +384,7 @@ class MainWindow : public QMainWindow {
     void refreshPressCalibResult(ProtocolPressCalibResultData data);
     void scanIpPorts();
     void refreshButtonState(ProtocolButtonStateData data);
+    void refreshRootBatteryTemp(quint8 temp);
   private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();
@@ -495,6 +503,7 @@ class MainWindow : public QMainWindow {
     void on_add_data_clicked();
     void on_init_ui_data_clicked();
     void on_get_battery_clicked();
+    void on_get_root_battery_temp_clicked();
     void on_get_motor_info_clicked();
     void on_get_board_sn_clicked();
     void on_write_device_sn_clicked();
@@ -527,6 +536,8 @@ class MainWindow : public QMainWindow {
     // void on_set_battery_clicked();
     void on_brush_relocation_clicked();
     void on_stopBleOta_clicked();
+    void on_setOtaPktSizeButton_clicked();
+    void on_setBleMtuButton_clicked();
     void on_closeconnect_clicked();
     void on_get_now_music_clicked();
     void on_send_audio_clicked();
@@ -540,7 +551,8 @@ class MainWindow : public QMainWindow {
     void on_AITestLine_returnPressed();
     void on_speakAi_released();
     void on_speakAi_pressed();
-    void on_get_botton_state_clicked();
+    void on_open_key_notify_clicked();
+    void on_close_key_notify_clicked();
     void on_selectPath_source_clicked();
     void on_set_mode_returnPressed();
     void on_btn_startRecording_clicked();

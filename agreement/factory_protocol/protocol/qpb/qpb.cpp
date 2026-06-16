@@ -126,6 +126,12 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
         }
         break;
     }
+    case DeviceCmd::LedTest: {
+        const QVariantMap map = data.toMap();
+        const int on = map.value(QStringLiteral("on")).toInt() != 0 ? 1 : 0;
+        set_led_color(on, 1);
+        break;
+    }
     case DeviceCmd::MotorTestState:
         set_motor_test_state(data.toInt());
         break;

@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "test_case.h"
 
@@ -624,6 +624,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    ctx->applyTestCaseProductProtocol(def.send.productProtocol);
+
     DeviceCmd cmd = DeviceCmd::FacMode;
     if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
         ctx->showlog(QStringLiteral("未知指令：%1").arg(def.send.deviceCmd));
@@ -669,12 +671,20 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     }
 
     auto* box = qobject_cast<QFreeWorkBox*>(window());
-    Fixture_uart* uart = box ? box->fixtureUartWidget() : nullptr;
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
     if (!uart || !uart->isFixtureSerialOpen()) {
-        showlog(QStringLiteral("治具串口未连接，请从菜单打开「连接治具串口」"));
+        const QString msg = fixtureConnectDetail.isEmpty()
+            ? QStringLiteral("治具串口未连接，且无法自动连接（请检查配置或菜单「连接治具串口」）")
+            : fixtureConnectDetail;
+        showlog(msg);
         markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
         return;
     }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
 
     const int machineIndex = resolveFixtureMachineIndex(def.send.param);
 
@@ -781,6 +791,19 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
                                    markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
                                }
                            });
+    } else if (cmd == FixturePcbaCmd::WaitWorkCurrentDoneAck) {
+        const auto connPtr = std::make_shared<QMetaObject::Connection>();
+        *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine_sleep, this,
+                           [this, def, stopWaitTimer, connPtr](const FixturePacketData& pack) {
+                               QObject::disconnect(*connPtr);
+                               if (!isActiveTestCaseStep(def.meta.name) || testCaseStepResult_.done)
+                                   return;
+                               stopWaitTimer();
+                               const QString detail =
+                                   QStringLiteral("工作电流测量完成 机号=%1").arg(pack.machineNumber);
+                               markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+                               showlog(QStringLiteral("收到治具短包 55 01 05 CC AA：%1").arg(detail));
+                           });
     } else {
         stopWaitTimer();
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
@@ -844,4 +867,5 @@ void registerFreeWorkTestCaseHooks() {
         fw->markActiveTestCaseStepDone(true, QStringLiteral("hook_ok"), QStringLiteral("通过"));
     });
 }
-
+
+

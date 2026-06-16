@@ -47,91 +47,60 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         pb(new Qpb(dongleSerialPort)),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
-                                        at(new QatManager(this)),
+                                        qroot(new Qroot(dongleSerialPort)),
+                                        at(new Qat(dongleSerialPort)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
-                                        qroot(new Qroot(dongleSerialPort)),
                                         product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
-    const std::string protocolName = SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
-    auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
-    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
-        selectedType = QProtocolManager::ProtocolType::Qpb;
-    }
-    protocolManager.setCurrentProtocolType(selectedType);
-    showlog(QStringLiteral("当前设备协议：%1")
-                .arg(QString::fromStdString(
-                    QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
-
-    scpiUsbManager_.attachSerialPort(usbSerialPort);
-    scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
-
-    at->setWriteCallback([this](const QByteArray& data) {
-        if (dongleSerialPort && dongleSerialPort->isOpen()) {
-            dongleSerialPort->write(data);
+    // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
+    {
+        auto selectedType = QProtocolManager::protocolTypeFromString(
+            SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
+        if (selectedType == QProtocolManager::ProtocolType::Unknown)
+            selectedType = QProtocolManager::ProtocolType::Qpb;
+        if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+            (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+            selectedType = QProtocolManager::ProtocolType::Qpb;
         }
-    });
+        protocolManager.setCurrentProtocolType(selectedType);
+    }
 
     signalAndslot();
     scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
 }
-
-void test_base::setupModbusManager() {
-    modbusManager.setStationIndex(getIndex());
-    modbusManager.setIsContinueFn([this]() { return isTestContinue; });
-    modbusManager.setLogFn([this](const QString& line) { showlog(line); });
-
-    modbusManager.attachSerialChannel(usbSerialChannel_);
-    modbusManager.loadDeviceRouteFromSettings();
-}
-
-bool test_base::execScpi(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
-    return scpiUsbManager_.exec(cmd, param, errorMessage);
-    return scpiUsbManager_.exec(cmd, param, errorMessage);
-}
-
-QScpiManager* test_base::scpiVisaManager() {
-    return &scpiVisaManager_;
-}
-
-const QScpiManager* test_base::scpiVisaManager() const {
-    return &scpiVisaManager_;
-}
-
-QStringList test_base::instrumentPurposeLabels() const {
-    return InstrumentDeviceCatalog::purposeLabelsForFactory(pack.factory);
-}
-
-bool test_base::resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const {
-    return InstrumentDeviceCatalog::resolveByLabel(pack.factory, purposeLabelZh, out);
-}
-
-bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
-    scpiVisaManager_.loadHuilingVisaFromSettings();
-    return scpiVisaManager_.exec(cmd, param, errorMessage);
-}
-
-bool test_base::execAmmeterMeasure(QString* errorMessage) {
-    if (modbusManager.isRtuAmmeterRoute()) {
-        if (modbusManager.deviceRoute() == ModbusDeviceRoute::HqAmmeterRtu) {
-            return modbusManager.exec(HqAmmeterRtuCmd::ReadMeasurement, errorMessage);
-        }
-        if (modbusManager.deviceRoute() == ModbusDeviceRoute::LxAmmeterRtu) {
-            return modbusManager.exec(LxAmmeterRtuCmd::ReadMeasurement, errorMessage);
-        }
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("未配置 Modbus RTU 电流表路由");
-        }
-        return false;
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    QProtocolManager::ProtocolType selectedType = QProtocolManager::ProtocolType::Qfctp;
+    switch (protocol) {
+    case TestCaseProductProtocol::Qpb:
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+        break;
+    case TestCaseProductProtocol::Qroot:
+        selectedType = QProtocolManager::ProtocolType::Qroot;
+        break;
+    case TestCaseProductProtocol::Qfctp:
+    default:
+        selectedType = QProtocolManager::ProtocolType::Qfctp;
+        break;
     }
-    return execScpi(HuilingScpiCmd::ReadMeasureCurrent, {}, errorMessage);
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    if (protocolManager.currentProtocolType() == selectedType)
+        return;
+    protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("切换设备协议：%1")
+                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
 
 void test_base::initData() {
@@ -616,6 +585,12 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshPictureSendOver(payload.value<ProtocolResultData>());
     } else if (reportType == "ProtocolAgingStatusData" && payload.canConvert<ProtocolAgingStatusData>()) {
         refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
+    } else if (reportType == QLatin1String("ProtocolBatteryTempData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshRootBatteryTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
+        refreshResultCode(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshTypeStatus(payload.value<ProtocolTypeData>());
     }
 }
 

@@ -370,7 +370,11 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
             const bool productGet = !caseDef.hook.enabled && !dongleBleConnect && caseDef.send.channel == TestCaseSendChannel::Product && caseDef.send.action == TestCaseSendAction::Get;
-            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet) {
+            // 治具/产品串口 Get 等异步等待须由回包回调 markActiveTestCaseStepDone，不可在此直接 done
+            const bool fixtureOrSerialAsync =
+                caseDef.send.channel == TestCaseSendChannel::Fixture ||
+                caseDef.send.channel == TestCaseSendChannel::ProductSerial;
+            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;
@@ -1382,7 +1386,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
-        on_macInput_returnPressed();
+        // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {

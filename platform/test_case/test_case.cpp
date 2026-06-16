@@ -1352,7 +1352,7 @@ TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& 
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qpb;
-    if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("Root"), Qt::CaseInsensitive) == 0)
+    if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qroot;
     return TestCaseProductProtocol::Qfctp;
 }
@@ -1373,7 +1373,7 @@ QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protoco
     case TestCaseProductProtocol::Qpb:
         return QStringLiteral("QPB");
     case TestCaseProductProtocol::Qroot:
-        return QStringLiteral("Root PCBA");
+        return QStringLiteral("Qroot");
     default:
         return QStringLiteral("FCTP");
     }
@@ -2294,7 +2294,7 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.result;
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;
@@ -2394,7 +2394,7 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return d.mac.trimmed();
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;

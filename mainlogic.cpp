@@ -463,14 +463,17 @@ void MainWindow::saveDongleUartLog(QString data) {
 }
 void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     if (rootBleOtaActive_) {
-        rootBleOtaClient_.onRx(dataTemp);
+        if (rootBleOta2Active_)
+            rootBleOta2Client_.onRx(dataTemp);
+        else
+            rootBleOtaClient_.onRx(dataTemp);
         // const QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
         // ui->bleOtaMsg->appendPlainText(QString("[%1] RX %2 bytes: %3")
         //                                    .arg(timestamp)
         //                                    .arg(dataTemp.size())
         //                                    .arg(QString(dataTemp.toHex(' ').left(120))));
         // saveDongleUartLog(QString("[%1] OTA_RX %2").arg(timestamp, QString(dataTemp.toHex(' '))));
-        return;
+        // return;
     }
 
     int write_len = 0;

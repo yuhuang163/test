@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1393</width>
+    <width>1819</width>
     <height>1016</height>
    </rect>
   </property>
@@ -339,6 +339,16 @@
                </property>
               </widget>
              </item>
+             <item row="0" column="3">
+              <widget class="QPushButton" name="connectProductButton">
+               <property name="toolTip">
+                <string>使用上方「蓝牙 MAC」连接待测产品，效果与在 MAC 输入框按回车相同。</string>
+               </property>
+               <property name="text">
+                <string>连接产品</string>
+               </property>
+              </widget>
+             </item>
              <item row="0" column="2">
               <widget class="QLineEdit" name="macInput">
                <property name="sizePolicy">
@@ -351,20 +361,17 @@
                 <string/>
                </property>
                <property name="text">
-                <string>DF:F1:10:00:00:10</string>
+                <string>b8:08:07:0c:2d:21</string>
                </property>
                <property name="placeholderText">
                 <string>扫描/输入MAC后连接</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="3">
-              <widget class="QPushButton" name="connectProductButton">
-               <property name="toolTip">
-                <string>使用上方「蓝牙 MAC」连接待测产品，效果与在 MAC 输入框按回车相同。</string>
-               </property>
+             <item row="0" column="4">
+              <widget class="QPushButton" name="pushButton">
                <property name="text">
-                <string>连接产品</string>
+                <string>测试(开发用)</string>
                </property>
               </widget>
              </item>
@@ -994,6 +1001,20 @@
                        <widget class="QPushButton" name="get_battery">
                         <property name="text">
                          <string>显示充电情况</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="get_root_battery_temp">
+                        <property name="text">
+                         <string>查询电池温度</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="root_battery_temp_value">
+                        <property name="text">
+                         <string>电池温度：</string>
                         </property>
                        </widget>
                       </item>
@@ -2809,11 +2830,22 @@
                     </layout>
                    </item>
                    <item row="0" column="4">
-                    <widget class="QPushButton" name="get_botton_state">
-                     <property name="text">
-                      <string>获取按键状态</string>
-                     </property>
-                    </widget>
+                    <layout class="QHBoxLayout" name="horizontalLayout_keyNotify">
+                     <item>
+                      <widget class="QPushButton" name="open_key_notify">
+                       <property name="text">
+                        <string>开启按键上报</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="close_key_notify">
+                       <property name="text">
+                        <string>关闭按键上报</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </widget>
@@ -4087,24 +4119,6 @@
                 <string>蓝牙ota</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_14">
-                <item row="7" column="0" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_84">
-                  <item>
-                   <widget class="QLabel" name="label_84">
-                    <property name="text">
-                     <string>整体接收进度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bel_ota_receive_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
                 <item row="3" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_81">
                   <item>
@@ -4119,7 +4133,7 @@
                     <item>
                      <widget class="QLineEdit" name="bleotamacInput">
                       <property name="text">
-                       <string>df:a1:10:00:0f:5f</string>
+                       <string>df:a1:00:00:23:f4</string>
                       </property>
                      </widget>
                     </item>
@@ -4161,59 +4175,6 @@
                   </item>
                  </layout>
                 </item>
-                <item row="6" column="0" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_83">
-                  <item>
-                   <widget class="QLabel" name="label_83">
-                    <property name="text">
-                     <string>固件发送进度</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QProgressBar" name="bel_fw_ota_speed">
-                    <property name="value">
-                     <number>24</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="1" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_82">
-                  <item>
-                   <widget class="QPushButton" name="selectPath">
-                    <property name="text">
-                     <string>选择固件OTA文件路径</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="otaFilePath">
-                    <property name="text">
-                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PS_V_108_20250221_15/XJYD_FW_Y20PS_V_ESP32S3_108.bin</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item row="8" column="1">
-                 <layout class="QHBoxLayout" name="horizontalLayout_89">
-                  <item>
-                   <widget class="QLabel" name="label_88">
-                    <property name="text">
-                     <string>耗时</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLCDNumber" name="bleotalcdtime"/>
-                  </item>
-                 </layout>
-                </item>
-                <item row="9" column="0" colspan="2">
-                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
-                </item>
                 <item row="4" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_18">
                   <property name="topMargin">
@@ -4229,7 +4190,7 @@
                   <item>
                    <widget class="QLineEdit" name="OtaTimeInterval">
                     <property name="text">
-                     <string>8</string>
+                     <string>2</string>
                     </property>
                    </widget>
                   </item>
@@ -4260,7 +4221,20 @@
                      <string>BLOCK_DATA 每帧携带的镜像字节数，默认 400；过大可能超出 BLE MTU</string>
                     </property>
                     <property name="text">
-                     <string>200</string>
+                     <string>242</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="is_img_res_ota_v2">
+                    <property name="toolTip">
+                     <string>图片资源 OTA v2：原子 TLV、Service 9、固定 1024 字节块（见 IMG_RES_OTA_PROTOCOL.md）</string>
+                    </property>
+                    <property name="text">
+                     <string>图片资源OTA v2</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
                     </property>
                    </widget>
                   </item>
@@ -4276,23 +4250,65 @@
                   </item>
                  </layout>
                 </item>
-                <item row="5" column="0" colspan="2">
-                 <layout class="QHBoxLayout" name="horizontalLayout_101">
+                <item row="10" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_83">
                   <item>
-                   <widget class="QLabel" name="label_106">
+                   <widget class="QLabel" name="label_83">
                     <property name="text">
-                     <string>资源发送进度</string>
+                     <string>固件发送进度</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QProgressBar" name="bel_source_ota_speed">
+                   <widget class="QProgressBar" name="bel_fw_ota_speed">
                     <property name="value">
                      <number>24</number>
                     </property>
                    </widget>
                   </item>
                  </layout>
+                </item>
+                <item row="12" column="1">
+                 <layout class="QHBoxLayout" name="horizontalLayout_89">
+                  <item>
+                   <widget class="QLabel" name="label_88">
+                    <property name="text">
+                     <string>耗时</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLCDNumber" name="bleotalcdtime"/>
+                  </item>
+                 </layout>
+                </item>
+                <item row="11" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_84">
+                  <item>
+                   <widget class="QLabel" name="label_84">
+                    <property name="text">
+                     <string>整体接收进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_ota_receive_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="0" column="1" rowspan="5">
+                 <widget class="QLabel" name="bleotaresult">
+                  <property name="text">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
                 </item>
                 <item row="0" column="0">
                  <layout class="QHBoxLayout" name="horizontalLayout_100">
@@ -4312,15 +4328,164 @@
                   </item>
                  </layout>
                 </item>
-                <item row="0" column="1" rowspan="5">
-                 <widget class="QLabel" name="bleotaresult">
-                  <property name="text">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;WAIT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <item row="9" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_101">
+                  <item>
+                   <widget class="QLabel" name="label_106">
+                    <property name="text">
+                     <string>资源发送进度</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QProgressBar" name="bel_source_ota_speed">
+                    <property name="value">
+                     <number>24</number>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="1" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_82">
+                  <item>
+                   <widget class="QPushButton" name="selectPath">
+                    <property name="text">
+                     <string>选择固件OTA文件路径</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="otaFilePath">
+                    <property name="text">
+                     <string>C:/Users/heyj/Downloads/XJYD_ALL_Y20PS_V_108_20250221_15/XJYD_FW_Y20PS_V_ESP32S3_108.bin</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item row="13" column="0" colspan="2">
+                 <widget class="QPlainTextEdit" name="bleOtaMsg"/>
+                </item>
+                <item row="5" column="0">
+                 <layout class="QHBoxLayout" name="horizontalLayout_111">
+                  <property name="topMargin">
+                   <number>0</number>
                   </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
+                  <item>
+                   <widget class="QLabel" name="label_ota_img_res_version">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>图片资源版本(0x0002)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="OtaImgResVersion">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="toolTip">
+                     <string>开始升级 TLV VERSION(0x0002)，uint32；支持 0x00010000 或十进制</string>
+                    </property>
+                    <property name="text">
+                     <string>0x00250000</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_ble_mtu">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>BLE MTU(字节)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="BleMtuSize">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="toolTip">
+                     <string>Dongle AT+BLEMTU，配置 BLE MTU</string>
+                    </property>
+                    <property name="text">
+                     <string>247</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="setBleMtuButton">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>设置BLE MTU</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_ota_pkt_size">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>OTA切包(字节)</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="OtaPktSize">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="toolTip">
+                     <string>Dongle AT+OTAPKTSIZE，配置 OTA 切包大小（非 BLE MTU）</string>
+                    </property>
+                    <property name="text">
+                     <string>242</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="setOtaPktSizeButton">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string>设置切包</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>
@@ -5449,19 +5614,6 @@ border-color: rgb(255, 165, 0)</string>
                  </item>
                 </layout>
                </widget>
-               <widget class="QPushButton" name="pushButton">
-                <property name="geometry">
-                 <rect>
-                  <x>420</x>
-                  <y>30</y>
-                  <width>234</width>
-                  <height>23</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>测试(开发用)</string>
-                </property>
-               </widget>
                <widget class="QPushButton" name="pushButton_3">
                 <property name="geometry">
                  <rect>
@@ -5493,7 +5645,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1393</width>
+     <width>1819</width>
      <height>21</height>
     </rect>
    </property>

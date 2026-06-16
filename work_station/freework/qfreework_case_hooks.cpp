@@ -97,6 +97,23 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
                                QStringLiteral("ProductInfo/KeyIdMode"), QStringLiteral("ProductInfo/KeyIdMode_checkBox"));
         return;
     }
+    // M8：9A 自动上报 keyId 1=加挡位、2=减挡位、3=模式（与 ProductInfo/KeyId* 默认一致）
+    if (hookId == QStringLiteral("KEY_M8_PLUS")) {
+        fw->startKeyButtonTest(QStringLiteral("M8加挡位键"), QStringLiteral("请按加挡位（+）键"),
+                               QStringLiteral("ProductInfo/KeyIdPower"), QStringLiteral("ProductInfo/KeyIdPower_checkBox"));
+        return;
+    }
+    if (hookId == QStringLiteral("KEY_M8_MINUS")) {
+        fw->startKeyButtonTest(QStringLiteral("M8减挡位键"), QStringLiteral("请按减挡位（-）键"),
+                               QStringLiteral("ProductInfo/KeyIdStartPause"),
+                               QStringLiteral("ProductInfo/KeyIdStartPause_checkBox"));
+        return;
+    }
+    if (hookId == QStringLiteral("KEY_M8_MODE")) {
+        fw->startKeyButtonTest(QStringLiteral("M8模式键"), QStringLiteral("请按模式键"),
+                               QStringLiteral("ProductInfo/KeyIdMode"), QStringLiteral("ProductInfo/KeyIdMode_checkBox"));
+        return;
+    }
     if (hookId == QStringLiteral("KEY_SPEED")) {
         fw->startKeyButtonTest(QStringLiteral("速度键测试"), QStringLiteral("请短按下速度按钮"),
                                QStringLiteral("ProductInfo/KeyIdSpeed"), QStringLiteral("ProductInfo/KeyIdSpeed_checkBox"));
@@ -225,6 +242,9 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("KEY_POWER"));
     registerHook(QStringLiteral("KEY_START_PAUSE"));
     registerHook(QStringLiteral("KEY_MODE"));
+    registerHook(QStringLiteral("KEY_M8_PLUS"));
+    registerHook(QStringLiteral("KEY_M8_MINUS"));
+    registerHook(QStringLiteral("KEY_M8_MODE"));
     registerHook(QStringLiteral("KEY_SPEED"));
     registerHook(QStringLiteral("KEY_PROGRAM"));
     registerHook(QStringLiteral("KEY_LEFT"));
