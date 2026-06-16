@@ -34,6 +34,22 @@ if not errorlevel 1 (
 
 
 
+if exist ".\.venv\Scripts\python.exe" (
+
+    .\.venv\Scripts\python.exe -c "import sys" >nul 2>&1
+
+    if errorlevel 1 (
+
+        echo [API] venv invalid ^(e.g. copied from another PC^), recreating...
+
+        rmdir /s /q .venv
+
+    )
+
+)
+
+
+
 if not exist ".\.venv\Scripts\python.exe" (
 
     echo [API] first run: creating venv, pip install 1-3 min...
