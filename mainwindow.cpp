@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 
 #include <QInputDialog>
 #include <QLineEdit>
@@ -90,11 +90,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           dongleSerialChannel_(new SerialChannel(this)),
                                           dongleSerialPort(dongleSerialChannel_->port()),
                                           pb(new Qpb(dongleSerialPort)),
-                                          qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)), at(new QatManager(this)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
-                                          qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)),
-                                          qroot(new Qroot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
-                                          nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
+                                          qfctp(new Qfctp(dongleSerialPort)),
+                                          qaiot(new Qaiot(dongleSerialPort)),
+                                          qroot(new Qroot(dongleSerialPort)),
+                                          at(new QatManager(this)),
+                                          qimuc(new imu_calibrate),
+                                          basicInfoModel(new TestModel),
+                                          nqimuc(new new_imu_calibrate),
+                                          peripheralModel(new TestModel),
+                                          ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    at->setWriteCallback([this](const QByteArray& data) {
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(data);
+    });
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -953,9 +962,6 @@ void MainWindow::on_enterBurningMode_clicked() {
         m["seconds"] = ui->burningModetime->text(); // 统一上层入参，协议层做兼�?
         protocolManager.set(DeviceCmd::BurningMode, m);
         showlog("已发送老化");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
 }
 void MainWindow::on_exitBurningMode_clicked() {
     if (!at->getConnected()) {

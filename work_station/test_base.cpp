@@ -48,7 +48,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         qroot(new Qroot(dongleSerialPort)),
-                                        at(new Qat(dongleSerialPort)),
+                                        at(new QatManager(this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
@@ -59,6 +59,10 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    at->setWriteCallback([this](const QByteArray& data) {
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(data);
+    });
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     {
         auto selectedType = QProtocolManager::protocolTypeFromString(
@@ -101,6 +105,32 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     protocolManager.setCurrentProtocolType(selectedType);
     showlog(QStringLiteral("切换设备协议：%1")
                 .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+}
+
+void test_base::setupModbusManager() {
+    modbusManager.setStationIndex(getIndex());
+    modbusManager.setLogFn([this](const QString& msg) {
+        showlog(msg);
+    });
+    modbusManager.setIsContinueFn([this]() {
+        return isTestContinue;
+    });
+}
+
+QScpiManager* test_base::scpiVisaManager() {
+    return &scpiVisaManager_;
+}
+
+const QScpiManager* test_base::scpiVisaManager() const {
+    return &scpiVisaManager_;
+}
+
+bool test_base::execAmmeterMeasure(QString* errorMessage) {
+    return scpiUsbManager_.exec(HuilingScpiCmd::ReadMeasureCurrent, {}, errorMessage);
+}
+
+bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
+    return scpiVisaManager_.exec(cmd, param, errorMessage);
 }
 
 void test_base::initData() {

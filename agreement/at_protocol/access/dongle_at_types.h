@@ -13,6 +13,8 @@ enum class DongleCmd {
     BleAppConnect,       // AT+BLE=
     BleMainConnect,      // AT+MAIN=
     OtaDataPassthrough,  // AT+OTADATA= 0/1
+    OtaPktSize,          // AT+OTAPKTSIZE= 切包字节数
+    BleMtu,              // AT+BLEMTU= MTU 字节数
     MainDataPassthrough, // AT+MAINDATA= 0/1
     BleLog,              // AT+BLELOG= 0/1
     BleDeviceLog,        // AT+BLEDEVICELOG= 0/1

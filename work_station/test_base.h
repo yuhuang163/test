@@ -21,6 +21,7 @@
 #include "qjig.h"
 #include "serial_channel.h"
 #include "serial_port_controller.h"
+#include "test_case_types.h"
 
 extern "C" {
 #include "lib/nfc/dcrf32.h"
@@ -119,6 +120,7 @@ class test_base : public QWidget {
     bool execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
     QScpiManager* scpiVisaManager();
     const QScpiManager* scpiVisaManager() const;
+    void applyTestCaseProductProtocol(TestCaseProductProtocol protocol);
 
     /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
     QStringList instrumentPurposeLabels() const;

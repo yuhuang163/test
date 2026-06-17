@@ -5,7 +5,7 @@
 #include <QElapsedTimer>
 
 #include "common_utils.h"
-#include "common_protocl/comm_protocol_defs.h"
+#include "comm_protocol_defs.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")

@@ -89,6 +89,11 @@ bool Fixture_uart::isFixtureSerialOpen() const {
     return fixtureManager_->isOpen();
 }
 
+bool Fixture_uart::tryOpenSerialPort(const QString& portName, bool autoConnect) {
+    Q_UNUSED(autoConnect);
+    return fixtureManager_->open(portName, fixBaudRate);
+}
+
 void Fixture_uart::sendPcbaFrame(const QByteArray& frame) {
     fixtureManager_->sendPcbaFrame(frame);
 }

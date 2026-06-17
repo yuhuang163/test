@@ -46,7 +46,7 @@
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
-#include "qroot/qroot.h"
+#include "qroot.h"
 #include "root_ble_ota.h"
 #include "root_ble_ota2.h"
 #include "serial_channel.h"

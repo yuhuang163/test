@@ -57,6 +57,7 @@ INCLUDEPATH += agreement/factory_protocol/protocol/qpb
 INCLUDEPATH += agreement/factory_protocol/protocol/qfctp
 INCLUDEPATH += agreement/factory_protocol/protocol/qaiot
 INCLUDEPATH += agreement/factory_protocol/protocol/qroot
+INCLUDEPATH += agreement/factory_protocol/protocol
 INCLUDEPATH += business/ble_ota
 INCLUDEPATH += business/tuple
 INCLUDEPATH += business/plc_v3_fixture
@@ -151,6 +152,7 @@ SOURCES += \
     agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
     agreement/factory_protocol/protocol/qfctp/qfctp.cpp \
     agreement/factory_protocol/protocol/qroot/qroot.cpp \
+    agreement/factory_protocol/protocol/root_ble_ota2.cpp \
     agreement/factory_protocol/access/qprotocol.cpp \
     agreement/factory_protocol/manager/qprotocolmanager.cpp \
     business/ble_ota/root_ble_ota.cpp \
@@ -286,6 +288,7 @@ HEADERS += \
     agreement/factory_protocol/protocol/qaiot/qaiot.h \
     agreement/factory_protocol/protocol/qfctp/qfctp.h \
     agreement/factory_protocol/protocol/qroot/qroot.h \
+    agreement/factory_protocol/protocol/root_ble_ota2.h \
     agreement/factory_protocol/access/qprotocol.h \
     agreement/factory_protocol/access/qprotocol_types.h \
     agreement/factory_protocol/manager/qprotocolmanager.h \

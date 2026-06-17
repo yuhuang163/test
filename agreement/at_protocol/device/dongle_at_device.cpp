@@ -36,6 +36,12 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
     case DongleCmd::OtaDataPassthrough:
         sendAtLine(QStringLiteral("AT+OTADATA=%1\r\n").arg(data.toInt()));
         break;
+    case DongleCmd::OtaPktSize:
+        sendAtLine(QStringLiteral("AT+OTAPKTSIZE=%1\r\n").arg(data.toInt()));
+        break;
+    case DongleCmd::BleMtu:
+        sendAtLine(QStringLiteral("AT+BLEMTU=%1\r\n").arg(data.toInt()));
+        break;
     case DongleCmd::MainDataPassthrough:
         sendAtLine(QStringLiteral("AT+MAINDATA=%1\r\n").arg(data.toInt()));
         break;
