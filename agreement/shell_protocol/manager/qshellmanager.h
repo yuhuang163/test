@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <functional>
-#include "qprocesschannel.h"
+#include "process_channel.h"
 
 class Qshell : public QObject {
     Q_OBJECT
@@ -19,5 +19,5 @@ class Qshell : public QObject {
                      qint64 timeoutMs = 3000);
 
   private:
-    QProcessChannel* channel_ = nullptr;
+    ProcessChannel* channel_ = nullptr;
 };

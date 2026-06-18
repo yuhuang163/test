@@ -392,33 +392,35 @@ agreement/fixture/
 
 ---
 
-## 10. VISA 与 SCPI（已并入 scpi 域）
+## 10. 平台级底层驱动 (Platform Driver)
 
-| 路径 | 职责 |
-|------|------|
-| `platform/driver/visa/visa_channel.*` | NI-VISA 字节 I/O（无 SCPI 语义） |
-| `agreement/scpi/manager/qscpivisasession.*` | SCPI over VISA（`ScpiTransport`） |
-| `agreement/scpi/device/huiling_wfp60h_scpi/` | 会凌 VISA 程控电源（`HuilingScpiCmd`） |
-| `agreement/scpi/device/rs_cmw100_scpi/` | CMW100 GPRF 协议（`CmwScpiCmd`） |
-| `business/cmw_gprf/cmw_gprf_facade.*` | CMW PER/burst 业务编排（注入 `QScpiManager*`） |
+不再将通用传输逻辑散落在协议目录中，系统所有底层物理和系统通道统一汇聚于 `platform/driver/` 下，作为纯粹的 I/O 提供者：
 
-**已删除**：`agreement/qvisa/`、`agreement/visa_instrument/`（原 `Qvisa`、`Qcmw` 兼容层）。
+| 路径 | 职责 | 对应上层协议域 |
+|------|------|----------------|
+| `platform/driver/serial/serial_channel.*` | 封装系统 COM 串口读写 | 所有依赖串口的协议 (Fixture, Modbus等) |
+| `platform/driver/visa/visa_channel.*` | NI-VISA 字节 I/O（无 SCPI 语义） | SCPI 协议 (`scpi_protocol`) |
+| `platform/driver/process/process_channel.*` | 封装系统本地进程管道通信与生命周期管理 | ADB 协议 (`adb_protocol`)、Shell 协议 (`shell_protocol`) |
 
-工站使用 **`test_base::scpiVisaManager_`**（VISA）与 **`usb->scpiManager()`**（串口）两个实例；VISA 与串口仅 `ScpiLinkKind` 不同，协议均在 `agreement/scpi/`。
+*(注：原有的 `agreement/qtransport/` 以及 `agreement/qvisa/` 已被彻底删除，其通信机制已被提取或下沉为上述的三大底层核心驱动)*
+
+工站使用 `test_base::scpiVisaManager_`（VISA）与 `usb->scpiManager()`（串口）两个实例；VISA 与串口仅物理驱动不同，协议层流转均在 `agreement/scpi_protocol/`。
 
 ---
 
-## 11. 服务与其它（非标准四层）
+## 11. 协议域全局后缀对齐（ADB/Shell/MES 四层改造）
 
-| 目录 | 说明 |
-|------|------|
-| `qbulk/` | USB Bulk 工厂协议 |
-| `qadb/`、`qshell/` | 进程/命令队列 |
-| `qmes/` | 各工厂 MES HTTP |
-| `qat/` | Dongle AT，与 `QProtocolManager` 并行解析 |
-| `qtransport/` | 通用传输辅助（见通讯分层文档） |
+原 `services/` 目录下的 `qadb`、`qshell` 和 `qmes` 本质上与外部系统交互，也属于协议。它们将整体迁移并重构入 `agreement/` 下，且**整个协议目录体系均统一增加了 `_protocol` 后缀**，并执行 `access/manager/codec/device` 的标准四层规范：
 
-这些目录**不要求** access/manager/device 四层，保持现有门面即可。
+| 统一后的目录 | 职责说明 | 底层驱动依托 |
+|------|----------|----------|
+| `adb_protocol/` | ADB 进程通信协议 | 依赖 `platform/driver/process` |
+| `shell_protocol/` | 本地进程控制协议 | 依赖 `platform/driver/process` |
+| `mes_protocol/` | 各工厂 MES HTTP 交互 | 内部 HTTP 调用封装 |
+| `modbus_protocol/` | Modbus RTU/TCP 通信 | 依赖串口或 TCP |
+| `scpi_protocol/` | 仪器通信协议 | 依赖 `platform/driver/visa` 或串口 |
+| `fixture_protocol/` | 治具通信协议 | 依赖 `platform/driver/serial` |
+| `product_protocol/` | 产线测试特有数据协议 | 内部业务相关 |
 
 ---
 
@@ -436,13 +438,14 @@ agreement/fixture/
 
 ## 13. 工程与包含路径
 
-`new_production.pro` 中典型 `INCLUDEPATH`：
+`new_production.pro` 中典型的 `INCLUDEPATH` 现已全部应用后缀对齐机制：
 
-- `agreement/scpi/access`、`manager`、`codec`、`device/huiling_wfp60h_scpi`、`device/rs_cmw100_scpi`
-- `platform/driver/visa`、`platform/driver/serial`
+- `agreement/scpi_protocol/access`、`manager`、`codec`、`device/...`
+- `agreement/adb_protocol/...`、`agreement/mes_protocol/...`、`agreement/modbus_protocol/...`
+- `platform/driver/visa`、`platform/driver/serial`、`platform/driver/process` (底层三大物理驱动)
 - `business/cmw_gprf`
-- `agreement/qusb`（待删）
-- `agreement/modbus/access`、`manager`、`codec`、`device/...`
+
+*(不再有 `agreement/qtransport` 或未加后缀的遗留杂项)*
 
 改 `.ui` 或新增 device 目录后需 **重新 qmake + 全量编译**。
 

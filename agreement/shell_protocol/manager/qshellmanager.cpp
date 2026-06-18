@@ -1,5 +1,5 @@
 // Qshell.cpp
-#include "Qshell.h"
+#include "qshellmanager.h"
 #include <QDebug>
 
 #if _MSC_VER >= 1600
@@ -7,7 +7,7 @@
 #endif
 
 Qshell::Qshell(QObject* parent) : QObject(parent) {
-    channel_ = new QProcessChannel(this);
+    channel_ = new ProcessChannel(this);
     channel_->setTxPrefix(QStringLiteral("SHELL TX:"));
     channel_->setRxPrefix(QStringLiteral("SHELL RX:"));
     const QByteArray initCommand =

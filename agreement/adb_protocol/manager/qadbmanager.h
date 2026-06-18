@@ -5,7 +5,7 @@
 #include <QProcess>
 #include <QString>
 #include <QTimer>
-#include "qprocesschannel.h"
+#include "process_channel.h"
 #include <functional>
 
 class Qadb : public QObject {
@@ -26,7 +26,7 @@ class Qadb : public QObject {
     void stopKeyMonitorAdbShell();
 
   private:
-    QProcessChannel* channel_ = nullptr;
+    ProcessChannel* channel_ = nullptr;
     struct InputEvent {
         qint64 sec;
         qint64 usec;

@@ -1,5 +1,5 @@
-#ifndef QPROCESSCHANNEL_H
-#define QPROCESSCHANNEL_H
+#ifndef ProcessChannel_H
+#define ProcessChannel_H
 
 #include <QElapsedTimer>
 #include <QObject>
@@ -10,13 +10,13 @@
 #include <QTimer>
 #include <functional>
 
-class QProcessChannel : public QObject {
+class ProcessChannel : public QObject {
     Q_OBJECT
   public:
     using Callback = std::function<void(const QString&, qint64)>;
 
-    explicit QProcessChannel(QObject* parent = nullptr);
-    ~QProcessChannel() override;
+    explicit ProcessChannel(QObject* parent = nullptr);
+    ~ProcessChannel() override;
 
     bool start(const QString& program, const QStringList& args, int startTimeoutMs = 3000);
     void stop(const QString& exitCommand = QStringLiteral("exit"));
@@ -61,4 +61,4 @@ class QProcessChannel : public QObject {
     QString rxPrefix_ = QStringLiteral("PROC RX:");
 };
 
-#endif // QPROCESSCHANNEL_H
+#endif // ProcessChannel_H

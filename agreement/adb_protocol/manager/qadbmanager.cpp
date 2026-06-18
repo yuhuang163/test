@@ -1,12 +1,12 @@
 // Qadb.cpp
-#include "Qadb.h"
+#include "qadbmanager.h"
 #include <QCoreApplication>
 #include <QDebug>
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 Qadb::Qadb(QObject* parent) : QObject(parent) {
-    channel_ = new QProcessChannel(this);
+    channel_ = new ProcessChannel(this);
     channel_->setTxPrefix(QStringLiteral("ADB TX:"));
     channel_->setRxPrefix(QStringLiteral("ADB RX:"));
     // 保持旧行为：命令超时后重启 adb shell，再继续后续队列命令。

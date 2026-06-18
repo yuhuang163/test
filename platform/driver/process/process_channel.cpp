@@ -1,24 +1,24 @@
-#include "qprocesschannel.h"
+#include "ProcessChannel.h"
 
 #include <QDateTime>
 #include <QDebug>
 
-QProcessChannel::QProcessChannel(QObject* parent) : QObject(parent) {
+ProcessChannel::ProcessChannel(QObject* parent) : QObject(parent) {
     process_ = new QProcess(this);
     process_->setProcessChannelMode(QProcess::MergedChannels);
-    connect(process_, &QProcess::readyReadStandardOutput, this, &QProcessChannel::onReadyRead);
+    connect(process_, &QProcess::readyReadStandardOutput, this, &ProcessChannel::onReadyRead);
     connect(process_, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
-            &QProcessChannel::onFinished);
+            &ProcessChannel::onFinished);
 
-    connect(&timeoutTimer_, &QTimer::timeout, this, &QProcessChannel::checkTimeout);
+    connect(&timeoutTimer_, &QTimer::timeout, this, &ProcessChannel::checkTimeout);
     timeoutTimer_.start(500);
 }
 
-QProcessChannel::~QProcessChannel() {
+ProcessChannel::~ProcessChannel() {
     stop();
 }
 
-bool QProcessChannel::start(const QString& program, const QStringList& args, int startTimeoutMs) {
+bool ProcessChannel::start(const QString& program, const QStringList& args, int startTimeoutMs) {
     program_ = program;
     args_ = args;
     startTimeoutMs_ = startTimeoutMs;
@@ -27,7 +27,7 @@ bool QProcessChannel::start(const QString& program, const QStringList& args, int
     }
     process_->start(program, args);
     if (!process_->waitForStarted(startTimeoutMs)) {
-        qDebug() << "QProcessChannel start failed:" << program << args;
+        qDebug() << "ProcessChannel start failed:" << program << args;
         return false;
     }
     if (!initCommand_.isEmpty()) {
@@ -37,7 +37,7 @@ bool QProcessChannel::start(const QString& program, const QStringList& args, int
     return true;
 }
 
-void QProcessChannel::stop(const QString& exitCommand) {
+void ProcessChannel::stop(const QString& exitCommand) {
     if (process_ && process_->state() != QProcess::NotRunning) {
         const QByteArray cmd = (exitCommand + QLatin1Char('\n')).toUtf8();
         qDebug().noquote() << txPrefix_ << QString::fromLatin1(cmd.toHex(' ').toUpper());
@@ -49,24 +49,24 @@ void QProcessChannel::stop(const QString& exitCommand) {
     isProcessing_ = false;
 }
 
-void QProcessChannel::setInitCommand(const QByteArray& initCommand) {
+void ProcessChannel::setInitCommand(const QByteArray& initCommand) {
     initCommand_ = initCommand;
 }
 
-void QProcessChannel::setTxPrefix(const QString& prefix) {
+void ProcessChannel::setTxPrefix(const QString& prefix) {
     txPrefix_ = prefix;
 }
 
-void QProcessChannel::setRxPrefix(const QString& prefix) {
+void ProcessChannel::setRxPrefix(const QString& prefix) {
     rxPrefix_ = prefix;
 }
 
-void QProcessChannel::setRestartOnTimeout(bool enabled, int restartStartTimeoutMs) {
+void ProcessChannel::setRestartOnTimeout(bool enabled, int restartStartTimeoutMs) {
     restartOnTimeout_ = enabled;
     restartStartTimeoutMs_ = restartStartTimeoutMs;
 }
 
-void QProcessChannel::sendCommand(const QString& cmd, Callback callback, qint64 timeoutMs) {
+void ProcessChannel::sendCommand(const QString& cmd, Callback callback, qint64 timeoutMs) {
     CmdItem item;
     item.command = cmd;
     item.endMark = buildEndMark();
@@ -79,7 +79,7 @@ void QProcessChannel::sendCommand(const QString& cmd, Callback callback, qint64 
     }
 }
 
-void QProcessChannel::onReadyRead() {
+void ProcessChannel::onReadyRead() {
     const QByteArray output = process_->readAllStandardOutput();
     if (output.isEmpty()) {
         return;
@@ -105,18 +105,18 @@ void QProcessChannel::onReadyRead() {
     }
 }
 
-void QProcessChannel::onFinished(int, QProcess::ExitStatus) {
+void ProcessChannel::onFinished(int, QProcess::ExitStatus) {
     while (!queue_.isEmpty()) {
         CmdItem item = queue_.dequeue();
         if (item.callback) {
-            item.callback(QStringLiteral("进程已退出"), item.timer.elapsed());
+            item.callback(QStringLiteral("进程已退�?), item.timer.elapsed());
         }
     }
     buffer_.clear();
     isProcessing_ = false;
 }
 
-void QProcessChannel::checkTimeout() {
+void ProcessChannel::checkTimeout() {
     if (queue_.isEmpty()) {
         return;
     }
@@ -136,7 +136,7 @@ void QProcessChannel::checkTimeout() {
     processNextCommand();
 }
 
-void QProcessChannel::processNextCommand() {
+void ProcessChannel::processNextCommand() {
     if (queue_.isEmpty()) {
         isProcessing_ = false;
         return;
@@ -150,11 +150,11 @@ void QProcessChannel::processNextCommand() {
     process_->write(data);
 }
 
-QString QProcessChannel::buildEndMark() {
+QString ProcessChannel::buildEndMark() {
     return QStringLiteral("__CMD_END_%1__").arg(QDateTime::currentMSecsSinceEpoch());
 }
 
-bool QProcessChannel::restartProcess() {
+bool ProcessChannel::restartProcess() {
     if (program_.isEmpty()) {
         return false;
     }
@@ -164,7 +164,7 @@ bool QProcessChannel::restartProcess() {
     }
     process_->start(program_, args_);
     if (!process_->waitForStarted(restartStartTimeoutMs_)) {
-        qDebug() << "QProcessChannel restart failed:" << program_ << args_;
+        qDebug() << "ProcessChannel restart failed:" << program_ << args_;
         return false;
     }
     if (!initCommand_.isEmpty()) {

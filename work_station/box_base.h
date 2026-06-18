@@ -6,7 +6,7 @@
 #include <QSettings>
 #include <QVBoxLayout>
 
-#include "mesmanager.h"
+#include "qmesmanager.h"
 #include "qapplication.h"
 #include "qobject.h"
 #include "test_base.h"

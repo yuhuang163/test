@@ -38,9 +38,25 @@ QMAKE_CXXFLAGS += /utf-8
 
 
 INCLUDEPATH += agreement
-INCLUDEPATH += services/qmes
-INCLUDEPATH += services/qadb
-INCLUDEPATH += services/qshell
+INCLUDEPATH += agreement/mes_protocol/access
+INCLUDEPATH += agreement/mes_protocol/manager
+INCLUDEPATH += agreement/mes_protocol/codec
+INCLUDEPATH += agreement/mes_protocol/device/byd_mes
+INCLUDEPATH += agreement/mes_protocol/device/hq_mes
+INCLUDEPATH += agreement/mes_protocol/device/hz_mes
+INCLUDEPATH += agreement/mes_protocol/device/jj_mes
+INCLUDEPATH += agreement/mes_protocol/device/lx_mes
+INCLUDEPATH += agreement/mes_protocol/device/wks_mes
+INCLUDEPATH += agreement/mes_protocol/device/xwd_mes
+INCLUDEPATH += agreement/mes_protocol/device/ydm_mes
+INCLUDEPATH += agreement/adb_protocol/access
+INCLUDEPATH += agreement/adb_protocol/manager
+INCLUDEPATH += agreement/adb_protocol/codec
+INCLUDEPATH += agreement/adb_protocol/device
+INCLUDEPATH += agreement/shell_protocol/access
+INCLUDEPATH += agreement/shell_protocol/manager
+INCLUDEPATH += agreement/shell_protocol/codec
+INCLUDEPATH += agreement/shell_protocol/device
 INCLUDEPATH += agreement/at_protocol/access
 INCLUDEPATH += agreement/at_protocol/codec
 INCLUDEPATH += agreement/at_protocol/device
@@ -71,24 +87,24 @@ INCLUDEPATH += platform/log_upload
 INCLUDEPATH += platform/instrument
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
-INCLUDEPATH += agreement/scpi/access
-INCLUDEPATH += agreement/scpi/manager
-INCLUDEPATH += agreement/fixture/access
-INCLUDEPATH += agreement/fixture/device
-INCLUDEPATH += agreement/fixture/manager
-INCLUDEPATH += agreement/fixture/codec
+INCLUDEPATH += agreement/scpi_protocol/access
+INCLUDEPATH += agreement/scpi_protocol/manager
+INCLUDEPATH += agreement/fixture_protocol/access
+INCLUDEPATH += agreement/fixture_protocol/device
+INCLUDEPATH += agreement/fixture_protocol/manager
+INCLUDEPATH += agreement/fixture_protocol/codec
 INCLUDEPATH += agreement/qbrush
-INCLUDEPATH += agreement/product_serial/protocol
+INCLUDEPATH += agreement/product_protocol/protocol
 INCLUDEPATH += agreement/adb
-INCLUDEPATH += agreement/modbus/access
-INCLUDEPATH += agreement/modbus/manager
-INCLUDEPATH += agreement/modbus/codec
-INCLUDEPATH += agreement/modbus/device/inovance_h5u_tcp
-INCLUDEPATH += agreement/modbus/device/hq_ammeter_rtu
-INCLUDEPATH += agreement/modbus/device/lx_ammeter_rtu
-INCLUDEPATH += agreement/scpi/codec
-INCLUDEPATH += agreement/scpi/device/huiling_wfp60h_scpi
-INCLUDEPATH += agreement/scpi/device/rs_cmw100_scpi
+INCLUDEPATH += agreement/modbus_protocol/access
+INCLUDEPATH += agreement/modbus_protocol/manager
+INCLUDEPATH += agreement/modbus_protocol/codec
+INCLUDEPATH += agreement/modbus_protocol/device/inovance_h5u_tcp
+INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
+INCLUDEPATH += agreement/scpi_protocol/codec
+INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
+INCLUDEPATH += agreement/scpi_protocol/device/rs_cmw100_scpi
 INCLUDEPATH += business/cmw_gprf
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
@@ -121,6 +137,7 @@ INCLUDEPATH += qlog
 INCLUDEPATH += common
 INCLUDEPATH += platform/driver/serial
 INCLUDEPATH += platform/driver/visa
+INCLUDEPATH += platform/driver/process
 
 
 # INCLUDEPATH += advance/xlsx
@@ -136,17 +153,17 @@ SOURCES += \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
-    agreement/scpi/codec/scpi_line_codec.cpp \
-    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.cpp \
-    agreement/modbus/access/modbus_device_catalog.cpp \
-    agreement/modbus/manager/qmodbusmanager.cpp \
-    agreement/modbus/codec/qmodbus_pdu.cpp \
-    agreement/modbus/codec/qmodbus_rtu_codec.cpp \
-    agreement/modbus/codec/qmodbus_rtu_rx_buffer.cpp \
-    agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
-    agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
-    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
-    agreement/qtransport/qprocesschannel.cpp \
+    agreement/scpi_protocol/codec/scpi_line_codec.cpp \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.cpp \
+    agreement/modbus_protocol/access/modbus_device_catalog.cpp \
+    agreement/modbus_protocol/manager/qmodbusmanager.cpp \
+    agreement/modbus_protocol/codec/qmodbus_pdu.cpp \
+    agreement/modbus_protocol/codec/qmodbus_rtu_codec.cpp \
+    agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.cpp \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
+    platform/driver/process/process_channel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
     agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
@@ -156,31 +173,31 @@ SOURCES += \
     agreement/factory_protocol/access/qprotocol.cpp \
     agreement/factory_protocol/manager/qprotocolmanager.cpp \
     business/ble_ota/root_ble_ota.cpp \
-    services/qadb/qadb.cpp \
+    agreement/adb_protocol/manager/qadbmanager.cpp \
     agreement/at_protocol/codec/dongle_at_codec.cpp \
     agreement/at_protocol/device/dongle_at_device.cpp \
     agreement/at_protocol/manager/qatmanager.cpp \
-    agreement/product_serial/protocol/qproduct.cpp \
+    agreement/product_protocol/protocol/qproduct.cpp \
     agreement/dji_bulk_protocol/codec/dji_bulk_codec.cpp \
     agreement/dji_bulk_protocol/device/dji_bulk_device.cpp \
     agreement/dji_bulk_protocol/manager/qbulkmanager.cpp \
     platform/settings/widgets/fixture_uart.cpp \
-    agreement/fixture/manager/qfixturemanager.cpp \
-    agreement/fixture/device/fixture_camera_device.cpp \
-    agreement/fixture/device/fixture_imu_device.cpp \
-    agreement/fixture/device/fixture_pcba_device.cpp \
-    agreement/fixture/device/fixture_press_device.cpp \
-    agreement/fixture/device/qjig.cpp \
-    services/qmes/bydmes.cpp \
-    services/qmes/hqmes.cpp \
-    services/qmes/hzmes.cpp \
-    services/qmes/jjmes.cpp \
-    services/qmes/lxmes.cpp \
-    services/qmes/mesmanager.cpp \
-    services/qmes/qmes.cpp \
-    services/qmes/wksmes.cpp \
-    services/qmes/xwdmes.cpp \
-    services/qmes/ydmmes.cpp \
+    agreement/fixture_protocol/manager/qfixturemanager.cpp \
+    agreement/fixture_protocol/device/fixture_camera_device.cpp \
+    agreement/fixture_protocol/device/fixture_imu_device.cpp \
+    agreement/fixture_protocol/device/fixture_pcba_device.cpp \
+    agreement/fixture_protocol/device/fixture_press_device.cpp \
+    agreement/fixture_protocol/device/qjig.cpp \
+    agreement/mes_protocol/device/byd_mes/bydmes.cpp \
+    agreement/mes_protocol/device/hq_mes/hqmes.cpp \
+    agreement/mes_protocol/device/hz_mes/hzmes.cpp \
+    agreement/mes_protocol/device/jj_mes/jjmes.cpp \
+    agreement/mes_protocol/device/lx_mes/lxmes.cpp \
+    agreement/mes_protocol/manager/qmesmanager.cpp \
+    agreement/mes_protocol/access/qmes.cpp \
+    agreement/mes_protocol/device/wks_mes/wksmes.cpp \
+    agreement/mes_protocol/device/xwd_mes/xwdmes.cpp \
+    agreement/mes_protocol/device/ydm_mes/ydmmes.cpp \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.c \
     agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.c \
@@ -203,15 +220,15 @@ SOURCES += \
     platform/instrument/instrument_device_catalog.cpp \
     platform/test_record/test_record_store.cpp \
     platform/log_upload/log_upload_service.cpp \
-    services/qshell/qshell.cpp \
+    agreement/shell_protocol/manager/qshellmanager.cpp \
     business/tuple/qtupleservice.cpp \
     business/cmw_gprf/cmw_gprf_facade.cpp \
     platform/driver/visa/visa_channel.cpp \
-    agreement/scpi/manager/qscpivisasession.cpp \
-    agreement/scpi/manager/qscpimanager.cpp \
-    agreement/scpi/manager/qscpiserialsession.cpp \
-    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
-    agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
+    agreement/scpi_protocol/manager/qscpivisasession.cpp \
+    agreement/scpi_protocol/manager/qscpimanager.cpp \
+    agreement/scpi_protocol/manager/qscpiserialsession.cpp \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
+    agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
     tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
@@ -237,7 +254,7 @@ SOURCES += \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
-    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
     business/plc_v3_fixture/plc_v3_fixture.cpp \
@@ -269,18 +286,18 @@ HEADERS += \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
-    agreement/modbus/access/modbus_types.h \
-    agreement/modbus/access/modbus_device_catalog.h \
-    agreement/modbus/manager/qmodbusmanager.h \
-    agreement/modbus/codec/qmodbus_pdu.h \
-    agreement/modbus/codec/qmodbus_rtu_codec.h \
-    agreement/modbus/codec/qmodbus_rtu_rx_buffer.h \
-    agreement/modbus/access/imodbus_rtu_device.h \
-    agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu.h \
-    agreement/modbus/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
-    agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
-    agreement/modbus/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
-    agreement/qtransport/qprocesschannel.h \
+    agreement/modbus_protocol/access/modbus_types.h \
+    agreement/modbus_protocol/access/modbus_device_catalog.h \
+    agreement/modbus_protocol/manager/qmodbusmanager.h \
+    agreement/modbus_protocol/codec/qmodbus_pdu.h \
+    agreement/modbus_protocol/codec/qmodbus_rtu_codec.h \
+    agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.h \
+    agreement/modbus_protocol/access/imodbus_rtu_device.h \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.h \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
+    platform/driver/process/process_channel.h \
     agreement/factory_protocol/codec/fctp/comm_protocol.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_defs.h \
@@ -293,34 +310,34 @@ HEADERS += \
     agreement/factory_protocol/access/qprotocol_types.h \
     agreement/factory_protocol/manager/qprotocolmanager.h \
     business/ble_ota/root_ble_ota.h \
-    services/qadb/qadb.h \
+    agreement/adb_protocol/manager/qadbmanager.h \
     agreement/at_protocol/access/dongle_at_types.h \
     agreement/at_protocol/codec/dongle_at_codec.h \
     agreement/at_protocol/device/dongle_at_device.h \
     agreement/at_protocol/manager/qatmanager.h \
-    agreement/product_serial/protocol/qproduct.h \
+    agreement/product_protocol/protocol/qproduct.h \
     agreement/dji_bulk_protocol/access/dji_bulk_types.h \
     agreement/dji_bulk_protocol/codec/dji_bulk_codec.h \
     agreement/dji_bulk_protocol/device/dji_bulk_device.h \
     agreement/dji_bulk_protocol/manager/qbulkmanager.h \
     platform/settings/widgets/fixture_uart.h \
-    agreement/fixture/manager/qfixturemanager.h \
-    agreement/fixture/device/fixture_camera_device.h \
-    agreement/fixture/device/fixture_imu_device.h \
-    agreement/fixture/device/fixture_pcba_device.h \
-    agreement/fixture/device/fixture_press_device.h \
-    agreement/fixture/access/fixture_uart_types.h \
-    agreement/fixture/device/qjig.h \
-    services/qmes/bydmes.h \
-    services/qmes/hqmes.h \
-    services/qmes/hzmes.h \
-    services/qmes/jjmes.h \
-    services/qmes/lxmes.h \
-    services/qmes/mesmanager.h \
-    services/qmes/qmes.h \
-    services/qmes/wksmes.h \
-    services/qmes/xwdmes.h \
-    services/qmes/ydmmes.h \
+    agreement/fixture_protocol/manager/qfixturemanager.h \
+    agreement/fixture_protocol/device/fixture_camera_device.h \
+    agreement/fixture_protocol/device/fixture_imu_device.h \
+    agreement/fixture_protocol/device/fixture_pcba_device.h \
+    agreement/fixture_protocol/device/fixture_press_device.h \
+    agreement/fixture_protocol/access/fixture_uart_types.h \
+    agreement/fixture_protocol/device/qjig.h \
+    agreement/mes_protocol/device/byd_mes/bydmes.h \
+    agreement/mes_protocol/device/hq_mes/hqmes.h \
+    agreement/mes_protocol/device/hz_mes/hzmes.h \
+    agreement/mes_protocol/device/jj_mes/jjmes.h \
+    agreement/mes_protocol/device/lx_mes/lxmes.h \
+    agreement/mes_protocol/manager/qmesmanager.h \
+    agreement/mes_protocol/access/qmes.h \
+    agreement/mes_protocol/device/wks_mes/wksmes.h \
+    agreement/mes_protocol/device/xwd_mes/xwdmes.h \
+    agreement/mes_protocol/device/ydm_mes/ydmmes.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.h \
     agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.h \
@@ -346,18 +363,18 @@ HEADERS += \
     platform/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
     platform/instrument/instrument_device_catalog.h \
-    services/qshell/qshell.h \
+    agreement/shell_protocol/manager/qshellmanager.h \
     business/tuple/qtupleservice.h \
     business/cmw_gprf/cmw_gprf_facade.h \
-    agreement/scpi/access/scpi_types.h \
-    agreement/scpi/access/scpi_transport.h \
-    agreement/scpi/access/iscpi_device.h \
+    agreement/scpi_protocol/access/scpi_types.h \
+    agreement/scpi_protocol/access/scpi_transport.h \
+    agreement/scpi_protocol/access/iscpi_device.h \
     platform/driver/visa/visa_channel.h \
-    agreement/scpi/manager/qscpivisasession.h \
-    agreement/scpi/manager/qscpimanager.h \
-    agreement/scpi/manager/qscpiserialsession.h \
-    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
-    agreement/scpi/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
+    agreement/scpi_protocol/manager/qscpivisasession.h \
+    agreement/scpi_protocol/manager/qscpimanager.h \
+    agreement/scpi_protocol/manager/qscpiserialsession.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
+    agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
@@ -380,11 +397,11 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
-    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
-    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
-    agreement/modbus/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
-    agreement/scpi/codec/scpi_line_codec.h \
-    agreement/scpi/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
+    agreement/scpi_protocol/codec/scpi_line_codec.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \

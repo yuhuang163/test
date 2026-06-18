@@ -1,10 +1,10 @@
-﻿#ifndef FACTORY_ANALYZER_H
+#ifndef FACTORY_ANALYZER_H
 #define FACTORY_ANALYZER_H
 
-#include "qadb.h"
+#include "qadbmanager.h"
 #include "agreement/dji_bulk_protocol/manager/qbulkmanager.h"
 #include "qcustomplot.h"
-#include "qshell.h"
+#include "qshellmanager.h"
 #include <QDesktopServices>
 #include <QDragEnterEvent>
 #include <QDropEvent>
