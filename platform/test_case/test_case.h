@@ -36,6 +36,8 @@ class TestCaseStore {
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单�?gate�?*/
     static QVector<TestCaseGate> effectiveGates(const TestCaseDefinition& def);
+    /** 运行时参与判定的卡控项（case ini 中 Gate/N/Enabled） */
+    static QVector<TestCaseGate> activeGatesForEvaluation(const TestCaseDefinition& def);
     static bool usesMultiFieldGates(const TestCaseDefinition& def);
     static QStringList listCaseIniNames();
     static bool loadFlowMeta(TestFlowMeta& out);

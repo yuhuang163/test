@@ -33,7 +33,7 @@ struct ext_uart_phy_layer_t {
     uint16_t standbyCurrentUa; // 字节 14~15：待机电流 uA
     uint16_t pumpVoltageMv;    // 新:16~17 泵电压 mV
     uint16_t mcuVoltageMv;     // 新:18~19 MCU 电压 mV
-    uint16_t batteryVoltageMv; // 新:20~21 电池电压 mV
+    uint16_t valveVoltageMv;   // 新:20~21 阀电压 mV
     uint8_t fixerro;           // 旧版字节 17：治具错误码
     uint8_t trailer;           // 包尾 0xAA（新:22，旧:18）
 };
@@ -85,7 +85,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
     datapack.standbyCurrentUa = 0;
     datapack.pumpVoltageMv = 0;
     datapack.mcuVoltageMv = 0;
-    datapack.batteryVoltageMv = 0;
+    datapack.valveVoltageMv = 0;
     datapack.fixerro = 0;
 
     if (declaredLen >= kPcbaFullFrameLenV2) {
@@ -93,7 +93,7 @@ bool parseFixturePacket(const QByteArray& receivebuf, FixturePacketData& datapac
         datapack.standbyCurrentUa = readBe16(receivebuf, 14);
         datapack.pumpVoltageMv = readBe16(receivebuf, 16);
         datapack.mcuVoltageMv = readBe16(receivebuf, 18);
-        datapack.batteryVoltageMv = readBe16(receivebuf, 20);
+        datapack.valveVoltageMv = readBe16(receivebuf, 20);
         if (declaredLen >= kPcbaFullFrameLenWithFixerro)
             datapack.fixerro = static_cast<uint8_t>(receivebuf.at(22));
         return true;
@@ -262,7 +262,7 @@ FixturePcbaUartEvent FixturePcbaUartProtocol::parseFullFrame(const QByteArray& d
         qDebug() << "待机电流:" << datapack.standbyCurrentUa << "uA";
         qDebug() << "泵电压:" << datapack.pumpVoltageMv << "mV";
         qDebug() << "MCU电压:" << datapack.mcuVoltageMv << "mV";
-        qDebug() << "电池电压:" << datapack.batteryVoltageMv << "mV";
+        qDebug() << "阀电压:" << datapack.valveVoltageMv << "mV";
         qDebug() << "治具错误码:" << datapack.fixerro;
     } else {
         qDebug() << "治具错误码:" << datapack.fixerro;

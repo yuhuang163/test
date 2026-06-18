@@ -339,8 +339,11 @@ void Qfctp::handleRspTupleRead(const uint8_t* mainValue, uint16_t mainLen) {
         if (mainLen < 38) {
             qWarning() << "FCTP 三元组读取长度不足 len=" << mainLen << "raw=" << raw.toHex(' ').toUpper();
         }
-        qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key;
+        const QString rawHex = QString::fromLatin1(raw.toHex(' ').toUpper());
+        qInfo() << "FCTP 三元组读取 prod=" << prod << "dev=" << dev << "key=" << key << "raw=" << rawHex;
         emitReport(QStringLiteral("ProtocolTupleData"), QVariant::fromValue(ProtocolTupleData{prod, dev, key}));
+        emitReport(QStringLiteral("ProtocolPbDate"),
+                   QStringLiteral("FCTP 三元组读取 prod=%1 dev=%2 key=%3 raw=%4").arg(prod, dev, key, rawHex));
     }
 }
 

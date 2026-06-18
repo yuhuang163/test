@@ -572,7 +572,7 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
         for (int i = 1; i <= count; ++i) {
             ini.beginGroup(QStringLiteral("Gate/%1").arg(i));
             TestCaseGate g;
-            g.enabled = true;
+            g.enabled = ini.value(QStringLiteral("Enabled"), true).toBool();
             g.reportType = reportType;
             g.field = ini.value(QStringLiteral("Field")).toString().trimmed();
             g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
@@ -594,7 +594,7 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
                 break;
             }
             TestCaseGate g;
-            g.enabled = true;
+            g.enabled = ini.value(QStringLiteral("Enabled"), true).toBool();
             g.reportType = reportType;
             g.field = field;
             g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
@@ -633,6 +633,7 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
         ini.beginGroup(QStringLiteral("Gate/%1").arg(i + 1));
         const TestCaseGate& g = def.gates.at(i);
         ini.setValue(QStringLiteral("Field"), g.field);
+        ini.setValue(QStringLiteral("Enabled"), g.enabled);
         ini.setValue(QStringLiteral("Op"), gateOpToString(g.op));
         ini.setValue(QStringLiteral("Expected"), g.expected);
         ini.setValue(QStringLiteral("Low"), g.low);
@@ -957,6 +958,22 @@ QVector<TestCaseGate> TestCaseStore::effectiveGates(const TestCaseDefinition& de
     if (def.gate.enabled)
         return {def.gate};
     return {};
+}
+
+QVector<TestCaseGate> TestCaseStore::activeGatesForEvaluation(const TestCaseDefinition& def) {
+    if (!def.gate.enabled)
+        return {};
+    const QVector<TestCaseGate> gates = effectiveGates(def);
+    if (gates.isEmpty())
+        return {};
+
+    QVector<TestCaseGate> active;
+    active.reserve(gates.size());
+    for (const TestCaseGate& g : gates) {
+        if (g.enabled)
+            active.append(g);
+    }
+    return active;
 }
 
 bool TestCaseStore::usesMultiFieldGates(const TestCaseDefinition& def) {
@@ -2166,7 +2183,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolAgingStatusData"), QStringLiteral("老化状态上报"), {{QStringLiteral("status"), QStringLiteral("状态码")}, {QStringLiteral("loops"), QStringLiteral("循环次数")}, {QStringLiteral("seconds"), QStringLiteral("秒数")}}},
     {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
-    {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("batteryVoltageMv"), QStringLiteral("电池电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
+    {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("valveVoltageMv"), QStringLiteral("阀电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
@@ -2312,7 +2329,7 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             m.insert(QStringLiteral("standbyCurrentUa"), pack.standbyCurrentUa);
             m.insert(QStringLiteral("pumpVoltageMv"), pack.pumpVoltageMv);
             m.insert(QStringLiteral("mcuVoltageMv"), pack.mcuVoltageMv);
-            m.insert(QStringLiteral("batteryVoltageMv"), pack.batteryVoltageMv);
+            m.insert(QStringLiteral("valveVoltageMv"), pack.valveVoltageMv);
             m.insert(QStringLiteral("button1"), pack.button1);
             m.insert(QStringLiteral("button2"), pack.button2);
             m.insert(QStringLiteral("overVoltageLight"), pack.overVoltageLight);
@@ -2697,14 +2714,14 @@ QString GateRegistry::formatMultiFieldAsk(const QVector<TestCaseGate>& gates, co
 namespace {
 
 QString fixturePacketSummary(const FixturePacketData& pack) {
-    return QStringLiteral("机号=%1 静态=%2 工作=%3 充电=%4 泵=%5 MCU=%6 电池=%7")
+    return QStringLiteral("机号=%1 静态=%2 工作=%3 充电=%4 泵=%5 MCU=%6 阀=%7")
         .arg(pack.machineNumber)
         .arg(pack.staticCurrent)
         .arg(pack.workingCurrent)
         .arg(pack.chargingCurrent)
         .arg(pack.pumpVoltageMv)
         .arg(pack.mcuVoltageMv)
-        .arg(pack.batteryVoltageMv);
+        .arg(pack.valveVoltageMv);
 }
 
 QString periphStateSummary(const ProtocolPeriphStateData& periph) {

@@ -490,8 +490,8 @@ void initFixturePcbaGateTable(QTableWidget* table) {
     if (!GateRegistry::descriptorFor(QStringLiteral("ProtocolFixturePcbaData"), desc))
         return;
     table->clear();
-    table->setColumnCount(5);
-    table->setHorizontalHeaderLabels({QStringLiteral("判定项"), QStringLiteral("方式(range/gt/lt/eq)"),
+    table->setColumnCount(6);
+    table->setHorizontalHeaderLabels({QStringLiteral("启用"), QStringLiteral("判定项"), QStringLiteral("方式(range/gt/lt/eq)"),
                                       QStringLiteral("最小值"), QStringLiteral("最大值"),
                                       QStringLiteral("期望值")});
     table->setRowCount(desc.fields.size());
@@ -499,14 +499,18 @@ void initFixturePcbaGateTable(QTableWidget* table) {
     table->verticalHeader()->setVisible(false);
     table->setSelectionMode(QAbstractItemView::NoSelection);
     for (int i = 0; i < desc.fields.size(); ++i) {
+        auto* enableItem = new QTableWidgetItem();
+        enableItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+        enableItem->setCheckState(Qt::Unchecked);
+        table->setItem(i, 0, enableItem);
         auto* nameItem = new QTableWidgetItem(desc.fields.at(i).displayName);
         nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
         nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
-        table->setItem(i, 0, nameItem);
-        table->setItem(i, 1, new QTableWidgetItem(QStringLiteral("range")));
-        table->setItem(i, 2, new QTableWidgetItem(QStringLiteral("0")));
+        table->setItem(i, 1, nameItem);
+        table->setItem(i, 2, new QTableWidgetItem(QStringLiteral("range")));
         table->setItem(i, 3, new QTableWidgetItem(QStringLiteral("0")));
-        table->setItem(i, 4, new QTableWidgetItem());
+        table->setItem(i, 4, new QTableWidgetItem(QStringLiteral("0")));
+        table->setItem(i, 5, new QTableWidgetItem());
     }
 }
 
@@ -689,7 +693,7 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
         return;
     if (isFixturePcbaMultiGateMode()) {
         for (int row = 0; row < tableWidget_multiGates_->rowCount(); ++row) {
-            QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 0);
+            QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 1);
             if (!nameItem)
                 continue;
             const QString field = nameItem->data(Qt::UserRole).toString();
@@ -702,6 +706,9 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
                     break;
                 }
             }
+            if (QTableWidgetItem* enableItem = tableWidget_multiGates_->item(row, 0)) {
+                enableItem->setCheckState(found && matched.enabled ? Qt::Checked : Qt::Unchecked);
+            }
             if (!found)
                 continue;
             auto setCell = [&](int col, const QString& text) {
@@ -710,10 +717,10 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
                 else
                     tableWidget_multiGates_->setItem(row, col, new QTableWidgetItem(text));
             };
-            setCell(1, gateOpToTableText(matched.op));
-            setCell(2, QString::number(matched.low));
-            setCell(3, QString::number(matched.high));
-            setCell(4, matched.expected);
+            setCell(2, gateOpToTableText(matched.op));
+            setCell(3, QString::number(matched.low));
+            setCell(4, QString::number(matched.high));
+            setCell(5, matched.expected);
         }
         return;
     }
@@ -750,21 +757,23 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
         QVector<TestCaseGate> gates;
         const QString reportType = comboData(ui->comboBox_gateReportType);
         for (int row = 0; row < tableWidget_multiGates_->rowCount(); ++row) {
-            QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 0);
+            QTableWidgetItem* enableItem = tableWidget_multiGates_->item(row, 0);
+            QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 1);
             if (!nameItem)
                 continue;
+            const bool rowEnabled = enableItem && enableItem->checkState() == Qt::Checked;
             const QString field = nameItem->data(Qt::UserRole).toString();
             auto cellText = [&](int col) -> QString {
                 if (QTableWidgetItem* item = tableWidget_multiGates_->item(row, col))
                     return item->text().trimmed();
                 return QString();
             };
-            const QString opText = cellText(1);
-            const QString lowText = cellText(2);
-            const QString highText = cellText(3);
-            const QString expectedText = cellText(4);
+            const QString opText = cellText(2);
+            const QString lowText = cellText(3);
+            const QString highText = cellText(4);
+            const QString expectedText = cellText(5);
             TestCaseGate g;
-            g.enabled = true;
+            g.enabled = rowEnabled;
             g.reportType = reportType;
             g.field = field;
             g.op = gateOpFromTableText(opText.isEmpty() ? QStringLiteral("range") : opText);
@@ -773,9 +782,9 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             g.expected = expectedText;
             if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
                 g.expected = QString::number(static_cast<int>(g.low));
-            // 默认 range 0~0 且无期望值视为未启用该行
-            const bool unusedDefault = (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
-            if (unusedDefault)
+            const bool unusedDefault =
+                (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
+            if (!rowEnabled || unusedDefault)
                 continue;
             gates.append(g);
         }
