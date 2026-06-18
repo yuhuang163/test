@@ -10,8 +10,8 @@
 #include <QString>
 #include <functional>
 #include <map>
-#include "dji_bulk_types.h"
-#include "dji_bulk_codec.h"
+#include "../access/bulk_types.h"
+#include "../codec/bulk_codec.h"
 
 class DjiBulkDevice : public QObject {
     Q_OBJECT

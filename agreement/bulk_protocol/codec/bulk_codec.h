@@ -4,7 +4,7 @@
 #include <QByteArray>
 #include <functional>
 #include <atomic>
-#include "dji_bulk_types.h"
+#include "../access/bulk_types.h"
 
 class DjiBulkCodec {
 public:

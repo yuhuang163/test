@@ -1,4 +1,4 @@
-#include "ProcessChannel.h"
+#include "process_channel.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -109,7 +109,7 @@ void ProcessChannel::onFinished(int, QProcess::ExitStatus) {
     while (!queue_.isEmpty()) {
         CmdItem item = queue_.dequeue();
         if (item.callback) {
-            item.callback(QStringLiteral("进程已退�?), item.timer.elapsed());
+            item.callback(QStringLiteral("进程已退出"), item.timer.elapsed());
         }
     }
     buffer_.clear();

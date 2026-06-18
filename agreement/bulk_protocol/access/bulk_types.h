@@ -1,5 +1,5 @@
-#ifndef DJI_BULK_TYPES_H
-#define DJI_BULK_TYPES_H
+#ifndef BULK_TYPES_H
+#define BULK_TYPES_H
 
 #include <cstdint>
 
@@ -92,4 +92,4 @@ struct DjiBulkFrame {
     QByteArray data;
 };
 
-#endif // DJI_BULK_TYPES_H
+#endif // BULK_TYPES_H

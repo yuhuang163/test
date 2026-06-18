@@ -1,4 +1,4 @@
-#include "dji_bulk_codec.h"
+#include "bulk_codec.h"
 #include <QDebug>
 #include <cstring>
 

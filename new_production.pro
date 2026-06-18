@@ -61,10 +61,6 @@ INCLUDEPATH += agreement/at_protocol/access
 INCLUDEPATH += agreement/at_protocol/codec
 INCLUDEPATH += agreement/at_protocol/device
 INCLUDEPATH += agreement/at_protocol/manager
-INCLUDEPATH += agreement/dji_bulk_protocol/access
-INCLUDEPATH += agreement/dji_bulk_protocol/codec
-INCLUDEPATH += agreement/dji_bulk_protocol/device
-INCLUDEPATH += agreement/dji_bulk_protocol/manager
 INCLUDEPATH += agreement/qtransport
 INCLUDEPATH += agreement/factory_protocol/access
 INCLUDEPATH += agreement/factory_protocol/manager
@@ -178,9 +174,6 @@ SOURCES += \
     agreement/at_protocol/device/dongle_at_device.cpp \
     agreement/at_protocol/manager/qatmanager.cpp \
     agreement/product_protocol/protocol/qproduct.cpp \
-    agreement/dji_bulk_protocol/codec/dji_bulk_codec.cpp \
-    agreement/dji_bulk_protocol/device/dji_bulk_device.cpp \
-    agreement/dji_bulk_protocol/manager/qbulkmanager.cpp \
     platform/settings/widgets/fixture_uart.cpp \
     agreement/fixture_protocol/manager/qfixturemanager.cpp \
     agreement/fixture_protocol/device/fixture_camera_device.cpp \
@@ -229,6 +222,9 @@ SOURCES += \
     agreement/scpi_protocol/manager/qscpiserialsession.cpp \
     agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
     agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
+    agreement/bulk_protocol/codec/bulk_codec.cpp \
+    agreement/bulk_protocol/device/bulk_device.cpp \
+    agreement/bulk_protocol/manager/qbulkmanager.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
     tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
@@ -316,10 +312,6 @@ HEADERS += \
     agreement/at_protocol/device/dongle_at_device.h \
     agreement/at_protocol/manager/qatmanager.h \
     agreement/product_protocol/protocol/qproduct.h \
-    agreement/dji_bulk_protocol/access/dji_bulk_types.h \
-    agreement/dji_bulk_protocol/codec/dji_bulk_codec.h \
-    agreement/dji_bulk_protocol/device/dji_bulk_device.h \
-    agreement/dji_bulk_protocol/manager/qbulkmanager.h \
     platform/settings/widgets/fixture_uart.h \
     agreement/fixture_protocol/manager/qfixturemanager.h \
     agreement/fixture_protocol/device/fixture_camera_device.h \
@@ -375,6 +367,10 @@ HEADERS += \
     agreement/scpi_protocol/manager/qscpiserialsession.h \
     agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
     agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
+    agreement/bulk_protocol/access/bulk_types.h \
+    agreement/bulk_protocol/codec/bulk_codec.h \
+    agreement/bulk_protocol/device/bulk_device.h \
+    agreement/bulk_protocol/manager/qbulkmanager.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \

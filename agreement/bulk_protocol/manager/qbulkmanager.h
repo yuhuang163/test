@@ -9,8 +9,8 @@
 #include <QThread>
 #include <QSet>
 #include "lusb0_usb.h"
-#include "../device/dji_bulk_device.h"
-#include "../codec/dji_bulk_codec.h"
+#include "../device/bulk_device.h"
+#include "../codec/bulk_codec.h"
 
 // For QSet to work with struct or class
 struct UsbVidPid {

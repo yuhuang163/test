@@ -2,7 +2,7 @@
 #define FACTORY_ANALYZER_H
 
 #include "qadbmanager.h"
-#include "agreement/dji_bulk_protocol/manager/qbulkmanager.h"
+#include "agreement/bulk_protocol/manager/qbulkmanager.h"
 #include "qcustomplot.h"
 #include "qshellmanager.h"
 #include <QDesktopServices>

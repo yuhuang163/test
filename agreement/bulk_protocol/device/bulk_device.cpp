@@ -1,4 +1,4 @@
-﻿#include "dji_bulk_device.h"
+#include "bulk_device.h"
 #include <QDebug>
 #include <QDateTime>
 #include <QThread>
