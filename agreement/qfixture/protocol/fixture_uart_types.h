@@ -109,7 +109,8 @@ typedef struct FixturePacketData {
     uint chargingCurrent = 0;
     uint pumpVoltageMv = 0;
     uint mcuVoltageMv = 0;
-    uint batteryVoltageMv = 0;
+    /** 治具长包字节 20~21：阀电压 mV */
+    uint valveVoltageMv = 0;
     uint8_t fixerro = 0;
     uint machine_get_mac_state = 0;
     machine_command_id_e machine_command_id = COMMAND_ID_BASE;

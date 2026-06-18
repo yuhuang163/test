@@ -234,8 +234,9 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
     const QString stepName = activeTestCaseStepLabel_.trimmed();
     QStringList detailParts;
     for (const TestCaseGate& g : gates) {
+        if (!g.enabled)
+            continue;
         TestCaseGate ge = g;
-        ge.enabled = true;
         ge.reportType = reportType;
         bool subPass = true;
         QString subDetail;
@@ -281,10 +282,10 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         }
     }
 
-    QVector<TestCaseGate> gatesForEval = TestCaseStore::effectiveGates(activeTestCase_);
+    QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
     if (gatesForEval.isEmpty()) {
         markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
-        showlog(QStringLiteral("卡控失败：未加载到判定项（请检查 case ini 的 Gate/Count 与 Gate/1..N）"));
+        showlog(QStringLiteral("卡控失败：未启用任何判定项（请在 case ini 的 Gate/N/Enabled 勾选）"));
         if (commandRetryTimer)
             finishCommandRetryWait(false, QStringLiteral("卡控失败"));
         return true;
@@ -294,7 +295,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
 
     bool pass = true;
     QString detail;
-    const bool multiFieldMode = TestCaseStore::usesMultiFieldGates(activeTestCase_);
+    const bool multiFieldMode = gatesForEval.size() > 1;
     const bool fixtureTableMode = reportType == QStringLiteral("ProtocolFixturePcbaData") && multiFieldMode;
     if (fixtureTableMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);

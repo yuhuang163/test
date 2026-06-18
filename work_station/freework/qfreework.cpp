@@ -4,6 +4,9 @@
 
 #include <QMessageBox>
 #include <QPushButton>
+#include <QAbstractButton>
+#include <QLabel>
+#include <QFont>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFile>
@@ -22,6 +25,24 @@
 #include "ui_qfreework.h"
 
 namespace {
+
+/** 测试项提示弹窗：产线可读性，正文与按钮字号加大 */
+void applyTestItemPromptFont(QMessageBox* box) {
+    if (!box) {
+        return;
+    }
+    QFont font = box->font();
+    font.setPointSize(18);
+    box->setFont(font);
+    for (QLabel* label : box->findChildren<QLabel*>()) {
+        label->setFont(font);
+    }
+    for (QAbstractButton* btn : box->findChildren<QAbstractButton*>()) {
+        btn->setFont(font);
+        btn->setMinimumHeight(44);
+        btn->setMinimumWidth(96);
+    }
+}
 
 /** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
 QString sanitizeMesValuePipes(QString v) {
@@ -596,6 +617,7 @@ void QFreeWork::startKeyButtonTest(const QString& testName, const QString& promp
     hiddenCloseButton->hide();
     keyWaitPrompt_->setAttribute(Qt::WA_DeleteOnClose);
     keyWaitPromptProgrammaticClose_ = false;
+    applyTestItemPromptFont(keyWaitPrompt_);
     connect(keyWaitPrompt_, &QObject::destroyed, this, [this]() {
         keyWaitPrompt_ = nullptr;
         if (freeWorkKeyWaiting_ && !keyWaitPromptProgrammaticClose_) {
@@ -785,6 +807,7 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
     testCasePrompt_->setDefaultButton(QMessageBox::Yes);
     testCasePrompt_->setAttribute(Qt::WA_DeleteOnClose);
     testCasePromptProgrammaticClose_ = false;
+    applyTestItemPromptFont(testCasePrompt_);
     connect(testCasePrompt_, &QMessageBox::finished, this, [this](int) {
         if (!testCasePromptProgrammaticClose_)
             onTestCasePromptAcknowledged();
