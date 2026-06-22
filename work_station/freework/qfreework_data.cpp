@@ -555,6 +555,20 @@ void QFreeWork::reportTupleWriteRecord() {
     }
 
     QTupleService service;
+
+    if (TestResult != failValue) {
+        QVariantMap statusMap;
+        statusMap[QStringLiteral("mac")] = tupleData_.mac;
+        statusMap[QStringLiteral("status")] = 2;
+        statusMap[QStringLiteral("sn")] = productSn;
+        service.set(TupleCmd::DebugUpdateMacStatus, statusMap);
+        if (!service.lastError().isEmpty()) {
+            showlog(QStringLiteral("三元组状态(status=2)上报失败：") + service.lastError());
+        } else {
+            showlog(QStringLiteral("三元组状态(status=2)上报成功"));
+        }
+    }
+
     const bool btRssiPass = BT_RSSI.toInt() > BleLowRssi && BT_RSSI.toInt() < BleHighRssi;
     const bool bleRssiPass = BLE_RSSI.toInt() > BleLowRssi && BLE_RSSI.toInt() < BleHighRssi;
     QVariantMap reportMap;
