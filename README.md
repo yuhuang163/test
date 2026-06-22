@@ -22,11 +22,14 @@
 改端口：编辑 `scripts/port.bat`，并同步 `factory-admin/vite.config.js` 里的 `API_PORT`。
 
 ## 目录
+## 数据目录
 
-```text
-fwq/
+- 本地开发（默认）：`factory-api/data/factory.db`、`factory-api/data/storage/...`
+- 生产部署（建议）：默认指向 D 盘（`D:/fwq/data`），不会随代码包一起上传。请通过 `factory-api/.env` 中的 `DATABASE_URL` 与 `STORAGE_DIR` 覆盖默认路径。
+
+**部署到服务器后请定期备份服务器上的数据目录（例如 `D:/fwq/data`）。**
 ├── 启动管理平台.bat      ← 本地启动入口
-├── 停止管理平台.bat      ← 本地停止入口
+ 将 `factory-api/`、`factory-admin/` 拷到服务器（或通过 git 拉取）。**不必上传** `.venv`、`node_modules`、`data/`。打包脚本会自动排除 `data/`，部署后服务器会使用 `factory-api/.env.production.example` 中的默认生产路径（指向 `D:/fwq/data`），如需更改请编辑 `factory-api/.env`。
 ├── factory-api/          # Python FastAPI 后端
 ├── factory-admin/        # Vue 3 管理网页
 └── scripts/              # 内部脚本（一般不用手动点）

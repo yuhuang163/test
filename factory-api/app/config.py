@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     @property
     def storage_path(self) -> Path:
         path = Path(self.storage_dir)
+        # 如果不是绝对路径，则相对于项目根目录
         if not path.is_absolute():
             path = Path(__file__).resolve().parent.parent / path
         path.mkdir(parents=True, exist_ok=True)

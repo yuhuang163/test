@@ -17,6 +17,8 @@ from app.services.test_cases import ensure_demo_bundle
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # 初始化存储目录
+    _ = settings.storage_path
     init_db()
     db = SessionLocal()
     try:

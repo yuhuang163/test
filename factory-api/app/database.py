@@ -21,9 +21,12 @@ def _resolve_sqlite_url(url: str) -> str:
     rel = url.replace("sqlite:///", "", 1)
     if rel.startswith("./"):
         abs_path = (BASE_DIR / rel[2:]).resolve()
-        abs_path.parent.mkdir(parents=True, exist_ok=True)
-        return f"sqlite:///{abs_path.as_posix()}"
-    return url
+    else:
+        # 处理绝对路径（如 d:/data/factory.db）
+        abs_path = Path(rel).resolve()
+    # 创建数据库文件所在的目录
+    abs_path.parent.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{abs_path.as_posix()}"
 
 
 database_url = _resolve_sqlite_url(settings.database_url)
