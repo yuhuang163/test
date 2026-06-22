@@ -12,6 +12,7 @@ from app.database import SessionLocal, init_db
 from app.routers import auth, logs, meta, test_records
 from app.routers import thresholds, test_cases, host_app, releases, admin_extra
 from app.seed import seed_admin, seed_factories
+from app.services.test_cases import ensure_demo_bundle
 
 
 @asynccontextmanager
@@ -21,6 +22,7 @@ async def lifespan(_app: FastAPI):
     try:
         seed_factories(db)
         seed_admin(db)
+        ensure_demo_bundle()
     finally:
         db.close()
     yield

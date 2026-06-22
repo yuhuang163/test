@@ -48,6 +48,11 @@ def main() -> None:
     list_body = json.loads(urllib.request.urlopen(list_req).read().decode())
     print("list total", list_body["data"]["total"])
 
+    manifest_req = urllib.request.Request(f"{BASE}/test-cases/manifest")
+    manifest_req.add_header("Authorization", f"Bearer {token}")
+    manifest_body = json.loads(urllib.request.urlopen(manifest_req).read().decode())
+    print("manifest bundle", manifest_body["data"]["bundleVersion"])
+
 
 if __name__ == "__main__":
     main()

@@ -1,14 +1,12 @@
 @echo off
 
-echo [API] starting...
+echo [API-PROD] starting...
 
 chcp 65001 >nul 2>&1
 
 setlocal EnableExtensions
 
-title Lute-API
-
-
+title Lute-API-Prod
 
 set "SCRIPTS=%~dp0"
 
@@ -20,19 +18,15 @@ set "ROOT=%SCRIPTS%.."
 
 cd /d "%ROOT%\factory-api"
 
-
-
 curl.exe -s -o NUL -m 2 http://127.0.0.1:%PORT%/health >nul 2>&1
 
 if not errorlevel 1 (
 
-    echo [API] already running: http://127.0.0.1:%PORT%/docs
+    echo [API-PROD] already running: http://127.0.0.1:%PORT%/docs
 
     goto stay
 
 )
-
-
 
 if exist ".\.venv\Scripts\python.exe" (
 
@@ -40,7 +34,7 @@ if exist ".\.venv\Scripts\python.exe" (
 
     if errorlevel 1 (
 
-        echo [API] venv invalid ^(e.g. copied from another PC^), recreating...
+        echo [API-PROD] venv invalid, recreating...
 
         rmdir /s /q .venv
 
@@ -48,17 +42,15 @@ if exist ".\.venv\Scripts\python.exe" (
 
 )
 
-
-
 if not exist ".\.venv\Scripts\python.exe" (
 
-    echo [API] first run: creating venv, pip install 1-3 min...
+    echo [API-PROD] first run: creating venv, pip install 1-3 min...
 
     py -3 -m venv .venv
 
     if errorlevel 1 (
 
-        echo ERROR: Python 3 not found
+        echo ERROR: Python 3 not found. Install Python 3.10+ and add to PATH.
 
         goto stay
 
@@ -82,31 +74,33 @@ if not exist ".\.venv\Scripts\python.exe" (
 
 )
 
-
-
 if not exist ".\.env" (
 
-    copy /Y .\.env.example .\.env >nul
+    if exist ".\.env.production.example" (
 
-    echo [API] created .env
+        copy /Y .\.env.production.example .\.env >nul
+
+    ) else (
+
+        copy /Y .\.env.example .\.env >nul
+
+    )
+
+    echo [API-PROD] created .env - edit CORS_ORIGINS and SECRET_KEY before public access
 
 )
 
+echo [API-PROD] listen 0.0.0.0:%PORT%  (LAN / remote)
 
+echo [API-PROD] docs  http://127.0.0.1:%PORT%/docs
 
-echo [API] http://127.0.0.1:%PORT%
-
-echo [API] docs  http://127.0.0.1:%PORT%/docs
+echo [API-PROD] IIS admin site proxies /api -^> this port
 
 echo.
 
+.\.venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port %PORT%
 
-
-.\.venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port %PORT%
-
-if errorlevel 1 echo [API] start failed
-
-
+if errorlevel 1 echo [API-PROD] start failed
 
 :stay
 
@@ -115,4 +109,3 @@ echo.
 echo Close this window to stop API.
 
 pause
-

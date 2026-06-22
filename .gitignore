@@ -5,6 +5,9 @@ factory-api/.venv/
 factory-admin/node_modules/
 factory-admin/dist/
 
+# 生产部署 zip（本机打包脚本生成）
+fwq-deploy-*.zip
+
 # 本地数据与密钥
 factory-api/data/
 factory-api/.env
