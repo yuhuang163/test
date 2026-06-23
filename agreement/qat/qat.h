@@ -25,6 +25,7 @@ enum class DongleCmd {
     BleDeviceLog,        // AT+BLEDEVICELOG= 0/1
     Bomb,                // AT+BOMB= QVariantMap{deviceName,rssi,connectionInterval,command}
     GetGmac,             // get: AT+GMAC
+    GetSuction,          // get: AT+SUCTION
 };
 
 class Qat : public QObject {

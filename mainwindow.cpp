@@ -4630,3 +4630,15 @@ void MainWindow::on_send_custom_msg_clicked() {
         showlog("自定义消息发送失败：请确认当前协议为QFCTP且串口已连接");
     }
 }
+
+void MainWindow::on_open_suction_clicked()
+{
+    at->set(DongleCmd::GetSuction, 1); // 开启读取吸力
+}
+
+
+void MainWindow::on_close_suction_clicked()
+{
+    at->set(DongleCmd::GetSuction, 0); // 关闭读取吸力
+}
+

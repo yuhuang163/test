@@ -163,6 +163,15 @@ void Qat::set(DongleCmd cmd, const QVariant& data) {
         sendAtLine(QStringLiteral("AT+BLELOG=%1\r\n").arg(state));
         break;
     }
+    case DongleCmd::GetSuction: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        sendAtLine(QStringLiteral("AT+SUCTION=%1\r\n").arg(state));
+        break;
+    }
+
     case DongleCmd::BleDeviceLog:
         sendAtLine(QStringLiteral("AT+BLEDEVICELOG=%1\r\n").arg(data.toInt()));
         break;
