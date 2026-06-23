@@ -1071,9 +1071,9 @@ void quiescent_current::startTask() {
                     pack.sn = ui->snInput->text();
                     pack.instruct_num = "076";
                     pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:PASS");
+                    pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
+                    finishTestRecord(pack, ui->isusemes->checkState());
                     if (ui->isusemes->checkState()) {
-                        pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                        emit send_end_test_pass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1087,9 +1087,9 @@ void quiescent_current::startTask() {
                     pack.sn = ui->snInput->text();
                     pack.instruct_num = "076";
                     pack.itemvalue += QStringLiteral("|STATIC_CURRENT_TEST:FAIL");
+                    pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
+                    finishTestRecord(pack, ui->isusemes->checkState());
                     if (ui->isusemes->checkState()) {
-                        pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                        emit send_end_test_pass(pack);
                         appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                         testResultTableUpdate(testItems);
                     }
@@ -1205,7 +1205,7 @@ void quiescent_current::on_pushButton_4_clicked() {
         break;
 
     case 2:
-        emit send_end_test_pass(pack);
+        finishTestRecord(pack, true);
         showlog("Running send_end_test_pass");
         break;
     }

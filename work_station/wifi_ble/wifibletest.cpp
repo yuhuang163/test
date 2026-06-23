@@ -1999,9 +1999,7 @@ void wifibletest::startTask() {
 
                 pack.sn = ui->getMac->text();
                 pack.instruct_num = "079";
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
             } else {
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
@@ -2018,9 +2016,7 @@ void wifibletest::startTask() {
                 pack.sn = ui->getMac->text();
 
                 pack.instruct_num = "079";
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
             }
 
             at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
@@ -2343,9 +2339,7 @@ void wifibletest::bindingMacSnMes(QString bindingMac, QString bindingSn) {
 
     pack.instruct_num = "076";
 
-    if (ui->isusemes->checkState()) {
-        emit send_end_test_pass(pack);
-    }
+    finishTestRecord(pack, ui->isusemes->checkState());
 
     if (bindingResult) {
         ui->banding_result->setText("绑定:PASS");

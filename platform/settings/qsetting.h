@@ -29,7 +29,10 @@ class qsetting : public QWidget {
     void saveSubPIDAndFilter();
     void initSettingTooltips();
     void initTestFlowEditorUi();
+    void syncFactoryCloudDerivedUrls();
+    void startLogUpload();
     void initTupleEnvironmentCombo();
+    void initFactoryCloudEnvironmentCombo();
     QString originalStation_;
     bool stationReloading_ = false;
     TestFlowEditor* testFlowEditor_ = nullptr;
@@ -44,8 +47,13 @@ class qsetting : public QWidget {
     void on_comboBox_productName_textActivated(const QString& arg1);
     void on_comboBox_factory_textActivated(const QString& arg1);
     void on_comboBox_tupleEnvironment_currentIndexChanged(int index);
+    void on_comboBox_factoryCloudEnvironment_currentIndexChanged(int index);
     void on_pushButton_mesConfigFileBrowse_clicked();
-    void on_pushButton_uploadLogs_clicked();
+    void on_pushButton_factoryCloudUploadLogs_clicked();
+    void on_pushButton_factoryCloudLogin_clicked();
+    void on_pushButton_syncThreshold_clicked();
+    void on_pushButton_syncTestCase_clicked();
+    void on_pushButton_checkHostOta_clicked();
 };
 
 #endif // QSETTING_H

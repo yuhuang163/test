@@ -3,6 +3,7 @@
 #include "qlog.h"
 #include "qat.h"
 #include "my_set/my_typedef.h"
+#include "host_ota_service.h"
 #include "ui_mainwindow.h"
 // #include "xlsxdocument.h"
 #if _MSC_VER >= 1600
@@ -2904,6 +2905,10 @@ void MainWindow::deleteFile(const QString& remoteUrl) {
 }
 
 void MainWindow::checkAndUpdateFile() {
+    if (HostOtaService::tryInteractiveUpdate(this, [this](const QString& msg) { showlog(msg); })) {
+        return;
+    }
+
     QString remoteDirectoryUrl = "http://163.177.79.53:16888/versions/";
     QUrl qUrl(remoteDirectoryUrl);
     QNetworkRequest request(qUrl);

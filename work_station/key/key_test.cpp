@@ -1745,8 +1745,8 @@ void key_test::startTask() {
                 pack.instruct_num = "079";
                 pack.itemvalue = pack.sn + "," + macAddress + ",KEY_TEST_RESULT*" + pack.result +
                     QString("@KEY_TEST*0");
+                finishTestRecord(pack, ui->isusemes->checkState());
                 if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
                     showlog("Running send_end_test_pass");
                     appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                     testResultTableUpdate(testItems);
@@ -1763,8 +1763,8 @@ void key_test::startTask() {
                 pack.instruct_num = "079";
                 pack.itemvalue = pack.sn + "," + macAddress + ",KEY_TEST_RESULT*" + pack.result +
                     QString("@KEY_TEST*0");
+                finishTestRecord(pack, ui->isusemes->checkState());
                 if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
                     showlog("Running send_end_test_pass");
                     appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                     testResultTableUpdate(testItems);
@@ -1879,7 +1879,7 @@ void key_test::on_pushButton_4_clicked() {
         break;
 
     case 2:
-        emit send_end_test_pass(pack);
+        finishTestRecord(pack, true);
         showlog("Running send_end_test_pass");
         break;
     }

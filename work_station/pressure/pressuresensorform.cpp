@@ -2980,9 +2980,7 @@ void PressureSensorForm::startTask() {
                 pack.itemvalue = itemvalue;
                 pack.instruct_num = "084";
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
                     "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
@@ -2998,9 +2996,7 @@ void PressureSensorForm::startTask() {
                 pack.result = mesresult;
                 pack.itemvalue = itemvalue;
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
             }
             set_fixture_movement(product_model, STATE_SAVE_RESULT, 0);
             save_press_test_data_to_csv(macAddress, cali_result);

@@ -70,9 +70,7 @@ void PcbaForm::on_pushButton_2_clicked() // 单机
     pack.result = "OK";
     pack.error = "";
     pack.sn = ui->getMac->text();
-    if (ui->isusemes->checkState()) {
-        emit send_end_test_pass(pack);
-    }
+    finishTestRecord(pack, ui->isusemes->checkState());
     //     t = 1;
     // }
     // at->set(DongleCmd::BleLog, 1);
@@ -1715,9 +1713,7 @@ void PcbaForm::startTask() {
                 pack.result = "OK"; //欣旺达必须用ok
                 pack.error = "";
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
             } else if ((totalresult == failValue)) {
                 pack.result = "NG"; //威克森需要用到ng
@@ -1726,9 +1722,7 @@ void PcbaForm::startTask() {
                 pack.itemvalue = itemvalue;
                 pack.error = erroContent.join("") + "|"; //加结束符
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
                 ui->ng_number->setText("NG:" + QString::number(ngnumber));
                 ui->ng_number->setStyleSheet(

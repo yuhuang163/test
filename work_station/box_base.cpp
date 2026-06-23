@@ -9,6 +9,7 @@
 #include "qmenubar.h"
 #include "qstatusbar.h"
 #include "test_base.h"
+#include "host_ota_service.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -33,6 +34,10 @@ void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authe
 }
 
 void box_base::checkAndUpdateFile() {
+    if (HostOtaService::tryInteractiveUpdate(this, [this](const QString& msg) { emit sendBoxLog(msg); })) {
+        return;
+    }
+
     QString remoteDirectoryUrl = "http://163.177.79.53:16888/versions/";
     QUrl qUrl(remoteDirectoryUrl);
     QNetworkRequest request(qUrl);

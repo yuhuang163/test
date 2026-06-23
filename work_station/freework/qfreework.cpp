@@ -22,6 +22,8 @@
 #include <QThread>
 #include <QtGlobal>
 #include "qproduct.h"
+#include "test_data_upload_service.h"
+#include "test_record_store.h"
 #include "ui_qfreework.h"
 
 namespace {
@@ -462,31 +464,24 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     // testItems 在 testResultTableUpdate 内会 clear；MES 分项与上表同步写入 freeWorkMesSegments_。
     const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
     showlog(QStringLiteral("mesItemValue======") + mesItemValue);
+    pack.itemvalue = mesItemValue;
+    pack.sn = ui->getMac->text();
+    pack.instruct_num = QStringLiteral("079");
     if (TestResult == failValue) {
         ui->test_result->setText(QStringLiteral("FAIL"));
         ui->test_result->setStyleSheet(
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
             "border-radius: 10px; padding: 10px; text-align: center; ");
-        pack.itemvalue = mesItemValue;
         pack.result = QStringLiteral("NG");
-        pack.sn = ui->getMac->text();
-        pack.instruct_num = QStringLiteral("079");
-        if (ui->isusemes->checkState()) {
-            emit send_end_test_pass(pack);
-        }
     } else {
         ui->test_result->setText(QStringLiteral("PASS"));
         ui->test_result->setStyleSheet(
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
             "border-radius: 10px; padding: 10px; text-align: center;");
         pack.result = QStringLiteral("PASS");
-        pack.itemvalue = mesItemValue;
-        pack.sn = ui->getMac->text();
-        pack.instruct_num = QStringLiteral("079");
-        if (ui->isusemes->checkState()) {
-            emit send_end_test_pass(pack);
-        }
     }
+
+    finishTestRecord(pack, ui->isusemes->checkState());
 
     qDebug() << "测试结束";
     teststate = -1;

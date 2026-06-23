@@ -383,9 +383,7 @@ void screentest::startTask() {
                 pack.result = mesresult;
                 pack.itemvalue = QString("|SCREEN_TEST:PASS|");
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
@@ -396,9 +394,7 @@ void screentest::startTask() {
                 pack.result = mesresult;
                 pack.itemvalue = QString("|SCREEN_TEST:NG|");
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
                     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
