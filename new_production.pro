@@ -54,8 +54,13 @@ INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
 INCLUDEPATH += platform/test_case \
     platform/test_case/manifest
-INCLUDEPATH += platform/test_record
-INCLUDEPATH += platform/log_upload
+INCLUDEPATH += platform/cloud/client
+INCLUDEPATH += platform/cloud/auth
+INCLUDEPATH += platform/cloud/sync
+INCLUDEPATH += platform/cloud/ota
+INCLUDEPATH += platform/cloud/test_data
+INCLUDEPATH += platform/cloud/test_record
+INCLUDEPATH += platform/cloud/log_upload
 INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
 INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
 INCLUDEPATH += agreement/qusb
@@ -161,8 +166,14 @@ SOURCES += \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
-    platform/test_record/test_record_store.cpp \
-    platform/log_upload/log_upload_service.cpp \
+    platform/cloud/test_record/test_record_store.cpp \
+    platform/cloud/client/factory_cloud_client.cpp \
+    platform/cloud/auth/auth_service.cpp \
+    platform/cloud/sync/threshold_sync_service.cpp \
+    platform/cloud/sync/test_case_sync_service.cpp \
+    platform/cloud/ota/host_ota_service.cpp \
+    platform/cloud/test_data/test_data_upload_service.cpp \
+    platform/cloud/log_upload/log_upload_service.cpp \
     agreement/qshell/qshell.cpp \
     agreement/qtuple/qtupleservice.cpp \
     agreement/qcmw/qcmw.cpp \
@@ -280,8 +291,14 @@ HEADERS += \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
-    platform/test_record/test_record_store.h \
-    platform/log_upload/log_upload_service.h \
+    platform/cloud/test_record/test_record_store.h \
+    platform/cloud/client/factory_cloud_client.h \
+    platform/cloud/auth/auth_service.h \
+    platform/cloud/sync/threshold_sync_service.h \
+    platform/cloud/sync/test_case_sync_service.h \
+    platform/cloud/ota/host_ota_service.h \
+    platform/cloud/test_data/test_data_upload_service.h \
+    platform/cloud/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
     agreement/qshell/qshell.h \
     agreement/qtuple/qtupleservice.h \

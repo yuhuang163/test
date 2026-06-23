@@ -34,7 +34,7 @@ void ageing::on_pushButton_clicked() {
     p.mechines = getIndex();
     p.sn = ui->getMac->text();
     p.instruct_num = "083";
-    emit send_end_test_pass(p);
+    finishTestRecord(p, ui->isusemes->checkState());
 }
 ageing::ageing(int index, QWidget* parent) : test_base(parent), ui(new Ui::ageing) {
     m_index = index;
@@ -591,9 +591,9 @@ void ageing::startTask() {
                 pack.mechines = getIndex();
                 pack.sn = ui->getMac->text();
                 pack.instruct_num = "083";
+                pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
+                finishTestRecord(pack, ui->isusemes->checkState());
                 if (ui->isusemes->checkState()) {
-                    pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                    emit send_end_test_pass(pack);
                     appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                     testResultTableUpdate(testItems);
                 }
@@ -607,20 +607,16 @@ void ageing::startTask() {
                 pack.mechines = getIndex();
                 pack.sn = ui->getMac->text();
                 pack.instruct_num = "083";
-
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
-                    testResultTableUpdate(testItems);
-                }
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(
                     "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
                     "border-radius: 10px; padding: 10px; text-align: center; ");
                 pack.elapseTime = static_cast<double>(TestTime.elapsed()) / 1000.0;
-                emit send_end_test_pass(pack);
-                appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
-                testResultTableUpdate(testItems);
+                finishTestRecord(pack, ui->isusemes->checkState());
+                if (ui->isusemes->checkState()) {
+                    appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
+                    testResultTableUpdate(testItems);
+                }
             }
 
             ui->getMac->clear();

@@ -1181,9 +1181,7 @@ void imucali::startTask() // 编写六轴校准的代码
                 pack.itemvalue = itemvalue;
                 pack.instruct_num = "084";
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
@@ -1200,9 +1198,7 @@ void imucali::startTask() // 编写六轴校准的代码
                 pack.result = mesresult;
                 pack.itemvalue = itemvalue;
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
             }
 
             testResultTableUpdate(testItems);

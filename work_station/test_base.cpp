@@ -21,6 +21,8 @@
 #include "agreement/qProtocol/qaiot/qaiot.h"
 #include "agreement/qProtocol/qroot/qroot.h"
 #include "common_utils.h"
+#include "test_data_upload_service.h"
+#include "test_record_store.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -647,6 +649,14 @@ QString test_base::exportTableContent() {
 
     qDebug() << result;
     return result;
+}
+
+void test_base::finishTestRecord(const MesPacketData& pack, bool useMes) {
+    TestRecordStore::instance().saveOnTestPass(pack);
+    TestDataUploadService::tryUploadAsync(pack);
+    if (useMes) {
+        emit send_end_test_pass(pack);
+    }
 }
 
 void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {

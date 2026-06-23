@@ -1350,8 +1350,8 @@ void suction::startTask() {
                 pack.instruct_num = "076";
                 pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
                     QString("@SUCTION*0");
+                finishTestRecord(pack, ui->isusemes->checkState());
                 if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
                     appendStationResult(testItems, "MES完成上报", "0.0000", passValue);
                     testResultTableUpdate(testItems);
                 }
@@ -1368,8 +1368,8 @@ void suction::startTask() {
                     pack.itemvalue = pack.sn + "," + macAddress + ",SUCTION_RESULT*" + pack.result +
                         QString("@SUCTION*0");
                 }
+                finishTestRecord(pack, ui->isusemes->checkState());
                 if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
                     appendStationResult(testItems, "MES完成上报", "0.0000", failValue);
                     testResultTableUpdate(testItems);
                 }
@@ -1498,7 +1498,7 @@ void suction::on_pushButton_4_clicked() {
         break;
 
     case 2:
-        emit send_end_test_pass(pack);
+        finishTestRecord(pack, true);
         showlog("Running send_end_test_pass");
         break;
     }
@@ -1658,7 +1658,7 @@ void suction::on_testdata_formes_clicked() {
     p.instruct_num = QStringLiteral("076");
     p.itemvalue = p.sn + QLatin1Char(',') + mac + QStringLiteral(",SUCTION_RESULT*PASS@SUCTION*0");
     showlog(QStringLiteral("模拟过站：send_end_test_pass（BYD TestDataCollect + Complete）"));
-    emit send_end_test_pass(p);
+    finishTestRecord(p, true);
 }
 
 void suction::on_pushButton_2_clicked() {

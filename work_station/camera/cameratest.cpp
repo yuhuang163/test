@@ -727,9 +727,7 @@ void cameratest::startTask() {
                 pack.result = mesresult;
                 pack.itemvalue = QString("|CAMERA_TEST:PASS|");
                 pack.sn = ui->getMac->text();
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
                 ui->test_result->setText("PASS");
                 ui->test_result->setStyleSheet(
@@ -741,9 +739,7 @@ void cameratest::startTask() {
                 pack.itemvalue = QString("|CAMERA_TEST:NG|");
                 pack.sn = ui->getMac->text();
 
-                if (ui->isusemes->checkState()) {
-                    emit send_end_test_pass(pack);
-                }
+                finishTestRecord(pack, ui->isusemes->checkState());
 
                 ui->test_result->setText("FAIL");
                 ui->test_result->setStyleSheet(

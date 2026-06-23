@@ -18,8 +18,12 @@
 #include "test_flow/test_flow_editor.h"
 #include "bydmes.h"
 #include "log_upload_service.h"
+#include "auth_service.h"
+#include "threshold_sync_service.h"
+#include "test_case_sync_service.h"
+#include "host_ota_service.h"
+#include "factory_cloud_client.h"
 
-#include <QFutureWatcher>
 #include <QtConcurrent>
 
 struct FreeWorkTestCatalogItem {
@@ -46,6 +50,18 @@ const QVector<TupleEnvPreset> kTupleEnvPresets = {
 };
 
 const QString kTupleEnvCustomKey = QStringLiteral("custom");
+
+struct FactoryCloudEnvPreset {
+    QString key;
+    QString baseUrl;
+};
+
+const QVector<FactoryCloudEnvPreset> kFactoryCloudEnvPresets = {
+    {QStringLiteral("local"), QStringLiteral("http://127.0.0.1:8800")},
+    {QStringLiteral("prod"), QStringLiteral("https://fctp.luteos.com")},
+};
+
+const QString kFactoryCloudEnvCustomKey = QStringLiteral("custom");
 
 QString normalizeTupleBaseUrl(const QString& u) {
     QString s = u.trimmed();
@@ -79,6 +95,37 @@ int tupleEnvIndexForUrl(QComboBox* combo, const QString& url) {
 
 QString tupleBaseUrlForKey(const QString& key) {
     for (const auto& p : kTupleEnvPresets) {
+        if (p.key == key) {
+            return p.baseUrl;
+        }
+    }
+    return {};
+}
+
+int factoryCloudEnvIndexForKey(QComboBox* combo, const QString& key) {
+    if (!combo) {
+        return -1;
+    }
+    for (int i = 0; i < combo->count(); ++i) {
+        if (combo->itemData(i).toString() == key) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int factoryCloudEnvIndexForUrl(QComboBox* combo, const QString& url) {
+    const QString n = normalizeTupleBaseUrl(url);
+    for (const auto& p : kFactoryCloudEnvPresets) {
+        if (normalizeTupleBaseUrl(p.baseUrl) == n) {
+            return factoryCloudEnvIndexForKey(combo, p.key);
+        }
+    }
+    return -1;
+}
+
+QString factoryCloudBaseUrlForKey(const QString& key) {
+    for (const auto& p : kFactoryCloudEnvPresets) {
         if (p.key == key) {
             return p.baseUrl;
         }
@@ -125,6 +172,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->comboBox_factory->addItems(factoryList);
 
     initTupleEnvironmentCombo();
+    initFactoryCloudEnvironmentCombo();
     loadConfig();
     originalStation_ = SETTINGS.value("SYSTEM/station").toString();
     connect(StationGroup, QOverload<int>::of(&QButtonGroup::buttonClicked), this, [this](int) {
@@ -205,6 +253,36 @@ void qsetting::on_comboBox_tupleEnvironment_currentIndexChanged(int index) {
     const QString url = tupleBaseUrlForKey(key);
     if (!url.isEmpty()) {
         ui->lineEdit_tupleBaseUrl->setText(url);
+    }
+}
+
+void qsetting::initFactoryCloudEnvironmentCombo() {
+    QComboBox* c = ui->comboBox_factoryCloudEnvironment;
+    if (!c) {
+        return;
+    }
+    c->clear();
+    c->addItem(QStringLiteral("测试环境"), QStringLiteral("local"));
+    c->addItem(QStringLiteral("服务器"), QStringLiteral("prod"));
+    c->addItem(QStringLiteral("自定义"), kFactoryCloudEnvCustomKey);
+    connect(c, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &qsetting::on_comboBox_factoryCloudEnvironment_currentIndexChanged);
+}
+
+void qsetting::on_comboBox_factoryCloudEnvironment_currentIndexChanged(int index) {
+    Q_UNUSED(index);
+    QComboBox* c = ui->comboBox_factoryCloudEnvironment;
+    if (!c) {
+        return;
+    }
+    const QString key = c->currentData().toString();
+    if (key == kFactoryCloudEnvCustomKey || key.isEmpty()) {
+        return;
+    }
+    const QString url = factoryCloudBaseUrlForKey(key);
+    if (!url.isEmpty()) {
+        ui->lineEdit_factoryCloudBaseUrl->setText(url);
+        syncFactoryCloudDerivedUrls();
     }
 }
 
@@ -339,21 +417,30 @@ void qsetting::loadConfig() {
     }
 
     {
+        QSignalBlocker blocker(ui->comboBox_factoryCloudEnvironment);
+        const QString savedFactoryUrl = ui->lineEdit_factoryCloudBaseUrl->text().trimmed();
+        QString envKey = SETTINGS.value(QStringLiteral("FactoryCloud/Environment")).toString().trimmed();
+        int idx = envKey.isEmpty() ? -1 : factoryCloudEnvIndexForKey(ui->comboBox_factoryCloudEnvironment, envKey);
+        if (idx < 0) {
+            idx = factoryCloudEnvIndexForUrl(ui->comboBox_factoryCloudEnvironment, savedFactoryUrl);
+        }
+        if (idx < 0) {
+            idx = ui->comboBox_factoryCloudEnvironment->count() - 1;
+        }
+        ui->comboBox_factoryCloudEnvironment->setCurrentIndex(idx);
+    }
+
+    {
         const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
         ui->comboBox_KeyCapValueEndian->setCurrentIndex(
             capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
     }
 
-    if (ui->lineEdit_remoteLogUploadUrl->text().trimmed().isEmpty()) {
-        ui->lineEdit_remoteLogUploadUrl->setText(LogUploadService::defaultUploadUrl());
+    syncFactoryCloudDerivedUrls();
+    {
+        const QString token = SETTINGS.value(QStringLiteral("FactoryCloud/Token")).toString().trimmed();
+        ui->label_factoryCloudStatus->setText(token.isEmpty() ? QStringLiteral("未登录") : QStringLiteral("已登录"));
     }
-    if (ui->lineEdit_remoteLogDeviceId->text().trimmed().isEmpty()) {
-        ui->lineEdit_remoteLogDeviceId->setText(LogUploadService::defaultDeviceId());
-    }
-    if (ui->lineEdit_remoteLogStation->text().trimmed().isEmpty()) {
-        ui->lineEdit_remoteLogStation->setText(QStringLiteral("DEFAULT"));
-    }
-    ui->label_remoteLogStatus->setText(QString());
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -433,6 +520,7 @@ void qsetting::saveConfig() {
                                                                                                                                                : "MAIN_TEST");
 
     saveQSettingTableBindings(this);
+    syncFactoryCloudDerivedUrls();
     saveSubPIDAndFilter();
 
     SETTINGS.setValue(QStringLiteral("SYSTEM/ProtocolType"),
@@ -461,6 +549,8 @@ void qsetting::saveConfig() {
 
     SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
     SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
+    SETTINGS.setValue(QStringLiteral("FactoryCloud/Environment"),
+                      ui->comboBox_factoryCloudEnvironment->currentData().toString());
 
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
@@ -870,39 +960,36 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
     }
 }
 
-void qsetting::on_pushButton_uploadLogs_clicked() {
-    if (!ui->pushButton_uploadLogs->isEnabled()) {
-        return;
-    }
-
-    const QString uploadUrl = ui->lineEdit_remoteLogUploadUrl->text().trimmed();
-    QString deviceId = ui->lineEdit_remoteLogDeviceId->text().trimmed();
-    const QString station = ui->lineEdit_remoteLogStation->text().trimmed();
-
-    if (uploadUrl.isEmpty()) {
-        QMessageBox::warning(this, QStringLiteral("日志上传"), QStringLiteral("请填写上传地址"));
-        return;
-    }
-    if (deviceId.isEmpty()) {
-        deviceId = LogUploadService::defaultDeviceId();
-        ui->lineEdit_remoteLogDeviceId->setText(deviceId);
-    }
-
+void qsetting::on_pushButton_factoryCloudUploadLogs_clicked() {
     saveConfig();
+    startLogUpload();
+}
 
+void qsetting::startLogUpload() {
+    if (ui->pushButton_factoryCloudUploadLogs && !ui->pushButton_factoryCloudUploadLogs->isEnabled()) {
+        return;
+    }
+    if (!LogUploadService::isUploadEnabled()) {
+        QMessageBox::information(this, QStringLiteral("日志上传"),
+                                 QStringLiteral("已在云平台设置中关闭「日志」功能开关"));
+        return;
+    }
+
+    QString configError;
     LogUploadService::UploadConfig cfg;
-    cfg.uploadUrl = uploadUrl;
-    cfg.deviceId = deviceId;
-    cfg.station = station.isEmpty() ? QStringLiteral("DEFAULT") : station;
+    if (!LogUploadService::configFromSettings(&cfg, &configError)) {
+        QMessageBox::warning(this, QStringLiteral("日志上传"), configError);
+        return;
+    }
 
-    ui->pushButton_uploadLogs->setEnabled(false);
-    ui->label_remoteLogStatus->setText(QStringLiteral("正在后台打包并上传 所有log，请稍候…"));
+    ui->pushButton_factoryCloudUploadLogs->setEnabled(false);
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在后台打包并上传 所有log，请稍候…"));
 
     auto* watcher = new QFutureWatcher<QPair<bool, QString>>(this);
     connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, this, [this, watcher]() {
         const QPair<bool, QString> result = watcher->result();
-        ui->label_remoteLogStatus->setText(result.second);
-        ui->pushButton_uploadLogs->setEnabled(true);
+        ui->label_factoryCloudStatus->setText(result.second);
+        ui->pushButton_factoryCloudUploadLogs->setEnabled(true);
         if (result.first) {
             QMessageBox::information(this, QStringLiteral("日志上传"), result.second);
         } else {
@@ -940,4 +1027,77 @@ void qsetting::initTestFlowEditorUi() {
         }
         lastSettingsTabIndex_ = index;
     });
+}
+
+void qsetting::syncFactoryCloudDerivedUrls() {
+    const QString baseUrl = ui->lineEdit_factoryCloudBaseUrl->text().trimmed();
+    if (baseUrl.isEmpty()) {
+        return;
+    }
+    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostOtaCheckUrl"),
+                      baseUrl + QStringLiteral("/api/factory-tool/host-app/check"));
+}
+
+void qsetting::on_pushButton_factoryCloudLogin_clicked() {
+    saveConfig();
+    const QString user = ui->lineEdit_factoryCloudUser->text().trimmed();
+    const QString password = ui->lineEdit_factoryCloudPassword->text();
+    const AuthService::LoginResult result = AuthService::login(user, password);
+    ui->label_factoryCloudStatus->setText(result.message);
+    if (result.ok) {
+        QMessageBox::information(this, QStringLiteral("云平台登录"), result.message);
+    } else {
+        QMessageBox::warning(this, QStringLiteral("云平台登录"), result.message);
+    }
+}
+
+void qsetting::on_pushButton_syncThreshold_clicked() {
+    saveConfig();
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在同步阈值…"));
+    const ThresholdSyncService::SyncResult result = ThresholdSyncService::syncFromCloud();
+    ui->label_factoryCloudStatus->setText(result.message);
+    if (result.ok) {
+        QMessageBox::information(this, QStringLiteral("阈值同步"), result.message);
+    } else {
+        QMessageBox::warning(this, QStringLiteral("阈值同步"), result.message);
+    }
+}
+
+void qsetting::on_pushButton_syncTestCase_clicked() {
+    saveConfig();
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在同步测试用例…"));
+    const TestCaseSyncService::SyncResult result = TestCaseSyncService::syncFromCloud();
+    ui->label_factoryCloudStatus->setText(result.message);
+    if (result.ok) {
+        QMessageBox::information(this, QStringLiteral("用例同步"), result.message);
+    } else {
+        QMessageBox::warning(this, QStringLiteral("用例同步"), result.message);
+    }
+}
+
+void qsetting::on_pushButton_checkHostOta_clicked() {
+    saveConfig();
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在检查更新…"));
+    const HostOtaService::CheckResult check = HostOtaService::checkUpdate();
+    ui->label_factoryCloudStatus->setText(check.message);
+    if (!check.ok) {
+        QMessageBox::warning(this, QStringLiteral("软件更新"), check.message);
+        return;
+    }
+    if (!check.hasUpdate) {
+        QMessageBox::information(this, QStringLiteral("软件更新"), check.message);
+        return;
+    }
+    const QString text = check.releaseNotes.isEmpty()
+                             ? check.message
+                             : check.message + QStringLiteral("\n\n") + check.releaseNotes;
+    const auto answer = QMessageBox::question(this, QStringLiteral("软件更新"), text);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    QString message;
+    HostOtaService::downloadAndApply(check, this, &message);
+    if (!message.isEmpty()) {
+        ui->label_factoryCloudStatus->setText(message);
+    }
 }

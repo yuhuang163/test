@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1139</width>
-    <height>862</height>
+    <width>1164</width>
+    <height>889</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,7 +23,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>4</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_key_setting">
       <attribute name="title">
@@ -1749,7 +1749,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>1090</width>
+            <width>1115</width>
             <height>841</height>
            </rect>
           </property>
@@ -2967,66 +2967,171 @@
         </item>
        </layout>
       </widget>
-      <widget class="QGroupBox" name="groupBox_logUpload">
+      <widget class="QGroupBox" name="groupBox_factoryCloud">
        <property name="geometry">
         <rect>
          <x>266</x>
          <y>190</y>
          <width>398</width>
-         <height>145</height>
+         <height>255</height>
         </rect>
        </property>
        <property name="title">
-        <string>日志上传</string>
+        <string>路特产线云平台</string>
        </property>
-       <layout class="QGridLayout" name="gridLayout_logUpload">
+       <layout class="QGridLayout" name="gridLayout_factoryCloud">
         <item row="0" column="0">
-         <widget class="QLabel" name="label_remoteLogUploadUrl">
+         <widget class="QLabel" name="label_factoryCloudEnvironment">
           <property name="text">
-           <string>上传地址</string>
+           <string>环境</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1" colspan="3">
-         <widget class="QLineEdit" name="lineEdit_remoteLogUploadUrl">
-          <property name="text">
-           <string>https://fctp.luteos.com/api/factory-tool/logs/upload</string>
-          </property>
-         </widget>
+         <widget class="QComboBox" name="comboBox_factoryCloudEnvironment"/>
         </item>
         <item row="1" column="0">
-         <widget class="QLabel" name="label_remoteLogDeviceId">
+         <widget class="QLabel" name="label_factoryCloudBaseUrl">
           <property name="text">
-           <string>设备ID</string>
+           <string>BaseUrl</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1" colspan="3">
-         <widget class="QLineEdit" name="lineEdit_remoteLogDeviceId"/>
+         <widget class="QLineEdit" name="lineEdit_factoryCloudBaseUrl">
+          <property name="text">
+           <string>https://fctp.luteos.com</string>
+          </property>
+         </widget>
         </item>
         <item row="2" column="0">
-         <widget class="QLabel" name="label_remoteLogStation">
+         <widget class="QLabel" name="label_factoryCloudUser">
           <property name="text">
-           <string>工站</string>
+           <string>账号</string>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLineEdit" name="lineEdit_remoteLogStation">
+         <widget class="QLineEdit" name="lineEdit_factoryCloudUser"/>
+        </item>
+        <item row="2" column="2">
+         <widget class="QLabel" name="label_factoryCloudPassword">
           <property name="text">
-           <string>DEFAULT</string>
+           <string>密码</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="2" colspan="2">
-         <widget class="QPushButton" name="pushButton_uploadLogs">
-          <property name="text">
-           <string>打包并上传所有log</string>
+        <item row="2" column="3">
+         <widget class="QLineEdit" name="lineEdit_factoryCloudPassword">
+          <property name="echoMode">
+           <enum>QLineEdit::Password</enum>
           </property>
          </widget>
         </item>
-        <item row="3" column="0" colspan="4">
-         <widget class="QLabel" name="label_remoteLogStatus">
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_factoryCloudStationKey">
+          <property name="text">
+           <string>工站Key</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="lineEdit_factoryCloudStationKey"/>
+        </item>
+        <item row="3" column="2" colspan="2">
+         <widget class="QPushButton" name="pushButton_factoryCloudLogin">
+          <property name="text">
+           <string>登录</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QCheckBox" name="checkBox_factoryCloudRememberPassword">
+          <property name="text">
+           <string>记住密码</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QCheckBox" name="checkBox_factoryCloudLogUpload">
+          <property name="text">
+           <string>日志</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="2">
+         <widget class="QCheckBox" name="checkBox_factoryCloudThresholdSync">
+          <property name="text">
+           <string>阈值</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="3">
+         <widget class="QPushButton" name="pushButton_factoryCloudUploadLogs">
+          <property name="text">
+           <string>上传日志</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QCheckBox" name="checkBox_factoryCloudTestCaseSync">
+          <property name="text">
+           <string>用例</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QCheckBox" name="checkBox_factoryCloudHostOta">
+          <property name="text">
+           <string>OTA</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="2">
+         <widget class="QPushButton" name="pushButton_syncThreshold">
+          <property name="text">
+           <string>同步阈值</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="3">
+         <widget class="QCheckBox" name="checkBox_factoryCloudTestDataUpload">
+          <property name="text">
+           <string>数据</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0" colspan="2">
+         <widget class="QPushButton" name="pushButton_syncTestCase">
+          <property name="text">
+           <string>同步用例</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="2" colspan="2">
+         <widget class="QPushButton" name="pushButton_checkHostOta">
+          <property name="text">
+           <string>检查更新</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0" colspan="4">
+         <widget class="QLabel" name="label_factoryCloudStatus">
           <property name="text">
            <string/>
           </property>
@@ -3226,8 +3331,8 @@
       <widget class="QGroupBox" name="groupBox_brushInstrument">
        <property name="geometry">
         <rect>
-         <x>266</x>
-         <y>345</y>
+         <x>700</x>
+         <y>230</y>
          <width>398</width>
          <height>207</height>
         </rect>
@@ -3455,8 +3560,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>1105</width>
-            <height>775</height>
+            <width>1130</width>
+            <height>802</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_testFlowBlocks"/>
