@@ -68,6 +68,7 @@
 #define OTA_LOG_UART_RX_TOTAL 0 // 1=打印串口累计「处理总数」
 #define OTA_LOG_BLE_TX 0        // 1=打印「OTA_BLE_TX len=...」
 
+extern int suction_data;        // 1表示打印传感器数据日志
 extern int blelogs;        // 蓝牙信号日志1表示默认开
 extern int finddevicelogs; // 蓝牙扫描日志1表示默认开
 extern int data_n;
