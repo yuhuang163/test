@@ -1148,19 +1148,20 @@ void QFreeWork::processInspection(QString inputSnText) {
 }
 
 void QFreeWork::processGetMesTestValue() {
-    if (pack.factory == "hz") {
-        if (!ui->isusemes->checkState() && !ui->isformmes->checkState()) {
-            // 完全离线模式，直接本地从 SN 解析 MAC 并触发测试
-            QString mesmacAddress = parseMacFromSn(ui->getMac->text());
-            if (!mesmacAddress.isEmpty()) {
-                ui->macInput->setText(mesmacAddress);
-                showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
-                on_macInput_returnPressed();
-            } else {
-                showlog(QStringLiteral("本地从 SN 解析 MAC 失败: ") + ui->getMac->text());
-            }
-            return;
+    // 纯离线模式：如果不从MES获取数据也不过站，则尝试本地解析SN并直接启动测试
+    if (!ui->isusemes->checkState() && !ui->isformmes->checkState()) {
+        QString mesmacAddress = parseMacFromSn(ui->getMac->text());
+        if (!mesmacAddress.isEmpty()) {
+            ui->macInput->setText(mesmacAddress);
+            showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
+            on_macInput_returnPressed();
+        } else {
+            showlog(QStringLiteral("本地从 SN 解析 MAC 失败: ") + ui->getMac->text());
         }
+        return;
+    }
+
+    if (pack.factory == "hz") {
         pack.sn = ui->getMac->text();
         pack.mechines = getIndex();
         getTestValue(getIndex(), pack.sn.trimmed());
