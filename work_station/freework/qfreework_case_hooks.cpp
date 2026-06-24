@@ -76,23 +76,47 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         const int rssiThreshold = fw->ui->rssi_range->text().toInt();
 
         fw->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
-        fw->showlog(QStringLiteral("当前已缓存的周围蓝牙设备总数: %1").arg(fw->deviceMap.size()));
+        
+        int timeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
+        if (timeoutMs <= 0) timeoutMs = 6000;
+        
+        QElapsedTimer timer;
+        timer.start();
 
+        while (timer.elapsed() < timeoutMs) {
+            bestMac.clear();
+            bestRssi = -999;
+
+            for (auto it = fw->deviceMap.begin(); it != fw->deviceMap.end(); ++it) {
+                const QString deviceAddress = it.key();
+                const QString deviceName = it.value().value(QStringLiteral("Name"));
+                const int deviceRssi = it.value().value(QStringLiteral("Rssi")).toInt();
+
+                if (deviceName.contains(targetName) && deviceRssi > rssiThreshold && deviceAddress.length() == 17) {
+                    if (deviceRssi > bestRssi) {
+                        bestRssi = deviceRssi;
+                        bestMac = deviceAddress;
+                    }
+                }
+            }
+
+            if (!bestMac.isEmpty()) {
+                break; // 找到了！立刻跳出轮询
+            }
+
+            // 没找到则等待 100 毫秒并泵取事件，让串口有机会接收到 Dongle 的扫描结果
+            fw->waitWork(100);
+        }
+
+        fw->showlog(QStringLiteral("搜索结束，当前已缓存的周围蓝牙设备总数: %1").arg(fw->deviceMap.size()));
+        
+        // 打印所有扫描到的设备，方便排查
         for (auto it = fw->deviceMap.begin(); it != fw->deviceMap.end(); ++it) {
             const QString deviceAddress = it.key();
             const QString deviceName = it.value().value(QStringLiteral("Name"));
             const int deviceRssi = it.value().value(QStringLiteral("Rssi")).toInt();
-            
-            // 打印所有扫描到的设备，方便排查
             fw->showlog(QStringLiteral("  发现设备 -> 名称: '%1', MAC: %2, 信号: %3")
                             .arg(deviceName).arg(deviceAddress).arg(deviceRssi));
-
-            if (deviceName.contains(targetName) && deviceRssi > rssiThreshold && deviceAddress.length() == 17) {
-                if (deviceRssi > bestRssi) {
-                    bestRssi = deviceRssi;
-                    bestMac = deviceAddress;
-                }
-            }
         }
 
         if (bestMac.isEmpty()) {
@@ -100,9 +124,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->stepRuntime_.pass = false;
             fw->stepRuntime_.testData = QStringLiteral("未找到匹配广播: ") + targetName;
             fw->TestResult = fw->failValue;
-            fw->showlog(QStringLiteral("按名称自动连接失败：没扫到名称包含 %1 且信号大于 %2 的设备")
+            fw->showlog(QStringLiteral("按名称自动连接失败：轮询了 %3 毫秒，依然没扫到名称包含 %1 且信号大于 %2 的设备")
                             .arg(targetName)
-                            .arg(rssiThreshold));
+                            .arg(rssiThreshold)
+                            .arg(timeoutMs));
             return;
         }
 
