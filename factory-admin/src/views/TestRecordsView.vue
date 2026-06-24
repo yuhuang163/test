@@ -18,6 +18,7 @@
       <el-form-item label="结果">
         <el-select v-model="filters.testResult" clearable placeholder="全部" style="width: 100px">
           <el-option label="PASS" value="PASS" />
+          <el-option label="NG" value="NG" />
           <el-option label="FAIL" value="FAIL" />
           <el-option label="通过" value="通过" />
           <el-option label="失败" value="失败" />
