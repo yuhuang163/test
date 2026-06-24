@@ -69,6 +69,24 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         });
         return;
     }
+    if (hookId == QStringLiteral("MAC_WRITE_ROOT")) {
+        const QString snText = fw->resolvedExpectedTailSnText();
+        const QString macText = fw->parseMacFromSn(snText);
+        if (macText.isEmpty()) {
+            fw->stepRuntime_.done = true;
+            fw->stepRuntime_.pass = false;
+            fw->stepRuntime_.testData = QStringLiteral("从SN解析MAC失败");
+            fw->TestResult = fw->failValue;
+            fw->showlog(QStringLiteral("写入MAC码失败：无法从SN解析MAC，请检查SN格式"));
+            return;
+        }
+        fw->stepRuntime_.testData = macText;
+        fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        fw->sendCommandWithRetry([fw, macText]() {
+            fw->protocolManager.set(DeviceCmd::MacWrite, macText);
+        });
+        return;
+    }
     if (hookId == QStringLiteral("PLC_MODBUS_CONN")) {
         fw->runPlcModbusConnectTest();
         return;
@@ -236,6 +254,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
 
     registerHook(QStringLiteral("JIG_CURRENT_READ"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"));
