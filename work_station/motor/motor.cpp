@@ -1,11 +1,11 @@
-
+﻿
 #include "motor.h"
 
 #include "common_utils.h"
 
 #include <QSerialPort>
 
-#include "qat.h"
+#include "qatmanager.h"
 #include "qdebug.h"
 #include "qpb.h"
 #include "qprocess.h"

@@ -10,18 +10,18 @@
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
+UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return Qusb::ProtocolType::Scpi;
+        return UsbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return Qusb::ProtocolType::HqModbus;
+        return UsbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return Qusb::ProtocolType::LxModbus;
+        return UsbProtocolRoute::LxModbus;
     }
-    return Qusb::ProtocolType::Auto;
+    return UsbProtocolRoute::Auto;
 }
 } // namespace
 quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -57,7 +57,7 @@ quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(par
         at->get(DongleCmd::GetGmac);
         showlog("正在定时器复位设备");
     });
-    connect(visa, &Qvisa::programmablePowerCurrentRead, this, &quiescent_current::refreshProgrammablePowerCurrent);
+    connect(scpiVisaManager(), &QScpiManager::programmablePowerCurrentRead, this, &quiescent_current::refreshProgrammablePowerCurrent);
 
     HighCurrent = SETTINGS.value("Current/HighstaticCurrent").toDouble();
     LowCurrent = SETTINGS.value("Current/LowstaticCurrent").toDouble();
@@ -94,34 +94,53 @@ quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(par
 }
 
 void quiescent_current::applyCurrentProtocolConfig() {
-    Qusb::ProtocolConfig cfg;
-    cfg.protocol = protocolTypeFromSetting("auto");
-    cfg.luxshareMachineId = getIndex();
-    cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
-    cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
-    cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+    UsbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    int luxshareMachineId = getIndex();
+    QString scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
+    QString scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
+    QString scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
     syncVisaPowerUiFromSettings();
 
-    if (cfg.protocol == Qusb::ProtocolType::Auto) {
+    if (protocol == UsbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            cfg.protocol = Qusb::ProtocolType::HqModbus;
+            protocol = UsbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            cfg.protocol = Qusb::ProtocolType::LxModbus;
+            protocol = UsbProtocolRoute::LxModbus;
         } else {
-            cfg.protocol = Qusb::ProtocolType::Scpi;
+            protocol = UsbProtocolRoute::Scpi;
         }
     }
 
-    currentProtocolType = cfg.protocol;
+    currentProtocolType = protocol;
     useProgrammablePower = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
 
-    usb->setProtocolConfig(cfg);
+    // 根据协议路由同步设备路由
+    switch (protocol) {
+    case UsbProtocolRoute::Scpi:
+    case UsbProtocolRoute::Auto:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
+        break;
+    default:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::None);
+        break;
+    }
+    switch (protocol) {
+    case UsbProtocolRoute::HqModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
+        break;
+    case UsbProtocolRoute::LxModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
+        break;
+    default:
+        break;
+    }
+    modbusManager.setLuxshareMachineId(luxshareMachineId);
 
     showlog("静态电流协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(currentProtocolType)));
-    showlog("静态电流配置: machineId=" + QString::number(cfg.luxshareMachineId) +
-            ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange +
+    showlog("静态电流配置: machineId=" + QString::number(luxshareMachineId) +
+            ", scpi=" + scpiCurrentType + ":" + scpiCurrentMode + " " + scpiRange +
             ", VISA配置=" + QString(SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool() ? "ON" : "OFF") +
             ", 地址=" + SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString());
     {
@@ -137,6 +156,11 @@ void quiescent_current::syncVisaPowerUiFromSettings() {
         SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), true).toBool());
     ui->currentAmmeterVisaAddressEdit->setText(
         SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("ASRL10::INSTR")).toString().trimmed());
+
+    // 初始化 VISA 程控电源连接
+    if (SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool()) {
+        scpiVisaManager()->loadHuilingVisaFromSettings();
+    }
 }
 
 bool quiescent_current::setProgrammablePowerOutput(bool enable) {
@@ -145,16 +169,12 @@ bool quiescent_current::setProgrammablePowerOutput(bool enable) {
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         return true;
     }
-    if (!visa) {
-        return false;
-    }
-    const VisaCmd cmd = enable ? VisaCmd::PowerOutputOn : VisaCmd::PowerOutputOff;
-    bool ok = visa->set(cmd);
+    bool ok = execVisaHuiling(HuilingScpiCmd::ProgrammablePowerOutput, enable);
     if (!ok) {
         showlog(QStringLiteral("程控电源输出%1失败，重连VISA后重试")
                     .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭")));
         resetVisaBackend();
-        ok = visa->set(cmd);
+        ok = execVisaHuiling(HuilingScpiCmd::ProgrammablePowerOutput, enable);
     }
     showlog(QStringLiteral("程控电源输出%1=%2")
                 .arg(enable ? QStringLiteral("打开") : QStringLiteral("关闭"))
@@ -532,9 +552,9 @@ void quiescent_current::refreshAmmeterData(QString data) {
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (currentProtocolType == Qusb::ProtocolType::LxModbus)
+    if (currentProtocolType == UsbProtocolRoute::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (currentProtocolType == Qusb::ProtocolType::HqModbus)
+    else if (currentProtocolType == UsbProtocolRoute::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;
@@ -907,12 +927,7 @@ void quiescent_current::startTask() {
                 }
                 showlog(QStringLiteral("开始配置程控电源：address=%1")
                             .arg(SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString()));
-                bool powerCfgOk = true;
-                if (!visa) {
-                    powerCfgOk = false;
-                } else {
-                    powerCfgOk = visa->set(VisaCmd::ConfigurePowerSupply);
-                }
+                const bool powerCfgOk = execVisaHuiling(HuilingScpiCmd::ConfigureProgrammablePower);
                 const bool outOk = setProgrammablePowerOutput(true);
                 showlog(QString("程控电源配置=%1, 输出打开=%2")
                             .arg(powerCfgOk ? "OK" : "NG")
@@ -1143,11 +1158,9 @@ void quiescent_current::on_pushButton_clicked() {
 
 void quiescent_current::on_pushButton_3_clicked() {
     if (useProgrammablePower) {
-        if (visa) {
-            visa->get(VisaCmd::ReadCurrent);
-        }
+        execVisaHuiling(HuilingScpiCmd::ReadProgrammableCurrent);
     } else {
-        usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+        execAmmeterMeasure();
     }
 
     // at->get(DongleCmd::GetGmac);
@@ -1286,12 +1299,8 @@ void quiescent_current::on_visa_test_clicked() {
         showlog(QStringLiteral("程控电源 VISA 未启用或地址为空"));
         return;
     }
-    if (!visa) {
-        showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
-        return;
-    }
-    if (!visa->set(VisaCmd::ConfigurePowerSupply)) {
-        showlog(QStringLiteral("程控电源 ConfigurePowerSupply 失败"));
+    if (!execVisaHuiling(HuilingScpiCmd::ConfigureProgrammablePower)) {
+        showlog(QStringLiteral("程控电源 ConfigureProgrammablePower 失败"));
         return;
     }
 

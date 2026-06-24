@@ -15,28 +15,26 @@
 #endif
 
 namespace {
-Qusb::ProtocolType protocolTypeFromSetting(const QString& type) {
+UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
     const QString value = type.trimmed().toLower();
     if (value == "scpi") {
-        return Qusb::ProtocolType::Scpi;
+        return UsbProtocolRoute::Scpi;
     }
     if (value == "hq" || value == "hqmodbus") {
-        return Qusb::ProtocolType::HqModbus;
+        return UsbProtocolRoute::HqModbus;
     }
     if (value == "lx" || value == "lxmodbus") {
-        return Qusb::ProtocolType::LxModbus;
+        return UsbProtocolRoute::LxModbus;
     }
-    return Qusb::ProtocolType::Auto;
-}
-
-QString plcBoolText(bool v) {
-    return v ? QStringLiteral("开") : QStringLiteral("关");
+    return UsbProtocolRoute::Auto;
 }
 } // namespace
 key_test::key_test(int index, QWidget* parent) : test_base(parent), ui(new Ui::key_test), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
     m_index = index;
     pack.mechines = getIndex();
     upperComputerVer = KEY_VER;
+
+    setupModbusManager();
 
     ui->setupUi(this);
     // setAttribute(Qt::WA_DeleteOnClose);
@@ -103,31 +101,50 @@ key_test::key_test(int index, QWidget* parent) : test_base(parent), ui(new Ui::k
 }
 
 void key_test::applyKeyProtocolConfig() {
-    Qusb::ProtocolConfig cfg;
-    cfg.protocol = protocolTypeFromSetting("auto");
-    cfg.luxshareMachineId = getIndex();
-    cfg.scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
-    cfg.scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
-    cfg.scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
+    UsbProtocolRoute protocol = protocolTypeFromSetting("auto");
+    int luxshareMachineId = getIndex();
+    QString scpiCurrentType = SETTINGS.value("Current/ScpiCurrentType", "CURR").toString();
+    QString scpiCurrentMode = SETTINGS.value("Current/ScpiCurrentMode", "DC").toString();
+    QString scpiRange = SETTINGS.value("Current/ScpiRange", "500e-3").toString();
 
-    if (cfg.protocol == Qusb::ProtocolType::Auto) {
+    if (protocol == UsbProtocolRoute::Auto) {
         const QString factory = pack.factory.trimmed().toLower();
         if (factory == "hq") {
-            cfg.protocol = Qusb::ProtocolType::HqModbus;
+            protocol = UsbProtocolRoute::HqModbus;
         } else if (factory == "lx" || factory == "jj") {
-            cfg.protocol = Qusb::ProtocolType::LxModbus;
+            protocol = UsbProtocolRoute::LxModbus;
         } else {
-            cfg.protocol = Qusb::ProtocolType::Scpi;
+            protocol = UsbProtocolRoute::Scpi;
         }
     }
 
-    keyProtocolType = cfg.protocol;
-    usb->setProtocolConfig(cfg);
+    keyProtocolType = protocol;
+    // 根据协议路由同步设备路由
+    switch (protocol) {
+    case UsbProtocolRoute::Scpi:
+    case UsbProtocolRoute::Auto:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
+        break;
+    default:
+        scpiUsbManager_.setDeviceRoute(ScpiDeviceRoute::None);
+        break;
+    }
+    switch (protocol) {
+    case UsbProtocolRoute::HqModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::HqAmmeterRtu);
+        break;
+    case UsbProtocolRoute::LxModbus:
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::LxAmmeterRtu);
+        break;
+    default:
+        break;
+    }
+    modbusManager.setLuxshareMachineId(luxshareMachineId);
 
     showlog("按键测试协议=" + SETTINGS.value("Current/ProtocolType", "auto").toString() +
             " 实际生效协议=" + QString::number(static_cast<int>(keyProtocolType)));
-    showlog("按键测试配置: machineId=" + QString::number(cfg.luxshareMachineId) +
-            ", scpi=" + cfg.scpiCurrentType + ":" + cfg.scpiCurrentMode + " " + cfg.scpiRange);
+    showlog("按键测试配置: machineId=" + QString::number(luxshareMachineId) +
+            ", scpi=" + scpiCurrentType + ":" + scpiCurrentMode + " " + scpiRange);
 }
 
 void key_test::closeKeyWaitPromptProgrammatically() {
@@ -520,94 +537,39 @@ int key_test::resolvedPlcKeyDoneM() const {
 }
 
 bool key_test::plcReadCoil(int absoluteM, bool* value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    QVector<bool> bits;
-    if (!inovancePlcTcp_.readMCoils(absoluteM, 1, resolvedPlcMCoilAddressOffset(), resolvedPlcUnitId(), reqMs, &bits, errorMessage)) {
+    QVariant result;
+    if (!modbusManager.exec(PlcCmd::ReadCoil, absoluteM, &result, errorMessage)) {
         return false;
     }
-    *value = bits.value(0);
+    *value = result.toBool();
     return true;
 }
 
 bool key_test::plcWriteCoil(int absoluteM, bool value, QString* errorMessage) {
-    const int reqMs = SETTINGS.value(QStringLiteral("PLC/RequestTimeoutMs"), 2000).toInt();
-    return inovancePlcTcp_.writeMCoil(absoluteM, value, resolvedPlcMCoilAddressOffset(), resolvedPlcUnitId(), reqMs, errorMessage);
+    PlcCoilRequest req;
+    req.m = absoluteM;
+    req.value = value;
+    return modbusManager.exec(PlcCmd::WriteCoil, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcWaitCoilTrue(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        if (!isTestContinue) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("测试已停止");
-            }
-            return false;
-        }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=1 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
+    PlcWaitCoilRequest req;
+    req.m = absoluteM;
+    req.timeoutMs = timeoutMs;
+    req.pollMs = pollMs;
+    return modbusManager.exec(PlcCmd::WaitCoilTrue, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcWaitCoilFalse(int absoluteM, int timeoutMs, int pollMs, QString* errorMessage) {
-    QElapsedTimer t;
-    t.start();
-    const int step = qMax(10, pollMs);
-    while (t.elapsed() < timeoutMs) {
-        if (!isTestContinue) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("测试已停止");
-            }
-            return false;
-        }
-        bool v = false;
-        if (!plcReadCoil(absoluteM, &v, errorMessage)) {
-            return false;
-        }
-        if (!v) {
-            return true;
-        }
-        QThread::msleep(static_cast<unsigned long>(step));
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
-    }
-    if (errorMessage) {
-        *errorMessage = QStringLiteral("等待 M%1=0 超时 %2ms").arg(absoluteM).arg(timeoutMs);
-    }
-    return false;
+    PlcWaitCoilRequest req;
+    req.m = absoluteM;
+    req.timeoutMs = timeoutMs;
+    req.pollMs = pollMs;
+    return modbusManager.exec(PlcCmd::WaitCoilFalse, QVariant::fromValue(req), nullptr, errorMessage);
 }
 
 bool key_test::plcSendStepDone(QString* errorMessage) {
-    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
-    const int pulseMs = SETTINGS.value(QStringLiteral("PLC/StepDonePulseMs"), 0).toInt();
-    const int m = resolvedPlcStepDoneBase();
-    if (!plcWriteCoil(m, true, errorMessage)) {
-        return false;
-    }
-    if (gapMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(gapMs));
-    }
-    if (pulseMs > 0) {
-        QThread::msleep(static_cast<unsigned long>(pulseMs));
-        if (!plcWriteCoil(m, false, errorMessage)) {
-            return false;
-        }
-        if (gapMs > 0) {
-            QThread::msleep(static_cast<unsigned long>(gapMs));
-        }
-    }
-    return true;
+    return modbusManager.exec(PlcCmd::SendStepDone, {}, nullptr, errorMessage);
 }
 
 bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
@@ -630,7 +592,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 .arg(host)
                 .arg(port)
                 .arg(resolvedPlcUnitId()));
-    if (!inovancePlcTcp_.connectPlc(host, quint16(port), resolvedPlcUnitId(), connMs, &err)) {
+    if (!modbusManager.connectPlc(&err)) {
         if (summary) {
             *summary = QStringLiteral("PLC 连接失败: %1").arg(err);
         }
@@ -677,7 +639,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 .arg(plcBoolText(waitKeyDone)));
 
     const auto fail = [&](const QString& msg) {
-        if (inovancePlcTcp_.isConnected()) {
+        if (modbusManager.isPlcConnected()) {
             QString releaseErr;
             if (!plcWriteCoil(keyM, false, &releaseErr)) {
                 showlog(QStringLiteral("按键测试失败后释放 M%1 失败: %2").arg(keyM).arg(releaseErr));
@@ -685,7 +647,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
                 QThread::msleep(static_cast<unsigned long>(gapMs));
             }
         }
-        inovancePlcTcp_.disconnect();
+        modbusManager.disconnectPlc();
         if (summary) {
             *summary = msg;
         }
@@ -758,7 +720,7 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
     if (sawKeyDone && waitKeyReset && !plcWaitCoilFalse(keyDoneM, keyResetTimeout, keyDonePoll, &err)) {
         return fail(QStringLiteral("等待 KeyDone 复位: %1").arg(err));
     }
-    inovancePlcTcp_.disconnect();
+    modbusManager.disconnectPlc();
     if (summary) {
         *summary = QStringLiteral("键%1 整步 M%2 Pos%3 Step%4 KeyDone%5 电容:%6")
                        .arg(keyIndex0To6)
@@ -1119,9 +1081,9 @@ void key_test::refreshAmmeterData(QString data) {
     double normalValue = 0;
     // 使用 toDouble() 进行转换
     bool conversionOk = false;
-    if (keyProtocolType == Qusb::ProtocolType::LxModbus)
+    if (keyProtocolType == UsbProtocolRoute::LxModbus)
         normalValue = data.toDouble(&conversionOk) / 100;
-    else if (keyProtocolType == Qusb::ProtocolType::HqModbus)
+    else if (keyProtocolType == UsbProtocolRoute::HqModbus)
         normalValue = data.toDouble(&conversionOk) / 10000;
     else
         normalValue = data.toDouble(&conversionOk) * 1000;
@@ -1511,7 +1473,7 @@ void key_test::startTask() {
         switch (state) {
         case STATE_IDLE: // 复位一切
 
-            // usb->sendPowerInstruction(Qusb::PowerAction::ConfigurePowerSupply);
+            // execScpi(ScpiCmd::ConfigureMeasure);
 
             protocolManager.resetAllPb();
             isovertime = 0;
@@ -1819,7 +1781,7 @@ void key_test::on_pushButton_clicked() {
 }
 
 void key_test::on_pushButton_3_clicked() {
-    usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement);
+    execAmmeterMeasure();
 
     // at->get(DongleCmd::GetGmac);
     // MesInit();
@@ -1942,7 +1904,7 @@ void key_test::on_stopTest_clicked() {
     ++plcKeyWaitSeq;
     plcKeyActionStarted = false;
     refresh_key_times = 0;
-    inovancePlcTcp_.disconnect();
+    modbusManager.disconnectPlc();
     usblogwaittime->stop();
     ui->macInput->clear();
     ui->snInput->clear();

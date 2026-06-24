@@ -7,7 +7,7 @@
 #include "fixture_uart.h"
 #include "hqmes.h"
 #include "pressuresensorform.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "ui_fixture_uart.h"
 #include "ui_pressuresensorform.h"
 #include "xwdmes.h"

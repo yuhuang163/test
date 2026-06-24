@@ -2,7 +2,6 @@
 #define KEY_TEST_H
 
 #include "Abini.h"
-#include "inovance_h5u_modbus_tcp.h"
 #include "test_base.h"
 #include "testmodel.h"
 #include "ui_key_test.h"
@@ -50,7 +49,7 @@ class key_test : public test_base {
   private:
     // --- 协议 / 界面 ---
     void applyKeyProtocolConfig();
-    Qusb::ProtocolType keyProtocolType = Qusb::ProtocolType::Scpi;
+    UsbProtocolRoute keyProtocolType = UsbProtocolRoute::Scpi;
 
     // --- SN / 绑定 ---
     QByteArray sn;
@@ -118,7 +117,6 @@ class key_test : public test_base {
     int plcKeyCapSyncReadAuxId_ = -1;
     QString plcKeyCapPassSummary_;
     QString keyPassDetail;
-    InovanceH5uModbusTcp inovancePlcTcp_;
 
     // --- 量测 / 表格 ---
     double measure_ammeter = 0;

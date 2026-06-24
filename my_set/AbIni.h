@@ -43,12 +43,12 @@
 #include <hqmes.h> // 华勤的mes头文件
 #include <jjmes.h> // 金进的mes头文件
 #include <lxmes.h> // 立讯的mes头文件
-#include <qat.h>   // 与esp32的at指令
+#include <qatmanager.h>   // 与esp32的at指令
 #include <qjig.h>
 #include <qpb.h> // 与设备的pb协议
 #include <qproduct.h>
 #include <qsetting.h> //上位机设置界面
-#include <qusb.h>     // 与治具的测量协议
+#include <scpi_types.h> // USB 串口协议路由枚举
 #include <xwdmes.h>   // 欣旺达的mes头文件
 
 #define WAITTIME 0 // 指令的300延时防止粘包

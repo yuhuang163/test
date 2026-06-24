@@ -11,7 +11,7 @@
 #include "fixture_uart.h"
 #include "hqmes.h"
 #include "ndt_sensor_cali.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "qcustomplot.h"
 #include "qpb.h"
 #include "test_base.h"

@@ -1,4 +1,4 @@
-﻿#ifndef TEST_BASE_H
+#ifndef TEST_BASE_H
 #define TEST_BASE_H
 
 #include <functional>
@@ -6,18 +6,21 @@
 #include <qlog.h>
 
 #include "Abini.h"
-#include "agreement/qProtocol/qprotocolmanager.h"
-#include "test_case_types.h"
+#include "qprotocolmanager.h"
+#include "qmodbusmanager.h"
+#include "qscpimanager.h"
+#include "huiling_wfp60h_scpi_types.h"
+#include "scpi_types.h"
+#include "instrument_device_catalog.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
 #include "qpushbutton.h"
 #include "qtablewidget.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "qjig.h"
-#include "qusb.h"
-#include "qvisa.h"
 #include "serial_channel.h"
+#include "test_case_types.h"
 
 extern "C" {
 #include "lib/nfc/dcrf32.h"
@@ -106,9 +109,21 @@ class test_base : public QWidget {
     void getMac(QString sn_to_search);
     void signalAndslot();
     int getIndex() const;
-    void showlog(QString msg);
-    /** Product 通道：按 test_case ini 的 Protocol= 切换 QProtocolManager（不读 SYSTEM/ProtocolType）。 */
+    /** 配置 modbusManager 工位号、日志与中止回调（按键/自由工站等 PLC 工站构造时调用）。 */
+    void setupModbusManager();
+    /** 当前路由为 RTU 时走 modbusManager.exec，否则 USB scpiManager.exec。 */
+    bool execAmmeterMeasure(QString* errorMessage = nullptr);
+    bool execScpi(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
+    /** VISA 会凌程控电源（scpiVisaManager_，与 USB 电流表独立实例）。 */
+    bool execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
+    QScpiManager* scpiVisaManager();
+    const QScpiManager* scpiVisaManager() const;
     void applyTestCaseProductProtocol(TestCaseProductProtocol protocol);
+
+    /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
+    QStringList instrumentPurposeLabels() const;
+    /** 工厂 + 用途中文名 → modbus/scpi 协议设备（见 platform/instrument）。 */
+    bool resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const;
 
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";
@@ -136,10 +151,11 @@ class test_base : public QWidget {
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
     QProtocolManager protocolManager;
-    Qat* at = nullptr;
+    QModbusManager modbusManager;
+    QatManager* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
-    Qusb* usb = nullptr;
-    Qvisa* visa = nullptr;
+    QScpiManager scpiUsbManager_;
+    QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
     Qjig* jig = nullptr;
     QSerialPort* productSerialPort = nullptr;
@@ -173,24 +189,37 @@ class test_base : public QWidget {
     void solveGetBrushResponse(int data);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);
+    void showlog(QString msg);
 
     // --- 串口打开 / 关闭 / 扫描 ---
     virtual void onDongleSerialFrame(const QByteArray& data);
     void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);
+
+    void onScpiUsbMeasureReadingReceived(const QString& valueText);
+    void onScpiUsbProgrammablePowerVoltageRead(double valueVolts, bool ok);
+    void onScpiUsbProgrammablePowerCurrentRead(double valueAmps, bool ok);
+    void onModbusRtuAmmeterReadingReceived(const QString& value);
+    void onScpiVisaMeasureReadingReceived(const QString& valueText);
+    void onScpiVisaProgrammablePowerVoltageRead(double valueVolts, bool ok);
+    void onScpiVisaProgrammablePowerCurrentRead(double valueAmps, bool ok);
+
     virtual void onUsbSerialFrame(const QByteArray& data);
     void handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
+
     void onJigSerialFrame(const QByteArray& data);
     void handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
+
     void onProductSerialFrame(const QByteArray& data);
     void handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
+
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
 

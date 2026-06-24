@@ -36,7 +36,7 @@ QSerialPort / QTcpSocket / QProcess / …
 | `agreement/qtransport/` | **通用传输**：串口写统一入口、收包防抖 Reader（阶段 1） |
 | `agreement/qProtocol/` | **设备产测协议**：qpb、qfctp、qaiot + `QProtocolManager` |
 | `agreement/qat/` | Dongle AT 文本（并行解析，不并入 qProtocol） |
-| `agreement/qusb/`、`qvisa/` | 仪器：SCPI / Modbus 等 |
+| `agreement/qusb/`、`agreement/scpi/` | 仪器：SCPI / Modbus 等；VISA 在 `scpi/manager/qscpivisasession` |
 | `agreement/qfixture/`、`qmomcozy/` | 治具 UART / 产品仪器固定帧 |
 | `agreement/qjig/` | 治具气缸/继电器控制 |
 | `agreement/qplc/` | Modbus TCP |
