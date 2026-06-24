@@ -1151,7 +1151,7 @@ void QFreeWork::processGetMesTestValue() {
     if (pack.factory == "hz") {
         if (!ui->isusemes->checkState() && !ui->isformmes->checkState()) {
             // 完全离线模式，直接本地从 SN 解析 MAC 并触发测试
-            mesmacAddress = parseMacFromSn(ui->getMac->text());
+            QString mesmacAddress = parseMacFromSn(ui->getMac->text());
             if (!mesmacAddress.isEmpty()) {
                 ui->macInput->setText(mesmacAddress);
                 showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
