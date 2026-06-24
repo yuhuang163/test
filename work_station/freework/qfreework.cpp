@@ -1149,6 +1149,18 @@ void QFreeWork::processInspection(QString inputSnText) {
 
 void QFreeWork::processGetMesTestValue() {
     if (pack.factory == "hz") {
+        if (!ui->isusemes->checkState() && !ui->isformmes->checkState()) {
+            // 完全离线模式，直接本地从 SN 解析 MAC 并触发测试
+            mesmacAddress = parseMacFromSn(ui->getMac->text());
+            if (!mesmacAddress.isEmpty()) {
+                ui->macInput->setText(mesmacAddress);
+                showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
+                on_macInput_returnPressed();
+            } else {
+                showlog(QStringLiteral("本地从 SN 解析 MAC 失败: ") + ui->getMac->text());
+            }
+            return;
+        }
         pack.sn = ui->getMac->text();
         pack.mechines = getIndex();
         getTestValue(getIndex(), pack.sn.trimmed());
@@ -1242,6 +1254,15 @@ void QFreeWork::updateComboBox() {
             if (index == -1) {
                 ui->mac_combo->addItem(deviceAddress);
                 qDebug() << getIndex() << "有新增" << deviceAddress;
+            }
+            
+            // 【纯烧录场景新增】如果当前未连接，且没勾选“扫描绑定MAC”，则一旦搜到符合条件的设备直接自动连接！
+            if (!at->getConnected() && !ui->isusemac->checkState()) {
+                qDebug() << getIndex() << "发现匹配广播名称的设备，触发自动连接: " << deviceAddress;
+                at->set(DongleCmd::BleScanConnect, deviceAddress);
+                ui->mac_combo->setCurrentText(deviceAddress);
+                // 触发连接后跳出循环，避免连续发送
+                break;
             }
         }
     }
@@ -1409,7 +1430,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         expectedTailSnFromMes = snFromMes.toUtf8();
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
-        // on_macInput_returnPressed();
+        on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
         // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
         if (mechines != getIndex()) {
