@@ -90,10 +90,9 @@ echo [Admin] http://127.0.0.1:%ADMIN_PORT%
 echo [Admin] use 127.0.0.1 not localhost if browser fails
 
 echo.
+echo NPM_CMD=%NPM_CMD%
 
-
-
-call "%NPM_CMD%" run dev
+%NPM_CMD% run dev
 
 if errorlevel 1 echo [Admin] start failed
 
