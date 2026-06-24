@@ -7,7 +7,7 @@
 #include "../access/bulk_types.h"
 
 class DjiBulkCodec {
-public:
+  public:
     using FrameHandler = std::function<void(const DjiBulkFrame& frame)>;
 
     void feed(QByteArray& buffer, const FrameHandler& onFrame);
@@ -23,7 +23,7 @@ public:
     static void md5_append(md5_state_t* pms, const md5_byte_t* data, int nbytes);
     static void md5_finish(md5_state_t* pms, md5_byte_t digest[16]);
 
-private:
+  private:
     static bool checkHeaderCRC(const QByteArray& packet);
     static bool checkDataCRC(const QByteArray& packet);
 

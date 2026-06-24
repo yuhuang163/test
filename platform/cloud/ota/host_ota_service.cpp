@@ -53,8 +53,7 @@ bool startDeleteSelfBat(const QString& newExePath) {
     QTimer::singleShot(1000, []() {
         qApp->quit();
         QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                {QStringLiteral("/c"), QStringLiteral("taskkill /f /pid ") +
-                                                           QString::number(QCoreApplication::applicationPid())});
+                                {QStringLiteral("/c"), QStringLiteral("taskkill /f /pid ") + QString::number(QCoreApplication::applicationPid())});
     });
     return true;
 }
@@ -146,7 +145,7 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
         return false;
     }
 
-  if (!info.sha256.isEmpty()) {
+    if (!info.sha256.isEmpty()) {
         const QString actual = sha256File(savePath);
         if (actual.compare(info.sha256, Qt::CaseInsensitive) != 0) {
             QFile::remove(savePath);
@@ -204,8 +203,8 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
     }
 
     const QString text = check.releaseNotes.isEmpty()
-                             ? check.message
-                             : check.message + QStringLiteral("\n\n") + check.releaseNotes;
+        ? check.message
+        : check.message + QStringLiteral("\n\n") + check.releaseNotes;
     if (!check.forceUpgrade) {
         const auto answer = QMessageBox::question(parent, QStringLiteral("软件更新"), text);
         if (answer != QMessageBox::Yes) {

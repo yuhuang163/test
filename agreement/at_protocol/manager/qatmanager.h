@@ -8,13 +8,13 @@
 
 class QatManager : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit QatManager(QObject* parent = nullptr);
 
     void setWriteCallback(const DongleAtDevice::WriteCallback& cb);
 
     void parseCmd(const QByteArray& byte);
-
+    // clang-format off
     DongleAtDevice* device() { return &device_; }
 
     void set(DongleCmd cmd, const QVariant& data = {}) { device_.set(cmd, data); }
@@ -28,12 +28,12 @@ public:
     bool getwifiConnected() const { return device_.getwifiConnected(); }
     void resetwifiConnected() { device_.resetwifiConnected(); }
     void setwifiConnected() { device_.setwifiConnected(); }
-
-signals:
+    // clang-format on
+  signals:
     void reportReceived(const ProtocolReport& report);
     void sendGetProductResponse(int data);
 
-private:
+  private:
     DongleAtDevice device_;
     AtLineCodec codec_;
 };

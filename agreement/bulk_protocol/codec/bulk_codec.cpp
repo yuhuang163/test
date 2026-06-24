@@ -101,7 +101,8 @@ uint8_t DjiBulkCodec::crc8_calc(const uint8_t* data, uint32_t len, uint8_t init_
 
 bool DjiBulkCodec::checkHeaderCRC(const QByteArray& packet) {
     const int headerCrcIndex = 3;
-    if (packet.size() < 4) return false;
+    if (packet.size() < 4)
+        return false;
     quint8 crcInPacket = quint8(packet[headerCrcIndex]);
     const uint8_t* data = reinterpret_cast<const uint8_t*>(packet.constData());
     uint8_t crcCalc = crc8_calc(data, 3, DUSS_MB_PACKAGE_V1_CRCH_INIT);
@@ -110,7 +111,8 @@ bool DjiBulkCodec::checkHeaderCRC(const QByteArray& packet) {
 
 bool DjiBulkCodec::checkDataCRC(const QByteArray& packet) {
     const int crcSize = 2;
-    if (packet.size() < crcSize) return false;
+    if (packet.size() < crcSize)
+        return false;
     quint16 crcInPacket = quint8(packet[packet.size() - 2]) | (quint8(packet[packet.size() - 1]) << 8);
     const uint8_t* data = reinterpret_cast<const uint8_t*>(packet.constData());
     uint16_t crcCalc = duss_util_crc16_calc(data, packet.size() - crcSize, DUSS_MB_PACKAGE_V1_CRC_INIT);
@@ -134,7 +136,7 @@ QByteArray DjiBulkCodec::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t 
     uint16_t seq = m_seqNum.fetch_add(1, std::memory_order_relaxed);
     packet.append(char(seq & 0xFF));
     packet.append(char((seq >> 8) & 0xFF));
-    
+
     uint8_t reserve = 0;
     uint8_t typeByte = 0;
     if (isResponse) {
@@ -154,7 +156,7 @@ QByteArray DjiBulkCodec::buildPacket(uint8_t receiver, uint8_t cmdType, uint8_t 
 void DjiBulkCodec::feed(QByteArray& buffer, const FrameHandler& onFrame) {
     const int minHeaderSize = 12;
     const int crcSize = 2;
-    
+
     while (buffer.size() >= minHeaderSize + crcSize) {
         if (quint8(buffer[0]) != 0x55) {
             buffer.remove(0, 1);
@@ -165,15 +167,17 @@ void DjiBulkCodec::feed(QByteArray& buffer, const FrameHandler& onFrame) {
         if (buffer.size() < length) {
             break;
         }
-        
+
         QByteArray packet = buffer.left(length);
         buffer.remove(0, length);
-        
-        if (!checkHeaderCRC(packet)) continue;
-        if (!checkDataCRC(packet)) continue;
-        
+
+        if (!checkHeaderCRC(packet))
+            continue;
+        if (!checkDataCRC(packet))
+            continue;
+
         quint8 typeByte = quint8(packet[8]);
-        
+
         DjiBulkFrame frame;
         frame.isResponse = (typeByte >> 7) & 0x01;
         frame.cmdType = (typeByte >> 5) & 0x03;
@@ -182,7 +186,7 @@ void DjiBulkCodec::feed(QByteArray& buffer, const FrameHandler& onFrame) {
         frame.cmdSet = quint8(packet[9]);
         frame.cmdID = quint8(packet[10]);
         frame.data = packet.mid(11, packet.size() - 11 - crcSize);
-        
+
         if (onFrame) {
             onFrame(frame);
         }
@@ -193,7 +197,7 @@ void DjiBulkCodec::feed(QByteArray& buffer, const FrameHandler& onFrame) {
 // I will not copy the full md5 process function here to keep this file clean,
 // since it is rarely used or could be linked from another crypto file, but I will
 // just provide dummy stubs or you can use QCryptographicHash if QBulk needed it.
-// Actually, QBulk currently implements md5_init, md5_append, md5_finish but 
+// Actually, QBulk currently implements md5_init, md5_append, md5_finish but
 // there are no usages in qbulk.cpp! Let's check.
 
 #undef BYTE_ORDER /* 1 = big-endian, -1 = little-endian, 0 = unknown */
@@ -513,5 +517,3 @@ void DjiBulkCodec::md5_finish(md5_state_t* pms, md5_byte_t digest[16]) {
     for (i = 0; i < 16; ++i)
         digest[i] = (md5_byte_t)(pms->abcd[i >> 2] >> ((i & 3) << 3));
 }
-
-

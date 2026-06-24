@@ -63,7 +63,8 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
                     qDebug().noquote() << "AT RX:" << atLine.trimmed();
-                    if (onFrame) onFrame({cmd_, parameter_});
+                    if (onFrame)
+                        onFrame({cmd_, parameter_});
                 }
                 cmd_.clear();
                 parameter_.clear();
@@ -87,7 +88,8 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
                     qDebug().noquote() << "AT RX:" << atLine.trimmed();
-                    if (onFrame) onFrame({cmd_, parameter_});
+                    if (onFrame)
+                        onFrame({cmd_, parameter_});
                 }
                 cmd_.clear();
                 parameter_.clear();

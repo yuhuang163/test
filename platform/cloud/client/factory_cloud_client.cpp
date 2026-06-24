@@ -90,7 +90,7 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
             result.message = QStringLiteral("请求失败 HTTP %1").arg(httpStatus);
         }
     }
-            qDebug() << "自己服务器上传完成";
+    qDebug() << "自己服务器上传完成";
     return result;
 }
 
@@ -244,7 +244,7 @@ FactoryCloudClient::ApiResult FactoryCloudClient::post(const QString& path, cons
     QUrl url(apiRoot() + path);
     QNetworkAccessManager manager;
     QNetworkRequest request(url);
-        qDebug() << "自己服务器上传路径："<<url;
+    qDebug() << "自己服务器上传路径：" << url;
     applyFactoryHeaders(request, true);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setTransferTimeout(kHttpTimeoutMs);

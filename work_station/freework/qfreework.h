@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>

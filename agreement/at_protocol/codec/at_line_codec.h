@@ -12,13 +12,13 @@ struct AtFrame {
 };
 
 class AtLineCodec {
-public:
+  public:
     using FrameHandler = std::function<void(const AtFrame& frame)>;
 
     void reset();
     void feed(const QByteArray& chunk, const FrameHandler& onFrame);
 
-private:
+  private:
     bool isPrintableAtLine(const QString& line) const;
 
     enum class State {

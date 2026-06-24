@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 #include "common_utils.h"
 #include "qlog.h"
 #include "qatmanager.h"

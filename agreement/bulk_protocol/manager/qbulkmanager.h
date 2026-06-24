@@ -16,8 +16,10 @@
 struct UsbVidPid {
     uint16_t vid;
     uint16_t pid;
+    // clang-format off
     UsbVidPid() : vid(0), pid(0) {}
     UsbVidPid(uint16_t v, uint16_t p) : vid(v), pid(p) {}
+    // clang-format on
     bool operator==(const UsbVidPid& other) const {
         return vid == other.vid && pid == other.pid;
     }
@@ -29,7 +31,7 @@ inline uint qHash(const UsbVidPid& key, uint seed = 0) {
 
 class QBulkManager : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit QBulkManager(QObject* parent = nullptr);
     ~QBulkManager();
 
@@ -41,12 +43,12 @@ public:
     void startRead();
     bool bulkRead(unsigned char ep, QByteArray& data, unsigned int timeout = 500);
     bool bulkWriteRaw(const QByteArray& data, unsigned int timeout = 1000);
-
+    // clang-format off
     DjiBulkDevice* device() const { return device_; }
     bool isOpen() const { return is_open; }
     int epNumber() const { return ep_numer; }
     void setEpNumber(int ep) { ep_numer = ep; }
-
+    // clang-format on
 signals:
     void readyRead(QByteArray& data);
     void bulk_device_error(int code, const QString& msg);
@@ -54,7 +56,7 @@ signals:
     void usbDeviceAdded(quint16 vid, quint16 pid);
     void usbDeviceListReady(const QSet<UsbVidPid>& devices);
 
-private:
+  private:
     struct usb_dev_handle* handle;
     QSet<UsbVidPid> usbDeviceSet;
     bool is_open;

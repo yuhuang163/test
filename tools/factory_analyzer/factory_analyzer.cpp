@@ -1,4 +1,4 @@
-﻿#include "factory_analyzer.h"
+#include "factory_analyzer.h"
 #include "my_set/my_typedef.h"
 #include "qproduct.h"
 #include "qcustomplot.h"
@@ -2859,8 +2859,8 @@ void factory_analyzer::on_comboBox_activated(int index) {
     // 4️⃣ 调用
     qDebug() << "[ComboBox] call set_amt_task_start";
     bulk->device()->set_amt_task_start(cmd,
-                             ui->lineEdit_2->text().toUInt(), // timeout
-                             param                            // 参数
+                                       ui->lineEdit_2->text().toUInt(), // timeout
+                                       param                            // 参数
     );
 }
 

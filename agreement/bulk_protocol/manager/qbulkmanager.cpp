@@ -6,7 +6,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QBulkManager::QBulkManager(QObject* parent) 
+QBulkManager::QBulkManager(QObject* parent)
     : QObject(parent), handle(nullptr), is_open(false), running(false), ep_numer(0x01) {
     usb_init();
     device_ = new DjiBulkDevice(this);
@@ -55,7 +55,8 @@ bool QBulkManager::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber) {
 
 found_device:
     handle = usb_open(dev);
-    if (!handle) return false;
+    if (!handle)
+        return false;
     if (usb_claim_interface(handle, interfaceNumber) < 0) {
         usb_close(handle);
         handle = nullptr;
@@ -97,7 +98,7 @@ void QBulkManager::stopRead() {
 void QBulkManager::startRead() {
     running = true;
     QByteArray readBuffer;
-    
+
     while (running) {
         if (!handle) {
             QThread::msleep(100);
@@ -116,7 +117,8 @@ void QBulkManager::startRead() {
 }
 
 bool QBulkManager::bulkRead(unsigned char ep, QByteArray& data, unsigned int timeout) {
-    if (!handle) return false;
+    if (!handle)
+        return false;
     unsigned char buffer[4096];
     int transferred = usb_bulk_read(handle, ep, reinterpret_cast<char*>(buffer), sizeof(buffer), timeout);
 
@@ -124,7 +126,8 @@ bool QBulkManager::bulkRead(unsigned char ep, QByteArray& data, unsigned int tim
         data = QByteArray(reinterpret_cast<char*>(buffer), transferred);
         return true;
     }
-    if (transferred == 0) return false;
+    if (transferred == 0)
+        return false;
 
     if (transferred == -4 || transferred == -5 || transferred == -116) {
         closeDevice();
@@ -133,10 +136,11 @@ bool QBulkManager::bulkRead(unsigned char ep, QByteArray& data, unsigned int tim
 }
 
 bool QBulkManager::bulkWriteRaw(const QByteArray& data, unsigned int timeout) {
-    if (!handle) return false;
-    int transferred = usb_bulk_write(handle, ep_numer, 
+    if (!handle)
+        return false;
+    int transferred = usb_bulk_write(handle, ep_numer,
                                      reinterpret_cast<char*>(const_cast<unsigned char*>(
-                                     reinterpret_cast<const unsigned char*>(data.data()))), 
+                                         reinterpret_cast<const unsigned char*>(data.data()))),
                                      data.size(), timeout);
     if (transferred > 0) {
         return true;

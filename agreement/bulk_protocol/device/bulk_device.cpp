@@ -3,8 +3,11 @@
 #include <QDateTime>
 #include <QThread>
 
-DjiBulkDevice::DjiBulkDevice(QObject* parent) : QObject(parent) { registerCommand(); }
-DjiBulkDevice::~DjiBulkDevice() {}
+DjiBulkDevice::DjiBulkDevice(QObject* parent) : QObject(parent) {
+    registerCommand();
+}
+DjiBulkDevice::~DjiBulkDevice() {
+}
 void DjiBulkDevice::onFrameReceived(const DjiBulkFrame& frame) {
     auto it = djifactoryCommandList.find(static_cast<djiFactroyCmd>(frame.cmdID));
     if (it != djifactoryCommandList.end()) {
@@ -73,19 +76,22 @@ void DjiBulkDevice::get_dev_ver_status() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x01, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_device_date() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x4b, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_product_status() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc5, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_product_dbg_misc_subcmd_count() {
     QByteArray v1data;
@@ -96,7 +102,8 @@ void DjiBulkDevice::get_product_dbg_misc_subcmd_count() {
     v1data.append(char(0x00));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe0, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::get_Esdd_Check_Antirollback() {
@@ -123,7 +130,8 @@ void DjiBulkDevice::get_Esdd_Check_Antirollback() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::get_current_slot() {
@@ -148,7 +156,8 @@ void DjiBulkDevice::get_current_slot() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_product_md5_result() {
 
@@ -172,7 +181,8 @@ void DjiBulkDevice::get_product_md5_result() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::get_active_times() {
@@ -185,7 +195,8 @@ void DjiBulkDevice::get_active_times() {
     v1data.append(char(0x01));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0x32, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_wake_wifi() {
     QByteArray v1data;
@@ -194,7 +205,8 @@ void DjiBulkDevice::set_wake_wifi() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0700), 2, 0x07, 0x41, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::get_product_active() {
@@ -203,14 +215,16 @@ void DjiBulkDevice::get_product_active() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0x32, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::set_device_restory_setting() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x1704), 2, 0x03, 0xf3, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_product_dbg_count() {
     QByteArray v1data;
@@ -227,13 +241,14 @@ void DjiBulkDevice::set_product_dbg_count() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe1, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
-                                          const QString& nameStr, uint32_t perm,
-                                          uint32_t count, uint32_t time,
-                                          uint32_t nonce) {
+                                                  const QString& nameStr, uint32_t perm,
+                                                  uint32_t count, uint32_t time,
+                                                  uint32_t nonce) {
 #pragma pack(push, 1)
     typedef struct {
         uint8_t version;    // 01
@@ -316,7 +331,8 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe2, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 // void DjiBulkDevice::set_check_one_time_auth (){
@@ -376,7 +392,8 @@ void DjiBulkDevice::set_device_date() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x4a, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::get_Rpmb_Board() {
@@ -386,7 +403,8 @@ void DjiBulkDevice::get_Rpmb_Board() {
     v1data.append(char(sn_type));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x51, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_Rpmb_Device() {
 
@@ -395,7 +413,8 @@ void DjiBulkDevice::get_Rpmb_Device() {
     v1data.append(char(sn_type));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x51, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_root_key_status() {
 
@@ -403,7 +422,8 @@ void DjiBulkDevice::get_root_key_status() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc6, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_sys_event_reboot() {
     QByteArray v1data;
@@ -430,7 +450,8 @@ void DjiBulkDevice::set_sys_event_reboot() {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x0b, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_Rpmb_Board(const QString& sn) {
     QByteArray snBytes = sn.toUtf8();
@@ -454,7 +475,8 @@ void DjiBulkDevice::set_Rpmb_Board(const QString& sn) {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x50, v1data);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 
 void DjiBulkDevice::set_Rpmb_Device(const QString& sn) {
@@ -483,7 +505,8 @@ void DjiBulkDevice::set_Rpmb_Device(const QString& sn) {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x50, v1data);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 
 void DjiBulkDevice::set_amt_clean_flag() {
@@ -494,7 +517,8 @@ void DjiBulkDevice::set_amt_clean_flag() {
     v1data.append(char(0x00));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_amt_check_clean_flag() {
     QByteArray v1data;
@@ -505,7 +529,8 @@ void DjiBulkDevice::set_amt_check_clean_flag() {
     v1data.append(char(0x00));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_sys_poweroff() { // 0x0a00 set system power_level: 5
     QByteArray v1data;
@@ -515,7 +540,8 @@ void DjiBulkDevice::set_sys_poweroff() { // 0x0a00 set system power_level: 5
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x44, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_2a_send_file_data() {
     if (tow_a_filepath.isEmpty()) {
@@ -559,7 +585,8 @@ void DjiBulkDevice::set_2a_send_file_data() {
             DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
 
         // 鈶?鍙戦€?
-        if (writeCb_) writeCb_(pkt);
+        if (writeCb_)
+            writeCb_(pkt);
 
         qDebug() << "[2A] send seq =" << seq << "payload =" << payload.size();
 
@@ -605,7 +632,7 @@ void DjiBulkDevice::set_2a_send_file_info_check() {
         QByteArray chunk = file.read(4096);
         if (!chunk.isEmpty()) {
             DjiBulkCodec::md5_append(&md5, reinterpret_cast<const md5_byte_t*>(chunk.constData()),
-                       chunk.size());
+                                     chunk.size());
         }
     }
 
@@ -623,7 +650,8 @@ void DjiBulkDevice::set_2a_send_file_info_check() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 
 void DjiBulkDevice::set_2a_send_file_info(const QString& filepath) {
@@ -662,7 +690,8 @@ void DjiBulkDevice::set_2a_send_file_info(const QString& filepath) {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
 
@@ -732,7 +761,8 @@ void DjiBulkDevice::set_2a_download_path_info(const QString& filepath) {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::set_2a_download_file_info(const QString& filepath) {
@@ -779,7 +809,8 @@ void DjiBulkDevice::set_2a_download_file_info(const QString& filepath) {
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::set_2a_download_file_devide_rsp() {
@@ -810,9 +841,10 @@ void DjiBulkDevice::set_2a_download_file_devide_rsp() {
     v1data.append(char(0x01)); // 涓句緥锛?A 鍗忚
 
     QByteArray pkt = DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00,
-                                 0x2a, v1data, 0, 1);
+                                               0x2a, v1data, 0, 1);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 void DjiBulkDevice::set_2a_download_file_devide_lost_list_rsp() {
     QByteArray v1data;
@@ -824,9 +856,10 @@ void DjiBulkDevice::set_2a_download_file_devide_lost_list_rsp() {
                   sizeof(uint32_t));
 
     QByteArray pkt = DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00,
-                                 0x2a, v1data, 0, 1);
+                                               0x2a, v1data, 0, 1);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
     qDebug() << "==== set_2a_download_file_ok_rsp ====";
@@ -862,7 +895,7 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
         QByteArray chunk = file.read(4096);
         if (!chunk.isEmpty()) {
             DjiBulkCodec::md5_append(&md5, reinterpret_cast<const md5_byte_t*>(chunk.constData()),
-                       chunk.size());
+                                     chunk.size());
         }
     }
 
@@ -892,9 +925,10 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
     v1data.append(char(md5_ok ? 0x00 : 0x01));
 
     QByteArray pkt = DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00,
-                                 0x2a, v1data, 0, 1);
+                                               0x2a, v1data, 0, 1);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 
 void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
@@ -957,7 +991,7 @@ void DjiBulkDevice::set_2a_download_file_info_check() {
 }
 
 void DjiBulkDevice::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
-                               const QByteArray& param) {
+                                       const QByteArray& param) {
     QByteArray payload;
 
     // ---------- cmd锛氬浐瀹?SYS_AMT_TEST_CMD_STR_LEN ----------
@@ -991,7 +1025,8 @@ void DjiBulkDevice::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf4, payload);
 
-    if (writeCb_) writeCb_(pkt);
+    if (writeCb_)
+        writeCb_(pkt);
 }
 
 void DjiBulkDevice::set_amt_task_get_result() {
@@ -1000,7 +1035,8 @@ void DjiBulkDevice::set_amt_task_get_result() {
     v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf6, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::set_amt_task_get_log(uint32_t offset) {
@@ -1025,13 +1061,15 @@ void DjiBulkDevice::set_amt_task_get_log(uint32_t offset) {
     v1data.append(reinterpret_cast<const char*>(&fetchLen), sizeof(fetchLen));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf8, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_amt_task_rst() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf7, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::set_write_product_status() {
     QByteArray v1data;
@@ -1039,7 +1077,8 @@ void DjiBulkDevice::set_write_product_status() {
     // v1data.append(char(0x00));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc4, v1data);
-    if (writeCb_) writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+    if (writeCb_)
+        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 
 void DjiBulkDevice::process_dji_amt_task_start(QByteArray& f) {
@@ -1486,12 +1525,7 @@ void DjiBulkDevice::process_get_anti_rollback_comm(QByteArray& f) {
         if (info.retCode == 0x00)
             emit send_bulk_data("ab鍒嗗尯鏍￠獙鎴愬姛");
         else
-            emit send_bulk_data(QStringLiteral("AB 分区校验失败：")
-                                    + QStringLiteral("A[%1: %2], B[%3: %4]")
-                                    .arg(p[1])
-                                    .arg(checkErrToString(p[1]))
-                                    .arg(p[2])
-                                    .arg(checkErrToString(p[2])));
+            emit send_bulk_data(QStringLiteral("AB 分区校验失败：") + QStringLiteral("A[%1: %2], B[%3: %4]").arg(p[1]).arg(checkErrToString(p[1])).arg(p[2]).arg(checkErrToString(p[2])));
 
         return;
     }

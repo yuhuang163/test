@@ -1089,8 +1089,8 @@ void qsetting::on_pushButton_checkHostOta_clicked() {
         return;
     }
     const QString text = check.releaseNotes.isEmpty()
-                             ? check.message
-                             : check.message + QStringLiteral("\n\n") + check.releaseNotes;
+        ? check.message
+        : check.message + QStringLiteral("\n\n") + check.releaseNotes;
     const auto answer = QMessageBox::question(this, QStringLiteral("软件更新"), text);
     if (answer != QMessageBox::Yes) {
         return;

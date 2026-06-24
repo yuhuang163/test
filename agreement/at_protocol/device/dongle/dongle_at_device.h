@@ -9,39 +9,37 @@
 #include "dongle_at_types.h"
 #include "../../codec/at_line_codec.h"
 #include "qprotocol_types.h"
-
+ 
 class DongleAtDevice : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit DongleAtDevice(QObject* parent = nullptr);
 
+  // clang-format off
     using WriteCallback = std::function<void(const QByteArray& data)>;
     void setWriteCallback(const WriteCallback& cb) { writeCb_ = cb; }
-
     void onFrameReceived(const AtFrame& frame);
-
     void set(DongleCmd cmd, const QVariant& data = {});
     void get(DongleCmd cmd, const QVariant& param = {});
     bool sendCustomMessage(const QVariantMap& map);
-
     bool getConnected() const { return isConnected; }
     void resetConnected() { isConnected = false; }
     void setConnected() { isConnected = true; }
-
     bool getwifiConnected() const { return iswifiConnected; }
     void resetwifiConnected() { iswifiConnected = false; }
     void setwifiConnected() { iswifiConnected = true; }
+    // clang-format on
 
-signals:
+  signals:
     void reportReceived(const ProtocolReport& report);
     void sendGetProductResponse(int data);
 
-protected:
+  protected:
     void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
         emit reportReceived(ProtocolReport(reportType, payload));
     }
 
-private:
+  private:
     void registerCommand();
     void sendAtLine(const QString& line);
 

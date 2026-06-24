@@ -255,8 +255,7 @@ bool parseUploadResponse(const QByteArray& body, const QString& uploadUrl, QStri
         return true;
     }
     if (message) {
-        *message = QStringLiteral("上传失败：")
-                   + (apiMessage.isEmpty() ? summarizeHttpBody(0, body, uploadUrl) : apiMessage);
+        *message = QStringLiteral("上传失败：") + (apiMessage.isEmpty() ? summarizeHttpBody(0, body, uploadUrl) : apiMessage);
     }
     qDebug() << "parseUploadResponse: api returned error code=" << code << "message=" << apiMessage
              << "body=" << decodeHttpBodyText(body).left(500);
@@ -460,7 +459,7 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant(QStringLiteral("application/zip")));
     // filePart.setBodyDevice(file);
     // file->setParent(multiPart);
-    QByteArray data = file->readAll();   // ✔ 正确（指针）
+    QByteArray data = file->readAll(); // ✔ 正确（指针）
     filePart.setBody(data);
     multiPart->append(filePart);
 
@@ -544,12 +543,11 @@ bool LogUploadService::packAndUpload(const UploadConfig& cfg, QString* message) 
     QString uploadMessage;
     const bool ok = uploadLogArchive(zipPath, cfg, &uploadMessage);
     QFile::remove(zipPath);
-qDebug() << "zip size:" << QFileInfo(zipPath).size()<<zipPath;
+    qDebug() << "zip size:" << QFileInfo(zipPath).size() << zipPath;
     if (message) {
         *message = (ok ? QStringLiteral("打包成功（%1），").arg(sizeText) : QString()) + uploadMessage;
         if (ok && zipWarning.startsWith(QStringLiteral("skipped:"))) {
-            *message += QStringLiteral("；部分文件被占用已跳过：")
-                         + zipWarning.mid(QStringLiteral("skipped:").size());
+            *message += QStringLiteral("；部分文件被占用已跳过：") + zipWarning.mid(QStringLiteral("skipped:").size());
         }
     }
     return ok;

@@ -15,16 +15,18 @@
 
 class DjiBulkDevice : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit DjiBulkDevice(QObject* parent = nullptr);
     ~DjiBulkDevice();
 
     using WriteCallback = std::function<void(const QByteArray& data)>;
-    void setWriteCallback(const WriteCallback& cb) { writeCb_ = cb; }
+    void setWriteCallback(const WriteCallback& cb) {
+        writeCb_ = cb;
+    }
 
     void onFrameReceived(const DjiBulkFrame& frame);
 
-public slots:
+  public slots:
     void get_dev_ver_status();
     void get_product_dbg_misc_subcmd_count();
     void get_device_date();
@@ -72,13 +74,13 @@ public slots:
     void set_2a_download_file_info_check();
     void set_sys_event_reboot();
 
-signals:
+  signals:
     void send_bulk_data(QString data);
     void sendGetDjiResponse(int data, int errocode = 0);
     void send2aprogress(int data);
     void download2aprogress(int data);
 
-private slots:
+  private slots:
     void process_djiFactroyCmd_get_version(QByteArray& f);
     void process_dji_factory_mode_handle(QByteArray& f);
     void process_dji_amt_task_start(QByteArray& f);
@@ -100,7 +102,7 @@ private slots:
     void process_set_product_status(QByteArray& f);
     void process_read_root_key_status(QByteArray& f);
 
-private:
+  private:
     QString amtTaskResultToString(uint8_t code);
     void waitWork(int ms);
     void registerCommand();
