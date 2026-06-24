@@ -1255,15 +1255,6 @@ void QFreeWork::updateComboBox() {
                 ui->mac_combo->addItem(deviceAddress);
                 qDebug() << getIndex() << "有新增" << deviceAddress;
             }
-            
-            // 【纯烧录场景新增】如果当前未连接，且没勾选“扫描绑定MAC”，则一旦搜到符合条件的设备直接自动连接！
-            if (!at->getConnected() && !ui->isusemac->checkState()) {
-                qDebug() << getIndex() << "发现匹配广播名称的设备，触发自动连接: " << deviceAddress;
-                at->set(DongleCmd::BleScanConnect, deviceAddress);
-                ui->mac_combo->setCurrentText(deviceAddress);
-                // 触发连接后跳出循环，避免连续发送
-                break;
-            }
         }
     }
 }

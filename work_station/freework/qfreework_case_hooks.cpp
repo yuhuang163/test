@@ -69,6 +69,48 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         });
         return;
     }
+    if (hookId == QStringLiteral("BLE_CONNECT_BY_NAME")) {
+        QString bestMac;
+        int bestRssi = -999;
+        const QString targetName = fw->ui->name_range->text();
+        const int rssiThreshold = fw->ui->rssi_range->text().toInt();
+
+        for (auto it = fw->deviceMap.begin(); it != fw->deviceMap.end(); ++it) {
+            const QString deviceAddress = it.key();
+            const QString deviceName = it.value().value(QStringLiteral("Name"));
+            const int deviceRssi = it.value().value(QStringLiteral("Rssi")).toInt();
+
+            if (deviceName.contains(targetName) && deviceRssi > rssiThreshold && deviceAddress.length() == 17) {
+                if (deviceRssi > bestRssi) {
+                    bestRssi = deviceRssi;
+                    bestMac = deviceAddress;
+                }
+            }
+        }
+
+        if (bestMac.isEmpty()) {
+            fw->stepRuntime_.done = true;
+            fw->stepRuntime_.pass = false;
+            fw->stepRuntime_.testData = QStringLiteral("未找到匹配广播: ") + targetName;
+            fw->TestResult = fw->failValue;
+            fw->showlog(QStringLiteral("按名称自动连接失败：没扫到名称包含 %1 且信号大于 %2 的设备")
+                            .arg(targetName)
+                            .arg(rssiThreshold));
+            return;
+        }
+
+        fw->showlog(QStringLiteral("按广播名称找到最佳设备，MAC: %1, 信号: %2, 发起连接...")
+                        .arg(bestMac)
+                        .arg(bestRssi));
+        
+        fw->stepRuntime_.testData = bestMac;
+        fw->setCommandWaitSource(CommandWaitSource::DongleAt);
+        fw->sendCommandWithRetry([fw, bestMac]() {
+            fw->at->set(DongleCmd::BleScanConnect, bestMac);
+            fw->ui->mac_combo->setCurrentText(bestMac);
+        });
+        return;
+    }
     if (hookId == QStringLiteral("MAC_WRITE_ROOT")) {
         const QString snText = fw->resolvedExpectedTailSnText();
         const QString macText = fw->parseMacFromSn(snText);
