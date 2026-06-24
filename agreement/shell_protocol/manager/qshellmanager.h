@@ -1,0 +1,23 @@
+// Qshell.h
+#pragma once
+#include <QObject>
+#include <QString>
+#include <functional>
+#include "process_channel.h"
+
+class Qshell : public QObject {
+    Q_OBJECT
+  public:
+    explicit Qshell(QObject* parent = nullptr);
+    ~Qshell();
+
+    bool start(); // 启动 cmd / powershell
+    void stop();
+
+    void sendCommand(const QString& cmd,
+                     std::function<void(const QString&, qint64)> callback,
+                     qint64 timeoutMs = 3000);
+
+  private:
+    ProcessChannel* channel_ = nullptr;
+};

@@ -63,7 +63,7 @@ class quiescent_current : public test_base {
     double HighCurrent = 0;
     double LowCurrent = 0;
     double measure_ammeter = 0;
-    Qusb::ProtocolType currentProtocolType = Qusb::ProtocolType::Scpi;
+    UsbProtocolRoute currentProtocolType = UsbProtocolRoute::Scpi;
     bool useProgrammablePower = false;
     double programmablePowerMeasuredCurrentA_ = 0.0;
     bool programmablePowerCurrentReadOk_ = false;

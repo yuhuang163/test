@@ -13,7 +13,7 @@
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
 #include "common_utils.h"
-#include "qat.h"
+#include "qatmanager.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -90,10 +90,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           dongleSerialChannel_(new SerialChannel(this)),
                                           dongleSerialPort(dongleSerialChannel_->port()),
                                           pb(new Qpb(dongleSerialPort)),
-                                          qfctp(new Qfctp(dongleSerialPort)), qaiot(new Qaiot(dongleSerialPort)),
-                                          qroot(new Qroot(dongleSerialPort)), at(new Qat(dongleSerialPort)), qimuc(new imu_calibrate), basicInfoModel(new TestModel),
-                                          nqimuc(new new_imu_calibrate), peripheralModel(new TestModel), ui(new Ui::MainWindow) {
+                                          qfctp(new Qfctp(dongleSerialPort)),
+                                          qaiot(new Qaiot(dongleSerialPort)),
+                                          qroot(new Qroot(dongleSerialPort)),
+                                          at(new QatManager(this)),
+                                          qimuc(new imu_calibrate),
+                                          basicInfoModel(new TestModel),
+                                          nqimuc(new new_imu_calibrate),
+                                          peripheralModel(new TestModel),
+                                          ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    at->setWriteCallback([this](const QByteArray& data) {
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(data);
+    });
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -265,7 +275,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                << "存储空间不足";
 
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &MainWindow::onProtocolReport);
-    connect(at, &Qat::reportReceived, this, &MainWindow::onDongleAtReport);
+    connect(at, &QatManager::reportReceived, this, &MainWindow::onDongleAtReport);
 
     connect(nqimuc, SIGNAL(send_imu_cali_msg(QString)), this, SLOT(refreshImuCaliMsg(QString)));
     connect(this, SIGNAL(send_thread_date(QString)), this, SLOT(refreshPbData(QString)));

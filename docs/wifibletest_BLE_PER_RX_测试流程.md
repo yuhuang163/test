@@ -7,7 +7,9 @@
 
 - `work_station/wifi_ble/wifibletest.h` — 成员与函数声明
 - `work_station/wifi_ble/wifibletest.cpp` — `runBlePerRxTest()` 及辅助函数
-- `agreement/qvisa/qvisa.h/.cpp` — CMW100 VISA（`blePerCmwVisa`）
+- `agreement/scpi/device/rs_cmw100_scpi/` — CMW100 GPRF（`CmwScpiCmd`）
+- `business/cmw_gprf/cmw_gprf_facade.h` — PER burst 业务（可选并联路径）
+- `test_base::scpiVisaManager()` — VISA 上的 `QScpiManager` 实例
 
 ---
 
@@ -75,7 +77,7 @@ flowchart TD
 | 资源 | 函数 | 说明 |
 | --- | --- | --- |
 | HCI UART | `openBlePerUart()` | 端口 `BlePer/UartPort`，空则用产品串口下拉框 |
-| CMW VISA | `prepareBlePerCmw()` | `Qvisa::ensureConnected()` + `*IDN?` |
+| CMW VISA | `prepareBlePerCmw()` | `scpiVisaManager()->loadCmwVisaFromSettings()` + `exec(CmwScpiCmd::QueryLine, "*IDN?")` |
 | GPRF | `initializeBlePerCmwGprf()` | `*CLS`；`CmwEnableFixedInit=true` 时完整 ARB 初始化 |
 
 ---
@@ -137,7 +139,7 @@ PER = (TxCount - rxCount) / TxCount * 100.0
 - `BBMode ARB`、`CYCLes`、`REPetition`、`LEVel`、`STATe ON;*OPC?`
 - `RETRigger ON`、`AUTostart ON`、可选 `ARB:FILE`
 
-**与脚本差异**：`Qvisa` 写命令后 **无** 对标脚本的 `CmwCommandDelayMs`（120 ms）固定延时。
+**与脚本差异**：`scpiVisaManager` 写命令后 **无** 对标脚本的 `CmwCommandDelayMs`（120 ms）固定延时。
 
 ---
 
@@ -205,7 +207,7 @@ PER = (TxCount - rxCount) / TxCount * 100.0
 
 ## 9. 依赖与编译
 
-- **NI-VISA**：`new_production.pro` 检测到 `visa.h` 时 `DEFINES += HAVE_NI_VISA`；未启用则 `Qvisa::ensureConnected()` 恒失败。
+- **NI-VISA**：`new_production.pro` 检测到 `visa.h` 时 `DEFINES += HAVE_NI_VISA`；未启用则 `scpiVisaManager()->exec(CmwScpiCmd::…)` 因 VISA 未连接而失败。
 - **产测前置**：PER 执行前工站已完成 dongle 连接、`FacMode`、`BaseInfo`、BLE RSSI 等步骤。
 
 ---
