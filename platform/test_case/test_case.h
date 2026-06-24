@@ -1,8 +1,10 @@
 #ifndef PLATFORM_TEST_CASE_H
 #define PLATFORM_TEST_CASE_H
 
+#include "modbus_device_catalog.h"
+#include "scpi_types.h"
 #include "qprotocol_types.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "qtupleservice.h"
 #include "test_case_types.h"
 
@@ -159,6 +161,36 @@ class ProductSerialCmdCatalog {
     static QString paramUiHint(const QString& enumName);
     /** 开始接收类指令对应的 brush profile 0～5；-1 表示非此类指令。 */
     static int brushProfileForCmd(ProductSerialCmd cmd);
+};
+
+/** 
+ * Modbus 外设测试项配置：工站只选「设备」「该设备 Cmd」「Set/Get」
+ * 协议/Tcp/Rtu 由设备绑定内部处理，配置页不出现协议类型
+ */
+class ModbusPeriphCmdCatalog {
+  public:
+    static QStringList allDeviceKeys();
+    static QString deviceUiLabel(ModbusDeviceRoute device);
+    static ModbusDeviceRoute deviceFromIni(const QString& text);
+    static QString deviceToIni(ModbusDeviceRoute device);
+
+    static QStringList allCmdNames(ModbusDeviceRoute device, TestCaseSendAction action);
+    static bool isCmdForDevice(ModbusDeviceRoute device, const QString& enumName, TestCaseSendAction action);
+    static QString cmdUiLabel(ModbusDeviceRoute device, const QString& enumName);
+    static QString paramUiHint(ModbusDeviceRoute device, const QString& enumName);
+};
+
+class ScpiPeriphCmdCatalog {
+  public:
+    static QStringList allDeviceKeys();
+    static QString deviceUiLabel(ScpiDeviceRoute device);
+    static ScpiDeviceRoute deviceFromIni(const QString& text);
+    static QString deviceToIni(ScpiDeviceRoute device);
+
+    static QStringList allCmdNames(ScpiDeviceRoute device, TestCaseSendAction action);
+    static bool isCmdForDevice(ScpiDeviceRoute device, const QString& enumName, TestCaseSendAction action);
+    static QString cmdUiLabel(ScpiDeviceRoute device, const QString& enumName);
+    static QString paramUiHint(ScpiDeviceRoute device, const QString& enumName);
 };
 
 class TupleCmdCatalog {

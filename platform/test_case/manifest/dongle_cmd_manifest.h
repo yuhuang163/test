@@ -2,7 +2,7 @@
 #define PLATFORM_DONGLE_CMD_MANIFEST_H
 
 #include "cmd_manifest_common.h"
-#include "qat.h"
+#include "qatmanager.h"
 #include "test_case_types.h"
 
 #include <QString>

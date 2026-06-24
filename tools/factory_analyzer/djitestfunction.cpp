@@ -1,4 +1,4 @@
-
+﻿
 #include "factory_analyzer.h"
 // 定义一个函数，用于执行具有特定名称的函数
 void factory_analyzer::executeFunctionByName(const QString functionName) {
@@ -17,20 +17,20 @@ void factory_analyzer::executeFunctionByName(const QString functionName) {
 void factory_analyzer::createTestFunctions() {
     testFunctions = {
 
-        {"检查sd卡有没有拔掉", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_sd_unset.sh", 2000)); }},
-        {"读取整机sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh device RD", 2000)); }},
-        {"读取核心板sn", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "dji_sn_ops.sh board RD", 2000)); }},
-        {"高通控制机器红灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh red", 2000)); }},
-        {"高通控制机器绿灯", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rgb_leds.sh green", 2000)); }},
-        {"测试rtc走时功能", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_rtc_good.sh", 20000)); }},
-        {"读取ufs固件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_version.sh", 2000)); }},
-        {"高通温度检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_ntc.sh", 2000)); }},
-        {"电源按键检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_button_good.sh power_key", 2000)); }},
-        {"读取硬件版本号", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_read_hw_ver.sh", 2000)); }},
-        {"pmic寄存器检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_pmic_regs.sh", 2000)); }},
-        {"rtc中断检查", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_wakealarm_interrupts.sh", 8000)); }},
-        {"ufs跌落值写入", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh write 1", 2000)); }},
-        {"ufs跌落值读取", [&]() { sendCommandWithRetry(std::bind(&QBulk::set_amt_task_test, bulk, "test_ufs_value.sh read 1", 2000)); }},
+        {"检查sd卡有没有拔掉", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_sd_unset.sh", 2000)); }},
+        {"读取整机sn", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "dji_sn_ops.sh device RD", 2000)); }},
+        {"读取核心板sn", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "dji_sn_ops.sh board RD", 2000)); }},
+        {"高通控制机器红灯", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_rgb_leds.sh red", 2000)); }},
+        {"高通控制机器绿灯", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_rgb_leds.sh green", 2000)); }},
+        {"测试rtc走时功能", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_rtc_good.sh", 20000)); }},
+        {"读取ufs固件版本号", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_ufs_version.sh", 2000)); }},
+        {"高通温度检查", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_read_ntc.sh", 2000)); }},
+        {"电源按键检查", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_button_good.sh power_key", 2000)); }},
+        {"读取硬件版本号", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_read_hw_ver.sh", 2000)); }},
+        {"pmic寄存器检查", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_pmic_regs.sh", 2000)); }},
+        {"rtc中断检查", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_wakealarm_interrupts.sh", 8000)); }},
+        {"ufs跌落值写入", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_ufs_value.sh write 1", 2000)); }},
+        {"ufs跌落值读取", [&]() { sendCommandWithRetry(std::bind(&DjiBulkDevice::set_amt_task_test, bulk->device(), "test_ufs_value.sh read 1", 2000)); }},
 
     };
 }

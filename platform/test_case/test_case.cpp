@@ -5,6 +5,8 @@
 #include "dongle_cmd_manifest.h"
 #include "fixture_pcba_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
+#include "modbus_cmd_manifest.h"
+#include "scpi_cmd_manifest.h"
 #include "tuple_cmd_manifest.h"
 
 #include <QCoreApplication>
@@ -23,8 +25,7 @@
 
 #include "Abini.h"
 #include "common_utils.h"
-#include "protocol/fixture_uart_types.h"
-#include "protocol/fixture_pcba_uart_protocol.h"
+#include "fixture_uart_types.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -643,6 +644,10 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
 
 } // namespace
 
+namespace {
+QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue);
+} // namespace
+
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     Q_UNUSED(errorOut);
     TestCasePaths::ensureRootDir();
@@ -667,6 +672,7 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     out.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                      : TestCaseSendAction::Set;
     out.send.deviceCmd = ini.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
+    out.send.device = ini.value(QStringLiteral("Send/Device")).toString().trimmed();
     const QString protocolIni = ini.value(QStringLiteral("Send/Protocol")).toString();
     out.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
     out.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
@@ -684,6 +690,10 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
         out.send.channel = TestCaseSendChannel::Product;
     } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Modbus;
+    } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Scpi;
     } else {
         FixturePcbaCmd inferFixturePcba;
         ProductSerialCmd inferSerial;
@@ -728,6 +738,18 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
                 out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
             FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
         }
+    } else if (out.send.channel == TestCaseSendChannel::Modbus || out.send.channel == TestCaseSendChannel::Scpi) {
+        QVariant val = ini.value(QStringLiteral("Send/Param"));
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
+        }
+        out.send.param = val;
     } else {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd)) {
@@ -873,6 +895,10 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         channelStr = QStringLiteral("ProductSerial");
     else if (def.send.channel == TestCaseSendChannel::Fixture)
         channelStr = QStringLiteral("Fixture");
+    else if (def.send.channel == TestCaseSendChannel::Modbus)
+        channelStr = QStringLiteral("Modbus");
+    else if (def.send.channel == TestCaseSendChannel::Scpi)
+        channelStr = QStringLiteral("Scpi");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product)
         ini.setValue(QStringLiteral("Send/Protocol"),
@@ -893,6 +919,11 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
             FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
+    } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+        if (!def.send.device.isEmpty())
+            ini.setValue(QStringLiteral("Send/Device"), def.send.device);
+        if (def.send.param.isValid())
+            ini.setValue(QStringLiteral("Send/Param"), def.send.param);
     } else if (def.send.channel != TestCaseSendChannel::ProductSerial) {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
@@ -1889,6 +1920,133 @@ int ProductSerialCmdCatalog::brushProfileForCmd(ProductSerialCmd cmd) {
     }
 }
 
+// ===================== ModbusPeriphCmdCatalog =====================
+
+QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
+    return {ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::InovanceH5uTcp),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu)};
+}
+
+QString ModbusPeriphCmdCatalog::deviceUiLabel(ModbusDeviceRoute device) {
+    return ModbusDeviceCatalog::deviceRouteUiLabel(device);
+}
+
+ModbusDeviceRoute ModbusPeriphCmdCatalog::deviceFromIni(const QString& text) {
+    return ModbusDeviceCatalog::deviceRouteFromIni(text);
+}
+
+QString ModbusPeriphCmdCatalog::deviceToIni(ModbusDeviceRoute device) {
+    return ModbusDeviceCatalog::deviceRouteToIni(device);
+}
+
+QStringList ModbusPeriphCmdCatalog::allCmdNames(ModbusDeviceRoute device, TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < ModbusCmdManifest::rowCount(); ++i) {
+        const ModbusCmdManifest::Row& row = ModbusCmdManifest::rows()[i];
+        if (row.device != device) {
+            continue;
+        }
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action)) {
+            continue;
+        }
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+bool ModbusPeriphCmdCatalog::isCmdForDevice(ModbusDeviceRoute device, const QString& enumName,
+                                            TestCaseSendAction action) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    if (!row) {
+        return false;
+    }
+    return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+}
+
+QString ModbusPeriphCmdCatalog::cmdUiLabel(ModbusDeviceRoute device, const QString& enumName) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->uiLabel ? QString::fromUtf8(row->uiLabel) : enumName;
+}
+
+QString ModbusPeriphCmdCatalog::paramUiHint(ModbusDeviceRoute device, const QString& enumName) {
+    const ModbusCmdManifest::Row* row = ModbusCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
+}
+
+// ===================== ScpiPeriphCmdCatalog =====================
+
+QStringList ScpiPeriphCmdCatalog::allDeviceKeys() {
+    return {QStringLiteral("HuilingWfp60h"), QStringLiteral("RsCmw100")};
+}
+
+QString ScpiPeriphCmdCatalog::deviceUiLabel(ScpiDeviceRoute device) {
+    switch (device) {
+    case ScpiDeviceRoute::HuilingWfp60h:
+        return QStringLiteral("会凌电源/万方模拟器");
+    case ScpiDeviceRoute::RsCmw100:
+        return QStringLiteral("罗德与施瓦茨 CMW100");
+    default:
+        return QStringLiteral("未知设备");
+    }
+}
+
+ScpiDeviceRoute ScpiPeriphCmdCatalog::deviceFromIni(const QString& text) {
+    const QString t = text.trimmed();
+    if (t.compare(QStringLiteral("HuilingWfp60h"), Qt::CaseInsensitive) == 0)
+        return ScpiDeviceRoute::HuilingWfp60h;
+    if (t.compare(QStringLiteral("RsCmw100"), Qt::CaseInsensitive) == 0)
+        return ScpiDeviceRoute::RsCmw100;
+    return ScpiDeviceRoute::None;
+}
+
+QString ScpiPeriphCmdCatalog::deviceToIni(ScpiDeviceRoute device) {
+    switch (device) {
+    case ScpiDeviceRoute::HuilingWfp60h:
+        return QStringLiteral("HuilingWfp60h");
+    case ScpiDeviceRoute::RsCmw100:
+        return QStringLiteral("RsCmw100");
+    default:
+        return QStringLiteral("None");
+    }
+}
+
+QStringList ScpiPeriphCmdCatalog::allCmdNames(ScpiDeviceRoute device, TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < ScpiCmdManifest::rowCount(); ++i) {
+        const ScpiCmdManifest::Row& row = ScpiCmdManifest::rows()[i];
+        if (row.device != device) {
+            continue;
+        }
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action)) {
+            continue;
+        }
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+bool ScpiPeriphCmdCatalog::isCmdForDevice(ScpiDeviceRoute device, const QString& enumName,
+                                          TestCaseSendAction action) {
+    const ScpiCmdManifest::Row* row = ScpiCmdManifest::findByDeviceAndName(device, enumName);
+    if (!row) {
+        return false;
+    }
+    return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+}
+
+QString ScpiPeriphCmdCatalog::cmdUiLabel(ScpiDeviceRoute device, const QString& enumName) {
+    const ScpiCmdManifest::Row* row = ScpiCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->uiLabel ? QString::fromUtf8(row->uiLabel) : enumName;
+}
+
+QString ScpiPeriphCmdCatalog::paramUiHint(ScpiDeviceRoute device, const QString& enumName) {
+    const ScpiCmdManifest::Row* row = ScpiCmdManifest::findByDeviceAndName(device, enumName);
+    return row && row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
+}
+
 // ===================== TupleCmdCatalog =====================
 
 QStringList TupleCmdCatalog::allTupleCmdNames(TestCaseSendAction action) {
@@ -2028,7 +2186,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("valveVoltageMv"), QStringLiteral("阀电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
-    {QStringLiteral("ProtocolBatteryTempData"), QStringLiteral("电池温度"), {{QStringLiteral("type"), QStringLiteral("温度(°C)")}}},
+    {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2181,6 +2339,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return m.value(field).toDouble();
         }
+    } else if (reportType == QLatin1String("ProtocolMeasureData")) {
+        const auto d = payload.value<ProtocolMeasureData>();
+        if (field == QLatin1String("value")) {
+            ok = true;
+            return d.value;
+        }
     }
     return 0.0;
 }
@@ -2278,6 +2442,32 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("pd_ic_state")) {
             ok = true;
             return QString::number(d.pd_ic_state);
+        }
+    } else if (reportType == QLatin1String("ProtocolMeasureData")) {
+        const auto d = payload.value<ProtocolMeasureData>();
+        if (field == QLatin1String("value")) {
+            ok = true;
+            return QString::number(d.value);
+        }
+        if (field == QLatin1String("valueText")) {
+            ok = true;
+            return d.valueText.trimmed();
+        }
+        if (field == QLatin1String("deviceName")) {
+            ok = true;
+            return d.deviceName.trimmed();
+        }
+        if (field == QLatin1String("channel")) {
+            ok = true;
+            return d.channel.trimmed();
+        }
+        if (field == QLatin1String("type")) {
+            ok = true;
+            return d.type.trimmed();
+        }
+        if (field == QLatin1String("unit")) {
+            ok = true;
+            return d.unit.trimmed();
         }
     }
     return {};
@@ -2639,6 +2829,10 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return true;
+    if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+        if (def.send.action == TestCaseSendAction::Get || def.gate.enabled)
+            return true;
+    }
     if (isDongleBleConnectStep(def))
         return true;
     if (def.gate.enabled)

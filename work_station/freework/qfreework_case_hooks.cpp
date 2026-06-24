@@ -2,7 +2,6 @@
 
 #include "test_case.h"
 
-#include "qusb.h"
 #include "qprotocol_types.h"
 
 #if _MSC_VER >= 1600
@@ -49,7 +48,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
 
     if (hookId == QStringLiteral("JIG_CURRENT_READ")) {
-        fw->sendCommandWithRetry([&]() { fw->usb->sendPowerInstruction(Qusb::PowerAction::ReadMeasurement); });
+        fw->sendCommandWithRetry([&]() { fw->execAmmeterMeasure(); });
         return;
     }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {

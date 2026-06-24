@@ -46,7 +46,7 @@
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
-#include "qroot/qroot.h"
+#include "qroot.h"
 #include "root_ble_ota.h"
 #include "root_ble_ota2.h"
 #include "serial_channel.h"
@@ -193,7 +193,7 @@ class MainWindow : public QMainWindow {
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
     Qpb* pb = nullptr;
-    Qat* at = nullptr;
+    QatManager* at = nullptr;
     typedef enum {
         STATE_IDLE,            // 休眠状态
         STATE_WATI_CONNECT,    // 等待连接

@@ -38,41 +38,75 @@ QMAKE_CXXFLAGS += /utf-8
 
 
 INCLUDEPATH += agreement
-INCLUDEPATH += agreement/qmes
-INCLUDEPATH += agreement/qadb
-INCLUDEPATH += agreement/qshell
-INCLUDEPATH += agreement/qat
-INCLUDEPATH += agreement/qtransport
-INCLUDEPATH += agreement/qProtocol
-INCLUDEPATH += agreement/qProtocol/qpb
-INCLUDEPATH += agreement/qProtocol/qfctp
-INCLUDEPATH += agreement/qProtocol/qfctp/common_protocl
-INCLUDEPATH += agreement/qProtocol/qaiot
-INCLUDEPATH += agreement/qProtocol/qroot
+INCLUDEPATH += agreement/mes_protocol/access
+INCLUDEPATH += agreement/mes_protocol/manager
+INCLUDEPATH += agreement/mes_protocol/codec
+INCLUDEPATH += agreement/mes_protocol/device/byd_mes
+INCLUDEPATH += agreement/mes_protocol/device/hq_mes
+INCLUDEPATH += agreement/mes_protocol/device/hz_mes
+INCLUDEPATH += agreement/mes_protocol/device/jj_mes
+INCLUDEPATH += agreement/mes_protocol/device/lx_mes
+INCLUDEPATH += agreement/mes_protocol/device/wks_mes
+INCLUDEPATH += agreement/mes_protocol/device/xwd_mes
+INCLUDEPATH += agreement/mes_protocol/device/ydm_mes
+INCLUDEPATH += agreement/adb_protocol/access
+INCLUDEPATH += agreement/adb_protocol/manager
+INCLUDEPATH += agreement/adb_protocol/codec
+INCLUDEPATH += agreement/adb_protocol/device
+INCLUDEPATH += agreement/shell_protocol/access
+INCLUDEPATH += agreement/shell_protocol/manager
+INCLUDEPATH += agreement/shell_protocol/codec
+INCLUDEPATH += agreement/shell_protocol/device
+INCLUDEPATH += agreement/at_protocol/access
+INCLUDEPATH += agreement/at_protocol/codec
+INCLUDEPATH += agreement/at_protocol/device
+INCLUDEPATH += agreement/at_protocol/device/dongle
+INCLUDEPATH += agreement/at_protocol/manager
+INCLUDEPATH += agreement/factory_protocol/access
+INCLUDEPATH += agreement/factory_protocol/manager
+INCLUDEPATH += agreement/factory_protocol/codec/fctp
+INCLUDEPATH += agreement/factory_protocol/protocol/qpb
+INCLUDEPATH += agreement/factory_protocol/protocol/qfctp
+INCLUDEPATH += agreement/factory_protocol/protocol/qaiot
+INCLUDEPATH += agreement/factory_protocol/protocol/qroot
+INCLUDEPATH += agreement/factory_protocol/protocol
+INCLUDEPATH += business/ble_ota
+INCLUDEPATH += business/tuple
+INCLUDEPATH += business/plc_v3_fixture
 INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
 INCLUDEPATH += platform/test_case \
     platform/test_case/manifest
+INCLUDEPATH += platform/cloud/test_record
+INCLUDEPATH += platform/cloud/log_upload
 INCLUDEPATH += platform/cloud/client
 INCLUDEPATH += platform/cloud/auth
 INCLUDEPATH += platform/cloud/sync
 INCLUDEPATH += platform/cloud/ota
 INCLUDEPATH += platform/cloud/test_data
-INCLUDEPATH += platform/cloud/test_record
-INCLUDEPATH += platform/cloud/log_upload
-INCLUDEPATH += agreement/qProtocol/qpb/ble_protocol
-INCLUDEPATH += agreement/qProtocol/qpb/factory_protocol
-INCLUDEPATH += agreement/qusb
-INCLUDEPATH += agreement/qjig
-INCLUDEPATH += agreement/qfixture
+INCLUDEPATH += platform/instrument
+INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
+INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
+INCLUDEPATH += agreement/scpi_protocol/access
+INCLUDEPATH += agreement/scpi_protocol/manager
+INCLUDEPATH += agreement/fixture_protocol/access
+INCLUDEPATH += agreement/fixture_protocol/device
+INCLUDEPATH += agreement/fixture_protocol/manager
+INCLUDEPATH += agreement/fixture_protocol/codec
 INCLUDEPATH += agreement/qbrush
-INCLUDEPATH += agreement/qproduct
+INCLUDEPATH += agreement/product_protocol/protocol
 INCLUDEPATH += agreement/adb
-INCLUDEPATH += agreement/qtuple
-INCLUDEPATH += agreement/qplc
-INCLUDEPATH += agreement/qcmw
-INCLUDEPATH += agreement/qvisa
+INCLUDEPATH += agreement/modbus_protocol/access
+INCLUDEPATH += agreement/modbus_protocol/manager
+INCLUDEPATH += agreement/modbus_protocol/codec
+INCLUDEPATH += agreement/modbus_protocol/device/inovance_h5u_tcp
+INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
+INCLUDEPATH += agreement/scpi_protocol/codec
+INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
+INCLUDEPATH += agreement/scpi_protocol/device/rs_cmw100_scpi
+INCLUDEPATH += business/cmw_gprf
 INCLUDEPATH += advance/imagewindow
 INCLUDEPATH += advance/demo
 INCLUDEPATH += tools/factory_analyzer
@@ -102,7 +136,9 @@ INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
-INCLUDEPATH += platform/serial
+INCLUDEPATH += platform/driver/serial
+INCLUDEPATH += platform/driver/visa
+INCLUDEPATH += platform/driver/process
 
 
 # INCLUDEPATH += advance/xlsx
@@ -113,49 +149,59 @@ INCLUDEPATH += platform/serial
 
 SOURCES += \
     common/common_utils.cpp \
-    platform/serial/serial_channel.cpp \
+    platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
     advance/imagewindow/myopenglwidget.cpp \
-    agreement/qtransport/qmodbus_pdu.cpp \
-    agreement/qtransport/qprocesschannel.cpp \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.cpp \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.cpp \
-    agreement/qProtocol/qaiot/qaiot.cpp \
-    agreement/qProtocol/qfctp/qfctp.cpp \
-    agreement/qProtocol/qroot/qroot.cpp \
-    agreement/qProtocol/qprotocol.cpp \
-    agreement/qProtocol/qprotocolmanager.cpp \
-    agreement/qProtocol/root_ble_ota.cpp \
-    agreement/qProtocol/root_ble_ota2.cpp \
-    agreement/qadb/qadb.cpp \
-    agreement/qat/qat.cpp \
-    agreement/qproduct/qproduct.cpp \
-    agreement/qbulk/crc_md5.cpp \
-    agreement/qbulk/qbulk.cpp \
-    agreement/qfixture/fixture_uart.cpp \
-    agreement/qfixture/protocol/fixture_camera_uart_protocol.cpp \
-    agreement/qfixture/protocol/fixture_imu_uart_protocol.cpp \
-    agreement/qfixture/protocol/fixture_pcba_uart_protocol.cpp \
-    agreement/qfixture/protocol/fixture_press_uart_protocol.cpp \
-    agreement/qjig/qjig.cpp \
-    agreement/qmes/bydmes.cpp \
-    agreement/qmes/hqmes.cpp \
-    agreement/qmes/hzmes.cpp \
-    agreement/qmes/jjmes.cpp \
-    agreement/qmes/lxmes.cpp \
-    agreement/qmes/mesmanager.cpp \
-    agreement/qmes/qmes.cpp \
-    agreement/qmes/wksmes.cpp \
-    agreement/qmes/xwdmes.cpp \
-    agreement/qmes/ydmmes.cpp \
-    agreement/qProtocol/qpb/ble_protocol/fx_ble_msg.pb.c \
-    agreement/qProtocol/qpb/ble_protocol/data_collection.pb.c \
-    agreement/qProtocol/qpb/factory_protocol/factory_msg.pb.c \
-    agreement/qProtocol/qpb/pb_common.c \
-    agreement/qProtocol/qpb/pb_decode.c \
-    agreement/qProtocol/qpb/pb_encode.c \
-    agreement/qProtocol/qpb/qpb.cpp \
+    agreement/scpi_protocol/codec/scpi_line_codec.cpp \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.cpp \
+    agreement/modbus_protocol/access/modbus_device_catalog.cpp \
+    agreement/modbus_protocol/manager/qmodbusmanager.cpp \
+    agreement/modbus_protocol/codec/qmodbus_pdu.cpp \
+    agreement/modbus_protocol/codec/qmodbus_rtu_codec.cpp \
+    agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.cpp \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
+    platform/driver/process/process_channel.cpp \
+    agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
+    agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
+    agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
+    agreement/factory_protocol/protocol/qfctp/qfctp.cpp \
+    agreement/factory_protocol/protocol/qroot/qroot.cpp \
+    business/ble_ota/root_ble_ota2.cpp \
+    agreement/factory_protocol/access/qprotocol.cpp \
+    agreement/factory_protocol/manager/qprotocolmanager.cpp \
+    business/ble_ota/root_ble_ota.cpp \
+    agreement/adb_protocol/manager/qadbmanager.cpp \
+    agreement/at_protocol/codec/at_line_codec.cpp \
+    agreement/at_protocol/device/dongle/dongle_at_device.cpp \
+    agreement/at_protocol/manager/qatmanager.cpp \
+    agreement/product_protocol/protocol/qproduct.cpp \
+    platform/settings/widgets/fixture_uart.cpp \
+    agreement/fixture_protocol/manager/qfixturemanager.cpp \
+    agreement/fixture_protocol/device/fixture_camera_device.cpp \
+    agreement/fixture_protocol/device/fixture_imu_device.cpp \
+    agreement/fixture_protocol/device/fixture_pcba_device.cpp \
+    agreement/fixture_protocol/device/fixture_press_device.cpp \
+    agreement/fixture_protocol/device/qjig.cpp \
+    agreement/mes_protocol/device/byd_mes/bydmes.cpp \
+    agreement/mes_protocol/device/hq_mes/hqmes.cpp \
+    agreement/mes_protocol/device/hz_mes/hzmes.cpp \
+    agreement/mes_protocol/device/jj_mes/jjmes.cpp \
+    agreement/mes_protocol/device/lx_mes/lxmes.cpp \
+    agreement/mes_protocol/manager/qmesmanager.cpp \
+    agreement/mes_protocol/access/qmes.cpp \
+    agreement/mes_protocol/device/wks_mes/wksmes.cpp \
+    agreement/mes_protocol/device/xwd_mes/xwdmes.cpp \
+    agreement/mes_protocol/device/ydm_mes/ydmmes.cpp \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.c \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.c \
+    agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.c \
+    agreement/factory_protocol/protocol/qpb/pb_common.c \
+    agreement/factory_protocol/protocol/qpb/pb_decode.c \
+    agreement/factory_protocol/protocol/qpb/pb_encode.c \
+    agreement/factory_protocol/protocol/qpb/qpb.cpp \
     platform/settings/qsetting.cpp \
     platform/settings/qsetting_bindings.cpp \
     platform/settings/test_flow/test_flow_editor.cpp \
@@ -164,22 +210,31 @@ SOURCES += \
     platform/test_case/manifest/dongle_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
+    platform/test_case/manifest/modbus_cmd_manifest.cpp \
+    platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
+    platform/instrument/instrument_device_catalog.cpp \
     platform/cloud/test_record/test_record_store.cpp \
+    platform/cloud/log_upload/log_upload_service.cpp \
     platform/cloud/client/factory_cloud_client.cpp \
     platform/cloud/auth/auth_service.cpp \
     platform/cloud/sync/threshold_sync_service.cpp \
     platform/cloud/sync/test_case_sync_service.cpp \
     platform/cloud/ota/host_ota_service.cpp \
     platform/cloud/test_data/test_data_upload_service.cpp \
-    platform/cloud/log_upload/log_upload_service.cpp \
-    agreement/qshell/qshell.cpp \
-    agreement/qtuple/qtupleservice.cpp \
-    agreement/qcmw/qcmw.cpp \
-    agreement/qcmw/cmw_gprf_facade.cpp \
-    agreement/qvisa/qvisa.cpp \
-    agreement/qusb/qusb.cpp \
+    agreement/shell_protocol/manager/qshellmanager.cpp \
+    business/tuple/qtupleservice.cpp \
+    business/cmw_gprf/cmw_gprf_facade.cpp \
+    platform/driver/visa/visa_channel.cpp \
+    agreement/scpi_protocol/manager/qscpivisasession.cpp \
+    agreement/scpi_protocol/manager/qscpimanager.cpp \
+    agreement/scpi_protocol/manager/qscpiserialsession.cpp \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.cpp \
+    agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.cpp \
+    agreement/bulk_protocol/codec/bulk_codec.cpp \
+    agreement/bulk_protocol/device/bulk_device.cpp \
+    agreement/bulk_protocol/manager/qbulkmanager.cpp \
     tools/factory_analyzer/djitestfunction.cpp \
     tools/factory_analyzer/factory_analyzer.cpp \
     lib/form/testmodel.cpp \
@@ -205,11 +260,10 @@ SOURCES += \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
-    agreement/qplc/inovance_h5u_modbus_tcp.cpp \
-    agreement/qplc/plc_station_config.cpp \
-    agreement/qplc/plc_modbus_session.cpp \
-    agreement/qplc/plc_v3_touch.cpp \
-    agreement/qplc/plc_v3_fixture.cpp \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
+    business/plc_v3_fixture/plc_v3_touch.cpp \
+    business/plc_v3_fixture/plc_v3_facade.cpp \
+    business/plc_v3_fixture/plc_v3_fixture.cpp \
     work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
     work_station/key/key_test_box.cpp \
@@ -231,55 +285,70 @@ SOURCES += \
     work_station/pressure/PressCalibBox.cpp \
     work_station/pressure/ndt_sensor_cali.cpp \
 
+
 HEADERS += \
     common/common_utils.h \
-    platform/serial/serial_channel.h \
+    platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
     advance/imagewindow/myopenglwidget.h \
-    agreement/qtransport/qmodbus_pdu.h \
-    agreement/qtransport/qprocesschannel.h \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol.h \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol_builder.h \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol_defs.h \
-    agreement/qProtocol/qfctp/common_protocl/comm_protocol_parser.h \
-    agreement/qProtocol/qaiot/qaiot.h \
-    agreement/qProtocol/qfctp/qfctp.h \
-    agreement/qProtocol/qroot/qroot.h \
-    agreement/qProtocol/qprotocol.h \
-    agreement/qProtocol/qprotocol_types.h \
-    agreement/qProtocol/qprotocolmanager.h \
-    agreement/qProtocol/root_ble_ota.h \
-    agreement/qProtocol/root_ble_ota2.h \
-    agreement/qadb/qadb.h \
-    agreement/qat/qat.h \
-    agreement/qproduct/qproduct.h \
-    agreement/qbulk/qbulk.h \
-    agreement/qfixture/fixture_uart.h \
-    agreement/qfixture/protocol/fixture_camera_uart_protocol.h \
-    agreement/qfixture/protocol/fixture_imu_uart_protocol.h \
-    agreement/qfixture/protocol/fixture_pcba_uart_protocol.h \
-    agreement/qfixture/protocol/fixture_press_uart_protocol.h \
-    agreement/qfixture/protocol/fixture_uart_types.h \
-    agreement/qjig/qjig.h \
-    agreement/qmes/bydmes.h \
-    agreement/qmes/hqmes.h \
-    agreement/qmes/hzmes.h \
-    agreement/qmes/jjmes.h \
-    agreement/qmes/lxmes.h \
-    agreement/qmes/mesmanager.h \
-    agreement/qmes/qmes.h \
-    agreement/qmes/wksmes.h \
-    agreement/qmes/xwdmes.h \
-    agreement/qmes/ydmmes.h \
-    agreement/qProtocol/qpb/ble_protocol/fx_ble_msg.pb.h \
-    agreement/qProtocol/qpb/ble_protocol/data_collection.pb.h \
-    agreement/qProtocol/qpb/factory_protocol/factory_msg.pb.h \
-    agreement/qProtocol/qpb/pb.h \
-    agreement/qProtocol/qpb/pb_common.h \
-    agreement/qProtocol/qpb/pb_decode.h \
-    agreement/qProtocol/qpb/pb_encode.h \
-    agreement/qProtocol/qpb/qpb.h \
+    agreement/modbus_protocol/access/modbus_types.h \
+    agreement/modbus_protocol/access/modbus_device_catalog.h \
+    agreement/modbus_protocol/manager/qmodbusmanager.h \
+    agreement/modbus_protocol/codec/qmodbus_pdu.h \
+    agreement/modbus_protocol/codec/qmodbus_rtu_codec.h \
+    agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.h \
+    agreement/modbus_protocol/access/imodbus_rtu_device.h \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.h \
+    agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
+    agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
+    platform/driver/process/process_channel.h \
+    agreement/factory_protocol/codec/fctp/comm_protocol.h \
+    agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \
+    agreement/factory_protocol/codec/fctp/comm_protocol_defs.h \
+    agreement/factory_protocol/codec/fctp/comm_protocol_parser.h \
+    agreement/factory_protocol/protocol/qaiot/qaiot.h \
+    agreement/factory_protocol/protocol/qfctp/qfctp.h \
+    agreement/factory_protocol/protocol/qroot/qroot.h \
+    business/ble_ota/root_ble_ota2.h \
+    agreement/factory_protocol/access/qprotocol.h \
+    agreement/factory_protocol/access/qprotocol_types.h \
+    agreement/factory_protocol/manager/qprotocolmanager.h \
+    business/ble_ota/root_ble_ota.h \
+    agreement/adb_protocol/manager/qadbmanager.h \
+    agreement/at_protocol/access/at_types.h \
+    agreement/at_protocol/codec/at_line_codec.h \
+    agreement/at_protocol/device/dongle/dongle_at_types.h \
+    agreement/at_protocol/device/dongle/dongle_at_device.h \
+    agreement/at_protocol/manager/qatmanager.h \
+    agreement/product_protocol/protocol/qproduct.h \
+    platform/settings/widgets/fixture_uart.h \
+    agreement/fixture_protocol/manager/qfixturemanager.h \
+    agreement/fixture_protocol/device/fixture_camera_device.h \
+    agreement/fixture_protocol/device/fixture_imu_device.h \
+    agreement/fixture_protocol/device/fixture_pcba_device.h \
+    agreement/fixture_protocol/device/fixture_press_device.h \
+    agreement/fixture_protocol/access/fixture_uart_types.h \
+    agreement/fixture_protocol/device/qjig.h \
+    agreement/mes_protocol/device/byd_mes/bydmes.h \
+    agreement/mes_protocol/device/hq_mes/hqmes.h \
+    agreement/mes_protocol/device/hz_mes/hzmes.h \
+    agreement/mes_protocol/device/jj_mes/jjmes.h \
+    agreement/mes_protocol/device/lx_mes/lxmes.h \
+    agreement/mes_protocol/manager/qmesmanager.h \
+    agreement/mes_protocol/access/qmes.h \
+    agreement/mes_protocol/device/wks_mes/wksmes.h \
+    agreement/mes_protocol/device/xwd_mes/xwdmes.h \
+    agreement/mes_protocol/device/ydm_mes/ydmmes.h \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.h \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.h \
+    agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.pb.h \
+    agreement/factory_protocol/protocol/qpb/pb.h \
+    agreement/factory_protocol/protocol/qpb/pb_common.h \
+    agreement/factory_protocol/protocol/qpb/pb_decode.h \
+    agreement/factory_protocol/protocol/qpb/pb_encode.h \
+    agreement/factory_protocol/protocol/qpb/qpb.h \
     platform/settings/qsetting.h \
     platform/settings/qsetting_bindings.h \
     platform/settings/test_flow/test_flow_editor.h \
@@ -288,24 +357,37 @@ HEADERS += \
     platform/test_case/manifest/device_cmd_manifest.h \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/modbus_cmd_manifest.h \
+    platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
     platform/cloud/test_record/test_record_store.h \
+    platform/cloud/log_upload/log_upload_service.h \
     platform/cloud/client/factory_cloud_client.h \
     platform/cloud/auth/auth_service.h \
     platform/cloud/sync/threshold_sync_service.h \
     platform/cloud/sync/test_case_sync_service.h \
     platform/cloud/ota/host_ota_service.h \
     platform/cloud/test_data/test_data_upload_service.h \
-    platform/cloud/log_upload/log_upload_service.h \
     platform/test_case/test_case_types.h \
-    agreement/qshell/qshell.h \
-    agreement/qtuple/qtupleservice.h \
-    agreement/qcmw/qcmw.h \
-    agreement/qcmw/cmw_gprf_facade.h \
-    agreement/qvisa/qvisa.h \
-    agreement/qusb/qusb.h \
+    platform/instrument/instrument_device_catalog.h \
+    agreement/shell_protocol/manager/qshellmanager.h \
+    business/tuple/qtupleservice.h \
+    business/cmw_gprf/cmw_gprf_facade.h \
+    agreement/scpi_protocol/access/scpi_types.h \
+    agreement/scpi_protocol/access/scpi_transport.h \
+    agreement/scpi_protocol/access/iscpi_device.h \
+    platform/driver/visa/visa_channel.h \
+    agreement/scpi_protocol/manager/qscpivisasession.h \
+    agreement/scpi_protocol/manager/qscpimanager.h \
+    agreement/scpi_protocol/manager/qscpiserialsession.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
+    agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
+    agreement/bulk_protocol/access/bulk_types.h \
+    agreement/bulk_protocol/codec/bulk_codec.h \
+    agreement/bulk_protocol/device/bulk_device.h \
+    agreement/bulk_protocol/manager/qbulkmanager.h \
     tools/factory_analyzer/factory_analyzer.h \
     lib/form/testmodel.h \
     lib/imu/imu_calibrate.h \
@@ -328,11 +410,14 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
-    agreement/qplc/inovance_h5u_modbus_tcp.h \
-    agreement/qplc/plc_station_config.h \
-    agreement/qplc/plc_modbus_session.h \
-    agreement/qplc/plc_v3_touch.h \
-    agreement/qplc/plc_v3_fixture.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
+    agreement/scpi_protocol/codec/scpi_line_codec.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
+    business/plc_v3_fixture/plc_v3_touch.h \
+    business/plc_v3_fixture/plc_v3_facade.h \
+    business/plc_v3_fixture/plc_v3_fixture.h \
     work_station/imu/imubox.h \
     work_station/imu/imucali.h \
     work_station/key/key_test.h \
@@ -355,7 +440,7 @@ HEADERS += \
     work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
-    agreement/qfixture/fixture_uart.ui \
+    platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
     tools/factory_analyzer/factory_analyzer.ui \
@@ -418,7 +503,7 @@ win32 {
 
 win32 {
     # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
-    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头（AbIni.h → qvisa.h 等）。
+    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
     VISA_DIR = $$PWD/lib/visa
     exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
         INCLUDEPATH += $$VISA_DIR
@@ -446,10 +531,10 @@ win32 {
 
 
 DISTFILES += \
-    agreement/qProtocol/qpb/ble_protocol/fx_ble_msg.proto \
-    agreement/qProtocol/qpb/ble_protocol/data_collection.proto \
-    agreement/qProtocol/qpb/ble_protocol/server_data.proto \
-    agreement/qProtocol/qpb/factory_protocol/factory_msg.proto \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.proto \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.proto \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/server_data.proto \
+    agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.proto \
     lib/nfc/dcrf32.dll \
     lib/nfc/dcrf32.lib \
     new_production.qml

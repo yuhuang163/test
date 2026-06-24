@@ -1,7 +1,7 @@
-﻿#include "test_base.h"
-
+#include "test_base.h"
+#include "qprotocol_types.h"
+#include "modbus_types.h"
 #include "my_set/my_typedef.h"
-
 #include <dbt.h>
 #include <devguid.h>
 #include <hidclass.h>
@@ -9,17 +9,15 @@
 #include <initguid.h>
 #include <setupapi.h>
 #include <windows.h>
-
 #include <QDateTime>
 #include <QDebug>
 #include <QSet>
 #include <QString>
-
 #include "qcoreapplication.h"
 #include "qprocess.h"
-#include "agreement/qProtocol/qfctp/qfctp.h"
-#include "agreement/qProtocol/qaiot/qaiot.h"
-#include "agreement/qProtocol/qroot/qroot.h"
+#include "qfctp.h"
+#include "qaiot.h"
+#include "qroot.h"
 #include "common_utils.h"
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
@@ -43,10 +41,9 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         qroot(new Qroot(dongleSerialPort)),
-                                        at(new Qat(dongleSerialPort)),
+                                        at(new QatManager(this)),
                                         usbSerialPort(usbSerialChannel_->port()),
-                                        usb(new Qusb(usbSerialPort)),
-                                        visa(new Qvisa(this)),
+                                        scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new Qjig(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
@@ -55,6 +52,10 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    at->setWriteCallback([this](const QByteArray& data) {
+        if (dongleSerialPort && dongleSerialPort->isOpen())
+            dongleSerialPort->write(data);
+    });
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     {
         auto selectedType = QProtocolManager::protocolTypeFromString(
@@ -99,6 +100,32 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
                 .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
 
+void test_base::setupModbusManager() {
+    modbusManager.setStationIndex(getIndex());
+    modbusManager.setLogFn([this](const QString& msg) {
+        showlog(msg);
+    });
+    modbusManager.setIsContinueFn([this]() {
+        return isTestContinue;
+    });
+}
+
+QScpiManager* test_base::scpiVisaManager() {
+    return &scpiVisaManager_;
+}
+
+const QScpiManager* test_base::scpiVisaManager() const {
+    return &scpiVisaManager_;
+}
+
+bool test_base::execAmmeterMeasure(QString* errorMessage) {
+    return scpiUsbManager_.exec(HuilingScpiCmd::ReadMeasureCurrent, {}, errorMessage);
+}
+
+bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QString* errorMessage) {
+    return scpiVisaManager_.exec(cmd, param, errorMessage);
+}
+
 void test_base::initData() {
     pack.factory = SETTINGS.value("Mes/FACTORY").toString();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
@@ -118,8 +145,15 @@ void test_base::initData() {
 }
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
-    connect(at, &Qat::reportReceived, this, &test_base::onDongleAtReport);
-    connect(usb, &Qusb::reportReceived, this, &test_base::onUsbInstrumentReport);
+    connect(at, &QatManager::reportReceived, this, &test_base::onDongleAtReport);
+    connect(&scpiUsbManager_, &QScpiManager::measureReadingReceived, this, &test_base::onScpiUsbMeasureReadingReceived);
+    connect(&scpiUsbManager_, &QScpiManager::programmablePowerVoltageRead, this, &test_base::onScpiUsbProgrammablePowerVoltageRead);
+    connect(&scpiUsbManager_, &QScpiManager::programmablePowerCurrentRead, this, &test_base::onScpiUsbProgrammablePowerCurrentRead);
+    connect(&modbusManager, &QModbusManager::rtuAmmeterReadingReceived, this, &test_base::onModbusRtuAmmeterReadingReceived);
+    connect(&scpiVisaManager_, &QScpiManager::measureReadingReceived, this, &test_base::onScpiVisaMeasureReadingReceived);
+    connect(&scpiVisaManager_, &QScpiManager::programmablePowerVoltageRead, this, &test_base::onScpiVisaProgrammablePowerVoltageRead);
+    connect(&scpiVisaManager_, &QScpiManager::programmablePowerCurrentRead, this, &test_base::onScpiVisaProgrammablePowerCurrentRead);
+
     connect(jig, &Qjig::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
@@ -150,9 +184,7 @@ void test_base::signalAndslot() {
 }
 
 void test_base::resetVisaBackend() {
-    if (visa) {
-        visa->closeConnection();
-    }
+    scpiVisaManager_.closeConnection();
 }
 
 void test_base::scanSerialPorts() {
@@ -322,7 +354,12 @@ void test_base::closeDongleSerialPort() {
 }
 
 void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
-    usb->parseCmd(dataTemp);
+    if (modbusManager.isRtuAmmeterRoute()) {
+        modbusManager.feedRtuRx(dataTemp);
+        return;
+    }
+    scpiUsbManager_.feedRx(dataTemp);
+    scpiUsbManager_.feedRx(dataTemp);
 }
 
 void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
@@ -1002,4 +1039,94 @@ void test_base::appendStationResult(QVector<TestItem>& testItems, const QString&
     test.testResult = result;
     test.ask = "通过";
     testItems.append(test);
+}
+
+void test_base::onScpiUsbMeasureReadingReceived(const QString& valueText) {
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
+                                         QVariant::fromValue(ProtocolAmmeterReadingData{valueText})));
+
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("USB_SCPI");
+    measureData.type = QStringLiteral("Current");
+    measureData.value = valueText.toDouble();
+    measureData.valueText = valueText;
+    measureData.unit = QStringLiteral("mA");
+    measureData.isOk = true;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onScpiUsbProgrammablePowerVoltageRead(double valueVolts, bool ok) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("USB_Power");
+    measureData.type = QStringLiteral("Voltage");
+    measureData.value = valueVolts;
+    measureData.valueText = QString::number(valueVolts);
+    measureData.unit = QStringLiteral("V");
+    measureData.isOk = ok;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onScpiUsbProgrammablePowerCurrentRead(double valueAmps, bool ok) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("USB_Power");
+    measureData.type = QStringLiteral("Current");
+    measureData.value = valueAmps;
+    measureData.valueText = QString::number(valueAmps);
+    measureData.unit = QStringLiteral("A");
+    measureData.isOk = ok;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
+                                         QVariant::fromValue(ProtocolAmmeterReadingData{value})));
+
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("Modbus_Ammeter");
+    measureData.type = QStringLiteral("Current");
+    measureData.value = value.toDouble();
+    measureData.valueText = value;
+    measureData.unit = QStringLiteral("mA");
+    measureData.isOk = true;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onScpiVisaMeasureReadingReceived(const QString& valueText) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("VISA_SCPI");
+    measureData.type = QStringLiteral("Current");
+    measureData.value = valueText.toDouble();
+    measureData.valueText = valueText;
+    measureData.unit = QStringLiteral("mA");
+    measureData.isOk = true;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onScpiVisaProgrammablePowerVoltageRead(double valueVolts, bool ok) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("VISA_Power");
+    measureData.type = QStringLiteral("Voltage");
+    measureData.value = valueVolts;
+    measureData.valueText = QString::number(valueVolts);
+    measureData.unit = QStringLiteral("V");
+    measureData.isOk = ok;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
+}
+
+void test_base::onScpiVisaProgrammablePowerCurrentRead(double valueAmps, bool ok) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = QStringLiteral("VISA_Power");
+    measureData.type = QStringLiteral("Current");
+    measureData.value = valueAmps;
+    measureData.valueText = QString::number(valueAmps);
+    measureData.unit = QStringLiteral("A");
+    measureData.isOk = ok;
+    onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                         QVariant::fromValue(measureData)));
 }

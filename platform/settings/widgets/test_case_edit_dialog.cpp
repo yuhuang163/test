@@ -2,6 +2,8 @@
 #include "ui_test_case_edit_dialog.h"
 
 #include "test_case.h"
+#include "manifest/modbus_cmd_manifest.h"
+#include "manifest/scpi_cmd_manifest.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -54,6 +56,8 @@ void fillSendChannelCombo(QComboBox* box) {
     box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
     box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
     box->addItem(QStringLiteral("治具通信"), QStringLiteral("Fixture"));
+    box->addItem(QStringLiteral("Modbus通信"), QStringLiteral("Modbus"));
+    box->addItem(QStringLiteral("SCPI通信"), QStringLiteral("Scpi"));
 }
 
 void fillProductProtocolCombo(QComboBox* box) {
@@ -73,10 +77,20 @@ void fillFixtureProtocolCombo(QComboBox* box) {
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
-    if (channel == TestCaseSendChannel::Fixture)
+    box->clear();
+    if (channel == TestCaseSendChannel::Fixture) {
         fillFixtureProtocolCombo(box);
-    else
+    } else if (channel == TestCaseSendChannel::Modbus) {
+        for (const QString& dev : ModbusPeriphCmdCatalog::allDeviceKeys()) {
+            box->addItem(ModbusPeriphCmdCatalog::deviceUiLabel(ModbusPeriphCmdCatalog::deviceFromIni(dev)), dev);
+        }
+    } else if (channel == TestCaseSendChannel::Scpi) {
+        for (const QString& dev : ScpiPeriphCmdCatalog::allDeviceKeys()) {
+            box->addItem(ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(dev)), dev);
+        }
+    } else {
         fillProductProtocolCombo(box);
+    }
 }
 
 TestCaseProductProtocol productProtocolFromComboData(const QString& data) {
@@ -89,7 +103,7 @@ TestCaseSendAction sendActionFromComboData(const QString& data) {
 }
 
 void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSendAction action,
-                        const QString& keepCmdIfMissing = QString()) {
+                        const QString& device, const QString& keepCmdIfMissing = QString()) {
     box->clear();
     QVector<QPair<QString, QString>> items;
     if (channel == TestCaseSendChannel::Dongle) {
@@ -110,6 +124,20 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
         for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
             items.append({FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(name), name});
+    } else if (channel == TestCaseSendChannel::Modbus) {
+        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(device);
+        const QStringList names = ModbusPeriphCmdCatalog::allCmdNames(devRoute, action);
+        items.reserve(names.size());
+        for (const QString& name : names) {
+            items.append({ModbusPeriphCmdCatalog::cmdUiLabel(devRoute, name), name});
+        }
+    } else if (channel == TestCaseSendChannel::Scpi) {
+        ScpiDeviceRoute devRoute = ScpiPeriphCmdCatalog::deviceFromIni(device);
+        const QStringList names = ScpiPeriphCmdCatalog::allCmdNames(devRoute, action);
+        items.reserve(names.size());
+        for (const QString& name : names) {
+            items.append({ScpiPeriphCmdCatalog::cmdUiLabel(devRoute, name), name});
+        }
     } else {
         const QStringList names = DeviceCmdCatalog::allDeviceCmdNames(action);
         items.reserve(names.size());
@@ -145,6 +173,10 @@ TestCaseSendChannel sendChannelFromComboData(const QString& data) {
         return TestCaseSendChannel::ProductSerial;
     if (data.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Fixture;
+    if (data.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Modbus;
+    if (data.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Scpi;
     return TestCaseSendChannel::Product;
 }
 
@@ -157,6 +189,10 @@ QString sendChannelComboData(TestCaseSendChannel channel) {
         return QStringLiteral("ProductSerial");
     if (channel == TestCaseSendChannel::Fixture)
         return QStringLiteral("Fixture");
+    if (channel == TestCaseSendChannel::Modbus)
+        return QStringLiteral("Modbus");
+    if (channel == TestCaseSendChannel::Scpi)
+        return QStringLiteral("Scpi");
     return QStringLiteral("Product");
 }
 
@@ -172,7 +208,7 @@ struct SendCmdParamUi {
     QString hint;
 };
 
-SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel channel) {
+SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel channel, const QString& device = QString()) {
     SendCmdParamUi out;
     if (channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -237,6 +273,53 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                     out.kind = SendCmdParamKind::Int;
                 else
                     out.kind = SendCmdParamKind::JsonMap;
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::Modbus) {
+        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(device);
+        const auto* row = ModbusCmdManifest::findByDeviceAndName(devRoute, name);
+        if (row) {
+            out.valid = true;
+            out.hint = ModbusPeriphCmdCatalog::paramUiHint(devRoute, name);
+            if (devRoute == ModbusDeviceRoute::InovanceH5uTcp) {
+                if (name == QLatin1String("ReadCoil")) {
+                    out.kind = SendCmdParamKind::Int;
+                } else if (name == QLatin1String("WriteCoil") ||
+                           name == QLatin1String("ReadCoils") ||
+                           name == QLatin1String("WaitCoilTrue") ||
+                           name == QLatin1String("WaitCoilFalse")) {
+                    out.kind = SendCmdParamKind::JsonMap;
+                } else {
+                    out.kind = SendCmdParamKind::None;
+                }
+            } else {
+                out.kind = SendCmdParamKind::None;
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::Scpi) {
+        ScpiDeviceRoute devRoute = ScpiPeriphCmdCatalog::deviceFromIni(device);
+        const auto* row = ScpiCmdManifest::findByDeviceAndName(devRoute, name);
+        if (row) {
+            out.valid = true;
+            out.hint = ScpiPeriphCmdCatalog::paramUiHint(devRoute, name);
+            if (name == QLatin1String("ProgrammablePowerOutput") ||
+                name == QLatin1String("ArbCycles")) {
+                out.kind = SendCmdParamKind::Int;
+            } else if (name == QLatin1String("ConfigureProgrammablePower")) {
+                out.kind = SendCmdParamKind::JsonMap;
+            } else if (name == QLatin1String("ArbFile") ||
+                       name == QLatin1String("SendRawLine") ||
+                       name == QLatin1String("WriteLine") ||
+                       name == QLatin1String("QueryLine") ||
+                       name == QLatin1String("TxLevelDbm") ||
+                       name == QLatin1String("FrequencyMhz")) {
+                out.kind = SendCmdParamKind::String;
+            } else {
+                out.kind = SendCmdParamKind::None;
             }
         }
         return out;
@@ -511,7 +594,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     fillSendChannelCombo(ui->comboBox_sendChannel);
     fillProductProtocolCombo(ui->comboBox_productProtocol);
     fillActionCombo(ui->comboBox_action);
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set, QString());
     fillGateReportTypeCombo(ui->comboBox_gateReportType);
     fillGateOpCombo(ui->comboBox_gateOp);
     registerFreeWorkTestCaseHooks();
@@ -783,16 +866,20 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
 
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
-    const QString protoIni = channel == TestCaseSendChannel::Fixture
-        ? FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol)
-        : DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
+    QString protoIni;
+    if (channel == TestCaseSendChannel::Fixture)
+        protoIni = FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol);
+    else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
+        protoIni = def.send.device;
+    else
+        protoIni = DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
     const int protoIdx = comboIndexByData(ui->comboBox_productProtocol, protoIni);
     if (protoIdx >= 0)
         ui->comboBox_productProtocol->setCurrentIndex(protoIdx);
     ui->comboBox_productProtocol->blockSignals(false);
     updateProductProtocolRowVisible();
 
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, def.send.deviceCmd);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, def.send.device, def.send.deviceCmd);
     const int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
     if (cmdIdx >= 0)
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
@@ -800,7 +887,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_deviceCmd->blockSignals(false);
     onDeviceCmdChanged(cmdIdx);
 
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel, def.send.device);
     QVariant paramForUi = def.send.param;
     if (channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && isFixtureMachineIndexPlaceholder(def.send.param))
         paramForUi = 0;
@@ -865,13 +952,16 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.action = comboData(ui->comboBox_action) == QLatin1String("Get") ? TestCaseSendAction::Get
                                                                              : TestCaseSendAction::Set;
     def.send.channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
-    if (def.send.channel == TestCaseSendChannel::Fixture)
+    if (def.send.channel == TestCaseSendChannel::Fixture) {
         def.send.fixtureProtocol =
             FixturePcbaCmdCatalog::fixtureProtocolFromIni(comboData(ui->comboBox_productProtocol));
-    else
+    } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+        def.send.device = comboData(ui->comboBox_productProtocol);
+    } else {
         def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
+    }
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, def.send.device);
     def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
     if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && ui->spinBox_intParam->value() == 0)
         def.send.param = QStringLiteral("$INDEX");
@@ -913,12 +1003,17 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 void TestCaseEditDialog::updateProductProtocolRowVisible() {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const bool showProtocol =
-        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::Fixture;
+        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::Fixture ||
+        channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi;
     ui->label_productProtocol->setVisible(showProtocol);
     ui->comboBox_productProtocol->setVisible(showProtocol);
     if (showProtocol) {
-        ui->label_productProtocol->setText(channel == TestCaseSendChannel::Fixture ? QStringLiteral("治具协议")
-                                                                                   : QStringLiteral("产品协议"));
+        if (channel == TestCaseSendChannel::Fixture)
+            ui->label_productProtocol->setText(QStringLiteral("治具协议"));
+        else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
+            ui->label_productProtocol->setText(QStringLiteral("目标外设"));
+        else
+            ui->label_productProtocol->setText(QStringLiteral("产品协议"));
     }
 }
 
@@ -948,7 +1043,8 @@ void TestCaseEditDialog::refreshDeviceCmdCombo() {
     const QString previousCmd = comboData(ui->comboBox_deviceCmd);
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, previousCmd);
+    const QString device = comboData(ui->comboBox_productProtocol);
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, device, previousCmd);
     int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, previousCmd);
     if (cmdIdx < 0 && ui->comboBox_deviceCmd->count() > 0)
         cmdIdx = 0;
@@ -960,7 +1056,8 @@ void TestCaseEditDialog::refreshDeviceCmdCombo() {
 void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel);
+    const QString device = comboData(ui->comboBox_productProtocol);
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
     applySendParamHintToUi(uiSchema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);

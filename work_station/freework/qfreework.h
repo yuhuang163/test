@@ -1,4 +1,4 @@
-#ifndef QFREEWORK_H
+﻿#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -9,7 +9,7 @@
 
 #include "Abini.h"
 #include "cmw_gprf_facade.h"
-#include "plc_v3_fixture.h"
+#include "plc_v3_facade.h"
 #include "qapplication.h"
 #include "qtupleservice.h"
 #include "test_base.h"
@@ -58,6 +58,9 @@ class QFreeWork : public test_base {
     void setActiveTestCase(const TestCaseDefinition& def);
     void clearActiveTestCase();
     bool isActiveTestCaseStep(const QString& stepLabel) const;
+    bool isActiveTestCaseStepDone() const {
+        return testCaseStepResult_.done;
+    }
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
@@ -75,6 +78,7 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
+    void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
     int teststate = -1;
@@ -147,6 +151,9 @@ class QFreeWork : public test_base {
         QString testData;
     };
     TestCaseStepResult testCaseStepResult_;
+    const TestCaseStepResult& testCaseStepResult() const {
+        return testCaseStepResult_;
+    }
 
     // --- 有序测试队列（test_case 编排） ---
     void refreshOrderedTestIndexes();
@@ -212,8 +219,8 @@ class QFreeWork : public test_base {
     bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     void resetPlcKeyCapSyncReadState();
 
-    // --- PLC / CMW 协议（agreement 统一入口，工站只调度命令） ---
-    PlcV3Fixture plcFixture_;
+    // --- 业务门面（business/，工站只调度命令） ---
+    PlcV3Facade plcFacade_;
     CmwGprfFacade cmwFacade_;
     PlcV3RunParams makePlcRunParams(int keyIndex0To6 = 0);
     CmwGprfRunParams makeCmwRunParams(const QString& scenarioLabel = QString(), int brushProfile = -1);
