@@ -1207,34 +1207,7 @@ void QFreeWork::getMac(QString sn_to_search) {
         showlog("找不到mac地址，清空当前输入的sn");
     }
 }
-void QFreeWork::getMacAddress(const QByteArray& byte) {
-    receivedData = "";
-    receivedData = receivedData + QString::fromUtf8(byte);
 
-    if (receivedData.length() >= 2 && receivedData.right(2) == "\r\n") {
-        // 使用正则表达式提取设备信息
-        static const QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),\\s*deviceRssi(?:\\s*:(.*))?");
-        QRegularExpressionMatch match = regex.match(receivedData);
-        QString deviceName, deviceAddress, deviceRssi;
-
-        // qDebug() << getIndex()<< "数据长度" << receivedData;
-        // 检查是否匹配成功
-        if (match.hasMatch()) {
-            deviceName = match.captured(1).trimmed();
-            deviceAddress = match.captured(2).trimmed();
-            deviceRssi = match.captured(3).trimmed();
-            // qDebug() << getIndex()<< "设备名称：" << deviceName;
-            // qDebug() << getIndex()<< "设备地址：" << deviceAddress;
-            // qDebug() << getIndex()<< "设备RSSI：" << deviceRssi;
-
-            deviceMap[deviceAddress]["Name"] = deviceName;
-            deviceMap[deviceAddress]["Rssi"] = deviceRssi;
-
-            updateComboBox();
-        }
-        receivedData.clear();
-    }
-}
 void QFreeWork::on_clear_scan_clicked() {
     deviceMap.clear();
     ui->mac_combo->clear();

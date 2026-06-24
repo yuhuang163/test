@@ -1,4 +1,4 @@
-﻿#ifndef QFREEWORK_H
+#ifndef QFREEWORK_H
 #define QFREEWORK_H
 
 #include <QByteArray>
@@ -84,8 +84,6 @@ class QFreeWork : public test_base {
     int teststate = -1;
 
     // --- 扫描 / 绑定 ---
-    QString receivedData = "";
-    QMap<QString, QMap<QString, QString>> deviceMap;
     QString snBinding;
     QString deviceTailSnFromDevice = "";
     QString tailsn = "";
@@ -292,7 +290,6 @@ class QFreeWork : public test_base {
     void bindingMacSn(QString bindingMac, QString bindingSn);
     void bindingMacSnMes(QString bindingMac, QString bindingSn);
     void updateComboBox() override;
-    void getMacAddress(const QByteArray& byte);
     void processInspection(QString inputSnText);
     void processGetMesTestValue();
     void getMac(QString sn_to_search);
