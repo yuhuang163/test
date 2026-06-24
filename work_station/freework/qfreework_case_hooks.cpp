@@ -75,10 +75,17 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         const QString targetName = fw->ui->name_range->text();
         const int rssiThreshold = fw->ui->rssi_range->text().toInt();
 
+        fw->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
+        fw->showlog(QStringLiteral("当前已缓存的周围蓝牙设备总数: %1").arg(fw->deviceMap.size()));
+
         for (auto it = fw->deviceMap.begin(); it != fw->deviceMap.end(); ++it) {
             const QString deviceAddress = it.key();
             const QString deviceName = it.value().value(QStringLiteral("Name"));
             const int deviceRssi = it.value().value(QStringLiteral("Rssi")).toInt();
+            
+            // 打印所有扫描到的设备，方便排查
+            fw->showlog(QStringLiteral("  发现设备 -> 名称: '%1', MAC: %2, 信号: %3")
+                            .arg(deviceName).arg(deviceAddress).arg(deviceRssi));
 
             if (deviceName.contains(targetName) && deviceRssi > rssiThreshold && deviceAddress.length() == 17) {
                 if (deviceRssi > bestRssi) {
@@ -297,6 +304,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("JIG_CURRENT_READ"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
+    registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"));
