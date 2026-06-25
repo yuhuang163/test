@@ -23,10 +23,12 @@ class QFreeWork;
 }
 
 class QFreeWorkTestCaseHookRegistrar;
+class TestCaseRunner;
 
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
+    friend class TestCaseRunner;
 
   public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
