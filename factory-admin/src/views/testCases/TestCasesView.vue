@@ -1,13 +1,16 @@
 <template>
   <div class="page">
     <div class="toolbar">
-      <el-button :loading="downloading" @click="onDownload">下载 bundle</el-button>
-      <el-button type="success" :loading="publishing" @click="onPublish">发布 bundle</el-button>
+      <el-button :loading="downloading" @click="onDownload">下载用例包</el-button>
+      <el-button type="success" :loading="publishing" @click="onPublish">发布用例包</el-button>
       <el-button :loading="saving" :disabled="!selectedPath" @click="onSave">保存当前文件</el-button>
       <el-button :disabled="!selectedPath" @click="onDelete">删除文件</el-button>
       <el-button @click="onNewFile">新建 ini</el-button>
       <el-button @click="loadTree">刷新</el-button>
-      <span v-if="bundleVersion" class="ver">当前 bundle：{{ bundleVersion }}（{{ fileCount }} 个文件）</span>
+      <router-link to="/config/test-cases/versions">
+        <el-button type="primary" plain>版本历史</el-button>
+      </router-link>
+      <span v-if="bundleVersion" class="ver">当前用例包：{{ bundleVersion }}（{{ fileCount }} 个文件）</span>
     </div>
     <el-alert
       class="hint"
@@ -176,11 +179,11 @@ async function onDownload() {
 
 async function onPublish() {
   try {
-    await ElMessageBox.confirm('确认发布测试用例 bundle？上位机将按新版本拉取。', '发布确认', { type: 'warning' })
+    await ElMessageBox.confirm('确认发布用例包？上位机将按新版本拉取。', '发布确认', { type: 'warning' })
     publishing.value = true
     const data = await api.publishBundle()
     bundleVersion.value = data?.bundleVersion || ''
-    ElMessage.success(`发布成功，bundle ${bundleVersion.value}`)
+    ElMessage.success(`发布成功，用例包 ${bundleVersion.value}`)
     await loadTree()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error(e.message)

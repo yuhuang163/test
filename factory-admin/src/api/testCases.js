@@ -30,3 +30,19 @@ export function downloadBundle() {
 export function publishBundle() {
   return http.post('/admin/test-cases/publish')
 }
+
+export function listVersions() {
+  return http.get('/admin/test-cases/versions')
+}
+
+export function getVersionFiles(version) {
+  return http.get(`/admin/test-cases/versions/${encodeURIComponent(version)}/files`)
+}
+
+export function getVersionFile(version, path) {
+  return http.get(`/admin/test-cases/versions/${encodeURIComponent(version)}/files/${encodePath(path)}`)
+}
+
+export function diffVersions(fromVer, toVer) {
+  return http.get('/admin/test-cases/versions/diff', { params: { from: fromVer, to: toVer } })
+}

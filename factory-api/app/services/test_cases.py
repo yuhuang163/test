@@ -1,4 +1,4 @@
-"""测试用例 bundle 存储（网页上传 / 上位机 manifest+bundle 下载）。"""
+"""测试用例包存储（网页上传 / 上位机 manifest+用例包下载）。"""
 
 import hashlib
 import io
@@ -9,7 +9,7 @@ import zipfile
 from pathlib import Path
 
 from app.config import settings
-from app.services.versioning import next_version
+from app.services.versioning import next_version, save_snapshot
 
 MANIFEST_NAME = "manifest.json"
 FLOW_INI_NAME = "总的测试流程.ini"
@@ -246,13 +246,15 @@ def import_bundle_zip(zip_bytes: bytes) -> dict:
 
 
 def publish_bundle(bundle_version: str | None = None) -> dict:
-    """管理端发布：刷新文件清单并递增 bundleVersion。"""
+    """管理端发布：保存快照、刷新文件清单并递增版本号。"""
     ensure_demo_bundle()
     manifest = _load_manifest_raw()
     current = str(manifest.get("bundleVersion") or "")
-    manifest["bundleVersion"] = bundle_version or next_version(current)
+    new_version = bundle_version or next_version(current)
+    manifest["bundleVersion"] = new_version
     manifest["files"] = _scan_files(_root())
     _save_manifest(manifest)
+    save_snapshot(new_version)
     return read_manifest()
 
 

@@ -150,11 +150,11 @@ Authorization: Bearer <token>
 | 方法 | 路径 | 调用方 | 说明 |
 |------|------|--------|------|
 | GET | `/test-cases/manifest` | 上位机 | 待实现 |
-| GET | `/test-cases/bundle` | 上位机 | zip 下载，待实现 |
+| GET | `/test-cases/bundle` | 上位机 | zip 下载（用例包），待实现 |
 | GET | `/admin/test-cases/files` | 网页 | 文件列表 / 树 |
 | GET | `/admin/test-cases/files/{path}` | 网页 | 读取 ini 文本 |
 | PUT | `/admin/test-cases/files/{path}` | 网页 | 保存 ini，`Content-Type: text/plain` |
-| POST | `/admin/test-cases/publish` | 网页 | 发布 bundle |
+| POST | `/admin/test-cases/publish` | 网页 | 发布用例包 |
 
 ---
 

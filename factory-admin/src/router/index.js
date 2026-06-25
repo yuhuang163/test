@@ -8,6 +8,7 @@ import LogsView from '../views/LogsView.vue'
 import LogDetailView from '../views/LogDetailView.vue'
 import TestRecordsView from '../views/TestRecordsView.vue'
 import TestCasesView from '../views/testCases/TestCasesView.vue'
+import VersionHistoryView from '../views/testCases/VersionHistoryView.vue'
 import HostAppView from '../views/hostApp/HostAppView.vue'
 import ReleasesView from '../views/releases/ReleasesView.vue'
 import UsersView from '../views/system/UsersView.vue'
@@ -32,6 +33,11 @@ const router = createRouter({
           path: 'config/test-cases',
           component: TestCasesView,
           meta: { title: '测试用例', menu: '/config/test-cases', roles: ['engineer', 'admin'] },
+        },
+        {
+          path: 'config/test-cases/versions',
+          component: VersionHistoryView,
+          meta: { title: '版本历史', menu: '/config/test-cases', roles: ['engineer', 'admin'] },
         },
         {
           path: 'config/host-app',

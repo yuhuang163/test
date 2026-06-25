@@ -10,7 +10,7 @@
       <el-table-column prop="note" label="说明" min-width="160" />
       <el-table-column label="包含产物" min-width="220">
         <template #default="{ row }">
-          <el-tag v-if="row.bundleVersion" size="small" type="success" class="tag">用例 {{ row.bundleVersion }}</el-tag>
+          <el-tag v-if="row.bundleVersion" size="small" type="success" class="tag">用例包 {{ row.bundleVersion }}</el-tag>
           <el-tag v-if="row.hostBuildId" size="small" type="warning" class="tag">exe {{ row.hostBuildId }}</el-tag>
         </template>
       </el-table-column>
@@ -32,7 +32,7 @@
         <el-form-item label="说明">
           <el-input v-model="form.note" type="textarea" :rows="2" />
         </el-form-item>
-        <el-form-item label="用例 bundle">
+        <el-form-item label="用例包">
           <el-input v-model="form.bundleVersion" placeholder="可选" />
         </el-form-item>
         <el-form-item label="上位机 buildId">
