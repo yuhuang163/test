@@ -10,6 +10,7 @@
 
 #include <QFile>
 #include <QTimer>
+#include <QElapsedTimer>
 
 #include <memory>
 
@@ -52,6 +53,12 @@ bool isRuntimeMacPlaceholder(const QString& text) {
     const QString s = text.trimmed();
     return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
 }
+
+bool isRuntimeSnPlaceholder(const QString& text) {
+    const QString s = text.trimmed();
+    return s == QStringLiteral("$SN") || s == QStringLiteral("${SN}") || s == QStringLiteral("{sn}");
+}
+
 
 enum class TuplePlaceholderKind {
     None,
@@ -207,6 +214,8 @@ int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
     if (isRuntimeMacPlaceholder(text))
         return currentMacAddress();
+    if (isRuntimeSnPlaceholder(text))
+        return resolvedExpectedTailSnText();
     switch (tuplePlaceholderKind(text)) {
     case TuplePlaceholderKind::ProductKey:
         return tupleData_.productKey;
@@ -612,6 +621,82 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
+
+        if (dongleCmd == DongleCmd::BleScanConnectByName) {
+            const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            QString targetName = QStringLiteral("Pump-E");
+            int rssiThreshold = -50;
+            
+            if (param.canConvert<QVariantMap>()) {
+                QVariantMap map = param.toMap();
+                if (map.contains(QStringLiteral("name"))) targetName = map.value(QStringLiteral("name")).toString();
+                if (map.contains(QStringLiteral("rssi"))) rssiThreshold = map.value(QStringLiteral("rssi")).toInt();
+            } else if (param.type() == QVariant::String) {
+                const QString s = param.toString().trimmed();
+                if (!s.isEmpty()) targetName = s;
+            }
+
+            ctx->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
+            
+            int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            if (timeoutMs <= 0) timeoutMs = 6000;
+            
+            QElapsedTimer timer;
+            timer.start();
+            QString bestMac;
+            int bestRssi = -999;
+
+            while (timer.elapsed() < timeoutMs) {
+                bestMac.clear();
+                bestRssi = -999;
+
+                for (auto it = ctx->deviceMap.begin(); it != ctx->deviceMap.end(); ++it) {
+                    const QString deviceAddress = it.key();
+                    const QString deviceName = it.value().value(QStringLiteral("Name"));
+                    const int deviceRssi = it.value().value(QStringLiteral("Rssi")).toInt();
+
+                    if (deviceName.contains(targetName) && deviceRssi > rssiThreshold && deviceAddress.length() == 17) {
+                        if (deviceRssi > bestRssi) {
+                            bestRssi = deviceRssi;
+                            bestMac = deviceAddress;
+                        }
+                    }
+                }
+
+                if (!bestMac.isEmpty()) {
+                    break;
+                }
+                ctx->waitWork(100);
+            }
+
+            if (bestMac.isEmpty()) {
+                ctx->stepRuntime_.done = true;
+                ctx->stepRuntime_.pass = false;
+                ctx->stepRuntime_.testData = QStringLiteral("未找到匹配广播: ") + targetName;
+                ctx->TestResult = ctx->failValue;
+                ctx->showlog(QStringLiteral("按名称自动连接失败：轮询了 %3 毫秒，依然没扫到名称包含 %1 且信号大于 %2 的设备")
+                                .arg(targetName)
+                                .arg(rssiThreshold)
+                                .arg(timeoutMs));
+                return;
+            }
+
+            ctx->showlog(QStringLiteral("按广播名称找到最佳设备，MAC: %1, 信号: %2, 发起连接...")
+                            .arg(bestMac)
+                            .arg(bestRssi));
+            
+            ctx->stepRuntime_.testData = bestMac;
+            const auto sendFn = [ctx, bestMac]() {
+                ctx->at->set(DongleCmd::BleScanConnect, bestMac);
+                if (ctx->ui && ctx->ui->mac_combo) {
+                    ctx->ui->mac_combo->setCurrentText(bestMac);
+                }
+            };
+            ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+            ctx->sendCommandWithRetry(sendFn, timeoutMs);
+            return;
+        }
+
         const auto sendFn = [ctx, def, dongleCmd]() {
             const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
             if (def.send.action == TestCaseSendAction::Get)
