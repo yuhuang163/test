@@ -42,7 +42,7 @@
 | 登录 / 日志上传与查询 | ✅ 完整实现（DB + 本地存储） |
 | 账号管理 / 登录审计 / 改密 | ✅ 完整实现 |
 | 元数据（工厂 / 工站 / 阈值键） | ✅ 工站与键为内置列表 |
-| 阈值 / 用例 / OTA / 统一发布 | ⚠️ 示例实现（可联调，未持久化） |
+| 阈值 / 用例 / OTA | ⚠️ 示例实现（可联调，未持久化） |
 | 设备登记 | ❌ 待实现 |
 
 ---
@@ -166,16 +166,8 @@ Authorization: Bearer <token>
 | GET | `/host-app/download/{buildId}` | 上位机 | exe 下载，待实现 |
 | GET | `/admin/host-app/versions` | 网页 admin | 版本列表 |
 | POST | `/admin/host-app/versions` | 网页 admin | 上传 exe（`multipart`）或登记元数据 |
-
----
-
-### 统一发布 `/admin/releases`
-
-| 方法 | 路径 | 调用方 | 说明 |
-|------|------|--------|------|
-| GET | `/admin/releases` | 网页 | 发布历史 |
-| POST | `/admin/releases` | 网页 | 创建发布单 |
-| GET | `/releases/check` | 上位机 | 一次拉取各层更新，待实现 |
+| GET | `/admin/host-app/runtime-env` | 网页 admin | 下载路特上位机运行环境（zip） |
+| GET | `/admin/host-app/runtime-env/info` | 网页 admin | 查询运行环境基本信息 |
 
 ---
 

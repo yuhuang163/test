@@ -10,7 +10,6 @@ import TestRecordsView from '../views/TestRecordsView.vue'
 import TestCasesView from '../views/testCases/TestCasesView.vue'
 import VersionHistoryView from '../views/testCases/VersionHistoryView.vue'
 import HostAppView from '../views/hostApp/HostAppView.vue'
-import ReleasesView from '../views/releases/ReleasesView.vue'
 import UsersView from '../views/system/UsersView.vue'
 import DevicesView from '../views/system/DevicesView.vue'
 import AuditLoginsView from '../views/system/AuditLoginsView.vue'
@@ -42,12 +41,7 @@ const router = createRouter({
         {
           path: 'config/host-app',
           component: HostAppView,
-          meta: { title: '上位机版本', menu: '/config/host-app', roles: ['admin'] },
-        },
-        {
-          path: 'config/releases',
-          component: ReleasesView,
-          meta: { title: '统一发布', menu: '/config/releases', roles: ['engineer', 'admin'] },
+          meta: { title: '上位机版本管理', menu: '/config/host-app', roles: ['engineer', 'admin'] },
         },
         {
           path: 'system/users',

@@ -40,12 +40,11 @@ const cards = computed(() => {
   if (isEngineer.value) {
     list.push(
       { title: '测试用例', desc: '编辑 test_case ini', path: '/config/test-cases' },
-      { title: '统一发布', desc: '组合用例/exe', path: '/config/releases' }
     )
   }
   if (isAdmin.value) {
     list.push(
-      { title: '上位机版本', desc: 'OTA 发版管理', path: '/config/host-app' },
+      { title: '上位机版本管理', desc: '发版与运行环境下载', path: '/config/host-app' },
       { title: '账号管理', desc: '用户与工站授权', path: '/system/users' }
     )
   }

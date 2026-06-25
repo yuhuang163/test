@@ -29,9 +29,7 @@
 
           <el-menu-item index="/config/test-cases">测试用例</el-menu-item>
 
-          <el-menu-item index="/config/releases">统一发布</el-menu-item>
-
-          <el-menu-item v-if="isAdmin" index="/config/host-app">上位机版本</el-menu-item>
+          <el-menu-item index="/config/host-app">上位机版本管理</el-menu-item>
 
         </el-sub-menu>
 

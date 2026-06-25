@@ -1,5 +1,7 @@
-"""上位机版本（OTA）管理。"""
+"""上位机版本（OTA）与运行环境管理。"""
 
+import json
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -20,6 +22,24 @@ def _require_admin(user: User) -> None:
         fail(403, "仅 admin 可访问", 403)
 
 
+def _require_engineer_or_admin(user: User) -> None:
+    roles = (user.roles or "").split(",")
+    if "admin" not in roles and "engineer" not in roles:
+        fail(403, "仅 engineer / admin 可访问", 403)
+
+
+def _parse_version(v: str) -> tuple[int, ...]:
+    """将 '1.6.2' 转为 (1, 6, 2) 用于数值比较。"""
+    parts = re.split(r"[._\-]", v.strip())
+    nums = []
+    for p in parts:
+        try:
+            nums.append(int(p))
+        except ValueError:
+            nums.append(0)
+    return tuple(nums)
+
+
 @router.get("/check")
 def check(
     packageName: str,
@@ -28,64 +48,109 @@ def check(
     stationKey: str | None = None,
     deviceId: str | None = None,
 ):
-    """上位机检查更新：扫描已上传安装包，比 buildId 新则提示更新。"""
-    del stationKey, deviceId  # 预留灰度字段
+    """上位机检查更新：按 appVersion 比较，有新版本则提示更新。"""
+    del stationKey, deviceId
     pkg = (packageName or "new_production").strip()
+    current_ver = (appVersion or "").strip()
     current_build = (buildId or "").strip()
-    root = host_app_service.storage_root()
-    candidates = sorted(root.glob(f"{pkg}_*.exe"), reverse=True)
-    latest_path = candidates[0] if candidates else None
-    if not latest_path:
-        return ok({"hasUpdate": False, "latest": None})
+    versions = host_app_service.list_versions()
+    pkg_versions = [v for v in versions if v["packageName"] == pkg]
+    if not pkg_versions:
+        host_has = current_ver or current_build
+        return ok({"hasUpdate": False, "hostNewer": bool(host_has), "latest": None})
 
-    latest_build = latest_path.stem.replace(f"{pkg}_", "", 1)
-    if current_build and current_build >= latest_build:
-        return ok({"hasUpdate": False, "latest": None})
+    latest = pkg_versions[0]
+    latest_ver = latest.get("appVersion") or ""
+    latest_build = latest.get("buildId") or ""
+
+    # 用于显示的版本信息（appVersion 为空时回退到 buildId）
+    display_app_version = latest.get("appVersion") or latest["buildId"]
+    # 用于比较的版本号（appVersion 为空时当 0.0.0，避免用日期字符串比较）
+    compare_app_version = latest.get("appVersion") or "0.0.0"
+
+    latest_info = {
+        "appVersion": display_app_version,
+        "buildId": latest["buildId"],
+        "downloadUrl": "",
+        "sha256": latest.get("sha256") or "",
+        "forceUpgrade": latest.get("forceUpgrade", False),
+        "releaseNotes": latest.get("releaseNotes") or "",
+        "packageName": pkg,
+        "uploadedAt": latest.get("uploadedAt") or "",
+    }
+
+    server_newer = _parse_version(current_ver) < _parse_version(compare_app_version) if (current_ver and compare_app_version) else False
+    server_newer = server_newer or (current_build < latest_info["buildId"] if (current_build and latest_info["buildId"]) else False)
+
+    host_newer = _parse_version(current_ver) > _parse_version(compare_app_version) if (current_ver and compare_app_version) else False
+    host_newer = host_newer or (current_build > latest_info["buildId"] if (current_build and latest_info["buildId"]) else False)
+    # 版本相同但 buildId 不同（同一版本的新构建），也触发上传
+    host_newer = host_newer or (
+        current_ver and compare_app_version
+        and _parse_version(current_ver) == _parse_version(compare_app_version)
+        and current_build and latest_info["buildId"]
+        and current_build != latest_info["buildId"]
+    )
 
     return ok(
         {
-            "hasUpdate": True,
-            "latest": {
-                "appVersion": appVersion or latest_build,
-                "buildId": latest_build,
-                "downloadUrl": "",
-                "sha256": "",
-                "forceUpgrade": False,
-                "releaseNotes": "",
-                "packageName": pkg,
-            },
+            "hasUpdate": server_newer,
+            "hostNewer": host_newer,
+            "latest": latest_info,
         }
     )
 
 
+@router.get("/versions")
+def host_list_versions():
+    """上位机获取所有可用版本列表。"""
+    return ok({"items": host_app_service.list_versions()})
+
+
 @router.get("/download/{build_id}")
-def download_build(build_id: str, packageName: str | None = None):
-    """上位机下载安装包（二进制 exe，非 JSON 包络）。"""
-    path = host_app_service.resolve_build_path(build_id, packageName)
+def download_build(build_id: str, packageName: str | None = None,
+                   uploadedAt: str | None = None):
+    """上位机下载安装包（二进制 exe，非 JSON 包络）。
+    uploadedAt 用于精确匹配版本记录，避免同 buildId 多版本时下载错误。
+    """
+    path = host_app_service.resolve_build_path(build_id, packageName, uploadedAt)
     if not path:
         fail(404, "安装包不存在", 404)
     return FileResponse(path, media_type="application/octet-stream", filename=path.name)
 
 
+@router.post("/upload")
+async def host_upload(
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+    appVersion: str = Form(...),
+    buildId: str = Form(...),
+    packageName: str = Form("new_production"),
+    releaseNotes: str = Form(""),
+    sha256: str | None = Form(default=None),
+):
+    """上位机上传自身 exe（首次部署或主动上报版本）。"""
+    _require_engineer_or_admin(user)
+    if not appVersion or not buildId:
+        fail(400, "appVersion 与 buildId 不能为空", 400)
+    content = await file.read()
+    if len(content) < 1024:
+        fail(400, "文件过小", 400)
+    host_app_service.save_build(
+        build_id=buildId.strip(),
+        content=content,
+        package_name=packageName.strip() or "new_production",
+        app_version=appVersion,
+        release_notes=releaseNotes,
+        sha256=sha256 or "",
+    )
+    return ok(message="版本已上传")
+
+
 @admin_router.get("/versions")
 def list_versions(user: Annotated[User, Depends(get_current_user)]):
     _require_admin(user)
-    root = host_app_service.storage_root()
-    items = []
-    for path in sorted(root.glob("*.exe"), reverse=True):
-        name = path.stem
-        if "_" in name:
-            package_name, build_id = name.split("_", 1)
-        else:
-            package_name, build_id = "new_production", name
-        items.append(
-            {
-                "packageName": package_name,
-                "buildId": build_id,
-                "size": path.stat().st_size,
-            }
-        )
-    return ok({"items": items})
+    return ok({"items": host_app_service.list_versions()})
 
 
 @admin_router.post("/versions")
@@ -101,7 +166,6 @@ async def create_version(
     grayRules: str | None = Form(default=None),
 ):
     _require_admin(user)
-    del releaseNotes, forceUpgrade, sha256, grayRules
     if not appVersion or not buildId:
         fail(400, "appVersion 与 buildId 不能为空", 400)
     if not file:
@@ -109,5 +173,62 @@ async def create_version(
     content = await file.read()
     if len(content) < 1024:
         fail(400, "安装包文件过小", 400)
-    host_app_service.save_build(buildId.strip(), content, packageName.strip() or "new_production")
+
+    gray = {}
+    if grayRules:
+        try:
+            gray = json.loads(grayRules)
+        except json.JSONDecodeError:
+            fail(400, "grayRules 格式错误", 400)
+
+    host_app_service.save_build(
+        build_id=buildId.strip(),
+        content=content,
+        package_name=packageName.strip() or "new_production",
+        app_version=appVersion,
+        release_notes=releaseNotes,
+        force_upgrade=forceUpgrade.lower() == "true",
+        sha256=sha256 or "",
+        gray_rules=gray,
+    )
     return ok(message="版本已上传")
+
+
+@admin_router.post("/runtime-env")
+async def upload_runtime_env(
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+):
+    """上传路特上位机运行环境（zip 包）。"""
+    _require_admin(user)
+    content = await file.read()
+    if len(content) < 1024:
+        fail(400, "文件过小", 400)
+    if content[:2] != b"PK":
+        fail(400, "请上传 zip 文件", 400)
+    host_app_service.save_runtime_env_zip(content)
+    return ok(message="运行环境已上传")
+
+
+@admin_router.get("/runtime-env")
+def download_runtime_env(user: Annotated[User, Depends(get_current_user)]):
+    """管理员下载路特上位机运行环境（首次使用上位机时需下载）。"""
+    _require_admin(user)
+    from fastapi.responses import Response
+
+    try:
+        zip_bytes = host_app_service.build_runtime_env_zip()
+    except FileNotFoundError as exc:
+        fail(404, str(exc), 404)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="路特上位机运行环境.zip"'},
+    )
+
+
+@admin_router.get("/runtime-env/info")
+def runtime_env_info(user: Annotated[User, Depends(get_current_user)]):
+    """查询运行环境信息。"""
+    _require_admin(user)
+    return ok(host_app_service.get_runtime_env_info())

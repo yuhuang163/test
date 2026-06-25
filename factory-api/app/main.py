@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import SessionLocal, init_db
 from app.routers import auth, logs, meta, test_records
-from app.routers import test_cases, host_app, releases, admin_extra
+from app.routers import test_cases, host_app, admin_extra
 from app.seed import seed_admin, seed_factories
 from app.services.test_cases import ensure_demo_bundle
 
@@ -59,7 +59,6 @@ app.include_router(test_cases.router, prefix=settings.api_prefix)
 app.include_router(test_cases.admin_router, prefix=settings.api_prefix)
 app.include_router(host_app.router, prefix=settings.api_prefix)
 app.include_router(host_app.admin_router, prefix=settings.api_prefix)
-app.include_router(releases.router, prefix=settings.api_prefix)
 app.include_router(admin_extra.router, prefix=settings.api_prefix)
 
 
