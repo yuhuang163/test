@@ -144,6 +144,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("MAC_WRITE_ROOT")) {
+         fw->showlog(QStringLiteral("MAC_WRITE_ROOT"));
         const QString snText = fw->resolvedExpectedTailSnText();
         const QString macText = fw->parseMacFromSn(snText);
         if (macText.isEmpty()) {
@@ -158,6 +159,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, macText]() {
             fw->protocolManager.set(DeviceCmd::MacWrite, macText);
+            fw->showlog(QStringLiteral("已发送写MAC（自动流程）: %1").arg(macText));
         });
         return;
     }

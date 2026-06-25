@@ -39,7 +39,7 @@ class Qroot : public qProtocol {
         MacRead = 0x92,
         LedTest = 0x93,
         Vibration = 0x94,
-        MacWrite = 0x95,
+        MacWrite = 0xA3,
         FlangeStatus = 0x96,
         NtcStatus = 0x97,
         HeatTemp = 0x98,
