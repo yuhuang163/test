@@ -119,3 +119,15 @@ class TestRecordItem(Base):
     result: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     record: Mapped["TestRecord"] = relationship(back_populates="items")
+
+
+class AdminDevice(Base):
+    __tablename__ = "admin_devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    host_name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    line_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    station_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    remark: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

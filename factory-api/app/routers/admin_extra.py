@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import LoginAudit, User
+from app.models import AdminDevice, LoginAudit, User
 from app.response import ok
 from app.security import hash_password
 
@@ -199,4 +199,99 @@ def list_audit_logins(
         for r in rows
     ]
     return ok({"items": items, "total": total, "page": page, "pageSize": pageSize})
+
+
+@router.get("/admin/devices")
+def list_devices(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    keyword: str | None = None,
+):
+    _require_admin(user)
+    q = db.query(AdminDevice)
+    if keyword:
+        q = q.filter(AdminDevice.host_name.contains(keyword))
+    rows = q.order_by(AdminDevice.created_at.desc()).all()
+    items = [
+        {
+            "id": r.id,
+            "hostName": r.host_name,
+            "lineName": r.line_name or "",
+            "stationLabel": r.station_label or "",
+            "remark": r.remark or "",
+            "createdAt": to_utc_iso_z(r.created_at) if r.created_at else None,
+        }
+        for r in rows
+    ]
+    return ok({"items": items})
+
+
+@router.post("/admin/devices")
+def create_device(
+    body: dict,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _require_admin(user)
+    host_name = (body.get("hostName") or "").strip()
+    if not host_name:
+        from app.response import fail
+
+        fail(400, "电脑名不能为空", 400)
+    existing = db.query(AdminDevice).filter(AdminDevice.host_name == host_name).first()
+    if existing:
+        from app.response import fail
+
+        fail(400, "该电脑已登记", 400)
+    d = AdminDevice(
+        host_name=host_name,
+        line_name=(body.get("lineName") or "").strip() or None,
+        station_label=(body.get("stationLabel") or "").strip() or None,
+        remark=(body.get("remark") or "").strip() or None,
+    )
+    db.add(d)
+    db.commit()
+    return ok(message="已登记")
+
+
+@router.put("/admin/devices/{device_id}")
+def update_device(
+    device_id: int,
+    body: dict,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _require_admin(user)
+    d = db.get(AdminDevice, device_id)
+    if not d:
+        from app.response import fail
+
+        fail(404, "设备不存在", 404)
+    if "hostName" in body:
+        d.host_name = body["hostName"].strip()
+    if "lineName" in body:
+        d.line_name = (body["lineName"] or "").strip() or None
+    if "stationLabel" in body:
+        d.station_label = (body["stationLabel"] or "").strip() or None
+    if "remark" in body:
+        d.remark = (body["remark"] or "").strip() or None
+    db.commit()
+    return ok(message="已保存")
+
+
+@router.delete("/admin/devices/{device_id}")
+def delete_device(
+    device_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _require_admin(user)
+    d = db.get(AdminDevice, device_id)
+    if not d:
+        from app.response import fail
+
+        fail(404, "设备不存在", 404)
+    db.delete(d)
+    db.commit()
+    return ok(message="已删除")
 

@@ -7,6 +7,8 @@ import DashboardView from '../views/DashboardView.vue'
 import LogsView from '../views/LogsView.vue'
 import LogDetailView from '../views/LogDetailView.vue'
 import TestRecordsView from '../views/TestRecordsView.vue'
+import DataCurveView from '../views/DataCurveView.vue'
+import YieldView from '../views/YieldView.vue'
 import TestCasesView from '../views/testCases/TestCasesView.vue'
 import VersionHistoryView from '../views/testCases/VersionHistoryView.vue'
 import HostAppView from '../views/hostApp/HostAppView.vue'
@@ -28,6 +30,8 @@ const router = createRouter({
         { path: 'data/logs', component: LogsView, meta: { title: '日志查询', menu: '/data/logs' } },
         { path: 'data/logs/:id', component: LogDetailView, meta: { title: '日志详情', menu: '/data/logs' } },
         { path: 'data/test-records', component: TestRecordsView, meta: { title: '测试数据', menu: '/data/test-records' } },
+        { path: 'data/curve', component: DataCurveView, meta: { title: '数据曲线', menu: '/data/curve' } },
+        { path: 'data/yield', component: YieldView, meta: { title: '良率统计', menu: '/data/yield' } },
         {
           path: 'config/test-cases',
           component: TestCasesView,
