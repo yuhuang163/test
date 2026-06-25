@@ -36,7 +36,7 @@ class Qroot : public qProtocol {
         AgingEnter = 0xAF,
         TestMode = 0x90,
         SoftVersion = 0x91,
-        MacRead = 0x92,
+        MacRead = 0xA2,
         LedTest = 0x93,
         Vibration = 0x94,
         MacWrite = 0xA3,
