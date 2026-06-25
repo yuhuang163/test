@@ -31,18 +31,3 @@ def list_stations(user: Annotated[User, Depends(get_current_user)]):
         {"key": "PACK", "name": "包装"},
     ]
     return ok(data)
-
-
-@router.get("/settings-keys")
-def list_settings_keys(user: Annotated[User, Depends(get_current_user)]):
-    """允许下发的 SETTINGS 键白名单（示例）。"""
-    keys = [
-        "BLE/LowRssi",
-        "BLE/HighRssi",
-        "Current/LowCharCurrent",
-        "Current/HighCharCurrent",
-        "Current/LowmusicCurrent",
-        "Current/HighmusicCurrent",
-        "BATTARY/standbattary",
-    ]
-    return ok(keys)

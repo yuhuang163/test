@@ -39,9 +39,8 @@ const cards = computed(() => {
   ]
   if (isEngineer.value) {
     list.push(
-      { title: '阈值模板', desc: '维护卡控上下限', path: '/config/thresholds' },
       { title: '测试用例', desc: '编辑 test_case ini', path: '/config/test-cases' },
-      { title: '统一发布', desc: '组合阈值/用例/exe', path: '/config/releases' }
+      { title: '统一发布', desc: '组合用例/exe', path: '/config/releases' }
     )
   }
   if (isAdmin.value) {

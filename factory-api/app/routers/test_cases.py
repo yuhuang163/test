@@ -1,9 +1,9 @@
-"""测试用例：上位机 manifest/bundle + 管理端文件维护。"""
+"""测试用例：上位机上传/下载 bundle + 管理端查看编辑。"""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends
-from fastapi.responses import Response
+from fastapi import APIRouter, Body, Depends, File, Form, UploadFile
+from fastapi.responses import PlainTextResponse, Response
 
 from app.deps import get_current_user
 from app.models import User
@@ -32,10 +32,41 @@ def client_bundle(user: Annotated[User, Depends(get_current_user)]):
     zip_bytes = test_case_service.build_bundle_zip()
     if not zip_bytes:
         fail(404, "bundle 为空", 404)
+    manifest = test_case_service.read_manifest()
+    version = manifest.get("bundleVersion") or "bundle"
     return Response(
         content=zip_bytes,
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="test_case_bundle.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="test_case_{version}.zip"'},
+    )
+
+
+@router.post("/upload")
+async def client_upload_bundle(
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+    deviceId: Annotated[str | None, Form()] = None,
+    stationKey: Annotated[str | None, Form()] = None,
+    hostName: Annotated[str | None, Form()] = None,
+):
+    """上位机上传 test_case zip，导入并自动发布 bundle。"""
+    _require_engineer_or_admin(user)
+    content = await file.read()
+    try:
+        data = test_case_service.import_bundle_zip(content)
+        published = test_case_service.publish_bundle()
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    return ok(
+        {
+            "bundleVersion": published.get("bundleVersion"),
+            "fileCount": len(published.get("files") or []),
+            "importedCount": data.get("importedCount", 0),
+            "deviceId": deviceId,
+            "stationKey": stationKey,
+            "hostName": hostName,
+        },
+        message="上传并发布成功",
     )
 
 
@@ -45,15 +76,31 @@ def list_files(user: Annotated[User, Depends(get_current_user)]):
     return ok(test_case_service.read_manifest())
 
 
+@admin_router.get("/bundle")
+def admin_download_bundle(user: Annotated[User, Depends(get_current_user)]):
+    _require_engineer_or_admin(user)
+    zip_bytes = test_case_service.build_bundle_zip()
+    if not zip_bytes:
+        fail(404, "bundle 为空", 404)
+    manifest = test_case_service.read_manifest()
+    version = manifest.get("bundleVersion") or "bundle"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="test_case_{version}.zip"'},
+    )
+
+
 @admin_router.get("/files/{path:path}")
 def get_file(path: str, user: Annotated[User, Depends(get_current_user)]):
     _require_engineer_or_admin(user)
     try:
-        return test_case_service.read_file_text(path)
+        text = test_case_service.read_file_text(path)
     except ValueError:
         fail(400, "非法路径", 400)
     except FileNotFoundError:
         fail(404, "文件不存在", 404)
+    return PlainTextResponse(text, media_type="text/plain; charset=utf-8")
 
 
 @admin_router.put("/files/{path:path}")
@@ -61,24 +108,25 @@ def save_file(path: str, content: str = Body(""), user: Annotated[User, Depends(
     _require_engineer_or_admin(user)
     try:
         test_case_service.write_file_text(path, content)
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    return ok(message="已保存")
+
+
+@admin_router.delete("/files/{path:path}")
+def remove_file(path: str, user: Annotated[User, Depends(get_current_user)]):
+    _require_engineer_or_admin(user)
+    try:
+        test_case_service.delete_file(path)
     except ValueError:
         fail(400, "非法路径", 400)
-    return ok(message="已保存")
+    except FileNotFoundError:
+        fail(404, "文件不存在", 404)
+    return ok(message="已删除")
 
 
 @admin_router.post("/publish")
 def publish_bundle(user: Annotated[User, Depends(get_current_user)]):
     _require_engineer_or_admin(user)
-    manifest = test_case_service.read_manifest()
-    version = manifest["bundleVersion"]
-    # 简单递增：demo-1 -> demo-2；也可由前端传版本号，此处先自动 bump
-    if version.startswith("demo-"):
-        try:
-            num = int(version.split("-", 1)[1]) + 1
-            version = f"demo-{num}"
-        except ValueError:
-            version = f"{version}-published"
-    else:
-        version = f"{version}-published"
-    data = test_case_service.publish_bundle(version)
+    data = test_case_service.publish_bundle()
     return ok({"bundleVersion": data["bundleVersion"]}, message="发布成功")

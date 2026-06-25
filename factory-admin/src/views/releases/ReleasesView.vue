@@ -10,7 +10,6 @@
       <el-table-column prop="note" label="说明" min-width="160" />
       <el-table-column label="包含产物" min-width="220">
         <template #default="{ row }">
-          <el-tag v-if="row.thresholdVersion" size="small" class="tag">阈值 v{{ row.thresholdVersion }}</el-tag>
           <el-tag v-if="row.bundleVersion" size="small" type="success" class="tag">用例 {{ row.bundleVersion }}</el-tag>
           <el-tag v-if="row.hostBuildId" size="small" type="warning" class="tag">exe {{ row.hostBuildId }}</el-tag>
         </template>
@@ -32,9 +31,6 @@
         </el-form-item>
         <el-form-item label="说明">
           <el-input v-model="form.note" type="textarea" :rows="2" />
-        </el-form-item>
-        <el-form-item label="阈值版本">
-          <el-input v-model="form.thresholdVersion" placeholder="可选，已发布的 threshold version" />
         </el-form-item>
         <el-form-item label="用例 bundle">
           <el-input v-model="form.bundleVersion" placeholder="可选" />
@@ -71,7 +67,6 @@ const items = ref([])
 const form = reactive({
   releaseId: '',
   note: '',
-  thresholdVersion: '',
   bundleVersion: '',
   hostBuildId: '',
   grayStationKeys: [],
@@ -81,7 +76,6 @@ function openDialog() {
   Object.assign(form, {
     releaseId: '',
     note: '',
-    thresholdVersion: '',
     bundleVersion: '',
     hostBuildId: '',
     grayStationKeys: [],
@@ -112,7 +106,6 @@ async function onSubmit() {
     await api.createRelease({
       releaseId: form.releaseId,
       note: form.note,
-      thresholdVersion: form.thresholdVersion || null,
       bundleVersion: form.bundleVersion || null,
       hostBuildId: form.hostBuildId || null,
       grayRules: { stationKeys: form.grayStationKeys },

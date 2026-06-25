@@ -27,8 +27,6 @@
 
           <template #title>配置管理</template>
 
-          <el-menu-item index="/config/thresholds">阈值模板</el-menu-item>
-
           <el-menu-item index="/config/test-cases">测试用例</el-menu-item>
 
           <el-menu-item index="/config/releases">统一发布</el-menu-item>

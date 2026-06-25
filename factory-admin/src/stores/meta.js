@@ -8,21 +8,10 @@ const STATION_FALLBACK = [
   { key: 'PACK', name: '包装' },
 ]
 
-const SETTINGS_KEY_FALLBACK = [
-  'BLE/LowRssi',
-  'BLE/HighRssi',
-  'Current/LowCharCurrent',
-  'Current/HighCharCurrent',
-  'Current/LowmusicCurrent',
-  'Current/HighmusicCurrent',
-  'BATTARY/standbattary',
-]
-
 export const useMetaStore = defineStore('meta', {
   state: () => ({
     factories: [],
     stations: [],
-    settingsKeys: [],
     loaded: false,
   }),
   actions: {
@@ -31,12 +20,10 @@ export const useMetaStore = defineStore('meta', {
       const tasks = [
         http.get('/admin/meta/factories').catch(() => []),
         http.get('/admin/meta/stations').catch(() => STATION_FALLBACK),
-        http.get('/admin/meta/settings-keys').catch(() => SETTINGS_KEY_FALLBACK),
       ]
-      const [factories, stations, settingsKeys] = await Promise.all(tasks)
+      const [factories, stations] = await Promise.all(tasks)
       this.factories = factories || []
       this.stations = stations?.length ? stations : STATION_FALLBACK
-      this.settingsKeys = settingsKeys?.length ? settingsKeys : SETTINGS_KEY_FALLBACK
       this.loaded = true
     },
     factoryLabel(code) {

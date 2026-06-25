@@ -7,8 +7,6 @@ import DashboardView from '../views/DashboardView.vue'
 import LogsView from '../views/LogsView.vue'
 import LogDetailView from '../views/LogDetailView.vue'
 import TestRecordsView from '../views/TestRecordsView.vue'
-import ThresholdsView from '../views/thresholds/ThresholdsView.vue'
-import ThresholdEditView from '../views/thresholds/ThresholdEditView.vue'
 import TestCasesView from '../views/testCases/TestCasesView.vue'
 import HostAppView from '../views/hostApp/HostAppView.vue'
 import ReleasesView from '../views/releases/ReleasesView.vue'
@@ -30,16 +28,6 @@ const router = createRouter({
         { path: 'data/logs', component: LogsView, meta: { title: '日志查询', menu: '/data/logs' } },
         { path: 'data/logs/:id', component: LogDetailView, meta: { title: '日志详情', menu: '/data/logs' } },
         { path: 'data/test-records', component: TestRecordsView, meta: { title: '测试数据', menu: '/data/test-records' } },
-        {
-          path: 'config/thresholds',
-          component: ThresholdsView,
-          meta: { title: '阈值模板', menu: '/config/thresholds', roles: ['engineer', 'admin'] },
-        },
-        {
-          path: 'config/thresholds/:id',
-          component: ThresholdEditView,
-          meta: { title: '编辑阈值', menu: '/config/thresholds', roles: ['engineer', 'admin'] },
-        },
         {
           path: 'config/test-cases',
           component: TestCasesView,
