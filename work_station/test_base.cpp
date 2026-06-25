@@ -371,10 +371,10 @@ void test_base::saveDongleUartLog(QString data) {
 void test_base::getMacAddress(const QByteArray& byte) {
     receivedData += QString::fromUtf8(byte);
     // qDebug() << "内容" << receivedData;
-    while (receivedData.contains("\r\n")) {
-        int index = receivedData.indexOf("\r\n");
+    while (receivedData.contains("\n")) {
+        int index = receivedData.indexOf("\n");
         QString line = receivedData.left(index);
-        receivedData = receivedData.mid(index + 2); // 删除处理过的数据
+        receivedData = receivedData.mid(index + 1); // 删除处理过的数据
         QRegularExpression regex("deviceName:(.*?),\\s*deviceAddress:(.*?),"
                                  "\\s*deviceRssi(?:\\s*:(.*))?");
         QRegularExpressionMatch match = regex.match(line);
@@ -382,9 +382,10 @@ void test_base::getMacAddress(const QByteArray& byte) {
             QString deviceName = match.captured(1).trimmed();
             QString deviceAddress = match.captured(2).trimmed();
             QString deviceRssi = match.captured(3).trimmed();
-            // qDebug() << "设备名称：" << deviceName;
-            //  qDebug() << "设备地址：" << deviceAddress;
-            // qDebug() << "设备RSSI：" << deviceRssi;
+            
+            qDebug() << "后台成功解析 - 名称:" << deviceName 
+                     << "MAC:" << deviceAddress 
+                     << "信号:" << deviceRssi;
 
             // 更新 deviceMap、updateComboBox 等
             deviceMap[deviceAddress]["Name"] = deviceName;
@@ -392,7 +393,9 @@ void test_base::getMacAddress(const QByteArray& byte) {
 
             updateComboBox();
         } else {
-            // qDebug() << "Invalid line:" << line;
+            if (!line.trimmed().isEmpty()) {
+                qDebug() << "后台正则匹配失败，忽略该行:" << line;
+            }
         }
     }
 }
