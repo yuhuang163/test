@@ -13,6 +13,7 @@
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
 #include "common_utils.h"
+#include "platform/cloud/auth/auth_service.h"
 #include "qatmanager.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
@@ -184,8 +185,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3", "Pump-E", "M8P", "AIR 2", "Hi", "Y30P", "F20", "Q20", "Q20P", "Y20", "Y20P", "Y30",
-                               "Y30S", "Y21", "Y20PS", "T10", "P20PS", "Y25SE", "P20P"};
+    QStringList productList = {"V3","V3 PRO", "Pump-E", "M8P", };
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
@@ -215,6 +215,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     product_sn = new QLabel("整机sn:                        ");
     sub_pid = new QLabel("sub_pid:        ");
     sku_id = new QLabel("sku_id:        ");
+    cloudLoginLabel = new QLabel("云平台：<font color='gray'>检查中…</font>");
     // 添加用户友好的字符串到下拉框
     // ui->battery_type_combox->addItem("两节电池", FacBatteryType_TWO_BATTERY);
     // ui->battery_type_combox->addItem("单节电池",FacBatteryType_ONE_BATTERY);
@@ -222,9 +223,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     otaSourceSet(1); // 一开机锁住
     otaFwSet(1);     // 一开机锁住
 
-    QAction* updata = ui->menubar->addAction("软件更新");
 
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
     // 设置菜单栏样式
     ui->menubar->setStyleSheet("QMenuBar { "
                                "    background-color: white; " // 设置菜单栏背景颜色为白色
@@ -239,6 +238,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                "    color: black; "                // 设置选中菜单项的文字颜色
                                "}");
 
+
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(product_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
@@ -249,6 +249,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->statusbar->addPermanentWidget(WifiStatusLabel);
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    ui->statusbar->addPermanentWidget(cloudLoginLabel);
+   
+    refreshCloudLoginState();
+    {
+        QTimer* timer = new QTimer(this);
+        connect(timer, &QTimer::timeout, this, &MainWindow::refreshCloudLoginState);
+        timer->start(30000);
+    }
     otaResults << "手柄收到指令,开始OTA..."
                << "GENERAL"
                << "低电量"
@@ -372,8 +380,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
             ui->tabWidget->setTabVisible(otaTabIdx, SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
     }
 
-    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toInt())
-        updata->setVisible(false);
+
 
     ui->high_speed_tp->installEventFilter(this);
     ui->high_speed_tp->setAcceptDrops(true);
@@ -438,6 +445,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     aimanager = new QNetworkAccessManager(this);
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
     ui->wifiotaprogress->setMaximum(100);
+     QAction* updata = ui->menubar->addAction("检查更新");
+    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool())
+        updata->setVisible(false);
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 }
 
 void MainWindow::onProtocolReport(const ProtocolReport& report) {
@@ -509,7 +520,54 @@ void MainWindow::onDongleAtReport(const ProtocolReport& report) {
         refreshWifiState(payload.value<ProtocolDongleWifiStateData>().connected);
     } else if (reportType == QLatin1String("ProtocolDongleWifiIpData") && payload.canConvert<ProtocolDongleWifiIpData>()) {
         getWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
+    }else if (reportType == QLatin1String("ProtocolDongleDeviceNameData") && payload.canConvert<ProtocolDongleDeviceNameData>()) {
+        refreshDongleDeviceName(payload.value<ProtocolDongleDeviceNameData>().name);
     }
+}
+void MainWindow::refreshDongleDeviceName(const QString& name)
+{
+    if (name.isEmpty()) {
+        return;
+    }
+
+    QString targetProduct;
+    QString targetProtocol;   // ✅ 改这里
+
+    QString upperName = name.toUpper();
+
+    if (upperName.contains("V3 PRO")) {
+        targetProduct = "V3Pro";
+        targetProtocol = "qfctp";
+    } else if (upperName.contains("V3")) {
+        targetProduct = "V3";
+        targetProtocol = "qfctp";
+    } else if (name == "Pump-E") {
+        targetProduct = "M8";
+        targetProtocol = "qroot";
+    } else if (name == "M8P") {
+        targetProduct = "M8P";
+        targetProtocol = "qaiot";
+    } else {
+        qDebug() << "未知设备名称，不切换:" << name;
+        return;
+    }
+
+    SETTINGS.setValue("Mes/Product_Name", targetProduct);
+
+    SETTINGS.setValue("SYSTEM/ProtocolType", targetProtocol);
+    SETTINGS.sync();
+    
+    auto selectedType =
+        QProtocolManager::protocolTypeFromString(
+            targetProtocol.toStdString()
+            );
+
+    protocolManager.setCurrentProtocolType(selectedType);
+
+    showlog(QString("根据Dongle设备名称切换 - 产品型号: %1 -> %2, 协议类型: %3")
+            .arg(name)
+            .arg(targetProduct)
+            .arg(targetProtocol));
 }
 
 void MainWindow::refreshOtaFlowControl(int state) {
@@ -625,9 +683,19 @@ void MainWindow::refreshRootBatteryTemp(quint8 temp) {
     ui->root_battery_temp_value->setText(QStringLiteral("电池温度：%1°C").arg(temp));
     showlog(QStringLiteral("电池温度：%1°C (0x80)").arg(temp));
 }
+void MainWindow::refreshCloudLoginState() {
+    if (AuthService::isLoggedIn()) {
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录</font>"));
+    } else {
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='red'>未登录</font>"));
+    }
+}
 void MainWindow::setting_ui() {
-    if (qsetting_ui == NULL) {
+    if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
+    } else {
+        // 如果窗口已存在，重新加载配置以确保显示最新设置
+        qsetting_ui->loadConfig();
     }
     qsetting_ui->raise();
     qsetting_ui->show();

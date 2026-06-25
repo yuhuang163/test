@@ -2,6 +2,8 @@
 #define FACTORY_CLOUD_CLIENT_H
 
 #include <QJsonObject>
+#include <QList>
+#include <QPair>
 #include <QString>
 #include <QUrlQuery>
 
@@ -30,6 +32,10 @@ class FactoryCloudClient {
 
     static ApiResult get(const QString& path, const QUrlQuery& query = QUrlQuery());
     static ApiResult post(const QString& path, const QJsonObject& body);
+    static ApiResult uploadMultipart(const QString& path, const QString& zipPath,
+                                     const QList<QPair<QString, QString>>& formFields = {});
+    static ApiResult uploadExe(const QString& exePath,
+                               const QList<QPair<QString, QString>>& formFields);
     static bool downloadToFile(const QString& path, const QUrlQuery& query, const QString& destPath,
                                QString* error);
 

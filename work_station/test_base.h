@@ -222,7 +222,7 @@ class test_base : public QWidget {
 
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);
-
+    void refreshDongleDeviceName(const QString& name) ;
     // --- 协议上行虚槽（子类 override；由 onProtocolReport 按 reportType 分发） ---
     // clang-format off
     virtual void getTestValue(const int, const QString) {}

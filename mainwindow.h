@@ -185,6 +185,8 @@ class MainWindow : public QMainWindow {
     QLabel* product_sn = nullptr;
     QLabel* sub_pid = nullptr;
     QLabel* sku_id = nullptr;
+    QLabel* cloudLoginLabel = nullptr;
+    void refreshCloudLoginState();
 
     std::atomic<bool> running;
     QFuture<void> future;
@@ -385,6 +387,8 @@ class MainWindow : public QMainWindow {
     void scanIpPorts();
     void refreshButtonState(ProtocolButtonStateData data);
     void refreshRootBatteryTemp(quint8 temp);
+    void refreshDongleDeviceName(const QString& name) ;
+
   private slots:
     void on_connectButton_clicked();
     void on_getBasicInfoButton_clicked();

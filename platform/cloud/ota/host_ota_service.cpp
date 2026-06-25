@@ -10,11 +10,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QInputDialog>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QProcess>
 #include <QTextStream>
 #include <QTimer>
-#include <QJsonObject>
 #include <functional>
 
 #if _MSC_VER >= 1600
@@ -66,14 +68,20 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
         const AuthService::LoginResult login = AuthService::loginWithSavedCredentials();
         if (!login.ok) {
             result.message = login.message;
+            qDebug() << "[OTA] 登录失败:" << login.message;
             return result;
         }
     }
 
+    const QString pkg = FactoryCloudClient::packageName();
+    const QString bid = FactoryCloudClient::buildId();
+    const QString ver = FactoryCloudClient::appVersion();
+    qDebug() << "[OTA] 检查更新 发送: packageName=" << pkg << "buildId=" << bid << "appVersion=" << ver;
+
     QUrlQuery query;
-    query.addQueryItem(QStringLiteral("packageName"), FactoryCloudClient::packageName());
-    query.addQueryItem(QStringLiteral("buildId"), FactoryCloudClient::buildId());
-    query.addQueryItem(QStringLiteral("appVersion"), FactoryCloudClient::appVersion());
+    query.addQueryItem(QStringLiteral("packageName"), pkg);
+    query.addQueryItem(QStringLiteral("buildId"), bid);
+    query.addQueryItem(QStringLiteral("appVersion"), ver);
     query.addQueryItem(QStringLiteral("stationKey"), FactoryCloudClient::stationKey());
     query.addQueryItem(QStringLiteral("deviceId"), FactoryCloudClient::deviceId());
 
@@ -81,21 +89,24 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
         FactoryCloudClient::get(QStringLiteral("/host-app/check"), query);
     if (!api.ok) {
         result.message = api.message;
+        qDebug() << "[OTA] 请求失败:" << api.message;
         return result;
     }
 
     result.ok = true;
+    result.hostNewer = api.data.value(QStringLiteral("hostNewer")).toBool();
     result.hasUpdate = api.data.value(QStringLiteral("hasUpdate")).toBool();
-    if (!result.hasUpdate && api.data.contains(QStringLiteral("latest"))) {
+    if (api.data.contains(QStringLiteral("latest"))) {
         const QJsonObject latest = api.data.value(QStringLiteral("latest")).toObject();
-        result.hasUpdate = !latest.isEmpty();
-        result.appVersion = latest.value(QStringLiteral("appVersion")).toString();
-        result.buildId = latest.value(QStringLiteral("buildId")).toString();
-        result.downloadUrl = latest.value(QStringLiteral("downloadUrl")).toString();
-        result.sha256 = latest.value(QStringLiteral("sha256")).toString();
-        result.forceUpgrade = latest.value(QStringLiteral("forceUpgrade")).toBool();
-        result.releaseNotes = latest.value(QStringLiteral("releaseNotes")).toString();
-        result.packageName = latest.value(QStringLiteral("packageName")).toString();
+        if (!latest.isEmpty()) {
+            result.appVersion = latest.value(QStringLiteral("appVersion")).toString();
+            result.buildId = latest.value(QStringLiteral("buildId")).toString();
+            result.downloadUrl = latest.value(QStringLiteral("downloadUrl")).toString();
+            result.sha256 = latest.value(QStringLiteral("sha256")).toString();
+            result.forceUpgrade = latest.value(QStringLiteral("forceUpgrade")).toBool();
+            result.releaseNotes = latest.value(QStringLiteral("releaseNotes")).toString();
+            result.packageName = latest.value(QStringLiteral("packageName")).toString();
+        }
     } else {
         result.appVersion = api.data.value(QStringLiteral("latestVersion")).toString();
         result.buildId = api.data.value(QStringLiteral("buildId")).toString();
@@ -105,9 +116,18 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
         result.releaseNotes = api.data.value(QStringLiteral("releaseNotes")).toString();
         result.packageName = api.data.value(QStringLiteral("packageName")).toString();
     }
+    result.uploadedAt = api.data.value(QStringLiteral("uploadedAt")).toString();
+
+    qDebug() << "[OTA] 检查结果:"
+             << "hostNewer=" << result.hostNewer
+             << "hasUpdate=" << result.hasUpdate
+             << "latestAppVersion=" << result.appVersion
+             << "latestBuildId=" << result.buildId;
 
     if (result.hasUpdate) {
         result.message = QStringLiteral("发现新版本 %1 (buildId=%2)").arg(result.appVersion, result.buildId);
+    } else if (result.hostNewer) {
+        result.message = QStringLiteral("本地版本比服务器新，正在上传…");
     } else {
         result.message = QStringLiteral("当前已是最新版本");
     }
@@ -131,7 +151,11 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     QString downloadError;
     const QString url = info.downloadUrl.trimmed();
     if (url.isEmpty()) {
-        if (!FactoryCloudClient::downloadToFile(QStringLiteral("/host-app/download/") + info.buildId, QUrlQuery(),
+        QUrlQuery downloadQuery;
+        if (!info.uploadedAt.isEmpty()) {
+            downloadQuery.addQueryItem(QStringLiteral("uploadedAt"), info.uploadedAt);
+        }
+        if (!FactoryCloudClient::downloadToFile(QStringLiteral("/host-app/download/") + info.buildId, downloadQuery,
                                                 savePath, &downloadError)) {
             if (message) {
                 *message = downloadError;
@@ -148,6 +172,7 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     if (!info.sha256.isEmpty()) {
         const QString actual = sha256File(savePath);
         if (actual.compare(info.sha256, Qt::CaseInsensitive) != 0) {
+            qDebug() << "[OTA] sha256 不匹配: 期望=" << info.sha256 << "实际=" << actual;
             QFile::remove(savePath);
             if (message) {
                 *message = QStringLiteral("sha256 校验失败");
@@ -156,15 +181,17 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
         }
     }
 
-    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostAppVersion"), info.appVersion);
-    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostAppBuildId"), info.buildId);
-    SETTINGS.setValue(QStringLiteral("HostAppVersion"), info.appVersion);
-    SETTINGS.setValue(QStringLiteral("HostAppBuildId"), info.buildId);
-    SETTINGS.sync();
+    // 不再写入 settings —— appVersion() 和 buildId() 始终从 exe 解析
 
     if (parent) {
-        QMessageBox::information(parent, QStringLiteral("软件更新"),
-                                 QStringLiteral("下载完成，即将重启并安装新版本…"));
+        QMessageBox* msgBox = new QMessageBox(parent);
+        msgBox->setWindowTitle(QStringLiteral("软件更新"));
+        msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本…\n\n5秒后自动关闭"));
+        msgBox->setStandardButtons(QMessageBox::Ok);
+        msgBox->setDefaultButton(QMessageBox::Ok);
+        QTimer::singleShot(5000, msgBox, &QMessageBox::accept);
+        msgBox->exec();
+        msgBox->deleteLater();
     }
     if (!startDeleteSelfBat(savePath)) {
         if (message) {
@@ -178,11 +205,152 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     return true;
 }
 
+bool HostOtaService::uploadCurrentExe(QString* message) {
+    if (!AuthService::isLoggedIn()) {
+        const AuthService::LoginResult login = AuthService::loginWithSavedCredentials();
+        if (!login.ok) {
+            if (message) {
+                *message = login.message;
+            }
+            qDebug() << "[OTA] 上传失败: 登录失败" << (message ? *message : "");
+            return false;
+        }
+    }
+
+    const QString exePath = QCoreApplication::applicationFilePath();
+    if (!QFile::exists(exePath)) {
+        if (message) {
+            *message = QStringLiteral("当前 exe 不存在");
+        }
+        qDebug() << "[OTA] 上传失败: exe 不存在" << exePath;
+        return false;
+    }
+
+    const QString sha256 = sha256File(exePath);
+    const QString appVer = FactoryCloudClient::appVersion();
+    const QString bid = FactoryCloudClient::buildId();
+    const QString pkg = FactoryCloudClient::packageName();
+    qDebug() << "[OTA] 上传 exe:" << exePath << "appVersion=" << appVer << "buildId=" << bid << "packageName=" << pkg;
+
+    QList<QPair<QString, QString>> fields;
+    fields.append({QStringLiteral("appVersion"), appVer});
+    fields.append({QStringLiteral("buildId"), bid});
+    fields.append({QStringLiteral("packageName"), pkg});
+    if (!sha256.isEmpty()) {
+        fields.append({QStringLiteral("sha256"), sha256});
+    }
+
+    const FactoryCloudClient::ApiResult api =
+        FactoryCloudClient::uploadExe(exePath, fields);
+    if (!api.ok) {
+        if (message) {
+            *message = api.message;
+        }
+        qDebug() << "[OTA] 上传失败:" << (message ? *message : "");
+        return false;
+    }
+    if (message) {
+        *message = QStringLiteral("上位机版本已上报（%1 buildId=%2）").arg(appVer, bid);
+    }
+    qDebug() << "[OTA] 上传成功:" << appVer << bid;
+    return true;
+}
+
+bool HostOtaService::showVersionPicker(QWidget* parent,
+                                       const std::function<void(const QString&)>& logFn) {
+    auto log = [&](const QString& text) {
+        if (logFn) {
+            logFn(text);
+        }
+    };
+
+    if (!AuthService::isLoggedIn()) {
+        const AuthService::LoginResult login = AuthService::loginWithSavedCredentials();
+        if (!login.ok) {
+            if (parent) {
+                QMessageBox::warning(parent, QStringLiteral("检查更新"), login.message);
+            }
+            log(login.message);
+            return false;
+        }
+    }
+
+    const FactoryCloudClient::ApiResult api =
+        FactoryCloudClient::get(QStringLiteral("/host-app/versions"));
+    if (!api.ok) {
+        if (parent) {
+            QMessageBox::warning(parent, QStringLiteral("检查更新"), api.message);
+        }
+        log(api.message);
+        return false;
+    }
+
+    const QJsonArray items = api.data.value(QStringLiteral("items")).toArray();
+    if (items.isEmpty()) {
+        if (parent) {
+            QMessageBox::information(parent, QStringLiteral("检查更新"),
+                                     QStringLiteral("服务器上暂无可用版本"));
+        }
+        return true;
+    }
+
+    // 构建版本列表显示文字
+    QStringList displayItems;
+    QList<QJsonObject> versionObjects;
+    for (const auto& val : items) {
+        const QJsonObject v = val.toObject();
+        const QString ver = v.value(QStringLiteral("appVersion")).toString();
+        const QString bid = v.value(QStringLiteral("buildId")).toString();
+        const QString notes = v.value(QStringLiteral("releaseNotes")).toString();
+        const QString time = v.value(QStringLiteral("uploadedAt")).toString();
+        QString label = QStringLiteral("%1 (buildId=%2)").arg(ver, bid);
+        if (!notes.isEmpty()) {
+            label += QStringLiteral(" - %1").arg(notes);
+        }
+        displayItems.append(label);
+        versionObjects.append(v);
+    }
+
+    // 弹出版本选择对话框
+    bool ok = false;
+    const QString selected = QInputDialog::getItem(parent, QStringLiteral("选择版本"),
+                                                    QStringLiteral("请选择要升级的版本："),
+                                                    displayItems, 0, false, &ok);
+    if (!ok || selected.isEmpty()) {
+        return true;
+    }
+
+    const int idx = displayItems.indexOf(selected);
+    if (idx < 0 || idx >= versionObjects.size()) {
+        return true;
+    }
+
+    const QJsonObject chosen = versionObjects[idx];
+    CheckResult info;
+    info.hasUpdate = true;
+    info.appVersion = chosen.value(QStringLiteral("appVersion")).toString();
+    info.buildId = chosen.value(QStringLiteral("buildId")).toString();
+    info.sha256 = chosen.value(QStringLiteral("sha256")).toString();
+    info.forceUpgrade = chosen.value(QStringLiteral("forceUpgrade")).toBool();
+    info.releaseNotes = chosen.value(QStringLiteral("releaseNotes")).toString();
+    info.packageName = chosen.value(QStringLiteral("packageName")).toString();
+    info.uploadedAt = chosen.value(QStringLiteral("uploadedAt")).toString();
+
+    QString message;
+    downloadAndApply(info, parent, &message);
+    if (!message.isEmpty()) {
+        log(message);
+    }
+    return true;
+}
+
 bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
                                           const std::function<void(const QString&)>& logFn) {
-    const QString baseUrl = SETTINGS.value(QStringLiteral("FactoryCloud/BaseUrl")).toString().trimmed();
+    const QString baseUrl = FactoryCloudClient::baseUrl();
+    qDebug() << "[OTA] tryInteractiveUpdate baseUrl=" << baseUrl;
     if (baseUrl.isEmpty() ||
         !SETTINGS.value(QStringLiteral("FactoryCloud/Feature/HostOtaCheck"), true).toBool()) {
+        qDebug() << "[OTA] OTA 未配置，跳过";
         return false;
     }
 
@@ -192,33 +360,33 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
         }
     };
 
+    log(QStringLiteral("[OTA] 正在检查更新…"));
     const CheckResult check = checkUpdate();
     if (!check.ok) {
-        log(check.message);
+        log(QStringLiteral("[OTA] 检查失败: ") + check.message);
+        if (parent) {
+            QMessageBox::warning(parent, QStringLiteral("检查更新"), check.message);
+        }
         return false;
     }
-    if (!check.hasUpdate) {
-        log(check.message);
+
+    if (check.hostNewer) {
+        log(QStringLiteral("[OTA] hostNewer=true，尝试上传当前版本"));
+        QString uploadMsg;
+        const bool uploaded = uploadCurrentExe(&uploadMsg);
+        if (parent) {
+            if (uploaded) {
+                QMessageBox::information(parent, QStringLiteral("检查更新"),
+                                         QStringLiteral("已将本地版本上传至服务器"));
+            } else {
+                QMessageBox::warning(parent, QStringLiteral("检查更新"),
+                                     QStringLiteral("上传失败：") + uploadMsg);
+            }
+        }
+        log(QStringLiteral("[OTA] 上传结果: ") + uploadMsg);
         return true;
     }
 
-    const QString text = check.releaseNotes.isEmpty()
-        ? check.message
-        : check.message + QStringLiteral("\n\n") + check.releaseNotes;
-    if (!check.forceUpgrade) {
-        const auto answer = QMessageBox::question(parent, QStringLiteral("软件更新"), text);
-        if (answer != QMessageBox::Yes) {
-            return true;
-        }
-    } else if (parent) {
-        QMessageBox::information(parent, QStringLiteral("软件更新"),
-                                 QStringLiteral("检测到强制升级版本，即将下载…\n\n") + text);
-    }
-
-    QString message;
-    downloadAndApply(check, parent, &message);
-    if (!message.isEmpty()) {
-        log(message);
-    }
-    return true;
+    log(QStringLiteral("[OTA] hostNewer=false，弹出版本选择列表"));
+    return showVersionPicker(parent, logFn);
 }

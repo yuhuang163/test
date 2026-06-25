@@ -18,11 +18,10 @@ class qsetting : public QWidget {
   public:
     explicit qsetting(QWidget* parent = nullptr);
     ~qsetting();
-
+    void loadConfig();
   private:
     Ui::qsetting* ui;
     QButtonGroup* StationGroup = new QButtonGroup(this);
-    void loadConfig();
     void saveConfig();
     void updateMainStyle(QString style);
     void readSubPIDAndFilter();
@@ -51,9 +50,8 @@ class qsetting : public QWidget {
     void on_pushButton_mesConfigFileBrowse_clicked();
     void on_pushButton_factoryCloudUploadLogs_clicked();
     void on_pushButton_factoryCloudLogin_clicked();
-    void on_pushButton_syncThreshold_clicked();
+    void on_pushButton_uploadTestCase_clicked();
     void on_pushButton_syncTestCase_clicked();
-    void on_pushButton_checkHostOta_clicked();
 };
 
 #endif // QSETTING_H
