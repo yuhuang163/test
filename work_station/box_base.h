@@ -53,6 +53,8 @@ class box_base : public QMainWindow {
     QList<test_base*> testList;
     MesPacketData pack;
     std::vector<int> FixTureStates;
+    QLabel* cloudLoginLabel = nullptr;
+    void refreshCloudLoginState();
 
   public slots:
     virtual void checkAllover(int);

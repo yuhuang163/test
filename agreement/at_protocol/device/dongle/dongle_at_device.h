@@ -42,7 +42,7 @@ class DongleAtDevice : public QObject {
   private:
     void registerCommand();
     void sendAtLine(const QString& line);
-
+    void device_name(const QString& p);
     void help(const QString& p);
     void rssi(const QString& p);
     void dongle_ver(const QString& p);

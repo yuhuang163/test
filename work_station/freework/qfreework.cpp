@@ -470,6 +470,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     showlog(QStringLiteral("mesItemValue======") + mesItemValue);
     pack.itemvalue = mesItemValue;
     pack.sn = ui->getMac->text();
+    pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
     if (TestResult == failValue) {
         ui->test_result->setText(QStringLiteral("FAIL"));

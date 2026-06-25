@@ -219,7 +219,6 @@ SOURCES += \
     platform/cloud/log_upload/log_upload_service.cpp \
     platform/cloud/client/factory_cloud_client.cpp \
     platform/cloud/auth/auth_service.cpp \
-    platform/cloud/sync/threshold_sync_service.cpp \
     platform/cloud/sync/test_case_sync_service.cpp \
     platform/cloud/ota/host_ota_service.cpp \
     platform/cloud/test_data/test_data_upload_service.cpp \
@@ -366,7 +365,6 @@ HEADERS += \
     platform/cloud/log_upload/log_upload_service.h \
     platform/cloud/client/factory_cloud_client.h \
     platform/cloud/auth/auth_service.h \
-    platform/cloud/sync/threshold_sync_service.h \
     platform/cloud/sync/test_case_sync_service.h \
     platform/cloud/ota/host_ota_service.h \
     platform/cloud/test_data/test_data_upload_service.h \

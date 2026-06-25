@@ -67,7 +67,11 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
         (void)AuthService::loginWithSavedCredentials();
     }
 
-    QString station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
+    // 优先使用测试流程编排中选中的工站名称（与自由工站 tab 显示名称一致）
+    QString station = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    if (station.isEmpty()) {
+        station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
+    }
     if (station.isEmpty()) {
         station = FactoryCloudClient::stationKey();
     }
@@ -84,8 +88,7 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
     body.insert(QStringLiteral("lotName"), pack.lotName.trimmed());
     body.insert(QStringLiteral("userNo"), pack.userNo.trimmed());
     body.insert(QStringLiteral("clientVersion"), FactoryCloudClient::appVersion());
-    body.insert(QStringLiteral("testedAt"),
-                QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    body.insert(QStringLiteral("testedAt"),QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
 
     QJsonArray items;
     const QVector<TestRecordStore::ParsedItem> parsed = TestRecordStore::parseItemValue(pack);

@@ -19,7 +19,6 @@
 #include "bydmes.h"
 #include "log_upload_service.h"
 #include "auth_service.h"
-#include "threshold_sync_service.h"
 #include "test_case_sync_service.h"
 #include "host_ota_service.h"
 #include "factory_cloud_client.h"
@@ -155,7 +154,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"V3", "V3Pro"};
+    QStringList productList = {"V3", "V3Pro", "M8"};
     ui->comboBox_productName->addItems(productList);
 
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
@@ -205,13 +204,13 @@ void qsetting::initSettingTooltips() {
         "上位机全局参数；修改工站类型后需重启程序生效。\n"
         "串口、窗口大小、当前工站、WIFI/Name* →「上位机设置.local.ini」（不入库）；\n"
         "其余参数 →「上位机设置.ini」。"));
-    const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
+    // const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
     const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);
     const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
-    if (tabFixture >= 0) {
-        ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
-    }
+    // if (tabFixture >= 0) {
+    //     ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
+    // }
     if (tabKey >= 0) {
         ui->tabWidget->setTabToolTip(tabKey, QStringLiteral("MES、工站、电流/IMU/信号、基础信息与产品差异化等。"));
     }
@@ -449,6 +448,23 @@ qsetting::~qsetting() {
     qDebug() << "已经删除页面";
     delete ui;
 }
+void qsetting::closeEvent(QCloseEvent* event) {
+    if (stationReloading_) {
+        qDebug() << "切换工站中，跳过设置页关闭保存";
+        event->accept();
+        return;
+    }
+    const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
+    if (testFlowEditor_ && tabTestFlow >= 0 && ui->tabWidget->currentIndex() == tabTestFlow) {
+        if (!testFlowEditor_->confirmDiscardOrSaveOnLeave()) {
+            event->ignore();
+            return;
+        }
+    }
+    saveConfig();
+    qDebug() << "已经保存配置信息";
+    event->accept();
+}
 
 void qsetting::saveSubPIDAndFilter() {
     // 获取 QLineEdit 控件中的文本内容
@@ -560,23 +576,6 @@ void qsetting::saveConfig() {
     }
 }
 
-void qsetting::closeEvent(QCloseEvent* event) {
-    if (stationReloading_) {
-        qDebug() << "切换工站中，跳过设置页关闭保存";
-        event->accept();
-        return;
-    }
-    const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
-    if (testFlowEditor_ && tabTestFlow >= 0 && ui->tabWidget->currentIndex() == tabTestFlow) {
-        if (!testFlowEditor_->confirmDiscardOrSaveOnLeave()) {
-            event->ignore();
-            return;
-        }
-    }
-    saveConfig();
-    qDebug() << "已经保存配置信息";
-    event->accept();
-}
 
 void qsetting::RestoreProductDefaultSetting() {
     ui->checkBox_PressIndependent->setChecked(true); //默认所有产品都直接开始
@@ -1051,53 +1050,42 @@ void qsetting::on_pushButton_factoryCloudLogin_clicked() {
     }
 }
 
-void qsetting::on_pushButton_syncThreshold_clicked() {
+void qsetting::on_pushButton_uploadTestCase_clicked() {
     saveConfig();
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在同步阈值…"));
-    const ThresholdSyncService::SyncResult result = ThresholdSyncService::syncFromCloud();
+    if (!TestCaseSyncService::isEnabled()) {
+        QMessageBox::information(this, QStringLiteral("用例上传"), QStringLiteral("测试用例云同步未启用"));
+        return;
+    }
+    const auto answer =
+        QMessageBox::question(this, QStringLiteral("上传用例"),
+                              QStringLiteral("将打包本地 test_case 目录（不含 .backup）上传至云端并发布新版本，其他产线机可「下载用例」拉取。\n\n确认上传？"));
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在打包并上传测试用例…"));
+    const TestCaseSyncService::SyncResult result = TestCaseSyncService::uploadToCloud();
     ui->label_factoryCloudStatus->setText(result.message);
     if (result.ok) {
-        QMessageBox::information(this, QStringLiteral("阈值同步"), result.message);
+        QMessageBox::information(this, QStringLiteral("用例上传"), result.message);
     } else {
-        QMessageBox::warning(this, QStringLiteral("阈值同步"), result.message);
+        QMessageBox::warning(this, QStringLiteral("用例上传"), result.message);
     }
 }
 
 void qsetting::on_pushButton_syncTestCase_clicked() {
     saveConfig();
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在同步测试用例…"));
+    if (!TestCaseSyncService::isEnabled()) {
+        QMessageBox::information(this, QStringLiteral("用例下载"), QStringLiteral("测试用例云同步未启用"));
+        return;
+    }
+    ui->label_factoryCloudStatus->setText(QStringLiteral("正在从云端下载测试用例…"));
     const TestCaseSyncService::SyncResult result = TestCaseSyncService::syncFromCloud();
     ui->label_factoryCloudStatus->setText(result.message);
     if (result.ok) {
-        QMessageBox::information(this, QStringLiteral("用例同步"), result.message);
+        QMessageBox::information(this, QStringLiteral("用例下载"), result.message);
     } else {
-        QMessageBox::warning(this, QStringLiteral("用例同步"), result.message);
+        QMessageBox::warning(this, QStringLiteral("用例下载"), result.message);
     }
 }
 
-void qsetting::on_pushButton_checkHostOta_clicked() {
-    saveConfig();
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在检查更新…"));
-    const HostOtaService::CheckResult check = HostOtaService::checkUpdate();
-    ui->label_factoryCloudStatus->setText(check.message);
-    if (!check.ok) {
-        QMessageBox::warning(this, QStringLiteral("软件更新"), check.message);
-        return;
-    }
-    if (!check.hasUpdate) {
-        QMessageBox::information(this, QStringLiteral("软件更新"), check.message);
-        return;
-    }
-    const QString text = check.releaseNotes.isEmpty()
-        ? check.message
-        : check.message + QStringLiteral("\n\n") + check.releaseNotes;
-    const auto answer = QMessageBox::question(this, QStringLiteral("软件更新"), text);
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
-    QString message;
-    HostOtaService::downloadAndApply(check, this, &message);
-    if (!message.isEmpty()) {
-        ui->label_factoryCloudStatus->setText(message);
-    }
-}
+

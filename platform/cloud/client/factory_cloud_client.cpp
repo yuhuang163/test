@@ -4,7 +4,10 @@
 
 #include <QCoreApplication>
 #include <QEventLoop>
+#include <QFile>
 #include <QFileInfo>
+#include <QHttpMultiPart>
+#include <QHttpPart>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
@@ -167,26 +170,10 @@ QString FactoryCloudClient::stationKey() {
 }
 
 QString FactoryCloudClient::appVersion() {
-    const QString saved = readSetting("FactoryCloud/HostAppVersion");
-    if (!saved.isEmpty()) {
-        return saved;
-    }
-    const QString host = readSetting("HostAppVersion");
-    if (!host.isEmpty()) {
-        return host;
-    }
     return parseVersionFromMacro();
 }
 
 QString FactoryCloudClient::buildId() {
-    const QString saved = readSetting("FactoryCloud/HostAppBuildId");
-    if (!saved.isEmpty()) {
-        return saved;
-    }
-    const QString host = readSetting("HostAppBuildId");
-    if (!host.isEmpty()) {
-        return host;
-    }
     return parseBuildIdFromExe();
 }
 
@@ -260,6 +247,111 @@ FactoryCloudClient::ApiResult FactoryCloudClient::post(const QString& path, cons
         ApiResult r;
         r.message = QStringLiteral("网络错误：") + qtError;
         return r;
+    }
+    return parseEnvelope(resp, httpStatus, qtError);
+}
+
+FactoryCloudClient::ApiResult FactoryCloudClient::uploadMultipart(
+    const QString& path, const QString& zipPath, const QList<QPair<QString, QString>>& formFields) {
+    ApiResult failResult;
+    if (!QFile::exists(zipPath)) {
+        failResult.message = QStringLiteral("压缩包不存在：") + zipPath;
+        return failResult;
+    }
+    QFile file(zipPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        failResult.message = QStringLiteral("无法打开压缩包：") + zipPath;
+        return failResult;
+    }
+    const QByteArray zipData = file.readAll();
+    file.close();
+
+    QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    for (const auto& field : formFields) {
+        QHttpPart part;
+        part.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QStringLiteral("form-data; name=\"%1\"").arg(field.first)));
+        part.setBody(field.second.toUtf8());
+        multiPart->append(part);
+    }
+    QHttpPart filePart;
+    const QString fileName = QFileInfo(zipPath).fileName();
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QStringLiteral("form-data; name=\"file\"; filename=\"%1\"").arg(fileName)));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant(QStringLiteral("application/zip")));
+    filePart.setBody(zipData);
+    multiPart->append(filePart);
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(QUrl(apiRoot() + path));
+    applyFactoryHeaders(request, false);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    request.setTransferTimeout(kHttpTimeoutMs);
+#endif
+    QNetworkReply* reply = manager.post(request, multiPart);
+    multiPart->setParent(reply);
+    QObject::connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors), reply,
+                     QOverload<>::of(&QNetworkReply::ignoreSslErrors));
+
+    QString qtError;
+    int httpStatus = 0;
+    const QByteArray resp = waitReply(reply, &qtError, &httpStatus);
+    const bool netOk = reply->error() == QNetworkReply::NoError;
+    reply->deleteLater();
+    if (!netOk && resp.isEmpty()) {
+        failResult.message = QStringLiteral("网络错误：") + qtError;
+        return failResult;
+    }
+    return parseEnvelope(resp, httpStatus, qtError);
+}
+
+FactoryCloudClient::ApiResult FactoryCloudClient::uploadExe(
+    const QString& exePath, const QList<QPair<QString, QString>>& formFields) {
+    ApiResult failResult;
+    QFile file(exePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        failResult.message = QStringLiteral("无法打开 exe：") + exePath;
+        return failResult;
+    }
+    const QByteArray exeData = file.readAll();
+    file.close();
+
+    QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    for (const auto& field : formFields) {
+        QHttpPart part;
+        part.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QStringLiteral("form-data; name=\"%1\"").arg(field.first)));
+        part.setBody(field.second.toUtf8());
+        multiPart->append(part);
+    }
+    QHttpPart filePart;
+    const QString fileName = QFileInfo(exePath).fileName();
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QStringLiteral("form-data; name=\"file\"; filename=\"%1\"").arg(fileName)));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader,
+                       QVariant(QStringLiteral("application/octet-stream")));
+    filePart.setBody(exeData);
+    multiPart->append(filePart);
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(QUrl(apiRoot() + QStringLiteral("/host-app/upload")));
+    applyFactoryHeaders(request, false);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    request.setTransferTimeout(kHttpTimeoutMs);
+#endif
+    QNetworkReply* reply = manager.post(request, multiPart);
+    multiPart->setParent(reply);
+    QObject::connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors), reply,
+                     QOverload<>::of(&QNetworkReply::ignoreSslErrors));
+
+    QString qtError;
+    int httpStatus = 0;
+    const QByteArray resp = waitReply(reply, &qtError, &httpStatus);
+    const bool netOk = reply->error() == QNetworkReply::NoError;
+    reply->deleteLater();
+    if (!netOk && resp.isEmpty()) {
+        failResult.message = QStringLiteral("上传 exe 网络错误：") + qtError;
+        return failResult;
     }
     return parseEnvelope(resp, httpStatus, qtError);
 }

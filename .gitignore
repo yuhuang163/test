@@ -10,6 +10,7 @@ build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/Ubuntu.qss
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/**
+build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/.backup
 new_production.pro.*
 # 仅共享工作区编码等团队约定，其余 VS Code 本地项仍忽略
 .vscode/*

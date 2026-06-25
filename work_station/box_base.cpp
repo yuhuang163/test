@@ -2,6 +2,7 @@
 
 #include <QMessageBox>
 #include <QRegularExpression>
+#include <QTimer>
 #include <QtGlobal>
 
 #include "qaction.h"
@@ -10,6 +11,7 @@
 #include "qstatusbar.h"
 #include "test_base.h"
 #include "host_ota_service.h"
+#include "platform/cloud/auth/auth_service.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -26,6 +28,13 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
 
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
+
+    cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
+    statusBar()->addPermanentWidget(cloudLoginLabel);
+    refreshCloudLoginState();
+    QTimer* loginTimer = new QTimer(this);
+    connect(loginTimer, &QTimer::timeout, this, &box_base::refreshCloudLoginState);
+    loginTimer->start(30000);
 }
 void box_base::provideAuthentication(QNetworkReply* reply, QAuthenticator* authenticator) {
     qDebug() << "远程 provideAuthentication reply:" << reply;
@@ -392,22 +401,34 @@ void box_base::ShowData(QMainWindow* parent) {
     for (int i = 0; i < testList.size(); ++i)
         testList[i]->msgEdit()->appendPlainText("当前产品为:" + pack.product);
 
-    QAction* updata = parent->menuBar()->addAction("软件更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
-    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toInt()) {
-        updata->setVisible(false);
-    }
 
     QAction* setting = parent->menuBar()->addAction("功能设置");
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
     if (!SETTINGS.value("SYSTEM/setting").toInt()) {
         setting->setVisible(false);
     }
+
+        QAction* updata = parent->menuBar()->addAction("检查更新");
+    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool()) {
+        updata->setVisible(false);
+    }
+
 }
 
+void box_base::refreshCloudLoginState() {
+    if (AuthService::isLoggedIn()) {
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录</font>"));
+    } else {
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='red'>未登录</font>"));
+    }
+}
 void box_base::setting_ui() {
-    if (qsetting_ui == NULL) {
+    if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
+    } else {
+        // 如果窗口已存在，重新加载配置以确保显示最新设置
+        qsetting_ui->loadConfig();
     }
     qsetting_ui->raise();
     qsetting_ui->show();

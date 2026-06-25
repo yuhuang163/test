@@ -280,6 +280,11 @@ typedef struct {
     QString version;
 } ProtocolDongleVersionData;
 
+
+typedef struct {
+    QString name;
+} ProtocolDongleDeviceNameData;
+
 typedef struct {
     QString ssid;
 } ProtocolDongleWifiSsidData;
@@ -534,5 +539,6 @@ Q_DECLARE_METATYPE(ProtocolRssiData)
 Q_DECLARE_METATYPE(ProtocolMacData)
 Q_DECLARE_METATYPE(ProtocolAckData)
 Q_DECLARE_METATYPE(ProtocolMeasureData)
+Q_DECLARE_METATYPE(ProtocolDongleDeviceNameData)
 
 #endif // QPB_TYPES_H

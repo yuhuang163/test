@@ -131,6 +131,7 @@ void DongleAtDevice::registerCommand() {
     commandList_["AT+WIFI_DATA"] = std::bind(&DongleAtDevice::SEND_WIFI_DATA, this, _1);
     commandList_["AT+WIFIIP"] = std::bind(&DongleAtDevice::SEND_WIFI_IP, this, _1);
     commandList_["ATCH"] = std::bind(&DongleAtDevice::scan_result, this, _1);
+    commandList_["AT+DEVICENAME"] = std::bind(&DongleAtDevice::device_name, this, _1);
 }
 
 void DongleAtDevice::SEND_WIFI_DATA(const QString& p) {
@@ -178,11 +179,14 @@ void DongleAtDevice::dongle_ver(const QString& p) {
     emitReport(QStringLiteral("ProtocolDongleVersionData"), QVariant::fromValue(ProtocolDongleVersionData{p}));
 }
 
+void DongleAtDevice::device_name(const QString& p) {
+    qDebug() << "dongle设备名称为" << p;
+    emitReport(QStringLiteral("ProtocolDongleDeviceNameData"), QVariant::fromValue(ProtocolDongleDeviceNameData{p}));
+}
 void DongleAtDevice::dongle_wifi(const QString& p) {
     qDebug() << "dongle的wifi为" << p;
     emitReport(QStringLiteral("ProtocolDongleWifiSsidData"), QVariant::fromValue(ProtocolDongleWifiSsidData{p}));
 }
-
 void DongleAtDevice::rssi(const QString& p) {
     if (!p.isEmpty() && p.at(0) == QLatin1Char('-'))
         emitReport(QStringLiteral("ProtocolDongleBleRssiData"), QVariant::fromValue(ProtocolDongleBleRssiData{p}));
