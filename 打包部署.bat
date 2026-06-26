@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0pack-deploy.bat" %*
+call "%~dp0build-deploy.bat" %*

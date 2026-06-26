@@ -1,0 +1,56 @@
+路特产线管理平台 - Windows Server 生产部署（IIS + fctp.luteos.com）
+
+适用：本机 pack-deploy.bat 打包，服务器 IIS 托管前端，Python API 本机 8800。
+
+一、DNS（阿里云云解析，域名 luteos.com）
+  记录类型 A
+  主机记录 fctp
+  记录值   120.25.211.50（本 ECS 公网 IP）
+  生效后：fctp.luteos.com -> 本服务器
+  注意：若原 fctp 指向其他 IP（如旧 OTA 机 47.106.162.10），改 A 记录后全域名切到本机；
+        须在本机同时提供 /api/factory-tool/*（已含）及原 OTA 接口，或先完成迁移再改 DNS。
+
+二、服务器目录（勿放桌面）
+  推荐根目录：C:\inetpub\lute-factory\  或  D:\lute-factory\
+  解压 zip 后结构示例：
+    C:\inetpub\lute-factory\factory-api\          Python API（start-api-prod.bat）
+    C:\inetpub\lute-factory\factory-admin\dist\   IIS 网站根目录（含 web.config）
+  不要放在 C:\Users\...\Desktop\ 下：IIS 应用池默认读不到该路径的 web.config（500.19）。
+
+三、启动 API
+  1. Python 3.10+，双击 start-api-prod.bat
+  2. 复制 factory-api\.env.production.example 为 .env 并修改 SECRET_KEY
+  3. 本机验证：http://127.0.0.1:8800/docs
+
+四、IIS 配置
+  1. 安装 IIS、URL Rewrite、ARR（启用 Proxy）
+  2. 新建网站：
+     - 物理路径：...\factory-admin\dist
+     - 绑定：http，端口 80，主机名 fctp.luteos.com
+     - HTTPS：申请证书后增加 https:443 同名绑定（推荐）
+  3. web.config 已将 /api 反代到 http://127.0.0.1:8800
+  4. 访问：https://fctp.luteos.com/  登录 admin / admin123
+
+五、防火墙 / 安全组（服务器本机能开、外网电脑打不开时，优先查这里）
+  A. 阿里云 ECS 安全组（控制台 → 云服务器 → 安全组 → 入方向）
+     - 授权策略：允许
+     - 协议：TCP
+     - 端口：80/80（网页）；后续 HTTPS 再加 443/443
+     - 授权对象：0.0.0.0/0（或公司出口 IP 段）
+     保存后等 1～2 分钟再测。
+  B. Windows 防火墙（服务器上以管理员 CMD）
+     netsh advfirewall firewall add rule name="HTTP 80" dir=in action=allow protocol=TCP localport=80
+     或：控制面板 → Windows 防火墙 → 高级 → 入站规则 → 启用「万维网服务(HTTP 流量入站)」
+  C. 外网自测（在你办公/家里电脑上，不要用服务器 hosts）
+     ping fctp.luteos.com          → 应解析到 120.25.211.50
+     浏览器：https://fctp.luteos.com/
+     或：http://120.25.211.50/  （需在 IIS 增加「80 端口、主机名为空」绑定，见第八节第 4 条）
+  D. 若 ping 通但网页超时 → 几乎一定是安全组或 Windows 防火墙未放行 80
+  E. 8800 仅内网调试；产线走域名 80/443 反代时可不对公网开放 8800
+
+六、上位机 FactoryCloud
+  - BaseUrl：https://fctp.luteos.com
+  - 设置页环境选「服务器」；接口前缀统一 /api/factory-tool/
+
+七、更新
+  - 本机 pack-deploy.bat -> 覆盖服务器 factory-api 与 factory-admin\dist -> 重启 API

@@ -1,58 +1,132 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard" v-loading="loading">
     <div class="welcome-card">
       <div class="welcome-text">
-        <h3>欢迎回来，{{ user.username }}</h3>
-        <p>角色：{{ roleText }} · 当前账号可在左侧菜单进入各功能模块</p>
+        <h3>路特产线管理平台</h3>
+        <p>{{ user.username }} · {{ roleText }}</p>
       </div>
-      <div class="welcome-icon">
-        <svg viewBox="0 0 120 80" width="140" height="90">
-          <rect x="10" y="30" width="20" height="40" rx="3" fill="#3b82f6" opacity="0.3"/>
-          <rect x="38" y="15" width="20" height="55" rx="3" fill="#3b82f6" opacity="0.55"/>
-          <rect x="66" y="22" width="20" height="48" rx="3" fill="#3b82f6" opacity="0.75"/>
-          <rect x="94" y="8" width="20" height="62" rx="3" fill="#3b82f6"/>
-          <line x1="6" y1="74" x2="114" y2="74" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-        </svg>
-      </div>
+      <div class="welcome-time">{{ now }}</div>
     </div>
 
     <el-row :gutter="16">
-      <el-col :xs="24" :sm="12" :md="6" v-for="card in cards" :key="card.title">
-        <el-card shadow="never" class="stat-card" @click="go(card.path)">
-          <div class="stat-icon" :style="{ background: card.bg }">
-            <el-icon :size="24" color="#fff">
-              <component :is="card.icon" />
-            </el-icon>
-          </div>
+      <el-col :span="6">
+        <el-card shadow="never" class="stat-card blue">
+          <div class="stat-icon"><el-icon :size="28"><Document /></el-icon></div>
           <div class="stat-body">
-            <div class="stat-title">{{ card.title }}</div>
-            <div class="stat-desc">{{ card.desc }}</div>
+            <div class="stat-val">{{ summary.totalRecords }}</div>
+            <div class="stat-label">累计测试记录</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="never" class="stat-card green">
+          <div class="stat-icon"><el-icon :size="28"><List /></el-icon></div>
+          <div class="stat-body">
+            <div class="stat-val">{{ summary.todayTotal }}</div>
+            <div class="stat-label">今日测试数</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="never" class="stat-card teal">
+          <div class="stat-icon"><el-icon :size="28"><CircleCheck /></el-icon></div>
+          <div class="stat-body">
+            <div class="stat-val">{{ summary.todayPass }}</div>
+            <div class="stat-label">今日通过</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="never" class="stat-card" :class="summary.todayYield >= 95 ? 'teal' : summary.todayYield > 0 ? 'orange' : 'red'">
+          <div class="stat-icon"><el-icon :size="28"><TrendCharts /></el-icon></div>
+          <div class="stat-body">
+            <div class="stat-val">{{ summary.todayYield }}%</div>
+            <div class="stat-label">今日良率</div>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <el-row :gutter="16" class="info-row">
+    <el-row :gutter="16" class="section-row">
       <el-col :span="12">
-        <el-card shadow="never" class="info-card">
+        <el-card shadow="never" class="section-card">
           <template #header>
-            <span class="info-card-title">系统信息</span>
+            <div class="section-header">
+              <span>各工厂测试量</span>
+              <el-tag size="small" type="info">{{ summary.factories?.length || 0 }} 个工厂</el-tag>
+            </div>
           </template>
-          <div class="info-item"><span class="label">平台版本</span><span>v1.0.0</span></div>
-          <div class="info-item"><span class="label">当前用户</span><span>{{ user.username }}</span></div>
-          <div class="info-item"><span class="label">用户角色</span><span>{{ roleText }}</span></div>
-          <div class="info-item"><span class="label">服务状态</span><el-tag size="small" type="success">运行中</el-tag></div>
+          <div v-if="summary.factories?.length" class="factory-list">
+            <div v-for="f in summary.factories" :key="f.name" class="factory-item">
+              <span class="factory-name">{{ f.name }}</span>
+              <el-progress :percentage="pct(f.count)" :stroke-width="14" :show-text="false" />
+              <span class="factory-count">{{ f.count }}</span>
+            </div>
+          </div>
+          <el-empty v-else description="暂无测试数据" :image-size="80" />
         </el-card>
       </el-col>
       <el-col :span="12">
-        <el-card shadow="never" class="info-card">
+        <el-card shadow="never" class="section-card">
           <template #header>
-            <span class="info-card-title">快速入口</span>
+            <div class="section-header">
+              <span>快速入口</span>
+            </div>
           </template>
-          <el-button v-for="link in quickLinks" :key="link.title" class="quick-btn" @click="go(link.path)">
-            <el-icon><component :is="link.icon" /></el-icon>
-            {{ link.title }}
-          </el-button>
+          <div class="quick-grid">
+            <div v-for="link in quickLinks" :key="link.title" class="quick-item" @click="go(link.path)">
+              <div class="quick-icon" :style="{ background: link.bg }">
+                <el-icon :size="22" color="#fff"><component :is="link.icon" /></el-icon>
+              </div>
+              <div class="quick-title">{{ link.title }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="section-row">
+      <el-col :span="12">
+        <el-card shadow="never" class="section-card">
+          <template #header>
+            <div class="section-header">
+              <span>最近测试记录</span>
+              <el-button size="small" text @click="go('/data/test-records')">查看全部</el-button>
+            </div>
+          </template>
+          <el-table :data="summary.recentRecords" size="small" v-if="summary.recentRecords?.length" @row-click="(r) => go('/data/test-records')">
+            <el-table-column label="时间" width="140">
+              <template #default="{ row }">{{ formatTime(row.testedAt) }}</template>
+            </el-table-column>
+            <el-table-column prop="sn" label="SN" width="130" />
+            <el-table-column prop="station" label="工站" width="100" />
+            <el-table-column prop="testResult" label="结果" width="70">
+              <template #default="{ row }">
+                <el-tag :type="row.testResult === 'PASS' || row.testResult === 'OK' ? 'success' : 'danger'" size="small">
+                  {{ row.testResult || '-' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else description="暂无测试记录" :image-size="80" />
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="never" class="section-card">
+          <template #header>
+            <div class="section-header">
+              <span>最近日志上传</span>
+              <el-button size="small" text @click="go('/data/logs')">查看全部</el-button>
+            </div>
+          </template>
+          <el-table :data="summary.recentLogs" size="small" v-if="summary.recentLogs?.length" @row-click="() => go('/data/logs')">
+            <el-table-column label="时间" width="140">
+              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+            </el-table-column>
+            <el-table-column prop="hostName" label="电脑" width="130" />
+            <el-table-column prop="station" label="工站" width="140" />
+          </el-table>
+          <el-empty v-else description="暂无日志" :image-size="80" />
         </el-card>
       </el-col>
     </el-row>
@@ -60,18 +134,55 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useRole } from '../composables/useRole'
+import { formatTime } from '../utils/format'
+import * as api from '../api/analytics'
 import {
-  Document, Edit, UserFilled, Upload,
-  Files, Tools, Monitor, Clock
+  Document, List, CircleCheck, TrendCharts,
+  Files, Tools, Upload, UserFilled, Clock, DataAnalysis, DataLine
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const user = useUserStore()
 const { isAdmin, isEngineer } = useRole()
+const loading = ref(false)
+const summary = reactive({
+  totalRecords: 0, todayTotal: 0, todayPass: 0, todayFail: 0, todayYield: 0,
+  totalLogs: 0, factories: [], recentRecords: [], recentLogs: [],
+})
+
+const now = ref('')
+
+function updateTime() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  now.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const maxFactoryCount = ref(0)
+function pct(count) {
+  return maxFactoryCount.value > 0 ? Math.round(count / maxFactoryCount.value * 100) : 0
+}
+
+const quickLinks = [
+  { title: '日志查询', path: '/data/logs', icon: Document, bg: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
+  { title: '测试数据', path: '/data/test-records', icon: List, bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
+  { title: '数据曲线', path: '/data/curve', icon: DataLine, bg: 'linear-gradient(135deg, #10b981, #059669)' },
+  { title: '良率统计', path: '/data/yield', icon: TrendCharts, bg: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+]
+
+if (isEngineer.value) {
+  quickLinks.push({ title: '测试用例', path: '/config/test-cases', icon: Files, bg: 'linear-gradient(135deg, #ec4899, #db2777)' })
+}
+if (isAdmin.value) {
+  quickLinks.push({ title: '上位机版本', path: '/config/host-app', icon: Upload, bg: 'linear-gradient(135deg, #14b8a6, #0d9488)' })
+  quickLinks.push({ title: '账号管理', path: '/system/users', icon: UserFilled, bg: 'linear-gradient(135deg, #f97316, #ea580c)' })
+  quickLinks.push({ title: '设备登记', path: '/system/devices', icon: Tools, bg: 'linear-gradient(135deg, #6366f1, #4f46e5)' })
+  quickLinks.push({ title: '登录审计', path: '/system/audit-logins', icon: Clock, bg: 'linear-gradient(135deg, #78716c, #57534e)' })
+}
 
 const roleText = computed(() => {
   const r = user.roles || []
@@ -80,152 +191,94 @@ const roleText = computed(() => {
   return r.map((x) => map[x] || x).join('、')
 })
 
-const cards = computed(() => {
-  const list = [
-    { title: '日志查询', desc: '查看产线上传的操作日志', path: '/data/logs', icon: Document, bg: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
-  ]
-  if (isEngineer.value) {
-    list.push(
-      { title: '测试用例', desc: '编辑与发布测试用例', path: '/config/test-cases', icon: Edit, bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
-    )
+async function load() {
+  loading.value = true
+  try {
+    const data = await api.getDashboardSummary()
+    Object.assign(summary, data)
+    maxFactoryCount.value = Math.max(...(data.factories || []).map((f) => f.count), 1)
+  } catch {
+    // ignore
+  } finally {
+    loading.value = false
   }
-  if (isAdmin.value) {
-    list.push(
-      { title: '上位机版本', desc: '发版与运行环境管理', path: '/config/host-app', icon: Upload, bg: 'linear-gradient(135deg, #10b981, #059669)' },
-      { title: '账号管理', desc: '用户与工站授权管理', path: '/system/users', icon: UserFilled, bg: 'linear-gradient(135deg, #f59e0b, #d97706)' },
-    )
-  }
-  return list
-})
-
-const quickLinks = computed(() => {
-  const links = []
-  if (isAdmin.value) {
-    links.push({ title: '设备登记', path: '/system/devices', icon: Tools })
-    links.push({ title: '登录审计', path: '/system/audit-logins', icon: Clock })
-  }
-  if (isEngineer.value) {
-    links.push({ title: '测试用例', path: '/config/test-cases', icon: Files })
-  }
-  links.push({ title: '日志查询', path: '/data/logs', icon: Document })
-  return links
-})
+}
 
 function go(path) {
   router.push(path)
 }
+
+onMounted(() => {
+  load()
+  updateTime()
+  setInterval(updateTime, 1000)
+})
 </script>
 
 <style scoped>
-.dashboard {
-  max-width: 1200px;
-}
+.dashboard { max-width: 1200px; }
 
 .welcome-card {
   background: linear-gradient(135deg, #1e293b, #0f172a);
   border-radius: 16px;
-  padding: 28px 32px;
+  padding: 24px 32px;
   margin-bottom: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: #fff;
 }
-.welcome-text h3 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 700;
-}
-.welcome-text p {
-  margin: 0;
-  color: rgba(255,255,255,0.6);
-  font-size: 14px;
-}
-.welcome-icon {
-  opacity: 0.5;
-}
+.welcome-text h3 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+.welcome-text p { margin: 0; color: rgba(255,255,255,0.55); font-size: 14px; }
+.welcome-time { font-size: 15px; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
 
-/* 统计卡片 */
 .stat-card {
-  cursor: pointer;
   margin-bottom: 16px;
   border-radius: 14px;
   border: none;
   display: flex;
   align-items: center;
-  padding: 16px;
-  transition: all 0.2s ease;
+  padding: 18px 20px;
   background: #fff;
 }
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
-}
-
 .stat-icon {
-  width: 48px;
-  height: 48px;
+  width: 52px; height: 52px;
   border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-right: 16px;
 }
+.blue .stat-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.green .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+.teal .stat-icon { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.orange .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.red .stat-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
-.stat-body {
-  flex: 1;
-  min-width: 0;
-}
-.stat-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 4px;
-}
-.stat-desc {
-  font-size: 13px;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.stat-body { flex: 1; min-width: 0; }
+.stat-val { font-size: 30px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+.stat-label { font-size: 13px; color: #94a3b8; margin-top: 2px; }
 
-/* 信息卡片 */
-.info-row {
-  margin-top: 4px;
-}
-.info-card {
-  border-radius: 14px;
-  border: none;
-  margin-bottom: 16px;
-}
-.info-card :deep(.el-card__header) {
-  border-bottom: 1px solid #f1f5f9;
-  padding: 14px 20px;
-}
-.info-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #334155;
-}
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  font-size: 14px;
-  color: #475569;
-  border-bottom: 1px solid #f8fafc;
-}
-.info-item:last-child {
-  border-bottom: none;
-}
-.info-item .label {
-  color: #94a3b8;
-}
+.section-row { margin-top: 4px; }
+.section-card { border-radius: 14px; border: none; margin-bottom: 16px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; color: #334155; }
 
-.quick-btn {
-  margin: 0 8px 8px 0;
-  border-radius: 8px;
+.factory-list { display: flex; flex-direction: column; gap: 12px; }
+.factory-item { display: flex; align-items: center; gap: 12px; }
+.factory-name { width: 80px; font-size: 13px; color: #475569; flex-shrink: 0; }
+.factory-count { width: 40px; text-align: right; font-size: 13px; font-weight: 600; color: #1e293b; flex-shrink: 0; }
+
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.quick-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; cursor: pointer; padding: 16px 8px;
+  border-radius: 12px; transition: all 0.2s;
 }
+.quick-item:hover { background: #f8fafc; transform: translateY(-2px); }
+.quick-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.quick-title { font-size: 12px; color: #475569; font-weight: 500; text-align: center; }
+
+:deep(.el-table) { cursor: pointer; }
+:deep(.el-empty) { padding: 20px 0; }
 </style>

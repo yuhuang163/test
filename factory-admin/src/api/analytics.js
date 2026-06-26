@@ -11,3 +11,7 @@ export function getCurveItemNames(params) {
 export function getYieldStats(params) {
   return http.get('/analytics/yield', { params })
 }
+
+export function getDashboardSummary() {
+  return http.get('/analytics/dashboard')
+}
