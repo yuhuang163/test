@@ -383,10 +383,6 @@ void test_base::getMacAddress(const QByteArray& byte) {
             QString deviceAddress = match.captured(2).trimmed();
             QString deviceRssi = match.captured(3).trimmed();
             
-            qDebug() << "后台成功解析 - 名称:" << deviceName 
-                     << "MAC:" << deviceAddress 
-                     << "信号:" << deviceRssi;
-
             // 更新 deviceMap、updateComboBox 等
             deviceMap[deviceAddress]["Name"] = deviceName;
             deviceMap[deviceAddress]["Rssi"] = deviceRssi;
@@ -394,7 +390,7 @@ void test_base::getMacAddress(const QByteArray& byte) {
             updateComboBox();
         } else {
             if (!line.trimmed().isEmpty()) {
-                qDebug() << "后台正则匹配失败，忽略该行:" << line;
+                // qDebug() << "后台正则匹配失败，忽略该行:" << line;
             }
         }
     }
