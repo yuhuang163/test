@@ -1,4 +1,4 @@
-
+﻿
 #include "factory_analyzer.h"
 // 定义一个函数，用于执行具有特定名称的函数
 void factory_analyzer::executeFunctionByName(const QString functionName) {

@@ -316,7 +316,8 @@ void QTupleService::set(TupleCmd cmd, const QVariant& data) {
     case TupleCmd::DebugUpdateMacStatus: {
         const QString mac = m.value(QStringLiteral("mac")).toString();
         const int status = m.value(QStringLiteral("status"), 2).toInt();
-        if (!debugUpdateMacStatusImpl(mac, status, &error)) {
+        const QString sn = m.value(QStringLiteral("sn")).toString();
+        if (!debugUpdateMacStatusImpl(mac, status, sn, &error)) {
             lastError_ = error;
         }
         break;
@@ -502,10 +503,13 @@ TupleApplyResult QTupleService::parseApplyTupleResponse(const QByteArray& respon
     return result;
 }
 
-bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, QString* error) {
+bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, const QString& sn, QString* error) {
     QJsonObject bodyObj;
     bodyObj.insert("mac", mac);
     bodyObj.insert("status", status);
+    if (!sn.isEmpty()) {
+        bodyObj.insert("sn", sn);
+    }
     const QByteArray body = QJsonDocument(bodyObj).toJson(QJsonDocument::Compact);
 
     QByteArray response;

@@ -63,6 +63,8 @@ constexpr const char kHintRssiRead[] = u8"RSSI：mode=0 读 BLE，mode=1 读 BT\
 constexpr const char kHintTupleRead[] = u8"无需参数；比对在步骤逻辑中与云端三元组比较";
 constexpr const char kHintWriteKey[] =
     u8"写 deviceSecret：value=$TUPLE_DEVICE_SECRET（默认取云端已获取三元组）";
+constexpr const char kHintMacWrite[] =
+    u8"写 MAC 地址：value=具体 MAC 地址或 $MAC\n示例：Param/value=$MAC 或 {\"value\":\"$MAC\"}";
 
 // 新增指令：在此表增加一行；协议实现见 qfctp.cpp / qpb.cpp 的 set/get。
 const Row kRows[] = {
@@ -142,7 +144,7 @@ const Row kRows[] = {
     {DeviceCmd::BtFreqMode, "BtFreqMode", u8"蓝牙定频模式", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::WriteKey, "WriteKey", u8"密钥", DeviceCmdParamKind::JsonMap, kHintWriteKey, kSet},
     {DeviceCmd::TrimSet, "TrimSet", u8"微调值", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::MacWrite, "MacWrite", u8"网卡地址", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::MacWrite, "MacWrite", u8"网卡地址", DeviceCmdParamKind::JsonMap, kHintMacWrite, kSet},
     {DeviceCmd::NightLightSet, "NightLightSet", u8"夜灯", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::JsonMap, kHintLedTest, kSet},
     {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::None, nullptr, kSet},

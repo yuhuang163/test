@@ -17,6 +17,7 @@ constexpr const char kHintBomb[] =
 // 新增 Dongle 指令：在此表加一行；实现见 qat.cpp set/get。
 const Row kRows[] = {
     {DongleCmd::BleScanConnect, "BleScanConnect", u8"扫描连接蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
+    {DongleCmd::BleScanConnectByName, "BleScanConnectByName", u8"按广播名自动连接", DeviceCmdParamKind::JsonMap, u8"填写包含 name 和 rssi 的 JSON\n示例: {\"name\":\"Pump-E\", \"rssi\":-50}", kSet},
     {DongleCmd::BleDirectConnect, "BleDirectConnect", u8"直连蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::BleOtaConnect, "BleOtaConnect", u8"OTA 蓝牙连接", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::BleAppConnect, "BleAppConnect", u8"App 蓝牙连接", DeviceCmdParamKind::String, kHintBleScan, kSet},

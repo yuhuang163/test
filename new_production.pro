@@ -96,7 +96,18 @@ INCLUDEPATH += agreement/fixture_protocol/manager
 INCLUDEPATH += agreement/fixture_protocol/codec
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/product_protocol/protocol
+INCLUDEPATH += agreement/product_protocol/protocol
 INCLUDEPATH += agreement/adb
+INCLUDEPATH += agreement/modbus_protocol/access
+INCLUDEPATH += agreement/modbus_protocol/manager
+INCLUDEPATH += agreement/modbus_protocol/codec
+INCLUDEPATH += agreement/modbus_protocol/device/inovance_h5u_tcp
+INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
+INCLUDEPATH += agreement/scpi_protocol/codec
+INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
+INCLUDEPATH += agreement/scpi_protocol/device/rs_cmw100_scpi
+INCLUDEPATH += business/cmw_gprf
 INCLUDEPATH += agreement/modbus_protocol/access
 INCLUDEPATH += agreement/modbus_protocol/manager
 INCLUDEPATH += agreement/modbus_protocol/codec
@@ -136,6 +147,9 @@ INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
+INCLUDEPATH += platform/driver/serial
+INCLUDEPATH += platform/driver/visa
+INCLUDEPATH += platform/driver/process
 INCLUDEPATH += platform/driver/serial
 INCLUDEPATH += platform/driver/visa
 INCLUDEPATH += platform/driver/process
@@ -212,6 +226,8 @@ SOURCES += \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
+    platform/test_case/manifest/modbus_cmd_manifest.cpp \
+    platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
     platform/instrument/instrument_device_catalog.cpp \
@@ -259,6 +275,10 @@ SOURCES += \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
+    business/plc_v3_fixture/plc_v3_touch.cpp \
+    business/plc_v3_fixture/plc_v3_facade.cpp \
+    business/plc_v3_fixture/plc_v3_fixture.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
@@ -358,6 +378,8 @@ HEADERS += \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
     platform/test_case/manifest/modbus_cmd_manifest.h \
     platform/test_case/manifest/scpi_cmd_manifest.h \
+    platform/test_case/manifest/modbus_cmd_manifest.h \
+    platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
@@ -369,6 +391,23 @@ HEADERS += \
     platform/cloud/ota/host_ota_service.h \
     platform/cloud/test_data/test_data_upload_service.h \
     platform/test_case/test_case_types.h \
+    platform/instrument/instrument_device_catalog.h \
+    agreement/shell_protocol/manager/qshellmanager.h \
+    business/tuple/qtupleservice.h \
+    business/cmw_gprf/cmw_gprf_facade.h \
+    agreement/scpi_protocol/access/scpi_types.h \
+    agreement/scpi_protocol/access/scpi_transport.h \
+    agreement/scpi_protocol/access/iscpi_device.h \
+    platform/driver/visa/visa_channel.h \
+    agreement/scpi_protocol/manager/qscpivisasession.h \
+    agreement/scpi_protocol/manager/qscpimanager.h \
+    agreement/scpi_protocol/manager/qscpiserialsession.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_scpi_device.h \
+    agreement/scpi_protocol/device/rs_cmw100_scpi/rs_cmw100_scpi_device.h \
+    agreement/bulk_protocol/access/bulk_types.h \
+    agreement/bulk_protocol/codec/bulk_codec.h \
+    agreement/bulk_protocol/device/bulk_device.h \
+    agreement/bulk_protocol/manager/qbulkmanager.h \
     platform/instrument/instrument_device_catalog.h \
     agreement/shell_protocol/manager/qshellmanager.h \
     business/tuple/qtupleservice.h \
@@ -416,6 +455,14 @@ HEADERS += \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
+    agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
+    agreement/scpi_protocol/codec/scpi_line_codec.h \
+    agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
+    business/plc_v3_fixture/plc_v3_touch.h \
+    business/plc_v3_fixture/plc_v3_facade.h \
+    business/plc_v3_fixture/plc_v3_fixture.h \
     work_station/imu/imubox.h \
     work_station/imu/imucali.h \
     work_station/key/key_test.h \
@@ -438,6 +485,7 @@ HEADERS += \
     work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
+    platform/settings/widgets/fixture_uart.ui \
     platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
@@ -502,6 +550,7 @@ win32 {
 win32 {
     # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
     # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
+    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
     VISA_DIR = $$PWD/lib/visa
     exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
         INCLUDEPATH += $$VISA_DIR
@@ -529,6 +578,10 @@ win32 {
 
 
 DISTFILES += \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.proto \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.proto \
+    agreement/factory_protocol/protocol/qpb/ble_protocol/server_data.proto \
+    agreement/factory_protocol/protocol/qpb/factory_protocol/factory_msg.proto \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.proto \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.proto \
     agreement/factory_protocol/protocol/qpb/ble_protocol/server_data.proto \
