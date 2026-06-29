@@ -28,8 +28,8 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
 
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
-
     cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
+    statusBar()->addPermanentWidget(cloudLoginLabel);
     refreshCloudLoginState();
     QTimer* loginTimer = new QTimer(this);
     connect(loginTimer, &QTimer::timeout, this, &box_base::refreshCloudLoginState);
