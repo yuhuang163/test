@@ -30,7 +30,6 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 
     cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
-    statusBar()->addPermanentWidget(cloudLoginLabel);
     refreshCloudLoginState();
     QTimer* loginTimer = new QTimer(this);
     connect(loginTimer, &QTimer::timeout, this, &box_base::refreshCloudLoginState);
@@ -395,6 +394,11 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("华庄MES"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂")); // 处理默认情况
+
+        if (cloudLoginLabel) {
+            parent->statusBar()->addPermanentWidget(cloudLoginLabel);
+            refreshCloudLoginState();
+        }
     } else {
         qWarning() << "ShowData的parent指针为空";
     }
