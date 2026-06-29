@@ -320,7 +320,9 @@ bool QFreeWork::isBydFactory() const {
 
 QString QFreeWork::resolvedExpectedTailSnText() const {
     if (isBydFactory()) {
-        return QString::fromUtf8(expectedTailSnFromMes.trimmed());
+        if (ui && ui->isformmes && ui->isformmes->checkState() == Qt::Checked) {
+            return QString::fromUtf8(expectedTailSnFromMes.trimmed());
+        }
     }
     if (ui && ui->getMac) {
         return ui->getMac->text().trimmed();
@@ -1144,6 +1146,19 @@ void QFreeWork::processInspection(QString inputSnText) {
 }
 
 void QFreeWork::processGetMesTestValue() {
+        // 不从MES获取SN的模式（包括纯离线，以及接通MES但不取SN的M8板厂模式）：
+    // 直接把界面上的扫码（或输入）当做真实SN并解析
+    if (ui && ui->isformmes && !ui->isformmes->checkState()) {
+        QString mesmacAddress = parseMacFromSn(ui->getMac->text());
+        if (!mesmacAddress.isEmpty()) {
+            ui->macInput->setText(mesmacAddress);
+            showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
+            on_macInput_returnPressed();
+        } else {
+            showlog(QStringLiteral("本地从 SN 解析 MAC 失败: ") + ui->getMac->text());
+        }
+        return;
+    }
     if (pack.factory == "hz") {
         pack.sn = ui->getMac->text();
         pack.mechines = getIndex();
@@ -1160,6 +1175,7 @@ void QFreeWork::processGetMesTestValue() {
         emit send_mes_test_value(pack);
     }
 }
+
 void QFreeWork::getMac(QString sn_to_search) {
     QFile file("mac_sn.txt");             // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly)) { // 打开文件
