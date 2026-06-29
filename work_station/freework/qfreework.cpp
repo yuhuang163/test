@@ -1148,7 +1148,6 @@ void QFreeWork::processInspection(QString inputSnText) {
 void QFreeWork::processGetMesTestValue() {
         // 不从MES获取SN的模式（包括纯离线，以及接通MES但不取SN的M8板厂模式）：
     // 直接把界面上的扫码（或输入）当做真实SN并解析
-    showlog(QStringLiteral("本地 SN 解析 MAC 成功: ") + mesmacAddress);
     if (ui && ui->isformmes && !ui->isformmes->checkState()) {
         QString mesmacAddress = parseMacFromSn(ui->getMac->text());
         if (!mesmacAddress.isEmpty()) {
