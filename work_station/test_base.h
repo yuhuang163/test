@@ -12,18 +12,11 @@
 #include "huiling_wfp60h_scpi_types.h"
 #include "scpi_types.h"
 #include "instrument_device_catalog.h"
-#include "qprotocolmanager.h"
-#include "qmodbusmanager.h"
-#include "qscpimanager.h"
-#include "huiling_wfp60h_scpi_types.h"
-#include "scpi_types.h"
-#include "instrument_device_catalog.h"
 #include "qcheckbox.h"
 #include "qheaderview.h"
 #include "qlabel.h"
 #include "qpushbutton.h"
 #include "qtablewidget.h"
-#include "qatmanager.h"
 #include "qatmanager.h"
 #include "qjig.h"
 #include "serial_channel.h"
@@ -132,11 +125,6 @@ class test_base : public QWidget {
     /** 工厂 + 用途中文名 → modbus/scpi 协议设备（见 platform/instrument）。 */
     bool resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const;
 
-    /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
-    QStringList instrumentPurposeLabels() const;
-    /** 工厂 + 用途中文名 → modbus/scpi 协议设备（见 platform/instrument）。 */
-    bool resolveInstrumentPurpose(const QString& purposeLabelZh, InstrumentDeviceRef* out) const;
-
     // --- 本轮测试 / MES 包 ---
     QString macAddress = "没有mac地址";
     QString productName = "Y20";
@@ -154,13 +142,9 @@ class test_base : public QWidget {
     Qlog* log;
     QTimer* scanSerialPortsTimer = new QTimer(this);
     SerialChannel* dongleSerialChannel_ = nullptr;
-    SerialPortController* dongleController_ = nullptr;
     SerialChannel* usbSerialChannel_ = nullptr;
-    SerialPortController* usbController_ = nullptr;
     SerialChannel* jigSerialChannel_ = nullptr;
-    SerialPortController* jigController_ = nullptr;
     SerialChannel* productSerialChannel_ = nullptr;
-    SerialPortController* productController_ = nullptr;
     QSerialPort* dongleSerialPort = nullptr;
     Qpb* pb = nullptr;
     Qfctp* qfctp = nullptr;
@@ -169,11 +153,7 @@ class test_base : public QWidget {
     QProtocolManager protocolManager;
     QModbusManager modbusManager;
     QatManager* at = nullptr;
-    QModbusManager modbusManager;
-    QatManager* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
-    QScpiManager scpiUsbManager_;
-    QScpiManager scpiVisaManager_;
     QScpiManager scpiUsbManager_;
     QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
@@ -213,6 +193,7 @@ class test_base : public QWidget {
 
     // --- 串口打开 / 关闭 / 扫描 ---
     virtual void onDongleSerialFrame(const QByteArray& data);
+    void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);
 
@@ -225,19 +206,19 @@ class test_base : public QWidget {
     void onScpiVisaProgrammablePowerCurrentRead(double valueAmps, bool ok);
 
     virtual void onUsbSerialFrame(const QByteArray& data);
+    void handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openUsbSerialPort(void);
     void closeUsbSerialPort(void);
 
-
     void onJigSerialFrame(const QByteArray& data);
+    void handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openJigSerialPort(void);
     void closeJigSerialPort(void);
 
-
     void onProductSerialFrame(const QByteArray& data);
+    void handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openProductSerialPort(void);
     void closeProductSerialPort(void);
-
 
     void scanSerialPorts();
     void updateHIDComboBox(QComboBox* comboBox);

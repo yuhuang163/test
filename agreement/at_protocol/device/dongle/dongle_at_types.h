@@ -5,6 +5,7 @@
 
 enum class DongleCmd {
     BleScanConnect,      // AT+MAC= 扫描/连接，data: MAC；全 0 表示断开
+    BleScanConnectByName,
     BleDirectConnect,    // AT+DCON=
     BleOtaConnect,       // AT+OTA=
     BleAppConnect,       // AT+BLE=

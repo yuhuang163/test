@@ -27,7 +27,7 @@ class QFreeWorkTestCaseHookRegistrar;
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
-
+    friend class TestCaseRunner;
   public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
@@ -85,7 +85,6 @@ class QFreeWork : public test_base {
 
     // --- 扫描 / 绑定 ---
     QString receivedData = "";
-    QMap<QString, QMap<QString, QString>> deviceMap;
     QString snBinding;
     QString deviceTailSnFromDevice = "";
     QString tailsn = "";
