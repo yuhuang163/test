@@ -37,13 +37,8 @@ QString sha256File(const QString& path) {
     return QString::fromLatin1(hash.result().toHex());
 }
 
-bool startDeleteSelfBat(const QString& savePath) {
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QString appFilePath = QCoreApplication::applicationFilePath();
-    const QString appFileStem = QFileInfo(appFilePath).completeBaseName();
-    const QString batFileName = QDir(appDir).filePath(QStringLiteral("delete_self.bat"));
-    const QString tempExePath = savePath + QStringLiteral(".tmp");
-
+bool startDeleteSelfBat(const QString& newExePath) {
+    const QString batFileName = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("delete_self.bat"));
     QFile batFile(batFileName);
     if (!batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
@@ -51,15 +46,11 @@ bool startDeleteSelfBat(const QString& savePath) {
     QTextStream out(&batFile);
     out << "@echo off\n";
     out << "timeout /t 2 /nobreak >nul\n";
-    out << "rename \"" << QDir::toNativeSeparators(appFilePath)
-        << "\" \"" << appFileStem << ".bak\"\n";
-    out << "rename \"" << QDir::toNativeSeparators(tempExePath)
-        << "\" \"" << QFileInfo(savePath).fileName() << "\"\n";
-    out << "start \"\" \"" << QDir::toNativeSeparators(savePath) << "\"\n";
-    out << "del \"" << appFileStem << ".bak\"\n";
-    out << "del \"" << QDir::toNativeSeparators(batFileName) << "\"\n";
+    out << "del \"" << QCoreApplication::applicationFilePath() << "\"\n";
+    out << "del \"" << batFileName << "\"\n";
     batFile.close();
 
+    QProcess::startDetached(newExePath);
     QProcess::startDetached(batFileName);
     QTimer::singleShot(1000, []() {
         qApp->quit();
@@ -151,11 +142,11 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
         return false;
     }
 
-    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString updatesDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("updates"));
+    QDir().mkpath(updatesDir);
     const QString fileName =
         QStringLiteral("%1_%2.exe").arg(FactoryCloudClient::packageName(), info.buildId);
-    const QString savePath = QDir(appDir).filePath(fileName);
-    const QString tempSavePath = savePath + QStringLiteral(".tmp");
+    const QString savePath = QDir(updatesDir).filePath(fileName);
 
     QString downloadError;
     const QString url = info.downloadUrl.trimmed();
@@ -165,13 +156,13 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
             downloadQuery.addQueryItem(QStringLiteral("uploadedAt"), info.uploadedAt);
         }
         if (!FactoryCloudClient::downloadToFile(QStringLiteral("/host-app/download/") + info.buildId, downloadQuery,
-                                                tempSavePath, &downloadError)) {
+                                                savePath, &downloadError)) {
             if (message) {
                 *message = downloadError;
             }
             return false;
         }
-    } else if (!FactoryCloudClient::downloadToFile(url, QUrlQuery(), tempSavePath, &downloadError)) {
+    } else if (!FactoryCloudClient::downloadToFile(url, QUrlQuery(), savePath, &downloadError)) {
         if (message) {
             *message = downloadError;
         }
@@ -179,10 +170,10 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     }
 
     if (!info.sha256.isEmpty()) {
-        const QString actual = sha256File(tempSavePath);
+        const QString actual = sha256File(savePath);
         if (actual.compare(info.sha256, Qt::CaseInsensitive) != 0) {
             qDebug() << "[OTA] sha256 不匹配: 期望=" << info.sha256 << "实际=" << actual;
-            QFile::remove(tempSavePath);
+            QFile::remove(savePath);
             if (message) {
                 *message = QStringLiteral("sha256 校验失败");
             }
