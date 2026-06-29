@@ -2,7 +2,6 @@
 #include "common_utils.h"
 #include "qlog.h"
 #include "qatmanager.h"
-#include "qatmanager.h"
 #include "my_set/my_typedef.h"
 #include "host_ota_service.h"
 #include "ui_mainwindow.h"

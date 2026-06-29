@@ -23,6 +23,7 @@ class QFreeWork;
 }
 
 class QFreeWorkTestCaseHookRegistrar;
+class TestCaseRunner;
 
 class QFreeWork : public test_base {
     Q_OBJECT
