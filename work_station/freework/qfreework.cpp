@@ -385,7 +385,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             sendRetryOver = false;
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("协议FAIL或超时");
+            if (stepRuntime_.testData == QLatin1String("-"))
+                stepRuntime_.testData = QStringLiteral("协议FAIL或超时");
             TestResult = failValue;
             showlog(QStringLiteral("步骤失败：%1（超时未响应或协议 FAIL）").arg(functionName));
         }
