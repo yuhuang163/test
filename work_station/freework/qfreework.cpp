@@ -52,39 +52,32 @@ QString sanitizeMesValuePipes(QString v) {
     return v;
 }
 
-/** value 尽量 ASCII：PASS / FAIL；通过且有数据时只带数据；失败为 FAIL 或 FAIL;数据。 */
-QString freeWorkMesValueEnglish(bool stepPass, const QString& testData) {
-    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    if (stepPass)
-        return hasData ? sanitizeMesValuePipes(testData) : QStringLiteral("PASS");
-    return hasData ? (QStringLiteral("FAIL;") + sanitizeMesValuePipes(testData)) : QStringLiteral("FAIL");
-}
-
-static void pushMesSeg(QVector<QPair<QString, QString>>* out, const QString& key, const QString& value) {
-    const QString k = key.trimmed();
-    if (k.isEmpty())
+static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
+                              const QString& value, const QString& maxValue, const QString& minValue,
+                              const QString& standardValue, const QString& unit, const QString& result) {
+    const QString n = name.trimmed();
+    if (n.isEmpty())
         return;
-    out->append(qMakePair(k, sanitizeMesValuePipes(value)));
+    out->append({sanitizeMesValuePipes(n), sanitizeMesValuePipes(value), sanitizeMesValuePipes(maxValue),
+                 sanitizeMesValuePipes(minValue), sanitizeMesValuePipes(standardValue),
+                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result)});
 }
 
-static void appendOneMesStep(QVector<QPair<QString, QString>>* out, const QString& tag, bool pass, const QString& testData) {
-    pushMesSeg(out, tag, freeWorkMesValueEnglish(pass, testData));
-}
-
-/** 与 hqmes/wksmes 一致：每段一个 ASCII ':' 分隔键值，多段用 | 连接。 */
-QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segments, const QString& overallResult,
+/** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT，多段用 | 连接。 */
+QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, const QString& overallResult,
                                  const QString& failValueLiteral) {
     QStringList parts;
     parts.reserve(segments.size() + 1);
-    for (const auto& p : segments) {
-        const QString k = p.first.trimmed();
-        if (k.isEmpty())
+    for (const auto& s : segments) {
+        if (s.name.isEmpty())
             continue;
-        parts << k + QLatin1Char(':') + p.second;
+        parts << s.name + QLatin1Char(':') + s.value + QLatin1Char(':') + s.maxValue + QLatin1Char(':') +
+                     s.minValue + QLatin1Char(':') + s.standardValue + QLatin1Char(':') + s.unit +
+                     QLatin1Char(':') + s.result;
     }
     if (parts.isEmpty()) {
         const QString v = (overallResult == failValueLiteral) ? QStringLiteral("FAIL") : QStringLiteral("PASS");
-        parts << QStringLiteral("SUMMARY:") + v;
+        parts << QStringLiteral("SUMMARY:") + v + QStringLiteral(":::::");
     }
     return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
 }
@@ -144,7 +137,30 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
     const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
-    appendOneMesStep(&freeWorkMesSegments_, tag, pass, testData);
+    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
+    const QString value = pass && hasData ? testData : QString();
+    const QString resultVal = pass ? QStringLiteral("PASS") : (hasData ? QStringLiteral("FAIL;") + testData : QStringLiteral("FAIL"));
+
+    QString maxVal, minVal, stdVal;
+    if (def.gate.enabled) {
+        switch (def.gate.op) {
+        case TestCaseGateOp::Range:
+            maxVal = QString::number(def.gate.high);
+            minVal = QString::number(def.gate.low);
+            break;
+        case TestCaseGateOp::Gt:
+            stdVal = QStringLiteral(">") + QString::number(def.gate.low);
+            break;
+        case TestCaseGateOp::Lt:
+            stdVal = QStringLiteral("<") + QString::number(def.gate.high);
+            break;
+        case TestCaseGateOp::Eq:
+        case TestCaseGateOp::CompareVersions:
+            stdVal = def.gate.expected;
+            break;
+        }
+    }
+    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, QString(), resultVal);
 }
 
 #if _MSC_VER >= 1600

@@ -29,9 +29,6 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
 
-    cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
-    statusBar()->addPermanentWidget(cloudLoginLabel);
-    refreshCloudLoginState();
     QTimer* loginTimer = new QTimer(this);
     connect(loginTimer, &QTimer::timeout, this, &box_base::refreshCloudLoginState);
     loginTimer->start(30000);
@@ -376,7 +373,13 @@ void box_base::recoverCustom() {
 }
 
 void box_base::ShowData(QMainWindow* parent) {
+    qWarning() << "ShowUpperComputerOTAFunc ="
+               << SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc")
+               << "path =" << QDir(QCoreApplication::applicationDirPath()).filePath("上位机设置.ini");
     if (parent) { // 确保 parent 指针不为空
+        cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
+        parent->statusBar()->addPermanentWidget(cloudLoginLabel);
+        refreshCloudLoginState();
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
         else if (pack.factory == "lx")
@@ -408,15 +411,18 @@ void box_base::ShowData(QMainWindow* parent) {
         setting->setVisible(false);
     }
 
-        QAction* updata = parent->menuBar()->addAction("检查更新");
+    QAction* updata = parent->menuBar()->addAction("检查更新");
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
     if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool()) {
         updata->setVisible(false);
+           qWarning() << "ss222222222ss";
     }
 
 }
 
 void box_base::refreshCloudLoginState() {
+    if (!cloudLoginLabel)
+        return;
     if (AuthService::isLoggedIn()) {
         cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录</font>"));
     } else {
