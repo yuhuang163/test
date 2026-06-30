@@ -203,7 +203,7 @@ int16_t I2CDriver::read_temperature(int bus_id, uint8_t addr) {
         temp_raw = -temp_raw;
     }
     
-    Serial.printf("[I2C%d] 原始温度值: 0x%04X (%d)\n", bus_id, temp_raw, temp_raw);
+    // Serial.printf("[I2C%d] 原始温度值: 0x%04X (%d)\n", bus_id, temp_raw, temp_raw);
     return temp_raw;
 }
 
@@ -423,19 +423,26 @@ bool I2CDriver::soft_i2c_read_regs(uint8_t addr, uint8_t reg, uint8_t *data, siz
 void I2CDriver::read_and_print_three_pressures() {
     if (suction_data)
     {
-       // 读取三路压力（总线1、2、3），转换为工程值并打印
-    uint32_t raw1 = I2CDriver::read_pressure(1);
-    uint32_t raw2 = I2CDriver::read_pressure(2);
-    uint32_t raw3 = I2CDriver::read_pressure(3);
+        int16_t raw_t1 = I2CDriver::read_temperature(1);
+        int16_t raw_t2 = I2CDriver::read_temperature(2);
+        int16_t raw_t3 = I2CDriver::read_temperature(3);
 
-    float p1 = I2CDriver::calc_pressure_pa(raw1);
-    float p2 = I2CDriver::calc_pressure_pa(raw2);
-    float p3 = I2CDriver::calc_pressure_pa(raw3);
+        float t1 = I2CDriver::calc_temperature_celsius(raw_t1);
+        float t2 = I2CDriver::calc_temperature_celsius(raw_t2);
+        float t3 = I2CDriver::calc_temperature_celsius(raw_t3);
 
-    // 输出格式与示例保持一致：AT+SUCTION_DATA=val1,val2,val3\r\n
-    Serial.printf("AT+SUCTION_DATA=%.2f,%.2f,%.2f\r\n", p1, p2, p3);
+        uint32_t raw_p1 = I2CDriver::read_pressure(1);
+        uint32_t raw_p2 = I2CDriver::read_pressure(2);
+        uint32_t raw_p3 = I2CDriver::read_pressure(3);
 
-    delay(20);
+        float p1 = I2CDriver::calc_pressure_pa(raw_p1);
+        float p2 = I2CDriver::calc_pressure_pa(raw_p2);
+        float p3 = I2CDriver::calc_pressure_pa(raw_p3);
+
+        Serial.printf("AT+SUCTION_DATA=%.2f,%.2f,%.2f\r\n", p1, p2, p3);
+        Serial.printf("AT+TEMP_DATA=%.2f,%.2f,%.2f\r\n", t1, t2, t3);
+
+        delay(20);
     }
     
     
