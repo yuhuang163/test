@@ -94,17 +94,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           qfctp(new Qfctp(dongleSerialPort)),
                                           qaiot(new Qaiot(dongleSerialPort)),
                                           qroot(new Qroot(dongleSerialPort)),
-                                          at(new QatManager(this)),
+                                          at(new QatManager(dongleSerialPort, this)),
                                           qimuc(new imu_calibrate),
                                           basicInfoModel(new TestModel),
                                           nqimuc(new new_imu_calibrate),
                                           peripheralModel(new TestModel),
                                           ui(new Ui::MainWindow) {
     ui->setupUi(this);
-    at->setWriteCallback([this](const QByteArray& data) {
-        if (dongleSerialPort && dongleSerialPort->isOpen())
-            dongleSerialPort->write(data);
-    });
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);

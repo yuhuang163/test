@@ -1,11 +1,12 @@
 #include "dongle_at_device.h"
 #include <QDebug>
+#include <QSerialPort>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-DongleAtDevice::DongleAtDevice(QObject* parent) : QObject(parent) {
+DongleAtDevice::DongleAtDevice(QSerialPort* port, QObject* parent) : QObject(parent), serialPort_(port) {
     registerCommand();
 }
 
@@ -110,11 +111,11 @@ bool DongleAtDevice::sendCustomMessage(const QVariantMap& map) {
 
 void DongleAtDevice::sendAtLine(const QString& line) {
     qDebug().noquote() << "AT TX:" << line.trimmed();
-    if (writeCb_) {
-        writeCb_(line.toLocal8Bit());
-    } else {
-        qWarning() << "DongleAtDevice: 缺少 writeCb_, AT TX 失败";
+    if (!serialPort_ || !serialPort_->isOpen()) {
+        qWarning() << "DongleAtDevice: 串口未打开，AT TX 失败";
+        return;
     }
+    serialPort_->write(line.toLocal8Bit());
 }
 
 void DongleAtDevice::registerCommand() {

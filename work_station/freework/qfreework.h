@@ -258,6 +258,7 @@ class QFreeWork : public test_base {
                                        const QVariant& payload, bool& allPass, QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
+    void applyFreeWorkExtraTabsVisible(bool visible);
 
   private slots:
     void initData();
@@ -314,6 +315,7 @@ class QFreeWork : public test_base {
     void on_pushButton_clicked();
     void on_pushButton_2_clicked();
     void on_stopTest_clicked();
+    void on_toggleExtraTabsButton_clicked();
 
   signals:
     void send_go_next_focus();

@@ -6,12 +6,12 @@
 #include "../device/dongle/dongle_at_device.h"
 #include "../codec/at_line_codec.h"
 
+class QSerialPort;
+
 class QatManager : public QObject {
     Q_OBJECT
   public:
-    explicit QatManager(QObject* parent = nullptr);
-
-    void setWriteCallback(const DongleAtDevice::WriteCallback& cb);
+    explicit QatManager(QSerialPort* port = nullptr, QObject* parent = nullptr);
 
     void parseCmd(const QByteArray& byte);
     // clang-format off

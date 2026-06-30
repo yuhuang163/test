@@ -93,6 +93,10 @@ bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
 
+constexpr int kFreeWorkTabMain = 0;
+constexpr int kFreeWorkTabExpand = 1;
+constexpr int kFreeWorkTabBleBind = 2;
+
 /** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
 void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!tabWidget)
@@ -113,8 +117,11 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
 
     const QFontMetrics fm(font);
     int maxTextWidth = 0;
-    for (int i = 0; i < bar->count(); ++i)
+    for (int i = 0; i < bar->count(); ++i) {
+        if (!bar->isTabVisible(i))
+            continue;
         maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+    }
 
     constexpr int hPad = 32;
     const int minTabWidth = maxTextWidth + hPad;
@@ -163,6 +170,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
 
     ui->setupUi(this);
     updateMainStyle("Ubuntu.qss");
+    applyFreeWorkExtraTabsVisible(false);
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -840,6 +848,33 @@ void QFreeWork::closeTestCasePrompt() {
     testCasePrompt_ = nullptr;
     testCasePromptProgrammaticClose_ = true;
     box->close();
+}
+
+void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
+    QTabBar* bar = ui->tabWidget->tabBar();
+    if (!bar)
+        return;
+
+    bar->setTabVisible(kFreeWorkTabExpand, visible);
+    bar->setTabVisible(kFreeWorkTabBleBind, visible);
+
+    if (!visible) {
+        const int cur = ui->tabWidget->currentIndex();
+        if (cur == kFreeWorkTabExpand || cur == kFreeWorkTabBleBind)
+            ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
+    }
+
+    if (ui->toggleExtraTabsButton)
+        ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页") : QStringLiteral("显示扩展页"));
+
+    setupFreeWorkTabBar(ui->tabWidget);
+}
+
+void QFreeWork::on_toggleExtraTabsButton_clicked() {
+    QTabBar* bar = ui->tabWidget->tabBar();
+    if (!bar)
+        return;
+    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(kFreeWorkTabExpand));
 }
 
 void QFreeWork::initData() {

@@ -41,7 +41,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         qroot(new Qroot(dongleSerialPort)),
-                                        at(new QatManager(this)),
+                                        at(new QatManager(dongleSerialPort, this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
@@ -52,10 +52,6 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
-    at->setWriteCallback([this](const QByteArray& data) {
-        if (dongleSerialPort && dongleSerialPort->isOpen())
-            dongleSerialPort->write(data);
-    });
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     {
         auto selectedType = QProtocolManager::protocolTypeFromString(

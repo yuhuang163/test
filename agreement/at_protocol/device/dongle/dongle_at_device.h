@@ -9,15 +9,15 @@
 #include "dongle_at_types.h"
 #include "../../codec/at_line_codec.h"
 #include "qprotocol_types.h"
- 
+
+class QSerialPort;
+
 class DongleAtDevice : public QObject {
     Q_OBJECT
   public:
-    explicit DongleAtDevice(QObject* parent = nullptr);
+    explicit DongleAtDevice(QSerialPort* port = nullptr, QObject* parent = nullptr);
 
   // clang-format off
-    using WriteCallback = std::function<void(const QByteArray& data)>;
-    void setWriteCallback(const WriteCallback& cb) { writeCb_ = cb; }
     void onFrameReceived(const AtFrame& frame);
     void set(DongleCmd cmd, const QVariant& data = {});
     void get(DongleCmd cmd, const QVariant& param = {});
@@ -56,7 +56,7 @@ class DongleAtDevice : public QObject {
     void SEND_WIFI_IP(const QString& p);
     void scan_result(const QString& p);
 
-    WriteCallback writeCb_;
+    QSerialPort* serialPort_ = nullptr;
     std::map<QString, std::function<void(const QString&)>> commandList_;
     bool isConnected = false;
     bool iswifiConnected = false;
