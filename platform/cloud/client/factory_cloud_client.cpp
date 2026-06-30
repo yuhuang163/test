@@ -161,6 +161,10 @@ QString FactoryCloudClient::deviceId() {
 QString FactoryCloudClient::stationKey() {
     QString key = readSetting("FactoryCloud/StationKey");
     if (key.isEmpty()) {
+        // 云端工站授权与设置页「工站类型」一致（SYSTEM/station），勿用测试流程 SelectedStation
+        key = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
+    }
+    if (key.isEmpty()) {
         key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
     }
     if (key.isEmpty()) {

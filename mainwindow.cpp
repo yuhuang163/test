@@ -14,6 +14,7 @@
 #include "ui_mainwindow.h"
 #include "common_utils.h"
 #include "platform/cloud/auth/auth_service.h"
+#include "platform/cloud/auth/login_dialog.h"
 #include "qatmanager.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
@@ -46,10 +47,10 @@ void MainWindow::on_pushButton_clicked() {
     // emit send_camera_respone(FacErrorCode_NO_ERROR);
     // printSquareData(reinterpret_cast<uint8_t*>(pictureByteArray.data()),
     // pictureByteArray.size());
-    // 创建包含 GBK 编码的字节数�?
-    // QByteArray dataTemp = QByteArray::fromRawData("\xaa\xaa\xaa", 3);  // GBK 编码的字�?0xAA
+    // 创建包含 GBK 编码的字节数组
+    // QByteArray dataTemp = QByteArray::fromRawData("\xaa\xaa\xaa", 3);  // GBK 编码的字节 0xAA
 
-    // // 使用 GBK 编码器进行解�?
+    // // 使用 GBK 编码器进行解码
     // QTextCodec* codec = QTextCodec::codecForName("gbk");
     // QString utf8String = codec->toUnicode(dataTemp);
     // QString decodedString = QString::fromUtf8(QByteArray::fromPercentEncoding(dataTemp));
@@ -64,7 +65,7 @@ void MainWindow::on_pushButton_clicked() {
     // waitWork(1000);
     // QByteArray data;
     // for (int i = 0; i < 500; ++i) {
-    //     data.append(i % 256);  // 示例数据�?x00 ~ 0xFF 循环
+    //     data.append(i % 256);  // 示例数据：0x00 ~ 0xFF 循环
     // }
     // dongleSerialPort->write(data);
 }
@@ -80,7 +81,7 @@ void MainWindow::on_pushButton_3_clicked() {
 
     static int facMode = 0;
 
-    facMode = !facMode; // 0�? 翻转
+    facMode = !facMode; // 0↔1 翻转
 
     protocolManager.set(DeviceCmd::FacMode, facMode);
 
@@ -113,11 +114,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     if (!pb) {
-        QMessageBox::critical(this, "协议初始化失败", "Qpb 实例初始化失败");
+        QMessageBox::critical(this, "协议初始化失败", "Qpb 实例初始化失败。");
     }
 
-    // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换�?
-    // 当前激活协议由 protocolManager 统一维护�?
+    // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
+    // 当前激活协议由 protocolManager 统一维护。
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
@@ -135,7 +136,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     //     qDebug() << "Failed to initialize QTextToSpeech.";
     //     return;
     // }
-    // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函�?
+    // setAttribute(Qt::WA_QuitOnClose,  true); //关闭此窗口，会立即执行析构函数
     updateMainStyle("Ubuntu.qss");
     ui->wifi_test_result->setText("WIFI:WAIT");
     ui->wifi_test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
@@ -154,8 +155,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
-    scanSerialPorts();                 // 要搜索一下一开�?
-    scanSerialPortsTimer->start(1000); // 每秒刷新一�?
+    scanSerialPorts();                 // 要搜索一下一开始
+    scanSerialPortsTimer->start(1000); // 每秒刷新一次
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanIpPorts()));
 
@@ -163,20 +164,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     buttonGroup->addButton(ui->is_wifiota_press);
     buttonGroup->addButton(ui->is_bleota_press);
 
-    // 禁用 QButtonGroup 的互斥行�?
+    // 禁用 QButtonGroup 的互斥行为
     buttonGroup->setExclusive(false);
 
-    // 连接按钮的点击信号到槽函�?
+    // 连接按钮的点击信号到槽函数
     connect(ui->is_wifiota_press, &QCheckBox::toggled, this, [this, buttonGroup](bool checked) {
         if (checked) {
-            // 如果当前按钮被选中，取消其他按钮的选中状�?
+            // 如果当前按钮被选中，取消其他按钮的选中状态
             ui->is_bleota_press->setChecked(false);
         }
     });
 
     connect(ui->is_bleota_press, &QCheckBox::toggled, this, [this, buttonGroup](bool checked) {
         if (checked) {
-            // 如果当前按钮被选中，取消其他按钮的选中状�?
+            // 如果当前按钮被选中，取消其他按钮的选中状态
             ui->is_wifiota_press->setChecked(false);
         }
     });
@@ -197,8 +198,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
 
     initBasicInfo();
     initPeriphState();
-    OTAGroup->addButton(ui->product_ver, 0); // 分组1、序�?
-    OTAGroup->addButton(ui->test_ver, 1);    // 分组1、序�?
+    OTAGroup->addButton(ui->product_ver, 0); // 分组1、序号0
+    OTAGroup->addButton(ui->test_ver, 1);    // 分组1、序号1
     OTAGroup->addButton(ui->csv_ver, 2);
     OTAGroup->addButton(ui->america_ver, 3);
     OTAGroup->addButton(ui->america_product_ver, 4);
@@ -216,8 +217,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     // ui->battery_type_combox->addItem("两节电池", FacBatteryType_TWO_BATTERY);
     // ui->battery_type_combox->addItem("单节电池",FacBatteryType_ONE_BATTERY);
 
-    otaSourceSet(1); // 一开机锁�?
-    otaFwSet(1);     // 一开机锁�?
+    otaSourceSet(1); // 一开机锁住
+    otaFwSet(1);     // 一开机锁住
 
 
     // 设置菜单栏样式
@@ -313,7 +314,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     // 连接信号和槽
     // QObject::connect(cameratimer, &QTimer::timeout, this,
     // &MainWindow::solve_frame);
-    // 启动定时�?
+    // 启动定时器
     // cameratimer->start(1000);
 
     QFont font("Arial", 10);
@@ -394,7 +395,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         ui->statusbar->addPermanentWidget(new QLabel("欣旺达"));
 
     viewercamrea = new ImageViewer("image.png", this);
-    ui->verticalLayout_31->addWidget(viewercamrea); // �?ImageViewer 添加到布局�?
+    ui->verticalLayout_31->addWidget(viewercamrea); // 将 ImageViewer 添加到布局中
     viewercamrea->show();                           // 显示 ImageViewer
     viewercamrea->raise();
     dongleRingBuf = new RingBuf(&p_dongleRingBuffer, dongle_ring_buffer, 1, sizeof(dongle_ring_buffer));
@@ -403,14 +404,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     //  qDebug() << "Thread
     //  video_frame_data_struct..."<<sizeof(video_frame_data_struct);
 
-    // //  在需要的地方调用 QtConcurrent::run 来异步执行函�?
+    // //  在需要的地方调用 QtConcurrent::run 来异步执行函数
     // QFuture<void> future = QtConcurrent::run([this]() {
 
     //     while (1) {
-    //         // �?Lambda 表达式中调用 solve_frame 函数
+    //         // 在 Lambda 表达式中调用 solve_frame 函数
     //         solve_frame();
     //         //qDebug() << "Thread running...";
-    //         QThread::msleep(10); // 等待1�?
+    //         QThread::msleep(10); // 等待1秒
     //     }
 
     // });
@@ -426,17 +427,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     });
     running.store(true);
 
-    //上位机ota使用�?
+    //上位机ota使用的
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &MainWindow::provideAuthentication);
 
     protocolManager.setAppVersion(DEBUG_VER);
 
     QAction* setting = ui->menubar->addAction("功能设置");
+    settingMenuAction = setting;
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
-    if (!SETTINGS.value("SYSTEM/setting").toInt()) {
-        setting->setVisible(false);
-    }
+    refreshSettingsMenuVisibility();
 
     aimanager = new QNetworkAccessManager(this);
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
@@ -445,6 +445,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool())
         updata->setVisible(false);
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
+
+    QAction* switchAccount = ui->menubar->addAction("切换账号");
+    connect(switchAccount, &QAction::triggered, [=]() {
+        LoginDialog loginDialog(this);
+        loginDialog.setWindowModality(Qt::ApplicationModal);
+        // 取消或叉掉对话框时保持原登录态，勿先 logout
+        if (loginDialog.exec() == QDialog::Accepted) {
+            refreshCloudLoginState();
+            refreshSettingsMenuVisibility();
+        }
+    });
 }
 
 void MainWindow::onProtocolReport(const ProtocolReport& report) {
@@ -679,14 +690,29 @@ void MainWindow::refreshRootBatteryTemp(quint8 temp) {
     ui->root_battery_temp_value->setText(QStringLiteral("电池温度：%1°C").arg(temp));
     showlog(QStringLiteral("电池温度：%1°C (0x80)").arg(temp));
 }
+void MainWindow::refreshSettingsMenuVisibility() {
+    if (!settingMenuAction) {
+        return;
+    }
+    settingMenuAction->setVisible(AuthService::canOpenSettings());
+}
+
 void MainWindow::refreshCloudLoginState() {
+    AuthService::promptReLoginIfExpired(this);
     if (AuthService::isLoggedIn()) {
-        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录</font>"));
+        const QString user = SETTINGS.value(QStringLiteral("FactoryCloud/AuthUser")).toString();
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录(%1)</font>").arg(user));
     } else {
         cloudLoginLabel->setText(QStringLiteral("云平台：<font color='red'>未登录</font>"));
     }
+    refreshSettingsMenuVisibility();
 }
 void MainWindow::setting_ui() {
+    if (!AuthService::canOpenSettings()) {
+        QMessageBox::information(this, QStringLiteral("功能设置"),
+                                 QStringLiteral("仅管理员或工艺工程师账号可打开功能设置。"));
+        return;
+    }
     if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
     } else {
@@ -709,14 +735,14 @@ void MainWindow::on_add_data_clicked() {
 }
 
 void MainWindow::on_init_ui_data_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/trigger_function")); // 拼接 "/trigger_function" �?ESP32 �?IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/trigger_function")); // 拼接 "/trigger_function" 到 ESP32 的 IP 地址
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 处理请求完成信号
@@ -724,7 +750,7 @@ void MainWindow::on_init_ui_data_clicked() {
         // 检查响应状态码
         if (reply->error() == QNetworkReply::NoError) {
             qDebug() << "Request succeeded";
-            showlog("文件系统初始化完成");
+            showlog("文件系统初始化完毕");
         } else {
             qDebug() << "Request failed:" << reply->errorString();
             showlog("文件系统初始化失败");
@@ -737,14 +763,14 @@ void MainWindow::on_init_ui_data_clicked() {
 }
 
 void MainWindow::on_get_battery_level_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/battery_level")); // 拼接 "/battery_level" �?ESP32 �?IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/battery_level")); // 拼接 "/battery_level" 到 ESP32 的 IP 地址
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 处理请求完成信号
@@ -828,7 +854,7 @@ void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
     }
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!macRegex.match(arg1).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
@@ -883,7 +909,7 @@ void MainWindow::on_connectButton_clicked() {
     ui->comNameCombo->setEnabled(false);
     ui->connectButton->setEnabled(false);
     openDongleSerialPort();
-    waitWork(500); //给时间让dongle开�?
+    waitWork(500); //给时间让dongle开机
 }
 
 void MainWindow::on_getBasicInfoButton_clicked() {
@@ -905,7 +931,7 @@ void MainWindow::on_enterShipModeButton_clicked() {
     if (1) //(at->getConnected())
     {
         protocolManager.set(DeviceCmd::ShipMode, 1);
-        showlog("已发送进入船运模式");
+        showlog("已发送进入船运");
     } else {
         showlog("请等待连接设备后再试");
     }
@@ -920,7 +946,7 @@ void MainWindow::on_macInput_returnPressed() {
     waitWork(WAITTIME);
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!macRegex.match(ui->macInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
@@ -928,7 +954,7 @@ void MainWindow::on_macInput_returnPressed() {
         protocolManager.setNeedAes(false);
         macAddress = ui->macInput->text();
         macLabel->setText("蓝牙mac: " + macAddress);
-        at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 开始连�?
+        at->set(DongleCmd::BleScanConnect, ui->macInput->text()); // 开始连接
         ui->snInput->setFocus();
         if (ui->checkbanding->checkState()) {
             ui->macInput->clear();
@@ -938,7 +964,7 @@ void MainWindow::on_macInput_returnPressed() {
 }
 
 void MainWindow::on_lcdTestButton_clicked() {
-    // 编写屏幕测试的代�?
+    // 编写屏幕测试的代码
     static int state = 0;
 
     if (at->getConnected()) {
@@ -954,11 +980,11 @@ void MainWindow::on_lcdTestButton_clicked() {
 }
 
 void MainWindow::on_snInput_returnPressed() {
-    // 检查是否是序列号格�?
+    // 检查是否是序列号格式
 
     QString snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
     QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!snRegex.match(ui->snInput->text()).hasMatch()) {
         showlog("序列号错误");
         showlog("实际长度为" + QString::number(ui->snInput->text().length()));
@@ -1021,11 +1047,11 @@ void MainWindow::on_enterBurningMode_clicked() {
         return;
     }
 
-        QVariantMap m;
-        m["mode"] = mode;
-        m["seconds"] = ui->burningModetime->text(); // 统一上层入参，协议层做兼�?
-        protocolManager.set(DeviceCmd::BurningMode, m);
-        showlog("已发送老化");
+    QVariantMap m;
+    m["mode"] = mode;
+    m["seconds"] = ui->burningModetime->text();
+    protocolManager.set(DeviceCmd::BurningMode, m);
+    showlog("已发送老化");
 }
 void MainWindow::on_exitBurningMode_clicked() {
     if (!at->getConnected()) {
@@ -1073,7 +1099,7 @@ void MainWindow::on_pushButton_2_clicked() {
         record.horizon_brush.size = 12;
         protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
 
-        ui->msgTest->appendPlainText("发送时�?" + CommonUtils::isoDateTime());
+        ui->msgTest->appendPlainText("发送时间:" + CommonUtils::isoDateTime());
     } else {
         ui->msgTest->appendPlainText("输入错误");
     }
@@ -1210,10 +1236,10 @@ void MainWindow::on_start_motor_clicked() {
 
 void MainWindow::on_start_wifible_test_clicked() {
     typedef enum {
-        STATE_IDLE,                      // 休眠状�?
+        STATE_IDLE,                      // 休眠状态
         STATE_WATI_GET_CORRECT_WIFIRSSI, // 等待正确的wifi信号强度
-        STATE_WATI_GET_CORRECT_BLERSSI,  // 等待正确的蓝牙信号强�?
-        STATE_SAVE_RESULT                // 保存结果在本�?
+        STATE_WATI_GET_CORRECT_BLERSSI,  // 等待正确的蓝牙信号强度
+        STATE_SAVE_RESULT                // 保存结果在本地
     } State;
     int intwifirssi;
     int intblerssi;
@@ -1228,7 +1254,7 @@ void MainWindow::on_start_wifible_test_clicked() {
     isrssiContinue = true;
     while (isrssiContinue) {
         switch (state) {
-        case STATE_IDLE: // 复位一�?
+        case STATE_IDLE: // 复位一切
             rssitestcount = 0;
             rssitestfailcount = 0;
             state = STATE_WATI_GET_CORRECT_WIFIRSSI;
@@ -1257,7 +1283,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                                                         "10px; padding: 10px; text-align: center;");
                     protocolManager.set(DeviceCmd::WifiDisconnect);
                     wifiresult = "通过";
-                    at->set(DongleCmd::BleLog, 1); // 日志�?
+                    at->set(DongleCmd::BleLog, 1); // 日志关
                     state = STATE_WATI_GET_CORRECT_BLERSSI;
                     rssitestcount = 0;
                 }
@@ -1265,7 +1291,7 @@ void MainWindow::on_start_wifible_test_clicked() {
             } else {
                 rssitestcount = 0;
                 rssitestfailcount++;
-                if (rssitestfailcount > RssiTestTime) // wifi信号不可�?
+                if (rssitestfailcount > RssiTestTime) // wifi信号不可以
                 {
                     wifiresult = "失败";
                     ui->wifi_test_result->setText("WIFI：FAIL");
@@ -1276,7 +1302,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                     qDebug() << "wifi不合格信号强度" << WIFI_RSSI;
                     ui->log->appendPlainText("wifi不合格信号强度" + WIFI_RSSI);
                     rssitestfailcount = 0;
-                    at->set(DongleCmd::BleLog, 1); // 日志�?
+                    at->set(DongleCmd::BleLog, 1); // 日志关
                     state = STATE_WATI_GET_CORRECT_BLERSSI;
                 }
             }
@@ -1298,14 +1324,14 @@ void MainWindow::on_start_wifible_test_clicked() {
                     state = STATE_SAVE_RESULT;
                     rssitestcount = 0;
                     bleresult = "通过";
-                    at->set(DongleCmd::BleLog, 0); // 日志�?
+                    at->set(DongleCmd::BleLog, 0); // 日志关
                 }
                 break;
             } else {
                 rssitestcount = 0;
                 rssitestfailcount++;
 
-                if (rssitestfailcount > RssiTestTime) // 蓝牙信号不可�?
+                if (rssitestfailcount > RssiTestTime) // 蓝牙信号不可以
                 {
                     ui->ble_test_result->setText("BLE：FAIL");
                     ui->ble_test_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
@@ -1316,7 +1342,7 @@ void MainWindow::on_start_wifible_test_clicked() {
                     qDebug() << "蓝牙不合格信号强度" << BLE_RSSI;
                     ui->log->appendPlainText("蓝牙不合格信号强度" + BLE_RSSI);
                     state = STATE_SAVE_RESULT;
-                    at->set(DongleCmd::BleLog, 0); // 日志�?
+                    at->set(DongleCmd::BleLog, 0); // 日志关
                     rssitestfailcount = 0;
                 }
             }
@@ -1351,30 +1377,30 @@ void MainWindow::on_sendRandomData_clicked() {
 void MainWindow::on_clearDataPushButton_clicked() {
     ui->msgTest->clear();
 }
-void MainWindow::on_imuCaliButton_clicked() // 编写六轴校准的代�?
+void MainWindow::on_imuCaliButton_clicked() // 编写六轴校准的代码
 {
     ui->imuCaliButton->setEnabled(false);
 
     typedef enum {
-        STATE_IDLE,                // 休眠状�?
+        STATE_IDLE,                // 休眠状态
         STATE_WATI_CONNECT,        // 等待连接
         STATE_DISABLE_SLEEP_1,     // 进入禁止休眠
         STATE_SET_COLLECT_PARAM_1, // 获取采集参数
-        STATE_CAIL,                // 开始校�?
-        STATE_SEND_CAIL_RESULT,    // 发送校准结�?
-        STATE_SAVE_RESULT          // 保存结果在本�?
+        STATE_CAIL,                // 开始校准
+        STATE_SEND_CAIL_RESULT,    // 发送校准结果
+        STATE_SAVE_RESULT          // 保存结果在本地
     } State;
     State state = STATE_IDLE;
     // 主状态机流程
     isimuCaliContinue = true;
     while (isimuCaliContinue) {
         switch (state) {
-        case STATE_IDLE: // 复位一�?
+        case STATE_IDLE: // 复位一切
 
             isovertime = 0;
             isimuCaliOk = 0; // 是否校准完成
             is_start_ium_cali = 0;
-            isStartSendCaliResult = 0; // 是否开始发送校验结�?
+            isStartSendCaliResult = 0; // 是否开始发送校验结果
             protocolManager.resetAllPb();
 
             if (!at->getConnected()) {
@@ -1399,7 +1425,7 @@ void MainWindow::on_imuCaliButton_clicked() // 编写六轴校准的代�?
                 protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START));
                 state = STATE_CAIL;
             }
-        case STATE_CAIL: // 开始校�?
+        case STATE_CAIL: // 开始校准
             if (protocolManager.getState(static_cast<int>(Qpb::PbStateType::SetImuCollectParam))) {
                 showlog("已发送imu采集参数");
                 qimuc->imu_calib_init();
@@ -1411,11 +1437,11 @@ void MainWindow::on_imuCaliButton_clicked() // 编写六轴校准的代�?
             }
             break;
 
-        case STATE_SEND_CAIL_RESULT: // 开始发送校准�?
+        case STATE_SEND_CAIL_RESULT: // 开始发送校准值
             if (isimuCaliOk) {
                 showlog("六轴校准成功");
                 result = passValue;
-                // isStartSendCaliResult=1;//发送校准�?
+                // isStartSendCaliResult=1;//发送校准值
                 // FacUploadNineAlex x;
                 // getimuData(x);
                 protocolManager.set(DeviceCmd::ImuCaliResult, QVariant::fromValue(qimuc->calData));
@@ -1493,7 +1519,7 @@ void MainWindow::on_motor_cali_clicked() {
     uint32_t value;
     while (is_motor_continue) {
         switch (motorstate) {
-        case STATE_IDLE: // 复位一�?
+        case STATE_IDLE: // 复位一切
             showlog("开始测试");
             protocolManager.resetAllPb();
             at->resetConnected();
@@ -1520,10 +1546,10 @@ void MainWindow::on_motor_cali_clicked() {
 
                 if (ui->is_sero_motor->checkState()) {
                     bool ok = false;
-                    value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16); // 将十六进制字符串转换�?
+                    value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16); // 将十六进制字符串转换为
                     if (ok) {
-                        qDebug() << value; // 输出 38822029，即十六进制字符�?
-                                           // "003bdf6d" 对应的数�?
+                        qDebug() << value; // 输出 38822029，即十六进制字符串
+                                           // "003bdf6d" 对应的数值
                     } else {
                         qDebug() << "Invalid input string";
                     }
@@ -1670,7 +1696,7 @@ void MainWindow::on_bleTestPushButton_clicked() {
         }
         // 检查是否是mac格式
         QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-        // 使用正则表达式匹�?
+        // 使用正则表达式匹配
         if (!macRegex.match(ui->macInput->text()).hasMatch()) {
             QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
             return;
@@ -1894,11 +1920,11 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
     protocolManager.set(DeviceCmd::StartOtaApp, QVariant::fromValue(RotasFiledata));
     isWifiOtaContinue = true;
     while (isWifiOtaContinue) {
-        if (timeout.elapsed() > 5 * 60 * 1000) { //下载超时退�?
+        if (timeout.elapsed() > 5 * 60 * 1000) { //下载超时退出
             appendAndSaveWifiOtaLog("下载超时");
             break;
         }
-        if (at->getConnected() == false) { //蓝牙断开退�?
+        if (at->getConnected() == false) { //蓝牙断开退出
             appendAndSaveWifiOtaLog("蓝牙断开退出");
             break;
         }
@@ -1935,7 +1961,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             pair = license.getLicense();
 
         appendAndSaveWifiOtaLog("");
-        appendAndSaveWifiOtaLog("正在运行生产版本OTA，密钥号为" + QString::number(license.counter));
+        appendAndSaveWifiOtaLog("正在运行生产版本OTA，密钥号：" + QString::number(license.counter));
         wifiOtaProductName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
@@ -1955,7 +1981,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             pair = Testlicense.getTestLicense();
 
         appendAndSaveWifiOtaLog("");
-        appendAndSaveWifiOtaLog("开始运行测试版本OTA，密钥号为" + QString::number(Testlicense.testcounter));
+        appendAndSaveWifiOtaLog("开始运行测试版本OTA，密钥号：" + QString::number(Testlicense.testcounter));
         wifiOtaProductName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
@@ -1964,7 +1990,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     } else if (OTAGroup->checkedId() == 2) {
         LicensePair csvpair = Csvlicense.getNextOtaDevice();
         appendAndSaveWifiOtaLog("");
-        appendAndSaveWifiOtaLog("正在运行csv文件OTA，密钥号为" + QString::number(Csvlicense.otaDeviceIndex));
+        appendAndSaveWifiOtaLog("正在运行csv文件OTA，密钥号：" + QString::number(Csvlicense.otaDeviceIndex));
         wifiOtaProductName = csvpair.product_name;
         deviceName = csvpair.device_key;
         deviceSecret = csvpair.device_secret;
@@ -1978,7 +2004,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             pair = USAlicense.getUsaLicense();
 
         appendAndSaveWifiOtaLog("");
-        appendAndSaveWifiOtaLog("正在运行北美测试OTA，密钥号为" + QString::number(USAlicense.usacounter));
+        appendAndSaveWifiOtaLog("正在运行北美测试OTA，密钥号：" + QString::number(USAlicense.usacounter));
         wifiOtaProductName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
@@ -1993,7 +2019,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
             pair = USAProductlicense.getProUsaLicense();
 
         appendAndSaveWifiOtaLog("");
-        appendAndSaveWifiOtaLog("正在运行北美生产OTA，密钥号为" + QString::number(USAProductlicense.prousacounter));
+        appendAndSaveWifiOtaLog("正在运行北美生产OTA，密钥号：" + QString::number(USAProductlicense.prousacounter));
         wifiOtaProductName = pair.product_name;
         deviceName = pair.device_key;
         deviceSecret = pair.device_secret;
@@ -2054,7 +2080,7 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
                           "------------------------------------\n"
                           "📶 WiFi 名称    : %1\n"
                           "🔑 WiFi 密码    : %2\n"
-                          "🏷�?Product Key  : %3\n"
+                          "🏷️ Product Key  : %3\n"
                           "📛 Device Name  : %4\n"
                           "🔒 Device Secret : %5\n"
                           "🌐 IoT URL       : %6\n"
@@ -2076,9 +2102,9 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
 
 void MainWindow::on_motor_cali_param_returnPressed() {
     bool ok = false;
-    uint32_t value = ui->motor_cali_param->text().mid(0, 8).toUInt(&ok, 16); // 将十六进制字符串转换�?
+    uint32_t value = ui->motor_cali_param->text().mid(0, 8).toUInt(&ok, 16); // 将十六进制字符串转换为
     if (ok) {
-        qDebug() << value; // 输出 38822029，即十六进制字符�?"003bdf6d" 对应的数�?
+        qDebug() << value; // 输出 38822029，即十六进制字符串 "003bdf6d" 对应的数值
     } else {
         qDebug() << "Invalid input string";
     }
@@ -2109,7 +2135,7 @@ void MainWindow::on_wifiOtaMacInput_returnPressed() {
     }
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!macRegex.match(ui->wifiOtaMacInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
@@ -2125,7 +2151,7 @@ void MainWindow::on_wifiOtaMacInput_returnPressed() {
 }
 
 void MainWindow::on_test_cali_clicked() {
-    static int clickStep = 1; // 用于跟踪当前运行的步�?
+    static int clickStep = 1; // 用于跟踪当前运行的步骤
     switch (clickStep) {
     case 1:
         protocolManager.set(DeviceCmd::MotorCali, 1);
@@ -2140,7 +2166,7 @@ void MainWindow::on_test_cali_clicked() {
 
     clickStep++; // 增加步骤计数
 
-    // 如果步骤计数超过了最大步骤数，重置为第一�?
+    // 如果步骤计数超过了最大步骤数，重置为第一步
     if (clickStep > 2) {
         clickStep = 1;
     }
@@ -2282,7 +2308,7 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
     }
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!macRegex.match(arg1).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
@@ -2386,7 +2412,7 @@ void MainWindow::on_white_led_clicked() {
 void MainWindow::on_get_motor_log_clicked() {
     protocolManager.set(DeviceCmd::MotorCaliState, 1);
     protocolManager.set(DeviceCmd::MotorCaliState, 0);
-    // 开关后日志就打开�?
+    // 开关后日志就打开了
 }
 
 void MainWindow::on_set_imu_info_clicked() {
@@ -2408,7 +2434,7 @@ void MainWindow::on_set_imu_info_clicked() {
 }
 
 void MainWindow::on_calculate_returnPressed() {
-    // 定义用于保存数据的数�?
+    // 定义用于保存数据的数组
     CalibData csv_data[9];
     for (int x = 0; x < 9; ++x) {
         // 重置示例数据
@@ -2448,7 +2474,7 @@ void MainWindow::on_calculate_returnPressed() {
             csvmac = mac;
         }
 
-        // 如果mac与csvmac不相等，表示已经处理完所有与csvmac相同的行，需要将数据填入数组并执行相应函�?
+        // 如果mac与csvmac不相等，表示已经处理完所有与csvmac相同的行，需要将数据填入数组并执行相应函数
         if (mac != csvmac && i == 8) {
             nqimuc->acccalib_sensors_init();
             // 执行函数
@@ -2465,15 +2491,15 @@ void MainWindow::on_calculate_returnPressed() {
             }
         }
 
-        // 从第四列的数据中解析出数组索�?i
+        // 从第四列的数据中解析出数组索引 i
         QString indexStr = fields[3];
         if (!indexStr.startsWith("data:")) {
             qDebug() << "Invalid index format";
             continue;
         }
-        i = indexStr.mid(5).toInt(); // 去除字符串中�?data:"部分，并转换为整�?
+        i = indexStr.mid(5).toInt(); // 去除字符串中的"data:"部分，并转换为整数
 
-        // 检查索�?i 是否合法
+        // 检查索引 i 是否合法
         if (i < 0 || i > 8) {
             qDebug() << "Invalid index:" << i;
             continue;
@@ -2516,7 +2542,7 @@ void MainWindow::on_distribution_network_clicked() {
 
     QByteArray wifiNameBytes = wifiName.toUtf8();
     QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-    // 获取QLineEdit中的端口号文�?
+    // 获取QLineEdit中的端口号文本
     QString portText = ui->port_num->text();
     QHostAddress ipAddress(ipString);
 
@@ -2557,12 +2583,12 @@ void MainWindow::on_distribution_network_clicked() {
 void MainWindow::on_save_photo_clicked() {
     if (!viewercamrea->temporarypixmap.isNull()) {
         QPixmap pix = viewercamrea->temporarypixmap;
-        // 使用QFileDialog让用户选择保存文件的路�?
+        // 使用QFileDialog让用户选择保存文件的路径
         QString fileName =
             QFileDialog::getSaveFileName(this, tr("Save File"), "/home", tr("Images (*.png *.xpm *.jpg)"));
 
         if (!fileName.isEmpty()) {
-            pix.save(fileName); // 保存为用户选择的文�?
+            pix.save(fileName); // 保存为用户选择的文件
         }
     } else {
         qDebug() << "Pixmap is empty!";
@@ -2580,12 +2606,12 @@ void MainWindow::on_nfc_write_read_clicked() {
     unsigned char _Snr[100] = "\0";
     unsigned char szSnr[100] = "\0";
     unsigned int SnrLen = 0;
-    unsigned char writedata[8]; // 写入数据缓冲�?
+    unsigned char writedata[8]; // 写入数据缓冲区
 
     // 033BD2023668772001004800324F30450081080027200014178591141035353034303730313233313131313131170102910B0101010A063C842707A8D1
     // 3C842707A8D1
     // 35353034303730313233313131313131
-    // 5504070123111111    //5504华为开�?701sku2311年月�?111数量
+    // 5504070123111111    //5504华为开头0701sku2311年月日1111数量
     QString hexString;
     QString text = ui->nfc_sn->text();
 
@@ -2607,8 +2633,8 @@ void MainWindow::on_nfc_write_read_clicked() {
 
     QString dataText = nfcdataHeadText + hexString + "170102910B0101010A06" + ui->nfc_mac->text().remove(":");
 
-    QByteArray dataBytes = QByteArray::fromHex(dataText.toLatin1()); // 将十六进制字符串转换为字节数�?
-    int dataSize = dataBytes.size();                                 // 获取字节数组的大�?
+    QByteArray dataBytes = QByteArray::fromHex(dataText.toLatin1()); // 将十六进制字符串转换为字节数组
+    int dataSize = dataBytes.size();                                 // 获取字节数组的大小
     qDebug() << "dataSize: " << dataSize << dataText;
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
@@ -2640,7 +2666,7 @@ void MainWindow::on_nfc_write_read_clicked() {
                 showlog("nfc退出失败");
 
             } else {
-                showlog("nfc退出成�?");
+                showlog("nfc退出成功!");
                 icdev = (HANDLE)-1;
             }
         }
@@ -2653,11 +2679,11 @@ void MainWindow::on_nfc_write_read_clicked() {
         showlog(QString::fromStdString(str1));
     }
 
-    for (int i = 0; i < dataSize; i += 4) {       // 每次处理8个字�?
-        int bytesToWrite = qMin(8, dataSize - i); // 计算本次需要写入的字节数，最�?�?
+    for (int i = 0; i < dataSize; i += 4) {       // 每次处理8个字节
+        int bytesToWrite = qMin(8, dataSize - i); // 计算本次需要写入的字节数，最多8个
 
         memcpy(writedata, dataBytes.constData() + i,
-               bytesToWrite); // 将数据复制到写入数据缓冲�?
+               bytesToWrite); // 将数据复制到写入数据缓冲区
 
         int ret = dc_write(icdev, 4 + i / 4,
                            writedata); // 将写入数据缓冲区中的数据写入设备
@@ -2668,7 +2694,7 @@ void MainWindow::on_nfc_write_read_clicked() {
         }
     }
 
-    for (int i = 4; i * 4 < dataSize; i += 4) { // 每次处理16个字�?
+    for (int i = 4; i * 4 < dataSize; i += 4) { // 每次处理16个字节
         st = dc_read(icdev, i, rdata);
         if (st != 0) {
             showlog("dc_read Error!");
@@ -2678,7 +2704,7 @@ void MainWindow::on_nfc_write_read_clicked() {
                     showlog("nfc退出失败");
 
                 } else {
-                    showlog("nfc退出成�?");
+                    showlog("nfc退出成功!");
                     icdev = (HANDLE)-1;
                 }
             }
@@ -2700,7 +2726,7 @@ void MainWindow::on_nfc_write_read_clicked() {
                     showlog("nfc退出失败");
 
                 } else {
-                    showlog("nfc退出成�?");
+                    showlog("nfc退出成功!");
                     icdev = (HANDLE)-1;
                 }
             }
@@ -2733,7 +2759,7 @@ void MainWindow::on_clear_nfc_data_clicked() {
     unsigned char _Snr[100] = "\0";
     unsigned char szSnr[100] = "\0";
     unsigned int SnrLen = 0;
-    unsigned char writedata[8] = {0x03, 0x00, 0xFE, 0x00}; // 写入数据缓冲�?
+    unsigned char writedata[8] = {0x03, 0x00, 0xFE, 0x00}; // 写入数据缓冲区
     unsigned char rdata[100] = "\0";
     unsigned char rdatahex[100] = "\0";
     int nfcport = 100;
@@ -2760,7 +2786,7 @@ void MainWindow::on_clear_nfc_data_clicked() {
                 showlog("nfc退出失败");
 
             } else {
-                showlog("nfc退出成�?");
+                showlog("nfc退出成功!");
                 icdev = (HANDLE)-1;
             }
         }
@@ -2789,7 +2815,7 @@ void MainWindow::on_clear_nfc_data_clicked() {
                 showlog("nfc退出失败");
 
             } else {
-                showlog("nfc退出成�?");
+                showlog("nfc退出成功!");
                 icdev = (HANDLE)-1;
             }
         }
@@ -2888,7 +2914,7 @@ void MainWindow::on_nfc_read_clicked()
                 showlog("nfc退出失败");
 
             } else {
-                showlog("nfc退出成�?");
+                showlog("nfc退出成功!");
                 icdev = (HANDLE)-1;
             }
         }
@@ -2901,7 +2927,7 @@ void MainWindow::on_nfc_read_clicked()
         showlog("卡的序列号为" + QString::fromStdString(str1));
     }
 
-    for (int i = 4; i * 4 < dataSize; i += 4) { // 每次处理16个字�?
+    for (int i = 4; i * 4 < dataSize; i += 4) { // 每次处理16个字节
         st = dc_read(icdev, i, rdata);
         if (st != 0) {
             // showlog("dc_read Error!");
@@ -2912,7 +2938,7 @@ void MainWindow::on_nfc_read_clicked()
                     showlog("nfc退出失败");
 
                 } else {
-                    showlog("nfc退出成�?");
+                    showlog("nfc退出成功!");
                     icdev = (HANDLE)-1;
                 }
             }
@@ -2936,7 +2962,7 @@ void MainWindow::on_nfc_read_clicked()
                     showlog("nfc退出失败");
 
                 } else {
-                    showlog("nfc退出成�?");
+                    showlog("nfc退出成功!");
                     icdev = (HANDLE)-1;
                 }
             }
@@ -2955,7 +2981,7 @@ void MainWindow::on_nfc_read_clicked()
             showlog("nfc退出失败");
 
         } else {
-            showlog("nfc退出成�?");
+            showlog("nfc退出成功!");
             icdev = (HANDLE)-1;
         }
     }
@@ -2979,13 +3005,13 @@ void MainWindow::on_nfc_encode_clicked() {
     QString nfcName = ui->nfc_name->text();
 
     // 将QString转换为QByteArray，然后获取其const char *指针
-    QByteArray byteArray = nfcName.toLatin1(); // 使用Latin-1编码，确保兼容�?
+    QByteArray byteArray = nfcName.toLatin1(); // 使用Latin-1编码，确保兼容性
     const char* data = byteArray.constData();
 
-    // 创建一个用于存储数据的缓冲区，并确保长度足�?
-    unsigned char buffer[8]; // 假设需要写入的数据长度�?字节
+    // 创建一个用于存储数据的缓冲区，并确保长度足够
+    unsigned char buffer[8]; // 假设需要写入的数据长度为8字节
 
-    // 将const char *的数据复制到unsigned char *的buffer�?
+    // 将const char *的数据复制到unsigned char *的buffer中
     memcpy(buffer, data, byteArray.length());
 
     st = dc_swr_eeprom(icdev, 0, 8, buffer);
@@ -3011,10 +3037,10 @@ void MainWindow::on_nfc_decode_clicked() {
         showlog("nfc烧录器读取失败");
     } else {
         showlog("nfc烧录器读取成功");
-        // �?buff_1 数组转换�?QString
+        // 将 buff_1 数组转换为 QString
         QString buffStr = QString::fromLatin1(reinterpret_cast<const char*>(buff_1), 8);
-        // 输出整个字符�?
-        qDebug() << "nfc设备�?" << buffStr;
+        // 输出整个字符串
+        qDebug() << "nfc设备为:" << buffStr;
     }
 }
 
@@ -3068,14 +3094,14 @@ void MainWindow::on_write_device_subpid_clicked() {
     showlog("已绑定subpid到设备");
 }
 // void MainWindow::on_clear_picture_clicked() {
-//     // 创建网络访问管理�?
+//     // 创建网络访问管理器
 //     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
 //     // 创建请求
 //     QNetworkRequest request;
 //     request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));  // 拼接
 
-//     // 发�?GET 请求
+//     // 发送 GET 请求
 //     QNetworkReply* reply = manager->get(request);
 
 //     // 处理请求完成信号
@@ -3096,14 +3122,14 @@ void MainWindow::on_write_device_subpid_clicked() {
 // }
 
 void MainWindow::on_clear_picture_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
     request.setUrl(QUrl(ui->ui_ip->text() + "/clear_spiffs_function"));
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 创建事件循环
@@ -3112,10 +3138,10 @@ void MainWindow::on_clear_picture_clicked() {
     // 连接请求完成信号到事件循环的退出槽
     connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
 
-    // 进入事件循环，等待网络请求完�?
+    // 进入事件循环，等待网络请求完成
     loop.exec();
 
-    // 请求完成后处理结�?
+    // 请求完成后处理结果
     if (reply->error() == QNetworkReply::NoError) {
         qDebug() << "Request succeeded";
         showlog("图片删除完毕");
@@ -3129,15 +3155,15 @@ void MainWindow::on_clear_picture_clicked() {
     manager->deleteLater();
 }
 void MainWindow::on_up_picture_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
     request.setUrl(QUrl(ui->ui_ip->text() + "/upPicture_function")); // 拼接 "/trigger_function"
-                                                                     // �?ESP32 �?IP 地址
+                                                                     // 到 ESP32 的 IP 地址
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 处理请求完成信号
@@ -3158,16 +3184,16 @@ void MainWindow::on_up_picture_clicked() {
 }
 
 void MainWindow::on_down_picture_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
     request.setUrl(QUrl(ui->ui_ip->text() + "/downPicture_function")); // 拼接
-                                                                       // "/trigger_function" �?
-                                                                       // ESP32 �?IP 地址
+                                                                       // "/trigger_function" 到
+                                                                       // ESP32 的 IP 地址
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 处理请求完成信号
@@ -3188,16 +3214,16 @@ void MainWindow::on_down_picture_clicked() {
 }
 
 void MainWindow::on_play_picture_clicked() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
     // 创建请求
     QNetworkRequest request;
     request.setUrl(QUrl(ui->ui_ip->text() + "/playPicture_function")); // 拼接
-                                                                       // "/trigger_function" �?
-                                                                       // ESP32 �?IP 地址
+                                                                       // "/trigger_function" 到
+                                                                       // ESP32 的 IP 地址
 
-    // 发�?GET 请求
+    // 发送 GET 请求
     QNetworkReply* reply = manager->get(request);
 
     // 处理请求完成信号
@@ -3221,7 +3247,7 @@ void MainWindow::on_open_imu_collect_solve_clicked() {
     protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START));
     deleteCsvFile("处理后的6轴IMU性能验证.csv");
     static QTimer* imu_collect_timer; // 定时器指针作为类成员变量
-    // 如果定时器已经存在且正在运行，则断开连接并停�?
+    // 如果定时器已经存在且正在运行，则断开连接并停止
     if (imu_collect_timer) {
         disconnect(imu_collect_timer, &QTimer::timeout, nullptr, nullptr);
         imu_collect_timer->stop();
@@ -3231,17 +3257,17 @@ void MainWindow::on_open_imu_collect_solve_clicked() {
     // 创建并启动一个新的定时器
     imu_collect_timer = new QTimer(this);
     connect(imu_collect_timer, &QTimer::timeout, this, [=]() {
-        // 定时器超时后执行的操�?
+        // 定时器超时后执行的操作
         protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_STOP)); // 停止IMU采集
         showlog("10秒已到，停止IMU采集");
 
         // 关闭并释放定时器
         imu_collect_timer->stop();
         imu_collect_timer->deleteLater();
-        imu_collect_timer = nullptr; // 释放后将指针置为�?
+        imu_collect_timer = nullptr; // 释放后将指针置为空
     });
 
-    imu_collect_timer->start(10000); // 10000 毫秒 = 10 �?
+    imu_collect_timer->start(10000); // 10000 毫秒 = 10 秒
 }
 
 void MainWindow::on_py_test_clicked() {
@@ -3256,7 +3282,7 @@ void MainWindow::on_py_test_clicked() {
 
     QProcess process;
 
-    // 设置虚拟环境�?Python 可执行文件路�?
+    // 设置虚拟环境的 Python 可执行文件路径
     QString pythonPath = "./u7p_camera_defect_detect_env/python.exe";
 
     // 设置要运行的 Python 脚本及其参数
@@ -3267,7 +3293,7 @@ void MainWindow::on_py_test_clicked() {
               << "--img"
               << "./code/test.png";
 
-    // 设置工作目录为虚拟环境目�?
+    // 设置工作目录为虚拟环境目录
     process.setWorkingDirectory("./u7p_camera_defect_detect_env");
 
     // 启动进程
@@ -3281,7 +3307,7 @@ void MainWindow::on_py_test_clicked() {
     // 等待进程结束
     process.waitForFinished();
 
-    // 获取标准输出和标准错误输�?
+    // 获取标准输出和标准错误输出
     QString output = process.readAllStandardOutput();
     QString errorOutput = process.readAllStandardError();
 
@@ -3297,7 +3323,7 @@ void MainWindow::on_transfer_xls_clicked() {
     QDateTime currentDateTime = QDateTime::currentDateTime();
     // 按照指定格式格式化日期和时间
     QString formattedDateTime = currentDateTime.toString("yyyyMMdd");
-    // 构建新的文件�?
+    // 构建新的文件名
     QString newcsvFileName =
         QString("xx_%1_s1_t1_g1_people_F_30_160_R_%2.xls").arg(macAddress.remove(':').right(4)).arg(formattedDateTime);
 
@@ -3314,7 +3340,7 @@ void MainWindow::on_nfc_close_clicked() {
         if (st != 0) {
             showlog("nfc退出失败");
         } else {
-            showlog("nfc退出成�?");
+            showlog("nfc退出成功!");
             icdev = (HANDLE)-1;
         }
     }
@@ -3375,7 +3401,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
 
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹�?
+    // 使用正则表达式匹配
     if (!macRegex.match(ui->bleotamacInput->text()).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
@@ -3393,7 +3419,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         return;
     }
 
-    // startUsmileBleOtaLegacy();  // �?usmile OTA 暂时丢一边，路特流程不再调用�?
+    // startUsmileBleOtaLegacy();  // 旧 usmile OTA 暂时丢一边，路特流程不再调用。
     startRootBleOta();
 }
 
@@ -3512,7 +3538,7 @@ void MainWindow::startRootBleOta() {
                 .arg(imageCrc32, 8, 16, QChar('0'))
                 .arg(totalBlocks));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
-                                   QStringLiteral(" 路特 TLV OTA 开始") + filePath);
+                                   QStringLiteral(" 路特 TLV OTA 开始 ") + filePath);
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" BLOCK_DATA 发送间隔：%1 ms").arg(intervalMs));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
@@ -3721,7 +3747,7 @@ void MainWindow::tryScheduleBleOtaPressTest(bool lastOk) {
     ++bleOtaPressRound_;
 
     const QString summary =
-        QStringLiteral("蓝牙 OTA 压测 第 %1 次，%2，累计成功 %3 失败 %4，本轮耗时 %5 s")
+        QStringLiteral("蓝牙 OTA 压测 第 %1 轮 %2，累计成功 %3 失败 %4，本轮耗时 %5 s")
             .arg(bleOtaPressRound_)
             .arg(lastOk ? QStringLiteral("PASS") : QStringLiteral("FAIL"))
             .arg(bleOtaPressSucTimes_)
@@ -3734,7 +3760,7 @@ void MainWindow::tryScheduleBleOtaPressTest(bool lastOk) {
     const int periodSec = qMax(0, ui->testPeriodSpin->value());
     if (periodSec > 0) {
         ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
-                                       QStringLiteral(" 压测间隔等待 %1 s").arg(periodSec));
+                                       QStringLiteral(" 压测间隔等待 %1 s…").arg(periodSec));
         QElapsedTimer waitTimer;
         waitTimer.start();
         while (waitTimer.elapsed() < periodSec * 1000) {
@@ -3754,7 +3780,7 @@ void MainWindow::tryScheduleBleOtaPressTest(bool lastOk) {
     on_bleotamacInput_returnPressed();
 }
 
-// �?usmile 蓝牙 OTA 流程，当前路特流程不调用，保留用于回退和对照�?
+// 旧 usmile 蓝牙 OTA 流程，当前路特流程不调用，保留用于回退和对照。
 void MainWindow::startUsmileBleOtaLegacy() {
     on_stopBleOta_clicked();
     on_disconnectButton_clicked();
@@ -3787,7 +3813,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
     }
 
     protocolManager.setNeedAes(false);
-    protocolManager.setPbMode(1); //为了区分收到的解包工厂接�?
+    protocolManager.setPbMode(1); //为了区分收到的解包工厂接口
     on_getBasicInfoButton_clicked();
     waitWork(500);
     on_getperipheralButton_clicked();
@@ -3802,7 +3828,7 @@ void MainWindow::on_stopBleOta_clicked() {
     rootBleOtaActive_ = false;
     rootBleOta2Active_ = false;
     bleotatimer->stop();
-    disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连�?
+    disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连接
     currentChunk = 0;
 }
 
@@ -3862,9 +3888,9 @@ void MainWindow::on_startBleOta_clicked() {
     startRootBleOta();
 }
 
-// �?usmile OTA 发送流程，当前路特流程不调用，保留用于回退和对照�?
+// 旧 usmile OTA 发送流程，当前路特流程不调用，保留用于回退和对照。
 void MainWindow::startUsmileBleOtaTransferLegacy() {
-    // 设置定时器间�?
+    // 设置定时器间隔
     bool ok;
     int interval = ui->OtaTimeInterval->text().toInt(&ok);
     if (!ok || interval <= 0) {
@@ -3875,7 +3901,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     if (bleotatimer->isActive()) {
         bleotatimer->stop();
     }
-    disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连�?
+    disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连接
 
     QString filePath = ui->otaFilePath->text();
     if (filePath.isEmpty()) {
@@ -3889,7 +3915,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
         QMessageBox::critical(this, "错误", "无法打开固件OTA文件");
         return;
     }
-    qDebug() << "当前ota产品：" << connectProductName;
+    qDebug() << "当前ota产品为" << connectProductName;
     QByteArray fileData_source;
     if (connectProductName != "U7" && connectProductName != "U7P") {
         if (connectProductName == "Y20PS")
@@ -3987,11 +4013,11 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
         int packetSize = 224;
         int depacketSize = 0;
         while (offset < totalSize) {
-            // 计算当前包大小（最后一包可能小�?00字节�?
+            // 计算当前包大小（最后一包可能小于300字节）
             int currentSize = qMin(packetSize, totalSize - offset);
             QByteArray packet = fileData_source.mid(offset, currentSize);
             waitWork(interval);
-            // 等待允许发送下一�?
+            // 等待允许发送下一包
             if (stopBleOta) {
                 showlog("发送资源数据包停止测试");
                 return; // 停止测试
@@ -4005,13 +4031,13 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
 
             if (offset == 0)
                 showlog(QString("资源包第一个字节为%1").arg(packdata[0]));
-            // 发送当前分包数�?
+            // 发送当前分包数据
             dongleSerialPort->write(packdata);
-            showlog(QString("发送分�? %1/%2 字节").arg(offset + currentSize).arg(totalSize));
+            showlog(QString("发送分包: %1/%2 字节").arg(offset + currentSize).arg(totalSize));
             depacketSize = depacketSize + packdata.size();
             showlog(QString("发送总数%1").arg(depacketSize));
 
-            // 更新偏移量，准备下一�?
+            // 更新偏移量，准备下一包
             offset += currentSize;
 
             float progressValue = ((float)(offset + currentSize) / totalSize) * 100;
@@ -4024,7 +4050,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     }
     protocolManager.resetAllPb();
     if (connectProductName != "U7" && connectProductName != "U7P") {
-        while (!protocolManager.getState(static_cast<int>(Qpb::PbStateType::OtaStart))) { //接收请求可以发送下一�?
+        while (!protocolManager.getState(static_cast<int>(Qpb::PbStateType::OtaStart))) { //接收请求可以发送下一包
             showlog("等待手柄请求发送固件包!");
 
             waitWork(2000);
@@ -4039,27 +4065,27 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     currentChunk = 0;
     int chunkSize = 224; // 每包244字节
     int totalOtaSize = fileData.size();
-    int numChunks = (totalOtaSize + chunkSize - 1) / chunkSize; // 计算总包�?
+    int numChunks = (totalOtaSize + chunkSize - 1) / chunkSize; // 计算总包数
 
     bleotatimer->setInterval(interval);
 
     bleOtaTestTime.start();
     totalBleSendData = 0;
-    // 定义定时器超时处理函�?
+    // 定义定时器超时处理函数
     connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
         // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
-        // showlog("开始发�?" + timestamp);
+        // showlog("开始发送:" + timestamp);
         ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
         int offset = currentChunk * chunkSize;
         int size = qMin(chunkSize, totalOtaSize - offset);
 
         QByteArray chunk = fileData.mid(offset, size);
         if (currentChunk >= numChunks) {
-            showlog("文件发送完�?");
+            showlog("文件发送完毕!");
             qDebug() << "ota write data will over" << chunk.size() << totalOtaSize << currentChunk << offset
                      << totalBleSendData << numChunks;
             bleotatimer->stop();
-            disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连�?
+            disconnect(bleotatimer, &QTimer::timeout, this, nullptr); // 断开所有与timeout信号相关的连接
             currentChunk = 0;
             return;
         }
@@ -4086,7 +4112,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
         emit sendBelOtaSpeed(progressInt);
     });
 
-    // 启动定时�?
+    // 启动定时器
     QTimer::singleShot(100, this, [this]() { bleotatimer->start(); });
 }
 
@@ -4113,21 +4139,21 @@ void MainWindow::on_ship_bomb_clicked() {
 }
 
 void MainWindow::on_get_noisy_clicked() {
-    showlog("开启采集噪声");
-    // 如果已经存在定时器，则不创建新的定时�?
+    showlog("开启采集噪音");
+    // 如果已经存在定时器，则不创建新的定时器
     if (!noisytimer) {
         noisytimer = new QTimer(this);
 
         dongleSerialPort->setBaudRate(9600);
 
-        // 定义要发送的数据缓冲�?
+        // 定义要发送的数据缓冲区
         static const unsigned char tx_buffer[] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x01, 0x84, 0x0a};
 
         // 连接定时器的timeout信号到发送数据的lambda函数
         // 在构造函数或初始化函数中
         connect(noisytimer, &QTimer::timeout, this, &MainWindow::sendNoisyData);
 
-        // 启动定时器，每秒触发一�?
+        // 启动定时器，每秒触发一次
         noisytimer->start(1000);
 
         is_need_noisy_data = true;
@@ -4172,7 +4198,7 @@ void MainWindow::on_set_hw_ver_clicked() {
     FacGetDevBaseInfo data;
     // 使用 strncpy 复制字符数组
     qstrncpy(data.hw_version, hwver, sizeof(data.hw_version) - 1);
-    // 确保目标数组�?null 终止
+    // 确保目标数组以 null 终止
     data.hw_version[sizeof(data.hw_version) - 1] = '\0';
     protocolManager.set(DeviceCmd::BaseInfo, QVariantList{static_cast<int>(FacBasInfoType_HW_VERSION), QVariant::fromValue(data)});
 }
@@ -4212,12 +4238,12 @@ void MainWindow::on_audio_volume_valueChanged(int value) {
 }
 
 void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
-    if (arg1) { //音频�?
+    if (arg1) { //音频的
 
         ui->high_speed_tp->setText("传输单个音频文件");
-        ui->active_picture->setText("批量处理音频文件中");
+        ui->active_picture->setText("批量处理音频文件夹");
         ui->label_95->setText("音频播放倍速");
-        ui->label_98->setText("秒");
+        ui->label_98->setText("倍");
         ui->send_audio->show();
         ui->audio_volume->show();
         ui->audio_volume->show();
@@ -4226,12 +4252,12 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
         ui->play_speed->setText("1");
     }
 
-    else { // ui�?
+    else { // ui的
 
         ui->high_speed_tp->setText("传输单个图片文件");
         ui->active_picture->setText("批量发送处理图片文件夹");
         ui->label_95->setText("图片播放速度");
-        ui->label_98->setText("ms/次");
+        ui->label_98->setText("ms/张");
         ui->play_speed->setText("50");
         ui->send_audio->hide();
         ui->audio_volume->hide();
@@ -4242,22 +4268,22 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
 }
 
 void MainWindow::on_play_speed_returnPressed() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
-    // 获取用户输入的SSID和密�?
+    // 获取用户输入的SSID和密码
     QString playspeed = ui->play_speed->text();
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/play_speed")); // 拼接 "/_config" �?ESP32 �?IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/play_speed")); // 拼接 "/_config" 到 ESP32 的 IP 地址
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     // 创建数据
     QByteArray data;
     data.append("playspeed=" + QUrl::toPercentEncoding(playspeed));
 
-    // 发�?POST 请求
+    // 发送 POST 请求
     QNetworkReply* reply = manager->post(request, data);
 
     qDebug() << "data: " << data;
@@ -4280,16 +4306,16 @@ void MainWindow::on_play_speed_returnPressed() {
 }
 
 void MainWindow::on_uipasswordInput_returnPressed() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
-    // 获取用户输入的SSID和密�?
+    // 获取用户输入的SSID和密码
     QString ssid = ui->uissidInput->text();
     QString password = ui->uipasswordInput->text();
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/wifi_config")); // 拼接 "/wifi_config" �?ESP32 �?IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/wifi_config")); // 拼接 "/wifi_config" 到 ESP32 的 IP 地址
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     // 创建数据
@@ -4297,7 +4323,7 @@ void MainWindow::on_uipasswordInput_returnPressed() {
     data.append("ssid=" + QUrl::toPercentEncoding(ssid) + "&");
     data.append("password=" + QUrl::toPercentEncoding(password));
 
-    // 发�?POST 请求
+    // 发送 POST 请求
     QNetworkReply* reply = manager->post(request, data);
 
     // 处理请求完成信号
@@ -4318,22 +4344,22 @@ void MainWindow::on_uipasswordInput_returnPressed() {
 }
 
 void MainWindow::on_ui_ypos_returnPressed() {
-    // 创建网络访问管理�?
+    // 创建网络访问管理器
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
 
-    // 获取用户输入的SSID和密�?
+    // 获取用户输入的SSID和密码
     QString ypos = ui->ui_ypos->text();
 
     // 创建请求
     QNetworkRequest request;
-    request.setUrl(QUrl(ui->ui_ip->text() + "/y_Pos")); // 拼接 "/_config" �?ESP32 �?IP 地址
+    request.setUrl(QUrl(ui->ui_ip->text() + "/y_Pos")); // 拼接 "/_config" 到 ESP32 的 IP 地址
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
 
     // 创建数据
     QByteArray data;
     data.append("yPos=" + QUrl::toPercentEncoding(ypos));
 
-    // 发�?POST 请求
+    // 发送 POST 请求
     QNetworkReply* reply = manager->post(request, data);
 
     qDebug() << "data: " << data;
@@ -4363,22 +4389,22 @@ void MainWindow::on_set_press_info_clicked() {
     qDebug() << "发送校准系数";
 
     press_calib_data_t cali_result = {0};
-    qDebug() << "电机校准�?" << ui->calibValue_brushHead->text();
+    qDebug() << "电机校准值:" << ui->calibValue_brushHead->text();
     cali_result.calib_factor[MODULE_BTH] = ui->calibValue_brushHead->text().toInt();
 
-    qDebug() << "温度校准�?" << ui->calibValue_temp->text();
+    qDebug() << "温度校准值:" << ui->calibValue_temp->text();
     cali_result.temperature[MODULE_BTH] = ui->calibValue_temp->text().toInt();
 
-    qDebug() << "模式按键校准�?" << ui->calibValue_modeButton->text();
+    qDebug() << "模式按键校准值:" << ui->calibValue_modeButton->text();
     cali_result.calib_factor[MODULE_MODE_BUTTON] = ui->calibValue_modeButton->text().toInt();
 
-    qDebug() << "温度校准�?" << ui->calibValue_temp->text();
+    qDebug() << "温度校准值:" << ui->calibValue_temp->text();
     cali_result.temperature[MODULE_MODE_BUTTON] = ui->calibValue_temp->text().toInt();
 
-    qDebug() << "电源按键校准�?" << ui->calibValue_powerButton->text();
+    qDebug() << "电源按键校准值:" << ui->calibValue_powerButton->text();
     cali_result.calib_factor[MODULE_POWER_BUTTON] = ui->calibValue_powerButton->text().toInt();
 
-    qDebug() << "辅助元件校准�?" << ui->calibValue_auxComponent->text();
+    qDebug() << "辅助元件校准值:" << ui->calibValue_auxComponent->text();
     cali_result.calib_factor[MODULE_ASSISTANT_COMPONENT] = ui->calibValue_auxComponent->text().toInt();
 
     protocolManager.set(DeviceCmd::PressCaliResult, QVariant::fromValue(cali_result));
@@ -4418,7 +4444,7 @@ void MainWindow::on_selectPath_source_clicked() {
 }
 
 void MainWindow::on_set_mode_returnPressed() {
-    showlog("当前发送的模式为" + ui->set_mode->text());
+    showlog("当前发送的模式是" + ui->set_mode->text());
 
     protocolManager.set(DeviceCmd::DeviceMode, ui->set_mode->text().toInt());
 }
@@ -4481,7 +4507,7 @@ void MainWindow::on_kTlvKeyWrite_clicked() {
     QVariantMap m;
     auto* keyEdit = this->findChild<QLineEdit*>("kTlvKey_data");
     if (keyEdit == nullptr) {
-        showlog("未找到kTlvKey_data 输入框");
+        showlog("未找到 kTlvKey_data 输入框");
         return;
     }
     m["value"] = keyEdit->text();
@@ -4502,7 +4528,7 @@ void MainWindow::on_read_light_sensor_clicked() {
 
 void MainWindow::on_set_light_sensor_clicked() {
     QVariantMap m;
-    m["index"] = 0; // 对应前面�?00
+    m["index"] = 0; // 对应前面的 00
     m["value"] = 0x12345678;
     protocolManager.set(DeviceCmd::LightCalibWrite, m);
 }
@@ -4561,7 +4587,7 @@ void MainWindow::on_night_brightness_clicked() {
     m["value"] = brightness;
     protocolManager.set(DeviceCmd::NightLightSet, m);
     const QString brightnessHex = QString("%1").arg(brightness, 2, 16, QLatin1Char('0')).toUpper();
-    showlog(QString("已发送夜灯亮度设�? %1/100，hex=0x%2")
+    showlog(QString("已发送夜灯亮度设置: %1/100，hex=0x%2")
                 .arg(brightness)
                 .arg(brightnessHex));
 }
@@ -4635,7 +4661,7 @@ void MainWindow::on_set_trim_data_clicked() {
     QVariantMap m;
     m["value"] = trimValue;
     protocolManager.set(DeviceCmd::TrimSet, m);
-    showlog(QString("已发送设置trim�? %1").arg(trimValue));
+    showlog(QString("已发送设置trim值: %1").arg(trimValue));
 }
 
 void MainWindow::on_get_trim_data_clicked() {
@@ -4686,7 +4712,7 @@ void MainWindow::on_send_custom_msg_clicked() {
     const uint32_t serviceId = ui->custom_service_id->text().trimmed().toUInt(&okService, 0);
     const uint32_t tlvType = ui->custom_tlv_type->text().trimmed().toUInt(&okTlv, 0);
     if (!okService || !okTlv || serviceId > 0xFFFFu || tlvType > 0xFFFFu) {
-        showlog("自定义消息参数错误：serviceId/tlvType 需为0~0xFFFF（支持0x前缀）");
+        showlog("自定义消息参数错误：serviceId/tlvType 需为 0~0xFFFF（支持0x前缀）");
         return;
     }
 

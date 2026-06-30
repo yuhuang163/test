@@ -2,6 +2,7 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "test_case.h"
 #include "test_record_store.h"
 
 #include <QDateTime>
@@ -63,6 +64,12 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
         }
         return false;
     }
+    if (AuthService::isOfflineSession()) {
+        if (message) {
+            *message = QStringLiteral("离线测试模式，跳过测试数据上报");
+        }
+        return false;
+    }
     if (!AuthService::isLoggedIn()) {
         (void)AuthService::loginWithSavedCredentials();
     }
@@ -92,7 +99,9 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
 
     QJsonArray items;
     const QVector<TestRecordStore::ParsedItem> parsed = TestRecordStore::parseItemValue(pack);
-    for (const TestRecordStore::ParsedItem& item : parsed) {
+    for (TestRecordStore::ParsedItem item : parsed) {
+        // MES 分项仍用 MesTag；云端上报改为中文 DisplayName（见 TestCaseStore::cloudDisplayNameForItemKey）
+        item.name = TestCaseStore::cloudDisplayNameForItemKey(item.name);
         items.append(itemToJson(item));
     }
     body.insert(QStringLiteral("items"), items);
