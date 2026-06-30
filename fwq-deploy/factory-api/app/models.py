@@ -14,6 +14,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    password_plain: Mapped[str | None] = mapped_column(String(128), nullable=True)  # 管理员可见，创建/重置时写入
     roles: Mapped[str] = mapped_column(String(255), default="operator")  # 逗号分隔
     station_keys: Mapped[str] = mapped_column(Text, default="")  # 逗号分隔
     status: Mapped[str] = mapped_column(String(16), default="active")

@@ -3,7 +3,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
@@ -47,3 +47,17 @@ def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _migrate_sqlite_schema(engine)
+
+
+def _migrate_sqlite_schema(eng) -> None:
+    """SQLite 轻量补列（create_all 不会改已有表）。"""
+    url = str(eng.url)
+    if not url.startswith("sqlite"):
+        return
+    with eng.connect() as conn:
+        rows = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        cols = {r[1] for r in rows}
+        if "password_plain" not in cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN password_plain VARCHAR(128)"))
+            conn.commit()

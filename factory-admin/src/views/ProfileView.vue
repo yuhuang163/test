@@ -34,6 +34,7 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
+import { formatRoleLabels } from '../utils/roles'
 import * as api from '../api/users'
 
 const router = useRouter()
@@ -41,10 +42,7 @@ const user = useUserStore()
 const loading = ref(false)
 const form = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
-const roleText = computed(() => {
-  const map = { admin: '管理员', engineer: '工艺工程师', operator: '产线操作员' }
-  return (user.roles || []).map((r) => map[r] || r).join('、') || '-'
-})
+const roleText = computed(() => formatRoleLabels(user.roles, '未分配'))
 
 const stationText = computed(() => (user.stationKeys?.length ? user.stationKeys.join('、') : '未限制'))
 

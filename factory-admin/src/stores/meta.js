@@ -15,8 +15,8 @@ export const useMetaStore = defineStore('meta', {
     loaded: false,
   }),
   actions: {
-    async load() {
-      if (this.loaded) return
+    async load(force = false) {
+      if (this.loaded && !force) return
       const tasks = [
         http.get('/admin/meta/factories').catch(() => []),
         http.get('/admin/meta/stations').catch(() => STATION_FALLBACK),
@@ -24,6 +24,11 @@ export const useMetaStore = defineStore('meta', {
       const [factories, stations] = await Promise.all(tasks)
       this.factories = factories || []
       this.stations = stations?.length ? stations : STATION_FALLBACK
+      this.loaded = true
+    },
+    async reloadFactories() {
+      const factories = await http.get('/admin/meta/factories').catch(() => [])
+      this.factories = factories || []
       this.loaded = true
     },
     factoryLabel(code) {

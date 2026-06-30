@@ -13,6 +13,7 @@ import TestCasesView from '../views/testCases/TestCasesView.vue'
 import VersionHistoryView from '../views/testCases/VersionHistoryView.vue'
 import HostAppView from '../views/hostApp/HostAppView.vue'
 import UsersView from '../views/system/UsersView.vue'
+import FactoriesView from '../views/system/FactoriesView.vue'
 import DevicesView from '../views/system/DevicesView.vue'
 import AuditLoginsView from '../views/system/AuditLoginsView.vue'
 import ProfileView from '../views/ProfileView.vue'
@@ -51,6 +52,11 @@ const router = createRouter({
           path: 'system/users',
           component: UsersView,
           meta: { title: '账号管理', menu: '/system/users', roles: ['admin'] },
+        },
+        {
+          path: 'system/factories',
+          component: FactoriesView,
+          meta: { title: '工厂管理', menu: '/system/factories', roles: ['admin'] },
         },
         {
           path: 'system/devices',

@@ -20,6 +20,18 @@ export function unlockUser(id) {
   return http.post(`/admin/users/${id}/unlock`)
 }
 
+export function deleteUser(id) {
+  return http.post(`/admin/users/${id}/delete`)
+}
+
+export function previewBatchUsers(body) {
+  return http.post('/admin/users/batch-import/preview', body)
+}
+
+export function batchImportUsers(body) {
+  return http.post('/admin/users/batch-import', body)
+}
+
 export function changePassword(body) {
   return http.post('/auth/change-password', body)
 }

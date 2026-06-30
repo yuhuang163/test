@@ -10,7 +10,8 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models import AdminDevice, LoginAudit, User
 from app.response import ok
-from app.security import hash_password
+from app.security import hash_password, parse_roles
+from app.services import user_batch
 
 router = APIRouter(tags=["admin-extra"])
 
@@ -33,6 +34,7 @@ def list_users(db: Annotated[Session, Depends(get_db)], user: Annotated[User, De
             {
                 "id": r.id,
                 "username": r.username,
+                "password": r.password_plain or "",
                 "roles": (r.roles or "").split(","),
                 "stationKeys": [s for s in (r.station_keys or "").split(",") if s],
                 "status": r.status,
@@ -68,6 +70,7 @@ def create_user(
     u = User(
         username=username,
         password_hash=hash_password(password),
+        password_plain=password,
         roles=",".join(roles),
         station_keys=",".join(station_keys),
         status="active",
@@ -75,6 +78,39 @@ def create_user(
     db.add(u)
     db.commit()
     return ok(message="已创建")
+
+
+@router.post("/admin/users/batch-import/preview")
+def batch_import_preview(
+    body: dict,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """预览按工厂生成的三类账号（账号如 lxop，密码为账号+26）。"""
+    _require_admin(user)
+    data = user_batch.preview_batch_accounts(
+        db,
+        factory_codes=body.get("factoryCodes"),
+        roles=body.get("roles"),
+    )
+    return ok(data)
+
+
+@router.post("/admin/users/batch-import")
+def batch_import_users(
+    body: dict,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _require_admin(user)
+    data = user_batch.import_batch_accounts(
+        db,
+        factory_codes=body.get("factoryCodes"),
+        roles=body.get("roles"),
+        station_keys=body.get("stationKeys"),
+        skip_existing=bool(body.get("skipExisting", True)),
+    )
+    return ok(data, message=f"已创建 {data['summary']['created']} 个账号")
 
 
 @router.put("/admin/users/{user_id}")
@@ -114,6 +150,7 @@ def reset_password(
         fail(404, "用户不存在", 404)
     new_pwd = "ChangeMe123"
     u.password_hash = hash_password(new_pwd)
+    u.password_plain = new_pwd
     u.failed_login_count = 0
     u.locked_until = None
     db.commit()
@@ -138,6 +175,56 @@ def unlock_user(
     return ok(message="已解锁")
 
 
+def _active_admin_count(db: Session) -> int:
+    count = 0
+    for row in db.query(User).filter(User.status == "active").all():
+        if "admin" in parse_roles(row.roles):
+            count += 1
+    return count
+
+
+def _delete_user_row(db: Session, operator: User, user_id: int) -> User:
+    u = db.get(User, user_id)
+    if not u:
+        from app.response import fail
+
+        fail(404, "用户不存在", 404)
+    if u.id == operator.id:
+        from app.response import fail
+
+        fail(400, "不能删除当前登录账号", 400)
+    if "admin" in parse_roles(u.roles) and _active_admin_count(db) <= 1:
+        from app.response import fail
+
+        fail(400, "不能删除最后一个启用的管理员", 400)
+    db.delete(u)
+    db.commit()
+    return u
+
+
+@router.delete("/admin/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _require_admin(user)
+    _delete_user_row(db, user, user_id)
+    return ok(message="已删除")
+
+
+@router.post("/admin/users/{user_id}/delete")
+def delete_user_post(
+    user_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """POST 删除（与 reset-password / unlock 一致，避免部分代理拦截 DELETE）。"""
+    _require_admin(user)
+    _delete_user_row(db, user, user_id)
+    return ok(message="已删除")
+
+
 @router.post("/auth/change-password")
 def change_password(
     body: dict,
@@ -157,6 +244,7 @@ def change_password(
 
         fail(400, "旧密码不正确", 400)
     user.password_hash = hash_password(new)
+    user.password_plain = new
     user.failed_login_count = 0
     user.locked_until = None
     db.commit()

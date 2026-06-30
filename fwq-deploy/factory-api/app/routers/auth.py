@@ -11,7 +11,13 @@ from app.deps import client_ip, get_current_user
 from app.models import LoginAudit, User
 from app.response import fail, ok
 from app.schemas import LoginRequest, LoginResponseData, UserMeData
-from app.security import create_access_token, parse_roles, parse_station_keys, verify_password
+from app.security import (
+    create_access_token,
+    parse_roles,
+    parse_station_keys,
+    station_key_authorized,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,9 +61,10 @@ def login(body: LoginRequest, request: Request, db: Annotated[Session, Depends(g
 
     if body.stationKey:
         allowed = set(parse_station_keys(user.station_keys))
-        if allowed and body.stationKey not in allowed and "admin" not in parse_roles(user.roles):
+        if allowed and not station_key_authorized(allowed, body.stationKey) and "admin" not in parse_roles(user.roles):
             audit("login_fail", user.id)
-            fail(403, "工站未授权", 403)
+            allowed_text = "、".join(sorted(allowed))
+            fail(403, f"工站未授权：当前上报 {body.stationKey}，账号已授权 {allowed_text}", 403)
 
     user.failed_login_count = 0
     user.locked_until = None

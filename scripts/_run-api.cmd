@@ -102,7 +102,7 @@ echo.
 
 
 
-.\.venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port %PORT%
+.\.venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port %PORT% --reload
 
 if errorlevel 1 echo [API] start failed
 

@@ -36,3 +36,30 @@ def parse_roles(raw: str) -> list[str]:
 
 def parse_station_keys(raw: str) -> list[str]:
     return [s.strip() for s in raw.split(",") if s.strip()]
+
+
+# 管理端历史简称与上位机 SYSTEM/station 互认
+_STATION_KEY_ALIASES: dict[str, frozenset[str]] = {
+    "PCBA": frozenset({"PCBA", "PCBA_TEST"}),
+    "PCBA_TEST": frozenset({"PCBA", "PCBA_TEST"}),
+    "AGING": frozenset({"AGING", "AGE_TEST"}),
+    "AGE_TEST": frozenset({"AGING", "AGE_TEST"}),
+    "PACK": frozenset({"PACK", "MAIN_TEST"}),
+    "MAIN_TEST": frozenset({"PACK", "MAIN_TEST"}),
+}
+
+
+def station_key_authorized(allowed: set[str], requested: str) -> bool:
+    """判断 requested 是否落在 allowed 任一工站（含简称别名）内。"""
+    if not allowed:
+        return True
+    if requested in allowed:
+        return True
+    req_aliases = _STATION_KEY_ALIASES.get(requested, frozenset({requested}))
+    for key in allowed:
+        if key in req_aliases:
+            return True
+        key_aliases = _STATION_KEY_ALIASES.get(key, frozenset({key}))
+        if requested in key_aliases:
+            return True
+    return False

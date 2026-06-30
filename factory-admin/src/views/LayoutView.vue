@@ -76,6 +76,10 @@
             <el-icon><UserFilled /></el-icon>
             <template #title>账号管理</template>
           </el-menu-item>
+          <el-menu-item index="/system/factories">
+            <el-icon><OfficeBuilding /></el-icon>
+            <template #title>工厂管理</template>
+          </el-menu-item>
           <el-menu-item index="/system/devices">
             <el-icon><Tools /></el-icon>
             <template #title>设备登记</template>
@@ -134,7 +138,7 @@ import { useRole } from '../composables/useRole'
 import {
   Odometer, Search, Document, List, Setting, Files, Upload,
   Monitor, UserFilled, Tools, Clock, DArrowLeft, ArrowDown,
-  User, SwitchButton, DataAnalysis, DataLine, Histogram
+  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

@@ -41,6 +41,8 @@ http.interceptors.response.use(
       ElMessage.error(msg || '无权限')
     } else if (status === 404) {
       ElMessage.error(msg || '接口未就绪，请确认后端已部署对应功能')
+    } else if (status === 405) {
+      ElMessage.error(msg || '请求方法不被允许，请重启后端并刷新管理端页面后重试')
     }
     return Promise.reject(new Error(msg || '请求失败'))
   }

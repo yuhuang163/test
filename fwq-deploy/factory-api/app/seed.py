@@ -40,6 +40,7 @@ def seed_admin(db: Session) -> None:
         User(
             username=username,
             password_hash=hash_password(settings.default_admin_password),
+            password_plain=settings.default_admin_password,
             roles="admin",
             station_keys="",
             status="active",

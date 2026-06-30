@@ -139,6 +139,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useRole } from '../composables/useRole'
 import { formatTime } from '../utils/format'
+import { formatRoleLabels } from '../utils/roles'
 import * as api from '../api/analytics'
 import {
   Document, List, CircleCheck, TrendCharts,
@@ -184,12 +185,7 @@ if (isAdmin.value) {
   quickLinks.push({ title: '登录审计', path: '/system/audit-logins', icon: Clock, bg: 'linear-gradient(135deg, #78716c, #57534e)' })
 }
 
-const roleText = computed(() => {
-  const r = user.roles || []
-  if (!r.length) return '未分配'
-  const map = { admin: '管理员', engineer: '工艺工程师', operator: '产线操作员' }
-  return r.map((x) => map[x] || x).join('、')
-})
+const roleText = computed(() => formatRoleLabels(user.roles, '未分配'))
 
 async function load() {
   loading.value = true
