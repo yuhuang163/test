@@ -6,7 +6,7 @@ from app.config import settings
 from app.models import Factory, User
 from app.security import hash_password
 
-# 与上位机 Mes/FACTORY 代码一致；display_name 与 box_base 状态栏/业务称呼对齐
+# 启动时种子数据（仅补全缺失项）；运行中新增工厂请用管理端「工厂管理」，无需重启服务。
 FACTORY_SEED = [
     ("lx", "立讯精密", 10),
     ("xwd", "欣旺达", 20),
