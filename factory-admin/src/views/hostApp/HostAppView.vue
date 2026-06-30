@@ -7,7 +7,7 @@
           <el-button @click="load">刷新</el-button>
         </div>
 
-        <el-table :data="items" v-loading="loading" border>
+        <el-table :data="items" v-loading="loading">
           <el-table-column prop="appVersion" label="appVersion" width="100" />
           <el-table-column prop="buildId" label="buildId" width="120" />
           <el-table-column prop="packageName" label="包名" min-width="120" />

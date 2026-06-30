@@ -10,7 +10,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="items" v-loading="loading" border>
+    <el-table :data="items" v-loading="loading">
       <el-table-column prop="hostName" label="电脑名" width="180" />
       <el-table-column prop="lineName" label="产线" width="120" />
       <el-table-column prop="stationLabel" label="工位" width="120" />

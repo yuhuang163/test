@@ -151,6 +151,8 @@ def curve_item_names(
     factoryName: str | None = None,
     station: str | None = None,
     keyword: str | None = None,
+    startTime: str | None = None,
+    endTime: str | None = None,
 ):
     q = db.query(TestRecordItem.name).distinct().join(
         TestRecord, TestRecordItem.record_id == TestRecord.id
@@ -161,6 +163,10 @@ def curve_item_names(
         q = q.filter(TestRecord.station == station)
     if keyword:
         q = q.filter(TestRecordItem.name.contains(keyword))
+    if startTime:
+        q = q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
+    if endTime:
+        q = q.filter(TestRecord.created_at <= datetime.fromisoformat(endTime))
     rows = q.order_by(TestRecordItem.name.asc()).limit(100).all()
     names = [r[0] for r in rows if r[0]]
     return ok({"names": names})

@@ -9,6 +9,18 @@
       <el-form-item label="工站">
         <el-input v-model="filters.station" clearable placeholder="工站" style="width: 140px" />
       </el-form-item>
+      <el-form-item label="日期段">
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          :shortcuts="dateShortcuts"
+          style="width: 260px"
+        />
+      </el-form-item>
       <el-form-item label="分组">
         <el-select v-model="groupBy" style="width: 100px">
           <el-option label="按天" value="day" />
@@ -77,6 +89,7 @@
 <script setup>
 import { onMounted, reactive, ref, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { DATE_RANGE_SHORTCUTS, defaultDateRange, toApiTimeRange } from '../utils/dateRange'
 import * as api from '../api/analytics'
 import http from '../api/http'
 import * as echarts from 'echarts'
@@ -84,6 +97,8 @@ import * as echarts from 'echarts'
 const factories = ref([])
 const loading = ref(false)
 const filters = reactive({ factoryName: '', station: '' })
+const dateRange = ref(defaultDateRange(7))
+const dateShortcuts = DATE_RANGE_SHORTCUTS
 const groupBy = ref('day')
 const stats = reactive({ totalCount: 0, passCount: 0, failCount: 0, overallPassRate: 0, trend: [], topFailItems: [] })
 
@@ -105,6 +120,7 @@ async function loadYield() {
       factoryName: filters.factoryName || undefined,
       station: filters.station || undefined,
       groupBy: groupBy.value,
+      ...toApiTimeRange(dateRange.value),
     })
     Object.assign(stats, data)
     await nextTick()

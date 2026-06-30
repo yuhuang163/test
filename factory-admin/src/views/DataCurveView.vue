@@ -9,6 +9,18 @@
       <el-form-item label="工站">
         <el-input v-model="filters.station" clearable placeholder="工站" style="width: 140px" />
       </el-form-item>
+      <el-form-item label="日期段">
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          :shortcuts="dateShortcuts"
+          style="width: 260px"
+        />
+      </el-form-item>
       <el-form-item label="测试项">
         <el-select
           v-model="filters.itemName"
@@ -16,10 +28,11 @@
           filterable
           remote
           reserve-keyword
-          placeholder="输入测试项名称"
+          placeholder="请选择或搜索测试项"
           style="width: 220px"
           :remote-method="searchItems"
           :loading="nameLoading"
+          @visible-change="onItemSelectVisible"
         >
           <el-option v-for="n in itemNames" :key="n" :label="n" :value="n" />
         </el-select>
@@ -50,7 +63,7 @@
       <template #header>
         <span>数据明细（{{ points.length }} 条）</span>
       </template>
-      <el-table :data="points" border size="small" max-height="360">
+      <el-table :data="points" size="small" max-height="360">
         <el-table-column label="测试时间" width="170">
           <template #default="{ row }">{{ formatTime(row.testedAt) }}</template>
         </el-table-column>
@@ -71,6 +84,7 @@
 import { onMounted, reactive, ref, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { formatTime } from '../utils/format'
+import { DATE_RANGE_SHORTCUTS, defaultDateRange, toApiTimeRange } from '../utils/dateRange'
 import * as api from '../api/analytics'
 import http from '../api/http'
 import * as echarts from 'echarts'
@@ -84,6 +98,8 @@ const chartRef = ref(null)
 let chartInstance = null
 
 const filters = reactive({ factoryName: '', station: '', itemName: '' })
+const dateRange = ref(defaultDateRange(7))
+const dateShortcuts = DATE_RANGE_SHORTCUTS
 const limit = ref(200)
 
 const currentUnit = ref('')
@@ -93,19 +109,25 @@ async function loadFactories() {
 }
 
 async function searchItems(keyword) {
-  if (!keyword && !filters.factoryName && !filters.station) return
   nameLoading.value = true
   try {
     const data = await api.getCurveItemNames({
       factoryName: filters.factoryName || undefined,
       station: filters.station || undefined,
       keyword: keyword || undefined,
+      ...toApiTimeRange(dateRange.value),
     })
     itemNames.value = data.names || []
   } catch {
     itemNames.value = []
   } finally {
     nameLoading.value = false
+  }
+}
+
+function onItemSelectVisible(visible) {
+  if (visible) {
+    searchItems('')
   }
 }
 
@@ -121,6 +143,7 @@ async function loadCurve() {
       station: filters.station || undefined,
       itemName: filters.itemName,
       limit: limit.value,
+      ...toApiTimeRange(dateRange.value),
     })
     points.value = data.points || []
     currentUnit.value = points.value[0]?.unit || ''
@@ -234,8 +257,15 @@ function renderChart() {
   })
 }
 
-watch(() => filters.factoryName, () => { searchItems('') })
-watch(() => filters.station, () => { searchItems('') })
+watch(() => filters.factoryName, () => {
+  itemNames.value = []
+})
+watch(() => filters.station, () => {
+  itemNames.value = []
+})
+watch(dateRange, () => {
+  itemNames.value = []
+})
 
 onMounted(async () => {
   await loadFactories()

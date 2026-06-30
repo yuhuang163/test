@@ -1,4 +1,5 @@
 <template>
+  <div class="profile-page">
   <el-row :gutter="24">
     <el-col :span="12">
       <el-card header="账号信息">
@@ -27,6 +28,7 @@
       </el-card>
     </el-col>
   </el-row>
+  </div>
 </template>
 
 <script setup>

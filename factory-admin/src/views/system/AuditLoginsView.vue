@@ -12,7 +12,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="items" v-loading="loading" border>
+    <el-table :data="items" v-loading="loading">
       <el-table-column prop="createdAt" label="时间" width="180">
         <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
       </el-table-column>

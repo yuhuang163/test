@@ -13,7 +13,7 @@
       title="工厂保存到数据库后立即生效，无需重启 API。代码建议用小写英文（如 jj），批量账号将生成为 jjop / jjeng / jjadm。"
     />
 
-    <el-table :data="items" v-loading="loading" border>
+    <el-table :data="items" v-loading="loading">
       <el-table-column prop="code" label="工厂代码" width="120" />
       <el-table-column prop="displayName" label="显示名" min-width="140" />
       <el-table-column label="状态" width="90">

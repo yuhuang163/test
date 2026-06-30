@@ -29,7 +29,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="items" v-loading="loading" border>
+    <el-table :data="items" v-loading="loading">
       <el-table-column prop="factoryDisplayName" label="工厂" width="100" />
       <el-table-column label="测试时间" width="180">
         <template #default="{ row }">{{ formatTime(row.testedAt || row.createdAt) }}</template>
@@ -73,7 +73,7 @@
           <el-descriptions-item label="版本">{{ detail.clientVersion || '-' }}</el-descriptions-item>
           <el-descriptions-item label="测试时间">{{ formatTime(detail.testedAt || detail.createdAt) }}</el-descriptions-item>
         </el-descriptions>
-        <el-table :data="detail.items" border size="small">
+        <el-table :data="detail.items" size="small">
           <el-table-column prop="name" label="测试项" min-width="140" />
           <el-table-column prop="value" label="实测值" width="100" />
           <el-table-column prop="minValue" label="下限" width="80" />

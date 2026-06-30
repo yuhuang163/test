@@ -3,10 +3,10 @@
     <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
       <div class="logo" :class="{ collapsed }">
         <svg v-if="collapsed" viewBox="0 0 48 48" width="28" height="28">
-          <rect x="6" y="20" width="8" height="20" rx="2" fill="#60a5fa" opacity="0.6"/>
-          <rect x="20" y="10" width="8" height="30" rx="2" fill="#60a5fa" opacity="0.8"/>
-          <rect x="34" y="14" width="8" height="26" rx="2" fill="#60a5fa"/>
-          <line x1="4" y1="42" x2="44" y2="42" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+          <rect x="6" y="20" width="8" height="20" rx="2" fill="var(--admin-primary)" opacity="0.5"/>
+          <rect x="20" y="10" width="8" height="30" rx="2" fill="var(--admin-primary)" opacity="0.75"/>
+          <rect x="34" y="14" width="8" height="26" rx="2" fill="var(--admin-primary)"/>
+          <line x1="4" y1="42" x2="44" y2="42" stroke="var(--admin-primary)" stroke-width="2" stroke-linecap="round"/>
         </svg>
         <span v-else>路特产线管理平台</span>
       </div>
@@ -16,6 +16,9 @@
         router
         :collapse="collapsed"
         class="side-menu"
+        background-color="transparent"
+        :text-color="sidebarText"
+        :active-text-color="sidebarTextActive"
       >
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
@@ -147,6 +150,8 @@ const user = useUserStore()
 const meta = useMetaStore()
 const { isAdmin, isEngineer } = useRole()
 const collapsed = ref(false)
+const sidebarText = 'rgba(255, 255, 255, 0.78)'
+const sidebarTextActive = '#ffffff'
 
 const activeMenu = computed(() => route.meta.menu || route.path)
 const pageTitle = computed(() => route.meta.title || '路特产线管理平台')
@@ -166,32 +171,30 @@ onMounted(() => meta.load())
 <style scoped>
 .layout {
   height: 100vh;
-  background: #f0f2f5;
+  background: var(--admin-bg);
 }
 
-/* 侧边栏 */
 .aside {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: var(--admin-sidebar);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
   overflow: hidden;
-  border-right: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .logo {
-  height: 60px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f1f5f9;
+  color: #fff;
   font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
   overflow: hidden;
-  transition: all 0.3s;
 }
 .logo.collapsed {
   padding: 0;
@@ -210,21 +213,24 @@ onMounted(() => meta.load())
 }
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
-  color: rgba(255,255,255,0.72);
-  transition: all 0.2s;
+  color: var(--admin-sidebar-text) !important;
+}
+:deep(.el-menu-item .el-icon),
+:deep(.el-sub-menu__title .el-icon) {
+  color: inherit !important;
 }
 :deep(.el-menu-item:hover),
 :deep(.el-sub-menu__title:hover) {
-  background: rgba(255,255,255,0.06);
-  color: #fff;
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-text-active) !important;
 }
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, rgba(59,130,246,0.25), transparent) !important;
-  color: #60a5fa !important;
-  border-right: 3px solid #3b82f6;
+  background: var(--admin-sidebar-active-bg) !important;
+  color: var(--admin-sidebar-text-active) !important;
+  border-right: 3px solid var(--admin-primary);
 }
 :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
-  color: #e2e8f0;
+  color: var(--admin-sidebar-text-active) !important;
 }
 :deep(.el-sub-menu .el-menu-item) {
   padding-left: 56px !important;
@@ -238,9 +244,9 @@ onMounted(() => meta.load())
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   transition: color 0.2s;
 }
 .collapse-btn:hover {
@@ -250,22 +256,20 @@ onMounted(() => meta.load())
   transform: rotate(180deg);
 }
 
-/* 顶栏 */
 .header {
   height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border-bottom: 1px solid #e9edf4;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
   padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .page-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--admin-text);
 }
 
 .header-right {
@@ -279,28 +283,27 @@ onMounted(() => meta.load())
   gap: 8px;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: var(--admin-radius);
   transition: background 0.2s;
 }
 .user-info:hover {
-  background: #f1f5f9;
+  background: var(--admin-border-light);
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: var(--admin-primary);
   color: #fff;
   font-weight: 600;
   font-size: 14px;
 }
 .user-name {
   font-size: 14px;
-  color: #334155;
+  color: var(--admin-text);
   font-weight: 500;
 }
 
-/* 主区域 */
 .main-content {
-  background: #f0f2f5;
+  background: var(--admin-bg);
   padding: 20px;
   overflow-y: auto;
 }

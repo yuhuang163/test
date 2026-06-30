@@ -7,7 +7,7 @@
       <el-button @click="load">刷新</el-button>
     </div>
 
-    <el-table :data="items" v-loading="loading" border>
+    <el-table :data="items" v-loading="loading">
       <el-table-column prop="username" label="用户名" width="110" />
       <el-table-column label="密码" width="130">
         <template #default="{ row }">
@@ -143,7 +143,7 @@
         <el-button :disabled="!batchItems.length" @click="copyBatchCredentials">复制账号清单</el-button>
       </div>
 
-      <el-table :data="batchItems" v-loading="batchPreviewing" border max-height="360" size="small">
+      <el-table :data="batchItems" v-loading="batchPreviewing" max-height="360" size="small">
         <el-table-column prop="factoryName" label="工厂" width="110" />
         <el-table-column prop="username" label="用户名" width="100" />
         <el-table-column prop="password" label="初始密码" width="110" />

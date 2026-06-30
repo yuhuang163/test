@@ -75,8 +75,8 @@
           </template>
           <div class="quick-grid">
             <div v-for="link in quickLinks" :key="link.title" class="quick-item" @click="go(link.path)">
-              <div class="quick-icon" :style="{ background: link.bg }">
-                <el-icon :size="22" color="#fff"><component :is="link.icon" /></el-icon>
+              <div class="quick-icon" :class="link.tone">
+                <el-icon :size="20"><component :is="link.icon" /></el-icon>
               </div>
               <div class="quick-title">{{ link.title }}</div>
             </div>
@@ -169,20 +169,20 @@ function pct(count) {
 }
 
 const quickLinks = [
-  { title: '日志查询', path: '/data/logs', icon: Document, bg: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
-  { title: '测试数据', path: '/data/test-records', icon: List, bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
-  { title: '数据曲线', path: '/data/curve', icon: DataLine, bg: 'linear-gradient(135deg, #10b981, #059669)' },
-  { title: '良率统计', path: '/data/yield', icon: TrendCharts, bg: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+  { title: '日志查询', path: '/data/logs', icon: Document, tone: 'blue' },
+  { title: '测试数据', path: '/data/test-records', icon: List, tone: 'purple' },
+  { title: '数据曲线', path: '/data/curve', icon: DataLine, tone: 'green' },
+  { title: '良率统计', path: '/data/yield', icon: TrendCharts, tone: 'orange' },
 ]
 
 if (isEngineer.value) {
-  quickLinks.push({ title: '测试用例', path: '/config/test-cases', icon: Files, bg: 'linear-gradient(135deg, #ec4899, #db2777)' })
+  quickLinks.push({ title: '测试用例', path: '/config/test-cases', icon: Files, tone: 'pink' })
 }
 if (isAdmin.value) {
-  quickLinks.push({ title: '上位机版本', path: '/config/host-app', icon: Upload, bg: 'linear-gradient(135deg, #14b8a6, #0d9488)' })
-  quickLinks.push({ title: '账号管理', path: '/system/users', icon: UserFilled, bg: 'linear-gradient(135deg, #f97316, #ea580c)' })
-  quickLinks.push({ title: '设备登记', path: '/system/devices', icon: Tools, bg: 'linear-gradient(135deg, #6366f1, #4f46e5)' })
-  quickLinks.push({ title: '登录审计', path: '/system/audit-logins', icon: Clock, bg: 'linear-gradient(135deg, #78716c, #57534e)' })
+  quickLinks.push({ title: '上位机版本', path: '/config/host-app', icon: Upload, tone: 'cyan' })
+  quickLinks.push({ title: '账号管理', path: '/system/users', icon: UserFilled, tone: 'blue' })
+  quickLinks.push({ title: '设备登记', path: '/system/devices', icon: Tools, tone: 'purple' })
+  quickLinks.push({ title: '登录审计', path: '/system/audit-logins', icon: Clock, tone: 'gray' })
 }
 
 const roleText = computed(() => formatRoleLabels(user.roles, '未分配'))
@@ -212,68 +212,88 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard { max-width: 1200px; }
+.dashboard { max-width: 1280px; }
 
 .welcome-card {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border-radius: 16px;
-  padding: 24px 32px;
-  margin-bottom: 20px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #fff;
+  box-shadow: var(--admin-shadow);
 }
-.welcome-text h3 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
-.welcome-text p { margin: 0; color: rgba(255,255,255,0.55); font-size: 14px; }
-.welcome-time { font-size: 15px; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
+.welcome-text h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; color: var(--admin-text); }
+.welcome-text p { margin: 0; color: var(--admin-text-secondary); font-size: 14px; }
+.welcome-time { font-size: 14px; color: var(--admin-text-tertiary); font-variant-numeric: tabular-nums; }
 
 .stat-card {
   margin-bottom: 16px;
-  border-radius: 14px;
-  border: none;
+  border-radius: var(--admin-radius-lg);
   display: flex;
   align-items: center;
-  padding: 18px 20px;
-  background: #fff;
+  padding: 16px 18px;
+  background: var(--admin-surface);
 }
 .stat-icon {
-  width: 52px; height: 52px;
-  border-radius: 14px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-right: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--admin-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 14px;
 }
-.blue .stat-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.green .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
-.teal .stat-icon { background: linear-gradient(135deg, #14b8a6, #0d9488); }
-.orange .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.red .stat-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.blue .stat-icon { background: var(--admin-primary-light); color: var(--admin-primary); }
+.green .stat-icon { background: #f6ffed; color: var(--admin-success); }
+.teal .stat-icon { background: #e6fffb; color: #13c2c2; }
+.orange .stat-icon { background: #fff7e6; color: var(--admin-warning); }
+.red .stat-icon { background: #fff1f0; color: var(--admin-danger); }
 
 .stat-body { flex: 1; min-width: 0; }
-.stat-val { font-size: 30px; font-weight: 700; color: #1e293b; line-height: 1.2; }
-.stat-label { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+.stat-val { font-size: 28px; font-weight: 600; color: var(--admin-text); line-height: 1.2; }
+.stat-label { font-size: 13px; color: var(--admin-text-tertiary); margin-top: 2px; }
 
 .section-row { margin-top: 4px; }
-.section-card { border-radius: 14px; border: none; margin-bottom: 16px; }
-.section-header { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; color: #334155; }
+.section-card { border-radius: var(--admin-radius-lg); margin-bottom: 16px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; color: var(--admin-text); }
 
 .factory-list { display: flex; flex-direction: column; gap: 12px; }
 .factory-item { display: flex; align-items: center; gap: 12px; }
-.factory-name { width: 80px; font-size: 13px; color: #475569; flex-shrink: 0; }
-.factory-count { width: 40px; text-align: right; font-size: 13px; font-weight: 600; color: #1e293b; flex-shrink: 0; }
+.factory-name { width: 80px; font-size: 13px; color: var(--admin-text-secondary); flex-shrink: 0; }
+.factory-count { width: 40px; text-align: right; font-size: 13px; font-weight: 600; color: var(--admin-text); flex-shrink: 0; }
 
-.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .quick-item {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 8px; cursor: pointer; padding: 16px 8px;
-  border-radius: 12px; transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 14px 8px;
+  border-radius: var(--admin-radius);
+  transition: background 0.2s;
 }
-.quick-item:hover { background: #f8fafc; transform: translateY(-2px); }
+.quick-item:hover { background: var(--admin-border-light); }
 .quick-icon {
-  width: 46px; height: 46px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--admin-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.quick-title { font-size: 12px; color: #475569; font-weight: 500; text-align: center; }
+.quick-icon.blue { background: var(--admin-primary-light); color: var(--admin-primary); }
+.quick-icon.purple { background: #f9f0ff; color: #722ed1; }
+.quick-icon.green { background: #f6ffed; color: var(--admin-success); }
+.quick-icon.orange { background: #fff7e6; color: var(--admin-warning); }
+.quick-icon.pink { background: #fff0f6; color: #eb2f96; }
+.quick-icon.cyan { background: #e6fffb; color: #13c2c2; }
+.quick-icon.gray { background: #f5f5f5; color: var(--admin-text-secondary); }
+.quick-title { font-size: 12px; color: var(--admin-text-secondary); font-weight: 500; text-align: center; }
 
 :deep(.el-table) { cursor: pointer; }
 :deep(.el-empty) { padding: 20px 0; }
